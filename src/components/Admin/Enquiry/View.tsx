@@ -96,12 +96,12 @@ const View = () => {
                                         <p className="text-gray-600 mt-1">CT Scan</p>
                                     </div>
                                     <div>
-                                        <span className="font-semibold text-gray-700">Quantity:</span>
+                                        <span className="font-semibold text-gray-700">Equipment/Document No.:</span>
                                         <p className="text-gray-600 mt-1">1</p>
                                     </div>
                                     <div>
                                         <span className="font-semibold text-gray-700">Type Of Work:</span>
-                                        <p className="text-gray-600 mt-1">Service</p>
+                                        <p className="text-gray-600 mt-1"> License for Operation</p>
                                     </div>
                                 </div>
                             </div>
@@ -114,12 +114,12 @@ const View = () => {
                                         <p className="text-gray-600 mt-1">CT Scan</p>
                                     </div>
                                     <div>
-                                        <span className="font-semibold text-gray-700">Quantity:</span>
+                                        <span className="font-semibold text-gray-700">Equipment/Document No.:</span>
                                         <p className="text-gray-600 mt-1">1</p>
                                     </div>
                                     <div>
                                         <span className="font-semibold text-gray-700">Type Of Work:</span>
-                                        <p className="text-gray-600 mt-1">Service</p>
+                                        <p className="text-gray-600 mt-1"> License for Operation</p>
                                     </div>
                                 </div>
                             </div>

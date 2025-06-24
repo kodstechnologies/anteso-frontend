@@ -18,7 +18,7 @@ interface MultiSelectFieldProps {
 
 interface Service {
     machineType: string;
-    quantity: number;
+    equipmentNo: number;
     workType: string[];
 }
 
@@ -26,8 +26,10 @@ interface FormValues {
     hospitalName: string;
     fullAddress: string;
     city: string;
+    district: string,
     state: string;
     pinCode: string;
+    branch: string;
     contactPerson: string;
     emailAddress: string;
     contactNumber: string;
@@ -106,7 +108,7 @@ const urgencyOptions: string[] = ['Immediantely (within 1-2 days)', 'Urgent (Wit
 
 const workTypeOptions: OptionType[] = [
     { value: 'Quality Assurance Test', label: 'Quality Assurance Test' },
-    { value: 'Service', label: 'Service' },
+    { value: ' License for Operation', label: ' License for Operation' },
     { value: 'Decommissioning', label: 'Decommissioning' },
     { value: 'Decommissioning and Recommissioning', label: 'Decommissioning and Recommissioning' },
 ];
@@ -118,20 +120,24 @@ const AddEnquiry: React.FC = () => {
         hospitalName: Yup.string().required('Please fill the Field'),
         fullAddress: Yup.string().required('Please fill the Field'),
         city: Yup.string().required('Please fill the Field'),
+        district: Yup.string().required('Please fill the Field'),
+
         state: Yup.string().required('Please fill the Field'),
         pinCode: Yup.string().required('Please fill the Field'),
+        branch: Yup.string().required('Please fill the Field'),
+
         contactPerson: Yup.string().required('Please fill the Field'),
         emailAddress: Yup.string().email('Invalid email').required('Please fill the Email'),
         contactNumber: Yup.string()
             .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits')
             .required('Please fill the Field'),
         designation: Yup.string().required('Please fill the Field'),
-        urgency: Yup.string().required('Please select an urgency'),
+        urgency: Yup.string().required('Please fill this field'),
         services: Yup.array()
             .of(
                 Yup.object().shape({
                     machineType: Yup.string().required('Required'),
-                    quantity: Yup.number().required('Required').positive().integer(),
+                    equipmentNo: Yup.number().required('Required').positive().integer(),
                     workType: Yup.array().min(1, 'At least one work type is required'),
                 })
             )
@@ -184,14 +190,16 @@ const AddEnquiry: React.FC = () => {
                     hospitalName: '',
                     fullAddress: '',
                     city: '',
+                    district: '',
                     state: '',
                     pinCode: '',
+                    branch: '',
                     contactPerson: '',
                     emailAddress: '',
                     contactNumber: '',
                     designation: '',
                     urgency: '',
-                    services: [{ machineType: '', quantity: 1, workType: [] }],
+                    services: [{ machineType: '', equipmentNo: 1, workType: [] }],
                     additionalServices: serviceOptions.reduce((acc, service) => {
                         acc[service] = undefined;
                         return acc;
@@ -222,6 +230,11 @@ const AddEnquiry: React.FC = () => {
                                     <Field name="city" type="text" id="city" placeholder="Enter City Name" className="form-input" />
                                     {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
                                 </div>
+                                <div className={submitCount && errors.city ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="District">District</label>
+                                    <Field name="District" type="text" id="District" placeholder="Enter District Name" className="form-input" />
+                                    {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
+                                </div>
                                 <div className={submitCount && errors.state ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="state">State</label>
                                     <Field name="state" type="text" id="state" placeholder="Enter State Name" className="form-input" />
@@ -231,6 +244,11 @@ const AddEnquiry: React.FC = () => {
                                     <label htmlFor="pinCode">PIN Code</label>
                                     <Field name="pinCode" type="text" id="pinCode" placeholder="Enter PIN Code" className="form-input" />
                                     {submitCount && errors.pinCode ? <div className="text-danger mt-1">{errors.pinCode}</div> : null}
+                                </div>
+                                <div className={submitCount && errors.branch ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="branch">Branch Name</label>
+                                    <Field name="branch" type="text" id="branch" placeholder="Enter Branch Name" className="form-input" />
+                                    {submitCount && errors.branch ? <div className="text-danger mt-1">{errors.branch}</div> : null}
                                 </div>
                                 <div className={submitCount && errors.contactPerson ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="contactPerson">Contact Person Name</label>
@@ -279,12 +297,12 @@ const AddEnquiry: React.FC = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Quantity */}
+                                                {/* equipment/document No. */}
                                                 <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                                                    <Field type="number" name={`services.${index}.quantity`} placeholder="Quantity" className="form-input w-full" />
+                                                    <label className="text-sm font-semibold text-gray-700">Equipment/Document No.</label>
+                                                    <Field type="number" name={`services.${index}.equipmentNo`} placeholder="equipmentNo" className="form-input w-full" />
                                                     <div className="h-4">
-                                                        <ErrorMessage name={`services.${index}.quantity`} component="div" className="text-red-500 text-sm" />
+                                                        <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                     </div>
                                                 </div>
 
@@ -306,7 +324,7 @@ const AddEnquiry: React.FC = () => {
                                         ))}
 
                                         {/* Add Another Machine */}
-                                        <button type="button" onClick={() => push({ machineType: '', quantity: 1, workType: [] })} className="btn btn-primary w-full sm:w-auto">
+                                        <button type="button" onClick={() => push({ machineType: '', equipmentNo: 1, workType: [] })} className="btn btn-primary w-full sm:w-auto">
                                             + Add Another Machine
                                         </button>
                                     </>
@@ -346,14 +364,9 @@ const AddEnquiry: React.FC = () => {
 
                         {/* Urgency */}
                         <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Urgency</h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:w-1/2 gap-4">
-                                {urgencyOptions.map((option) => (
-                                    <label key={option} className="flex items-center gap-2">
-                                        <Field type="radio" name="urgency" value={option} />
-                                        {option}
-                                    </label>
-                                ))}
+                            <h5 className="font-semibold text-lg mb-4">Special Instructions</h5>
+                            <div className="grid grid-cols-1   gap-4">
+                                <Field name="urgency" type="text" id="emailAddress" placeholder="Enter special instruction" className="form-input" />
                             </div>
                             {submitCount && errors.urgency ? <p className="text-red-500 text-sm mt-1">{errors.urgency}</p> : <></>}
                         </div>

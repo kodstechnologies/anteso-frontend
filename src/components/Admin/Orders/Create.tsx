@@ -22,7 +22,7 @@ interface MultiSelectFieldProps {
 
 interface Service {
     machineType: string;
-    quantity: number;
+    equipmentNo: number;
     workType: string[];
 }
 
@@ -30,8 +30,10 @@ interface FormValues {
     hospitalName: string;
     fullAddress: string;
     city: string;
+    district: string;
     state: string;
     pinCode: string;
+    branch: string,
     contactPerson: string;
     emailAddress: string;
     contactNumber: string;
@@ -40,6 +42,8 @@ interface FormValues {
     services: Service[];
     additionalServices: Record<string, string | undefined>;
     enquiryID?: string; // Optional for generating ENQ ID
+    sysId: string;
+
 }
 
 // Custom component for multi-select field
@@ -107,10 +111,10 @@ const machineOptions: OptionType[] = [
 ].map((label) => ({ label, value: label }));
 
 const urgencyOptions: string[] = ['Immediantely (within 1-2 days)', 'Urgent (Within a week)', 'Soon (Within 2-3 weeks)', 'Not urgent (just exploring)'];
-
+const urgency: string[] = ['Normal', 'Tatkal']
 const workTypeOptions: OptionType[] = [
     { value: 'Quality Assurance Test', label: 'Quality Assurance Test' },
-    { value: 'Service', label: 'Service' },
+    { value: ' License for Operation', label: ' License for Operation' },
     { value: 'Decommissioning', label: 'Decommissioning' },
     { value: 'Decommissioning and Recommissioning', label: 'Decommissioning and Recommissioning' },
 ];
@@ -126,12 +130,14 @@ const CreateOrder: React.FC = () => {
     const navigate = useNavigate();
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
-        dealerName: Yup.array().required('Please fill the Field'),
+        leadOwner: Yup.array().required('Please fill the Field'),
         hospitalName: Yup.string().required('Please fill the Field'),
         fullAddress: Yup.string().required('Please fill the Field'),
         city: Yup.string().required('Please fill the Field'),
+        district: Yup.string().required('Please fill the Field'),
         state: Yup.string().required('Please fill the Field'),
         pinCode: Yup.string().required('Please fill the Field'),
+        branch: Yup.string().required('Please fill the Field'),
         contactPerson: Yup.string().required('Please fill the Field'),
         emailAddress: Yup.string().email('Invalid email').required('Please fill the Email'),
         contactNumber: Yup.string()
@@ -144,7 +150,7 @@ const CreateOrder: React.FC = () => {
             .of(
                 Yup.object().shape({
                     machineType: Yup.string().required('Required'),
-                    quantity: Yup.number().required('Required').positive().integer(),
+                    equipmentNo: Yup.number().required('Required').positive().integer(),
                     workType: Yup.array().min(1, 'At least one work type is required'),
                 })
             )
@@ -155,6 +161,8 @@ const CreateOrder: React.FC = () => {
             }, {})
         ),
         enquiryID: Yup.string().nullable(),
+        sysId: Yup.string().required('Please fill the Field'),
+
     });
 
     // Form submission handler
@@ -182,12 +190,14 @@ const CreateOrder: React.FC = () => {
 
             <Formik
                 initialValues={{
-                    dealerName: [],
+                    leadOwner: [],
                     hospitalName: '',
                     fullAddress: '',
                     city: '',
+                    district: '',
                     state: '',
                     pinCode: '',
+                    branch: '',
                     contactPerson: '',
                     emailAddress: '',
                     contactNumber: '',
@@ -195,12 +205,13 @@ const CreateOrder: React.FC = () => {
                     advanceAmount: '',
                     paymentProof: null,
                     urgency: '',
-                    services: [{ machineType: '', quantity: 1, workType: [] }],
+                    services: [{ machineType: '', equipmentNo: 1, workType: [] }],
                     additionalServices: serviceOptions.reduce((acc, service) => {
                         acc[service] = undefined;
                         return acc;
                     }, {} as Record<string, string | undefined>),
                     enquiryID: '',
+                    sysId: ''
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
@@ -211,11 +222,12 @@ const CreateOrder: React.FC = () => {
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Basic Details</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
-                                <div className={submitCount && errors.dealerName ? 'has-error' : submitCount ? 'has-success' : ''}>
-                                    <label htmlFor="dealerName">Dealer</label>
-                                    <MultiSelectField name={`dealerName`} options={dealerOptions} />
+                                <div className={submitCount && errors.leadOwner ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="leadOwner">Lead Owner</label>
+                                    {/* <MultiSelectField name={`leadOwner`} options={dealerOptions} /> */}
+                                    <Field name="leadOwner" type="text" id="leadOwner" placeholder="Enter Lead Owner" className="form-input" />
 
-                                    {submitCount && errors.dealerName ? <div className="text-danger mt-1">{errors.dealerName}</div> : null}
+                                    {submitCount && errors.leadOwner ? <div className="text-danger mt-1">{errors.leadOwner}</div> : null}
                                 </div>
                                 <div className={submitCount && errors.hospitalName ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="hospitalName">Hospital Name</label>
@@ -232,6 +244,11 @@ const CreateOrder: React.FC = () => {
                                     <Field name="city" type="text" id="city" placeholder="Enter City Name" className="form-input" />
                                     {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
                                 </div>
+                                <div className={submitCount && errors.city ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="District">District</label>
+                                    <Field name="District" type="text" id="District" placeholder="Enter District Name" className="form-input" />
+                                    {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
+                                </div>
                                 <div className={submitCount && errors.state ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="state">State</label>
                                     <Field name="state" type="text" id="state" placeholder="Enter State Name" className="form-input" />
@@ -241,6 +258,11 @@ const CreateOrder: React.FC = () => {
                                     <label htmlFor="pinCode">PIN Code</label>
                                     <Field name="pinCode" type="text" id="pinCode" placeholder="Enter PIN Code" className="form-input" />
                                     {submitCount && errors.pinCode ? <div className="text-danger mt-1">{errors.pinCode}</div> : null}
+                                </div>
+                                <div className={submitCount && errors.branch ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="branch">Branch Name</label>
+                                    <Field name="branch" type="text" id="branch" placeholder="Enter Branch Name" className="form-input" />
+                                    {submitCount && errors.branch ? <div className="text-danger mt-1">{errors.branch}</div> : null}
                                 </div>
                                 <div className={submitCount && errors.contactPerson ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="contactPerson">Contact Person Name</label>
@@ -272,6 +294,49 @@ const CreateOrder: React.FC = () => {
                                     <Field name="paymentProof" type="file" id="paymentProof" placeholder="Enter paymentProof" className="form-input" />
                                     {submitCount && errors.paymentProof ? <div className="text-danger mt-1">{errors.paymentProof}</div> : null}
                                 </div>
+                                <div className={submitCount && errors.sysId ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="branch">Party Code/Sys Id</label>
+                                    <Field name="sysId" type="text" id="sysId" placeholder="Enter Party Code/Sys Id" className="form-input" />
+                                    {submitCount && errors.sysId ? <div className="text-danger mt-1">{errors.sysId}</div> : null}
+                                </div>
+                                <FieldArray name="services">
+                                    {({ push, remove }) => (
+                                        <>
+                                            {values.services.map((service, index) => (
+                                                <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end">
+                                                    <div className="md:col-span-12">
+                                                        <label className="text-sm font-semibold text-gray-700">Urgency</label>
+
+                                                        <Field
+                                                            as="select"
+                                                            name={`services.${index}.urgency`}
+                                                            className="form-select w-full"
+                                                        >
+                                                            <option value="">Select Urgency Type</option>
+                                                            {urgency.map((option) => (
+                                                                <option key={option} value={option}>
+                                                                    {option}
+                                                                </option>
+                                                            ))}
+                                                        </Field>
+
+                                                        {/* ✅ Move ErrorMessage INSIDE the .map loop so index is available */}
+                                                        <div className="h-4">
+                                                            <ErrorMessage
+                                                                name={`services.${index}.urgency`}
+                                                                component="div"
+                                                                className="text-red-500 text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            ))}
+                                        </>
+                                    )}
+                                </FieldArray>
+
+
                             </div>
                         </div>
 
@@ -299,12 +364,12 @@ const CreateOrder: React.FC = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Quantity */}
+                                                {/* equipmentNo */}
                                                 <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                                                    <Field type="number" name={`services.${index}.quantity`} placeholder="Quantity" className="form-input w-full" />
+                                                    <label className="text-sm font-semibold text-gray-700">Equipment/Document No</label>
+                                                    <Field type="number" name={`services.${index}.equipmentNo`} placeholder="equipmentNo" className="form-input w-full" />
                                                     <div className="h-4">
-                                                        <ErrorMessage name={`services.${index}.quantity`} component="div" className="text-red-500 text-sm" />
+                                                        <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                     </div>
                                                 </div>
 
@@ -366,14 +431,9 @@ const CreateOrder: React.FC = () => {
 
                         {/* Urgency */}
                         <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Urgency</h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:w-1/2 gap-4">
-                                {urgencyOptions.map((option) => (
-                                    <label key={option} className="flex items-center gap-2">
-                                        <Field type="radio" name="urgency" value={option} />
-                                        {option}
-                                    </label>
-                                ))}
+                            <h5 className="font-semibold text-lg mb-4">Special Instructions</h5>
+                            <div className="grid grid-cols-1   gap-4">
+                                <Field name="urgency" type="text" id="emailAddress" placeholder="Enter special instruction" className="form-input" />
                             </div>
                             {submitCount && errors.urgency ? <p className="text-red-500 text-sm mt-1">{errors.urgency}</p> : <></>}
                         </div>

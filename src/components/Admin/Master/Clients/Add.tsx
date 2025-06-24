@@ -76,7 +76,7 @@ const AddClient = () => {
                                     {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : ''}
                                 </div>
                                 <div className={submitCount ? (errors.business ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="business">business </label>
+                                    <label htmlFor="business">Business </label>
                                     <Field name="business" type="text" id="business" placeholder="Enter Business" className="form-input" />
                                     {submitCount && errors.business ? <div className="text-danger mt-1">{errors.business}</div> : ''}
                                 </div>

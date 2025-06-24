@@ -132,9 +132,9 @@ const Sidebar = () => {
                                                 <li>
                                                     <NavLink to="/admin/leave">{t('Leave')}</NavLink>
                                                 </li>
-                                                <li>
+                                                {/* <li>
                                                     <NavLink to="/admin/expenses">{t('Expenses')}</NavLink>
-                                                </li>
+                                                </li> */}
                                                 <li>
                                                     <NavLink to="/admin/tools">{t('Tools')}</NavLink>
                                                 </li>

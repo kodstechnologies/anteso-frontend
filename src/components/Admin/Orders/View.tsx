@@ -101,7 +101,7 @@ const View = () => {
                             <span className="font-semibold text-gray-700">Party Code/ Sys Id:</span>
                             <p className="text-gray-600 mt-1">SY-1234</p>
                         </div>
-                        <div>
+                        {/* <div>
                             <span className="font-semibold text-gray-700">Type:</span>
                             <p className="text-gray-600 mt-1">Customer</p>
                         </div>
@@ -112,6 +112,10 @@ const View = () => {
                         <div>
                             <span className="font-semibold text-gray-700">Type:</span>
                             <p className="text-gray-600 mt-1">Customer</p>
+                        </div> */}
+                        <div>
+                            <span className="font-semibold text-gray-700">No of days taken:</span>
+                            <p className="text-gray-600 mt-1">25</p>
                         </div>
                     </div>
                 </div>
@@ -127,12 +131,12 @@ const View = () => {
                                 <p className="text-gray-600 mt-1">CT Scan</p>
                             </div>
                             <div>
-                                <span className="font-semibold text-gray-700">Quantity:</span>
+                                <span className="font-semibold text-gray-700">Equipment/Document No.:</span>
                                 <p className="text-gray-600 mt-1">1</p>
                             </div>
                             <div>
                                 <span className="font-semibold text-gray-700">Type Of Work:</span>
-                                <p className="text-gray-600 mt-1">Service</p>
+                                <p className="text-gray-600 mt-1"> License for Operation</p>
                             </div>
                             <div>
                                 <span className="font-semibold text-gray-700">Status:</span>
@@ -155,7 +159,7 @@ const View = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white text-sm">
-                                        {['QA Test', 'Elora'].map((service, index) => (
+                                        {['QA Test', 'Elora','QA Test Report'].map((service, index) => (
                                             <tr key={index} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 border-b font-medium text-gray-800">{service}</td>
                                                 <td className="px-6 py-4 border-b">
@@ -216,12 +220,12 @@ const View = () => {
                                 <p className="text-gray-600 mt-1">CT Scan</p>
                             </div>
                             <div>
-                                <span className="font-semibold text-gray-700">Quantity:</span>
+                                <span className="font-semibold text-gray-700">Equipment/Document No.:</span>
                                 <p className="text-gray-600 mt-1">1</p>
                             </div>
                             <div>
                                 <span className="font-semibold text-gray-700">Type Of Work:</span>
-                                <p className="text-gray-600 mt-1">Service</p>
+                                <p className="text-gray-600 mt-1"> License for Operation</p>
                             </div>
                             <div>
                                 <span className="font-semibold text-gray-700">Status:</span>
@@ -311,7 +315,7 @@ const View = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white text-sm">
-                                        {['QA Test', 'Elora'].map((service, index) => (
+                                        {['QA Test', 'Elora','QA test Report'].map((service, index) => (
                                             <tr key={index} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 border-b font-medium text-gray-800">{service}</td>
                                                 <td className="px-6 py-4 border-b">

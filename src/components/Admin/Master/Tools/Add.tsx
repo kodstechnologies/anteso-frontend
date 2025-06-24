@@ -49,7 +49,7 @@ const AddTool = () => {
                     toolID: '',
                 }}
                 validationSchema={SubmittedForm}
-                onSubmit={() => {}}
+                onSubmit={() => { }}
             >
                 {({ errors, submitCount, touched }) => (
                     <Form className="space-y-5">
@@ -58,27 +58,27 @@ const AddTool = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className={submitCount ? (errors.name ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="name">Name </label>
-                                    <Field name="name" type="text" id="name" placeholder="Enter State Name" className="form-input" />
+                                    <Field name="name" type="text" id="name" placeholder="Enter Name" className="form-input" />
                                     {submitCount && errors.name ? <div className="text-danger mt-1">{errors.name}</div> : ''}
                                 </div>
                                 <div className={submitCount ? (errors.manufactureDate ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="manufactureDate">Manufacture Date </label>
-                                    <Field name="manufactureDate" type="date" id="manufactureDate" placeholder="Enter State Name" className="form-input" />
+                                    <Field name="manufactureDate" type="date" id="manufactureDate" placeholder="Enter Manufacture Date" className="form-input" />
                                     {submitCount && errors.manufactureDate ? <div className="text-danger mt-1">{errors.manufactureDate}</div> : ''}
                                 </div>
                                 <div className={submitCount ? (errors.model ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="model">Model </label>
-                                    <Field name="model" type="text" id="model" placeholder="Enter State Name" className="form-input" />
+                                    <Field name="model" type="text" id="model" placeholder="Enter Model" className="form-input" />
                                     {submitCount && errors.model ? <div className="text-danger mt-1">{errors.model}</div> : ''}
                                 </div>
                                 <div className={submitCount ? (errors.srNo ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="srNo">Sr No </label>
-                                    <Field name="srNo" type="text" id="srNo" placeholder="Enter State Name" className="form-input" />
+                                    <Field name="srNo" type="text" id="srNo" placeholder="Enter Sr No" className="form-input" />
                                     {submitCount && errors.srNo ? <div className="text-danger mt-1">{errors.srNo}</div> : ''}
                                 </div>
                                 <div className={submitCount ? (errors.calibrationCertificateNo ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="calibrationCertificateNo">Calibration Certificate Number</label>
-                                    <Field name="calibrationCertificateNo" type="text" id="calibrationCertificateNo" placeholder="Enter State Name" className="form-input" />
+                                    <Field name="calibrationCertificateNo" type="text" id="calibrationCertificateNo" placeholder="Enter Calibration Certificate Number" className="form-input" />
                                     {submitCount && errors.calibrationCertificateNo ? <div className="text-danger mt-1">{errors.calibrationCertificateNo}</div> : ''}
                                 </div>
                                 <div className={submitCount ? (errors.calibrationValidTill ? 'has-error' : 'has-success') : ''}>

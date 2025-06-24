@@ -16,11 +16,19 @@ type Item = {
     amount: string;
 };
 
-const contactList = [
+const contactListEmployee = [
     { name: 'Anjana Thakur', phone: '9317509720' },
     { name: 'Khalid Khan', phone: '8091750188' },
     { name: 'Ramesh Verma', phone: '9876543210' },
 ];
+
+const contactListDealer = [
+    { name: 'Namita Rajput', phone: '9823456789' },
+    { name: 'Arjun Mehra', phone: '8976543210' },
+    { name: 'Sneha Kapoor', phone: '9345612870' },
+];
+
+
 
 const AddQuotation: React.FC = () => {
     const navigate = useNavigate();
@@ -228,7 +236,7 @@ const AddQuotation: React.FC = () => {
                         </tr> */}
                         <tr className="text-[.7rem]   rounded px-1 focus:outline-none focus:ring-0">
                             <td className="font-bold">From:</td>
-                            <td className="pl-2">
+                            {/* <td className="pl-2">
                                 <select className="text-[.7rem] border border-gray-300 rounded px-1 focus:outline-none" value={selectedIndex} onChange={handleNameChange}>
                                     {contactList.map((contact, index) => (
                                         <option value={index} key={index}>
@@ -238,9 +246,37 @@ const AddQuotation: React.FC = () => {
                                 </select>
                             </td>
                             <td className="font-bold">Phone</td>
-                            <td className="pl-2">{contactList[selectedIndex].phone}</td>
+                            <td className="pl-2">{contactList[selectedIndex].phone}</td> */}
                         </tr>
+                        <tr className="text-[.7rem]">
+                            <td className="font-bold pl-4">Employee:</td>
+                            <td className="pl-2">
+                                <select className="text-[.7rem] border border-gray-300 rounded px-1 focus:outline-none" value={selectedIndex} onChange={handleNameChange}>
+                                    {contactListEmployee.map((contact, index) => (
+                                        <option value={index} key={index}>
+                                            {contact.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </td>
+                            <td className="font-bold">Phone</td>
+                            <td className="pl-2">{contactListEmployee[selectedIndex].phone}</td>
+                        </tr>
+                        <tr className="text-[.7rem]">
+                            <td className="font-bold pl-4">Dealer:</td>
 
+                            <td className="pl-2">
+                                <select className="text-[.7rem] border border-gray-300 rounded px-1 focus:outline-none" value={selectedIndex} onChange={handleNameChange}>
+                                    {contactListDealer.map((contact, index) => (
+                                        <option value={index} key={index}>
+                                            {contact.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </td>
+                            <td className="font-bold">Phone</td>
+                            <td className="pl-2">{contactListDealer[selectedIndex].phone}</td>
+                        </tr>
                         <tr className="h-5"></tr>
                         <tr className="text-[.7rem]">
                             <td className="font-bold">Quotation:</td>

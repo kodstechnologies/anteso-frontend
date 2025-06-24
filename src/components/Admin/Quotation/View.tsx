@@ -179,9 +179,22 @@ const ViewQuotation = () => {
                             </tr>
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">From:</td>
-                                <td className="pl-2">Anjana Thakur</td>
+                                {/* <td className="pl-2">Anjana Thakur</td>
                                 <td className="font-bold">Phone</td>
+                                <td className="pl-2">9317509720</td> */}
+                            </tr>
+                            <tr className="text-[.7rem]">
+                                <td className="pl-4 font-bold">Employee:</td>
+                                <td className="pl-2">Anjana Thakur</td>
+                                <td className="font-bold">Phone:</td>
                                 <td className="pl-2">9317509720</td>
+                            </tr>
+
+                            <tr className="text-[.7rem]">
+                                <td className="pl-4 font-bold">Dealer:</td>
+                                <td className="pl-2">Namita Rajput</td>
+                                <td className="font-bold">Phone:</td>
+                                <td className="pl-2">9988334122</td>
                             </tr>
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">Quotation:</td>

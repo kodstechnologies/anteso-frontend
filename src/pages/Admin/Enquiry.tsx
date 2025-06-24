@@ -167,6 +167,8 @@ const Enquiry = () => {
                                     accessor: 'city',
                                     sortable: true,
                                 },
+                                { accessor: 'district', title: 'District', sortable: true },
+
                                 {
                                     accessor: 'state',
                                     sortable: true,
@@ -175,6 +177,8 @@ const Enquiry = () => {
                                     accessor: 'pincode',
                                     sortable: true,
                                 },
+                                { accessor: 'branch', title: 'Branch Name', sortable: true },
+
                                 {
                                     accessor: 'contactperson',
                                     title: 'Contact Person',
@@ -222,7 +226,7 @@ const Enquiry = () => {
                                     render: ({ id }) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
                                             <NavLink to="/admin/quotation/view" className="flex hover:text-primary">
-                                                <IconFile/>
+                                                <IconFile />
                                             </NavLink>
                                             <NavLink to="/admin/enquiry/view" className="flex hover:text-primary">
                                                 <IconEye />

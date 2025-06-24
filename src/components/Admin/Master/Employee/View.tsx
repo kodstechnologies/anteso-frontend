@@ -3,6 +3,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { isSameDay, startOfMonth, endOfMonth, getDaysInMonth, isSunday } from 'date-fns';
 
+
 // Mock attendance data (replace with actual API data)
 const attendanceData = [
     { date: new Date(2025, 4, 1), status: 'Present' }, // Tuesday

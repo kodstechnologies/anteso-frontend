@@ -43,7 +43,7 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({ name, options }) =>
 
 type Service = {
     machineType: string;
-    quantity: number;
+    equipmentNo: number;
     workType: string[];
 };
 
@@ -103,7 +103,7 @@ const urgencyOptions = ['Immediantely (within 1-2 days)', 'Urgent (Within a week
 
 const workTypeOptions = [
     { value: 'Quality Assurance Test', label: 'Quality Assurance Test' },
-    { value: 'Service', label: 'Service' },
+    { value: ' License for Operation', label: ' License for Operation' },
     { value: 'Decommissioning', label: 'Decommissioning' },
     { value: 'Decommissioning and Recommissioning', label: 'Decommissioning and Recommissioning' },
 ];
@@ -127,7 +127,7 @@ const AddOrder = () => {
             .of(
                 Yup.object().shape({
                     machineType: Yup.string().required('Required'),
-                    quantity: Yup.number().required('Required').positive().integer(),
+                    equipmentNo: Yup.number().required('Required').positive().integer(),
                     workType: Yup.array().min(1, 'At least one work type is required'),
                 })
             )
@@ -171,7 +171,7 @@ const AddOrder = () => {
                     contactNumber: '',
                     designation: '',
                     urgency: '',
-                    services: [{ machineType: '', quantity: 1, workType: [] }],
+                    services: [{ machineType: '', equipmentNo: 1, workType: [] }],
                     additionalServices: serviceOptions.reduce((acc, service) => {
                         acc[service] = undefined;
                         return acc;
@@ -279,11 +279,11 @@ const AddOrder = () => {
                                                     <ErrorMessage name={`services.${index}.machineType`} component="div" className="text-red-500 text-sm" />
                                                 </div>
 
-                                                {/* Quantity */}
+                                                {/* equipmentNo */}
                                                 <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                                                    <Field type="number" name={`services.${index}.quantity`} placeholder="Quantity" className="form-input w-full" />
-                                                    <ErrorMessage name={`services.${index}.quantity`} component="div" className="text-red-500 text-sm" />
+                                                    <label className="text-sm font-semibold text-gray-700">Equipment/Document No.</label>
+                                                    <Field type="number" name={`services.${index}.equipmentNo`} placeholder="equipmentNo" className="form-input w-full" />
+                                                    <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                 </div>
 
                                                 {/* Work Type */}

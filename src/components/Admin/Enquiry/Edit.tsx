@@ -18,7 +18,7 @@ interface MultiSelectFieldProps {
 
 interface Service {
     machineType: string;
-    quantity: number;
+    equipmentNo: number;
     workType: string[];
 }
 
@@ -106,7 +106,7 @@ const urgencyOptions: string[] = ['Immediantely (within 1-2 days)', 'Urgent (Wit
 
 const workTypeOptions: OptionType[] = [
     { value: 'Quality Assurance Test', label: 'Quality Assurance Test' },
-    { value: 'Service', label: 'Service' },
+    { value: ' License for Operation', label: ' License for Operation' },
     { value: 'Decommissioning', label: 'Decommissioning' },
     { value: 'Decommissioning and Recommissioning', label: 'Decommissioning and Recommissioning' },
 ];
@@ -131,7 +131,7 @@ const EditEnquiry: React.FC = () => {
             .of(
                 Yup.object().shape({
                     machineType: Yup.string().required('Required'),
-                    quantity: Yup.number().required('Required').positive().integer(),
+                    equipmentNo: Yup.number().required('Required').positive().integer(),
                     workType: Yup.array().min(1, 'At least one work type is required'),
                 })
             )
@@ -191,7 +191,7 @@ const EditEnquiry: React.FC = () => {
                     contactNumber: '',
                     designation: '',
                     urgency: '',
-                    services: [{ machineType: '', quantity: 1, workType: [] }],
+                    services: [{ machineType: '', equipmentNo: 1, workType: [] }],
                     additionalServices: serviceOptions.reduce((acc, service) => {
                         acc[service] = undefined;
                         return acc;
@@ -279,12 +279,12 @@ const EditEnquiry: React.FC = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Quantity */}
+                                                {/* equipment/document No. */}
                                                 <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                                                    <Field type="number" name={`services.${index}.quantity`} placeholder="Quantity" className="form-input w-full" />
+                                                    <label className="text-sm font-semibold text-gray-700">Equipment/Document No.</label>
+                                                    <Field type="number" name={`services.${index}.equipmentNo`} placeholder="equipmentNo" className="form-input w-full" />
                                                     <div className="h-4">
-                                                        <ErrorMessage name={`services.${index}.quantity`} component="div" className="text-red-500 text-sm" />
+                                                        <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                     </div>
                                                 </div>
 
@@ -306,7 +306,7 @@ const EditEnquiry: React.FC = () => {
                                         ))}
 
                                         {/* Add Another Machine */}
-                                        <button type="button" onClick={() => push({ machineType: '', quantity: 1, workType: [] })} className="btn btn-primary w-full sm:w-auto">
+                                        <button type="button" onClick={() => push({ machineType: '', equipmentNo: 1, workType: [] })} className="btn btn-primary w-full sm:w-auto">
                                             + Add Another Machine
                                         </button>
                                     </>

@@ -108,9 +108,12 @@ const Orders = () => {
                                 { accessor: 'partyCode', title: 'Party Code/ Sys Id', sortable: true },
                                 { accessor: 'customerName', title: 'Institute Name', sortable: true },
                                 { accessor: 'address', title: 'Address', sortable: true },
-                                { accessor: 'city', title: 'City/District', sortable: true },
+                                { accessor: 'city', title: 'City', sortable: true },
+                                { accessor: 'district', title: 'District', sortable: true },
                                 { accessor: 'state', title: 'State', sortable: true },
                                 { accessor: 'pin', title: 'Pin', sortable: true },
+                                { accessor: 'branch', title: 'Branch Name', sortable: true },
+
                                 { accessor: 'email', title: 'Customer Email', sortable: true },
                                 { accessor: 'contactNumber', title: 'Customer Mobile', sortable: true },
                                 // { accessor: "createdOn", title: "Created On", sortable: true },

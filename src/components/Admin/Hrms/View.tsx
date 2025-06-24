@@ -7,6 +7,7 @@ import { isSameDay, startOfMonth, endOfMonth, getDaysInMonth, isSunday } from 'd
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 // Types
 interface AttendanceEntry {
@@ -197,6 +198,7 @@ function ViewHrms() {
 
     // Handle form submission
     const onSubmit = (values: Employee) => {
+        toast.success('Employee details updated successfully!');
         console.log('Employee details updated:', values);
         // Here you would typically send the data to your API
     };
@@ -558,13 +560,12 @@ function ViewHrms() {
                                             <td className="px-4 py-3 border border-gray-300 text-gray-700">{leave.reason}</td>
                                             <td className="px-4 py-3 border border-gray-300">
                                                 <span
-                                                    className={`px-2 py-1 rounded-full text-xs ${
-                                                        leave.status === 'Approved'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : leave.status === 'Rejected'
+                                                    className={`px-2 py-1 rounded-full text-xs ${leave.status === 'Approved'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : leave.status === 'Rejected'
                                                             ? 'bg-red-100 text-red-800'
                                                             : 'bg-yellow-100 text-yellow-800'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {leave.status}
                                                 </span>
@@ -695,15 +696,14 @@ function ViewHrms() {
                                             <td className="px-4 py-3 border border-gray-300 text-gray-700">{expense.title}</td>
                                             <td className="px-4 py-3 border border-gray-300 text-gray-700">
                                                 <span
-                                                    className={`px-2 py-1 rounded-full text-xs ${
-                                                        expense.category === 'Operations'
-                                                            ? 'bg-blue-100 text-blue-800'
-                                                            : expense.category === 'Team Building'
+                                                    className={`px-2 py-1 rounded-full text-xs ${expense.category === 'Operations'
+                                                        ? 'bg-blue-100 text-blue-800'
+                                                        : expense.category === 'Team Building'
                                                             ? 'bg-purple-100 text-purple-800'
                                                             : expense.category === 'Travel'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-gray-100 text-gray-800'
-                                                    }`}
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : 'bg-gray-100 text-gray-800'
+                                                        }`}
                                                 >
                                                     {expense.category}
                                                 </span>
