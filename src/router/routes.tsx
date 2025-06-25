@@ -54,7 +54,7 @@ import ViewHrms from '../components/Admin/Hrms/View';
 import ViewEmployee from '../components/Admin/Master/Employee/View';
 import Employee from '../pages/Admin/Master/Employee';
 import Leaves from '../pages/Admin/Master/leaves';
-import AddLeave from '../components/Admin/Master/Leave/add';
+import AddLeave from '../components/Admin/Master/Leave/Add';
 import EditLeave from '../components/Admin/Master/Leave/Edit'
 import AddExpenses from '../components/Admin/Master/Expense/Add'
 import EditExpenses from '../components/Admin/Master/Expense/Edit'
@@ -67,6 +67,19 @@ import Orders from '../pages/Admin/Orders';
 import EditOrder from '../components/Admin/Orders/Edit'
 import ViewOrder from '../components/Admin/Orders/View'
 import CreateOrder from '../components/Admin/Orders/Create'
+
+//payments
+import Payments from '../pages/Admin/Master/Payments';
+import AddPayment from '../components/Admin/Accounts/Payments/Add'
+import EditPayment from '../components/Admin/Accounts/Payments/Edit'
+import ViewPayment from '../components/Admin/Accounts/Payments/View'
+
+
+//Invoice
+import Invoice from '../pages/Admin/Master/Invoice';
+import AddInvoice from '../components/Admin/Accounts/Invoice/Add'
+import EditInvoice from '../components/Admin/Accounts/Invoice/Edit'
+
 
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
 const ContactUsCover = lazy(() => import('../pages/Pages/ContactUsCover'));
@@ -546,6 +559,63 @@ const routes = [
         element: (
             <AdminProtected>
                 <CreateOrder />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/payments',
+        element: (
+            <AdminProtected>
+                <Payments />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/payments/add',
+        element: (
+            <AdminProtected>
+                <AddPayment />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/payments/edit/:id',
+        element: (
+            <AdminProtected>
+                <EditPayment />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/payments/view/:id',
+        element: (
+            <AdminProtected>
+                <ViewPayment />
+            </AdminProtected>
+        ),
+    },
+   
+    {
+        path: '/admin/invoice',
+        element: (
+            <AdminProtected>
+                <Invoice />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/invoice/add',
+        element: (
+            <AdminProtected>
+                <AddInvoice />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/invoice/edit',
+        element: (
+            <AdminProtected>
+                <EditInvoice />
             </AdminProtected>
         ),
     },

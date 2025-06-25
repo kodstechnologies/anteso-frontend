@@ -282,7 +282,7 @@ const AddOrder = () => {
                                                 {/* equipmentNo */}
                                                 <div className="md:col-span-2">
                                                     <label className="text-sm font-semibold text-gray-700">Equipment/Document No.</label>
-                                                    <Field type="number" name={`services.${index}.equipmentNo`} placeholder="equipmentNo" className="form-input w-full" />
+                                                    <Field type="text" name="Equipment No" placeholder="equipmentNo" className="form-input w-full" />
                                                     <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                 </div>
 

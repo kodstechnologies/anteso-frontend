@@ -98,7 +98,7 @@ const View = () => {
                             <p className="text-gray-600 mt-1">Customer</p>
                         </div>
                         <div>
-                            <span className="font-semibold text-gray-700">Party Code/ Sys Id:</span>
+                            <span className="font-semibold text-gray-700">Party Code/ Sys ID:</span>
                             <p className="text-gray-600 mt-1">SY-1234</p>
                         </div>
                         {/* <div>

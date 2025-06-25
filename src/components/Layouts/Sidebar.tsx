@@ -25,6 +25,7 @@ import {
     FiUsers,
     FiVideo,
 } from 'react-icons/fi';
+import { RiMoneyRupeeCircleLine } from "react-icons/ri";
 import Logo from '../../assets/logo/logo.png';
 import IconMenuFontIcons from '../Icon/Menu/IconMenuFontIcons';
 import IconBook from '../Icon/IconBook';
@@ -188,6 +189,29 @@ const Sidebar = () => {
                                                 <span>{t('Orders')}</span>
                                             </div>
                                         </NavLink>
+                                    </li>
+                                    <li className="menu nav-item">
+                                        <button type="button" className={`${currentMenu === 'accounts' ? 'active' : ''} nav-link group w-full`} onClick={() => toggleMenu('accounts')}>
+                                            <div className="flex items-center gap-2">
+                                                <RiMoneyRupeeCircleLine className="text-xl" />
+                                                <span>{t('Accounts')}</span>
+                                            </div>
+                                            <div className={currentMenu !== 'accounts' ? 'rtl:rotate-90 -rotate-90' : ''}>
+                                                <IconCaretDown />
+                                            </div>
+                                        </button>
+
+                                        <AnimateHeight duration={300} height={currentMenu === 'accounts' ? 'auto' : 0}>
+                                            <ul className="sub-menu text-gray-500">
+
+                                                <li>
+                                                    <NavLink to="/admin/payments">{t('Payments')}</NavLink>
+                                                </li>
+                                                <li>
+                                                    <NavLink to="/admin/invoice">{t('Invoice')}</NavLink>
+                                                </li>
+                                            </ul>
+                                        </AnimateHeight>
                                     </li>
                                 </ul>
                             </li>

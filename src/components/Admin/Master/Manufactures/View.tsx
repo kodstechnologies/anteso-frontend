@@ -16,14 +16,18 @@ const dummyManufacture = {
         { label: 'TATKAL QA', value: 'TATKAL_QA', price: 5000 },
     ],
     services: ['INSTITUTE_REGISTRATION', 'LICENSE'],
-    travel: 'fixed', // 
+    travel: 'fixed', //
+
 };
 
-const serviceLabelMap = {
+type ServiceKey = 'INSTITUTE_REGISTRATION' | 'PROCUREMENT' | 'LICENSE';
+
+const serviceLabelMap: Record<ServiceKey, string> = {
     INSTITUTE_REGISTRATION: 'Institute Registration',
     PROCUREMENT: 'Procurement',
     LICENSE: 'License',
 };
+
 
 const View = () => {
     const { id } = useParams(); // optional for future dynamic fetch
@@ -78,7 +82,7 @@ const View = () => {
                     <h2 className="text-lg font-semibold text-gray-700 mb-2">Services</h2>
                     <ul className="list-disc list-inside text-gray-600">
                         {dummyManufacture.services.map((s) => (
-                            <li key={s}>{serviceLabelMap[s]}</li>
+                            <li key={s}>{serviceLabelMap[s as ServiceKey] || s}</li>
                         ))}
                     </ul>
                 </div>

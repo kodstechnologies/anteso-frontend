@@ -111,7 +111,11 @@ const EditLeave = () => {
                                         <option value="Approved">Approved</option>
                                         <option value="Rejected">Rejected</option>
                                     </Field>
-                                    {errors.status && <div className="text-danger mt-1">{errors.status}</div>}
+                                    {(errors.status?.tooltip || errors.status?.color) && (
+                                        <div className="text-danger mt-1">
+                                            {errors.status.tooltip || errors.status.color}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

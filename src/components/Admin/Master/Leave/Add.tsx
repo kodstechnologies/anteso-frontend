@@ -14,13 +14,26 @@ const add = () => {
   const navigate = useNavigate();
 
   const submitLeaveForm = (
-    values: LeaveFormValues,
-    { resetForm }: FormikHelpers<LeaveFormValues>
+    values: {
+      startDate: string;
+      endDate: string;
+      leaveType: string;
+      reason: string;
+      status: string;
+    },
+    { resetForm }: FormikHelpers<{
+      startDate: string;
+      endDate: string;
+      leaveType: string;
+      reason: string;
+      status: string;
+    }>
   ) => {
     showMessage('Leave Submitted Successfully', 'success');
     resetForm();
-    navigate('/admin/leave'); // Redirect after submission
+    navigate('/admin/leave');
   };
+
 
   return (
     <div>

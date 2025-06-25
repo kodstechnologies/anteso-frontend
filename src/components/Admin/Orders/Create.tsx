@@ -54,14 +54,27 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({ name, options }) =>
                 <Select
                     isMulti
                     options={options}
-                    className="basic-multi-select"
+                    className="w-full" // makes it fill the container
                     classNamePrefix="select"
                     value={options.filter((option) => field.value?.includes(option.value))}
-                    onChange={(selectedOptions) => form.setFieldValue(name, selectedOptions ? selectedOptions.map((option: OptionType) => option.value) : [])}
+                    onChange={(selectedOptions) =>
+                        form.setFieldValue(
+                            name,
+                            selectedOptions ? selectedOptions.map((option: OptionType) => option.value) : []
+                        )
+                    }
                     onBlur={() => form.setFieldTouched(name, true)}
-                    menuPortalTarget={document.body} // 👈 portal
+                    menuPortalTarget={document.body}
                     styles={{
-                        menuPortal: (base) => ({ ...base, zIndex: 9999 }), // 👈 set high z-index
+                        control: (base, state) => ({
+                            ...base,
+                            minHeight: '38px',
+                            fontSize: '0.875rem',
+                            padding: '0px 4px',
+                            borderColor: state.isFocused ? '#3b82f6' : base.borderColor,
+                            boxShadow: state.isFocused ? '0 0 0 0px #3b82f6' : base.boxShadow,
+                        }),
+                        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                     }}
                 />
                 <div className="h-4">
@@ -295,8 +308,8 @@ const CreateOrder: React.FC = () => {
                                     {submitCount && errors.paymentProof ? <div className="text-danger mt-1">{errors.paymentProof}</div> : null}
                                 </div>
                                 <div className={submitCount && errors.sysId ? 'has-error' : submitCount ? 'has-success' : ''}>
-                                    <label htmlFor="branch">Party Code/Sys Id</label>
-                                    <Field name="sysId" type="text" id="sysId" placeholder="Enter Party Code/Sys Id" className="form-input" />
+                                    <label htmlFor="branch">Party Code/Sys ID</label>
+                                    <Field name="sysId" type="text" id="sysId" placeholder="Enter Party Code/Sys ID" className="form-input" />
                                     {submitCount && errors.sysId ? <div className="text-danger mt-1">{errors.sysId}</div> : null}
                                 </div>
                                 <FieldArray name="services">
@@ -367,7 +380,7 @@ const CreateOrder: React.FC = () => {
                                                 {/* equipmentNo */}
                                                 <div className="md:col-span-2">
                                                     <label className="text-sm font-semibold text-gray-700">Equipment/Document No</label>
-                                                    <Field type="number" name={`services.${index}.equipmentNo`} placeholder="equipmentNo" className="form-input w-full" />
+                                                    <Field type="text" name="equipmentNo" placeholder="equipmentNo" className="form-input w-full" />
                                                     <div className="h-4">
                                                         <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                     </div>

@@ -648,4 +648,23 @@ export const orderData = [
         remarks: "Installation successful"
     }
 ];
-
+export const paymentdata = [
+    {
+        id: 1,
+        paymentId: '001',
+        srfClient: 'ABSRF/2025/05/001 - Apollo Hospital',
+        totalAmount: 50000,
+        paymentAmount: 20000,
+        paymentType: 'Advanced',
+        utrNumber: 'UTR1234567890',
+    },
+    {
+        id: 2,
+        paymentId: '002',
+        srfClient: 'ABSRF/2025/08/002 - MedTech Supplies',
+        totalAmount: 75000,
+        paymentAmount: 75000,
+        paymentType: 'Complete',
+        utrNumber: '',
+    }
+]

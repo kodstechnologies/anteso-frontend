@@ -46,14 +46,27 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({ name, options }) =>
                 <Select
                     isMulti
                     options={options}
-                    className="basic-multi-select"
+                    className="w-full" 
                     classNamePrefix="select"
                     value={options.filter((option) => field.value?.includes(option.value))}
-                    onChange={(selectedOptions) => form.setFieldValue(name, selectedOptions ? selectedOptions.map((option: OptionType) => option.value) : [])}
+                    onChange={(selectedOptions) =>
+                        form.setFieldValue(
+                            name,
+                            selectedOptions ? selectedOptions.map((option: OptionType) => option.value) : []
+                        )
+                    }
                     onBlur={() => form.setFieldTouched(name, true)}
-                    menuPortalTarget={document.body} // 👈 portal
+                    menuPortalTarget={document.body}
                     styles={{
-                        menuPortal: (base) => ({ ...base, zIndex: 9999 }), // 👈 set high z-index
+                        control: (base, state) => ({
+                            ...base,
+                            minHeight: '38px',
+                            fontSize: '0.875rem',
+                            padding: '0px 4px',
+                            borderColor: state.isFocused ? '#3b82f6' : base.borderColor,
+                            boxShadow: state.isFocused ? '0 0 0 0px #3b82f6' : base.boxShadow,
+                        }),
+                        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                     }}
                 />
                 <div className="h-4">
@@ -282,7 +295,7 @@ const EditEnquiry: React.FC = () => {
                                                 {/* equipment/document No. */}
                                                 <div className="md:col-span-2">
                                                     <label className="text-sm font-semibold text-gray-700">Equipment/Document No.</label>
-                                                    <Field type="number" name={`services.${index}.equipmentNo`} placeholder="equipmentNo" className="form-input w-full" />
+                                                    <Field type="text" name="equipmentNo" placeholder="Equipment No" className="form-input w-full" />
                                                     <div className="h-4">
                                                         <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                     </div>
