@@ -117,6 +117,8 @@ const AddEnquiry: React.FC = () => {
     const navigate = useNavigate();
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
+        leadOwner: Yup.string().required('Please fill the Field'),
+
         hospitalName: Yup.string().required('Please fill the Field'),
         fullAddress: Yup.string().required('Please fill the Field'),
         city: Yup.string().required('Please fill the Field'),
@@ -187,6 +189,8 @@ const AddEnquiry: React.FC = () => {
 
             <Formik
                 initialValues={{
+                    leadOwner: '',
+
                     hospitalName: '',
                     fullAddress: '',
                     city: '',
@@ -215,6 +219,13 @@ const AddEnquiry: React.FC = () => {
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Basic Details</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
+                                <div className={submitCount && errors.leadOwner ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="leadOwner">Lead Owner</label>
+                                    {/* <MultiSelectField name={`leadOwner`} options={dealerOptions} /> */}
+                                    <Field name="leadOwner" type="text" id="leadOwner" placeholder="Enter Lead Owner" className="form-input" />
+
+                                    {submitCount && errors.leadOwner ? <div className="text-danger mt-1">{errors.leadOwner}</div> : null}
+                                </div>
                                 <div className={submitCount && errors.hospitalName ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="hospitalName">Hospital Name</label>
                                     <Field name="hospitalName" type="text" id="hospitalName" placeholder="Enter Hospital Name" className="form-input" />

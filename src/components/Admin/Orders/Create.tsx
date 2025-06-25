@@ -130,7 +130,7 @@ const CreateOrder: React.FC = () => {
     const navigate = useNavigate();
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
-        leadOwner: Yup.array().required('Please fill the Field'),
+        leadOwner: Yup.string().required('Please fill the Field'),
         hospitalName: Yup.string().required('Please fill the Field'),
         fullAddress: Yup.string().required('Please fill the Field'),
         city: Yup.string().required('Please fill the Field'),
@@ -190,7 +190,7 @@ const CreateOrder: React.FC = () => {
 
             <Formik
                 initialValues={{
-                    leadOwner: [],
+                    leadOwner: '',
                     hospitalName: '',
                     fullAddress: '',
                     city: '',

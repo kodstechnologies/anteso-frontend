@@ -545,6 +545,7 @@ export const orderData = [
         orderId: "ABSRF/2025/05/001",
         procNo: "PROC/2025/05/001",
         type: 'Manufacturer',
+        leadOwner: "Ramesh Mehta",
         partyCode: "SY-1234",
         city: "Bengaluru",
         district: "Bangalore Urban",
@@ -570,6 +571,8 @@ export const orderData = [
         orderId: "ABSRF/2025/05/002",
         procNo: "PROC/2025/05/002",
         type: 'Dealer',
+        leadOwner: "Shalini Shah",
+
         partyCode: "SY-12355",
         city: "Hyderabad",
         district: "Medchal–Malkajgiri ",
@@ -595,6 +598,8 @@ export const orderData = [
         orderId: "ABSRF/2025/05/003",
         procNo: "PROC/2025/05/003",
         type: 'Customer',
+        leadOwner: "Rohit Verma",
+
         partyCode: "SY-1238",
         city: "Bengaluru",
         district: "Bangalore Urban",
@@ -620,6 +625,8 @@ export const orderData = [
         orderId: "ABSRF/2025/05/004",
         procNo: "PROC/2025/05/001",
         type: 'Customer',
+        leadOwner: "Suresh Mehta",
+
         partyCode: "SY-1236",
         city: "Hyderabad",
         district: "Medchal–Malkajgiri ",

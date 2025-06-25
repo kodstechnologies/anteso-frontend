@@ -104,6 +104,8 @@ const Orders = () => {
                                     //     </div>
                                     // ),
                                 },
+                                { accessor: 'leadOwner', title: 'Lead Owner', sortable: true },
+
                                 { accessor: 'createdOn', title: 'PROC Expiry Date', sortable: true },
                                 { accessor: 'partyCode', title: 'Party Code/ Sys Id', sortable: true },
                                 { accessor: 'customerName', title: 'Institute Name', sortable: true },
