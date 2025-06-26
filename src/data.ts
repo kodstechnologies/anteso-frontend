@@ -1,4 +1,5 @@
 import Employee from "./pages/Admin/Master/Employee";
+import Payment from '/assets/images/payment.png'
 
 export const citiesData = [
     {
@@ -656,6 +657,7 @@ export const paymentdata = [
         totalAmount: 50000,
         paymentAmount: 20000,
         paymentType: 'Advanced',
+        screenshotUrl: Payment,
         utrNumber: 'UTR1234567890',
     },
     {
@@ -664,6 +666,8 @@ export const paymentdata = [
         srfClient: 'ABSRF/2025/08/002 - MedTech Supplies',
         totalAmount: 75000,
         paymentAmount: 75000,
+        screenshotUrl: Payment,
+
         paymentType: 'Complete',
         utrNumber: '',
     }
@@ -681,6 +685,7 @@ export const invoicedata = [
         quantity: 2,
         rate: 150000,
         totalAmount: 300000,
+        status: "Paid"
     },
     {
         id: 2,
@@ -694,6 +699,8 @@ export const invoicedata = [
         quantity: 1,
         rate: 250000,
         totalAmount: 250000,
+        status: "Paid"
+
     },
     {
         id: 3,
@@ -707,6 +714,8 @@ export const invoicedata = [
         quantity: 3,
         rate: 50000,
         totalAmount: 150000,
+        status: "Pending"
+
     },
     {
         id: 4,
@@ -721,5 +730,7 @@ export const invoicedata = [
         quantity: 2,
         rate: 80000,
         totalAmount: 160000,
+        status: "Pending"
+
     },
 ];

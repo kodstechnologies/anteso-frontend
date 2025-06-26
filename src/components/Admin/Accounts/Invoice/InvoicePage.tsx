@@ -118,7 +118,7 @@ const Invoice = () => {
         </table>
 
         {/* Subtotal, GST and Total */}
-        <div className="flex flex-row px-4 mt-4">
+        <div className="flex flex-row-reverse px-4 mt-4">
           <div className="w-60 space-y-2 text-[.7rem]">
             <div className="flex justify-between">
               <span className="font-semibold">Subtotal</span>
@@ -137,69 +137,75 @@ const Invoice = () => {
         </div>
 
         <table className="w-full border border-gray-300 text-[.7rem] mt-4">
-          <thead>
-            <tr className="bg-gray-100 text-gray-800 font-bold text-left">
-              <th className="border border-gray-300 p-2">HSN/SAC No.</th>
-              <th className="border border-gray-300 p-2">Taxable Value</th>
-              <th className="border border-gray-300 p-2">Integrated Tax</th>
-              <th className="border border-gray-300 p-2" colSpan={2}>Rate and Amount</th>
-              <th className="border border-gray-300 p-2">Tax Amount</th>
-            </tr>
-            <tr className="bg-gray-50 text-gray-700 font-medium text-left">
-              <th className="border border-gray-300 p-2"></th>
-              <th className="border border-gray-300 p-2"></th>
-              <th className="border border-gray-300 p-2"></th>
-              <th className="border border-gray-300 p-2">Rate (%)</th>
-              <th className="border border-gray-300 p-2">Amount (₹)</th>
-              <th className="border border-gray-300 p-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="text-gray-700">
-              <td className="border border-gray-300 p-2 h-10"></td>
-              <td className="border border-gray-300 p-2 h-10"></td>
-              <td className="border border-gray-300 p-2 h-10"></td>
-              <td className="border border-gray-300 p-2 h-10"></td>
-              <td className="border border-gray-300 p-2 h-10"></td>
-              <td className="border border-gray-300 p-2 h-10"></td>
-            </tr>
-          </tbody>
+
         </table>
-        <div className="flex flex-row px-4 mt-4">
-          <div className="w-60 space-y-2 text-[.7rem]">
-            <div className="flex justify-between">
-              <span className="font-semibold">Tax Amount</span>
-              <span>₹ </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-semibold">Amount In words:</span>
-              <span> </span>
-            </div>
-            {/* <hr /> */}
-           
+        <div className="flex justify-between gap-44 mt-10 text-[.6rem]">
+          {/* Left Column - Declaration */}
+          <div className="w-1/2">
+            <h2 className="font-semibold mb-1">DECLARATION</h2>
+            <p>
+              We declare that this invoice shows the actual price of the service provided and all perticulars are true and correct.
+            </p>
+
           </div>
-        </div>
 
+          {/* Right Column - Company's Bank Details */}
+          <div className="w-1/2">
 
-        <div className="flex justify-between mt-10 text-[.6rem]">
-          <div>
-            <img src={signature} alt="Signature" className="h-20 mb-2" />
-            <p><strong>Bank:</strong> HDFC BANK</p>
+            <h2 className="font-semibold mb-1">COMPANY'S BANK DETAILS</h2>
+            <p>Bank: HDFC BANK</p>
             <p>A/C No.: 50200007211263</p>
+            <p>Branch: Pushpanjali Enclave, Pitampura, New Delhi</p>
             <p>IFSC: HDFC0000711</p>
           </div>
+        </div>
 
-          <div className="text-center">
-            <img src={qrcode} alt="QR Code" className="h-20 mx-auto mb-2" />
-            <p>Pay via UPI QR</p>
-            <p>Merchant: ANTESO BIOMEDICAL PVT LTD</p>
-          </div>
+        <hr className="my-5" />
 
+        {/* Signature at the bottom right */}
+        <div className="flex justify-end mt-10 text-[.6rem]">
           <div className="text-right">
-            <p><strong>GST NO:</strong> 07AAMCA8142J1ZE</p>
-            <p>Email: info@antesobiomedicalopc.com</p>
+            <p><strong>For Anteso Biomedical (OPC)  Pvt. Ltd</strong></p>
+            <img src={signature} alt="Signature" className="h-20 mb-2 ml-auto" />
+            <p><strong>Authorized Signatory</strong></p>
           </div>
         </div>
+        {/* Terms & Conditions */}
+        <div className="bg-blue-100 text-blue-700 text-xs p-3 rounded mb-4">
+          <span className="font-semibold uppercase">Terms & Conditions</span><br />
+          Payment delayed more than 30 days, 14% interest p.a. will be charged
+        </div>
+
+        {/* Jurisdiction Note */}
+        <div className="text-center text-[0.7rem] text-gray-600 mt-2">
+          <p className="font-semibold tracking-wide">SUBJECT TO NEW DELHI JURISDICTION</p>
+          <p>This is a Computer Generated Invoice</p>
+        </div>
+
+        {/* Print Button (bottom right) */}
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={() => window.print()}
+            className="btn bg-teal-500 hover:bg-teal-600 text-white text-xs px-4 py-2 rounded flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+              className="w-4 h-4 mr-2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6.75 10.5v-6a.75.75 0 01.75-.75h9a.75.75 0 01.75.75v6m-9 0H5.25A2.25 2.25 0 003 12.75v4.5A2.25 2.25 0 005.25 19.5H6.75m0-9h10.5m-10.5 0V19.5m10.5-9v9m0 0h1.5A2.25 2.25 0 0021 17.25v-4.5A2.25 2.25 0 0019.5 10.5h-1.5"
+              />
+            </svg>
+            Print
+          </button>
+        </div>
+
       </div>
     </div>
   );

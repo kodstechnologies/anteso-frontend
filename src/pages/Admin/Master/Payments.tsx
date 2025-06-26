@@ -12,6 +12,8 @@ import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrum
 import IconHome from '../../../components/Icon/IconHome';
 import IconCreditCard from '../../../components/Icon/IconCreditCard';
 import { paymentdata } from '../../../data';
+import FadeInModal from '../../../components/common/FadeInModal';
+import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
 
 
@@ -33,6 +35,8 @@ const Payments = () => {
     columnAccessor: 'paymentId',
     direction: 'asc',
   });
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<any>(null);
 
   useEffect(() => {
     const from = (page - 1) * pageSize;
@@ -131,6 +135,21 @@ const Payments = () => {
                   title: 'UTR Number',
                   sortable: false,
                 },
+                {
+                  accessor: 'Payment Screenshot',
+                  title: 'Payment Screenshot',
+                  render: (row: any) => (
+                    <button
+                      onClick={() => {
+                        setSelectedRow(row);
+                        setOpenModal(true);
+                      }}
+                      className="flex hover:text-primary"
+                    >
+                      <InformationCircleIcon className="w-5 h-5 cursor-pointer" />
+                    </button>
+                  )
+                },
 
                 {
                   accessor: 'action',
@@ -166,6 +185,28 @@ const Payments = () => {
           </div>
         </div>
       </div>
+      <FadeInModal open={openModal} onClose={() => setOpenModal(false)} title="Payment Screenshot">
+        <div className="space-y-4">
+
+          {selectedRow?.screenshotUrl ? (
+            <div className="flex justify-center">
+              <div className="max-h-[400px] max-w-xs overflow-y-auto border rounded">
+                <img
+                  src={selectedRow.screenshotUrl}
+                  alt="Payment Screenshot"
+                  className="w-full object-contain"
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="text-center text-gray-500">No screenshot available</p>
+          )}
+
+
+        </div>
+      </FadeInModal>
+
+
     </>
   );
 };

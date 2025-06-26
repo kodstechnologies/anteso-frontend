@@ -151,6 +151,23 @@ const Invoices = () => {
                   sortable: true,
                 },
                 {
+                  accessor: 'status',
+                  title: 'Status',
+                  sortable: true,
+                  render: (row: any) => (
+                    <span
+                      className={`w-24 inline-block text-center px-3 py-1 rounded-full text-xs font-semibold
+      ${row.status === 'Paid'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                        }`}
+                    >
+                      {row.status}
+                    </span>
+                  )
+
+                },
+                {
                   accessor: 'action',
                   title: 'Actions',
                   render: ({ id }) => (
