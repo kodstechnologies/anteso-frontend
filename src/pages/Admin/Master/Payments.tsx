@@ -131,17 +131,7 @@ const Payments = () => {
                   title: 'UTR Number',
                   sortable: false,
                 },
-                {
-                  accessor: 'invoiceGenerated',
-                  title: 'Invoice Generated',
-                  render: ({ paymentType }) => (
-                    paymentType === 'Complete' ? (
-                      <span className="text-green-600 font-medium">Yes</span>
-                    ) : (
-                      <span className="text-red-500 font-medium">No</span>
-                    )
-                  ),
-                },
+
                 {
                   accessor: 'action',
                   title: 'Actions',

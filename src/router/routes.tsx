@@ -39,7 +39,7 @@ import EnquriryForm from '../pages/form_link/EnquriryForm';
 import OrderForm from '../pages/form_link/OrderForm';
 // import Quotation from '../pages/quotation/Quotation';
 import AddQuotation from '../components/Admin/Quotation/Add';
-import ViesQuotation from '../components/Admin/Quotation/View';
+import ViewQuotation from '../components/Admin/Quotation/View';
 import Quotation from '../pages/Admin/Quotation';
 import AddDealer from '../components/Admin/Master/Dealers/Add';
 import EditDealer from '../components/Admin/Master/Dealers/Edit';
@@ -79,6 +79,8 @@ import ViewPayment from '../components/Admin/Accounts/Payments/View'
 import Invoice from '../pages/Admin/Master/Invoice';
 import AddInvoice from '../components/Admin/Accounts/Invoice/Add'
 import EditInvoice from '../components/Admin/Accounts/Invoice/Edit'
+import ViewInvoice from '../components/Admin/Accounts/Invoice/View'
+import InvoicePage from '../components/Admin/Accounts/Invoice/InvoicePage';
 
 
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
@@ -518,7 +520,7 @@ const routes = [
         path: '/admin/quotation/view',
         element: (
             <AdminProtected>
-                <ViesQuotation />
+                <ViewQuotation />
             </AdminProtected>
         ),
     },
@@ -594,12 +596,20 @@ const routes = [
             </AdminProtected>
         ),
     },
-   
+
     {
         path: '/admin/invoice',
         element: (
             <AdminProtected>
                 <Invoice />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/invoice/viewInvoice',
+        element: (
+            <AdminProtected>
+                <InvoicePage />
             </AdminProtected>
         ),
     },
@@ -612,7 +622,15 @@ const routes = [
         ),
     },
     {
-        path: '/admin/invoice/edit',
+        path: '/admin/invoice/view/:id',
+        element: (
+            <AdminProtected>
+                <ViewInvoice />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/invoice/edit/:id',
         element: (
             <AdminProtected>
                 <EditInvoice />
