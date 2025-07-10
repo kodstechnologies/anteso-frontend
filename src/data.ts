@@ -111,7 +111,16 @@ export const hrms = [
         designation: 'CEO',
     }
 ]
-
+export const hospitaldata = [
+    {
+        id: 1,
+        hname: "Appolo Hospital"
+    },
+    {
+        id: 2,
+        hname: "Max health Hospital"
+    }
+]
 
 
 

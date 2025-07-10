@@ -47,7 +47,7 @@ const Add = () => {
       <Formik
         initialValues={{
           srfClient: '',
-          totalAmount: '',
+          totalAmount: 25000, //auto fetch total amt
           paymentAmount: '',
           paymentType: '',
           screenshot: null,

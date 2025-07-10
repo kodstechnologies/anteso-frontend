@@ -11,7 +11,7 @@ const View = () => {
 
   useEffect(() => {
     // In real case, fetch by ID from API. For now, filter from paymentdata
-    const paymentData = paymentdata.find((p) => p.id === parseInt(id));
+    const paymentData = paymentdata.find((p) => p.id === parseInt(id || '0'));
     setPayment(paymentData);
   }, [id]);
 
@@ -34,15 +34,15 @@ const View = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Detail label="Payment ID" value={payment.paymentId} />
-          <Detail label="SRF + Client" value={payment.srfClient} />
+          <Detail label="SRF" value={payment.srfClient} />
           <Detail label="Total Amount" value={`₹ ${payment.totalAmount}`} />
           <Detail label="Payment Amount" value={`₹ ${payment.paymentAmount}`} />
           <Detail label="Payment Type" value={payment.paymentType} />
           <Detail label="UTR Number" value={payment.utrNumber || 'N/A'} />
           <Detail label="Invoice Generated" value={payment.paymentType === 'Complete' ? 'Yes' : 'No'} />
-          
+
           {/* Screenshot preview */}
-          <div>
+          {/* <div>
             <span className="block text-sm font-semibold text-gray-700 mb-1">Screenshot</span>
             {payment.screenshot ? (
               <img
@@ -53,7 +53,7 @@ const View = () => {
             ) : (
               <span className="text-gray-500 text-sm">No screenshot available</span>
             )}
-          </div>
+          </div> */}
         </div>
 
         {/* <div className="mt-6">

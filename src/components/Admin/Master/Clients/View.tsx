@@ -9,7 +9,8 @@ import IconPlus from '../../../../components/Icon/IconPlus';
 import IconEdit from '../../../../components/Icon/IconEdit';
 import IconEye from '../../../../components/Icon/IconEye';
 import IconCopy from '../../../../components/Icon/IconCopy';
-import { clientsData, institutedata, rsodetails, equipmentDetails } from '../../../../data';
+
+import { clientsData, institutedata, rsodetails, equipmentDetails, hospitaldata } from '../../../../data';
 // import { IconShield ,IconUser ,  } from '@tabler/icons-react';
 // import { Shield } from 'lucide-react';
 
@@ -74,6 +75,8 @@ const ViewClients = () => {
     const [institutes, setInstitutes] = useState<Institute[]>(institutedata);
     const [rsos, setRsos] = useState<RSO[]>(rsodetails);
     const [equipment, setEquipment] = useState<Equipment[]>(updatedEquipmentDetails);
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
 
     // State for Equipment Details table
     const [page, setPage] = useState(1);
@@ -166,224 +169,180 @@ const ViewClients = () => {
             </ol>
 
             <div className="max-w-7xl mx-auto ">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6  my-4 ">
-                    {/* Client Details */}
-                    <div className="panel p-0 border-white-light dark:border-[#1b2e4b] bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg ">
-                        <div className="invoice-table">
-                            <h5 className="font-semibold text-lg m-2 text-primary flex items-center gap-2">
-                                {/* <IconUser className="w-5 h-5" />  */}
-                                Client Details
-                            </h5>
-                            {clients[0] ? (
-                                <div className="p-2 text-[.8rem]">
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Name:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{clients[0].name}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Email:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{clients[0].email}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Address:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{clients[0].address}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Phone:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{clients[0].phone}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Business:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{clients[0].business}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">GST No:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{clients[0].gstNo}</span>
-                                    </p>
-                                </div>
-                            ) : (
-                                <p className="p-4 text-gray-600 dark:text-gray-400">No client data available.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Institute Details */}
-                    <div className="panel p-0 border-white-light dark:border-[#1b2e4b] bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg">
-                        <div className="invoice-table">
-                            <h5 className="font-semibold text-lg m-2 text-primary flex items-center gap-2">
-                                {/* <IconBuilding className="w-5 h-5" /> */}
-                                Institute Details
-                            </h5>
-                            {institutes[0] ? (
-                                <div className="p-2 text-[.8rem]">
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">ELORA ID:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{institutes[0].eloraID}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Password:</span>
-                                        <span className="text-gray-600 dark:text-gray-400 italic">{institutes[0].instPassword}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Registered Email:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{institutes[0].instEmail}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Registered Mobile No:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{institutes[0].instPhone}</span>
-                                    </p>
-                                </div>
-                            ) : (
-                                <p className="p-4 text-gray-600 dark:text-gray-400">No institute data available.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* RSO Details */}
-                    <div className="panel p-0 border-white-light dark:border-[#1b2e4b]  dark:bg-gray-800 shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg">
-                        <div className="invoice-table ">
-                            <h5 className="font-semibold text-lg m-2 text-primary flex items-center gap-2">
-                                {/* <IconShield className="w-5 h-5" />  */}
-                                RSO Details
-                            </h5>
-                            {rsos[0] ? (
-                                <div className="p-2 text-[.8rem]">
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">RSO ELORA ID:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{rsos[0].rsoID}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Password:</span>
-                                        <span className="text-gray-600 dark:text-gray-400 italic">{rsos[0].rsoPassword}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Registered Email:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{rsos[0].rsoEmail}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">Registered Mobile No:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{rsos[0].rsoPhone}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">RP ID:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{rsos[0].rpID}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">TLD Badge:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{rsos[0].tldBadge}</span>
-                                    </p>
-                                    <p className="mb-2 flex justify-between items-center border-b border-gray-200 pb-2">
-                                        <span className="font-medium text-gray-700 dark:text-gray-300">RSO Validity:</span>
-                                        <span className="text-gray-600 dark:text-gray-400">{rsos[0].rsoValidity}</span>
-                                    </p>
-                                </div>
-                            ) : (
-                                <p className="p-4 text-gray-600 dark:text-gray-400">No RSO data available.</p>
-                            )}
-                        </div>
-                    </div>
+                <div className="panel mb-4">
+                    <h5 className="font-semibold text-lg m-4">Hospitals</h5>
+                    <DataTable
+                        className="whitespace-nowrap table-hover"
+                        records={clients}
+                        columns={[
+                            {
+                                accessor: 'name',
+                                title: 'Hospital Name',
+                                sortable: true,
+                            },
+                            {
+                                accessor: 'actions',
+                                title: 'View',
+                                render: (client) => (
+                                    <button
+                                        onClick={() => setSelectedClient(client)}
+                                        className="btn btn-sm btn-primary"
+                                    >
+                                        View Details
+                                    </button>
+                                ),
+                            },
+                        ]}
+                        totalRecords={clients.length}
+                        recordsPerPage={10}
+                        page={1}
+                        onPageChange={() => { }}
+                        paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
+                    />
                 </div>
+                {selectedClient && (
+                    <>
+                        {/* Close Button */}
+                        <div className="flex justify-end mb-2">
+                            <button
+                                onClick={() => setSelectedClient(null)}
+                                className="btn btn-sm btn-danger px-4 py-1 text-sm rounded-md shadow-md hover:shadow-lg"
+                            >
+                                Close
+                            </button>
+                        </div>
+
+                        {/* Details Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-4">
+                            {/* Client Details */}
+                            <div className="panel p-0 border-white-light dark:border-[#1b2e4b] bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg">
+                                <div className="invoice-table p-4 text-[.8rem]">
+                                    <h5 className="font-semibold text-lg text-primary mb-4">Client Details</h5>
+                                    <p className="mb-2"><strong>Name:</strong> {selectedClient.name}</p>
+                                    <p className="mb-2"><strong>Email:</strong> {selectedClient.email}</p>
+                                    <p className="mb-2"><strong>Address:</strong> {selectedClient.address}</p>
+                                    <p className="mb-2"><strong>Phone:</strong> {selectedClient.phone}</p>
+                                    <p className="mb-2"><strong>Business:</strong> {selectedClient.business}</p>
+                                    <p className="mb-2"><strong>GST No:</strong> {selectedClient.gstNo}</p>
+                                </div>
+                            </div>
+
+                            {/* Institute Details */}
+                            <div className="panel p-0 border-white-light dark:border-[#1b2e4b] bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg">
+                                <div className="invoice-table p-4 text-[.8rem]">
+                                    <h5 className="font-semibold text-lg text-primary mb-4">Institute Details</h5>
+                                    <p className="mb-2"><strong>ELORA ID:</strong> {institutes[0]?.eloraID}</p>
+                                    <p className="mb-2"><strong>Password:</strong> {institutes[0]?.instPassword}</p>
+                                    <p className="mb-2"><strong>Email:</strong> {institutes[0]?.instEmail}</p>
+                                    <p className="mb-2"><strong>Phone:</strong> {institutes[0]?.instPhone}</p>
+                                </div>
+                            </div>
+
+                            {/* RSO Details */}
+                            <div className="panel p-0 border-white-light dark:border-[#1b2e4b] bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg">
+                                <div className="invoice-table p-4 text-[.8rem]">
+                                    <h5 className="font-semibold text-lg text-primary mb-4">RSO Details</h5>
+                                    <p className="mb-2"><strong>RSO ID:</strong> {rsos[0]?.rsoID}</p>
+                                    <p className="mb-2"><strong>Password:</strong> {rsos[0]?.rsoPassword}</p>
+                                    <p className="mb-2"><strong>Email:</strong> {rsos[0]?.rsoEmail}</p>
+                                    <p className="mb-2"><strong>Phone:</strong> {rsos[0]?.rsoPhone}</p>
+                                    <p className="mb-2"><strong>RP ID:</strong> {rsos[0]?.rpID}</p>
+                                    <p className="mb-2"><strong>TLD Badge:</strong> {rsos[0]?.tldBadge}</p>
+                                    <p className="mb-2"><strong>Validity:</strong> {rsos[0]?.rsoValidity}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Equipment Details Table */}
-            <div className="panel px-0 border-white-light dark:border-[#1b2e4b] mb-4">
-                <div className="invoice-table">
-                    {/* <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
-                        <div className="flex items-center gap-2">
-                            <Link to="/admin/equipment/add" className="btn btn-primary gap-2">
-                                <IconPlus />
-                                Add New
-                            </Link>
-                            <button onClick={handleCopy} className="btn btn-primary gap-2">
-                                <IconCopy />
-                                {copied ? ' Copied! ' : 'Copy Link'}
-                            </button>
+            {selectedClient && (
+                <div className="panel px-0 border-white-light dark:border-[#1b2e4b] mb-4">
+                    <div className="invoice-table">
+                        <h5 className="font-semibold text-lg m-4">Equipment Details</h5>
+                        <div className="datatables pagination-padding">
+                            <DataTable
+                                className="whitespace-nowrap table-hover invoice-table"
+                                records={records}
+                                columns={[
+                                    {
+                                        accessor: 'machineType',
+                                        title: 'Machine Type',
+                                        sortable: true,
+                                    },
+                                    {
+                                        accessor: 'model',
+                                        title: 'Model',
+                                        sortable: true,
+                                    },
+                                    {
+                                        accessor: 'make',
+                                        title: 'Make',
+                                        sortable: true,
+                                    },
+                                    {
+                                        accessor: 'serialNo',
+                                        title: 'Serial No',
+                                        sortable: true,
+                                    },
+                                    {
+                                        accessor: 'equipID',
+                                        title: 'Equipment ID',
+                                        sortable: true,
+                                    },
+                                    {
+                                        accessor: 'qaValidity',
+                                        title: 'QA Validity',
+                                        sortable: true,
+                                    },
+                                    {
+                                        accessor: 'licenseValidity',
+                                        title: 'License Validity',
+                                        sortable: true,
+                                    },
+                                    {
+                                        accessor: 'status',
+                                        title: 'Status',
+                                        sortable: true,
+                                    },
+                                    {
+                                        accessor: 'rawaDataAttachment',
+                                        title: 'Raw Data Attachment',
+                                        sortable: true,
+                                        textAlignment: 'center',
+                                    },
+                                    {
+                                        accessor: 'qaReportAttachment',
+                                        title: 'QA Report Attachment',
+                                        sortable: true,
+                                        textAlignment: 'center',
+                                    },
+                                    {
+                                        accessor: 'licenceAttachment',
+                                        title: 'License Attachment',
+                                        sortable: true,
+                                        textAlignment: 'right',
+                                    },
+                                ]}
+                                highlightOnHover
+                                totalRecords={initialRecords.length}
+                                recordsPerPage={pageSize}
+                                page={page}
+                                onPageChange={(p) => setPage(p)}
+                                recordsPerPageOptions={PAGE_SIZES}
+                                onRecordsPerPageChange={setPageSize}
+                                sortStatus={sortStatus}
+                                onSortStatusChange={setSortStatus}
+                                selectedRecords={selectedRecords}
+                                onSelectedRecordsChange={setSelectedRecords}
+                                paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
+                            />
                         </div>
-                        <div className="ltr:ml-auto rtl:mr-auto">
-                            <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
-                        </div>
-                    </div> */}
-                    <h5 className="font-semibold text-lg m-4">Equipment Details</h5>
-                    <div className="datatables pagination-padding">
-                        <DataTable
-                            className="whitespace-nowrap table-hover invoice-table"
-                            records={records}
-                            columns={[
-                                {
-                                    accessor: 'machineType',
-                                    title: 'Machine Type',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'model',
-                                    title: 'Model',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'make',
-                                    title: 'Make',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'serialNo',
-                                    title: 'Serial No',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'equipID',
-                                    title: 'Equipment ID',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'qaValidity',
-                                    title: 'QA Validity',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'licenseValidity',
-                                    title: 'License Validity',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'status',
-                                    title: 'Status',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'rawaDataAttachment',
-                                    title: 'Raw Data Attachment',
-                                    sortable: true,
-                                    textAlignment: 'center',
-                                },
-                                {
-                                    accessor: 'qaReportAttachment',
-                                    title: 'QA Report Attachment',
-                                    sortable: true,
-                                    textAlignment: 'center',
-                                },
-                                {
-                                    accessor: 'licenceAttachment',
-                                    title: 'License Attachment',
-                                    sortable: true,
-                                    textAlignment: 'right',
-                                },
-                            ]}
-                            highlightOnHover
-                            totalRecords={initialRecords.length}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            recordsPerPageOptions={PAGE_SIZES}
-                            onRecordsPerPageChange={setPageSize}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
-                        />
                     </div>
                 </div>
-            </div>
+            )}
+
         </>
     );
 };

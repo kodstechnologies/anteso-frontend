@@ -82,6 +82,16 @@ import EditInvoice from '../components/Admin/Accounts/Invoice/Edit'
 import ViewInvoice from '../components/Admin/Accounts/Invoice/View'
 import InvoicePage from '../components/Admin/Accounts/Invoice/InvoicePage';
 
+import InvoiceDealer from '../components/Admin/Accounts/Invoice/InvoiceDealer'
+
+
+//Staff routes
+import StaffProtected from '../components/Protected/StaffProtected';
+import StaffDashboard from '../pages/OfficeStaff/Dashboard'
+
+//courier companies
+import ViewCourierCompany from '../components/Admin/Master/CourierCompanies/View'
+
 
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
 const ContactUsCover = lazy(() => import('../pages/Pages/ContactUsCover'));
@@ -461,6 +471,14 @@ const routes = [
         ),
     },
     {
+        path: '/admin/courier-companies/view',
+        element: (
+            <AdminProtected>
+                <ViewCourierCompany />
+            </AdminProtected>
+        ),
+    },
+    {
         path: '/admin/courier-companies/add',
         element: (
             <AdminProtected>
@@ -609,7 +627,7 @@ const routes = [
         path: '/admin/invoice/viewInvoice',
         element: (
             <AdminProtected>
-                <InvoicePage />
+                <InvoiceDealer />
             </AdminProtected>
         ),
     },
@@ -652,6 +670,63 @@ const routes = [
                 <ViewHrms />
             </AdminProtected>
         ),
+    },
+
+    {
+        path: '/admin/hrms/view',
+        element: (
+            <AdminProtected>
+                <ViewHrms />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/staff/clients',
+        element: (
+            <StaffProtected>
+                <Clients />
+            </StaffProtected>
+        )
+    },
+    {
+        path: '/staff/add-client',
+        element: (
+            <StaffProtected>
+                <AddClient />
+            </StaffProtected>
+        )
+    },
+    {
+        path: '/staff/edit-client',
+        element: (
+            <StaffProtected>
+                <EditClient />
+            </StaffProtected>
+        )
+    },
+    {
+        path: '/staff/view-client',
+        element: (
+            <StaffProtected>
+                <ViewClient />
+            </StaffProtected>
+        )
+    },
+    {
+        path: '/staff',
+        element: (
+            <StaffProtected>
+                <StaffDashboard />
+            </StaffProtected>
+        )
+    },
+    {
+        path: '/staff/enquiry',
+        element: (
+            // <StaffProtected>
+            <Enquiry />
+            // </StaffProtected>
+        )
     },
 
     // pages

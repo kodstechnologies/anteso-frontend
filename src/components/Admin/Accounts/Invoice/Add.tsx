@@ -61,21 +61,39 @@ const InvoiceSchema = Yup.object().shape({
 });
 
 const GrandTotalDisplay: React.FC = () => {
-  const { values } = useFormikContext<{ services: ServiceItem[]; gstPercent: number; discountPercent: number }>();
-  const subtotal = values.services.reduce((sum, service) => sum + service.quantity * service.rate, 0);
-  const gstAmount = (subtotal * values.gstPercent) / 100;
+  const { values } = useFormikContext<{
+    services: ServiceItem[];
+    taxes: { [key: string]: { checked: boolean; amount: any } };
+    discountPercent: number;
+  }>();
+
+  const subtotal = values.services.reduce((sum, s) => sum + s.quantity * s.rate, 0);
+
+  const gstAmount = ['cgst', 'sgst', 'igst'].reduce((total, tax) => {
+    const amount = parseFloat(values.taxes[tax].amount) || 0;
+    return values.taxes[tax].checked ? total + amount : total;
+  }, 0);
+
   const discountAmount = (subtotal * values.discountPercent) / 100;
   const total = subtotal + gstAmount - discountAmount;
 
   return (
     <div className="text-right font-bold text-lg mt-4">
-      {/* Subtotal: ₹{subtotal.toFixed(2)} <br />
-      GST ({values.gstPercent}%): ₹{gstAmount.toFixed(2)} <br />
-      Discount ({values.discountPercent}%): -₹{discountAmount.toFixed(2)} <br /> */}
+      <div>Subtotal: ₹{subtotal.toFixed(2)}</div>
+      {['cgst', 'sgst', 'igst'].map((tax) => {
+        const amount = parseFloat(values.taxes[tax].amount) || 0;
+        return values.taxes[tax].checked ? (
+          <div key={tax}>
+            {tax.toUpperCase()}: ₹{amount.toFixed(2)}
+          </div>
+        ) : null;
+      })}
+      <div>Discount ({values.discountPercent}%): -₹{discountAmount.toFixed(2)}</div>
       <div className="mt-2">Grand Total: ₹{total.toFixed(2)}</div>
     </div>
   );
 };
+
 
 
 const Add = () => {
@@ -95,13 +113,17 @@ const Add = () => {
 
       <Formik
         initialValues={{
+          type: '',
           invoiceId: '',
           buyerName: '',
           address: '',
           state: '',
           gstin: '',
-          gstPercent: 18,
-          discountPercent: 0,
+          taxes: {
+            cgst: { checked: false, amount: 0 },
+            sgst: { checked: false, amount: 0 },
+            igst: { checked: false, amount: 0 },
+          }, discountPercent: 0,
           services: [
             {
               machineType: '',
@@ -112,18 +134,28 @@ const Add = () => {
             },
           ],
         }}
-        validationSchema={InvoiceSchema}
-        validateOnChange={false}
-        validateOnBlur={false}
         onSubmit={(values) => {
-          console.log(' Submit triggered');
+          console.log('Submit triggered');
           console.log(values);
         }}
       >
+
         {({ values }) => (
           <Form className="space-y-5">
             {/* Invoice Header */}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 panel">
+              {/* Dropdown Field for Type */}
+              <div>
+                <label htmlFor="type" className="block mb-1 font-medium">Type</label>
+                <Field as="select" name="type" className="form-select">
+                  <option value="">Select Type</option>
+                  <option value="Customer">Customer</option>
+                  <option value="Dealer/Manufacturer">Dealer/Manufacturer</option>
+                </Field>
+                <ErrorMessage name="type" component="div" className="text-red-500 text-sm mt-1" />
+              </div>
+
               {[
                 { name: 'invoiceId', label: 'Invoice ID' },
                 { name: 'buyerName', label: 'Buyer Name' },
@@ -131,6 +163,7 @@ const Add = () => {
                 { name: 'state', label: 'State' },
                 { name: 'gstin', label: 'GSTIN' },
               ].map(({ name, label }) => (
+
                 <div key={name}>
                   <label htmlFor={name} className="block mb-1 font-medium">{label}</label>
                   <Field name={name} className="form-input" placeholder={`Enter ${label}`} />
@@ -139,93 +172,133 @@ const Add = () => {
               ))}
             </div>
 
+
             {/* Services Section */}
-            <div className="panel">
-              <h5 className="font-semibold text-lg mb-4">Service Details</h5>
-              <FieldArray name="services">
-                {({ push, remove }) => (
-                  <>
-                    {values.services.map((_, index) => (
-                      <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-4">
-                        <div>
-                          <label className="block mb-1 font-medium">Machine Type</label>
-                          <Field as="select" name={`services[${index}].machineType`} className="form-select">
-                            <option value="">Select Machine</option>
-                            {machineOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </Field>
-                          <ErrorMessage name={`services[${index}].machineType`} component="div" className="text-red-500 text-sm mt-1" />
-                        </div>
+            {values.type === 'Customer' && (
+              <>
+                <div className="panel">
+                  <h5 className="font-semibold text-lg mb-4">Service Details</h5>
+                  <FieldArray name="services">
+                    {({ push, remove }) => (
+                      <>
+                        {values.services.map((_, index) => (
+                          <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-4">
+                            <div>
+                              <label className="block mb-1 font-medium">Machine Type</label>
+                              <Field as="select" name={`services[${index}].machineType`} className="form-select">
+                                <option value="">Select Machine</option>
+                                {machineOptions.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </Field>
+                              <ErrorMessage name={`services[${index}].machineType`} component="div" className="text-red-500 text-sm mt-1" />
+                            </div>
 
-                        <div>
-                          <label className="block mb-1 font-medium">Description</label>
-                          <Field name={`services[${index}].description`} className="form-input" placeholder="Description" />
-                          <ErrorMessage name={`services[${index}].description`} component="div" className="text-red-500 text-sm mt-1" />
-                        </div>
+                            <div>
+                              <label className="block mb-1 font-medium">Description</label>
+                              <Field name={`services[${index}].description`} className="form-input" placeholder="Description" />
+                              <ErrorMessage name={`services[${index}].description`} component="div" className="text-red-500 text-sm mt-1" />
+                            </div>
 
-                        <div>
-                          <label className="block mb-1 font-medium">Quantity</label>
-                          <Field name={`services[${index}].quantity`} type="number" className="form-input" />
-                          <ErrorMessage name={`services[${index}].quantity`} component="div" className="text-red-500 text-sm mt-1" />
-                        </div>
+                            <div>
+                              <label className="block mb-1 font-medium">Quantity</label>
+                              <Field name={`services[${index}].quantity`} type="number" className="form-input" />
+                              <ErrorMessage name={`services[${index}].quantity`} component="div" className="text-red-500 text-sm mt-1" />
+                            </div>
 
-                        <div>
-                          <label className="block mb-1 font-medium">Rate</label>
-                          <Field name={`services[${index}].rate`} type="number" className="form-input" />
-                          <ErrorMessage name={`services[${index}].rate`} component="div" className="text-red-500 text-sm mt-1" />
-                        </div>
+                            <div>
+                              <label className="block mb-1 font-medium">Rate</label>
+                              <Field name={`services[${index}].rate`} type="number" className="form-input" />
+                              <ErrorMessage name={`services[${index}].rate`} component="div" className="text-red-500 text-sm mt-1" />
+                            </div>
 
-                        <div>
-                          <label className="block mb-1 font-medium">HSN/SAC No</label>
-                          <Field name={`services[${index}].hsnno`} type="text" className="form-input" />
-                          <ErrorMessage name={`services[${index}].hsnno`} component="div" className="text-red-500 text-sm mt-1" />
-                        </div>
+                            <div>
+                              <label className="block mb-1 font-medium">HSN/SAC No</label>
+                              <Field name={`services[${index}].hsnno`} type="text" className="form-input" />
+                              <ErrorMessage name={`services[${index}].hsnno`} component="div" className="text-red-500 text-sm mt-1" />
+                            </div>
 
-                        <div className="flex items-center pt-6">
-                          {values.services.length > 1 && (
-                            <button type="button" onClick={() => remove(index)} className="text-red-500 text-xs">
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                            <div className="flex items-center pt-6">
+                              {values.services.length > 1 && (
+                                <button type="button" onClick={() => remove(index)} className="text-red-500 text-xs">
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            push({
+                              machineType: '',
+                              description: '',
+                              quantity: 0,
+                              rate: 0,
+                              hsnno: '',
+                            })
+                          }
+                          className="btn btn-primary mt-3"
+                        >
+                          + Add Another Service
+                        </button>
+                      </>
+                    )}
+                  </FieldArray>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        push({
-                          machineType: '',
-                          description: '',
-                          quantity: 0,
-                          rate: 0,
-                          hsnno: '',
-                        })
-                      }
-                      className="btn btn-primary mt-3"
-                    >
-                      + Add Another Service
-                    </button>
-                  </>
-                )}
-              </FieldArray>
 
+                </div>
+              </>
+            )}
+            {values.type === 'Dealer/Manufacturer' && (
+              <div className="panel mt-5 border p-4 rounded bg-gray-50">
+                <h5 className="font-semibold text-lg mb-4">Dealer / Manufacturer Details</h5>
 
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 panel mt-2">
-              <div>
-                <label htmlFor="gstPercent" className="block mb-1 font-medium">GST %</label>
-                <Field
-                  name="gstPercent"
-                  type="number"
-                  className="form-input"
-                  placeholder="Enter GST %"
-                />
-                <ErrorMessage name="gstPercent" component="div" className="text-red-500 text-sm mt-1" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { name: 'partyCode', label: 'Party Code' },
+                    { name: 'hospitalName', label: 'Name of Hospital' },
+                    { name: 'location', label: 'Location' },
+                    { name: 'dealerState', label: 'State' },
+                    { name: 'modelNo', label: 'Model No' },
+                    // { name: 'serialNo', label: 'Sr No' },
+                    { name: 'amount', label: 'Amount' },
+                  ].map(({ name, label }) => (
+                    <div key={name}>
+                      <label htmlFor={name} className="block mb-1 font-medium">{label}</label>
+                      <Field name={name} className="form-input" placeholder={`Enter ${label}`} />
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 panel mt-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 panel mt-2">
+                {['cgst', 'sgst', 'igst'].map((taxType) => (
+                  <div key={taxType}>
+                    <label className="flex items-center gap-2 font-medium">
+                      <Field type="checkbox" name={`taxes.${taxType}.checked`} />
+                      {taxType.toUpperCase()}
+                    </label>
+                    <Field name={`taxes.${taxType}.amount`}>
+                      {({ field, form }: any) =>
+                        form.values.taxes[taxType].checked && (
+                          <input
+                            {...field}
+                            type="number"
+                            placeholder={`Enter ${taxType.toUpperCase()} amount`}
+                            className="form-input mt-1"
+                          />
+                        )
+                      }
+                    </Field>
+                  </div>
+                ))}
+              </div>
+
 
               <div>
                 <label htmlFor="discountPercent" className="block mb-1 font-medium">Discount %</label>
@@ -239,6 +312,7 @@ const Add = () => {
               </div>
 
             </div>
+
             <GrandTotalDisplay />
 
             <div className="flex justify-end">

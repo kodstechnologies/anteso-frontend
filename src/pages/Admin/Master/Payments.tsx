@@ -202,7 +202,6 @@ const Payments = () => {
             <p className="text-center text-gray-500">No screenshot available</p>
           )}
 
-
         </div>
       </FadeInModal>
 

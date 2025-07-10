@@ -178,9 +178,9 @@ const Invoices = () => {
                       {/* <NavLink to={`/admin/invoice/view/${id}`} className="flex hover:text-primary">
                         <IconEye />
                       </NavLink> */}
-                      <NavLink to={`/admin/invoice/edit/${id}`} className="flex hover:text-info">
+                      {/* <NavLink to={`/admin/invoice/edit/${id}`} className="flex hover:text-info">
                         <IconEdit />
-                      </NavLink>
+                      </NavLink> */}
                       <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
                         <IconTrashLines />
                       </button>

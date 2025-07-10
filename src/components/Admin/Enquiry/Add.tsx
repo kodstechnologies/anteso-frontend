@@ -324,8 +324,8 @@ const AddEnquiry: React.FC = () => {
 
                                                 {/* equipment/document No. */}
                                                 <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Equipment/Document No.</label>
-                                                    <Field type="text" name="equipmentNo" placeholder="Equipment No" className="form-input w-full" />
+                                                    <label className="text-sm font-semibold text-gray-700">Equipment ID/Document No.</label>
+                                                    <Field type="text" name="equipmentNo" placeholder="Enter Equipment ID/Document No." className="form-input w-full" />
                                                     <div className="h-4">
                                                         <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                     </div>

@@ -18,7 +18,7 @@ import IconBox from '../../../components/Icon/IconBox';
 const CourierCompanies = () => {
     const dispatch = useDispatch();
     useEffect(() => {
-        dispatch(setPageTitle('CourierCompanies'));
+        dispatch(setPageTitle('Courier Companies'));
     }, []);
 
     const [items, setItems] = useState(courierCompanies);
@@ -133,7 +133,7 @@ const CourierCompanies = () => {
                                     textAlignment: 'center',
                                     render: ({ id }) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to="/apps/invoice/preview" className="flex hover:text-primary">
+                                            <NavLink to="/admin/courier-companies/view" className="flex hover:text-primary">
                                                 <IconEye />
                                             </NavLink>
                                             <NavLink to="/admin/courier-companies/edit" className="flex hover:text-info">

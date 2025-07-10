@@ -68,7 +68,6 @@ const Invoice = () => {
             <p className="text-[.7rem]">GSTIN: {invoice.gstin}</p>
           </div>
 
-
           <div
             className=""
             style={{
@@ -84,8 +83,10 @@ const Invoice = () => {
           </div>
         </div>
         <div className="text-[.7rem] space-y-1">
-          <p><strong>Invoice ID:</strong> {invoice.invoiceId}</p>
-          <p><strong>Date:</strong> {invoice.date}</p>
+          <p><strong>EmailId:</strong> lalitha@antesobiomedicalopc</p>
+          <p><strong>Website:</strong>www.antesobiomedicalopc.com</p>
+          <p><strong>Type of Service:</strong>Quality Assurance Testing of Radiology Equipment(HSN NO-998719)-Branch Name-Bangalore</p>
+
           {/* <p><strong>Employee:</strong> {invoice.employee} ({invoice.employeePhone})</p>
             <p><strong>Dealer:</strong> {invoice.dealer} ({invoice.dealerPhone})</p> */}
         </div>
@@ -96,7 +97,6 @@ const Invoice = () => {
               <th className="p-2">S.NO</th>
               <th className="p-2">Machine Type</th>
               <th className="p-2">HSN/SAC No</th>
-
               <th className="p-2 text-right">Qty</th>
               <th className="p-2 text-right">Rate</th>
               <th className="p-2 text-right">Total</th>

@@ -8,12 +8,20 @@ import Breadcrumb, { BreadcrumbItem } from '../../common/Breadcrumb';
 import IconHome from '../../Icon/IconHome';
 import IconBox from '../../Icon/IconBox';
 import IconBook from '../../Icon/IconBook';
+import { paymentdata } from '../../../data'; // or fetch via API
+import PyamentPNG from '../../../../public/assets/images/payment.png'
+import FadeInModal from '../../../components/common/FadeInModal'; // adjust path if needed
+import { InformationCircleIcon } from '@heroicons/react/24/outline';
+import IconEye from '../../Icon/IconEye';
+
+
 
 // Define interfaces
 interface OptionType {
     value: string;
     label: string;
 }
+
 
 // Constants
 const employeeOptions: OptionType[] = [
@@ -25,11 +33,14 @@ const employeeOptions: OptionType[] = [
 const View = () => {
     const [active, setActive] = useState<string>('1');
     const [isAddingCourier, setIsAddingCourier] = useState(false);
+
     const togglePara = (value: string) => {
         setActive((oldValue) => {
             return oldValue === value ? '' : value;
         });
     };
+    const [selectedRow, setSelectedRow] = useState(null);
+    const [openModal, setOpenModal] = useState(false);
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
         { label: 'Orders', to: '/admin/orders', icon: <IconBox /> },
@@ -159,7 +170,7 @@ const View = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white text-sm">
-                                        {['QA Test', 'Elora','QA Test Report'].map((service, index) => (
+                                        {['QA Test', 'Elora', 'QA Test Report'].map((service, index) => (
                                             <tr key={index} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 border-b font-medium text-gray-800">{service}</td>
                                                 <td className="px-6 py-4 border-b">
@@ -315,7 +326,7 @@ const View = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white text-sm">
-                                        {['QA Test', 'Elora','QA test Report'].map((service, index) => (
+                                        {['QA Test', 'Elora', 'QA test Report'].map((service, index) => (
                                             <tr key={index} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 border-b font-medium text-gray-800">{service}</td>
                                                 <td className="px-6 py-4 border-b">
@@ -376,6 +387,7 @@ const View = () => {
                         Add Courier
                     </button>
                 </div>
+
                 {isAddingCourier && (
                     <div className="mb-6 p-4 border border-gray-200 rounded-lg">
                         <h3 className="text-lg font-semibold mb-4">Add New Salary</h3>
@@ -422,6 +434,160 @@ const View = () => {
                             </p>
                         </div>
                     </div>
+                </div>
+
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
+                <div className="flex justify-between items-center mb-6">
+                    <h5 className="text-lg font-bold text-gray-800 mb-6">Expense and Accounts Details</h5>
+                    {/* <button onClick={() => setIsAddingCourier(true)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
+                        Add Courier
+                    </button> */}
+                </div>
+
+                {/* {isAddingCourier && (
+                    <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+                        <h3 className="text-lg font-semibold mb-4">Add New Salary</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-gray-700 mb-1">Company Name</label>
+                                <input type="text" className="w-full p-2 border border-gray-300 rounded" placeholder="e.g. XYZ" />
+                            </div>
+                            <div>
+                                <label className="block text-gray-700 mb-1">Tracking Id</label>
+                                <input type="text" className="w-full p-2 border border-gray-300 rounded" placeholder="e.g. XYZ" />
+                            </div>
+                            <div>
+                                <label className="block text-gray-700 mb-1">URL</label>
+                                <input type="text" className="w-full p-2 border border-gray-300 rounded" placeholder="e.g. XYZ" />
+                            </div>
+                            <div className="flex justify-end space-x-2 mt-4">
+                                <button onClick={() => setIsAddingCourier(false)} className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100">
+                                    Cancel
+                                </button>
+                                <button onClick={() => setIsAddingCourier(false)} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                    Submit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )} */}
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Single Payment Card - Repeat this block for dynamic data */}
+
+                        <div className="bg-white rounded-lg shadow-md p-4 space-y-4 border">
+                            <div>
+                                <span className="font-semibold text-gray-700">SRF No.:</span>
+                                <p className="text-gray-600 mt-1">ABSRF/2025/05/001 - Apollo Hospital</p>
+                            </div>
+
+                            <div>
+                                <span className="font-semibold text-gray-700">Total Amount:</span>
+                                <p className="text-gray-600 mt-1">₹50,000</p>
+                            </div>
+
+                            <div>
+                                <span className="font-semibold text-gray-700">Payment Amount:</span>
+                                <p className="text-gray-600 mt-1">₹20,000</p>
+                            </div>
+
+                            <div>
+                                <span className="font-semibold text-gray-700">Payment Type:</span>
+                                <p className="text-gray-600 mt-1">Advanced</p>
+                            </div>
+
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-gray-700">Payment Screenshot:</span>
+                                    <button onClick={() => setOpenModal(true)} className="hover:text-primary">
+                                        <IconEye className="w-4.5 h-4.5" />
+                                    </button>
+                                </div>
+                                <p className="text-gray-600 mt-1 mb-2">Attached</p>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-lg shadow-md p-4 space-y-4 border">
+                            <div>
+                                <span className="font-semibold text-gray-700">SRF No.:</span>
+                                <p className="text-gray-600 mt-1">ABSRF/2025/04/001 - Fortis Healthcare</p>
+                            </div>
+
+                            <div>
+                                <span className="font-semibold text-gray-700">Total Amount:</span>
+                                <p className="text-gray-600 mt-1">₹50,000</p>
+                            </div>
+
+                            <div>
+                                <span className="font-semibold text-gray-700">Payment Amount:</span>
+                                <p className="text-gray-600 mt-1">₹20,000</p>
+                            </div>
+
+                            <div>
+                                <span className="font-semibold text-gray-700">Payment Type:</span>
+                                <p className="text-gray-600 mt-1">Advanced</p>
+                            </div>
+
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-gray-700">Payment Screenshot:</span>
+                                    <button onClick={() => setOpenModal(true)} className="hover:text-primary">
+                                        <IconEye className="w-4.5 h-4.5" />
+                                    </button>
+                                </div>
+                                <p className="text-gray-600 mt-1 mb-2">Attached</p>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-lg shadow-md p-4 space-y-4 border">
+                            <div>
+                                <span className="font-semibold text-gray-700">SRF No.:</span>
+                                <p className="text-gray-600 mt-1">ABSRF/2025/03/002 - MaxHealth Hospital</p>
+                            </div>
+
+                            <div>
+                                <span className="font-semibold text-gray-700">Total Amount:</span>
+                                <p className="text-gray-600 mt-1">₹50,000</p>
+                            </div>
+
+                            <div>
+                                <span className="font-semibold text-gray-700">Payment Amount:</span>
+                                <p className="text-gray-600 mt-1">₹20,000</p>
+                            </div>
+
+                            <div>
+                                <span className="font-semibold text-gray-700">Payment Type:</span>
+                                <p className="text-gray-600 mt-1">Advanced</p>
+                            </div>
+
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-gray-700">Payment Screenshot:</span>
+                                    <button onClick={() => setOpenModal(true)} className="hover:text-primary">
+                                        <IconEye className="w-4.5 h-4.5" />                                    </button>
+                                </div>
+                                <p className="text-gray-600 mt-1 mb-2">Attached</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <FadeInModal open={openModal} onClose={() => setOpenModal(false)} title="Payment Screenshot">
+                        <img
+                            src={PyamentPNG}
+                            alt="Payment Screenshot"
+                            className="w-full rounded-lg shadow-md object-contain h-80"
+                        />
+                    </FadeInModal>
+
+
+                    {/* Modal */}
+                    <FadeInModal open={openModal} onClose={() => setOpenModal(false)} title="Payment Screenshot">
+                        <img
+                            src={PyamentPNG}
+                            alt="Payment Screenshot"
+                            className="w-full rounded-lg shadow-md object-contain h-80 "
+                        />
+                    </FadeInModal>
                 </div>
             </div>
         </div>

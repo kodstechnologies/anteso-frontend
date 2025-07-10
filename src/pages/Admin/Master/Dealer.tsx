@@ -18,7 +18,7 @@ import IconBox from '../../../components/Icon/IconBox';
 const Dealers = () => {
     const dispatch = useDispatch();
     useEffect(() => {
-        dispatch(setPageTitle('DealersAndManufacturers'));
+        dispatch(setPageTitle('Dealers'));
     }, []);
 
     const [items, setItems] = useState(

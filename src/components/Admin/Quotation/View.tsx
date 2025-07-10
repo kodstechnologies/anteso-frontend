@@ -124,6 +124,7 @@ const ViewQuotation = () => {
         <div className="w-full min-h-screen bg-gray-50 px-8 absolute top-0 left-0 z-50 lg:px-[15%]">
             <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[50rem]">
                 {/* Header */}
+
                 <div className="flex justify-between items-start ">
                     <div>
                         <img src={logoB} alt="Logo B" className="h-14 " />
@@ -178,24 +179,19 @@ const ViewQuotation = () => {
                                 <td className="pl-2">80917 50188</td>
                             </tr>
                             <tr className="text-[.7rem]">
-                                <td className="font-bold">From:</td>
-                                {/* <td className="pl-2">Anjana Thakur</td>
-                                <td className="font-bold">Phone</td>
-                                <td className="pl-2">9317509720</td> */}
+                                <td className="pl-4 font-bold w-[10rem]">Employee / Dealer:</td>
+                                <td className="pl-2" colSpan={3}>
+                                    Anjana Thakur &nbsp;&nbsp;
+                                </td>
                             </tr>
                             <tr className="text-[.7rem]">
-                                <td className="pl-4 font-bold">Employee:</td>
-                                <td className="pl-2">Anjana Thakur</td>
-                                <td className="font-bold">Phone:</td>
-                                <td className="pl-2">9317509720</td>
+                                <td className="pl-4 font-bold w-[10rem]">Phone:</td>
+                                <td className="pl-2" colSpan={3}>
+                                   Phone: 9317509720  &nbsp;&nbsp;
+                                </td>
                             </tr>
 
-                            <tr className="text-[.7rem]">
-                                <td className="pl-4 font-bold">Dealer:</td>
-                                <td className="pl-2">Namita Rajput</td>
-                                <td className="font-bold">Phone:</td>
-                                <td className="pl-2">9988334122</td>
-                            </tr>
+
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">Quotation:</td>
                                 <td className="pl-2 font-bold">QUO001</td>

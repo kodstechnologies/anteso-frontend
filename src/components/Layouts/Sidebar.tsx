@@ -36,13 +36,13 @@ const Sidebar = () => {
     const [currentMenu, setCurrentMenu] = useState<string>('');
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
     const semidark = useSelector((state: IRootState) => state.themeConfig.semidark);
+    const userType = useSelector((state: IRootState) => state.userConfig.userType);
     const location = useLocation();
     const dispatch = useDispatch();
     const { t } = useTranslation();
+
     const toggleMenu = (value: string) => {
-        setCurrentMenu((oldValue) => {
-            return oldValue === value ? '' : value;
-        });
+        setCurrentMenu((oldValue) => (oldValue === value ? '' : value));
     };
 
     useEffect(() => {
@@ -66,21 +66,16 @@ const Sidebar = () => {
         if (window.innerWidth < 1024 && themeConfig.sidebar) {
             dispatch(toggleSidebar());
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location]);
 
     return (
         <div className={semidark ? 'dark' : ''}>
-            <nav
-                className={`sidebar fixed min-h-screen h-full top-0 bottom-0 w-[260px] shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] z-50 transition-all duration-300 ${semidark ? 'text-white-dark' : ''}`}
-            >
+            <nav className={`sidebar fixed min-h-screen h-full top-0 bottom-0 w-[260px] shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] z-50 transition-all duration-300 ${semidark ? 'text-white-dark' : ''}`}>
                 <div className="bg-white dark:bg-black h-full">
                     <div className="flex justify-between items-center px-4 py-5">
                         <NavLink to="/" className="main-logo flex items-center shrink-0 justify-center">
                             <img className="w-40" src={Logo} alt="logo" />
-                            {/* <span className="text-2xl ltr:ml-1.5 rtl:mr-1.5 font-semibold align-middle lg:inline dark:text-white-light">{t('anteso')}</span> */}
                         </NavLink>
-
                         <button
                             type="button"
                             className="collapse-icon w-8 h-8 rounded-full flex items-center hover:bg-gray-500/10 dark:hover:bg-dark-light/10 dark:text-white-light transition duration-300 rtl:rotate-180"
@@ -89,10 +84,12 @@ const Sidebar = () => {
                             <IconCaretsDown className="m-auto rotate-90" />
                         </button>
                     </div>
+
                     <PerfectScrollbar className="h-[calc(100vh-80px)] relative">
                         <ul className="relative font-semibold space-y-0.5 p-4 py-0">
                             <li className="nav-item">
                                 <ul>
+                                    {/* Dashboard */}
                                     <li className="nav-item">
                                         <NavLink to="/" className="group">
                                             <div className="flex items-center gap-2">
@@ -101,7 +98,8 @@ const Sidebar = () => {
                                             </div>
                                         </NavLink>
                                     </li>
-                                    {/* master */}
+
+                                    {/* Master Menu (shared but items inside differ) */}
                                     <li className="menu nav-item">
                                         <button type="button" className={`${currentMenu === 'masters' ? 'active' : ''} nav-link group w-full`} onClick={() => toggleMenu('masters')}>
                                             <div className="flex items-center gap-2">
@@ -115,57 +113,36 @@ const Sidebar = () => {
 
                                         <AnimateHeight duration={300} height={currentMenu === 'masters' ? 'auto' : 0}>
                                             <ul className="sub-menu text-gray-500">
-                                                {/* <li>
-                                                    <NavLink to="/admin/state">{t('State')}</NavLink>
-                                                </li>
-                                                <li>
-                                                    <NavLink to="/admin/city">{t('City')}</NavLink>
-                                                </li>
-                                                <li>
-                                                    <NavLink to="/admin/items">{t('Items')}</NavLink>
-                                                </li> */}
-                                                <li>
-                                                    <NavLink to="/admin/clients">{t('Clients')}</NavLink>
-                                                </li>
-                                                <li>
-                                                    <NavLink to="/admin/employee">{t('Employee')}</NavLink>
-                                                </li>
-                                                <li>
-                                                    <NavLink to="/admin/leave">{t('Leave')}</NavLink>
-                                                </li>
-                                                {/* <li>
-                                                    <NavLink to="/admin/expenses">{t('Expenses')}</NavLink>
-                                                </li> */}
-                                                <li>
-                                                    <NavLink to="/admin/tools">{t('Tools')}</NavLink>
-                                                </li>
-                                                {/* <li>
-                                                    <NavLink to="/admin/dealer-and-manufacture">{t('Dealer And Manufacture')}</NavLink>
-                                                </li> */}
-                                                <li>
-                                                    <NavLink to="/admin/dealer">{t('Dealer')}</NavLink>
-                                                </li>
-                                                <li>
-                                                    <NavLink to="/admin/manufacture">{t('Manufacture')}</NavLink>
-                                                </li>
+                                                <li><NavLink to="/admin/clients">{t('Clients')}</NavLink></li>
 
-                                                {/* <li>
-                                                    <NavLink to="/admin/services">{t('Services')}</NavLink>
-                                                </li> */}
-                                                <li>
-                                                    <NavLink to="/admin/courier-companies">{t('Courier Companies')}</NavLink>
-                                                </li>
+                                                {userType === 'admin' && (
+                                                    <>
+                                                        <li><NavLink to="/admin/employee">{t('Employee')}</NavLink></li>
+                                                        <li><NavLink to="/admin/tools">{t('Tools')}</NavLink></li>
+                                                    </>
+                                                )}
+
+                                                <li><NavLink to="/admin/leave">{t('Leave')}</NavLink></li>
+                                                <li><NavLink to="/admin/dealer">{t('Dealer')}</NavLink></li>
+                                                <li><NavLink to="/admin/manufacture">{t('Manufacture')}</NavLink></li>
+                                                <li><NavLink to="/admin/courier-companies">{t('Courier Companies')}</NavLink></li>
                                             </ul>
                                         </AnimateHeight>
                                     </li>
-                                    <li className="nav-item">
-                                        <NavLink to="/admin/hrms" className="group">
-                                            <div className="flex items-center gap-2">
-                                                <IconUser className="group-hover:!text-primary shrink-0" />
-                                                <span>{t('HRMS')}</span>
-                                            </div>
-                                        </NavLink>
-                                    </li>
+
+                                    {/* Admin only: HRMS */}
+                                    {userType === 'admin' && (
+                                        <li className="nav-item">
+                                            <NavLink to="/admin/hrms" className="group">
+                                                <div className="flex items-center gap-2">
+                                                    <IconUser className="group-hover:!text-primary shrink-0" />
+                                                    <span>{t('HRMS')}</span>
+                                                </div>
+                                            </NavLink>
+                                        </li>
+                                    )}
+
+                                    {/* Shared */}
                                     <li className="nav-item">
                                         <NavLink to="/admin/enquiry" className="group">
                                             <div className="flex items-center gap-2">
@@ -174,14 +151,7 @@ const Sidebar = () => {
                                             </div>
                                         </NavLink>
                                     </li>
-                                    {/* <li className="nav-item">
-                                        <NavLink to="/admin/quotation" className="group">
-                                            <div className="flex items-center gap-2">
-                                                <IconBox className="group-hover:!text-primary shrink-0" />
-                                                <span>{t('Quotation')}</span>
-                                            </div>
-                                        </NavLink>
-                                    </li> */}
+
                                     <li className="nav-item">
                                         <NavLink to="/admin/orders" className="group">
                                             <div className="flex items-center gap-2">
@@ -190,29 +160,28 @@ const Sidebar = () => {
                                             </div>
                                         </NavLink>
                                     </li>
-                                    <li className="menu nav-item">
-                                        <button type="button" className={`${currentMenu === 'accounts' ? 'active' : ''} nav-link group w-full`} onClick={() => toggleMenu('accounts')}>
-                                            <div className="flex items-center gap-2">
-                                                <RiMoneyRupeeCircleLine className="text-xl" />
-                                                <span>{t('Accounts')}</span>
-                                            </div>
-                                            <div className={currentMenu !== 'accounts' ? 'rtl:rotate-90 -rotate-90' : ''}>
-                                                <IconCaretDown />
-                                            </div>
-                                        </button>
 
-                                        <AnimateHeight duration={300} height={currentMenu === 'accounts' ? 'auto' : 0}>
-                                            <ul className="sub-menu text-gray-500">
+                                    {/* Admin only: Accounts */}
+                                    {userType === 'admin' && (
+                                        <li className="menu nav-item">
+                                            <button type="button" className={`${currentMenu === 'accounts' ? 'active' : ''} nav-link group w-full`} onClick={() => toggleMenu('accounts')}>
+                                                <div className="flex items-center gap-2">
+                                                    <RiMoneyRupeeCircleLine className="text-xl" />
+                                                    <span>{t('Accounts')}</span>
+                                                </div>
+                                                <div className={currentMenu !== 'accounts' ? 'rtl:rotate-90 -rotate-90' : ''}>
+                                                    <IconCaretDown />
+                                                </div>
+                                            </button>
 
-                                                <li>
-                                                    <NavLink to="/admin/payments">{t('Payments')}</NavLink>
-                                                </li>
-                                                <li>
-                                                    <NavLink to="/admin/invoice">{t('Invoice')}</NavLink>
-                                                </li>
-                                            </ul>
-                                        </AnimateHeight>
-                                    </li>
+                                            <AnimateHeight duration={300} height={currentMenu === 'accounts' ? 'auto' : 0}>
+                                                <ul className="sub-menu text-gray-500">
+                                                    <li><NavLink to="/admin/payments">{t('Payments')}</NavLink></li>
+                                                    <li><NavLink to="/admin/invoice">{t('Invoice')}</NavLink></li>
+                                                </ul>
+                                            </AnimateHeight>
+                                        </li>
+                                    )}
                                 </ul>
                             </li>
                         </ul>
