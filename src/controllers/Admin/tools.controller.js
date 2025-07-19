@@ -1,0 +1,76 @@
+import Tool from "../../models/tools.model.js";
+import { asyncHandler } from "../../utils/AsyncHandler.js";
+import { ApiError } from "../../utils/ApiError.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
+import { createToolSchema } from "../../validators/toolValidators.js";
+
+const create = asyncHandler(async (req, res) => {
+    const { error, value } = createToolSchema.validate(req.body);
+    if (error) {
+        throw new ApiError(400, error.details[0].message);
+    }
+    const exists = await Tool.findOne({ toolId: value.toolId });
+    if (exists) {
+        throw new ApiError(409, "Tool with this ID already exists");
+    }
+
+    const tool = await Tool.create(value);
+
+    res.status(201).json(new ApiResponse(201, tool, "Tool created successfully"));
+});
+const allTools = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const [tools, totalCount] = await Promise.all([
+        Tool.find().skip(skip).limit(limit).sort({ createdAt: -1 }),
+        Tool.countDocuments()
+    ]);
+
+    res.status(200).json(
+        new ApiResponse(200, {
+            tools,
+            totalPages: Math.ceil(totalCount / limit),
+            currentPage: page,
+            totalCount
+        }, "Tools fetched successfully")
+    );
+});
+
+const updateById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { error, value } = createToolSchema.validate(req.body);
+    if (error) {
+        throw new ApiError(400, error.details[0].message);
+    }
+    const updatedTool = await Tool.findByIdAndUpdate(id, value, {
+        new: true, // return updated doc
+        runValidators: true, // apply schema validation
+    });
+    if (!updatedTool) {
+        throw new ApiError(404, "Tool not found");
+    }
+    res.status(200).json(new ApiResponse(200, updatedTool, "Tool updated successfully"));
+});
+
+const deleteById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const deletedTool = await Tool.findByIdAndDelete(id);
+    if (!deletedTool) {
+        throw new ApiError(404, "Tool not found");
+    }
+    res.status(200).json(new ApiResponse(200, deletedTool, "Tool deleted successfully"));
+});
+
+
+const getById = asyncHandler(async (req, res) => {
+    console.log("tools route hit");
+    
+    const { id } = req.params;
+    const tool = await Tool.findById(id);
+    if (!tool) {
+        throw new ApiError(404, "Tool not found");
+    }
+    res.status(200).json(new ApiResponse(200, tool, "Tool fetched successfully"));
+});
+export default { create, allTools, updateById, deleteById, getById };
