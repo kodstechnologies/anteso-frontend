@@ -5,9 +5,9 @@ import { loginSchema } from "../../validators/adminValidators.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/AsyncHandler.js";
-const JWT_SECRET=process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET;
 console.log("🚀 ~ JWT_SECRET:", JWT_SECRET)
-const JWT_REFRESH_SECRET=process.env.JWT_REFRESH_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 console.log("🚀 ~ JWT_REFRESH_SECRET:", JWT_REFRESH_SECRET)
 export const adminLogin = asyncHandler(async (req, res) => {
     // 1. Validate input
@@ -32,10 +32,11 @@ export const adminLogin = asyncHandler(async (req, res) => {
 
     // 4. Generate tokens
     const accessToken = jwt.sign(
-        { id: admin._id, email: admin.email },
+        { id: admin._id, email: admin.email, role: admin.role }, // <-- include role
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
     );
+
 
     const refreshToken = jwt.sign(
         { id: admin._id },

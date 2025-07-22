@@ -14,9 +14,14 @@ const adminSchema = new Schema(
             required: true,
             minlength: 6,
         },
+        role: {
+            type: String,
+            enum: ['admin', 'staff'], // add more roles as needed
+            default: 'admin',
+        },
     },
     {
-        timestamps: true, 
+        timestamps: true,
     }
 );
 

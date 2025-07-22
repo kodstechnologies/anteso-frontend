@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const enquirySchema = new mongoose.Schema({
     // Section 1: Enquiry Details
-    leadOwner: { type: String, required: true },
+    leadOwner: { type: String, required: false },
     hospitalName: { type: String, required: true },
     fullAddress: { type: String, required: true },
     city: { type: String, required: true },

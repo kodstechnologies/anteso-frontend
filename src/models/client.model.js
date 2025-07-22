@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import User from './user.model.js'; // Base user schema
+import User from './user.model.js';
 const { Schema } = mongoose;
 
 const clientSchema = new Schema({
@@ -29,8 +29,13 @@ const clientSchema = new Schema({
             default: [],
         },
     ],
+    machines:
+    {
+        type: Schema.Types.ObjectId,
+        ref: 'Machine',
+    },
 });
 
-const Client = User.discriminator('Client', clientSchema);
+const Client = User.discriminator('Customer', clientSchema);
 
 export default Client;

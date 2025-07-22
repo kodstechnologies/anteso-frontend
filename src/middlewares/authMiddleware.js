@@ -1,25 +1,17 @@
+// middlewares/authMiddleware.js
 import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/ApiError.js";
-import { asyncHandler } from "../utils/AsyncHandler.js";
-const JWT_SECRET = process.env.JWT_SECRET
-console.log("🚀 ~ JWT_SECRET:", JWT_SECRET)
-export const verifyAccessToken = asyncHandler(async (req, res, next) => {
-    const authHeader = req.headers.authorization;
 
-    // Check if token is provided
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        throw new ApiError(401, "Access token missing or invalid");
-    }
+export const authenticate = (req, res, next) => {
+    const token = req.headers.authorization?.split(" ")[1];
 
-    const token = authHeader.split(" ")[1]; // Extract token from "Bearer <token>"
+    if (!token) throw new ApiError(401, "Token missing");
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded; // Attach decoded user data to the request
-        console.log("🚀 ~ verifyAccessToken ~ decoded:", decoded)
-
+        const decoded = jwt.verify(token, process.env.JWT_USER_SECRET);
+        req.user = decoded; // contains id and role
         next();
     } catch (error) {
-        throw new ApiError(401, "Invalid or expired access token");
+        throw new ApiError(401, "Invalid or expired token");
     }
-});
+};
