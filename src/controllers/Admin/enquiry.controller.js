@@ -13,22 +13,32 @@ const add = asyncHandler(async (req, res) => {
         });
 
         if (error) {
-
             const errorMessages = error.details.map((err) => err.message);
             throw new ApiError(400, "Validation failed", errorMessages);
         }
 
+        // 1. Create the enquiry
         const newEnquiry = await Enquiry.create(value);
 
+        // 2. Push this enquiry to the related customer (if customer exists)
+        if (newEnquiry.customer) {
+            await User.findByIdAndUpdate(
+                newEnquiry.customer,
+                { $push: { enquiries: newEnquiry._id } },
+                { new: true }
+            );
+        }
+
+        // 3. Return response
         return res
             .status(201)
             .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
     } catch (error) {
-        console.error("Create Enquiry Error:", error); // 👈 Add this
-
+        console.error("Create Enquiry Error:", error);
         throw new ApiError(500, "Failed to create enquiry", [error.message]);
     }
 });
+
 
 const getById = asyncHandler(async (req, res) => {
     try {
@@ -95,5 +105,4 @@ const updateById = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to update enquiry", [error.message]);
     }
 });
-
 export default { add, getById, deleteById, updateById };

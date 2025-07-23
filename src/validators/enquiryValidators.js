@@ -58,7 +58,7 @@ export const enquirySchema = Joi.object({
         )
         .required(),
 
-    additionalServices: Joi.array().items(
+    additionalServices: Joi.object().pattern(
         Joi.string().valid(
             'INSTITUTE REGISTRATION',
             'RSO REGISTRATION, NOMINATION & APPROVAL',
@@ -70,8 +70,9 @@ export const enquirySchema = Joi.object({
             'LEAD APRON',
             'THYROID SHIELD',
             'GONAD SHIELD',
-            'OTHERS',
+            'OTHERS'
         ),
+        Joi.any() // or Joi.string().allow('', null), depending on the value format you allow
     ),
 
 

@@ -39,6 +39,14 @@ const clientSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Machine',
     },
+    // models/customer.model.js
+    enquiries: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Enquiry",
+        }
+    ],
+
 });
 // Generate clientId like CL001 before saving
 clientSchema.pre('save', async function (next) {

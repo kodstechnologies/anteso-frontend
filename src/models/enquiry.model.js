@@ -10,7 +10,7 @@ const enquirySchema = new mongoose.Schema({
     state: { type: String, required: true },
     pinCode: { type: String, required: true },
     branch: { type: String, required: true },
-    contactPersonName: { type: String, required: true },
+    contactPerson: { type: String, required: true },
     emailAddress: { type: String, required: true },
     contactNumber: { type: String, required: true },
     designation: { type: String, required: true },
@@ -67,22 +67,12 @@ const enquirySchema = new mongoose.Schema({
     ],
 
     // Section 3: Additional Services (checkboxes)
-    additionalServices: [{
-        type: String,
-        enum: [
-            'INSTITUTE REGISTRATION',
-            'RSO REGISTRATION, NOMINATION & APPROVAL',
-            'DECOMMISSIONING, PRE OWNED PROCUREMENT, QA & LICENSE',
-            'PROCUREMENT',
-            'TLD BADGE',
-            'LEAD SHEET',
-            'LEAD GLASS',
-            'LEAD APRON',
-            'THYROID SHIELD',
-            'GONAD SHIELD',
-            'OTHERS',
-        ]
-    }],
+    additionalServices: {
+        type: Map,
+        of: String, // or of: mongoose.Schema.Types.Mixed if you want to allow any value (like undefined)
+        default: {}
+    },
+
 
     // Section 4: Special Instructions & Attachment
     specialInstructions: { type: String },
@@ -110,7 +100,7 @@ const enquirySchema = new mongoose.Schema({
     customer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User', // base model name
-        required: true,
+        required: false,
         default: null
     }
 
