@@ -11,9 +11,10 @@ import RSORoutes from '../Admin/rso.router.js'
 import {authenticate} from '../../../middlewares/authMiddleware.js'
 
 import { verifyAccessToken } from '../../../middlewares/adminAuthMiddleware.js';
+import { authorizeRoles } from '../../../middlewares/authorizeRoles.js';
 const router = Router();
 router.use('/auth', AuthRouter)
-router.use(authenticate)
+router.use(authenticate, authorizeRoles("admin", "Customer"))
 
 router.use('/clients', ClientRoutes)
 router.use('/hospital', HospitalRoutes)

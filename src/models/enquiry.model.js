@@ -9,7 +9,7 @@ const enquirySchema = new mongoose.Schema({
     district: { type: String, required: true },
     state: { type: String, required: true },
     pinCode: { type: String, required: true },
-    branchName: { type: String, required: true },
+    branch: { type: String, required: true },
     contactPersonName: { type: String, required: true },
     emailAddress: { type: String, required: true },
     contactNumber: { type: String, required: true },
@@ -22,19 +22,47 @@ const enquirySchema = new mongoose.Schema({
                 type: String,
                 required: true,
                 enum: [
-                    'X-Ray', 'MRI', 'CT Scanner', 'Ultrasound', 'Ventilator',
-                    'ECG', 'EEG', 'Infusion Pump', 'Defibrillator', 'Patient Monitor',
-                    'Anesthesia Machine', 'Surgical Light', 'Autoclave', 'Suction Pump',
-                    'Nebulizer', 'Oxygen Concentrator', 'Incubator', 'Dialysis Machine',
-                    'Laparoscopy', 'C-Arm'
+                    'Fixed X-Ray',
+                    'Mobile X-Ray',
+                    'C-Arm',
+                    'Cath Lab/Interventional Radiology',
+                    'Mammography',
+                    'CT Scan',
+                    'PET CT',
+                    'CT Simulator',
+                    'OPG',
+                    'CBCT',
+                    'BMD/DEXA',
+                    'Dental IOPA',
+                    'Dental Hand Held',
+                    'O Arm',
+                    'KV Imaging (OBI)',
+                    'Lead Apron Test',
+                    'Thyroid Shield Test',
+                    'Gonad Shield Test',
+                    'Radiation Survey of Radiation Facility',
+                    'Others',
                 ],
             },
-            equipmentId: { type: String, required: true },
-            typeOfWork: {
-                type: String,
+            equipmentNo: { type: String, required: true },
+            workType: {
+                type: [String],
                 required: true,
-                enum: ['Installation', 'Repair', 'Maintenance', 'Inspection'],
-            }
+                validate: {
+                    validator: function (arr) {
+                        const allowed = [
+                            'Quality Assurance Test',
+                            'License for Operation',
+                            'Decommissioning',
+                            'Decommissioning and Recommissioning'
+                        ];
+                        return arr.every((val) => allowed.includes(val));
+                    },
+                    message: 'Invalid workType value'
+                }
+            },
+
+            machineModel: { type: String, required: true }
         }
     ],
 
@@ -42,9 +70,17 @@ const enquirySchema = new mongoose.Schema({
     additionalServices: [{
         type: String,
         enum: [
-            'Electrical Support', 'Civil Work', 'Calibration', 'Software Update',
-            'Networking', 'Biomedical Certification', 'Warranty Extension',
-            'Hardware Upgrade', 'Battery Replacement', 'Gas Pipeline Support', 'Documentation'
+            'INSTITUTE REGISTRATION',
+            'RSO REGISTRATION, NOMINATION & APPROVAL',
+            'DECOMMISSIONING, PRE OWNED PROCUREMENT, QA & LICENSE',
+            'PROCUREMENT',
+            'TLD BADGE',
+            'LEAD SHEET',
+            'LEAD GLASS',
+            'LEAD APRON',
+            'THYROID SHIELD',
+            'GONAD SHIELD',
+            'OTHERS',
         ]
     }],
 
@@ -74,7 +110,8 @@ const enquirySchema = new mongoose.Schema({
     customer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User', // base model name
-        required: true
+        required: true,
+        default: null
     }
 
 }, { timestamps: true });

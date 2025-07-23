@@ -116,6 +116,15 @@ const deleteById = asyncHandler(async (req, res) => {
     }
 });
 
+
+const createInstituteByClientId = asyncHandler(async (req, res) => {
+    try {
+
+    } catch (error) {
+
+    }
+})
+
 export default {
     add,
     getAll,

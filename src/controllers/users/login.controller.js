@@ -26,6 +26,7 @@ export const sendOtp = asyncHandler(async (req, res) => {
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log("🚀 ~ sendOtp ~ otp:", otp)
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     const message = `Dear User, Your OTP for login is ${otp}. It is valid for 10 minutes. Please do not share this OTP with anyone. - ANTESO BIOMEDICAL`;
@@ -81,3 +82,11 @@ export const verifyOtp = asyncHandler(async (req, res) => {
         new ApiResponse(200, { token, user }, "OTP verified successfully")
     );
 });
+
+// export const logout = asyncHandler(async (req, res) => {
+//     // Typically just tell the client to remove/ignore the token; 
+//     // if using a token blacklist, handle it here.
+//     return res
+//         .status(200)
+//         .json(new ApiResponse(200, null, "Logged out successfully"));
+// });

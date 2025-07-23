@@ -5,6 +5,7 @@ import { asyncHandler } from '../../utils/AsyncHandler.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { rsoSchema } from '../../validators/rsoValidators.js';
+import Client from '../../models/client.model.js';
 
 // Create
 const add = asyncHandler(async (req, res) => {
@@ -108,10 +109,143 @@ const deleteById = asyncHandler(async (req, res) => {
     }
 });
 
+
+// CREATE RSO
+const creatersoByClientId = asyncHandler(async (req, res) => {
+    try {
+        const { clientId } = req.params;
+        console.log("🚀 ~ creatersoByClientId ~ clientId:", clientId)
+        const {
+            rsoId,
+            password,
+            email,
+            phone,
+            rpId,
+            tldBadge,
+            validity,
+            attachment
+        } = req.body;
+
+        const client = await Client.findById(clientId);
+        if (!client) {
+            throw new ApiError(404, 'Client not found');
+        }
+
+        const existingRSO = await RSO.findOne({ rsoId });
+        if (existingRSO) {
+            throw new ApiError(409, 'RSO ID already exists');
+        }
+
+        const newRSO = await RSO.create({
+            rsoId,
+            password,
+            email,
+            phone,
+            rpId,
+            tldBadge,
+            validity,
+            attachment,
+            client: client._id
+        });
+
+        res.status(201).json(new ApiResponse(201, newRSO, 'RSO created successfully'));
+    } catch (error) {
+        console.error(error);
+        res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Internal Server Error')
+        );
+    }
+});
+
+// GET ALL RSOs BY CLIENT
+const getAllrsoByClientId = asyncHandler(async (req, res) => {
+    try {
+        const { clientId } = req.params;
+        const rsos = await RSO.find({ client: clientId });
+
+        res.status(200).json(new ApiResponse(200, rsos, 'All RSOs fetched'));
+    } catch (error) {
+        res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Internal Server Error')
+        );
+    }
+});
+
+// GET RSO BY CLIENT + RSO ID
+const getrsoByClientIdAndRsoId = asyncHandler(async (req, res) => {
+    try {
+        const { clientId, rsoId } = req.params;
+        console.log("🚀 ~ getrsoByClientIdAndRsoId ~ rsoId:", rsoId)
+        console.log("🚀 ~ getrsoByClientIdAndRsoId ~ clientId:", clientId)
+        const client = await Client.findById(clientId).populate('rsos');
+        if (!client) throw new ApiError(404, 'Client not found');
+
+        const rso = client.rsos.find((r) => r._id.toString() === rsoId);
+        if (!rso) throw new ApiError(404, 'RSO not associated with this client');
+
+
+
+        res.status(200).json(new ApiResponse(200, rso, 'RSO fetched successfully'));
+    } catch (error) {
+        res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Internal Server Error')
+        );
+    }
+});
+
+// UPDATE RSO
+const updatersoByClientId = asyncHandler(async (req, res) => {
+    try {
+        const { clientId, rsoId } = req.params;
+        const updates = req.body;
+
+        const rso = await RSO.findOneAndUpdate(
+            { client: clientId, _id: rsoId },
+            updates,
+            { new: true }
+        );
+
+        if (!rso) {
+            throw new ApiError(404, 'RSO not found');
+        }
+
+        res.status(200).json(new ApiResponse(200, rso, 'RSO updated successfully'));
+    } catch (error) {
+        res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Internal Server Error')
+        );
+    }
+});
+
+// DELETE RSO
+const deletersoByClientId = asyncHandler(async (req, res) => {
+    try {
+        const { clientId, rsoId } = req.params;
+
+        const deleted = await RSO.findOneAndDelete({ client: clientId, _id: rsoId });
+
+        if (!deleted) {
+            throw new ApiError(404, 'RSO not found or already deleted');
+        }
+
+        res.status(200).json(new ApiResponse(200, deleted, 'RSO deleted successfully'));
+    } catch (error) {
+        res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Internal Server Error')
+        );
+    }
+});
+
+
 export default {
     add,
     getAll,
     getById,
     updateById,
-    deleteById
+    deleteById,
+    creatersoByClientId,
+    getAllrsoByClientId,
+    getrsoByClientIdAndRsoId,
+    updatersoByClientId,
+    deletersoByClientId
 };

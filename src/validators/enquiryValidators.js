@@ -8,8 +8,8 @@ export const enquirySchema = Joi.object({
     district: Joi.string().required(),
     state: Joi.string().required(),
     pinCode: Joi.string().required(),
-    branchName: Joi.string().required(),
-    contactPersonName: Joi.string().required(),
+    branch: Joi.string().required(),
+    contactPerson: Joi.string().required(),
     emailAddress: Joi.string().email().required(),
     contactNumber: Joi.string().required(),
     designation: Joi.string().required(),
@@ -19,28 +19,61 @@ export const enquirySchema = Joi.object({
             Joi.object({
                 machineType: Joi.string()
                     .valid(
-                        'X-Ray', 'MRI', 'CT Scanner', 'Ultrasound', 'Ventilator',
-                        'ECG', 'EEG', 'Infusion Pump', 'Defibrillator', 'Patient Monitor',
-                        'Anesthesia Machine', 'Surgical Light', 'Autoclave', 'Suction Pump',
-                        'Nebulizer', 'Oxygen Concentrator', 'Incubator', 'Dialysis Machine',
-                        'Laparoscopy', 'C-Arm'
+                        'Fixed X-Ray',
+                        'Mobile X-Ray',
+                        'C-Arm',
+                        'Cath Lab/Interventional Radiology',
+                        'Mammography',
+                        'CT Scan',
+                        'PET CT',
+                        'CT Simulator',
+                        'OPG',
+                        'CBCT',
+                        'BMD/DEXA',
+                        'Dental IOPA',
+                        'Dental Hand Held',
+                        'O Arm',
+                        'KV Imaging (OBI)',
+                        'Lead Apron Test',
+                        'Thyroid Shield Test',
+                        'Gonad Shield Test',
+                        'Radiation Survey of Radiation Facility',
+                        'Others',
                     )
                     .required(),
-                equipmentId: Joi.string().required(),
-                typeOfWork: Joi.string()
-                    .valid('Installation', 'Repair', 'Maintenance', 'Inspection')
-                    .required()
+                equipmentNo: Joi.string().required(),
+                workType: Joi.array()
+                    .items(
+                        Joi.string().valid(
+                            'Quality Assurance Test',
+                            'License for Operation',
+                            'Decommissioning',
+                            'Decommissioning and Recommissioning'
+                        )
+                    )
+                    .required(),
+
+                machineModel: Joi.string().required()
             })
         )
         .required(),
 
     additionalServices: Joi.array().items(
         Joi.string().valid(
-            'Electrical Support', 'Civil Work', 'Calibration', 'Software Update',
-            'Networking', 'Biomedical Certification', 'Warranty Extension',
-            'Hardware Upgrade', 'Battery Replacement', 'Gas Pipeline Support', 'Documentation'
-        )
+            'INSTITUTE REGISTRATION',
+            'RSO REGISTRATION, NOMINATION & APPROVAL',
+            'DECOMMISSIONING, PRE OWNED PROCUREMENT, QA & LICENSE',
+            'PROCUREMENT',
+            'TLD BADGE',
+            'LEAD SHEET',
+            'LEAD GLASS',
+            'LEAD APRON',
+            'THYROID SHIELD',
+            'GONAD SHIELD',
+            'OTHERS',
+        ),
     ),
+
 
     specialInstructions: Joi.string().allow('', null),
     attachment: Joi.string().allow('', null),
@@ -54,5 +87,5 @@ export const enquirySchema = Joi.object({
 
     quotationStatus: Joi.string().valid('Create', 'Created', 'Accepted', 'Rejected'),
 
-    customer: Joi.string().required()
+    customer: Joi.string().optional()
 });

@@ -10,5 +10,6 @@ router.use('/verify-otp', verifyOtp)
 router.use(authenticate, authorizeRoles("Admin", "Customer"))
 // router.post('/machines', machineRoutes)
 router.use('/machines', machineRoutes)
+// router.use('/logout')
 
 export default router

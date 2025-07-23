@@ -73,7 +73,7 @@ const getAll = asyncHandler(async (req, res) => {
 const getById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const machine = await Machine.findById(id).populate('client');
+        const machine = await Machine.findById(id).populate('customer');
         if (!machine) {
             throw new ApiError(404, 'Machine not found');
         }
@@ -149,4 +149,43 @@ const deleteById = asyncHandler(async (req, res) => {
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
-export default { add, getAll, getById, updateById, deleteById }
+
+// controllers/Admin/machine.controller.js
+
+const searchByType = asyncHandler(async (req, res) => {
+    try {
+        const { type } = req.query;
+        if (!type) {
+            return res.status(400).json({ success: false, message: "Machine type is required" });
+        }
+
+        const machines = await Machine.find({
+            machineType: { $regex: type, $options: "i" }
+        });
+
+        res.status(200).json(new ApiResponse(200, machines));
+    } catch (error) {
+        console.error("Error in searchByType:", error);
+        throw new ApiError(500, error?.message || 'Internal Server Error');
+    }
+});
+
+export const getMachinesByCustomerId = asyncHandler(async (req, res) => {
+    try {
+        const { customerId } = req.params;
+
+        if (!customerId) {
+            return res.status(400).json({ success: false, message: "Customer ID is required" });
+        }
+        const machines = await Machine.find({ customer: customerId }).populate('customer', 'gstNo');
+        // optional populate
+
+        res.status(200).json(ApiResponse(200, machines, "Machines fetched successfully"));
+    } catch (error) {
+        console.error("Error fetching machines by customer ID:", error);
+        throw new ApiError(500, error?.message || 'Internal Server Error');
+
+    }
+});
+
+export default { add, getAll, getById, updateById, deleteById, searchByType, getMachinesByCustomerId }

@@ -6,6 +6,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { hospitalSchema } from '../../validators/hospitalValidators.js';
 import mongoose from 'mongoose';
+import Client from '../../models/client.model.js';
 
 // CREATE
 const add = asyncHandler(async (req, res) => {
@@ -101,10 +102,138 @@ const getAll = asyncHandler(async (req, res) => {
 });
 
 
+
+//hospital by client
+const createHospitalByClientId = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+        const client = await Client.findById(id);
+        if (!client) throw new ApiError(404, 'Client not found');
+
+        const newHospital = await Hospital.create(req.body);
+        client.hospitals.push(newHospital._id);
+        await client.save();
+
+        return res.status(201).json(
+            new ApiResponse(201, newHospital, 'Hospital added to client')
+        );
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Something went wrong')
+        );
+    }
+});
+
+const updateHospitalByClientId = asyncHandler(async (req, res) => {
+    try {
+        const { clientId, hospitalId } = req.params;
+        console.log("🚀 ~ updateHospitalByClientId ~ hospitalId:", hospitalId)
+        console.log("🚀 ~ updateHospitalByClientId ~ clientId:", clientId)
+
+        const client = await Client.findById(clientId);
+        if (!client || !client.hospitals.includes(hospitalId)) {
+            throw new ApiError(404, 'Hospital not associated with this client');
+        }
+
+        const updatedHospital = await Hospital.findByIdAndUpdate(hospitalId, req.body, {
+            new: true,
+            runValidators: true,
+        });
+
+        if (!updatedHospital) throw new ApiError(404, 'Hospital not found');
+
+        return res.status(200).json(
+            new ApiResponse(200, updatedHospital, 'Hospital updated successfully')
+        );
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Something went wrong')
+        );
+    }
+});
+
+const deleteHospitalByClientId = asyncHandler(async (req, res) => {
+    try {
+        const { clientId, hospitalId } = req.params;
+        console.log("🚀 ~ deleteHospitalByClientId ~ hospitalId:", hospitalId)
+        console.log("🚀 ~ deleteHospitalByClientId ~ clientId:", clientId)
+
+        const client = await Client.findById(clientId);
+        if (!client || !client.hospitals.includes(hospitalId)) {
+            throw new ApiError(404, 'Hospital not associated with this client');
+        }
+
+        await Hospital.findByIdAndDelete(hospitalId);
+        client.hospitals.pull(hospitalId);
+        await client.save();
+
+        return res.status(200).json(
+            new ApiResponse(200, null, 'Hospital deleted from client')
+        );
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Something went wrong')
+        );
+    }
+});
+
+const getAllHospitalsByClientId = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const client = await Client.findById(id).populate('hospitals');
+        if (!client) throw new ApiError(404, 'Client not found');
+
+        return res.status(200).json(
+            new ApiResponse(200, client.hospitals, 'Hospitals fetched for client')
+        );
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Something went wrong')
+        );
+    }
+});
+
+const getHospitalByClientIdAndHospitalId = asyncHandler(async (req, res) => {
+    try {
+        const { clientId, hospitalId } = req.params;
+
+        // Find the client and populate hospitals
+        const client = await Client.findById(clientId).populate('hospitals');
+        if (!client) {
+            throw new ApiError(404, 'Client not found');
+        }
+
+        // Check if the hospital exists in client's hospitals array
+        const hospital = client.hospitals.find(
+            (h) => h._id.toString() === hospitalId
+        );
+
+        if (!hospital) {
+            throw new ApiError(404, 'Hospital not associated with this client');
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200, hospital, 'Hospital fetched successfully')
+        );
+    } catch (error) {
+        console.error("Error in getHospitalByClientIdAndHospitalId:", error);
+        return res.status(error.statusCode || 500).json(
+            new ApiResponse(error.statusCode || 500, null, error.message || 'Internal Server Error')
+        );
+    }
+});
+
+
 export default {
     add,
     deleteById,
     updateById,
     getById,
     getAll,
+    getAllHospitalsByClientId,
+    deleteHospitalByClientId,
+    updateHospitalByClientId,
+    createHospitalByClientId,
+    getHospitalByClientIdAndHospitalId
 };

@@ -1,11 +1,16 @@
 import mongoose from 'mongoose';
 import User from './user.model.js';
+import { generateReadableId } from '../utils/GenerateReadableId.js';
 const { Schema } = mongoose;
 
 const clientSchema = new Schema({
+    clientId: {
+        type: String,
+        unique: true,
+        index: true,
+    },
     gstNo: {
         type: String,
-        required: true,
         unique: true,
     },
     hospitals: [
@@ -34,6 +39,13 @@ const clientSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Machine',
     },
+});
+// Generate clientId like CL001 before saving
+clientSchema.pre('save', async function (next) {
+    if (!this.clientId) {
+        this.clientId = await generateReadableId('Client', 'CL');
+    }
+    next();
 });
 
 const Client = User.discriminator('Customer', clientSchema);

@@ -8,7 +8,7 @@ import { asyncHandler } from "../../utils/AsyncHandler.js";
 import { clientValidationSchema } from "../../validators/clientValidators.js";
 import { handleDuplicateKeyError } from "../../utils/ErrorHandler.js";
 
-const add = asyncHandler(async (req, res) => {
+const create = asyncHandler(async (req, res) => {
     const { error, value } = clientValidationSchema.validate(req.body, {
         abortEarly: false,
     });
@@ -174,11 +174,14 @@ const deleteAll = asyncHandler(async (req, res) => {
     );
 });
 
+
+
 export default {
-    add,
+    create,
     getAll,
     deleteById,
     updateById,
     getById,
-    deleteAll
+    deleteAll,
+
 };
