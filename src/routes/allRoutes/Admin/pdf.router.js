@@ -13,6 +13,6 @@ router.get('/generate-pdf/:srf', async (req, res) => {
         res.status(500).send("Failed to generate PDF");
     }
 });
-generatePdfWithQR('SRF/2025/07/001');
+// generatePdfWithQR('SRF/2025/07/001');
 
 export default router;

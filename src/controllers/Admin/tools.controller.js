@@ -4,6 +4,7 @@ import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { createToolSchema } from "../../validators/toolValidators.js";
 import { generateReadableId } from "../../utils/GenerateReadableId.js";
+import Tools from "../../models/tools.model.js";
 
 const create = asyncHandler(async (req, res) => {
     console.log("🛠️ Tool body submitted:", req.body);
