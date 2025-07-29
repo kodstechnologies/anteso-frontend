@@ -11,6 +11,7 @@ import RSORoutes from '../Admin/rso.router.js'
 import CourierRoutes from '../Admin/courier.router.js'
 import TechnicianRoutes from '../Admin/technicianRoutes.js'
 import QuotationRoutes from '../Admin/quotation.router.js'
+import PDFRouter from '../Admin/pdf.router.js'
 import { authenticate } from '../../../middlewares/authMiddleware.js'
 
 // https://anteso-backend.onrender.com
@@ -24,6 +25,7 @@ router.use('/clients', ClientRoutes)
 router.use('/hospital', HospitalRoutes)
 router.use('/rso', RSORoutes)
 router.use('/institute', InstituteRoutes)
+router.get('/pdf', PDFRouter)
 
 router.use('/tools', ToolRoutes)
 router.use('/leaves', LeaveRoutes)

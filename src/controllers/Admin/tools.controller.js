@@ -76,6 +76,8 @@ const deleteById = asyncHandler(async (req, res) => {
 
 
 const getById = asyncHandler(async (req, res) => {
+    console.log("hi from controller");
+    
     console.log("tools route hit");
 
     const { id } = req.params;
