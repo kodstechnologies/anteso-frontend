@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import { generateReadableId } from '../utils/generateReadableId.js';
+import { generateReadableId } from '../utils/GenerateReadableId.js';
 
 const toolsSchema = new Schema(
     {
