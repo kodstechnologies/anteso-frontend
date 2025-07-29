@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { sendOtp, verifyOtp } from '../../../controllers/users/Login.controller.js';
+import { sendOtp, verifyOtp } from '../../../controllers/users/login.controller.js';
 import { verifyUserJWT } from '../../../middlewares/userAuthMiddleware.js';
 import { authenticate } from '../../../middlewares/authMiddleware.js';
 import { authorizeRoles } from '../../../middlewares/authorizeRoles.js'
