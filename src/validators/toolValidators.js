@@ -8,7 +8,7 @@ export const createToolSchema = Joi.object({
   manufacture_date: Joi.date().required(),
   model: Joi.string().required(),
   calibrationCertificateNo: Joi.string().required(),
-  calibrationDate: Joi.date().required(),
+  // calibrationDate: Joi.date().required(),
   calibrationValidTill: Joi.date().required(),
   range: Joi.string().required(),
 });
