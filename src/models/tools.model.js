@@ -1,12 +1,13 @@
 import mongoose, { Schema } from 'mongoose';
+import { generateReadableId } from '../utils/generateReadableId.js';
 
 const toolsSchema = new Schema(
     {
         toolId: {
             type: String,
             required: true,
-            trim: true,
             unique: true,
+            trim: true,
         },
         SrNo: {
             type: String,
@@ -50,11 +51,30 @@ const toolsSchema = new Schema(
             required: true,
             trim: true,
         },
+        certificate: {
+            type: String,
+        },
+        toolStatus: {
+            type: String,
+            enum: ['assigned', 'unassigned'],
+            default: 'unassigned',
+        },
+        technician: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Employee',
+        },
     },
     {
-        timestamps: true, // adds createdAt and updatedAt
+        timestamps: true,
     }
 );
+
+toolsSchema.pre('validate', async function (next) {
+    if (!this.toolId) {
+        this.toolId = await generateReadableId('Tool', 'TL');
+    }
+    next();
+});
 
 const Tools = mongoose.model('Tool', toolsSchema);
 

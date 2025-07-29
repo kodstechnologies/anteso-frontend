@@ -8,33 +8,33 @@ const rsoSchema = new Schema(
     {
         rsoId: {
             type: String,
-            required: true,
+            required: false,
             unique: true,
         },
         password: {
             type: String,
-            required: true,
+            required: false,
         },
         email: {
             type: String,
-            required: true,
+            required: false,
             lowercase: true,
         },
         phone: {
             type: String,
-            required: true,
+            required: false,
         },
         rpId: {
             type: String,
-            required: true,
+            required: false,
         },
         tldBadge: {
             type: String,
-            required: true,
+            required: false,
         },
         validity: {
             type: Date,
-            required: true,
+            required: false,
         },
         attachment: {
             type: String, // path or file URL

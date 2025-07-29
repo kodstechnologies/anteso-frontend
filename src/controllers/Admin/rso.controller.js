@@ -109,8 +109,7 @@ const deleteById = asyncHandler(async (req, res) => {
     }
 });
 
-
-// CREATE RSO
+//RSO by clientId
 const creatersoByClientId = asyncHandler(async (req, res) => {
     try {
         const { clientId } = req.params;
@@ -125,6 +124,7 @@ const creatersoByClientId = asyncHandler(async (req, res) => {
             validity,
             attachment
         } = req.body;
+        console.log("🚀 ~ req.body:", req.body)
 
         const client = await Client.findById(clientId);
         if (!client) {
@@ -147,6 +147,8 @@ const creatersoByClientId = asyncHandler(async (req, res) => {
             attachment,
             client: client._id
         });
+        client.rsos.push(newRSO._id);
+        await client.save(); // Save the updated client
 
         res.status(201).json(new ApiResponse(201, newRSO, 'RSO created successfully'));
     } catch (error) {
@@ -194,28 +196,59 @@ const getrsoByClientIdAndRsoId = asyncHandler(async (req, res) => {
 });
 
 // UPDATE RSO
+// const updatersoByClientId = asyncHandler(async (req, res) => {
+//     try {
+//         const { clientId, rsoId } = req.params;
+//         console.log("🚀 ~ rsoId:", rsoId)
+//         console.log("🚀 ~ clientId:", clientId)
+//         const updates = req.body;
+
+//         const rso = await RSO.findOneAndUpdate(
+//             { client: clientId, _id: rsoId },
+//             updates,
+//             { new: true }
+//         );
+
+//         if (!rso) {
+//             throw new ApiError(404, 'RSO not found');
+//         }
+
+//         res.status(200).json(new ApiResponse(200, rso, 'RSO updated successfully'));
+//     } catch (error) {
+//         res.status(error.statusCode || 500).json(
+//             new ApiResponse(error.statusCode || 500, null, error.message || 'Internal Server Error')
+//         );
+//     }
+// });
+
 const updatersoByClientId = asyncHandler(async (req, res) => {
-    try {
-        const { clientId, rsoId } = req.params;
-        const updates = req.body;
+    const { clientId, rsoId } = req.params;
 
-        const rso = await RSO.findOneAndUpdate(
-            { client: clientId, _id: rsoId },
-            updates,
-            { new: true }
-        );
+    const client = await Client.findById(clientId);
 
-        if (!rso) {
-            throw new ApiError(404, 'RSO not found');
-        }
-
-        res.status(200).json(new ApiResponse(200, rso, 'RSO updated successfully'));
-    } catch (error) {
-        res.status(error.statusCode || 500).json(
-            new ApiResponse(error.statusCode || 500, null, error.message || 'Internal Server Error')
-        );
+    if (!client) {
+        throw new ApiError(404, "Client not found");
     }
+
+    const rsoExists = client.rsos.find((r) => r.toString() === rsoId); // ✅ FIX
+
+    if (!rsoExists) {
+        throw new ApiError(404, "RSO not associated with this client");
+    }
+
+    // Now safely fetch and update the RSO
+    const rso = await RSO.findById(rsoId);
+    if (!rso) {
+        throw new ApiError(404, "RSO not found");
+    }
+
+    // Update the RSO with req.body
+    Object.assign(rso, req.body);
+    await rso.save();
+
+    return res.status(200).json(new ApiResponse(200, rso, "RSO updated successfully"));
 });
+
 
 // DELETE RSO
 const deletersoByClientId = asyncHandler(async (req, res) => {

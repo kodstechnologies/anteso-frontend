@@ -20,6 +20,7 @@ export const sendOtp = asyncHandler(async (req, res) => {
 
     const { mobileNumber } = req.body;
     const existingUser = await User.findOne({ phone: mobileNumber });
+    console.log("🚀 ~ existingUser:", existingUser)
     if (!existingUser) {
         throw new ApiError(404, "Mobile number not registered! Please contact admin.");
     }

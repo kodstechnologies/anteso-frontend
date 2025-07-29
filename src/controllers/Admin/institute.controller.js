@@ -4,6 +4,7 @@ import { asyncHandler } from '../../utils/AsyncHandler.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { instituteSchema } from '../../validators/instituteValidators.js';
+import Client from '../../models/client.model.js';
 
 // ADD Institute
 const add = asyncHandler(async (req, res) => {
@@ -117,18 +118,137 @@ const deleteById = asyncHandler(async (req, res) => {
 });
 
 
+//institute by client
 const createInstituteByClientId = asyncHandler(async (req, res) => {
-    try {
+    const { clientId } = req.params;
 
-    } catch (error) {
-
+    if (!mongoose.Types.ObjectId.isValid(clientId)) {
+        throw new ApiError(400, 'Invalid client ID format');
     }
-})
+
+    const { error, value } = instituteSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+        throw new ApiError(400, 'Validation Error', error.details.map(e => e.message));
+    }
+
+    try {
+        const client = await Client.findById(clientId);
+        if (!client) throw new ApiError(404, 'Client not found');
+
+        const newInstitute = await Institute.create(value);
+        client.institutes.push(newInstitute._id);
+        await client.save();
+
+        return res.status(201).json(new ApiResponse(201, newInstitute, 'Institute created and linked to client'));
+    } catch (error) {
+        throw new ApiError(500, error.message || 'Failed to create institute');
+    }
+});
+const getAllInstitutesByClientId = asyncHandler(async (req, res) => {
+    const { clientId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(clientId)) {
+        throw new ApiError(400, 'Invalid client ID format');
+    }
+
+    try {
+        const client = await Client.findById(clientId).populate('institutes');
+        if (!client) throw new ApiError(404, 'Client not found');
+
+        return res.status(200).json(new ApiResponse(200, client.institutes, 'Institutes fetched successfully'));
+    } catch (error) {
+        throw new ApiError(500, error.message || 'Failed to fetch institutes');
+    }
+});
+const getInstituteByClientIdAndInstituteId = asyncHandler(async (req, res) => {
+    const { clientId, instituteId } = req.params;
+
+    if (
+        !mongoose.Types.ObjectId.isValid(clientId) ||
+        !mongoose.Types.ObjectId.isValid(instituteId)
+    ) {
+        throw new ApiError(400, 'Invalid ID format');
+    }
+
+    const client = await Client.findById(clientId);
+    if (!client || !client.institutes.includes(instituteId)) {
+        throw new ApiError(404, 'Institute not found for this client');
+    }
+
+    const institute = await Institute.findById(instituteId);
+    if (!institute) throw new ApiError(404, 'Institute not found');
+
+    return res.status(200).json(new ApiResponse(200, institute, 'Institute fetched successfully'));
+});
+
+const deleteInstituteByClientId = asyncHandler(async (req, res) => {
+    const { clientId, instituteId } = req.params;
+
+    if (
+        !mongoose.Types.ObjectId.isValid(clientId) ||
+        !mongoose.Types.ObjectId.isValid(instituteId)
+    ) {
+        throw new ApiError(400, 'Invalid ID format');
+    }
+
+    const client = await Client.findById(clientId);
+    if (!client) throw new ApiError(404, 'Client not found');
+
+    const index = client.institutes.indexOf(instituteId);
+    if (index === -1) {
+        throw new ApiError(404, 'Institute not associated with client');
+    }
+
+    client.institutes.splice(index, 1);
+    await client.save();
+
+    const deleted = await Institute.findByIdAndDelete(instituteId);
+    if (!deleted) throw new ApiError(404, 'Institute not found');
+
+    return res.status(200).json(new ApiResponse(200, deleted, 'Institute deleted successfully'));
+});
+
+
+const updateInstituteByClientIdAndInstituteId = asyncHandler(async (req, res) => {
+    const { clientId, instituteId } = req.params;
+
+    if (
+        !mongoose.Types.ObjectId.isValid(clientId) ||
+        !mongoose.Types.ObjectId.isValid(instituteId)
+    ) {
+        throw new ApiError(400, 'Invalid ID format');
+    }
+
+    const client = await Client.findById(clientId);
+    if (!client || !client.institutes.includes(instituteId)) {
+        throw new ApiError(404, 'Institute not associated with this client');
+    }
+
+    const { error, value } = instituteSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+        throw new ApiError(400, 'Validation Error', error.details.map(e => e.message));
+    }
+
+    const updated = await Institute.findByIdAndUpdate(instituteId, value, {
+        new: true,
+        runValidators: true,
+    });
+
+    if (!updated) throw new ApiError(404, 'Institute not found');
+
+    return res.status(200).json(new ApiResponse(200, updated, 'Institute updated successfully'));
+});
+
 
 export default {
     add,
     getAll,
     getById,
     updateById,
-    deleteById
+    deleteById,
+    updateInstituteByClientIdAndInstituteId,
+    deleteInstituteByClientId,
+    getInstituteByClientIdAndInstituteId,
+    getAllInstitutesByClientId,
+    createInstituteByClientId
 };

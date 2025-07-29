@@ -8,14 +8,13 @@ const add = asyncHandler(async (req, res) => {
     // Validate input
     await leaveValidationSchema.validate(req.body);
 
-    const { startDate, endDate, leaveType, reason, status } = req.body;
+    const { startDate, endDate, leaveType, reason } = req.body;
 
     const leave = await Leave.create({
         startDate,
         endDate,
         leaveType,
         reason,
-        status: status || 'Pending'
     });
 
     res.status(201).json(new ApiResponse(201, leave, "Leave created successfully"));
@@ -72,4 +71,8 @@ const deleteLeaveById = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, deleted, "Leave deleted successfully"));
 });
 
+
+
+
 export default { add, getLeaveById, getAllLeaves, updateLeaveById, deleteLeaveById }
+// export default {createLeave,getLeavesByEmployeeId,updateLeaveByEmployee,deleteLeaveByEmployee}

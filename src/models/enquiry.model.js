@@ -1,7 +1,12 @@
 import mongoose from 'mongoose';
+import { generateReadableId } from '../utils/GenerateReadableId.js';
 
 const enquirySchema = new mongoose.Schema({
     // Section 1: Enquiry Details
+    enquiryId: {
+        type: String,
+        unique: true,
+    },
     leadOwner: { type: String, required: false },
     hospitalName: { type: String, required: true },
     fullAddress: { type: String, required: true },
@@ -90,11 +95,17 @@ const enquirySchema = new mongoose.Schema({
         approvedOn: { type: Date }
     },
 
+    // quotation: {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: 'Quotation',
+    // },
+
     quotationStatus: {
         type: String,
         enum: ['Create', 'Created', 'Accepted', 'Rejected'],
         default: 'Create'
     },
+
 
     // Customer Reference (from User base model)
     customer: {
@@ -103,8 +114,13 @@ const enquirySchema = new mongoose.Schema({
         required: false,
         default: null
     }
-
 }, { timestamps: true });
+enquirySchema.pre('save', async function (next) {
+    if (!this.enquiryId) {
+        this.enquiryId = await generateReadableId('Enquiry', 'EN');
+    }
+    next();
+});
 
 const Enquiry = mongoose.model('Enquiry', enquirySchema);
 export default Enquiry;

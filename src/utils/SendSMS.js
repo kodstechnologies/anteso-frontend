@@ -2,7 +2,7 @@ import axios from "axios";
 import { SMS_AUTH_KEY, SMS_SENDERID } from "../config/index.js";
 
 // templateId = "1707175101642561256
-const sendSMS = async (mobileNumber, message, templateId = "23488768007789") => {
+const sendSMS = async (mobileNumber, message, templateId = "1707175101642561256") => {
     try {
         console.log("🚀 ~ SMS_SENDERID:", SMS_SENDERID)
         console.log("🚀 ~ SMS_AUTH_KEY:", SMS_AUTH_KEY)

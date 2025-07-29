@@ -124,7 +124,7 @@ const createHospitalByClientId = asyncHandler(async (req, res) => {
     }
 });
 
-const updateHospitalByClientId = asyncHandler(async (req, res) => {
+const updateHospitalByClientIdAndHospitalId = asyncHandler(async (req, res) => {
     try {
         const { clientId, hospitalId } = req.params;
         console.log("🚀 ~ updateHospitalByClientId ~ hospitalId:", hospitalId)
@@ -233,7 +233,7 @@ export default {
     getAll,
     getAllHospitalsByClientId,
     deleteHospitalByClientId,
-    updateHospitalByClientId,
+    updateHospitalByClientIdAndHospitalId,
     createHospitalByClientId,
     getHospitalByClientIdAndHospitalId
 };
