@@ -3,6 +3,7 @@ import { asyncHandler } from "../../utils/AsyncHandler.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { createToolSchema } from "../../validators/toolValidators.js";
+import { generateReadableId } from "../../utils/GenerateReadableId.js";
 
 const create = asyncHandler(async (req, res) => {
     const { error, value } = createToolSchema.validate(req.body);
