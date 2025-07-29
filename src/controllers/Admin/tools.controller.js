@@ -6,6 +6,8 @@ import { createToolSchema } from "../../validators/toolValidators.js";
 import { generateReadableId } from "../../utils/GenerateReadableId.js";
 
 const create = asyncHandler(async (req, res) => {
+    console.log("🛠️ Tool body submitted:", req.body);
+
     const { error, value } = createToolSchema.validate(req.body);
     if (error) {
         throw new ApiError(400, error.details[0].message);
