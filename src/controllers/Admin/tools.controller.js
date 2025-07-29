@@ -77,7 +77,7 @@ const deleteById = asyncHandler(async (req, res) => {
 
 const getById = asyncHandler(async (req, res) => {
     console.log("hi from controller");
-    
+
     console.log("tools route hit");
 
     const { id } = req.params;
@@ -96,4 +96,53 @@ const createToolByTechnician = asyncHandler(async (req, res) => {
 
     }
 })
-export default { create, allTools, updateById, deleteById, getById };
+
+
+const getEngineerByTool = asyncHandler(async (req, res) => {
+    const { toolId } = req.params;
+
+    // Step 1: Get tool by ID to access createdAt
+    const tool = await Tools.findById(toolId);
+    if (!tool) {
+        return res.status(404).json({ message: 'Tool not found' });
+    }
+
+    // Step 2: Find engineer who has this tool assigned (by _id)
+    const engineer = await Employee.findOne({
+        'tools.toolName': tool.nomenclature, // match toolName from embedded doc
+        'tools.serialNumber': tool.SrNo,     // match serial number
+    });
+
+    if (!engineer) {
+        return res.status(404).json({ message: 'Engineer not assigned to this tool' });
+    }
+
+    // Step 3: Find the matching embedded tool data for issueDate
+    const assignedToolData = engineer.tools.find(
+        t => t.toolName === tool.nomenclature && t.serialNumber === tool.SrNo
+    );
+
+    if (!assignedToolData) {
+        return res.status(404).json({ message: 'Tool assignment not found in engineer data' });
+    }
+
+    return res.status(200).json({
+        engineer: {
+            _id: engineer._id,
+            name: engineer.name,
+            email: engineer.email,
+            technicianType: engineer.technicianType,
+            designation: engineer.designation,
+            department: engineer.department,
+        },
+        tool: {
+            toolId: tool._id,
+            toolName: tool.nomenclature,
+            serialNumber: tool.SrNo,
+            issueDate: assignedToolData.issueDate,
+            submitDate: tool.createdAt,
+        },
+    });
+});
+
+export default { create, allTools, updateById, deleteById, getById, getEngineerByTool };
