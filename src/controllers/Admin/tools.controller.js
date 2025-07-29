@@ -4,7 +4,6 @@ import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { createToolSchema } from "../../validators/toolValidators.js";
 import { generateReadableId } from "../../utils/GenerateReadableId.js";
-import Tools from "../../models/tools.model.js";
 
 const create = asyncHandler(async (req, res) => {
     console.log("🛠️ Tool body submitted:", req.body);
@@ -100,10 +99,10 @@ const createToolByTechnician = asyncHandler(async (req, res) => {
 
 
 const getEngineerByTool = asyncHandler(async (req, res) => {
-    const { toolId } = req.params;
+    const { id } = req.params;
 
     // Step 1: Get tool by ID to access createdAt
-    const tool = await Tools.findById(toolId);
+    const tool = await Tool.findById(id);
     if (!tool) {
         return res.status(404).json({ message: 'Tool not found' });
     }
