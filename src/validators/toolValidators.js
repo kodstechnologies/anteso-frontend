@@ -1,7 +1,7 @@
 import Joi from "joi";
 
 export const createToolSchema = Joi.object({
-  toolId: Joi.string().required(),
+  toolId: Joi.string(),
   SrNo: Joi.string().required(),
   nomenclature: Joi.string().required(),
   manufacturer: Joi.string().required(),

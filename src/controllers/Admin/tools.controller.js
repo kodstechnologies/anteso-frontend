@@ -9,16 +9,24 @@ const create = asyncHandler(async (req, res) => {
     if (error) {
         throw new ApiError(400, error.details[0].message);
     }
-    const exists = await Tool.findOne({ toolId: value.toolId });
+
+    // Generate toolId manually
+    const toolId = await generateReadableId('Tool', 'TL');
+
+    // Check for duplicates
+    const exists = await Tool.findOne({ toolId });
     if (exists) {
-        throw new ApiError(409, "Tool with this ID already exists");
+        throw new ApiError(409, 'Tool with this ID already exists');
     }
 
-    const tool = await Tool.create(value);
+    const tool = await Tool.create({
+        ...value,
+        toolId,
+        toolStatus: 'unassigned', // default value
+    });
 
-    res.status(201).json(new ApiResponse(201, tool, "Tool created successfully"));
+    res.status(201).json(new ApiResponse(201, tool, 'Tool created successfully'));
 });
-
 const allTools = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -66,7 +74,7 @@ const deleteById = asyncHandler(async (req, res) => {
 
 const getById = asyncHandler(async (req, res) => {
     console.log("tools route hit");
-    
+
     const { id } = req.params;
     const tool = await Tool.findById(id);
     if (!tool) {
@@ -76,11 +84,11 @@ const getById = asyncHandler(async (req, res) => {
 });
 
 
-const createToolByTechnician=asyncHandler(async(req,res)=>{
+const createToolByTechnician = asyncHandler(async (req, res) => {
     try {
-        
+
     } catch (error) {
-        
+
     }
 })
 export default { create, allTools, updateById, deleteById, getById };
