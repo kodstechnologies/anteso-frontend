@@ -5,7 +5,6 @@ const toolsSchema = new Schema(
     {
         toolId: {
             type: String,
-            required: true,
             unique: true,
             trim: true,
         },
@@ -69,7 +68,7 @@ const toolsSchema = new Schema(
     }
 );
 
-toolsSchema.pre('validate', async function (next) {
+toolsSchema.pre('save', async function (next) {
     if (!this.toolId) {
         this.toolId = await generateReadableId('Tool', 'TL');
     }
