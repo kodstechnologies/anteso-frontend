@@ -40,6 +40,8 @@ import { ApiError } from "../../utils/ApiError.js";
 
 const add = asyncHandler(async (req, res) => {
     try {
+        console.log("technicain req,body",req.body);
+        
         const { name, phone, email, address, technicianType, status, tools } = req.body;
 
         // Check tool details only for engineers
