@@ -97,7 +97,7 @@ const add = asyncHandler(async (req, res) => {
         } = req.body;
 
         // Basic validation
-        if (!name || !phone || !email || !address || !technicianType ||
+        if (!name || !phone || !email || !technicianType ||
             !designation || !department || !dateOfJoining || workingDays === undefined) {
             throw new ApiError(400, "All required fields must be provided");
         }
@@ -121,7 +121,6 @@ const add = asyncHandler(async (req, res) => {
             name,
             phone,
             email,
-            address,
             technicianType,
             status,
             designation,
