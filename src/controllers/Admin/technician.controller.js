@@ -3,6 +3,7 @@ import Tool from "../../models/tools.model.js";
 import { asyncHandler } from "../../utils/AsyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
+import Employee from "../../models/technician.model.js";
 
 // const add = asyncHandler(async (req, res) => {
 //     try {
@@ -38,44 +39,106 @@ import { ApiError } from "../../utils/ApiError.js";
 //     }
 // });
 
+// const add = asyncHandler(async (req, res) => {
+//     try {
+//         console.log("technicain req,body",req.body);
+
+//         const { name, phone, email, address, technicianType, status, tools } = req.body;
+
+//         // Check tool details only for engineers
+//         if (technicianType === "engineer") {
+//             if (!tools || !Array.isArray(tools) || tools.length === 0) {
+//                 throw new ApiError(400, "Engineer must be assigned at least one tool.");
+//             }
+
+//             // Validate each tool object
+//             for (const tool of tools) {
+//                 if (!tool.toolName || typeof tool.toolName !== 'string' || !tool.toolName.trim()) {
+//                     throw new ApiError(400, "Each tool must include a valid toolName.");
+//                 }
+//                 // serialNumber is optional — no validation required
+//             }
+//         }
+
+//         const technician = await Technician.create({
+//             name,
+//             phone,
+//             email,
+//             address,
+//             technicianType,
+//             status,
+//             tools: technicianType === "engineer" ? tools : [],
+//         });
+
+//         return res
+//             .status(201)
+//             .json(new ApiResponse(201, technician, "Technician created successfully"));
+//     } catch (error) {
+//         throw new ApiError(500, error.message || "Failed to create technician");
+//     }
+// });
+
 const add = asyncHandler(async (req, res) => {
     try {
-        console.log("technicain req,body",req.body);
-        
-        const { name, phone, email, address, technicianType, status, tools } = req.body;
+        console.log("Employee req.body:", req.body);
 
-        // Check tool details only for engineers
-        if (technicianType === "engineer") {
-            if (!tools || !Array.isArray(tools) || tools.length === 0) {
-                throw new ApiError(400, "Engineer must be assigned at least one tool.");
-            }
-
-            // Validate each tool object
-            for (const tool of tools) {
-                if (!tool.toolName || typeof tool.toolName !== 'string' || !tool.toolName.trim()) {
-                    throw new ApiError(400, "Each tool must include a valid toolName.");
-                }
-                // serialNumber is optional — no validation required
-            }
-        }
-
-        const technician = await Technician.create({
+        const {
             name,
             phone,
             email,
             address,
             technicianType,
             status,
-            tools: technicianType === "engineer" ? tools : [],
+            tools,
+            designation,
+            department,
+            dateOfJoining,
+            workingDays
+        } = req.body;
+
+        // Basic validation
+        if (!name || !phone || !email || !address || !technicianType ||
+            !designation || !department || !dateOfJoining || workingDays === undefined) {
+            throw new ApiError(400, "All required fields must be provided");
+        }
+
+        // Engineer-specific tool validation
+        if (technicianType === "engineer") {
+            if (!tools || !Array.isArray(tools) || tools.length === 0) {
+                throw new ApiError(400, "Engineer must be assigned at least one tool.");
+            }
+
+            for (const tool of tools) {
+                if (!tool.toolName || typeof tool.toolName !== 'string' || !tool.toolName.trim()) {
+                    throw new ApiError(400, "Each tool must include a valid toolName.");
+                }
+                // serialNumber and issueDate are optional
+            }
+        }
+
+        // Create new employee
+        const employee = await Employee.create({
+            name,
+            phone,
+            email,
+            address,
+            technicianType,
+            status,
+            designation,
+            department,
+            dateOfJoining,
+            workingDays,
+            tools: technicianType === "engineer" ? tools : [], // office-staff doesn't get tools
         });
 
-        return res
-            .status(201)
-            .json(new ApiResponse(201, technician, "Technician created successfully"));
+        return res.status(201).json(
+            new ApiResponse(201, employee, "Employee created successfully")
+        );
     } catch (error) {
-        throw new ApiError(500, error.message || "Failed to create technician");
+        throw new ApiError(500, error.message || "Failed to create employee");
     }
 });
+
 
 const getById = asyncHandler(async (req, res) => {
     try {
