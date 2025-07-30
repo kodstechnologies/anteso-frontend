@@ -108,12 +108,12 @@ const add = asyncHandler(async (req, res) => {
                 throw new ApiError(400, "Engineer must be assigned at least one tool.");
             }
 
-            for (const tool of tools) {
-                if (!tool.toolName || typeof tool.toolName !== 'string' || !tool.toolName.trim()) {
-                    throw new ApiError(400, "Each tool must include a valid toolName.");
-                }
-                // serialNumber and issueDate are optional
-            }
+            // for (const tool of tools) {
+            //     if (!tool.toolName || typeof tool.toolName !== 'string' || !tool.toolName.trim()) {
+            //         throw new ApiError(400, "Each tool must include a valid toolName.");
+            //     }
+            //     // serialNumber and issueDate are optional
+            // }
         }
 
         // Create new employee
