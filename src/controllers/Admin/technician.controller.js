@@ -86,7 +86,7 @@ const add = asyncHandler(async (req, res) => {
             name,
             phone,
             email,
-            address,
+            // address,
             technicianType,
             status,
             tools,
