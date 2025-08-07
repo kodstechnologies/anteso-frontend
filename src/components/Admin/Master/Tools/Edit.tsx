@@ -15,6 +15,10 @@ const EditTool = () => {
         calibrationValidTill: Yup.string().required('Please fill the Field'),
         range: Yup.string().required('Please fill the Field'),
         toolID: Yup.string().required('Please fill the Field'),
+        engineerName: Yup.string().required('Please fill the Field'),
+        issueDate: Yup.string().required('Please fill the Field'),
+        submitDate: Yup.string().required('Please fill the Field'),
+
     });
     const submitForm = () => {
         showMessage('Form submitted successfully', 'success');
@@ -49,9 +53,12 @@ const EditTool = () => {
                     calibrationValidTill: toolsData[0].calibrationValidTill,
                     range: toolsData[0].range,
                     toolID: toolsData[0].toolID,
+                    engineerName: toolsData[0].engineerName,
+                    submitDate: toolsData[0].submitDate,
+                    issueDate: toolsData[0].issueDate,
                 }}
                 validationSchema={SubmittedForm}
-                onSubmit={() => {}}
+                onSubmit={() => { }}
             >
                 {({ errors, submitCount, touched }) => (
                     <Form className="space-y-5">
@@ -97,6 +104,21 @@ const EditTool = () => {
                                     <label htmlFor="toolID">Tool ID</label>
                                     <Field name="toolID" type="text" id="toolID" className="form-input" placeholder="Enter Tool ID" />
                                     {submitCount && errors.toolID ? <div className="text-danger mt-1">{errors.toolID}</div> : ''}
+                                </div>
+                                <div className={submitCount ? (errors.engineerName ? 'has-error' : 'has-success') : ''}>
+                                    <label htmlFor="engineerName">Engineer Assigned</label>
+                                    <Field name="engineerName" type="text" id="engineerName" className="form-input" placeholder="Enter Engineer Name" />
+                                    {submitCount && errors.engineerName ? <div className="text-danger mt-1">{errors.engineerName}</div> : ''}
+                                </div>
+                                <div className={submitCount ? (errors.issueDate ? 'has-error' : 'has-success') : ''}>
+                                    <label htmlFor="issueDate">Issue Date</label>
+                                    <Field name="issueDate" type="text" id="issueDate" className="form-input" placeholder="Enter Issue date" />
+                                    {submitCount && errors.issueDate ? <div className="text-danger mt-1">{errors.issueDate}</div> : ''}
+                                </div>
+                                <div className={submitCount ? (errors.submitDate ? 'has-error' : 'has-success') : ''}>
+                                    <label htmlFor="submitDate">Submit Date</label>
+                                    <Field name="submitDate" type="text" id="submitDate" className="form-input" placeholder="Enter Submit Date" />
+                                    {submitCount && errors.submitDate ? <div className="text-danger mt-1">{errors.submitDate}</div> : ''}
                                 </div>
                             </div>
                         </div>

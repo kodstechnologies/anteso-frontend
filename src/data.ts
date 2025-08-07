@@ -53,6 +53,14 @@ export const clientsData = [
         phone: '9876576876',
         business: 'Business Name',
         gstNo: 'AX123',
+        rsoId: 'RSO001',
+        password: 'rso@1234',
+        rsoemail: 'rso.northzone@example.com',
+        rsophone: '998895690',
+        rpId: 'RP1001',
+        tldBadge: ' TLD-NZ-001',
+        validity: '2025-12-31',
+        fileUpload: ''
     },
     {
         id: 2,
@@ -62,6 +70,13 @@ export const clientsData = [
         phone: '9877876876',
         business: 'Business Name',
         gstNo: 'AX223',
+        rsoId: 'RSO001',
+        password: 'rso@1234',
+        rsoemail: 'rso.northzone@example.com',
+        rsophone: '998895690',
+        rpId: 'RP1001',
+        tldBadge: ' TLD-NZ-001',
+        validity: '2025-12-31'
     },
 ];
 export const expenseData = [
@@ -87,8 +102,59 @@ export const hrms = [
         address: 'HSR Layout, Bangalore, Karnataka',
         phone: '9876576876',
         business: 'Tech Solutions Pvt. Ltd.',
+        tripname: 'Delhi Installation',
+        tripStartDate: '10/10/2024',
+        tripEndDate: '20/10/2024',
         gstNo: 'AX123',
         designation: 'Manager',
+        title: 'Office Supplies',
+        amount: 45000,
+    },
+    {
+        id: 2,
+        name: 'Sita Rani',
+        email: 'client2@example.com',
+        address: 'Andheri West, Mumbai, Maharashtra',
+        phone: '9865432109',
+        business: 'Creative Minds Co.',
+        tripname: 'Delhi Installation',
+        tripStartDate: '10/10/2024',
+        tripEndDate: '20/10/2024',
+        gstNo: 'BY456',
+        designation: 'Creative Director',
+        title: 'Office Supplies',
+        amount: 82000,
+    },
+    {
+        id: 3,
+        name: 'John Dsouza',
+        email: 'client3@example.com',
+        address: 'Banjara Hills, Hyderabad, Telangana',
+        phone: '9123456780',
+        business: 'Dsouza Enterprises',
+        tripname: 'Delhi Installation',
+        tripStartDate: '10/10/2024',
+        tripEndDate: '20/10/2024',
+        gstNo: 'CZ789',
+        designation: 'CEO',
+        title: 'Team Lunch',
+        amount: 120000,
+    }
+];
+export const salaryManagement = [
+    {
+        id: 1,
+        name: 'Rabi Prasad',
+        email: 'client1@gmail.com',
+        address: 'HSR Layout, Bangalore, Karnataka',
+        phone: '9876576876',
+        business: 'Tech Solutions Pvt. Ltd.',
+        gstNo: 'AX123',
+        designation: 'Manager',
+        title: 'Monthly Salary',
+        amount: 45000,
+        month: 'July',
+        total: 52000,
     },
     {
         id: 2,
@@ -99,6 +165,10 @@ export const hrms = [
         business: 'Creative Minds Co.',
         gstNo: 'BY456',
         designation: 'Creative Director',
+        title: 'Monthly Salary',
+        amount: 82000,
+        month: 'July',
+        total: 89000,
     },
     {
         id: 3,
@@ -109,8 +179,14 @@ export const hrms = [
         business: 'Dsouza Enterprises',
         gstNo: 'CZ789',
         designation: 'CEO',
+        title: 'Monthly Salary',
+        amount: 120000,
+        month: 'July',
+        total: 135000,
     }
-]
+];
+
+
 export const hospitaldata = [
     {
         id: 1,
@@ -121,8 +197,22 @@ export const hospitaldata = [
         hname: "Max health Hospital"
     }
 ]
-
-
+export const serviceOptions = [
+    'INSTITUTE REGISTRATION',
+    'RSO REGISTRATION, NOMINATION & APPROVAL',
+    'DECOMMISSIONING, PRE OWNED PROCUREMENT, QA & LICENSE',
+    'PROCUREMENT',
+    'TLD BADGE',
+    'LEAD SHEET',
+    'LEAD GLASS',
+    'LEAD APRON',
+    'THYROID SHIELD',
+    'GONAD SHIELD',
+    'OTHERS',
+]
+export const additionalServices=[
+    
+]
 
 export const institutedata = [
     {
@@ -156,7 +246,7 @@ export const equipmentDetails = [
         qaValidity: '21-04-2027',
         licenseValidity: '25-04-2030',
         status: 'working',
-        rawaDataAttachment: 'ATTACHED',
+        // rawaDataAttachment: 'ATTACHED',
         qaReportAttachment: 'ATTACHED',
         licenceAttachment: 'ATTACHED'
     },
@@ -169,7 +259,7 @@ export const equipmentDetails = [
         qaValidity: '10-11-2026',
         licenseValidity: '15-12-2029',
         status: 'working',
-        rawaDataAttachment: 'ATTACHED',
+        // rawaDataAttachment: 'ATTACHED',
         qaReportAttachment: 'ATTACHED',
         licenceAttachment: 'ATTACHED'
     },
@@ -182,7 +272,7 @@ export const equipmentDetails = [
         qaValidity: '05-08-2025',
         licenseValidity: '12-09-2028',
         status: 'under maintenance',
-        rawaDataAttachment: 'ATTACHED',
+        // rawaDataAttachment: 'ATTACHED',
         qaReportAttachment: 'PENDING',
         licenceAttachment: 'ATTACHED'
     }
@@ -208,7 +298,7 @@ export const engineersData = [
         empId: 'ENG0002',
         role: 'TECHNICIAN',
         tools: ['tool10', 'tool2'],
-        status: { tooltip: 'Deactive', color: 'danger' },
+        status: { tooltip: 'Inactive', color: 'danger' },
     },
 ];
 
@@ -239,9 +329,12 @@ export const toolsData = [
         model: '87V',
         srNo: 'FLK87V-001',
         calibrationCertificateNo: 'CAL2023-001',
-        calibrationDate: '2023-01-15',
-        calibrationValidTill: '2024-01-14',
+        calibrationDate: '01-05-2023',
+        calibrationValidTill: '01-04-2025',
         range: '0-1000V',
+        engineerName: 'Ravi Kashyap',
+        issueDate: '26/02/2024',
+        submitDate: '26/03/2024',
         toolID: 'T001',
     },
     {
@@ -251,9 +344,12 @@ export const toolsData = [
         model: 'DSOX1204A',
         srNo: 'KEY1204-002',
         calibrationCertificateNo: 'CAL2023-002',
-        calibrationDate: '2023-02-20',
-        calibrationValidTill: '2024-02-19',
+        calibrationDate: '07-05-2023',
+        calibrationValidTill: '09-06-2024',
         range: '0-200MHz',
+        engineerName: 'Ashish',
+        issueDate: '26/02/2024',
+        submitDate: '26/03/2024',
         toolID: 'T002',
     },
 ];
@@ -280,7 +376,7 @@ export const dealersAndManufacturers = [
         phone: '9876543210',
         email: 'ramesh.kumar@apollo.com',
         procurementNumber: 'PROC-2023-001',
-        procurementExpiryDate: '2024-12-31',
+        procurementExpiryDate: '12-09-2024',
         partyCode: 'APL-001',
         branch: 'Bangalore Central',
     },
@@ -292,7 +388,7 @@ export const dealersAndManufacturers = [
         phone: '8765432109',
         email: 'priya.sharma@fortis.com',
         procurementNumber: 'PROC-2023-002',
-        procurementExpiryDate: '2025-06-30',
+        procurementExpiryDate: '09-08-2025',
         partyCode: 'FTS-002',
         branch: 'Mumbai West',
     },
@@ -397,7 +493,7 @@ export const courierCompanies = [
     {
         id: 1,
         companyName: 'XYZ',
-        status: { tooltip: 'Deactive', color: 'danger' },
+        status: { tooltip: 'Inactive', color: 'danger' },
     },
     {
         id: 2,

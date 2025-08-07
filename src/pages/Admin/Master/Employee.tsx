@@ -15,6 +15,7 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
+import { getAllEmployees } from '../../../api';
 
 const Employee = () => {
     const dispatch = useDispatch();
@@ -22,12 +23,9 @@ const Employee = () => {
         dispatch(setPageTitle('Employee'));
     }, []);
 
-    const [items, setItems] = useState(
-        engineersData.map((item, index) => ({
-            ...item,
-            employeeId: `EMP${String(index + 1).padStart(3, '0')}`, // Generates C001, C002, etc.
-        }))
-    );
+    const [items, setItems] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
     const deleteRow = (id: any = null) => {
         if (window.confirm('Are you sure want to delete selected row ?')) {
             if (id) {
@@ -86,12 +84,44 @@ const Employee = () => {
                     item.phone.toLowerCase().includes(search.toLowerCase()) ||
                     item.empId.toLowerCase().includes(search.toLowerCase()) ||
                     item.role.toLowerCase().includes(search.toLowerCase()) ||
-                    item.tools.map((tool) => tool.toLowerCase()).includes(search.toLowerCase()) ||
+                    // item.tools.map((tool) => tool.toLowerCase()).includes(search.toLowerCase()) ||
                     item.status.tooltip.toLowerCase().includes(search.toLowerCase())
                 );
             });
         });
     }, [search]);
+
+    useEffect(() => {
+        dispatch(setPageTitle('Employee'));
+
+        const fetchEmployees = async () => {
+            try {
+                setLoading(true);
+                const response = await getAllEmployees();
+                console.log("🚀 ~ fetchEmployees ~ response:", response)
+
+                const transformed = response?.data?.map((employee: any, index: number) => ({
+                    ...employee,
+                    employeeId: `EMP${String(index + 1).padStart(3, '0')}`,
+                    role: employee.technicianType,
+                    tools: (employee.tools || []).map((tool: any) => tool.toolName || tool.nomenclature || 'N/A'),
+                    status: {
+                        color: employee.status === 'active' ? 'success' : 'danger',
+                        tooltip: employee.status.charAt(0).toUpperCase() + employee.status.slice(1),
+                    },
+                }));
+
+                setItems(transformed);
+                setInitialRecords(transformed);
+            } catch (err) {
+                console.error("Failed to load employees", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchEmployees();
+    }, []);
 
     useEffect(() => {
         const data2 = sortBy(initialRecords, sortStatus.columnAccessor);
@@ -131,7 +161,7 @@ const Employee = () => {
                             records={records}
                             columns={[
                                 {
-                                    accessor: 'employeeId', // New Client ID column
+                                    accessor: 'empId', // use empId from the API response
                                     title: 'EMP ID',
                                     sortable: true,
                                 },
@@ -147,10 +177,7 @@ const Employee = () => {
                                     accessor: 'phone',
                                     sortable: true,
                                 },
-                                {
-                                    accessor: 'empId',
-                                    sortable: true,
-                                },
+
                                 {
                                     accessor: 'role',
                                     sortable: true,

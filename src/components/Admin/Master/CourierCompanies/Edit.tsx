@@ -1,17 +1,63 @@
-import * as Yup from 'yup';
+import React, { useEffect, useState } from 'react';
 import { Field, Form, Formik } from 'formik';
-import { Link } from 'react-router-dom';
+import * as Yup from 'yup';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
-import { courierCompanies } from '../../../../data';
+import { getCourierById, editCourier } from '../../../../api/index'; // Adjust the path if needed
 
 const EditCourierCompanie = () => {
-    const SubmittedForm = Yup.object().shape({
-        status: Yup.string().required('Please fill the Field'),
-        companyName: Yup.string().required('Please fill the Field'),
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+
+    const [initialValues, setInitialValues] = useState({
+        companyName: '',
+        status: '',
     });
-    const submitForm = () => {
-        showMessage('Form submitted successfully', 'success');
+    const [loading, setLoading] = useState(true);
+
+    const validationSchema = Yup.object().shape({
+        status: Yup.string().required('Please select a status'),
+        companyName: Yup.string().required('Please enter the company name'),
+    });
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                if (id) {
+                    const res = await getCourierById(id);
+                    const company = res?.data;
+                    setInitialValues({
+                        companyName: company.courierCompanyName,
+                        status: company.status,
+                    });
+                }
+            } catch (error) {
+                showMessage('Failed to fetch company data', 'error');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [id]);
+
+    const submitForm = async (values: any) => {
+        try {
+            if (id) {
+                await editCourier(id, {
+                    courierCompanyName: values.companyName,
+                    status: values.status,
+                });
+                showMessage('Courier company updated successfully', 'success');
+                navigate('/admin/courier-companies');
+            }
+        } catch (error: any) {
+            showMessage(error.message || 'Update failed', 'error');
+        }
     };
+
+    if (loading) return <div className="p-6">Loading...</div>;
+
     return (
         <>
             <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
@@ -26,57 +72,49 @@ const EditCourierCompanie = () => {
                     </Link>
                 </li>
                 <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-                    <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
-                        Edit Courier Companies
-                    </Link>
+                    <span>Edit Courier Company</span>
                 </li>
             </ol>
+
             <Formik
-                initialValues={{
-                    companyName: courierCompanies[0].companyName,
-                    status: courierCompanies[0].status.tooltip,
-                }}
-                validationSchema={SubmittedForm}
-                onSubmit={() => {}}
+                enableReinitialize
+                initialValues={initialValues}
+                validationSchema={validationSchema}
+                onSubmit={submitForm}
             >
-                {({ errors, submitCount, touched }) => (
+                {({ errors, touched }) => (
                     <Form className="space-y-5">
-                        <div className={submitCount ? (errors.status ? 'has-error' : 'has-success') : ''}>
+                        {/* Status Field */}
+                        <div className={touched.status && errors.status ? 'has-error' : ''}>
                             <label htmlFor="status">Status</label>
                             <Field as="select" name="status" className="form-select">
                                 <option value="" disabled>
-                                    Open this select menu
+                                    Select Status
                                 </option>
                                 <option value="Active">Active</option>
-                                <option value="Deactive">Deactive</option>
+                                <option value="Inactive">Inactive</option>
                             </Field>
-                            {submitCount ? (
-                                errors.status ? (
-                                    <div className=" text-danger mt-1">{errors.status}</div>
-                                ) : (
-                                    <div className=" text-[#1abc9c] mt-1">Example valid custom select feedback</div>
-                                )
-                            ) : (
-                                ''
-                            )}
+                            {touched.status && errors.status && <div className="text-danger mt-1">{errors.status}</div>}
                         </div>
-                        <div className={submitCount ? (errors.companyName ? 'has-error' : 'has-success') : ''}>
+
+                        {/* Company Name Field */}
+                        <div className={touched.companyName && errors.companyName ? 'has-error' : ''}>
                             <label htmlFor="companyName">Company Name</label>
-                            <Field name="companyName" type="text" id="companyName" placeholder="Enter Company Name" className="form-input" />
-                            {submitCount ? errors.companyName ? <div className="text-danger mt-1">{errors.companyName}</div> : <div className="text-success mt-1">Looks Good!</div> : ''}
+                            <Field
+                                name="companyName"
+                                type="text"
+                                id="companyName"
+                                placeholder="Enter Company Name"
+                                className="form-input"
+                            />
+                            {touched.companyName && errors.companyName && (
+                                <div className="text-danger mt-1">{errors.companyName}</div>
+                            )}
                         </div>
 
                         <div className="w-full mb-6 flex justify-end">
-                            <button
-                                type="submit"
-                                className="btn btn-success !mt-6"
-                                onClick={() => {
-                                    if (touched.companyName && !errors.companyName) {
-                                        submitForm();
-                                    }
-                                }}
-                            >
-                                Submit Form
+                            <button type="submit" className="btn btn-success !mt-6">
+                                Submit
                             </button>
                         </div>
                     </Form>

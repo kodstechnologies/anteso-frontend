@@ -2,8 +2,13 @@ import * as Yup from 'yup';
 import { Field, Form, Formik } from 'formik';
 import { Link, useNavigate } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
+import { addclient } from '../../../../api';
+import { useState } from 'react';
+import FullScreenLoader from '../../../common/FullScreenLoader'
 const AddClient = () => {
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(false); // ✅ loader state
+
     const SubmittedForm = Yup.object().shape({
         name: Yup.string().required('Please fill the Field'),
         email: Yup.string().email('Invalid email').required('Please fill the Email'),
@@ -11,7 +16,6 @@ const AddClient = () => {
         phone: Yup.string()
             .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits')
             .required('Please fill the Field'),
-        business: Yup.string().required('Please fill the Field'),
         gstNo: Yup.string().required('Please fill the Field'),
     });
     const submitForm = () => {
@@ -20,6 +24,8 @@ const AddClient = () => {
     };
     return (
         <>
+            {loading && <FullScreenLoader message="Adding client, please wait..." />}
+
             <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
                 <li>
                     <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
@@ -43,11 +49,39 @@ const AddClient = () => {
                     email: '',
                     address: '',
                     phone: '',
-                    business: '',
                     gstNo: '',
+
+
                 }}
                 validationSchema={SubmittedForm}
-                onSubmit={() => {}}
+                onSubmit={async (values, { setSubmitting, setFieldError }) => {
+                    setLoading(true);
+                    try {
+                        const response = await addclient(values);
+                        console.log("🚀 ~ onSubmit={ ~ response:", response)
+                        showMessage('Client added successfully!', 'success');
+                        navigate('/admin/clients');
+                    } catch (error: any) {
+                        const message = error?.response?.data?.message;
+                        console.log("🚀 ~ onSubmit ~ message:", message)
+
+                        if (message?.includes('email')) {
+                            setFieldError('email', message);
+                        } else if (message?.includes('phone')) {
+                            setFieldError('phone', message);
+                        } else if (message?.includes('gstNo')) {
+                            a
+                            setFieldError('gstNo', message);
+                        } else {
+                            showMessage(message || 'Failed to add client', 'error');
+                        }
+                    } finally {
+
+                        setSubmitting(false);
+                        setLoading(false);
+                    }
+                }}
+
             >
                 {({ errors, submitCount, touched }) => (
                     <Form className="space-y-5">
@@ -72,33 +106,37 @@ const AddClient = () => {
                                 </div>
                                 <div className={submitCount ? (errors.phone ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="phone">Phone </label>
-                                    <Field name="phone" type="number" id="phone" placeholder="Enter Phone Number" className="form-input" />
+                                    <Field
+                                        name="phone"
+                                        type="text"
+                                        id="phone"
+                                        placeholder="Enter Phone Number"
+                                        className="form-input"
+                                        maxLength={10}
+                                    />
                                     {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : ''}
                                 </div>
-                                <div className={submitCount ? (errors.business ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="business">Business </label>
-                                    <Field name="business" type="text" id="business" placeholder="Enter Business" className="form-input" />
-                                    {submitCount && errors.business ? <div className="text-danger mt-1">{errors.business}</div> : ''}
-                                </div>
+
                                 <div className={submitCount ? (errors.gstNo ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="gstNo">GST Number </label>
-                                    <Field name="gstNo" type="text" id="gstNo" placeholder="Enter GST Number" className="form-input" />
+                                    <Field
+                                        name="gstNo"
+                                        type="text"
+                                        id="gstNo"
+                                        placeholder="Enter GST Number"
+                                        className="form-input"
+                                        maxLength={15}
+                                    />
                                     {submitCount && errors.gstNo ? <div className="text-danger mt-1">{errors.gstNo}</div> : ''}
                                 </div>
                             </div>
                         </div>
+
                         <div className="w-full mb-6 flex justify-end">
-                            <button
-                                type="submit"
-                                className="btn btn-success !mt-6"
-                                onClick={() => {
-                                    if (touched.name && !errors.name) {
-                                        submitForm();
-                                    }
-                                }}
-                            >
+                            <button type="submit" className="btn btn-success !mt-6">
                                 Submit Form
                             </button>
+
                         </div>
                     </Form>
                 )}

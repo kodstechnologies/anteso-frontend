@@ -6,7 +6,7 @@ export const showMessage = (msg = '', type = 'success') => {
         toast: true,
         position: 'top',
         showConfirmButton: false,
-        timer: 5000,
+        timer: 4000,
         customClass: { container: 'toast' },
     });
     toast.fire({

@@ -1,4 +1,3 @@
-'use client';
 
 import type React from 'react';
 
@@ -11,13 +10,13 @@ import { useState } from 'react';
 
 // Define the options for QA Test checkboxes with their respective prices
 const qaTestOptions = [
-    { label: 'FIXED X RAY', value: 'FIXED_X_RAY', price: 3500 },
-    { label: 'MOBILE X RAY', value: 'MOBILE_X_RAY', price: 2500 },
-    { label: 'C ARM', value: 'C_ARM', price: 3000 },
-    { label: 'MAMMOGRAP', value: 'MAMMOGRAP', price: 4000 },
-    { label: 'CATH LAB', value: 'CATH_LAB', price: 5000 },
-    { label: 'CT SCAN', value: 'CT_SCAN', price: 6000 },
-    { label: 'TATKAL QA', value: 'TATKAL_QA', price: 5000 },
+    { label: 'FIXED X RAY', value: 'FIXED_X_RAY', price: 3500, system: true },
+    { label: 'MOBILE X RAY', value: 'MOBILE_X_RAY', price: 2500, system: true },
+    { label: 'C ARM', value: 'C_ARM', price: 3000, system: true },
+    { label: 'MAMMOGRAP', value: 'MAMMOGRAP', price: 4000, system: true },
+    { label: 'CATH LAB', value: 'CATH_LAB', price: 5000, system: true },
+    { label: 'CT SCAN', value: 'CT_SCAN', price: 6000, system: true },
+    { label: 'TATKAL QA', value: 'TATKAL_QA', price: 5000, system: true },
 ];
 
 // Define the options for the Services multi-select dropdown
@@ -27,9 +26,13 @@ const serviceOptions = [
     { label: 'License', value: 'LICENSE' },
 ];
 
+
+
 const AddManufacture = () => {
     // Initialize state for editable QA test options
     const [editableOptions, setEditableOptions] = useState(qaTestOptions);
+    const [newQaTestPrice, setNewQaTestPrice] = useState("")
+    const [newQaTestName, setNewQaTestName] = useState("")
 
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
@@ -148,10 +151,19 @@ const AddManufacture = () => {
                         {/* QA Test Section */}
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">QA Test</h5>
-                            <div className="space-y-4">
-                                {editableOptions.map((option) => (
-                                    <div key={option.value} className="flex items-center justify-between rounded-md max-w-[30rem]">
-                                        <div className="flex items-center gap-3 ">
+
+                            <div className="space-y-3">
+                                {/* Header Row for Labels */}
+                                <div className="flex items-center max-w-[36rem] font-semibold text-sm text-gray-700">
+                                    <div className="w-1/2">QA Test</div>
+                                    <div className="w-24 text-center">Price ₹</div>
+                                    <div className="w-20 text-right">Action</div>
+                                </div>
+
+                                {editableOptions.map((option, index) => (
+                                    <div key={option.value} className="flex items-center max-w-[36rem] gap-2">
+                                        {/* QA Test Checkbox & Label */}
+                                        <div className="flex items-center gap-2 w-1/2">
                                             <Field
                                                 type="checkbox"
                                                 name="qaTests"
@@ -171,24 +183,112 @@ const AddManufacture = () => {
                                                     }
                                                 }}
                                             />
-                                            <label htmlFor={option.value} className="text-base text-[12px] pt-2 ">
+                                            <label htmlFor={option.value} className="text-sm">
                                                 {option.label}
                                             </label>
                                         </div>
-                                        <input
-                                            type="number"
-                                            value={option.price}
-                                            onChange={(e) => {
-                                                const newPrice = Number.parseFloat(e.target.value) || 0;
-                                                setEditableOptions(editableOptions.map((opt) => (opt.value === option.value ? { ...opt, price: newPrice } : opt)));
-                                            }}
-                                            className="w-28 p-2 border rounded-md text-[1rem] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Price ₹"
-                                        />
+
+                                        {/* Price Input */}
+                                        <div className="w-24">
+                                            <input
+                                                type="number"
+                                                value={option.price}
+                                                onChange={(e) => {
+                                                    const newPrice = parseFloat(e.target.value) || 0;
+                                                    const updatedOptions = [...editableOptions];
+                                                    updatedOptions[index].price = newPrice;
+                                                    setEditableOptions(updatedOptions);
+                                                }}
+                                                className="form-input w-full text-sm"
+                                                placeholder="₹"
+                                            />
+                                        </div>
+
+                                        {/* Delete Button */}
+                                        <div className="w-20 text-right">
+                                            {!option.system && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditableOptions(editableOptions.filter((_, i) => i !== index));
+                                                        setFieldValue(
+                                                            'qaTests',
+                                                            values.qaTests.filter((test: string) => test !== option.value)
+                                                        );
+                                                    }}
+                                                    className="text-red-600 text-xs"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
+
+                                {/* Add New QA Test Inputs */}
+                                <div className="mt-4 flex flex-wrap items-center gap-3 max-w-[36rem]">
+                                    <input
+                                        type="text"
+                                        placeholder="New QA Test Name"
+                                        className="form-input w-1/2"
+                                        value={newQaTestName}
+                                        onChange={(e) => setNewQaTestName(e.target.value)}
+                                    />
+                                    <input
+                                        type="number"
+                                        placeholder="Price ₹"
+                                        className="form-input w-24"
+                                        value={newQaTestPrice}
+                                        onChange={(e) => setNewQaTestPrice(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={() => {
+                                            const trimmedName = newQaTestName.trim();
+                                            const formattedValue = trimmedName.toUpperCase().replace(/\s+/g, '_');
+                                            const isDuplicate = editableOptions.some(opt => opt.value === formattedValue);
+
+                                            if (!trimmedName) {
+                                                showMessage('Please enter QA test name.', 'error');
+                                                return;
+                                            }
+                                            if (isDuplicate) {
+                                                showMessage('This QA test already exists.', 'warning');
+                                                return;
+                                            }
+
+                                            const newOption = {
+                                                label: trimmedName,
+                                                value: formattedValue,
+                                                price: parseFloat(newQaTestPrice) || 0,
+                                                system: false,
+                                            };
+
+                                            setEditableOptions([...editableOptions, newOption]);
+                                            setNewQaTestName('');
+                                            setNewQaTestPrice('');
+                                            showMessage('QA test added.', 'success');
+                                        }}
+                                    >
+                                        + Add QA Test
+                                    </button>
+                                </div>
+
+                                <div className="flex justify-end mt-4">
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => {
+                                            showMessage('QA Test prices updated successfully.', 'success');
+                                        }}
+                                    >
+                                        Update All
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
 
                         {/* Services Section */}
                         <div className="panel">

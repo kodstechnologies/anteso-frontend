@@ -3,6 +3,7 @@ import logoB from '../../../assets/quotationImg/images.jpg';
 import signature from '../../../assets/quotationImg/signature.png';
 import qrcode from '../../../assets/quotationImg/qrcode.png';
 import { FaAngleRight } from 'react-icons/fa6';
+import Logo from '../../../assets/logo/logo-sm.png'
 
 const ViewQuotation = () => {
     const aitems = [
@@ -127,7 +128,7 @@ const ViewQuotation = () => {
 
                 <div className="flex justify-between items-start ">
                     <div>
-                        <img src={logoB} alt="Logo B" className="h-14 " />
+                        <img src={Logo} alt="Logo B" className="h-14 " />
                         <p className=" font-bold text-[.6rem]">AERB Registration No. 14-AFSXE-2148</p>
                     </div>
                     <div className="text-center">
@@ -179,7 +180,7 @@ const ViewQuotation = () => {
                                 <td className="pl-2">80917 50188</td>
                             </tr>
                             <tr className="text-[.7rem]">
-                                <td className="pl-4 font-bold w-[10rem]">Employee / Dealer:</td>
+                                <td className="pl-4 font-bold w-[10rem]">Name:</td>
                                 <td className="pl-2" colSpan={3}>
                                     Anjana Thakur &nbsp;&nbsp;
                                 </td>
@@ -187,7 +188,7 @@ const ViewQuotation = () => {
                             <tr className="text-[.7rem]">
                                 <td className="pl-4 font-bold w-[10rem]">Phone:</td>
                                 <td className="pl-2" colSpan={3}>
-                                   Phone: 9317509720  &nbsp;&nbsp;
+                                   9317509720  &nbsp;&nbsp;
                                 </td>
                             </tr>
 

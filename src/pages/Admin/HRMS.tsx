@@ -96,7 +96,7 @@ const Hrms = () => {
 
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
-        { label: 'Hrms', icon: <IconBox /> },
+        { label: 'Leave Management', icon: <IconBox /> },
     ];
     return (
         <>
@@ -153,12 +153,12 @@ const Hrms = () => {
                                     textAlignment: 'center',
                                     render: ({ id }) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to="/admin/hrms/view" className="flex hover:text-primary">
+                                            <NavLink to="/admin/hrms/leave-management-view" className="flex hover:text-primary">
                                                 <IconEye />
                                             </NavLink>
-                                            <NavLink to="/admin/hrms/edit" className="flex hover:text-info">
-                                                <IconEdit className="w-4.5 h-4.5" />
-                                            </NavLink>
+                                            {/* <NavLink to="/admin/hrms/edit" className="flex hover:text-info"> */}
+                                            <IconEdit className="w-4.5 h-4.5" />
+                                            {/* </NavLink> */}
                                             <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
                                                 <IconTrashLines />
                                             </button>

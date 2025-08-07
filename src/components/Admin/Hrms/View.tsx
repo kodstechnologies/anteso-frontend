@@ -8,6 +8,8 @@ import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { MdDelete } from "react-icons/md";
+import IconEye from '../../Icon/IconEye';
 
 // Types
 interface AttendanceEntry {
@@ -602,19 +604,19 @@ function ViewHrms() {
                 {/* Expense Management */}
                 <div className="bg-white p-6 rounded-lg shadow-lg">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">Expense Management</h2>
+                        <h2 className="text-2xl font-bold text-gray-800">Advance Management</h2>
                         <button onClick={() => setIsAddingExpense(true)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
-                            Add Expense
+                            Add Advance
                         </button>
                     </div>
 
                     {/* Add Expense Form */}
                     {isAddingExpense && (
                         <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-                            <h3 className="text-lg font-semibold mb-4">Add New Expense</h3>
+                            <h3 className="text-lg font-semibold mb-4">Add New Advance</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-gray-700 mb-1">Expense Title</label>
+                                    <label className="block text-gray-700 mb-1">Advance Title</label>
                                     <input
                                         type="text"
                                         value={newExpense.title}
@@ -642,7 +644,7 @@ function ViewHrms() {
                                         className="w-full p-2 border border-gray-300 rounded"
                                     />
                                 </div>
-                                <div>
+                                {/* <div>
                                     <label className="block text-gray-700 mb-1">Category</label>
                                     <select
                                         value={newExpense.category}
@@ -655,21 +657,21 @@ function ViewHrms() {
                                         <option value="Equipment">Equipment</option>
                                         <option value="Other">Other</option>
                                     </select>
-                                </div>
-                                <div>
+                                </div> */}
+                                {/* <div>
                                     <label className="block text-gray-700 mb-1">Type</label>
                                     <select value={newExpense.type} onChange={(e) => setNewExpense({ ...newExpense, type: e.target.value })} className="w-full p-2 border border-gray-300 rounded">
                                         <option value="Advance">Advance</option>
                                         <option value="Expense">Expense</option>
                                     </select>
-                                </div>
+                                </div> */}
                             </div>
                             <div className="flex justify-end space-x-2 mt-4">
                                 <button onClick={() => setIsAddingExpense(false)} className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100">
                                     Cancel
                                 </button>
                                 <button onClick={handleAddExpense} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                                    Save Expense
+                                    Save Advance
                                 </button>
                             </div>
                         </div>
@@ -682,9 +684,9 @@ function ViewHrms() {
                                 <tr className="bg-gray-50">
                                     <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Date</th>
                                     <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Title</th>
-                                    <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Category</th>
+                                    {/* <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Category</th> */}
                                     <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Amount</th>
-                                    <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Type</th>
+                                    {/* <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Type</th> */}
                                     <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Actions</th>
                                 </tr>
                             </thead>
@@ -694,7 +696,7 @@ function ViewHrms() {
                                         <tr key={expense.id} className="hover:bg-gray-50">
                                             <td className="px-4 py-3 border border-gray-300 text-gray-700">{expense.date.toLocaleDateString()}</td>
                                             <td className="px-4 py-3 border border-gray-300 text-gray-700">{expense.title}</td>
-                                            <td className="px-4 py-3 border border-gray-300 text-gray-700">
+                                            {/* <td className="px-4 py-3 border border-gray-300 text-gray-700">
                                                 <span
                                                     className={`px-2 py-1 rounded-full text-xs ${expense.category === 'Operations'
                                                         ? 'bg-blue-100 text-blue-800'
@@ -707,14 +709,16 @@ function ViewHrms() {
                                                 >
                                                     {expense.category}
                                                 </span>
-                                            </td>
-                                            <td className={`px-4 py-3 border border-gray-300 font-medium ${expense.type === 'Advance' ? 'text-green-700' : 'text-red-700'}`}>
+                                            </td> */}
+                                            {/* <td className={`px-4 py-3 border border-gray-300 font-medium ${expense.type === 'Advance' ? 'text-green-700' : 'text-red-700'}`}>
                                                 ₹{expense.amount.toLocaleString('en-IN')}
-                                            </td>
-                                            <td className="px-4 py-3 border border-gray-300 text-gray-700">{expense.type}</td>
+                                            </td> */}
+                                            {/* <td className="px-4 py-3 border border-gray-300 text-gray-700">{expense.type}</td> */}
+                                            <td className="px-4 py-3 border border-gray-300 text-gray-700">{expense.amount}</td>
+
                                             <td className="px-4 py-3 border border-gray-300">
                                                 <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-600 hover:text-red-800">
-                                                    Delete
+                                                    <MdDelete className='h-5 w-5' />
                                                 </button>
                                             </td>
                                         </tr>
@@ -741,9 +745,9 @@ function ViewHrms() {
                                                 }, 0)
                                                 .toLocaleString('en-IN')}
                                         </td>
-                                        <td className="px-4 py-3 border border-gray-300"></td>
                                     </tr>
                                 </tfoot>
+
                             )}
                         </table>
                     </div>
@@ -800,6 +804,7 @@ function ViewHrms() {
                                         className="w-full p-2 border border-gray-300 rounded"
                                     />
                                 </div>
+
                                 <div className="flex justify-end space-x-2 mt-4">
                                     <button onClick={() => setIsAddingSalary(false)} className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100">
                                         Cancel
@@ -821,6 +826,8 @@ function ViewHrms() {
                                     <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Fixed</th>
                                     <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Incentive</th>
                                     <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Total</th>
+                                    <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">PaySlip</th>
+
                                 </tr>
                             </thead>
                             <tbody>
@@ -832,6 +839,12 @@ function ViewHrms() {
                                             <td className="px-4 py-3 border border-gray-300 text-gray-700">{salary.fixed}</td>
                                             <td className="px-4 py-3 border border-gray-300 text-gray-700">{salary.incentive}</td>
                                             <td className="px-4 py-3 border border-gray-300 text-gray-700">{salary.fixed + salary.incentive}</td>
+                                            <td className="px-4 py-3 border border-gray-300 text-gray-700">
+                                                <Link to="/admin/hrms/payslip" >
+                                                    <IconEye />
+                                                </Link>
+                                            </td>
+
                                         </tr>
                                     ))
                                 ) : (

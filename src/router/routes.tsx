@@ -83,6 +83,11 @@ import ViewInvoice from '../components/Admin/Accounts/Invoice/View'
 import InvoicePage from '../components/Admin/Accounts/Invoice/InvoicePage';
 
 import InvoiceDealer from '../components/Admin/Accounts/Invoice/InvoiceDealer'
+import ViewAdvanceManagement from '../components/Admin/Hrms/ViewAdvanceManagement';
+import ViewEmployeeDetailsLeaveManagement from '../components/Admin/Hrms/ViewLeaveManagement';
+import ViewSalaryManagement from '../components/Admin/Hrms/ViewSalaryManagement';
+import AdvanceManagement from '../pages/Admin/Master/AdvancedManagement';
+import SalaryManagement from '../pages/Admin/Master/SalaryManagement';
 
 
 //Staff routes
@@ -92,6 +97,18 @@ import StaffDashboard from '../pages/OfficeStaff/Dashboard'
 //courier companies
 import ViewCourierCompany from '../components/Admin/Master/CourierCompanies/View'
 
+//add hospital rso institute by id
+import AddHospital from '../components/Admin/Master/Clients/AddHospital';
+import AddRso from '../components/Admin/Master/Clients/AddRso';
+import AddInstitute from '../components/Admin/Master/Clients/AddInstitute';
+
+
+//edit hospital,rso,institute
+import EditHospital from '../components/Admin/Master/Clients/EditHospital'
+import EditInstitute from '../components/Admin/Master/Clients/EditInstitute'
+import EditRso from '../components/Admin/Master/Clients/EditRso';
+
+import Payslip from '../pages/Admin/Payslip';
 
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
 const ContactUsCover = lazy(() => import('../pages/Pages/ContactUsCover'));
@@ -192,17 +209,66 @@ const routes = [
     {
         path: '/admin/clients',
         element: (
-            <AdminProtected>
-                <Clients />
-            </AdminProtected>
+            // <AdminProtected>
+            <Clients />
+            // </AdminProtected>
         ),
     },
     {
-        path: '/admin/clients/preview',
+        path: '/admin/clients/preview/:clientId',
         element: (
-            <AdminProtected>
-                <ViewClient />
-            </AdminProtected>
+            // <AdminProtected>
+            <ViewClient />
+            // </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/clients/preview/:clientId/add-hospital',
+        element: (
+            // <AdminProtected>
+            <AddHospital />
+            // </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/clients/preview/:clientId/add-rso',
+        element: (
+            // <AdminProtected>
+            <AddRso />
+            // </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/clients/preview/:clientId/add-institute',
+        element: (
+            // <AdminProtected>
+            <AddInstitute />
+            // </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/clients/preview/:clientId/edit-hospital/:hospitalId',
+        element: (
+            // <AdminProtected>
+            <EditHospital />
+            // </AdminProtected>
+        ),
+    },
+
+    {
+        path: '/admin/clients/preview/:clientId/edit-institute/:instituteId',
+        element: (
+            // <AdminProtected>
+            <EditInstitute />
+            // </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/clients/preview/:clientId/edit-rso/:rsoId',
+        element: (
+            // <AdminProtected>
+            <EditRso />
+            // </AdminProtected>
         ),
     },
     {
@@ -214,7 +280,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/clients/edit',
+        path: '/admin/clients/edit/:id',
         element: (
             <AdminProtected>
                 <EditClient />
@@ -257,13 +323,13 @@ const routes = [
     {
         path: '/admin/leave',
         element: (
-            <AdminProtected>
-                <Leaves />
-            </AdminProtected>
+            // <AdminProtected>
+            <Leaves />
+            // </AdminProtected>
         ),
     },
     {
-        path: '/admin/leave/view',
+        path: '/admin/leave/view/:id',
         element: (
             <AdminProtected>
                 <ViewLeave />
@@ -279,7 +345,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/leave/edit',
+        path: '/admin/leave/edit/:id',
         element: (
             <AdminProtected>
                 <EditLeave />
@@ -327,7 +393,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/tools/view',
+        path: '/admin/tools/view/:id',
         element: (
             <AdminProtected>
                 <ViewTool />
@@ -343,7 +409,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/tools/edit',
+        path: '/admin/tools/edit/:id',
         element: (
             <AdminProtected>
                 <EditTool />
@@ -353,9 +419,9 @@ const routes = [
     {
         path: '/admin/dealer',
         element: (
-            <AdminProtected>
-                <Dealers />
-            </AdminProtected>
+            // <AdminProtected>
+            <Dealers />
+            // </AdminProtected>
         ),
     },
     {
@@ -385,9 +451,9 @@ const routes = [
     {
         path: '/admin/manufacture',
         element: (
-            <AdminProtected>
-                <Manufacturers />
-            </AdminProtected>
+            // <AdminProtected>
+            <Manufacturers />
+            // </AdminProtected>
         ),
     },
     {
@@ -465,13 +531,13 @@ const routes = [
     {
         path: '/admin/courier-companies',
         element: (
-            <AdminProtected>
-                <CourierCompanies />
-            </AdminProtected>
+            // <AdminProtected>
+            <CourierCompanies />
+            // </AdminProtected>
         ),
     },
     {
-        path: '/admin/courier-companies/view',
+        path: '/admin/courier-companies/view/:id',
         element: (
             <AdminProtected>
                 <ViewCourierCompany />
@@ -487,7 +553,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/courier-companies/edit',
+        path: '/admin/courier-companies/edit/:id',
         element: (
             <AdminProtected>
                 <EditCourierCompanie />
@@ -497,9 +563,9 @@ const routes = [
     {
         path: '/admin/enquiry',
         element: (
-            <AdminProtected>
-                <Enquiry />
-            </AdminProtected>
+            // <AdminProtected>
+            <Enquiry />
+            // </AdminProtected>
         ),
     },
     {
@@ -519,7 +585,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/enquiry/view',
+        path: '/admin/enquiry/view/:id',
         element: (
             <AdminProtected>
                 <ViewEnquiry />
@@ -535,7 +601,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/quotation/view',
+        path: '/admin/quotation/view/:id',
         element: (
             <AdminProtected>
                 <ViewQuotation />
@@ -543,7 +609,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/quotation/add',
+        path: '/admin/quotation/add/:id',
         element: (
             <AdminProtected>
                 <AddQuotation />
@@ -551,7 +617,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/orders/view',
+        path: '/admin/orders/view/:orderId',
         element: (
             <AdminProtected>
                 <ViewOrder />
@@ -569,9 +635,9 @@ const routes = [
     {
         path: '/admin/orders',
         element: (
-            <AdminProtected>
-                <Orders />
-            </AdminProtected>
+            // <AdminProtected>
+            <Orders />
+            // </AdminProtected>
         ),
     },
     {
@@ -623,6 +689,88 @@ const routes = [
             </AdminProtected>
         ),
     },
+
+    {
+        path: '/admin/hrms/leave-management',
+        element: (
+            <AdminProtected>
+                <HRMS />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/hrms/leave-management-view',
+        element: (
+            <AdminProtected>
+                <ViewEmployeeDetailsLeaveManagement />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/hrms/trip-management',
+        element: (
+            <AdminProtected>
+                <AdvanceManagement />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/hrms/trip-management-view',
+        element: (
+            <AdminProtected>
+                <ViewAdvanceManagement />
+            </AdminProtected>
+        ),
+    },
+
+    {
+        path: '/admin/hrms/salary-management',
+        element: (
+            <AdminProtected>
+                <SalaryManagement />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/hrms/salary-management-view',
+        element: (
+            <AdminProtected>
+                <ViewSalaryManagement />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/hrms/attendance-summary',
+        element: (
+            <AdminProtected>
+                <HRMS />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/hrms/attendance-summary-view',
+        element: (
+            <AdminProtected>
+                <ViewEmployeeDetailsLeaveManagement />
+            </AdminProtected>
+        ),
+    },
+    // {
+    //     path: '/admin/hrms/trip-management',
+    //     element: (
+    //         <AdminProtected>
+    //             <SalaryManagement />
+    //         </AdminProtected>
+    //     ),
+    // },
+    {
+        path: '/admin/hrms/trip-management-view',
+        element: (
+            <AdminProtected>
+                <ViewSalaryManagement />
+            </AdminProtected>
+        ),
+    },
     {
         path: '/admin/invoice/viewInvoice',
         element: (
@@ -660,6 +808,14 @@ const routes = [
         element: (
             <AdminProtected>
                 <HRMS />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/hrms/payslip',
+        element: (
+            <AdminProtected>
+                <Payslip />
             </AdminProtected>
         ),
     },
@@ -715,9 +871,9 @@ const routes = [
     {
         path: '/staff',
         element: (
-            <StaffProtected>
-                <StaffDashboard />
-            </StaffProtected>
+            // <StaffProtected>
+            <StaffDashboard />
+            // </StaffProtected>
         )
     },
     {

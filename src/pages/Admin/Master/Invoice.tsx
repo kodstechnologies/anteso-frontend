@@ -112,7 +112,7 @@ const Invoices = () => {
                 },
                 {
                   accessor: 'buyerName',
-                  title: 'Buyer Name',
+                  title: 'Customer Name',
                   sortable: true,
                 },
                 {
@@ -130,21 +130,21 @@ const Invoices = () => {
                   title: 'GSTIN',
                   sortable: true,
                 },
-                {
-                  accessor: 'machineType',
-                  title: 'Machine Type',
-                  sortable: true,
-                },
-                {
-                  accessor: 'quantity',
-                  title: 'Quantity',
-                  sortable: true,
-                },
-                {
-                  accessor: 'rate',
-                  title: 'Rate',
-                  sortable: true,
-                },
+                // {
+                //   accessor: 'machineType',
+                //   title: 'Machine Type',
+                //   sortable: true,
+                // },
+                // {
+                //   accessor: 'quantity',
+                //   title: 'Quantity',
+                //   sortable: true,
+                // },
+                // {
+                //   accessor: 'rate',
+                //   title: 'Rate',
+                //   sortable: true,
+                // },
                 {
                   accessor: 'totalAmount',
                   title: 'Total Amount',

@@ -110,6 +110,8 @@ const workTypeOptions = [
 
 const AddEnquiry = () => {
     const SubmittedForm = Yup.object().shape({
+        leadOwner: Yup.string().required('Please fill the Field'),
+
         hospitalName: Yup.string().required('Please fill the Field'),
         fullAddress: Yup.string().required('Please fill the Field'),
         city: Yup.string().required('Please fill the Field'),
@@ -159,6 +161,7 @@ const AddEnquiry = () => {
 
             <Formik
                 initialValues={{
+                    leadOwner: '',
                     hospitalName: '',
                     fullAddress: '',
                     city: '',
@@ -175,6 +178,8 @@ const AddEnquiry = () => {
                         return acc;
                     }, {} as Record<string, string | undefined>),
                     enquiryID: '',
+                    attachment: ''
+
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
@@ -184,6 +189,13 @@ const AddEnquiry = () => {
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Basic Details</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
+                                <div className={submitCount && errors.leadOwner ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="leadOwner">Lead Owner</label>
+                                    {/* <MultiSelectField name={`leadOwner`} options={dealerOptions} /> */}
+                                    <Field name="leadOwner" type="text" id="leadOwner" placeholder="Enter Lead Owner" className="form-input" />
+
+                                    {submitCount && errors.leadOwner ? <div className="text-danger mt-1">{errors.leadOwner}</div> : null}
+                                </div>
                                 <div className={submitCount ? (errors.hospitalName ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="hospitalName">Hospital Name </label>
                                     <Field name="hospitalName" type="text" id="hospitalName" placeholder="Enter Hospital Name" className="form-input" />
@@ -274,8 +286,8 @@ const AddEnquiry = () => {
 
                                                 {/* equipmentNo */}
                                                 <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Equipment/Document No.</label>
-                                                    <Field type="text" name="Equipment No" placeholder="Equipment No" className="form-input w-full" />
+                                                    <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
+                                                    <Field type="text" name="Equipment No" placeholder="Equipment ID/Serial No." className="form-input w-full" />
                                                     <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                 </div>
 
@@ -337,16 +349,41 @@ const AddEnquiry = () => {
 
                         {/* Urgency */}
                         <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Urgency</h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:w-1/2 gap-4">
-                                {urgencyOptions.map((option) => (
-                                    <label key={option} className="flex items-center gap-2">
-                                        <Field type="radio" name="urgency" value={option} />
-                                        {option}
-                                    </label>
-                                ))}
+                            <h5 className="font-semibold text-lg mb-4">Special Instructions</h5>
+
+                            {/* Side-by-side layout */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                {/* Special Instructions Field */}
+                                <div className={submitCount && errors.urgency ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="urgency" className="block mb-1 font-medium">Special Instructions</label>
+                                    <Field
+                                        name="urgency"
+                                        type="text"
+                                        id="urgency"
+                                        placeholder="Enter special instruction"
+                                        className="form-input"
+                                    />
+                                    {submitCount > 0 && errors.urgency && (
+                                        <p className="text-red-500 text-sm mt-1">{errors.urgency}</p>
+                                    )}
+                                </div>
+
+                                {/* Attachment Upload Field */}
+                                <div className={submitCount && errors.attachment ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="attachment" className="block mb-1 font-medium">Upload Attachment</label>
+                                    <Field
+                                        name="attachment"
+                                        type="file"
+                                        id="attachment"
+                                        className="form-input"
+                                    />
+                                    {submitCount > 0 && errors.attachment && (
+                                        <div className="text-danger mt-1">{errors.attachment}</div>
+                                    )}
+                                </div>
+
                             </div>
-                            {/* {submitCount && errors.urgency && <p className="text-red-500 text-sm mt-1">{errors.urgency}</p>} */}
                         </div>
 
                         {/* Submit Button */}

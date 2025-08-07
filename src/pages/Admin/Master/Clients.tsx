@@ -12,6 +12,9 @@ import { clientsData } from '../../../data';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
+import { deleteClientById, getAllClients } from '../../../api';
+import { showMessage } from '../../../components/common/ShowMessage';
+import ConfirmModal from '../../../components/common/ConfirmModal';
 
 const Clients = () => {
     const dispatch = useDispatch();
@@ -20,32 +23,68 @@ const Clients = () => {
     }, []);
 
     // Initialize items with clientId if not already present
-    const [items, setItems] = useState(
-        clientsData.map((item, index) => ({
-            ...item,
-            clientId: `CL${String(index + 1).padStart(3, '0')}`, // Generates C001, C002, etc.
-        }))
-    );
+    const [items, setItems] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true); // Optional loading state
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+    useEffect(() => {
+        const fetchClients = async () => {
+            try {
+                const response = await getAllClients();
+                console.log("🚀 ~ fetchClients ~ response:", response);
 
-    const deleteRow = (id: any = null) => {
-        if (window.confirm('Are you sure want to delete selected row ?')) {
-            if (id) {
-                setRecords(items.filter((user) => user.id !== id));
-                setInitialRecords(items.filter((user) => user.id !== id));
-                setItems(items.filter((user) => user.id !== id));
+                const clientsFromBackend = response.data.clients.map((item: any) => ({
+                    ...item,
+                    id: item._id, // Required by the DataTable
+                }));
+
+                setItems(clientsFromBackend);
+                setInitialRecords(sortBy(clientsFromBackend, 'name'));
+                setLoading(false);
+            } catch (error) {
+                console.error('Error fetching clients:', error);
+                setLoading(false);
+            }
+        };
+
+        fetchClients();
+    }, []);
+
+
+    const openDeleteModal = (id: string | null = null) => {
+        setDeleteId(id);
+        setConfirmOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        setConfirmOpen(false);
+        try {
+            if (deleteId) {
+                await deleteClientById(deleteId);
+                const updated = items.filter((user) => user.id !== deleteId);
+                setItems(updated);
+                setInitialRecords(updated);
+                setRecords(updated);
                 setSearch('');
                 setSelectedRecords([]);
+                showMessage('Client deleted successfully', 'success');
             } else {
-                let selectedRows = selectedRecords || [];
-                const ids = selectedRows.map((d: any) => d.id);
-                const result = items.filter((d) => !ids.includes(d.id as never));
-                setRecords(result);
-                setInitialRecords(result);
-                setItems(result);
+                const ids = selectedRecords.map((d: any) => d.id);
+                for (let id of ids) {
+                    await deleteClientById(id);
+                }
+                const updated = items.filter((d) => !ids.includes(d.id));
+                setItems(updated);
+                setInitialRecords(updated);
+                setRecords(updated);
                 setSearch('');
                 setSelectedRecords([]);
                 setPage(1);
+                showMessage('Selected clients deleted successfully', 'success');
             }
+        } catch (error) {
+            console.error('Delete error:', error);
+            showMessage('Failed to delete client(s)', 'error');
         }
     };
 
@@ -141,10 +180,7 @@ const Clients = () => {
                                     accessor: 'phone',
                                     sortable: true,
                                 },
-                                {
-                                    accessor: 'business',
-                                    sortable: true,
-                                },
+
                                 {
                                     accessor: 'gstNo',
                                     sortable: true,
@@ -154,19 +190,27 @@ const Clients = () => {
                                     title: 'Actions',
                                     sortable: false,
                                     textAlignment: 'center',
-                                    render: ({ id }) => (
+                                    render: ({ _id }) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to="/admin/clients/preview" className="flex hover:text-primary">
+                                            <NavLink to={`/admin/clients/preview/${_id}`} className="flex hover:text-primary">
                                                 <IconEye />
                                             </NavLink>
-                                            <NavLink to="/admin/clients/edit" className="flex hover:text-info">
+                                            <NavLink to={`/admin/clients/edit/${_id}`} className="flex hover:text-info">
                                                 <IconEdit className="w-4.5 h-4.5" />
                                             </NavLink>
-                                            <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
+                                            {/* <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(_id)}>
                                                 <IconTrashLines />
+                                            </button> */}
+                                            <button
+                                                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                                                onClick={() => openDeleteModal(_id)}
+                                            // for bulk delete
+                                            >
+                                               <IconTrashLines />
                                             </button>
                                         </div>
-                                    ),
+                                    )
+
                                 },
                             ]}
                             highlightOnHover
@@ -183,7 +227,15 @@ const Clients = () => {
                             paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
                         />
                     </div>
+
                 </div>
+                <ConfirmModal
+                    open={confirmOpen}
+                    onClose={() => setConfirmOpen(false)}
+                    onConfirm={handleConfirmDelete}
+                    title="Confirm Deletion"
+                    message="Are you sure you want to delete the selected client(s)?"
+                />
             </div>
         </>
     );

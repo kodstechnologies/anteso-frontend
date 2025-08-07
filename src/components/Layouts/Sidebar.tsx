@@ -132,13 +132,39 @@ const Sidebar = () => {
 
                                     {/* Admin only: HRMS */}
                                     {userType === 'admin' && (
-                                        <li className="nav-item">
-                                            <NavLink to="/admin/hrms" className="group">
+                                        // <li className="nav-item">
+                                        //     <NavLink to="/admin/hrms" className="group">
+                                        //         <div className="flex items-center gap-2">
+                                        //             <IconUser className="group-hover:!text-primary shrink-0" />
+                                        //             <span>{t('HRMS')}</span>
+                                        //         </div>
+                                        //     </NavLink>
+                                        // </li>
+                                        <li className="menu nav-item">
+                                            <button type="button" className={`${currentMenu === 'hrms' ? 'active' : ''} nav-link group w-full`} onClick={() => toggleMenu('hrms')}>
                                                 <div className="flex items-center gap-2">
-                                                    <IconUser className="group-hover:!text-primary shrink-0" />
+                                                    <FiUsers className="text-xl" />
                                                     <span>{t('HRMS')}</span>
                                                 </div>
-                                            </NavLink>
+                                                <div className={currentMenu !== 'hrms' ? 'rtl:rotate-90 -rotate-90' : ''}>
+                                                    <IconCaretDown />
+                                                </div>
+                                            </button>
+
+                                            <AnimateHeight duration={300} height={currentMenu === 'hrms' ? 'auto' : 0}>
+                                                <ul className="sub-menu text-gray-500">
+
+                                                    {userType === 'admin' && (
+                                                        <>
+                                                            <li><NavLink to="/admin/hrms/leave-management">{t('Leave Management')}</NavLink></li>
+                                                            <li><NavLink to="/admin/hrms/trip-management">{t('Trip Management')}</NavLink></li>
+                                                            <li><NavLink to="/admin/hrms/salary-management">{t('Salary Management')}</NavLink></li>
+                                                            <li><NavLink to="/admin/hrms/attendance-summary">{t('Attendance Summary')}</NavLink></li>
+                                                            {/* <li><NavLink to="/admin/hrms/trip-management">{t('Trip Management')}</NavLink></li> */}
+                                                        </>
+                                                    )}
+                                                </ul>
+                                            </AnimateHeight>
                                         </li>
                                     )}
 

@@ -2,38 +2,49 @@ import * as Yup from 'yup';
 import { Formik, Form, Field, FormikHelpers } from 'formik';
 import { Link, useNavigate } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
+import { addLeave } from '../../../../api/index'; // 👈 import your API call
+import Cookies from 'js-cookie'; // in case needed for side effects
+
 const leaveSchema = Yup.object().shape({
-  startDate: Yup.string().required('Start Date is required'),
-  endDate: Yup.string().required('End Date is required'),
+  startDate: Yup.date()
+    .required('Start Date is required'),
+  endDate: Yup.date()
+    .required('End Date is required')
+    .min(
+      Yup.ref('startDate'),
+      'End Date cannot be before Start Date'
+    ),
   leaveType: Yup.string().required('Select Leave Type'),
   reason: Yup.string().required('Please enter a reason'),
-  status: Yup.string().required('Select Status'),
 });
 
-const add = () => {
+
+const Add = () => {
   const navigate = useNavigate();
 
-  const submitLeaveForm = (
+  const submitLeaveForm = async (
     values: {
       startDate: string;
       endDate: string;
       leaveType: string;
       reason: string;
-      status: string;
     },
     { resetForm }: FormikHelpers<{
       startDate: string;
       endDate: string;
       leaveType: string;
       reason: string;
-      status: string;
     }>
   ) => {
-    showMessage('Leave Submitted Successfully', 'success');
-    resetForm();
-    navigate('/admin/leave');
+    try {
+      await addLeave(values); // 👈 API call
+      showMessage('Leave Submitted Successfully', 'success');
+      resetForm();
+      navigate('/admin/leave');
+    } catch (error: any) {
+      showMessage(error.message, 'error');
+    }
   };
-
 
   return (
     <div>
@@ -44,23 +55,23 @@ const add = () => {
           </Link>
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-          <Link to="/admin/engineers" className="text-primary">
+          <Link to="/admin/leave" className="text-primary">
             Leave
           </Link>
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
           <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
-            Add leave
+            Add Leave
           </Link>
         </li>
       </ol>
+
       <Formik
         initialValues={{
           startDate: '',
           endDate: '',
           leaveType: '',
           reason: '',
-          status: 'Pending',
         }}
         validationSchema={leaveSchema}
         onSubmit={submitLeaveForm}
@@ -88,22 +99,11 @@ const add = () => {
                     <option value="">Select</option>
                     <option value="Sick Leave">Sick Leave</option>
                     <option value="Casual Leave">Vacation</option>
-                    <option value="Earned Leave">Personal Leave</option>
-                    <option value="Earned Leave">Maternity/Paternity</option>
-                    <option value="Earned Leave">Bereavement Leave</option>
-
+                    <option value="Personal Leave">Personal Leave</option>
+                    <option value="Maternity/Paternity">Maternity/Paternity</option>
+                    <option value="Bereavement Leave">Bereavement Leave</option>
                   </Field>
                   {errors.leaveType && <div className="text-danger">{errors.leaveType}</div>}
-                </div>
-
-                <div className={submitCount && errors.status ? 'has-error' : ''}>
-                  <label htmlFor="status">Status</label>
-                  <Field as="select" name="status" className="form-select">
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                  </Field>
-                  {errors.status && <div className="text-danger">{errors.status}</div>}
                 </div>
 
                 <div className={submitCount && errors.reason ? 'has-error' : ''}>
@@ -113,6 +113,7 @@ const add = () => {
                 </div>
               </div>
             </div>
+
             <div className="flex justify-end">
               <button type="submit" className="btn btn-success mt-4">
                 Submit
@@ -122,7 +123,7 @@ const add = () => {
         )}
       </Formik>
     </div>
-  )
-}
+  );
+};
 
-export default add
+export default Add;

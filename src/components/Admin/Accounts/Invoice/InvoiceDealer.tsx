@@ -15,12 +15,12 @@ const InvoiceDealer = () => {
     };
 
     const items = [
-        { id: 1, partyCode: 'C049352', hospital: 'WELFARE HOSPITAL A UNIT OF ISLAMIC WELFARE SOCIETY', location: 'UTTARA KANNADA', state: 'KARNATAKA', model: 'HF 595 PLUS', srNo: '2K25000468R-DC', amount: 3000 },
-        { id: 2, partyCode: 'C049812', hospital: 'S.D.M. AYURVEDA HOSPITAL', location: 'UDUPI', state: 'KARNATAKA', model: 'MARS-30', srNo: '2K25040016-DXR', amount: 3000 },
-        { id: 3, partyCode: 'C045808', hospital: 'KIMS HOSPITAL BENGALURU PVT LTD', location: 'BANGALORE URBAN', state: 'KARNATAKA', model: 'MARS-4.2', srNo: '2K25010396-DXR', amount: 3250 },
+        { id: 1, partyCode: 'C049352', hospital: 'WELFARE HOSPITAL', location: 'UTTARA KANNADA', state: 'KARNATAKA', model: 'HF 595 PLUS', srNo: '2K25000468R-DC', expense: 3000 },
+        { id: 2, partyCode: 'C049812', hospital: 'S.D.M. AYURVEDA HOSPITAL', location: 'UDUPI', state: 'KARNATAKA', model: 'MARS-30', srNo: '2K25040016-DXR', expense: 3000 },
+        { id: 3, partyCode: 'C045808', hospital: 'KIMS HOSPITAL BENGALURU PVT LTD', location: 'BANGALORE URBAN', state: 'KARNATAKA', model: 'MARS-4.2', srNo: '2K25010396-DXR', expense: 3250 },
     ];
 
-    const subTotal = items.reduce((sum, item) => sum + item.amount, 0);
+    const subTotal = items.reduce((sum, item) => sum + item.expense, 0);
     const gst = subTotal * 0.18;
     const total = subTotal + gst;
 
@@ -62,36 +62,40 @@ const InvoiceDealer = () => {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto mt-2">
-                        <table className="w-full border border-black border-collapse text-[10px] sm:text-xs">
+                    <div className="mt-2 w-full overflow-hidden">
+                        <table className="w-full table-fixed border border-black border-collapse text-[4px] sm:text-xs">
                             <thead className="bg-gray-100">
                                 <tr>
-                                    <th className="border border-black p-1">S No</th>
-                                    <th className="border border-black p-1">Party Code</th>
-                                    <th className="border border-black p-1">Name of the Hospital</th>
-                                    <th className="border border-black p-1">Location</th>
-                                    <th className="border border-black p-1">State</th>
-                                    <th className="border border-black p-1">Model</th>
-                                    <th className="border border-black p-1">Sr.No</th>
-                                    <th className="border border-black p-1">Amount</th>
+                                    <th className="border border-black px-1 py-1 text-xs">S No</th>
+                                    <th className="border border-black px-1 py-1 text-xs">Party Code</th>
+                                    <th className="border border-black px-1 py-1 text-xs">Hospital</th>
+                                    <th className="border border-black px-1 py-1 text-xs">Location</th>
+                                    <th className="border border-black px-1 py-1 text-xs">State</th>
+                                    <th className="border border-black px-1 py-1 text-xs">Model</th>
+                                    <th className="border border-black px-1 py-1 text-xs">Sr.No</th>
+                                    <th className="border border-black px-1 py-1 text-xs">Expense</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {items.map((item) => (
                                     <tr key={item.id}>
-                                        <td className="border border-black p-1 text-center">{item.id}</td>
-                                        <td className="border border-black p-1 text-center">{item.partyCode}</td>
-                                        <td className="border border-black p-1">{item.hospital}</td>
-                                        <td className="border border-black p-1">{item.location}</td>
-                                        <td className="border border-black p-1">{item.state}</td>
-                                        <td className="border border-black p-1">{item.model}</td>
-                                        <td className="border border-black p-1">{item.srNo}</td>
-                                        <td className="border border-black p-1 text-right">₹{item.amount.toLocaleString('en-IN')}</td>
+                                        <td className="border border-black px-1 py-1 text-xs">{item.id}</td>
+                                        <td className="border border-black px-1 py-1 text-xs">{item.partyCode}</td>
+                                        <td className="border border-black px-1 py-1 text-xs">{item.hospital}</td>
+                                        <td className="border border-black px-1 py-1 text-xs">{item.location}</td>
+                                        <td className="border border-black px-1 py-1 text-xs">{item.state}</td>
+                                        <td className="border border-black px-1 py-1 text-xs">{item.model}</td>
+                                        <td className="border border-black px-1 py-1 text-xs">{item.srNo}</td>
+                                        <td className="border border-black px-1 py-1 text-xs">₹{item.expense.toLocaleString('en-IN')}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
+
+
+
+
 
                     {/* Totals */}
                     <div className="text-right mt-4 space-y-1">

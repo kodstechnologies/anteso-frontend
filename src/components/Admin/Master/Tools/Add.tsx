@@ -1,114 +1,170 @@
 import * as Yup from 'yup';
 import { Field, Form, Formik } from 'formik';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
+import { addTools } from '../../../../api/index'; // adjust this path based on your project structure
+
+interface ToolFormValues {
+    nomenclature: string;
+    manufacturer: string;
+    manufacture_date: string;
+    model: string;
+    SrNo: string;
+    calibrationCertificateNo: string;
+    calibrationValidTill: string;
+    range: string;
+    certificate: File | null | string;
+}
+
+const validationSchema = Yup.object().shape({
+    nomenclature: Yup.string().required('Please fill the field'),
+    manufacturer: Yup.string().required('Please fill the field'),
+    manufacture_date: Yup.string().required('Please fill the field'),
+    model: Yup.string().required('Please fill the field'),
+    SrNo: Yup.string().required('Please fill the field'),
+    calibrationCertificateNo: Yup.string().required('Please fill the field'),
+    calibrationValidTill: Yup.string().required('Please fill the field'),
+    range: Yup.string().required('Please fill the field'),
+});
+
 const AddTool = () => {
     const navigate = useNavigate();
-    const SubmittedForm = Yup.object().shape({
-        name: Yup.string().required('Please fill the Field'),
-        manufactureDate: Yup.string().required('Please fill the Field'),
-        model: Yup.string().required('Please fill the Field'),
-        srNo: Yup.string().required('Please fill the Field'),
-        calibrationCertificateNo: Yup.string().required('Please fill the Field'),
-        calibrationValidTill: Yup.string().required('Please fill the Field'),
-        range: Yup.string().required('Please fill the Field'),
-        toolID: Yup.string().required('Please fill the Field'),
-    });
-    const submitForm = () => {
-        showMessage('Form submitted successfully', 'success');
-        navigate('/admin/tools');
+
+    const initialValues: ToolFormValues = {
+        nomenclature: '',
+        manufacturer: '',
+        manufacture_date: '',
+        model: '',
+        SrNo: '',
+        calibrationCertificateNo: '',
+        calibrationValidTill: '',
+        range: '',
+        certificate: '',
     };
+
+    // const handleSubmit = async (values: ToolFormValues) => {
+    //     try {
+    //         const formData = new FormData();
+    //         // Object.entries(values).forEach(([key, value]) => {
+
+    //         //     if (key === 'certificate' && value instanceof File) {
+    //         //         formData.append('certificate', value);
+    //         //     } else {
+    //         //         formData.append(key, value as string);
+    //         //     }
+    //         // });
+    //         Object.entries(values).forEach(([key, value]) => {
+    //             if (value instanceof File) {
+    //                 formData.append(key, value);
+    //             } else {
+    //                 formData.append(key, String(value));
+    //             }
+    //         });
+
+    //         console.log('certificate', values.certificate, typeof values.certificate);
+
+    //         console.log("🚀 ~ handleSubmit ~ formData:", formData)
+
+    //         await addTools(formData);
+
+    //         showMessage('Tool added successfully!', 'success');
+    //         navigate('/admin/tools');
+    //     } catch (error: any) {
+    //         showMessage(error.message || 'Failed to add tool', 'error');
+    //     }
+    // };
+    const handleSubmit = async (values: ToolFormValues) => {
+        try {
+            console.log("🚀 ~ handleSubmit ~ values:", values);
+
+            await addTools(values); // this should be a plain POST with JSON
+
+            showMessage('Tool added successfully!', 'success');
+            navigate('/admin/tools');
+        } catch (error: any) {
+            showMessage(error.message || 'Failed to add tool', 'error');
+        }
+    };
+
     return (
         <>
+            {/* Breadcrumb */}
             <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
                 <li>
-                    <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
-                        Dashboard
-                    </Link>
+                    <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">Dashboard</Link>
                 </li>
                 <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-                    <Link to="/admin/tools" className="text-primary">
-                        Tools
-                    </Link>
+                    <Link to="/admin/tools" className="text-primary">Tools</Link>
                 </li>
                 <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-                    <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
-                        Add Tools
-                    </Link>
+                    <span className="hover:text-gray-500/70 dark:hover:text-white-dark/70">Add Tools</span>
                 </li>
             </ol>
+
+            {/* Formik Form */}
             <Formik
-                initialValues={{
-                    name: '',
-                    manufactureDate: '',
-                    model: '',
-                    srNo: '',
-                    calibrationCertificateNo: '',
-                    calibrationValidTill: '',
-                    range: '',
-                    toolID: '',
-                }}
-                validationSchema={SubmittedForm}
-                onSubmit={() => { }}
+                initialValues={initialValues}
+                validationSchema={validationSchema}
+                onSubmit={handleSubmit}
             >
-                {({ errors, submitCount, touched }) => (
+                {({ errors, touched, setFieldValue, isSubmitting }) => (
                     <Form className="space-y-5">
                         <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Tools Details</h5>
+                            <h5 className="font-semibold text-lg mb-4">Tool Details</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                <div className={submitCount ? (errors.name ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="name">Name </label>
-                                    <Field name="name" type="text" id="name" placeholder="Enter Name" className="form-input" />
-                                    {submitCount && errors.name ? <div className="text-danger mt-1">{errors.name}</div> : ''}
-                                </div>
-                                <div className={submitCount ? (errors.manufactureDate ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="manufactureDate">Manufacture Date </label>
-                                    <Field name="manufactureDate" type="date" id="manufactureDate" placeholder="Enter Manufacture Date" className="form-input" />
-                                    {submitCount && errors.manufactureDate ? <div className="text-danger mt-1">{errors.manufactureDate}</div> : ''}
-                                </div>
-                                <div className={submitCount ? (errors.model ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="model">Model </label>
-                                    <Field name="model" type="text" id="model" placeholder="Enter Model" className="form-input" />
-                                    {submitCount && errors.model ? <div className="text-danger mt-1">{errors.model}</div> : ''}
-                                </div>
-                                <div className={submitCount ? (errors.srNo ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="srNo">Sr No </label>
-                                    <Field name="srNo" type="text" id="srNo" placeholder="Enter Sr No" className="form-input" />
-                                    {submitCount && errors.srNo ? <div className="text-danger mt-1">{errors.srNo}</div> : ''}
-                                </div>
-                                <div className={submitCount ? (errors.calibrationCertificateNo ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="calibrationCertificateNo">Calibration Certificate Number</label>
-                                    <Field name="calibrationCertificateNo" type="text" id="calibrationCertificateNo" placeholder="Enter Calibration Certificate Number" className="form-input" />
-                                    {submitCount && errors.calibrationCertificateNo ? <div className="text-danger mt-1">{errors.calibrationCertificateNo}</div> : ''}
-                                </div>
-                                <div className={submitCount ? (errors.calibrationValidTill ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="calibrationValidTill">Calibration Valid Till</label>
-                                    <Field name="calibrationValidTill" type="date" id="calibrationValidTill" className="form-input" />
-                                    {submitCount && errors.calibrationValidTill ? <div className="text-danger mt-1">{errors.calibrationValidTill}</div> : ''}
-                                </div>
-                                <div className={submitCount ? (errors.range ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="range">Range</label>
-                                    <Field name="range" type="text" id="range" placeholder="Enter Range" className="form-input" />
-                                    {submitCount && errors.range ? <div className="text-danger mt-1">{errors.range}</div> : ''}
-                                </div>
-                                <div className={submitCount ? (errors.toolID ? 'has-error' : 'has-success') : ''}>
-                                    <label htmlFor="toolID">Tool ID</label>
-                                    <Field name="toolID" type="text" id="toolID" className="form-input" placeholder="Enter Tool ID" />
-                                    {submitCount && errors.toolID ? <div className="text-danger mt-1">{errors.toolID}</div> : ''}
+                                {/* Text Fields */}
+                                {[
+                                    { name: 'nomenclature', label: 'Name' },
+                                    { name: 'manufacturer', label: 'Manufacture Name' },
+                                    { name: 'manufacture_date', label: 'Manufacture Date', type: 'date' },
+                                    { name: 'model', label: 'Model' },
+                                    { name: 'SrNo', label: 'Sr No' },
+                                    { name: 'calibrationCertificateNo', label: 'Calibration Certificate Number' },
+                                    { name: 'calibrationValidTill', label: 'Calibration Valid Till', type: 'date' },
+                                    { name: 'range', label: 'Range' },
+                                    // { name: 'toolID', label: 'Tool ID' },
+                                ].map(({ name, label, type = 'text' }) => (
+                                    <div key={name} className={touched[name as keyof ToolFormValues] && errors[name as keyof ToolFormValues] ? 'has-error' : ''}>
+                                        <label htmlFor={name}>{label}</label>
+                                        <Field
+                                            name={name}
+                                            type={type}
+                                            id={name}
+                                            placeholder={`Enter ${label}`}
+                                            className="form-input"
+                                        />
+                                        {touched[name as keyof ToolFormValues] && errors[name as keyof ToolFormValues] && (
+                                            <div className="text-danger mt-1">{errors[name as keyof ToolFormValues]}</div>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {/* File Upload */}
+                                <div className={touched.certificate && errors.certificate ? 'has-error' : ''}>
+                                    <label htmlFor="certificate">Upload Calibration Certificate</label>
+                                    <input
+                                        name="certificate"
+                                        type="file"
+                                        id="certificate"
+                                        className="form-input"
+                                        accept=".pdf,.doc,.jpg,.jpeg,.png"
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            const file = e.currentTarget.files?.[0];
+                                            setFieldValue('certificate', file);
+                                        }}
+                                    />
                                 </div>
                             </div>
                         </div>
+
+                        {/* Submit Button */}
                         <div className="w-[98%] mb-6 flex justify-end">
                             <button
                                 type="submit"
                                 className="btn btn-success mt-4"
-                                onClick={() => {
-                                    if (touched.name && !errors.name) {
-                                        submitForm();
-                                    }
-                                }}
+                                disabled={isSubmitting}
                             >
-                                Submit Form
+                                {isSubmitting ? 'Submitting...' : 'Submit Form'}
                             </button>
                         </div>
                     </Form>

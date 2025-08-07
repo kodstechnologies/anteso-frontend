@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { isSameDay, startOfMonth, endOfMonth, getDaysInMonth, isSunday } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 
 // Mock attendance data (replace with actual API data)
@@ -148,7 +149,7 @@ function ViewEmployee() {
 
             {/* Breadcrumb Navigation */}
             <nav className="flex text-gray-500 font-semibold my-4" aria-label="Breadcrumb">
-                <ol className="flex items-center space-x-2">
+                {/* <ol className="flex items-center space-x-2">
                     <li>
                         <a href="/" className="hover:text-gray-700 transition-colors">
                             Dashboard
@@ -163,6 +164,23 @@ function ViewEmployee() {
                     <li className="flex items-center">
                         <span className="mx-2 text-gray-400">{'/'}</span>
                         <span className="text-gray-600">View</span>
+                    </li>
+                </ol> */}
+                <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
+                    <li>
+                        <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+                            Dashboard
+                        </Link>
+                    </li>
+                    <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
+                        <Link to="/admin/employee" className="text-primary">
+                            Employee
+                        </Link>
+                    </li>
+                    <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
+                        <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+                            View Employee
+                        </Link>
                     </li>
                 </ol>
             </nav>

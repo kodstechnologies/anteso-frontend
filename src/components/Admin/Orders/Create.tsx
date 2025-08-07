@@ -24,6 +24,8 @@ interface Service {
     machineType: string;
     equipmentNo: number;
     workType: string[];
+    machineModel: string
+
 }
 
 interface FormValues {
@@ -43,6 +45,7 @@ interface FormValues {
     additionalServices: Record<string, string | undefined>;
     enquiryID?: string; // Optional for generating ENQ ID
     sysId: string;
+
 
 }
 
@@ -157,14 +160,15 @@ const CreateOrder: React.FC = () => {
             .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits')
             .required('Please fill the Field'),
         designation: Yup.string().required('Please fill the Field'),
-        advanceAmount: Yup.string().required('Please fill the Field'),
-        urgency: Yup.string().required('Please select an urgency'),
+        // advanceAmount: Yup.string().required('Please fill the Field'),
+        // urgency: Yup.string().required('Please select an urgency'),
         services: Yup.array()
             .of(
                 Yup.object().shape({
                     machineType: Yup.string().required('Required'),
                     equipmentNo: Yup.number().required('Required').positive().integer(),
                     workType: Yup.array().min(1, 'At least one work type is required'),
+                    machineModel: Yup.string().required('Required'),
                 })
             )
             .min(1, 'At least one service is required'),
@@ -175,6 +179,10 @@ const CreateOrder: React.FC = () => {
         ),
         enquiryID: Yup.string().nullable(),
         sysId: Yup.string().required('Please fill the Field'),
+        procNo: Yup.string().required('Please fill the Field'),
+        procExpiryDate: Yup.date()
+            .required('Please fill the Expiry Date')
+            .typeError('Invalid date format'),
 
     });
 
@@ -197,7 +205,24 @@ const CreateOrder: React.FC = () => {
     ];
     return (
         <>
-            <Breadcrumb items={breadcrumbItems} />
+            {/* <Breadcrumb items={breadcrumbItems} /> */}
+            <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
+                <li>
+                    <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+                        Dashboard
+                    </Link>
+                </li>
+                <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
+                    <Link to="/admin/orders" className="text-primary">
+                        Order
+                    </Link>
+                </li>
+                <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
+                    <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+                        create Order
+                    </Link>
+                </li>
+            </ol>
 
             <h5 className="font-semibold text-lg mb-4">Create Order</h5>
 
@@ -215,20 +240,24 @@ const CreateOrder: React.FC = () => {
                     emailAddress: '',
                     contactNumber: '',
                     designation: '',
-                    advanceAmount: '',
-                    paymentProof: null,
+                    // advanceAmount: '',
+                    workOrder: null,
                     urgency: '',
-                    services: [{ machineType: '', equipmentNo: 1, workType: [] }],
+                    services: [{ machineType: '', equipmentNo: 1, workType: [], machineModel: '' }],
                     additionalServices: serviceOptions.reduce((acc, service) => {
                         acc[service] = undefined;
                         return acc;
                     }, {} as Record<string, string | undefined>),
                     enquiryID: '',
-                    sysId: ''
+                    sysId: '',
+
+                    procNo: '',
+                    procExpiryDate: '',
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
             >
+
                 {({ errors, submitCount, values, setFieldValue }) => (
                     <Form className="space-y-5">
                         {/* Basic Details */}
@@ -297,21 +326,35 @@ const CreateOrder: React.FC = () => {
                                     <Field name="designation" type="text" id="designation" placeholder="Enter Designation" className="form-input" />
                                     {submitCount && errors.designation ? <div className="text-danger mt-1">{errors.designation}</div> : null}
                                 </div>
-                                <div className={submitCount && errors.advanceAmount ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                {/* <div className={submitCount && errors.advanceAmount ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="advanceAmount">Advance Amount</label>
                                     <Field name="advanceAmount" type="text" id="advanceAmount" placeholder="Enter advanceAmount" className="form-input" />
                                     {submitCount && errors.advanceAmount ? <div className="text-danger mt-1">{errors.advanceAmount}</div> : null}
-                                </div>
-                                <div className={submitCount && errors.paymentProof ? 'has-error' : submitCount ? 'has-success' : ''}>
-                                    <label htmlFor="paymentProof">Payment Proof</label>
-                                    <Field name="paymentProof" type="file" id="paymentProof" placeholder="Enter paymentProof" className="form-input" />
-                                    {submitCount && errors.paymentProof ? <div className="text-danger mt-1">{errors.paymentProof}</div> : null}
+                                </div> */}
+                                <div className={submitCount && errors.workOrder ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="workOrder">Work Order Copy</label>
+                                    <Field name="workOrder" type="file" id="workOrder" placeholder="Enter workOrder" className="form-input" />
+                                    {submitCount && errors.workOrder ? <div className="text-danger mt-1">{errors.workOrder}</div> : null}
                                 </div>
                                 <div className={submitCount && errors.sysId ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="branch">Party Code/Sys ID</label>
                                     <Field name="sysId" type="text" id="sysId" placeholder="Enter Party Code/Sys ID" className="form-input" />
                                     {submitCount && errors.sysId ? <div className="text-danger mt-1">{errors.sysId}</div> : null}
                                 </div>
+                                {/* PROC NO / PO NO */}
+                                <div className={submitCount && errors.procNo ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="procNo">PROC NO / PO NO</label>
+                                    <Field name="procNo" type="text" id="procNo" placeholder="Enter PROC NO / PO NO" className="form-input" />
+                                    {submitCount && errors.procNo ? <div className="text-danger mt-1">{errors.procNo}</div> : null}
+                                </div>
+
+                                {/* PROC Expiry Date */}
+                                <div className={submitCount && errors.procExpiryDate ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="procExpiryDate">PROC Expiry Date</label>
+                                    <Field name="procExpiryDate" type="date" id="procExpiryDate" className="form-input" />
+                                    {submitCount && errors.procExpiryDate ? <div className="text-danger mt-1">{errors.procExpiryDate}</div> : null}
+                                </div>
+
                                 <FieldArray name="services">
                                     {({ push, remove }) => (
                                         <>
@@ -377,17 +420,24 @@ const CreateOrder: React.FC = () => {
 
                                                 {/* equipmentNo */}
                                                 <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Equipment ID/Document No</label>
-                                                    <Field type="text" name="equipmentNo" placeholder="Enter Equipment ID/Document No" className="form-input w-full" />
+                                                    <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
+                                                    <Field type="text" name="equipmentNo" placeholder="Enter Equipment ID/Serial No" className="form-input w-full" />
                                                     <div className="h-4">
                                                         <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                     </div>
                                                 </div>
 
                                                 {/* Work Type */}
-                                                <div className="md:col-span-5">
+                                                <div className="md:col-span-4">
                                                     <label className="text-sm font-semibold text-gray-700">Type Of Work</label>
                                                     <MultiSelectField name={`services.${index}.workType`} options={workTypeOptions} />
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <label className="text-sm font-semibold text-gray-700">Machine Model</label>
+                                                    <Field type="text" name="machinemodel" placeholder="Enter Machine Model" className="form-input w-full" />
+                                                    <div className="h-4">
+                                                        <ErrorMessage name={`services.${index}.machinemodel`} component="div" className="text-red-500 text-sm" />
+                                                    </div>
                                                 </div>
 
                                                 {/* Remove Button */}

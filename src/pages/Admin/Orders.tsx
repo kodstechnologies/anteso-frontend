@@ -13,10 +13,33 @@ import IconCopy from '../../components/Icon/IconCopy';
 import IconHome from '../../components/Icon/IconHome';
 import IconBox from '../../components/Icon/IconBox';
 import Breadcrumb, { BreadcrumbItem } from '../../components/common/Breadcrumb';
+import { getAllOrders } from '../../api';
+
+type Order = {
+    _id: string;
+    orderId?: string;
+    srfNumber?: string;
+    procNoOrPoNo?: string;
+    type?: string;
+    leadOwner?: string;
+    createdOn?: string;
+    partyCode?: string;
+    hospitalName?: string;
+    fullAddress?: string;
+    city?: string;
+    district?: string;
+    state?: string;
+    pinCode?: string;
+    branchName?: string;
+    emailAddress?: string;
+    contactNumber?: string;
+    status?: string;
+    [key: string]: any;
+};
 
 const Orders = () => {
     const [search, setSearch] = useState('');
-    const [records, setRecords] = useState(orderData);
+    const [records, setRecords] = useState<Order[]>([]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [sortStatus, setSortStatus] = useState({ columnAccessor: 'orderId', direction: 'asc' as 'asc', });
@@ -25,7 +48,19 @@ const Orders = () => {
     const dispatch = useDispatch();
     useEffect(() => {
         dispatch(setPageTitle('Orders'));
+
+        const fetchOrders = async () => {
+            try {
+                const data = await getAllOrders();
+                setRecords(data.orders || []); // assumes the backend returns { orders: [...] }
+            } catch (error) {
+                console.error('Failed to fetch orders:', error);
+            }
+        };
+
+        fetchOrders();
     }, [dispatch]);
+
 
     const deleteRow = (id: any) => {
         const updated = records.filter((item) => item.id !== id);
@@ -88,12 +123,12 @@ const Orders = () => {
                             records={filteredRecords}
                             columns={[
                                 {
-                                    accessor: 'orderId', title: 'SRF NO', sortable: true,
+                                    accessor: 'srfNumber', title: 'SRF NO', sortable: true,
                                     render: (record) => (
-                                        <h4 className='font-semibold'>{record.orderId}</h4>
+                                        <h4 className='font-semibold'>{record.srfNumber}</h4>
                                     )
                                 },
-                                { accessor: 'procNo', title: 'PROC NO/PO NO', sortable: true },
+                                { accessor: 'procNoOrPoNo', title: 'PROC NO/PO NO', sortable: true },
                                 {
                                     accessor: 'type',
                                     title: 'Type',
@@ -108,15 +143,15 @@ const Orders = () => {
 
                                 { accessor: 'createdOn', title: 'PROC Expiry Date', sortable: true },
                                 { accessor: 'partyCode', title: 'Party Code/ Sys ID', sortable: true },
-                                { accessor: 'customerName', title: 'Institute Name', sortable: true },
-                                { accessor: 'address', title: 'Address', sortable: true },
+                                { accessor: 'hospitalName', title: 'Institute Name', sortable: true },
+                                { accessor: 'fullAddress', title: 'Address', sortable: true },
                                 { accessor: 'city', title: 'City', sortable: true },
                                 { accessor: 'district', title: 'District', sortable: true },
                                 { accessor: 'state', title: 'State', sortable: true },
-                                { accessor: 'pin', title: 'Pin', sortable: true },
-                                { accessor: 'branch', title: 'Branch Name', sortable: true },
+                                { accessor: 'pinCode', title: 'Pin', sortable: true },
+                                { accessor: 'branchName', title: 'Branch Name', sortable: true },
 
-                                { accessor: 'email', title: 'Customer Email', sortable: true },
+                                { accessor: 'emailAddress', title: 'Customer Email', sortable: true },
                                 { accessor: 'contactNumber', title: 'Customer Mobile', sortable: true },
                                 // { accessor: "createdOn", title: "Created On", sortable: true },
                                 // { accessor: "expiresOn", title: "Expires On", sortable: true },
@@ -134,23 +169,24 @@ const Orders = () => {
                                     title: 'Actions',
                                     sortable: false,
                                     textAlignment: 'center',
-                                    render: (record) => (
+                                    render: (record: Order) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <button type="button" className="flex hover:text-info" onClick={() => viewEditRow(record)}>
-                                                <Link to="/admin/orders/view">
-                                                    <IconEye className="w-4.5 h-4.5" />
-                                                </Link>
-                                            </button>
-                                            <button type="button" className="flex hover:text-info" onClick={() => viewEditRow(record)}>
-                                                <Link to="/admin/orders/edit">
-                                                    <IconEdit className="w-4.5 h-4.5" />
-                                                </Link>
-                                            </button>
-                                            <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(record.id)}>
+                                            <Link to={`/admin/orders/view/${record._id}`} className="flex hover:text-info">
+                                                <IconEye className="w-4.5 h-4.5" />
+                                            </Link>
+                                            <Link to={`/admin/orders/edit/${record._id}`} className="flex hover:text-info">
+                                                <IconEdit className="w-4.5 h-4.5" />
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                className="flex hover:text-danger"
+                                                onClick={() => deleteRow(record._id)}
+                                            >
                                                 <IconTrashLines />
                                             </button>
                                         </div>
-                                    ),
+                                    )
+
                                 },
                             ]}
                             highlightOnHover

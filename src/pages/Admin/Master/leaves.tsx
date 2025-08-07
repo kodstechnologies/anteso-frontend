@@ -1,99 +1,93 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import IconPlus from '../../../components/Icon/IconPlus';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../../store/themeConfigSlice';
-import { engineersData } from '../../../data';
-import { leaveData } from '../../../data';
-import { sortBy } from 'lodash';
 import { DataTable, DataTableSortStatus } from 'mantine-datatable';
-import IconEye from '../../../components/Icon/IconEye';
-import IconEdit from '../../../components/Icon/IconEdit';
-import IconTrashLines from '../../../components/Icon/IconTrashLines';
+import { sortBy } from 'lodash';
+import dayjs from 'dayjs';
+
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
+import IconEye from '../../../components/Icon/IconEye';
+import IconEdit from '../../../components/Icon/IconEdit';
+import IconTrashLines from '../../../components/Icon/IconTrashLines';
+import IconPlus from '../../../components/Icon/IconPlus';
 
-const leaves = () => {
+import { getAllLeave } from '../../../api/index';
+
+interface LeaveItem {
+    _id: string;
+    startDate: string;
+    endDate: string;
+    leaveType: string;
+    reason: string;
+    status: {
+        tooltip: string;
+        color: string;
+    };
+}
+
+const Leaves: React.FC = () => {
     const dispatch = useDispatch();
+
     useEffect(() => {
         dispatch(setPageTitle('Leave'));
+        fetchLeaves();
     }, []);
 
-    const [items, setItems] = useState(
-        leaveData.map((item, index) => ({
-            ...item,
-            employeeId: `EMP${String(index + 1).padStart(3, '0')}`, // Generates C001, C002, etc.
-        }))
-    );
-    const deleteRow = (id: any = null) => {
-        if (window.confirm('Are you sure want to delete selected row ?')) {
-            if (id) {
-                setRecords(items.filter((user) => user.id !== id));
-                setInitialRecords(items.filter((user) => user.id !== id));
-                setItems(items.filter((user) => user.id !== id));
-                setSearch('');
-                setSelectedRecords([]);
-            } else {
-                let selectedRows = selectedRecords || [];
-                const ids = selectedRows.map((d: any) => {
-                    return d.id;
-                });
-                const result = items.filter((d) => !ids.includes(d.id as never));
-                setRecords(result);
-                setInitialRecords(result);
-                setItems(result);
-                setSearch('');
-                setSelectedRecords([]);
-                setPage(1);
-            }
-        }
-    };
-
+    const [items, setItems] = useState<LeaveItem[]>([]);
+    const [initialRecords, setInitialRecords] = useState<LeaveItem[]>([]);
+    const [records, setRecords] = useState<LeaveItem[]>([]);
+    const [selectedRecords, setSelectedRecords] = useState<LeaveItem[]>([]);
     const [page, setPage] = useState(1);
-    const PAGE_SIZES = [10, 20, 30, 50, 100];
-    const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-    const [initialRecords, setInitialRecords] = useState(sortBy(items, 'name'));
-    const [records, setRecords] = useState(initialRecords);
-    const [selectedRecords, setSelectedRecords] = useState<any>([]);
-
-    const [search, setSearch] = useState('');
+    const [pageSize, setPageSize] = useState(10);
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'firstName',
+        columnAccessor: 'startDate',
         direction: 'asc',
     });
 
-    useEffect(() => {
-        setPage(1);
-        /* eslint-disable react-hooks/exhaustive-deps */
-    }, [pageSize]);
+    const PAGE_SIZES = [10, 20, 30, 50, 100];
+
+    const fetchLeaves = async () => {
+        try {
+            const data = await getAllLeave();
+            const formatted = data.map((item: LeaveItem, index: number) => ({
+                ...item,
+            }));
+            setItems(formatted);
+            setInitialRecords(sortBy(formatted, 'startDate'));
+            setRecords(sortBy(formatted, 'startDate'));
+        } catch (err) {
+            console.error('Failed to fetch leaves', err);
+        }
+    };
+
+    const deleteRow = async (id: string | null = null) => {
+        if (window.confirm('Are you sure want to delete selected row(s)?')) {
+            let updated;
+            if (id) {
+                updated = items.filter((item) => item._id !== id);
+            } else {
+                const ids = selectedRecords.map((d) => d._id);
+                updated = items.filter((item) => !ids.includes(item._id));
+            }
+            setItems(updated);
+            setInitialRecords(updated);
+            setRecords(updated);
+            setSelectedRecords([]);
+        }
+    };
 
     useEffect(() => {
         const from = (page - 1) * pageSize;
         const to = from + pageSize;
-        setRecords([...initialRecords.slice(from, to)]);
+        setRecords(initialRecords.slice(from, to));
     }, [page, pageSize, initialRecords]);
 
-    // useEffect(() => {
-    //     setInitialRecords(() => {
-    //         return items.filter((item) => {
-    //             return (
-    //                 item.employeeId.toLowerCase().includes(search.toLowerCase()) ||
-    //                 item.name.toLowerCase().includes(search.toLowerCase()) ||
-    //                 item.email.toLowerCase().includes(search.toLowerCase()) ||
-    //                 item.phone.toLowerCase().includes(search.toLowerCase()) ||
-    //                 item.empId.toLowerCase().includes(search.toLowerCase()) ||
-    //                 item.role.toLowerCase().includes(search.toLowerCase()) ||
-    //                 item.tools.map((tool) => tool.toLowerCase()).includes(search.toLowerCase()) ||
-    //                 item.status.tooltip.toLowerCase().includes(search.toLowerCase())
-    //             );
-    //         });
-    //     });
-    // }, [search]);
-
     useEffect(() => {
-        const data2 = sortBy(initialRecords, sortStatus.columnAccessor);
-        setRecords(sortStatus.direction === 'desc' ? data2.reverse() : data2);
+        const sorted = sortBy(initialRecords, sortStatus.columnAccessor);
+        setRecords(sortStatus.direction === 'desc' ? sorted.reverse() : sorted);
         setPage(1);
     }, [sortStatus]);
 
@@ -101,6 +95,7 @@ const leaves = () => {
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
         { label: 'Leave', icon: <IconBox /> },
     ];
+
     return (
         <div>
             <Breadcrumb items={breadcrumbItems} />
@@ -109,103 +104,91 @@ const leaves = () => {
                 <div className="invoice-table">
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                         <div className="flex items-center gap-2">
-                            {/* <button type="button" className="btn btn-danger gap-2" onClick={() => deleteRow()}>
-                                <IconTrashLines />
-                                Delete
-                            </button> */}
                             <Link to="/admin/leave/add" className="btn btn-primary gap-2">
                                 <IconPlus />
                                 Add New
                             </Link>
                         </div>
-                        <div className="ltr:ml-auto rtl:mr-auto">
-                            {/* <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} /> */}
-                        </div>
                     </div>
                 </div>
             </div>
+
             <div className="datatables pagination-padding">
                 <DataTable
                     className="whitespace-nowrap table-hover invoice-table"
                     records={records}
                     columns={[
                         {
-                            accessor: 'id', // New Client ID column
-                            title: 'ID',
-                            sortable: true,
-                        },
-                        {
                             accessor: 'startDate',
+                            title: 'Start Date',
                             sortable: true,
+                            render: ({ startDate }) => dayjs(startDate).format('DD-MM-YYYY'),
                         },
                         {
                             accessor: 'endDate',
+                            title: 'End Date',
                             sortable: true,
+                            render: ({ endDate }) => dayjs(endDate).format('DD-MM-YYYY'),
                         },
                         {
                             accessor: 'leaveType',
+                            title: 'Type',
                             sortable: true,
                         },
                         {
                             accessor: 'reason',
+                            title: 'Reason',
                             sortable: true,
                         },
                         {
                             accessor: 'status',
+                            title: 'Status',
                             sortable: true,
-                            render: ({ status }) => <span className={`text-${status.color}`}>{status.tooltip}</span>,
+                            render: ({ status }) => (
+                                <span className={`text-${status.color}`}>{status.tooltip}</span>
+                            ),
                         },
-                        // {
-                        //     accessor: 'role',
-                        //     sortable: true,
-                        // },
-                        // {
-                        //     accessor: 'tools',
-                        //     sortable: true,
-                        //     render: ({ tools }) => <span>{tools.join(', ')}</span>,
-                        // },
-
-                        // {
-                        //     accessor: 'status',
-                        //     sortable: true,
-                        //     render: ({ status }) => <span className={`text-${status.color}`}>{status.tooltip}</span>,
-                        // },
                         {
-                            accessor: 'action',
+                            accessor: 'actions',
                             title: 'Actions',
-                            sortable: false,
                             textAlignment: 'center',
-                            render: ({ id }) => (
-                                <div className="flex gap-4 items-center w-max mx-auto">
-                                    <NavLink to="/admin/leave/view" className="flex hover:text-primary">
+                            render: ({ _id }) => (
+                                <div className="flex gap-4 justify-center">
+                                    <NavLink to={`/admin/leave/view/${_id}`} className="hover:text-primary">
                                         <IconEye />
                                     </NavLink>
-                                    <NavLink to="/admin/leave/edit" className="flex hover:text-info">
-                                        <IconEdit className="w-4.5 h-4.5" />
+                                    <NavLink to={`/admin/leave/edit/${_id}`} className="hover:text-info">
+                                        <IconEdit />
                                     </NavLink>
-                                    <button type="button" className="flex hover:text-danger" onClick={(e) => deleteRow(id)}>
+                                    <button
+                                        type="button"
+                                        className="hover:text-danger"
+                                        onClick={() => deleteRow(_id)}
+                                    >
                                         <IconTrashLines />
                                     </button>
                                 </div>
                             ),
                         },
                     ]}
-                    highlightOnHover
                     totalRecords={initialRecords.length}
                     recordsPerPage={pageSize}
                     page={page}
-                    onPageChange={(p) => setPage(p)}
+                    onPageChange={setPage}
                     recordsPerPageOptions={PAGE_SIZES}
                     onRecordsPerPageChange={setPageSize}
                     sortStatus={sortStatus}
                     onSortStatusChange={setSortStatus}
+                    highlightOnHover
                     selectedRecords={selectedRecords}
                     onSelectedRecordsChange={setSelectedRecords}
-                    paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                    paginationText={({ from, to, totalRecords }) =>
+                        `Showing ${from} to ${to} of ${totalRecords} entries`
+                    }
                 />
             </div>
         </div>
     );
 };
 
-export default leaves;
+export default Leaves;

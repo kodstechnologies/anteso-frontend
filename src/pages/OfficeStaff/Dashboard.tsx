@@ -8,7 +8,7 @@ const Dashboard = () => {
         dispatch(setPageTitle('Dashboard'));
     }, []);
     return (
-        <div>hi</div>
+        <div>Dashboard</div>
     )
 }
 

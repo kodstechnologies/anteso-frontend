@@ -79,12 +79,22 @@ const View: React.FC = () => {
   return (
     <div className="p-6">
       {/* Breadcrumbs */}
-      <ol className="flex text-gray-500 font-semibold text-sm pb-4">
-        <li><Link to="/" className="hover:text-primary">Dashboard</Link></li>
-        <li className="mx-2">/</li>
-        <li><Link to="/admin/dealer" className="hover:text-primary">Dealer</Link></li>
-        <li className="mx-2">/</li>
-        <li className="text-primary">View Dealer</li>
+      <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
+        <li>
+          <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+            Dashboard
+          </Link>
+        </li>
+        <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
+          <Link to="/admin/dealer" className="text-primary">
+            Dealer
+          </Link>
+        </li>
+        <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
+          <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+            View Dealer
+          </Link>
+        </li>
       </ol>
 
       <div className="bg-white p-6 rounded-xl shadow-lg">
@@ -127,11 +137,11 @@ const View: React.FC = () => {
         </div>
 
         {/* Costs */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
+        {/* <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
           <Detail label="Travel Cost" value={`₹ ${dealer.travel}`} icon={<FaRupeeSign />} />
           <Detail label="Actual Cost" value={`₹ ${dealer.actual}`} icon={<FaRupeeSign />} />
           <Detail label="Fixed Cost" value={`₹ ${dealer.fixed}`} icon={<FaRupeeSign />} />
-        </div>
+        </div> */}
       </div>
     </div>
   );

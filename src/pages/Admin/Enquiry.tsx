@@ -14,6 +14,8 @@ import IconFile from '../../components/Icon/IconFile';
 import Breadcrumb, { BreadcrumbItem } from '../../components/common/Breadcrumb';
 import IconHome from '../../components/Icon/IconHome';
 import IconBox from '../../components/Icon/IconBox';
+import { deleteEnquiryById, getAllEnquiry } from '../../api';
+import ConfirmModal from '../../components/common/ConfirmModal';
 
 const Enquiry = () => {
     const navigate = useNavigate();
@@ -22,12 +24,10 @@ const Enquiry = () => {
         dispatch(setPageTitle('Enquiry'));
     }, [dispatch]);
 
-    const [items, setItems] = useState(
-        enquiriesData.map((item, index) => ({
-            ...item,
-            enquiryID: `ENQ${String(index + 1).padStart(3, '0')}`, // Generates C001, C002, etc.
-        }))
-    );
+    const [items, setItems] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
     const [page, setPage] = useState(1);
     const PAGE_SIZES = [10, 20, 30, 50, 100];
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
@@ -35,11 +35,53 @@ const Enquiry = () => {
     const [records, setRecords] = useState(initialRecords);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
     const [search, setSearch] = useState('');
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [rowToDelete, setRowToDelete] = useState<number | null>(null);
+
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
         columnAccessor: 'Hospitalname',
         direction: 'asc',
     });
     const [copied, setCopied] = useState(false);
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await getAllEnquiry();
+                console.log("🚀 ~ fetchData ~ response:", response.data)
+
+                // You may need to map/enrich data depending on your backend format
+                const enriched = response.data.map((item: any, index: number) => ({
+                    ...item,
+                    enquiryID: item.enquiryId,
+                    hName: item.hospitalName,
+                    fullAddress: item.fullAddress,
+                    city: item.city,
+                    district: item.district,
+                    state: item.state,
+                    pincode: item.pinCode,
+                    contactperson: item.contactPerson,
+                    email: item.emailAddress,
+                    phone: item.contactNumber,
+                    designation: item.designation,
+                    quotation: item.quotationStatus?.toLowerCase(), // fallback
+                    id: item._id,
+                }));
+                console.log("🚀 ~ fetchData ~ enriched:", enriched)
+                console.log("🚀 ~ fetchData ~ enriched.quotation:", enriched.data)
+
+                setItems(enriched);
+                setInitialRecords(sortBy(enriched, 'hName'));
+                setRecords(sortBy(enriched, 'hName').slice(0, pageSize));
+                setLoading(false);
+            } catch (err: any) {
+                setError(err.message);
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+    // useEffect
 
     const handleCopy = async () => {
         try {
@@ -51,35 +93,48 @@ const Enquiry = () => {
             console.error('Failed to copy link:', err);
         }
     };
-
     const deleteRow = (id: number | null = null) => {
-        if (window.confirm('Are you sure want to delete selected row?')) {
-            if (id) {
-                const filteredItems = items.filter((item) => item.id !== id);
-                setItems(filteredItems);
-                setInitialRecords(filteredItems);
-                setRecords(filteredItems.slice(0, pageSize));
-                setSearch('');
-                setSelectedRecords([]);
+        setRowToDelete(id); // Store row or null (for bulk)
+        setShowConfirmModal(true); // Open confirm modal
+    };
+
+    const handleConfirmDelete = async () => {
+        try {
+            if (rowToDelete !== null) {
+                await deleteEnquiryById(rowToDelete);
+                const filtered = items.filter((item) => item.id !== rowToDelete);
+                setItems(filtered);
+                setInitialRecords(filtered);
+                setRecords(filtered.slice(0, pageSize));
             } else {
                 const ids = selectedRecords.map((d: any) => d.id);
-                const filteredItems = items.filter((d) => !ids.includes(d.id));
-                setItems(filteredItems);
-                setInitialRecords(filteredItems);
-                setRecords(filteredItems.slice(0, pageSize));
-                setSearch('');
-                setSelectedRecords([]);
+                await Promise.all(ids.map((id: number) => deleteEnquiryById(id)));
+                const filtered = items.filter((d) => !ids.includes(d.id));
+                setItems(filtered);
+                setInitialRecords(filtered);
+                setRecords(filtered.slice(0, pageSize));
                 setPage(1);
             }
+
+            setSearch('');
+            setSelectedRecords([]);
+        } catch (error) {
+            console.error('Failed to delete enquiry:', error);
+            alert('Failed to delete enquiry. Please try again.');
+        } finally {
+            setShowConfirmModal(false);
+            setRowToDelete(null);
         }
     };
 
+
+
     // Function to update status
-    const updateQuotation = (id: number, newStatus: 'create' | 'created' | 'approved') => {
+    const updateQuotation = (id: number, newStatus: 'create' | 'created' | 'approved' | 'rejected') => {
         const updatedItems = items.map((item) => (item.id === id ? { ...item, status: newStatus } : item));
         setItems(updatedItems);
         setInitialRecords(sortBy(updatedItems, sortStatus.columnAccessor));
-        navigate('/admin/quotation/add');
+        navigate(`/admin/quotation/add/${id}`)
     };
 
     useEffect(() => {
@@ -124,7 +179,11 @@ const Enquiry = () => {
     ];
     return (
         <>
+
             <Breadcrumb items={breadcrumbItems} />
+            {loading && <p className="text-center my-4">Loading enquiries...</p>}
+            {error && <p className="text-center text-red-500 my-4">{error}</p>}
+
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
@@ -201,8 +260,8 @@ const Enquiry = () => {
                                     title: 'Quotation',
                                     sortable: true,
                                     render: ({ id, quotation }) => {
-                                        if (quotation === 'approved') {
-                                            return <span className="text-success font-semibold">Approved</span>;
+                                        if (quotation === 'accepted') {
+                                            return <span className="text-success font-semibold">Accepted</span>;
                                         }
                                         if (quotation === 'created') {
                                             return (
@@ -211,26 +270,62 @@ const Enquiry = () => {
                                                 </button>
                                             );
                                         }
-                                        return (
-                                            <button className="btn btn-primary btn-sm" onClick={() => updateQuotation(id, 'created')}>
-                                                Create
-                                            </button>
-                                        );
+                                        if (quotation === 'create') {
+                                            return (
+                                                <button
+                                                    className="btn btn-primary btn-sm"
+                                                    onClick={() => updateQuotation(id, 'created')}
+                                                >
+                                                    Create
+                                                </button>
+                                            );
+                                        }
+                                        if (quotation === 'rejected') {
+                                            return (
+                                                <button
+                                                    className="text-danger font-semibold"
+                                                    onClick={() => updateQuotation(id, 'rejected')}
+                                                >
+                                                    Rejected
+                                                </button>
+                                            );
+                                        }
+                                        return <span className="text-gray-500 italic">N/A</span>; // default case
                                     },
                                 },
+                                {
+                                    accessor: 'rejectionRemark',
+                                    title: 'Remark',
+                                    sortable: false,
+                                    render: ({ quotation, remark }) => {
+                                        if (quotation === 'rejected') {
+                                            return (
+                                                <span className="text-danger font-medium">
+                                                    {remark || 'No remark provided'}
+                                                </span>
+                                            );
+                                        }
+                                        return <span className="text-gray-400 italic">—</span>;
+                                    },
+                                },
+
+
                                 {
                                     accessor: 'action',
                                     title: 'Actions',
                                     sortable: false,
                                     textAlignment: 'center',
-                                    render: ({ id }) => (
+                                    render: ({ id, quotation }) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to="/admin/quotation/view" className="flex hover:text-primary">
-                                                <IconFile />
-                                            </NavLink>
-                                            <NavLink to="/admin/enquiry/view" className="flex hover:text-primary">
+                                            {(quotation !== 'create') && (
+                                                <NavLink to={`/admin/quotation/view/${id}`} className="flex hover:text-primary">
+                                                    <IconFile />
+                                                </NavLink>
+                                            )}
+                                            <NavLink to={`/admin/enquiry/view/${id}`} className="flex hover:text-primary">
                                                 <IconEye />
                                             </NavLink>
+
                                             <NavLink to="/admin/enquiry/edit" className="flex hover:text-info">
                                                 <IconEdit className="w-4.5 h-4.5" />
                                             </NavLink>
@@ -238,7 +333,8 @@ const Enquiry = () => {
                                                 <IconTrashLines />
                                             </button>
                                         </div>
-                                    ),
+                                    )
+
                                 },
                             ]}
                             highlightOnHover
@@ -256,6 +352,14 @@ const Enquiry = () => {
                         />
                     </div>
                 </div>
+                <ConfirmModal
+                    open={showConfirmModal}
+                    onClose={() => setShowConfirmModal(false)}
+                    onConfirm={handleConfirmDelete}
+                    title="Delete Confirmation"
+                    message="Are you sure you want to delete the selected enquiry?"
+                />
+
             </div>
         </>
     );

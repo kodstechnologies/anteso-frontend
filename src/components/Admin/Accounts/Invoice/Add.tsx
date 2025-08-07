@@ -119,11 +119,14 @@ const Add = () => {
           address: '',
           state: '',
           gstin: '',
+          amount: 0,
+          remarks: '',
           taxes: {
             cgst: { checked: false, amount: 0 },
             sgst: { checked: false, amount: 0 },
             igst: { checked: false, amount: 0 },
-          }, discountPercent: 0,
+          },
+          discountPercent: 0,
           services: [
             {
               machineType: '',
@@ -133,7 +136,19 @@ const Add = () => {
               hsnno: '',
             },
           ],
+          dealerHospitals: [  
+            {
+              partyCode: '',
+              hospitalName: '',
+              location: '',
+              dealerState: '',
+              modelNo: '',
+              amount: '',
+            },
+          ],
         }}
+
+
         onSubmit={(values) => {
           console.log('Submit triggered');
           console.log(values);
@@ -255,25 +270,89 @@ const Add = () => {
             {values.type === 'Dealer/Manufacturer' && (
               <div className="panel mt-5 border p-4 rounded bg-gray-50">
                 <h5 className="font-semibold text-lg mb-4">Dealer / Manufacturer Details</h5>
+                <FieldArray name="dealerHospitals">
+                  {({ push, remove }) => (
+                    <>
+                      {values.dealerHospitals.map((_, index) => (
+                        <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4 border-b pb-4">
+                          {[
+                            { name: 'partyCode', label: 'Party Code' },
+                            { name: 'hospitalName', label: 'Hospital Name' },
+                            { name: 'location', label: 'Location' },
+                            { name: 'dealerState', label: 'State' },
+                            { name: 'modelNo', label: 'Model No' },
+                            { name: 'amount', label: 'Amount' },
+                          ].map(({ name, label }) => (
+                            <div key={name}>
+                              <label htmlFor={`dealerHospitals[${index}].${name}`} className="block mb-1 font-medium">{label}</label>
+                              <Field
+                                name={`dealerHospitals[${index}].${name}`}
+                                className="form-input"
+                                placeholder={`Enter ${label}`}
+                              />
+                            </div>
+                          ))}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[
-                    { name: 'partyCode', label: 'Party Code' },
-                    { name: 'hospitalName', label: 'Name of Hospital' },
-                    { name: 'location', label: 'Location' },
-                    { name: 'dealerState', label: 'State' },
-                    { name: 'modelNo', label: 'Model No' },
-                    // { name: 'serialNo', label: 'Sr No' },
-                    { name: 'amount', label: 'Amount' },
-                  ].map(({ name, label }) => (
-                    <div key={name}>
-                      <label htmlFor={name} className="block mb-1 font-medium">{label}</label>
-                      <Field name={name} className="form-input" placeholder={`Enter ${label}`} />
-                    </div>
-                  ))}
-                </div>
+                          {values.dealerHospitals.length > 1 && (
+                            <div className="col-span-full text-right mt-2">
+                              <button
+                                type="button"
+                                onClick={() => remove(index)}
+                                className="text-red-500 text-xs"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          push({
+                            partyCode: '',
+                            hospitalName: '',
+                            location: '',
+                            dealerState: '',
+                            modelNo: '',
+                            amount: '',
+                          })
+                        }
+                        className="btn btn-primary mt-2"
+                      >
+                        + Add Another Hospital
+                      </button>
+                    </>
+                  )}
+                </FieldArray>
               </div>
             )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 panel mt-2">
+              <div>
+                <label htmlFor="amount" className="block mb-1 font-medium">Total Amount</label>
+                <Field
+                  name="amount"
+                  type="number"
+                  className="form-input"
+                  placeholder="Enter Total Amount"
+                />
+                <ErrorMessage name="amount" component="div" className="text-red-500 text-sm mt-1" />
+              </div>
+
+              <div>
+                <label htmlFor="remarks" className="block mb-1 font-medium">Remarks</label>
+                <Field
+                  name="remarks"
+                  as="textarea"
+                  rows="1"
+                  className="form-input"
+                  placeholder="Enter Remarks"
+                />
+                <ErrorMessage name="remarks" component="div" className="text-red-500 text-sm mt-1" />
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 panel mt-2">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 panel mt-2">

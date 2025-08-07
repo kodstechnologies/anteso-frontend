@@ -14,6 +14,9 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
+import { AllTools } from '../../../api';
+import { formatDate } from 'date-fns';
+import dayjs from 'dayjs';
 
 const Tools = () => {
     const dispatch = useDispatch();
@@ -21,7 +24,7 @@ const Tools = () => {
         dispatch(setPageTitle('Tools'));
     }, []);
 
-    const [items, setItems] = useState(toolsData);
+    const [items, setItems] = useState<any[]>([]);
 
     const deleteRow = (id: any = null) => {
         if (window.confirm('Are you sure want to delete selected row ?')) {
@@ -53,6 +56,9 @@ const Tools = () => {
     const [initialRecords, setInitialRecords] = useState(sortBy(items, 'cityName'));
     const [records, setRecords] = useState(initialRecords);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
+    const [loading, setLoading] = useState(true);
+
+
 
     const [search, setSearch] = useState('');
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
@@ -64,6 +70,25 @@ const Tools = () => {
         setPage(1);
         /* eslint-disable react-hooks/exhaustive-deps */
     }, [pageSize]);
+    useEffect(() => {
+        const fetchTools = async () => {
+            setLoading(true);
+            try {
+                const response = await AllTools();
+                const tools = response.data?.tools || [];
+                console.log("🚀 ~ fetchTools ~ tools:", tools)
+                setItems(tools);
+                setInitialRecords(tools);
+                setRecords(tools.slice(0, pageSize));
+            } catch (error) {
+                console.error("Failed to fetch tools:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTools();
+    }, []);
 
     useEffect(() => {
         const from = (page - 1) * pageSize;
@@ -72,21 +97,24 @@ const Tools = () => {
     }, [page, pageSize, initialRecords]);
 
     useEffect(() => {
-        setInitialRecords(() => {
-            return items.filter((item) => {
-                return (
-                    item.nomenclature.toLowerCase().includes(search.toLowerCase()) ||
-                    item.manufacturer.toLowerCase().includes(search.toLowerCase()) ||
-                    item.model.toLowerCase().includes(search.toLowerCase()) ||
-                    item.srNo.toLowerCase().includes(search.toLowerCase()) ||
-                    item.calibrationCertificateNo.toLowerCase().includes(search.toLowerCase()) ||
-                    item.calibrationDate.toLowerCase().includes(search.toLowerCase()) ||
-                    item.range.toLowerCase().includes(search.toLowerCase()) ||
-                    item.toolID.toLowerCase().includes(search.toLowerCase())
-                );
-            });
+        const filtered = items.filter((item) => {
+            const query = search.toLowerCase();
+            return (
+                item.nomenclature?.toLowerCase().includes(query) ||
+                item.manufacturer?.toLowerCase().includes(query) ||
+                item.model?.toLowerCase().includes(query) ||
+                item.srNo?.toLowerCase().includes(query) ||
+                item.calibrationCertificateNo?.toLowerCase().includes(query) ||
+                item.calibrationDate?.toLowerCase().includes(query) ||
+                item.range?.toLowerCase().includes(query) ||
+                item.toolID?.toLowerCase().includes(query)
+            );
         });
-    }, [search]);
+
+        setInitialRecords(filtered);
+        setPage(1);
+    }, [search, items]);
+
 
     useEffect(() => {
         const data2 = sortBy(initialRecords, sortStatus.columnAccessor);
@@ -126,12 +154,26 @@ const Tools = () => {
                             records={records}
                             columns={[
                                 {
-                                    accessor: 'srNo',
+                                    accessor: 'SrNo',
                                     sortable: true,
                                 },
                                 {
                                     accessor: 'nomenclature',
                                     sortable: true,
+                                },
+                                {
+                                    accessor: 'engineerName',
+                                    sortable: true,
+                                },
+                                {
+                                    accessor: 'issueDate',
+                                    sortable: true,
+                                    render: ({ issueDate }) => dayjs(issueDate).format(('DD-MM-YYYY')),
+                                },
+                                {
+                                    accessor: 'submitDate',
+                                    sortable: true,
+                                    render: ({ submitDate }) => dayjs(submitDate).format(('DD-MM-YYYY')),
                                 },
                                 {
                                     accessor: 'manufacturer',
@@ -141,18 +183,15 @@ const Tools = () => {
                                     accessor: 'model',
                                     sortable: true,
                                 },
-
                                 {
                                     accessor: 'calibrationCertificateNo',
                                     sortable: true,
-                                },
-                                {
-                                    accessor: 'calibrationDate',
-                                    sortable: true,
+
                                 },
                                 {
                                     accessor: 'calibrationValidTill',
                                     sortable: true,
+                                    render: ({ calibrationValidTill }) => dayjs(calibrationValidTill).format(('DD-MM-YYYY')),
                                 },
                                 {
                                     accessor: 'range',
@@ -160,7 +199,7 @@ const Tools = () => {
                                 },
 
                                 {
-                                    accessor: 'toolID',
+                                    accessor: 'toolId',
                                     sortable: true,
                                 },
                                 {
@@ -168,19 +207,24 @@ const Tools = () => {
                                     title: 'Actions',
                                     sortable: false,
                                     textAlignment: 'center',
-                                    render: ({ id }) => (
+                                    render: (row) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to="/admin/tools/view" className="flex hover:text-primary">
+                                            <NavLink to={`/admin/tools/view/${row._id}`} className="flex hover:text-primary">
                                                 <IconEye />
                                             </NavLink>
-                                            <NavLink to="/admin/tools/edit" className="flex hover:text-info">
+                                            <NavLink to={`/admin/tools/edit/${row._id}`} className="flex hover:text-info">
                                                 <IconEdit className="w-4.5 h-4.5" />
                                             </NavLink>
-                                            <button type="button" className="flex hover:text-danger" onClick={(e) => deleteRow(id)}>
+                                            <button
+                                                type="button"
+                                                className="flex hover:text-danger"
+                                                onClick={() => deleteRow(row._id)}
+                                            >
                                                 <IconTrashLines />
                                             </button>
                                         </div>
-                                    ),
+                                    )
+
                                 },
                             ]}
                             highlightOnHover

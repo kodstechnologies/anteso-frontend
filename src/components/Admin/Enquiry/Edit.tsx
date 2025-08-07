@@ -46,7 +46,7 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({ name, options }) =>
                 <Select
                     isMulti
                     options={options}
-                    className="w-full" 
+                    className="w-full"
                     classNamePrefix="select"
                     value={options.filter((option) => field.value?.includes(option.value))}
                     onChange={(selectedOptions) =>
@@ -210,6 +210,9 @@ const EditEnquiry: React.FC = () => {
                         return acc;
                     }, {} as Record<string, string | undefined>),
                     enquiryID: '',
+                    attachment: '',
+                    
+
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
@@ -294,8 +297,8 @@ const EditEnquiry: React.FC = () => {
 
                                                 {/* equipment/document No. */}
                                                 <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Equipment/Document No.</label>
-                                                    <Field type="text" name="equipmentNo" placeholder="Equipment No" className="form-input w-full" />
+                                                    <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
+                                                    <Field type="text" name="equipmentNo" placeholder="Equipment ID/Serial No" className="form-input w-full" />
                                                     <div className="h-4">
                                                         <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                     </div>
@@ -356,9 +359,44 @@ const EditEnquiry: React.FC = () => {
                                 </div>
                             ))}
                         </div>
-
-                        {/* Urgency */}
                         <div className="panel">
+                            <h5 className="font-semibold text-lg mb-4">Special Instructions</h5>
+
+                            {/* Side-by-side layout */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                {/* Special Instructions Field */}
+                                <div className={submitCount && errors.urgency ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="urgency" className="block mb-1 font-medium">Special Instructions</label>
+                                    <Field
+                                        name="urgency"
+                                        type="text"
+                                        id="urgency"
+                                        placeholder="Enter special instruction"
+                                        className="form-input"
+                                    />
+                                    {submitCount > 0 && errors.urgency && (
+                                        <p className="text-red-500 text-sm mt-1">{errors.urgency}</p>
+                                    )}
+                                </div>
+
+                                <div className={submitCount && errors.attachment ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="attachment" className="block mb-1 font-medium">Upload Attachment</label>
+                                    <Field
+                                        name="attachment"
+                                        type="file"
+                                        id="attachment"
+                                        className="form-input"
+                                    />
+                                    {submitCount > 0 && errors.attachment && (
+                                        <div className="text-danger mt-1">{errors.attachment}</div>
+                                    )}
+                                </div>
+
+                            </div>
+                        </div>
+                        {/* Urgency */}
+                        {/* <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Urgency</h5>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:w-1/2 gap-4">
                                 {urgencyOptions.map((option) => (
@@ -369,7 +407,7 @@ const EditEnquiry: React.FC = () => {
                                 ))}
                             </div>
                             {submitCount && errors.urgency ? <p className="text-red-500 text-sm mt-1">{errors.urgency}</p> : <></>}
-                        </div>
+                        </div> */}
 
                         {/* Submit Button */}
                         <div className="w-full mb-6 flex justify-end">
