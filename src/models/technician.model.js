@@ -27,6 +27,7 @@
 
 import mongoose from 'mongoose';
 import User from './user.model.js';
+import { generateReadableId } from '../utils/GenerateReadableId.js';
 
 const { Schema } = mongoose;
 
@@ -37,7 +38,10 @@ const toolSubSchema = new Schema({
         // required: true,
         // trim: true,
     },
-   
+    toolId: {
+        type: String
+    },
+
     serialNumber: {
         type: String,
         // required: true,
@@ -51,6 +55,11 @@ const toolSubSchema = new Schema({
 
 // Main employee schema extending User
 const employeeSchema = new Schema({
+    empId: {
+        type: String,
+        unique: true,
+        index: true,
+    },
     status: {
         type: String,
         enum: ['active', 'inactive'],
@@ -58,7 +67,7 @@ const employeeSchema = new Schema({
     },
     technicianType: {
         type: String,
-        enum: ['office-staff', 'engineer'],
+        enum: ['office staff', 'engineer'],
         required: true,
     },
     designation: {
@@ -81,8 +90,17 @@ const employeeSchema = new Schema({
         min: 0,
     },
     tools: [toolSubSchema], // Embedded tool subdocuments
+    // tools: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tool" }]
+
 }, {
     timestamps: true,
+});
+employeeSchema.pre('save', async function (next) {
+    if (!this.empId) {
+        this.empId = await generateReadableId('Employee', 'EMP');
+        console.log("🚀 ~ this.empId:", this.empId)
+    }
+    next();
 });
 
 const Employee = User.discriminator('Employee', employeeSchema);

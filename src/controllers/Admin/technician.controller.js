@@ -4,6 +4,7 @@ import { asyncHandler } from "../../utils/AsyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
 import Employee from "../../models/technician.model.js";
+import Tools from "../../models/tools.model.js";
 
 // const add = asyncHandler(async (req, res) => {
 //     try {
@@ -107,7 +108,6 @@ const add = asyncHandler(async (req, res) => {
             if (!tools || !Array.isArray(tools) || tools.length === 0) {
                 throw new ApiError(400, "Engineer must be assigned at least one tool.");
             }
-
             // for (const tool of tools) {
             //     if (!tool.toolName || typeof tool.toolName !== 'string' || !tool.toolName.trim()) {
             //         throw new ApiError(400, "Each tool must include a valid toolName.");
@@ -115,9 +115,8 @@ const add = asyncHandler(async (req, res) => {
             //     // serialNumber and issueDate are optional
             // }
         }
-
         // Create new employee
-        const employee = await Employee.create({
+        const employee = new Employee({
             name,
             phone,
             email,
@@ -127,8 +126,10 @@ const add = asyncHandler(async (req, res) => {
             department,
             dateOfJoining,
             workingDays,
-            tools: technicianType === "engineer" ? tools : [], // office-staff doesn't get tools
+            tools: technicianType === "engineer" ? tools : [],
         });
+        await employee.save();
+        console.log("🚀 ~ employee:", employee)
 
         return res.status(201).json(
             new ApiResponse(201, employee, "Employee created successfully")
@@ -138,7 +139,7 @@ const add = asyncHandler(async (req, res) => {
     }
 });
 
-
+//not updated
 const getById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
@@ -156,14 +157,14 @@ const getById = asyncHandler(async (req, res) => {
 
 const getAll = asyncHandler(async (req, res) => {
     try {
-        const technicians = await Technician.find().populate("tools");
+        const technicians = await Technician.find({ technicianType: "engineer" }).populate("tools");
+        // console.log("🚀 ~ technicians:", technicians)
 
         return res.status(200).json(new ApiResponse(200, technicians, "All technicians fetched successfully"));
     } catch (error) {
         throw new ApiError(500, error.message || "Failed to fetch technicians");
     }
 });
-
 const updateById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
@@ -183,7 +184,6 @@ const updateById = asyncHandler(async (req, res) => {
         throw new ApiError(500, error.message || "Failed to update technician");
     }
 });
-
 const deleteById = asyncHandler(async (req, res) => {
     try {
         // return res.status(200).json({msg:"hi"})
@@ -200,5 +200,91 @@ const deleteById = asyncHandler(async (req, res) => {
         throw new ApiError(500, error.message || "Failed to delete technician");
     }
 });
+const getUnassignedTools = asyncHandler(async (req, res) => {
+    try {
+        const tools = await Tools.find({ toolStatus: 'unassigned' }).sort({ createdAt: -1 });
 
-export default { add, getById, getAll, updateById, deleteById };
+        res.status(200).json({
+            success: true,
+            count: tools.length,
+            data: tools,
+        });
+    } catch (error) {
+
+        res.status(500);
+        throw new Error('Failed to fetch unassigned tools');
+    }
+});
+
+const assignedToolByTechnicianId = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId } = req.params;
+
+        if (!technicianId) {
+            throw new ApiError(400, 'Technician ID is required');
+        }
+
+        // Find tools where technician field matches the given ID
+        const tools = await Tools.find({ technician: technicianId });
+        console.log("🚀 ~ tools:", tools)
+
+        if (!tools || tools.length === 0) {
+            throw new ApiError(404, 'No tools assigned to this technician');
+        }
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, tools, 'Assigned tools fetched successfully'));
+    } catch (error) {
+        // Pass error to global error handler middleware
+        res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiError(
+                    error.statusCode || 500,
+                    error.message || 'Internal Server Error',
+                    error.errors || [],
+                    error.stack
+                )
+            );
+    }
+});
+
+const getAllOfficeStaff = asyncHandler(async (req, res) => {
+    try {
+        const officeStaff = await Employee.find({ technicianType: 'office staff' }).select("-password"); // exclude password
+
+        if (!officeStaff || officeStaff.length === 0) {
+            throw new ApiError(404, "No office staff found");
+        }
+
+        return res.status(200).json(new ApiResponse(200, officeStaff, "Office staff fetched successfully"));
+    } catch (error) {
+        throw new ApiError(500, error.message || "Failed to fetch office staff");
+    }
+});
+// const getAllEngineers = asyncHandler(async (req, res) => {
+//     try {
+//         const engineers = await Employee.find({ technicianType: 'engineer' }).select("-password");
+
+//         if (!engineers || engineers.length === 0) {
+//             throw new ApiError(404, "No engineers found");
+//         }
+
+//         return res.status(200).json(new ApiResponse(200, engineers, "Engineers fetched successfully"));
+//     } catch (error) {
+//         throw new ApiError(500, error.message || "Failed to fetch engineers");
+//     }
+// });
+
+// const machineDetails = asyncHandler(async (req, res) => {
+//     try {
+//         const {employeeId,orderId,serviceId}=req.body;
+        
+//     } catch (error) {
+
+//     }
+// })
+
+
+export default { add, getById, getAll, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff };

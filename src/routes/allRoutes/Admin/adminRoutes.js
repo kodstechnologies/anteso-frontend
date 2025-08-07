@@ -11,6 +11,7 @@ import RSORoutes from '../Admin/rso.router.js'
 import CourierRoutes from '../Admin/courier.router.js'
 import TechnicianRoutes from '../Admin/technicianRoutes.js'
 import QuotationRoutes from '../Admin/quotation.router.js'
+import OrderRoutes from '../Admin/order.router.js'
 import PDFRouter from '../Admin/pdf.router.js'
 import { authenticate } from '../../../middlewares/authMiddleware.js'
 
@@ -33,6 +34,7 @@ router.use('/enquiry', EnquiryRoutes)
 router.use('/technician', TechnicianRoutes)
 router.use('/quotation', QuotationRoutes)
 router.use('/courier', CourierRoutes)
+router.use('/orders', OrderRoutes)
 
 
 export default router

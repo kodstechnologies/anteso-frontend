@@ -7,7 +7,7 @@ router.get('/all-tools', toolsController.allTools)
 router.put('/update/:id', toolsController.updateById)
 router.delete('/delete/:id', toolsController.deleteById)
 router.get('/get-by-id/:id', toolsController.getById)
-router.get('/get-engineer-assigned/:id', toolsController.getEngineerByTool)
+router.get('/get-tools-assigned/:technicianId', toolsController.getEngineerByTool)
 
 
 //tools by employee

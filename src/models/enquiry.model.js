@@ -78,7 +78,6 @@ const enquirySchema = new mongoose.Schema({
         default: {}
     },
 
-
     // Section 4: Special Instructions & Attachment
     specialInstructions: { type: String },
     attachment: { type: String }, // file URL or path
@@ -86,7 +85,7 @@ const enquirySchema = new mongoose.Schema({
     // Status Tracking
     enquiryStatus: {
         type: String,
-        enum: ['Enquired', 'Quotation Sent', 'Approved'],
+        enum: ['Enquired', 'Quotation Sent', 'Approved','Rejected'],
         default: 'Enquired'
     },
     enquiryStatusDates: {
@@ -105,7 +104,6 @@ const enquirySchema = new mongoose.Schema({
         enum: ['Create', 'Created', 'Accepted', 'Rejected'],
         default: 'Create'
     },
-
 
     // Customer Reference (from User base model)
     customer: {

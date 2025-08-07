@@ -35,12 +35,16 @@ const quotationSchema = new Schema(
             enum: ['Create', 'Created', 'Accepted', 'Rejected'],
             // default: 'Create',
         },
+        rejectionRemark: {
+            type: String
+        },
+        customersPDF: {
+            type: String
+        },
         termsAndConditions: [String],
     },
     { timestamps: true }
 );
-
-
 
 quotationSchema.pre('save', async function (next) {
     if (!this.quotationId) {

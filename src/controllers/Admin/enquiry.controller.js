@@ -41,7 +41,6 @@ import Quotation from "../../models/quotation.model.js";
 //     }
 // });
 
-
 const add = asyncHandler(async (req, res) => {
     try {
         // Validate input
@@ -79,21 +78,17 @@ const add = asyncHandler(async (req, res) => {
             } else {
                 customerId = existingCustomer._id;
             }
-
             value.customer = customerId;
         }
-
         // Create the enquiry
         const newEnquiry = await Enquiry.create(value);
         console.log("🚀 ~ newEnquiry:", newEnquiry)
-
         // Push this enquiry to the related customer
         await User.findByIdAndUpdate(
             customerId,
             { $push: { enquiries: newEnquiry._id } },
             { new: true }
         );
-
         return res
             .status(201)
             .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
@@ -102,7 +97,6 @@ const add = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to create enquiry", [error.message]);
     }
 });
-
 const getAll = asyncHandler(async (req, res) => {
     try {
         const enquiries = await Enquiry.find()
@@ -128,8 +122,6 @@ const getAll = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to fetch enquiries", [error.message]);
     }
 });
-
-
 const getById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
@@ -195,8 +187,6 @@ const updateById = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to update enquiry", [error.message]);
     }
 });
-
-
 const getEnquiryDetailsById = async (req, res) => {
     try {
         const enquiryId = req.params.id;

@@ -26,7 +26,8 @@ const leaveSchema = mongoose.Schema({
     employee: {
         type: Schema.Types.ObjectId,
         ref: "User"
-    }
+    },
+
 }, { timestamps: true })
 const Leave = mongoose.model('Leave', leaveSchema)
 export default Leave

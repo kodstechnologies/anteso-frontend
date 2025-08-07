@@ -7,4 +7,8 @@ router.put('/update/:id', leaveController.updateLeaveById)
 router.get('/all-leaves', leaveController.getAllLeaves)
 router.delete('/delete/:id', leaveController.deleteLeaveById)
 
+// technician
+router.post('/apply-for-leave/:technicianId', leaveController.applyForLeave)
+router.get('/get-all-leaves/:technicianId', leaveController.getAllLeavesByCustomerId)
+
 export default router

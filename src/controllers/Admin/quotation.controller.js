@@ -3,6 +3,9 @@ import Enquiry from "../../models/enquiry.model.js";
 import Quotation from "../../models/quotation.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
+import orderModel from "../../models/order.model.js";
+import mongoose from "mongoose";
+import Services from "../../models/Services.js";
 
 // export const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
 //     const { enquiryId } = req.params;
@@ -58,27 +61,31 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
             calculations,
             items,
         } = req.body;
+        console.log("🚀 ~ customer-------------->:", customer)
 
         if (!assignedEmployee || !calculations || !items) {
             throw new ApiError(400, 'Missing required fields');
         }
 
         // Now directly fetch by enquiry ID
-        const enquiry = await Enquiry.findById(id);
-        if (!enquiry) {
-            throw new ApiError(404, 'Enquiry not found');
-        }
+        const enquiry = await Enquiry.findById(id).populate("customer");
+        console.log("enquiry.customer:", enquiry.customer);
+
+        if (!enquiry) throw new ApiError(404, "Enquiry not found");
+        if (!enquiry.customer || !enquiry.customer._id)
+            throw new ApiError(400, "Customer info missing in enquiry");
 
         const quotation = await Quotation.create({
             date,
             quotationId: quotationNumber,
             enquiry: enquiry._id,
-            from: assignedEmployee.id,
+            from: enquiry.customer._id,  // ✅ Correct and safe
             discount: calculations.discount,
             total: calculations.totalAmount,
             quotationStatus: 'Created',
             termsAndConditions: termsAndConditions.map(term => term.label),
         });
+
         console.log("Created Quotation:", quotation);
         await Enquiry.findByIdAndUpdate(enquiry._id, {
             quotationStatus: quotation.quotationStatus,
@@ -91,7 +98,6 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
         throw new ApiError(500, 'Failed to create quotation', [error.message]);
     }
 });
-
 const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
@@ -118,23 +124,261 @@ const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
         throw new ApiError(500, 'Failed to fetch quotation', [error.message]);
     }
 });
+const getQuotationByIds = asyncHandler(async (req, res) => {
+    const { customerId, enquiryId, quotationId } = req.params;
 
+    if (!customerId || !enquiryId || !quotationId) {
+        throw new ApiError(400, 'Customer ID, Enquiry ID, and Quotation ID are required');
+    }
 
+    const quotation = await Quotation.findOne({
+        _id: quotationId,
+        enquiry: enquiryId,
+        from: customerId
+    })
+        .populate('enquiry') // Optional: populate enquiry details
+        .populate('from');   // Optional: populate user/customer details
+
+    if (!quotation) {
+        throw new ApiError(404, 'Quotation not found for the given criteria');
+    }
+
+    res.status(200).json(new ApiResponse(200, quotation, 'Quotation fetched successfully'));
+});
+// for mobile app
+// const acceptQuotation = asyncHandler(async (req, res) => {
+//     try {
+//         const { customerId, enquiryId, quotationId } = req.params;
+//         console.log("🚀 ~ quotationId:", quotationId)
+//         console.log("🚀 ~ enquiryId:", enquiryId)
+//         console.log("🚀 ~ customerId:", customerId)
+
+//         // 1. Find the quotation
+//         const quotation = await Quotation.findOne({
+//             _id: quotationId,
+//             enquiry: enquiryId,
+//             from: customerId
+//         });
+//         console.log("🚀 ~ quotation:", quotation)
+
+//         if (!quotation) {
+//             return res.status(404).json({ message: "Quotation not found" });
+//         }
+
+//         // 2. Update status
+//         quotation.quotationStatus = 'Accepted';
+//         await quotation.save();
+
+//         const enquiry = await Enquiry.findOne({
+//             _id: enquiryId,
+//             customer: customerId
+//         });
+
+//         console.log("Found enquiry:", enquiry);
+
+//         if (!enquiry) {
+//             return res.status(404).json({ message: "Enquiry not found for the customer" });
+//         }
+
+//         // Update enquiry status to Approved and set the date
+//         enquiry.enquiryStatus = 'Approved';
+//         enquiry.quotationStatus = 'Accepted';
+//         enquiry.enquiryStatusDates.approvedOn = new Date();
+//         await enquiry.save();
+//         // 4. Build services arrayss
+//         const services = enquiry.services.map(service => ({
+//             machineType: service.machineType,
+//             equipmentNo: service.equipmentNo,
+//             machineModel: service.machineModel,
+//             workTypeDetails: service.workType.map(wt => ({
+//                 workType: wt,
+//                 serviceName: 'Elora', // or 'ELORA' or 'QA Raw' — set as needed
+//             }))
+//         }));
+
+//         // 5. Create Order
+//         const order = await orderModel.create({
+//             leadOwner: enquiry.leadOwner,
+//             hospitalName: enquiry.hospitalName,
+//             fullAddress: enquiry.fullAddress,
+//             city: enquiry.city,
+//             district: enquiry.district,
+//             state: enquiry.state,
+//             pinCode: enquiry.pinCode,
+//             branchName: enquiry.branch,
+//             contactPersonName: enquiry.contactPerson,
+//             emailAddress: enquiry.emailAddress,
+//             contactNumber: enquiry.contactNumber,
+//             designation: enquiry.designation,
+//             advanceAmount: 0, // optional, set if needed
+//             workOrderCopy: '', // optional, set if needed
+//             partyCodeOrSysId: '',
+//             procNoOrPoNo: '',
+//             urgency: 'normal', // or get from enquiry if stored
+//             specialInstructions: enquiry.specialInstructions,
+//             services: services
+//         });
+//         console.log("🚀 ~ order:", order)
+
+//         await order.save();
+
+//         res.status(200).json({
+//             message: "Quotation accepted and order created successfully",
+//             quotation,
+//             order
+//         });
+
+//     } catch (error) {
+//         console.error("Error in acceptQuotation:", error);
+//         res.status(500).json({ message: "Server error", error: error.message });
+//     }
+// });
 
 const acceptQuotation = asyncHandler(async (req, res) => {
     try {
-        
+        const { customerId, enquiryId, quotationId } = req.params;
+
+        // 1. Find the quotation
+        const quotation = await Quotation.findOne({
+            _id: quotationId,
+            enquiry: enquiryId,
+            from: customerId
+        });
+        if (!quotation) {
+            return res.status(404).json({ message: "Quotation not found" });
+        }
+
+        // Update quotation status
+        quotation.quotationStatus = 'Accepted';
+        await quotation.save();
+
+        // 2. Find the related enquiry
+        const enquiry = await Enquiry.findOne({
+            _id: enquiryId,
+            customer: customerId
+        });
+        if (!enquiry) {
+            return res.status(404).json({ message: "Enquiry not found for the customer" });
+        }
+
+        // Update enquiry status
+        enquiry.enquiryStatus = 'Approved';
+        enquiry.quotationStatus = 'Accepted';
+        enquiry.enquiryStatusDates.approvedOn = new Date();
+        await enquiry.save();
+
+        // 3. Create Service documents
+        const serviceDocs = await Promise.all(
+            enquiry.services.map(async (service) => {
+                const newService = new Services({
+                    machineType: service.machineType,
+                    equipmentNo: service.equipmentNo,
+                    machineModel: service.machineModel,
+                    workTypeDetails: service.workType.map(wt => ({
+                        workType: wt,
+                        // serviceName: 'Elora',
+                    })),
+                });
+                await newService.save();
+                return newService._id;
+            })
+        );
+        // 4. Create Order with service IDs
+        const order = await orderModel.create({
+            leadOwner: enquiry.leadOwner,
+            hospitalName: enquiry.hospitalName,
+            fullAddress: enquiry.fullAddress,
+            city: enquiry.city,
+            district: enquiry.district,
+            state: enquiry.state,
+            pinCode: enquiry.pinCode,
+            branchName: enquiry.branch,
+            contactPersonName: enquiry.contactPerson,
+            emailAddress: enquiry.emailAddress,
+            contactNumber: enquiry.contactNumber,
+            designation: enquiry.designation,
+            advanceAmount: 0,
+            workOrderCopy: '',
+            partyCodeOrSysId: '',
+            procNoOrPoNo: '',
+            urgency: 'normal',
+            specialInstructions: enquiry.specialInstructions,
+            additionalServices:enquiry.additionalServices,
+            services: serviceDocs,
+            quotation: quotation._id,
+            customer: enquiry.customer // 👈 Make sure this exists in the enquiry
+        });
+            console.log("🚀 ~ order:", order)
+            console.log("🚀 ~ order.additionalServices:", order.additionalServices)
+
+        res.status(200).json({
+            message: "Quotation accepted and order created successfully",
+            quotation,
+            order
+        });
 
     } catch (error) {
-
+        console.error("Error in acceptQuotation:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
-})
-const rejectQuotation = asyncHandler((req, res) => {
+});
+
+const rejectQuotation = asyncHandler(async (req, res) => {
     try {
+        const { customerId, enquiryId, quotationId } = req.params;
+        const { rejectionRemark } = req.body;
+
+        console.log("Rejecting Quotation:", { quotationId, enquiryId, customerId, rejectionRemark });
+
+        // 1. Find the quotation and ensure it belongs to the customer and enquiry
+        const quotation = await Quotation.findOne({
+            _id: quotationId,
+            enquiry: enquiryId,
+            from: customerId
+        });
+
+        if (!quotation) {
+            return res.status(404).json({ message: "Quotation not found for the provided customer and enquiry" });
+        }
+
+        // 2. Prevent rejecting already accepted quotations
+        if (quotation.quotationStatus === 'Accepted') {
+            return res.status(400).json({
+                message: "Cannot reject a quotation that has already been accepted"
+            });
+        }
+
+        // 3. Reject the quotation
+        quotation.quotationStatus = 'Rejected';
+        quotation.rejectionRemark = rejectionRemark;
+        await quotation.save();
+
+        // 4. Find and update the corresponding enquiry
+        const enquiry = await Enquiry.findOne({
+            _id: enquiryId,
+            customer: customerId
+        });
+
+        if (!enquiry) {
+            return res.status(404).json({ message: "Related enquiry not found for the customer" });
+        }
+
+        enquiry.enquiryStatus = 'Rejected';
+        enquiry.quotationStatus = 'Rejected';
+        await enquiry.save();
+
+        res.status(200).json({
+            message: "Quotation rejected successfully",
+            quotation
+        });
 
     } catch (error) {
-
+        console.error("Error in rejectQuotation:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
-})
+});
 
-export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId }
+
+// const getAcceptedQuotations=
+
+export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds }

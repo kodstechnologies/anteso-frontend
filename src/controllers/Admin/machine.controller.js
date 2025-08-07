@@ -7,7 +7,6 @@ import Customer from '../../models/client.model.js'
 
 // ADD MACHINE
 const add = asyncHandler(async (req, res) => {
-    // return res.status(200).json({msg:"hi"})
     try {
         const {
             machineType,
@@ -18,10 +17,21 @@ const add = asyncHandler(async (req, res) => {
             qaValidity,
             licenseValidity,
             status,
-            customer,
         } = req.body;
 
-        const { error } = machineSchema.validate(req.body);
+        const { customerId } = req.params;
+
+        const { error } = machineSchema.validate({
+            machineType,
+            make,
+            model,
+            serialNumber,
+            equipmentId,
+            qaValidity,
+            licenseValidity,
+            status,
+        });
+
         if (error) {
             throw new ApiError(400, error.details[0].message);
         }
@@ -30,13 +40,11 @@ const add = asyncHandler(async (req, res) => {
         const licenseReportAttachment = req.files?.licenseReportAttachment?.[0]?.path;
         const rawDataAttachment = req.files?.rawDataAttachment?.[0]?.path || null;
 
-        // if (!qaReportAttachment || !licenseReportAttachment) {
-        //     throw new ApiError(400, 'QA and License report attachments are required.');
-        // }
-        const existingCustomer = await Customer.findById(customer);
+        const existingCustomer = await Customer.findById(customerId);
         if (!existingCustomer) {
             throw new ApiError(404, "Customer not found.");
         }
+
         const machine = await Machine.create({
             machineType,
             make,
@@ -49,8 +57,9 @@ const add = asyncHandler(async (req, res) => {
             rawDataAttachment,
             qaReportAttachment,
             licenseReportAttachment,
-            customer,
+            customer: customerId,
         });
+        console.log("🚀 ~ machine:", machine)
 
         res.status(201).json(new ApiResponse(201, machine, 'Machine added successfully.'));
     } catch (error) {
@@ -60,11 +69,16 @@ const add = asyncHandler(async (req, res) => {
 });
 
 // GET ALL MACHINES
-const getAll = asyncHandler(async (req, res) => {
+const getAllMachinesByCustomerId = asyncHandler(async (req, res) => {
     try {
-        const machines = await Machine.find().populate('client');
-        res.status(200).json(new ApiResponse(200, machines));
+        const { customerId } = req.params;
+        if (!customerId) {
+            return res.status(400).json({ success: false, message: "Customer ID is required" });
+        }
+        const machines = await Machine.find({ customer: customerId }).populate('customer', 'gstNo');
+        res.status(200).json(ApiResponse(200, machines, "Machines fetched successfully"));
     } catch (error) {
+        console.error("Error fetching machines by customer ID:", error);
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
@@ -72,12 +86,22 @@ const getAll = asyncHandler(async (req, res) => {
 // GET MACHINE BY ID
 const getById = asyncHandler(async (req, res) => {
     try {
-        const { id } = req.params;
-        const machine = await Machine.findById(id).populate('customer');
-        if (!machine) {
-            throw new ApiError(404, 'Machine not found');
+        const { id, customerId } = req.params;
+
+        if (!id || !customerId) {
+            return res.status(400).json({ success: false, message: 'Machine ID and Customer ID are required' });
         }
-        res.status(200).json(new ApiResponse(200, machine));
+
+        const machine = await Machine.findOne({
+            _id: id,
+            customer: customerId,
+        }).populate('customer');
+
+        if (!machine) {
+            throw new ApiError(404, 'Machine not found for this customer');
+        }
+
+        res.status(200).json(new ApiResponse(200, machine, 'Machine fetched successfully.'));
     } catch (error) {
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
@@ -87,9 +111,16 @@ const getById = asyncHandler(async (req, res) => {
 const updateById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const existingMachine = await Machine.findById(id);
+        const { customerId } = req.query;
+
+        let query = { _id: id };
+        if (customerId) {
+            query = { _id: id, client: customerId };
+        }
+
+        const existingMachine = await Machine.findOne(query);
         if (!existingMachine) {
-            throw new ApiError(404, 'Machine not found');
+            throw new ApiError(404, 'Machine not found for the given customer');
         }
 
         const {
@@ -138,10 +169,17 @@ const updateById = asyncHandler(async (req, res) => {
 const deleteById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const deletedMachine = await Machine.findByIdAndDelete(id);
+        const { customerId } = req.query;
+
+        let query = { _id: id };
+        if (customerId) {
+            query = { _id: id, client: customerId };
+        }
+
+        const deletedMachine = await Machine.findOneAndDelete(query);
 
         if (!deletedMachine) {
-            throw new ApiError(404, 'Machine not found');
+            throw new ApiError(404, 'Machine not found for the given customer');
         }
 
         res.status(200).json(new ApiResponse(200, deletedMachine, 'Machine deleted successfully.'));
@@ -151,16 +189,22 @@ const deleteById = asyncHandler(async (req, res) => {
 });
 
 // controllers/Admin/machine.controller.js
-
 const searchByType = asyncHandler(async (req, res) => {
     try {
         const { type } = req.query;
+        const { customerId } = req.params;
+
         if (!type) {
             return res.status(400).json({ success: false, message: "Machine type is required" });
         }
 
+        if (!customerId) {
+            return res.status(400).json({ success: false, message: "Customer ID is required" });
+        }
+
         const machines = await Machine.find({
-            machineType: { $regex: type, $options: "i" }
+            machineType: { $regex: type, $options: "i" },
+            customer: customerId,
         });
 
         res.status(200).json(new ApiResponse(200, machines));
@@ -170,22 +214,7 @@ const searchByType = asyncHandler(async (req, res) => {
     }
 });
 
-export const getMachinesByCustomerId = asyncHandler(async (req, res) => {
-    try {
-        const { customerId } = req.params;
 
-        if (!customerId) {
-            return res.status(400).json({ success: false, message: "Customer ID is required" });
-        }
-        const machines = await Machine.find({ customer: customerId }).populate('customer', 'gstNo');
-        // optional populate
 
-        res.status(200).json(ApiResponse(200, machines, "Machines fetched successfully"));
-    } catch (error) {
-        console.error("Error fetching machines by customer ID:", error);
-        throw new ApiError(500, error?.message || 'Internal Server Error');
 
-    }
-});
-
-export default { add, getAll, getById, updateById, deleteById, searchByType, getMachinesByCustomerId }
+export default { add, getById, updateById, deleteById, searchByType, getAllMachinesByCustomerId }

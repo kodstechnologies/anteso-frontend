@@ -73,6 +73,11 @@ const machineSchema = new Schema(
             type: String,
             required: false,
         },
+        status:{
+            type:String,
+            enum:['Active','Pending','Expired'],
+            default:'Active'
+        },
         customer: {
             type: Schema.Types.ObjectId,
             ref: 'Customer',

@@ -74,7 +74,5 @@ toolsSchema.pre('save', async function (next) {
     }
     next();
 });
-
 const Tools = mongoose.model('Tool', toolsSchema);
-
 export default Tools;
