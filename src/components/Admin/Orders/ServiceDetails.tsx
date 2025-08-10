@@ -44,6 +44,10 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
     const [qaRawDetails, setQaRawDetails] = useState<any[]>([])
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [editableMap, setEditableMap] = useState<{ [serviceId: string]: boolean }>({});
+    const [uploadedFileMap, setUploadedFileMap] = useState<{ [serviceId: string]: File | null }>({});
+
+
 
 
     const toggleAccordion = (machineIndex: number, serviceIndex: number) => {
@@ -142,6 +146,7 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
                             console.log("🚀 ~ MachinesAccordion ~ service:", service)
                             const isQARaw = staticServiceName.toLowerCase() === "qa raw"
                             const serviceId = service._id || `${machine._id}-${staticServiceName}` // Use this for map lookups
+                            const isEditable = editableMap[serviceId] || false;
                             return (
                                 <div key={serviceId} className="border border-gray-300 rounded-lg shadow-sm mb-4">
                                     <button
@@ -223,56 +228,134 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
                                                 : (
                                                     // Default editable block for non-QA Raw services
                                                     <>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            <div>
-                                                                <label className="block text-xs font-semibold text-gray-500 mb-1">Employee</label>
-                                                                <select
-                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                                                    value={selectedEmployeeMap[serviceId] || service.employee || ""}
-                                                                    onChange={(e) =>
-                                                                        setSelectedEmployeeMap((prev) => ({
-                                                                            ...prev,
-                                                                            [serviceId]: e.target.value,
-                                                                        }))
-                                                                    }
-                                                                >
-                                                                    {/* Conditionally render engineers or office staff based on staticServiceName */}
-                                                                    {(staticServiceName.toLowerCase() === "elora" ? officeStaff : engineers).map((eng) => (
-                                                                        <option key={eng._id} value={eng._id}>
-                                                                            {`${eng.empId} - ${eng.name}`}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-                                                                <select
-                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                                                    value={statusMap[serviceId] || service.status}
-                                                                    onChange={(e) => {
-                                                                        const updatedStatus = e.target.value
-                                                                        setStatusMap((prev) => ({ ...prev, [serviceId]: updatedStatus }))
-                                                                    }}
-                                                                >
-                                                                    <option value="pending">Pending</option>
-                                                                    <option value="inprogress">In Progress</option>
-                                                                    <option value="completed">Completed</option>
-                                                                    <option value="generated">Generated</option>
-                                                                    <option value="paid">Paid</option>
-                                                                </select>
-                                                            </div>
-                                                            {(statusMap[serviceId] || service.status) === "completed" && (
-                                                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 md:col-span-2">
-                                                                    <input
-                                                                        type="file"
-                                                                        className="form-input px-2 py-1 border border-gray-300 rounded-md file:bg-gray-100 file:border-0 file:mr-2 file:py-1 file:px-3 file:rounded-l-md"
-                                                                    />
-                                                                    <button type="button" className="btn btn-primary px-4 py-1 text-sm rounded-md bg-blue-600 text-white">
-                                                                        Upload
+                                                        {isEditable ? (
+                                                            <>
+                                                                {/* Editable Fields */}
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                    <div>
+                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Employee</label>
+                                                                        <select
+                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                                                            value={selectedEmployeeMap[serviceId] || service.employee || ""}
+                                                                            onChange={(e) =>
+                                                                                setSelectedEmployeeMap((prev) => ({
+                                                                                    ...prev,
+                                                                                    [serviceId]: e.target.value,
+                                                                                }))
+                                                                            }
+                                                                        >
+                                                                            {(staticServiceName.toLowerCase() === "elora" ? officeStaff : engineers).map((eng) => (
+                                                                                <option key={eng._id} value={eng._id}>
+                                                                                    {`${eng.empId} - ${eng.name}`}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                                                                        <select
+                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                                                            value={statusMap[serviceId] || service.status}
+                                                                            onChange={(e) => {
+                                                                                const updatedStatus = e.target.value;
+                                                                                setStatusMap((prev) => ({ ...prev, [serviceId]: updatedStatus }));
+                                                                            }}
+                                                                        >
+                                                                            <option value="pending">Pending</option>
+                                                                            <option value="inprogress">In Progress</option>
+                                                                            <option value="completed">Completed</option>
+                                                                            <option value="generated">Generated</option>
+                                                                            <option value="paid">Paid</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                {statusMap[serviceId] === "completed" && (
+                                                                    <div>
+                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Upload File</label>
+                                                                        <input
+                                                                            type="file"
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files?.[0] || null;
+                                                                                setUploadedFileMap((prev) => ({
+                                                                                    ...prev,
+                                                                                    [serviceId]: file,
+                                                                                }));
+                                                                            }}
+                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                                <div className="mt-4">
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                const rawServiceId = service._id;
+                                                                                const [cleanServiceId] = rawServiceId.split("-");
+                                                                                const employeeId = selectedEmployeeMap[serviceId] || service.employee || "";
+                                                                                const status = statusMap[serviceId] || service.status;
+                                                                                if (!employeeId) {
+                                                                                    alert(`Please select an ${staticServiceName.toLowerCase() === "elora" ? "office staff member" : "technician"} before updating.`);
+                                                                                    return;
+                                                                                }
+                                                                                await updateEmployeeWithStatus(orderId, cleanServiceId, employeeId, status);
+                                                                                setSuccessMessage("Update successful!");
+                                                                                setErrorMessage(null);
+                                                                                setEditableMap((prev) => ({ ...prev, [serviceId]: false }));
+                                                                                setTimeout(() => setSuccessMessage(null), 3000);
+                                                                            } catch (err) {
+                                                                                console.error(err);
+                                                                                setErrorMessage("Update failed!");
+                                                                                setSuccessMessage(null);
+                                                                                setTimeout(() => setErrorMessage(null), 3000);
+                                                                            }
+                                                                        }}
+                                                                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm"
+                                                                    >
+                                                                        Update
                                                                     </button>
                                                                 </div>
-                                                            )}
-                                                        </div>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {/* Non-editable view */}
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                    <div>
+                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Employee</label>
+                                                                        <input
+                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                                                            value={
+                                                                                (staticServiceName.toLowerCase() === "elora"
+                                                                                    ? officeStaff.find((eng) => eng._id === selectedEmployeeMap[serviceId] || service.employee)
+                                                                                    : engineers.find((eng) => eng._id === selectedEmployeeMap[serviceId] || service.employee)
+                                                                                )?.name || "Not Assigned"
+                                                                            }
+                                                                            readOnly
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                                                                        <input
+                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                                                            value={statusMap[serviceId] || service.status}
+                                                                            readOnly
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Edit Button */}
+                                                                <div className="mt-4">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditableMap((prev) => ({ ...prev, [serviceId]: true }));
+                                                                        }}
+                                                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm"
+                                                                    >
+                                                                        Edit
+                                                                    </button>
+                                                                </div>
+                                                            </>
+                                                        )}
+
                                                         {successMessage && <SuccessAlert message={successMessage} />}
                                                         {errorMessage && (
                                                             <div className="flex items-start gap-3 bg-red-50 border border-red-300 text-red-800 rounded-lg p-4 shadow-md w-full max-w-md mt-4">
@@ -286,7 +369,7 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
                                                         )}
 
                                                         {/* Update buttons for QA Test and Elora */}
-                                                        {(staticServiceName.toLowerCase() === "qa test" || staticServiceName.toLowerCase() === "elora") && (
+                                                        {/* {(staticServiceName.toLowerCase() === "qa test" || staticServiceName.toLowerCase() === "elora") && (
                                                             <div className="mt-4">
                                                                 <button
                                                                     type="button"
@@ -322,7 +405,7 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
                                                                     Update {staticServiceName.toLowerCase() === "elora" ? "Office Staff" : "Technician"}
                                                                 </button>
                                                             </div>
-                                                        )}
+                                                        )} */}
                                                     </>
                                                 )}
                                         </div>

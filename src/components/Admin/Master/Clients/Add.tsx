@@ -16,7 +16,12 @@ const AddClient = () => {
         phone: Yup.string()
             .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits')
             .required('Please fill the Field'),
-        gstNo: Yup.string().required('Please fill the Field'),
+        gstNo: Yup.string()
+            .matches(
+                /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+                'Invalid GST Number(eg. 27ABCDE1234F1Z5)'
+            )
+            .required('Please fill the Field'),
     });
     const submitForm = () => {
         showMessage('Form submitted successfully', 'success');
@@ -70,7 +75,8 @@ const AddClient = () => {
                         } else if (message?.includes('phone')) {
                             setFieldError('phone', message);
                         } else if (message?.includes('gstNo')) {
-                            a
+
+
                             setFieldError('gstNo', message);
                         } else {
                             showMessage(message || 'Failed to add client', 'error');
@@ -106,29 +112,58 @@ const AddClient = () => {
                                 </div>
                                 <div className={submitCount ? (errors.phone ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="phone">Phone </label>
-                                    <Field
-                                        name="phone"
-                                        type="text"
-                                        id="phone"
-                                        placeholder="Enter Phone Number"
-                                        className="form-input"
-                                        maxLength={10}
-                                    />
-                                    {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : ''}
+                                    <Field name="phone">
+                                        {({ field, form }) => (
+                                            <input
+                                                {...field}
+                                                type="text"
+                                                id="phone"
+                                                placeholder="Enter Phone Number"
+                                                className="form-input"
+                                                maxLength={10} // ensures max length is 10
+                                                onChange={(e) => {
+                                                    const onlyNums = e.target.value.replace(/[^0-9]/g, ''); // remove non-numeric
+                                                    form.setFieldValue(field.name, onlyNums);
+                                                }}
+                                            />
+                                        )}
+                                    </Field>
+                                    {submitCount && errors.phone ? (
+                                        <div className="text-danger mt-1">{errors.phone}</div>
+                                    ) : null}
                                 </div>
+
 
                                 <div className={submitCount ? (errors.gstNo ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="gstNo">GST Number </label>
-                                    <Field
-                                        name="gstNo"
-                                        type="text"
-                                        id="gstNo"
-                                        placeholder="Enter GST Number"
-                                        className="form-input"
-                                        maxLength={15}
-                                    />
-                                    {submitCount && errors.gstNo ? <div className="text-danger mt-1">{errors.gstNo}</div> : ''}
+                                    <Field name="gstNo">
+                                        {({
+                                            field,
+                                            form,
+                                        }: {
+                                            field: { name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onBlur: (e: React.FocusEvent<HTMLInputElement>) => void };
+                                            form: { setFieldValue: (field: string, value: any, shouldValidate?: boolean) => void };
+                                        }) => (
+                                            <input
+                                                {...field}
+                                                type="text"
+                                                id="gstNo"
+                                                placeholder="Enter GST Number"
+                                                className="form-input"
+                                                maxLength={15}
+                                                onChange={(e) => {
+                                                    // Allow only uppercase letters and digits
+                                                    const value = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+                                                    form.setFieldValue(field.name, value);
+                                                }}
+                                            />
+                                        )}
+                                    </Field>
+                                    {submitCount && errors.gstNo ? (
+                                        <div className="text-danger mt-1">{errors.gstNo as string}</div>
+                                    ) : null}
                                 </div>
+
                             </div>
                         </div>
 
