@@ -34,12 +34,13 @@ const AddDealer = () => {
         state: Yup.string().required('Please fill the Field'),
         pinCode: Yup.string().required('Please fill the Field'),
         region: Yup.string().required('Please fill the Field'),
+        branch: Yup.string().required('Please fill the Field'),
         mouValidity: Yup.string().required('Please fill the Field'),
         qaTests: Yup.array().min(1, 'Please select at least one QA Test'),
         services: Yup.array().min(1, 'Please select at least one service'),
-        travel: Yup.number().required('Please fill the Field').min(0, 'Travel cost cannot be negative'),
-        actual: Yup.number().required('Please fill the Field').min(0, 'Actual cost cannot be negative'),
-        fixed: Yup.number().required('Please fill the Field').min(0, 'Fixed cost cannot be negative'),
+        // travel: Yup.number().required('Please fill the Field').min(0, 'Travel cost cannot be negative'),
+        // actual: Yup.number().required('Please fill the Field').min(0, 'Actual cost cannot be negative'),
+        // fixed: Yup.number().required('Please fill the Field').min(0, 'Fixed cost cannot be negative'),
     });
 
     const submitForm = (values: any) => {
@@ -74,14 +75,15 @@ const AddDealer = () => {
                     address: '',
                     city: '',
                     state: '',
+                    branch: '',
                     pinCode: '',
                     region: '',
                     mouValidity: '',
                     qaTests: [],
                     services: [],
-                    travel: '',
-                    actual: '',
-                    fixed: '',
+                    // travel: '',
+                    // actual: '',
+                    // fixed: '',
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
@@ -100,6 +102,36 @@ const AddDealer = () => {
                                     {submitCount && errors.dealersName ? <div className="text-danger mt-1">{errors.dealersName}</div> : null}
                                 </div>
                                 {/* Add rest of the fields as in your previous version */}
+                                <div className={submitCount && errors.address ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="address">Full Address</label>
+                                    <Field name="address" type="text" id="address" placeholder="Enter Full Address" className="form-input" />
+                                    {submitCount && errors.address ? <div className="text-danger mt-1">{errors.address}</div> : null}
+                                </div>
+                                <div className={submitCount && errors.city ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="city">City</label>
+                                    <Field name="city" type="text" id="city" placeholder="Enter City" className="form-input" />
+                                    {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
+                                </div>
+                                <div className={submitCount && errors.state ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="state">State</label>
+                                    <Field name="state" type="text" id="state" placeholder="Enter State" className="form-input" />
+                                    {submitCount && errors.state ? <div className="text-danger mt-1">{errors.state}</div> : null}
+                                </div>
+                                <div className={submitCount && errors.pinCode ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="pinCode">Pin Code</label>
+                                    <Field name="pinCode" type="text" id="pinCode" className="form-input" placeholder="Enter Pin Code" />
+                                    {submitCount && errors.pinCode ? <div className="text-danger mt-1">{errors.pinCode}</div> : null}
+                                </div>
+                                <div className={submitCount && errors.branch ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="branch">Branch</label>
+                                    <Field name="branch" type="text" id="branch" className="form-input" placeholder="Enter Branch" />
+                                    {submitCount && errors.branch ? <div className="text-danger mt-1">{errors.branch}</div> : null}
+                                </div>
+                                <div className={submitCount && errors.mouValidity ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="mouValidity">Mou Validity</label>
+                                    <Field name="mouValidity" type="date" id="mouValidity" className="form-input" placeholder="Enter Mou Validity" />
+                                    {submitCount && errors.mouValidity ? <div className="text-danger mt-1">{errors.mouValidity}</div> : null}
+                                </div>
                             </div>
                         </div>
 

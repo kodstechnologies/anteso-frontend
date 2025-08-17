@@ -12,6 +12,7 @@ import IconEdit from '../../../components/Icon/IconEdit';
 import { servicesData } from '../../../data';
 
 const Services = () => {
+
     const dispatch = useDispatch();
     useEffect(() => {
         dispatch(setPageTitle('Services'));

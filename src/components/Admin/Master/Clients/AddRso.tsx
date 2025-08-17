@@ -6,12 +6,12 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { showMessage } from "../../../common/ShowMessage"
 import { useState } from "react"
 import FullScreenLoader from "../../../common/FullScreenLoader"
-import { createRsoByClientId } from "../../../../api"
+import { createRsoByHospitalId } from "../../../../api"
 
 const AddRso = () => {
   const navigate = useNavigate()
-  const { clientId } = useParams()
-  console.log("🚀 ~ AddRso ~ clientId:", clientId)
+  const { hospitalId } = useParams()
+  console.log("🚀 ~ AddRso ~ hospitalId:", hospitalId)
   const [loading, setLoading] = useState(false)
 
   const SubmittedForm = Yup.object().shape({
@@ -42,7 +42,7 @@ const AddRso = () => {
           </Link>
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-          <Link to={`/admin/clients/preview/${clientId}`} className="text-primary">
+          <Link to={`/admin/clients/preview/${hospitalId}`} className="text-primary">
             RSOs
           </Link>
         </li>
@@ -68,7 +68,7 @@ const AddRso = () => {
           setLoading(true)
           try {
             const formData = new FormData()
-            
+
             Object.keys(values).forEach((key) => {
               if (key === "attachFile" && values[key]) {
                 formData.append(key, values[key])
@@ -77,10 +77,10 @@ const AddRso = () => {
               }
             })
 
-            const response = await createRsoByClientId(clientId, formData)
+            const response = await createRsoByHospitalId(hospitalId, formData)
             console.log("🚀 ~ onSubmit={ ~ response:", response)
             showMessage("RSO added successfully!", "success")
-            navigate(`/admin/clients/${clientId}/rso`)
+            navigate(`/admin/clients/preview/${hospitalId}/rso`)
           } catch (error: any) {
             const message = error?.response?.data?.message
             console.log("🚀 ~ onSubmit ~ message:", message)

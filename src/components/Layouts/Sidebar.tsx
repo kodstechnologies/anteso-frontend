@@ -84,7 +84,6 @@ const Sidebar = () => {
                             <IconCaretsDown className="m-auto rotate-90" />
                         </button>
                     </div>
-
                     <PerfectScrollbar className="h-[calc(100vh-80px)] relative">
                         <ul className="relative font-semibold space-y-0.5 p-4 py-0">
                             <li className="nav-item">
@@ -98,7 +97,6 @@ const Sidebar = () => {
                                             </div>
                                         </NavLink>
                                     </li>
-
                                     {/* Master Menu (shared but items inside differ) */}
                                     <li className="menu nav-item">
                                         <button type="button" className={`${currentMenu === 'masters' ? 'active' : ''} nav-link group w-full`} onClick={() => toggleMenu('masters')}>
@@ -129,7 +127,6 @@ const Sidebar = () => {
                                             </ul>
                                         </AnimateHeight>
                                     </li>
-
                                     {/* Admin only: HRMS */}
                                     {userType === 'admin' && (
                                         // <li className="nav-item">

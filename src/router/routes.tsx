@@ -223,7 +223,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/clients/preview/:clientId/add-hospital',
+        path: '/admin/clients/preview/:clientId/:hospitalId',
         element: (
             // <AdminProtected>
             <AddHospital />
@@ -231,7 +231,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/clients/preview/:clientId/add-rso',
+        path: '/admin/clients/preview/:hospitalId/add-rso',
         element: (
             // <AdminProtected>
             <AddRso />
@@ -239,7 +239,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/clients/preview/:clientId/add-institute',
+        path: '/admin/clients/preview/:hospitalId/add-institute',
         element: (
             // <AdminProtected>
             <AddInstitute />
@@ -297,7 +297,6 @@ const routes = [
             </AdminProtected>
         ),
     },
-
     {
         path: '/admin/employee/add',
         element: (
@@ -307,7 +306,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/employee/edit',
+        path: '/admin/employee/edit/:id',
         element: (
             <AdminProtected>
                 <EditEngineer />
@@ -315,7 +314,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/employee/view',
+        path: '/admin/employee/view/:id',
         element: (
             <AdminProtected>
                 <ViewEmployee />
@@ -717,7 +716,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/hrms/trip-management-view',
+        path: '/admin/hrms/trip-management-view/:id',
         element: (
             <AdminProtected>
                 <ViewAdvanceManagement />

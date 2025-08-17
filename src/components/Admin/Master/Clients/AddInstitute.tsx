@@ -5,11 +5,11 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { showMessage } from "../../../common/ShowMessage"
 import { useState } from "react"
 import FullScreenLoader from "../../../common/FullScreenLoader"
-import { createInstituteByClientId } from "../../../../api"
+import { createInstituteByHospitalId } from "../../../../api"
 
 const AddInstitute = () => {
   const navigate = useNavigate()
-  const { clientId } = useParams()
+  const { hospitalId } = useParams()
   const [loading, setLoading] = useState(false)
 
   const SubmittedForm = Yup.object().shape({
@@ -36,7 +36,7 @@ const AddInstitute = () => {
           </Link>
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-          <Link to={`/admin/clients/${clientId}/institutes`} className="text-primary">
+          <Link to={`/admin/clients/${hospitalId}/institutes`} className="text-primary">
             Institutes
           </Link>
         </li>
@@ -57,10 +57,10 @@ const AddInstitute = () => {
         onSubmit={async (values, { setSubmitting, setFieldError }) => {
           setLoading(true)
           try {
-            const response = await createInstituteByClientId(clientId, values)
+            const response = await createInstituteByHospitalId(hospitalId, values)
             console.log("🚀 ~ onSubmit={ ~ response:", response)
             showMessage("Institute added successfully!", "success")
-            navigate(`/admin/clients/preview/${clientId}`)
+            // navigate(`/admin/clients/preview/${hospitalId}`)
           } catch (error: any) {
             const message = error?.response?.data?.message
             console.log("🚀 ~ onSubmit ~ message:", message)

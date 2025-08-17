@@ -47,7 +47,6 @@ export const getAllClients = async () => {
         throw error;
     }
 }
-
 export const deleteClientById = async (clientId: any) => {
     try {
         const token = Cookies.get('accessToken');
@@ -62,7 +61,6 @@ export const deleteClientById = async (clientId: any) => {
         throw error;
     }
 };
-
 export const getClientById = async (clientId: any) => {
     try {
         const token = Cookies.get('accessToken');
@@ -172,44 +170,6 @@ export const createHospitalByClientId = async (clientId: any, payload: any) => {
         throw error;
     }
 }
-export const createRsoByClientId = async (clientId: string, payload: any) => {
-    try {
-        const token = Cookies.get('accessToken');
-
-        console.log("📦 Payload being sent:", payload);
-
-        const res = await api.post(`/rso/create-rso-by-client/${clientId}`, payload, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json', // ← Important
-            },
-        });
-
-        return res.data;
-    } catch (error: any) {
-        console.error("❌ Error in createRsoByClientId:", error?.response?.data || error.message);
-        throw error;
-    }
-};
-
-export const createInstituteByClientId = async (clientId: any, payload: any) => {
-    try {
-        const token = Cookies.get('accessToken');
-        const res = await api.post(`/institute/create-institute-by-client/${clientId}`, payload, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-        return res.data
-    } catch (error: any) {
-        // console.log("🚀 ~ createRsoByClientId ~ error:", error)
-        console.error("🚀 ~ createinstituteByClientId ~ error:", error?.response?.data || error.message);
-        throw error;
-    }
-}
-
-
-//get all hospitals,rsos and institute
 export const getAllHospitalsByClientId = async (clientId: any) => {
     try {
         const token = Cookies.get('accessToken');
@@ -227,10 +187,51 @@ export const getAllHospitalsByClientId = async (clientId: any) => {
         throw error;
     }
 }
-export const getAllRsosByClientId = async (clientId: any) => {
+
+
+export const createRsoByHospitalId = async (hospitalId: string, payload: any) => {
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.get(`/rso/get-allRso-by-client/${clientId}`, {
+
+        console.log("📦 Payload being sent:", payload);
+
+        const res = await api.post(`/rso/create-rso-by-hospitalId/${hospitalId}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json', // ← Important
+            },
+        });
+
+        return res.data;
+    } catch (error: any) {
+        console.error("❌ Error in createRsoByClientId:", error?.response?.data || error.message);
+        throw error;
+    }
+};
+export const createInstituteByHospitalId = async (hospitalId: any, payload: any) => {
+    console.log("🚀 ~ createInstituteByHospitalId ~ hospitalId:", hospitalId)
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.post(`/institute/create-institute-by-hospitalId/${hospitalId}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ createInstituteByHospitalId ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        // console.log("🚀 ~ createRsoByClientId ~ error:", error)
+        console.error("🚀 ~ createinstituteByClientId ~ error:", error?.response?.data || error.message);
+        throw error;
+    }
+}
+
+
+//get all hospitals,rsos and institute
+export const getAllRsosByhospitalId = async (hospitalId: any) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/rso/get-all-rso-by-hospitalId/${hospitalId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -242,10 +243,10 @@ export const getAllRsosByClientId = async (clientId: any) => {
         throw error;
     }
 }
-export const getAllIstitutessByClientId = async (clientId: any) => {
+export const getAllIstitutesByhospitalId = async (hospitalId: any) => {
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.get(`/institute/get-institutes-by-client/${clientId}`, {
+        const res = await api.get(`/institute/get-all-institutes-by-hospitalId/${hospitalId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -274,10 +275,11 @@ export const getHospitalByClientIdAndHospitalId = async (clientId: any, hospital
         throw error;
     }
 }
-export const getInstituteByClientIdAndInstituteId = async (clientId: any, instituteId: any) => {
+
+export const getInstituteByHospitalIdAndInstituteId = async (hospitalId: any, instituteId: any) => {
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.get(`/institute/get-institute-by-client-and-institute/${clientId}/${instituteId}`, {
+        const res = await api.get(`/institute/get-institute-by-hospitalId-instituteId/${hospitalId}/${instituteId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -289,12 +291,12 @@ export const getInstituteByClientIdAndInstituteId = async (clientId: any, instit
         throw error;
     }
 }
-export const getRsoByClientIdAndRsoId = async (clientId: any, rsoId: any) => {
+export const getRsoByHospitalIdAndRsoId = async (hospitalId: any, rsoId: any) => {
     console.log("🚀 ~ getRsoByClientIdAndRsoId ~ rsoId:", rsoId)
-    console.log("🚀 ~ getRsoByClientIdAndRsoId ~ clientId:", clientId)
+    console.log("🚀 ~ getRsoByClientIdAndRsoId ~ clientId:", hospitalId)
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.get(`/rso/get-rso-by-clienId-and-rsoId/${clientId}/${rsoId}`, {
+        const res = await api.get(`/rso/get-rso-by-clienId-and-rsoId/${hospitalId}/${rsoId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -324,10 +326,10 @@ export const editHospitalByClientIDandHospitalId = async (clientId: any, hospita
         throw error;
     }
 }
-export const editInstituteByByClientIDandInstituteId = async (clientId: any, InstituteId: any, payload: any) => {
+export const editInstituteByHospitalIdandInstituteId = async (hospitalId: any, InstituteId: any, payload: any) => {
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.put(`/institute/update-institute-by-client-and-institute/${clientId}/${InstituteId}`, payload, {
+        const res = await api.put(`/institute/update-institute-by-hospitalId-instituteId/${hospitalId}/${InstituteId}`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -339,12 +341,12 @@ export const editInstituteByByClientIDandInstituteId = async (clientId: any, Ins
         throw error;
     }
 }
-export const editRsoByClientIDandRsoId = async (clientId: any, rsoId: any, payload: any) => {
+export const editRsohospitalIdandRsoId = async (hospitalId: any, rsoId: any, payload: any) => {
     console.log("🚀 ~ editRsoByClientIDandRsoId ~ rsoId:", rsoId)
-    console.log("🚀 ~ editRsoByClientIDandRsoId ~ clientId:", clientId)
+    console.log("🚀 ~ editRsoByClientIDandRsoId ~ clientId:", hospitalId)
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.put(`/rso/update-rso-by-client/${clientId}/${rsoId}`, payload, {
+        const res = await api.put(`/rso/update-rso-by-hospitalId-rsoId/${hospitalId}/${rsoId}`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -375,10 +377,10 @@ export const deleteHospitalByClientIdAndHospitalId = async (clientId: any, hospi
         throw error;
     }
 }
-export const deleteInstituteByClientIdAndInstituteId = async (clientId: any, InstituteId: any,) => {
+export const deleteInstituteByHospitalIdAndInstituteId = async (hospitalId: any, InstituteId: any,) => {
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.delete(`/institute/delete-institute-by-client-and-institute/${clientId}/${InstituteId}`, {
+        const res = await api.delete(`/institute/delete-institute-by-hospitalId-instituteId/${hospitalId}/${InstituteId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -390,10 +392,10 @@ export const deleteInstituteByClientIdAndInstituteId = async (clientId: any, Ins
         throw error;
     }
 }
-export const deleteRsoByClientIdAndRsoId = async (clientId: any, rsoId: any,) => {
+export const deleteRsoByHospitalIdAndRsoId = async (hospitalId: any, rsoId: any,) => {
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.delete(`/rso/delete-rso-by-id/${clientId}/${rsoId}`, {
+        const res = await api.delete(`/rso/delete-rso-by-hospitalId-rsoId/${hospitalId}/${rsoId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -407,6 +409,13 @@ export const deleteRsoByClientIdAndRsoId = async (clientId: any, rsoId: any,) =>
 }
 
 
+// export const getAllHospitalsByClientId = async () => {
+//     try {
+
+//     } catch (error) {
+
+//     }
+// }
 
 export const addEnquiry = async (payload: any) => {
     try {
@@ -477,6 +486,27 @@ export const getAllEnquiry = async () => {
         );
     }
 }
+
+export const getQuotationByCustomerAndEnquiryId = async (customerId: any, enquiryId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/enquiry/get-quotation-by-customer-enq-quo-ids/${customerId}/${enquiryId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getQuotationByCustomerAndEnquiryId ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ getQuotationByCustomerAndEnquiryId ~ error:", error);
+
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch client data"
+        );
+    }
+}
+
+
 //used in quotation
 export const allEmployees = async () => {
     try {
@@ -515,6 +545,22 @@ export const createQuotationByEnquiryId = async (payload: any, id: any) => {
     } catch (error: any) {
         console.error("🚀 ~ addclient ~ error:", error?.response?.data || error.message);
         throw error;
+    }
+}
+export const getQuotationByEEnquiryId = async (enquiryId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/quotation/get-by-quotation-id/${enquiryId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~getQuotationByEEnquiryId ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch getQuotationByEEnquiryId"
+        );
     }
 }
 
@@ -558,7 +604,7 @@ export const editEmployee = async (id: any, payload: any) => {
 export const getAllEmployees = async () => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.get(`/technician/get-all`, {
+        const res = await api.get(`/technician/all-employees`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -588,7 +634,6 @@ export const getEmployeeById = async (id: any) => {
         );
     }
 }
-
 
 export const deleteEmployeeById = async (id: any) => {
     try {
@@ -1019,7 +1064,6 @@ export const getAllOfficeStaff = async () => {
         );
     }
 }
-
 export const updateEmployeeWithStatus = async (orderId: string, serviceId: string, employeeId: string, status: string,) => {
     console.log("🚀 ~ updateEmployeeWithStatus ~ status:", status)
     console.log("🚀 ~ updateEmployeeWithStatus ~ employeeId:", employeeId)
@@ -1032,6 +1076,26 @@ export const updateEmployeeWithStatus = async (orderId: string, serviceId: strin
             serviceId,
             employeeId,
             status,
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res.data
+    } catch (error: any) {
+        console.error("🚀  ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch "
+        );
+    }
+}
+export const assignToTechnicianByQA = async (orderId: string, serviceId: string, technicianId: string) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.put(`/orders/assign-to-technician/${orderId}/${serviceId}/${technicianId}`, {
+            orderId,
+            serviceId,
+            technicianId,
         }, {
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -1069,5 +1133,164 @@ export const completedOrderStatus = async () => {
 
     }
 }
-// export const 
+export const assignToOfficeStaff = async (orderId: string, serviceId: string, officeStaffId: string) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.put(`/orders/assign-to-office-staff/${orderId}/${serviceId}/${officeStaffId}`, {
+            orderId,
+            serviceId,
+            officeStaffId,
+
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res.data
+    } catch (error: any) {
+        console.error("🚀  ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch "
+        );
+    }
+}
 //dummy
+export const getAlltripsByTechnicianId = async (id: string) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/technician/get-trips-per-technician/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ all  trips ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const addAdvance = async (id: string, payload: { advancedAmount: number }) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.post(`/expense/add-advance-to-technician/${id}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ addAdvance ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const getAssignedTechnicianName = async (orderId: any, serviceId: any, worktype: any) => {
+    console.log("🚀 ~ getAssignedTechnicianName ~ worktype:", worktype)
+    console.log("🚀 ~ getAssignedTechnicianName ~ serviceId:", serviceId)
+    console.log("🚀 ~ getAssignedTechnicianName ~ orderId:", orderId)
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/orders/get-assigned-technician/${orderId}/${serviceId}/${worktype}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAssignedTechnicianName ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+export const getAssignedStaffName = async (orderId: any, serviceId: any, worktype: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/orders/get-assigned-staff/${orderId}/${serviceId}/${worktype}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAssignedStaffName ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const getEngineerByTool = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/orders/get-assigned-staff/${orderId}/${serviceId}/${worktype}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAssignedStaffName ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const getMachineUpdates = async (technicianId: any, orderId: any, serviceId: any, worktype: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/orders/get-updated-order-services/${technicianId}/${orderId}/${serviceId}/${worktype}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getMachineUpdates ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const getEngineerByTools = async (toolId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/orders/get-updated-order-services/${toolId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getEngineerByTools ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const createOrder = async (payload:any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.post(`/orders/create-order`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ createOrder ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to createOrder"
+        );
+    }
+}

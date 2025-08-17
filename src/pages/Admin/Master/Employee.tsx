@@ -100,11 +100,14 @@ const Employee = () => {
                 const response = await getAllEmployees();
                 console.log("🚀 ~ fetchEmployees ~ response:", response)
 
-                const transformed = response?.data?.map((employee: any, index: number) => ({
+                const transformed = response?.data?.map((employee, index) => ({
                     ...employee,
+                    id: employee._id, // 👈 keep id for routing
                     employeeId: `EMP${String(index + 1).padStart(3, '0')}`,
                     role: employee.technicianType,
-                    tools: (employee.tools || []).map((tool: any) => tool.toolName || tool.nomenclature || 'N/A'),
+                    tools: (employee.tools || []).map((tool) =>
+                        tool.toolId?.nomenclature || 'N/A'
+                    ),
                     status: {
                         color: employee.status === 'active' ? 'success' : 'danger',
                         tooltip: employee.status.charAt(0).toUpperCase() + employee.status.slice(1),
@@ -119,7 +122,6 @@ const Employee = () => {
                 setLoading(false);
             }
         };
-
         fetchEmployees();
     }, []);
 
@@ -199,17 +201,18 @@ const Employee = () => {
                                     textAlignment: 'center',
                                     render: ({ id }) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to="/admin/employee/view" className="flex hover:text-primary">
+                                            <NavLink to={`/admin/employee/view/${id}`} className="flex hover:text-primary">
                                                 <IconEye />
                                             </NavLink>
-                                            <NavLink to="/admin/employee/edit" className="flex hover:text-info">
+                                            <NavLink to={`/admin/employee/edit/${id}`} className="flex hover:text-info">
                                                 <IconEdit className="w-4.5 h-4.5" />
                                             </NavLink>
-                                            <button type="button" className="flex hover:text-danger" onClick={(e) => deleteRow(id)}>
+                                            <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
                                                 <IconTrashLines />
                                             </button>
                                         </div>
-                                    ),
+                                    )
+
                                 },
                             ]}
                             highlightOnHover

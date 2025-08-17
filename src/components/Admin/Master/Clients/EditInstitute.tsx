@@ -7,7 +7,7 @@ import { showMessage } from "../../../common/ShowMessage"
 import { useState, useEffect } from "react"
 import FullScreenLoader from "../../../common/FullScreenLoader"
 // You'll need to create these API functions
-import { getInstituteByClientIdAndInstituteId, editInstituteByByClientIDandInstituteId } from "../../../../api"
+import { getInstituteByHospitalIdAndInstituteId, editInstituteByHospitalIdandInstituteId } from "../../../../api"
 
 interface InstituteData {
   eloraId: string
@@ -19,6 +19,8 @@ interface InstituteData {
 const EditInstitute = () => {
   const navigate = useNavigate()
   const { clientId, instituteId } = useParams()
+  console.log("🚀 ~ EditInstitute ~ instituteId:", instituteId)
+  console.log("🚀 ~ EditInstitute ~ clientId:", clientId)
   const [loading, setLoading] = useState(false)
   const [initialData, setInitialData] = useState<InstituteData | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
@@ -36,7 +38,7 @@ const EditInstitute = () => {
     const fetchInstituteData = async () => {
       try {
         setDataLoading(true)
-        const response = await getInstituteByClientIdAndInstituteId(clientId, instituteId)
+        const response = await getInstituteByHospitalIdAndInstituteId(clientId, instituteId)
         console.log("🚀 ~ fetchInstituteData ~ response:", response)
 
         const instituteData = response.data || response
@@ -100,7 +102,7 @@ const EditInstitute = () => {
         onSubmit={async (values, { setSubmitting, setFieldError }) => {
           setLoading(true)
           try {
-            const response = await editInstituteByByClientIDandInstituteId(clientId, instituteId, values)
+            const response = await editInstituteByHospitalIdandInstituteId(clientId, instituteId, values)
             console.log("🚀 ~ onSubmit={ ~ response:", response)
             showMessage("Institute updated successfully!", "success")
             navigate(`/admin/clients/preview/${clientId}`)

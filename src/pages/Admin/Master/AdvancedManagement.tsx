@@ -11,7 +11,7 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { hrms } from '../../../data'; // This should now include title and amount for each item
+import { getAllTechnicians } from '../../../api/index'; // ✅ import API call
 
 const AdvancedManagement = () => {
     const dispatch = useDispatch();
@@ -20,24 +20,47 @@ const AdvancedManagement = () => {
         dispatch(setPageTitle('Advanced Management'));
     }, []);
 
-    const [items, setItems] = useState(
-        hrms.map((item, index) => ({
-            ...item,
-            clientId: `EMP${String(index + 1).padStart(3, '0')}`,
-        }))
-    );
+    const [items, setItems] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const [page, setPage] = useState(1);
     const PAGE_SIZES = [10, 20, 30, 50, 100];
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-    const [initialRecords, setInitialRecords] = useState(sortBy(items, 'name'));
-    const [records, setRecords] = useState(initialRecords);
-    const [selectedRecords, setSelectedRecords] = useState<any>([]);
+    const [initialRecords, setInitialRecords] = useState<any[]>([]);
+    const [records, setRecords] = useState<any[]>([]);
+    const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
     const [search, setSearch] = useState('');
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'firstName',
+        columnAccessor: 'name',
         direction: 'asc',
     });
+
+    // ✅ Fetch employee data on mount
+    useEffect(() => {
+        const fetchEmployees = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                const data = await getAllTechnicians();
+                console.log("🚀 ~ fetchEmployees ~ data:", data)
+
+                // Assuming API returns an array of employees
+                const formatted = data.data?.map((item: any, index: number) => ({
+                    ...item,
+                    clientId: `EMP${String(index + 1).padStart(3, '0')}`, // unique ID for display
+                }));
+                setItems(formatted);
+                setInitialRecords(sortBy(formatted, 'name'));
+                setLoading(false);
+            } catch (err: any) {
+                setError(err.message || 'Failed to load employees');
+                setLoading(false);
+            }
+        };
+        fetchEmployees();
+    }, []);
 
     useEffect(() => {
         setPage(1);
@@ -53,14 +76,9 @@ const AdvancedManagement = () => {
         setInitialRecords(() => {
             return items.filter((item: any) => {
                 return (
-                    item.clientId.toLowerCase().includes(search.toLowerCase()) ||
-                    item.name.toLowerCase().includes(search.toLowerCase()) ||
-                    item.email.toLowerCase().includes(search.toLowerCase()) ||
-                    item.address.toLowerCase().includes(search.toLowerCase()) ||
-                    item.phone.toLowerCase().includes(search.toLowerCase()) ||
-                    item.business?.toLowerCase().includes(search.toLowerCase()) ||
-                    item.gstNo?.toLowerCase().includes(search.toLowerCase()) ||
-                    item.title?.toLowerCase().includes(search.toLowerCase()) ||
+                    item.clientId?.toLowerCase().includes(search.toLowerCase()) ||
+                    item.name?.toLowerCase().includes(search.toLowerCase()) ||
+                    item.email?.toLowerCase().includes(search.toLowerCase()) ||
                     item.amount?.toString().includes(search)
                 );
             });
@@ -91,19 +109,16 @@ const AdvancedManagement = () => {
         { label: 'Trip Management', icon: <IconBox /> },
     ];
 
+    if (loading) return <div>Loading employees...</div>;
+    if (error) return <div className="text-red-500">Error: {error}</div>;
+
     return (
         <>
             <Breadcrumb items={breadcrumbItems} />
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
-                        <div className="flex items-center gap-2">
-                            {/* Add Button if needed */}
-                            {/* <Link to="/admin/advanced/add" className="btn btn-primary gap-2">
-                                <IconPlus />
-                                Add New
-                            </Link> */}
-                        </div>
+                        <div className="flex items-center gap-2"></div>
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input
                                 type="text"
@@ -114,7 +129,6 @@ const AdvancedManagement = () => {
                             />
                         </div>
                     </div>
-
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
@@ -123,32 +137,32 @@ const AdvancedManagement = () => {
                                 { accessor: 'clientId', title: 'EMP ID', sortable: true },
                                 { accessor: 'name', sortable: true },
                                 { accessor: 'email', sortable: true },
-                                
-                                { accessor: 'tripname', title: 'Trip Name', sortable: true },
-                                { accessor: 'tripStartDate', title: 'Trip Start Date', sortable: true },
-                                { accessor: 'tripEndDate', title: 'Trip Start Date', sortable: true },
-                                { accessor: 'amount', title: 'Amount', sortable: true },
+                                // { accessor: 'amount', title: 'Amount', sortable: true },
                                 {
                                     accessor: 'action',
                                     title: 'Actions',
                                     sortable: false,
                                     textAlignment: 'center',
-                                    render: ({ id }) => (
+                                    render: (record) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to={`/admin/hrms/trip-management-view`} className="flex hover:text-primary">
+                                            <NavLink
+                                                to={`/admin/hrms/trip-management-view/${record._id}`} // ✅ use actual ID
+                                                className="flex hover:text-primary"
+                                            >
                                                 <IconEye />
                                             </NavLink>
                                             <IconEdit className="w-4.5 h-4.5 hover:text-info" />
                                             <button
                                                 type="button"
                                                 className="flex hover:text-danger"
-                                                onClick={() => deleteRow(id)}
+                                                onClick={() => deleteRow(record._id)}
                                             >
                                                 <IconTrashLines />
                                             </button>
                                         </div>
                                     ),
-                                },
+                                }
+
                             ]}
                             highlightOnHover
                             totalRecords={initialRecords.length}

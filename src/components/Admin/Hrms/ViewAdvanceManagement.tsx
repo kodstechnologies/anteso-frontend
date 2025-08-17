@@ -1,239 +1,190 @@
 "use client"
-import { useState } from "react"
-import { MdDelete } from "react-icons/md"
-import type { Expense } from "../../../types/hrms-types"
+import { CheckCircleIcon } from "lucide-react"
+import { useState, useEffect } from "react"
+import { MdDelete, MdVisibility } from "react-icons/md"
+import { useParams } from "react-router-dom"
+import { addAdvance, getAlltripsByTechnicianId } from "../../../api" // adjust path
+import { log } from "console"
+
+interface ExpenseRow {
+  id: string
+  name?: string // optional, since your API doesn't return it
+  tripname: string
+  tripStartDate: string
+  tripEndDate: string
+  expense: number
+  balance: number
+}
 
 export default function AdvanceManagement() {
-  const [isAddingExpense, setIsAddingExpense] = useState(false)
+  const [lastAddedAmount, setLastAddedAmount] = useState<number | null>(null)
+  const [addAmountValue, setAddAmountValue] = useState<number | "">("")
+  const [isEditable, setIsEditable] = useState(true)
+  const { id } = useParams<{ id: string }>()
+  const [expenses, setExpenses] = useState<ExpenseRow[]>([])
 
-  const [expenses, setExpenses] = useState<Expense[]>([
-    {
-      id: "1",
-      name: 'Rabi Prasad',
-      email: 'client1@gmail.com',
-      address: 'HSR Layout, Bangalore, Karnataka',
-      phone: '9876576876',
-      business: 'Tech Solutions Pvt. Ltd.',
-      tripname: 'Delhi Installation',
-      tripStartDate: '10/10/2024',
-      tripEndDate: '20/10/2024',
-      gstNo: 'AX123',
-      designation: 'Manager',
-      title: 'Office Supplies',
-      amount: 45000,
-    },
-    {
-      id: "2",
-      name: 'Sita Rani',
-      email: 'client2@example.com',
-      address: 'Andheri West, Mumbai, Maharashtra',
-      phone: '9865432109',
-      business: 'Creative Minds Co.',
-      tripname: 'Delhi Installation',
-      tripStartDate: '10/10/2024',
-      tripEndDate: '20/10/2024',
-      gstNo: 'BY456',
-      designation: 'Creative Director',
-      title: 'Office Supplies',
-      amount: 82000,
-    },
-    {
-      id: "3",
-      name: 'John Dsouza',
-      email: 'client3@example.com',
-      address: 'Banjara Hills, Hyderabad, Telangana',
-      phone: '9123456780',
-      business: 'Dsouza Enterprises',
-      tripname: 'Delhi Installation',
-      tripStartDate: '10/10/2024',
-      tripEndDate: '20/10/2024',
-      gstNo: 'CZ789',
-      designation: 'CEO',
-      title: 'Team Lunch',
-      amount: 120000,
-    }
-  ])
-
-  const [newExpense, setNewExpense] = useState<Omit<Expense, "id">>({
-    name: "",
-    email: "",
-    address: "",
-    phone: "",
-    business: "",
-    tripname: "",
-    tripStartDate: "",
-    tripEndDate: "",
-    gstNo: "",
-    designation: "",
-    title: "",
-    amount: 0,
-  })
-
-  // Handle adding new expense
-  const handleAddExpense = () => {
-    if (newExpense.title && newExpense.amount > 0 && newExpense.tripname && newExpense.tripStartDate && newExpense.tripEndDate) {
-      const expense: Expense = {
-        ...newExpense,
-        id: Date.now().toString(),
+  // Fetch trips with expenses from backend
+  useEffect(() => {
+    if (!id) return
+    const fetchTrips = async () => {
+      try {
+        const res = await getAlltripsByTechnicianId(id)
+        const tripsData = res.data?.data || []
+        // Flatten into table rows
+        const mapped: ExpenseRow[] = tripsData.map((trip: any) => {
+          const firstExpense = trip.expenses?.[0] || { totalExpense: 0, balance: 0 }
+          return {
+            id: trip._id,
+            tripname: trip.tripName,
+            tripStartDate: new Date(trip.startDate).toLocaleDateString(),
+            tripEndDate: new Date(trip.endDate).toLocaleDateString(),
+            expense: firstExpense.totalExpense || 0,
+            balance: firstExpense.balance || 0
+          }
+        })
+        setExpenses(mapped)
+      } catch (err) {
+        console.error("Error fetching trips:", err)
       }
-      setExpenses([...expenses, expense])
-      setNewExpense({
-        name: "",
-        email: "",
-        address: "",
-        phone: "",
-        business: "",
-        tripname: "",
-        tripStartDate: "",
-        tripEndDate: "",
-        gstNo: "",
-        designation: "",
-        title: "",
-        amount: 0,
-      })
-      setIsAddingExpense(false)
+    }
+    fetchTrips()
+  }, [id])
+
+  const handleAddAmount = async () => {
+    if (typeof addAmountValue !== "number" || addAmountValue <= 0) {
+      alert("Please enter a valid amount.")
+      return
+    }
+    try {
+      const payload = { advancedAmount: addAmountValue } // must match backend field exactly
+      const res = await addAdvance(id!, payload)
+      console.log("Advance added:", res.data)
+      setLastAddedAmount(addAmountValue)
+      setIsEditable(false)
+
+      // Refetch trips to update UI
+      if (id) {
+        const refresh = await getAlltripsByTechnicianId(id)
+        // ... map and set expenses
+      }
+    } catch (error) {
+      console.error("Error adding advance:", error)
+      alert("Failed to add advance amount")
     }
   }
 
-  const handleDeleteExpense = (id: string) => {
-    setExpenses(expenses.filter((expense) => expense.id !== id))
+  const handleEditAmount = () => setIsEditable(true)
+
+  const handleUpdateAmount = () => {
+    if (typeof addAmountValue === "number" && addAmountValue > 0) {
+      setLastAddedAmount(addAmountValue)
+      setIsEditable(false)
+    } else {
+      alert("Please enter a valid amount.")
+    }
+  }
+
+  const handleDelete = (id: string) => {
+    if (confirm("Are you sure you want to delete this record?")) {
+      setExpenses(expenses.filter(exp => exp.id !== id))
+    }
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg mb-8">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Trip Management</h2>
-        <button
-          onClick={() => setIsAddingExpense(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-        >
-          Add Trip Details
-        </button>
-      </div>
-
-      {/* Add Expense Form */}
-      {isAddingExpense && (
-        <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-          <h3 className="text-lg font-semibold mb-4">Add New Trip</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 mb-1">Trip Name</label>
-              <input
-                type="text"
-                value={newExpense.tripname}
-                onChange={(e) => setNewExpense({ ...newExpense, tripname: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
-                placeholder="e.g. Delhi Installation"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 mb-1">Trip Start Date</label>
-              <input
-                type="date"
-                value={newExpense.tripStartDate}
-                onChange={(e) => setNewExpense({ ...newExpense, tripStartDate: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 mb-1">Trip End Date</label>
-              <input
-                type="date"
-                value={newExpense.tripEndDate}
-                onChange={(e) => setNewExpense({ ...newExpense, tripEndDate: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
-              />
-            </div>
-            {/* <div>
-              <label className="block text-gray-700 mb-1">Advance Title</label>
-              <input
-                type="text"
-                value={newExpense.title}
-                onChange={(e) => setNewExpense({ ...newExpense, title: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
-                placeholder="e.g. Office Supplies"
-              />
-            </div> */}
-            <div>
-              <label className="block text-gray-700 mb-1">Amount (₹)</label>
-              <input
-                type="number"
-                value={newExpense.amount || ""}
-                onChange={(e) => setNewExpense({ ...newExpense, amount: Number(e.target.value) })}
-                className="w-full p-2 border border-gray-300 rounded"
-                placeholder="0.00"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-2 mt-4">
+    <div className="p-6 bg-gray-100 min-h-screen">
+      {/* Add Amount Section */}
+      <div className="bg-white shadow-md p-5 rounded-lg mb-6">
+        <h2 className="text-lg font-semibold mb-4">Add Advanced Amount</h2>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            value={addAmountValue}
+            onChange={(e) => setAddAmountValue(e.target.value ? Number(e.target.value) : "")}
+            placeholder="Enter amount"
+            className="border rounded-lg px-4 py-2 w-1/3 focus:outline-none focus:ring focus:ring-blue-300"
+            readOnly={!isEditable}
+          />
+          {isEditable ? (
+            lastAddedAmount === null ? (
+              <button
+                onClick={handleAddAmount}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg"
+              >
+                Add
+              </button>
+            ) : (
+              <button
+                onClick={handleUpdateAmount}
+                className="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-lg"
+              >
+                Update Amount
+              </button>
+            )
+          ) : (
             <button
-              onClick={() => setIsAddingExpense(false)}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+              onClick={handleEditAmount}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-2 rounded-lg"
             >
-              Cancel
+              Edit Amount
             </button>
-            <button
-              onClick={handleAddExpense}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-            >
-              Save Trip Details
-            </button>
-          </div>
+          )}
         </div>
-      )}
-
-      {/* Expenses Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse border border-gray-300">
+        {lastAddedAmount !== null && (
+          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-green-50 to-green-100 shadow-md flex items-center gap-3 border border-green-200">
+            <CheckCircleIcon className="h-6 w-6 text-green-600" />
+            <div>
+              <p className="text-green-800 font-semibold text-lg">
+                ₹{lastAddedAmount}
+              </p>
+              <p className="text-green-600 text-sm">Last Added Amount</p>
+            </div>
+          </div>
+        )}
+      </div>
+      {/* Trip Table */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gray-50">
-              <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Trip Name</th>
-              <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Start Date</th>
-              <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">End Date</th>
-              <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Amount</th>
-              <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Actions</th>
+            <tr className="bg-gray-200 text-left">
+              <th className="p-3 border">Trip Name</th>
+              <th className="p-3 border">Start Date</th>
+              <th className="p-3 border">End Date</th>
+              <th className="p-3 border">Expense</th>
+              <th className="p-3 border">Balance</th>
+              <th className="p-3 border">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {expenses.length > 0 ? (
-              expenses.map((expense) => (
-                <tr key={expense.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 border border-gray-300 text-gray-700">{expense.tripname}</td>
-                  <td className="px-4 py-3 border border-gray-300 text-gray-700">{expense.tripStartDate}</td>
-                  <td className="px-4 py-3 border border-gray-300 text-gray-700">{expense.tripEndDate}</td>
-                  <td className="px-4 py-3 border border-gray-300 text-gray-700">₹{expense.amount.toLocaleString("en-IN")}</td>
-                  <td className="px-4 py-3 border border-gray-300">
-                    <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-600 hover:text-red-800">
-                      <MdDelete className="h-5 w-5" />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
+            {expenses.map((exp) => (
+              <tr key={exp.id} className="hover:bg-gray-50">
+                <td className="p-3 border">{exp.tripname}</td>
+                <td className="p-3 border">{exp.tripStartDate}</td>
+                <td className="p-3 border">{exp.tripEndDate}</td>
+                <td className="p-3 border">₹{exp.expense}</td>
+                <td className="p-3 border">₹{exp.balance}</td>
+                <td className="p-3 border flex gap-3">
+                  <button
+                    className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg"
+                  >
+                    <MdVisibility size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(exp.id)}
+                    className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg"
+                  >
+                    <MdDelete size={18} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {expenses.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                  No expenses recorded yet
+                <td colSpan={6} className="text-center p-4 text-gray-500">
+                  No trips found.
                 </td>
               </tr>
             )}
           </tbody>
-          {expenses.length > 0 && (
-            <tfoot>
-              <tr className="bg-blue-50 font-bold">
-                <td colSpan={3} className="px-4 py-3 border border-gray-300 text-right text-gray-800">
-                  Total :
-                </td>
-                <td className="px-4 py-3 border border-gray-300 text-blue-600">
-                  ₹
-                  {expenses
-                    .reduce((sum, exp) => sum + exp.amount, 0)
-                    .toLocaleString("en-IN")}
-                </td>
-                <td className="px-4 py-3 border border-gray-300"></td>
-              </tr>
-            </tfoot>
-          )}
         </table>
       </div>
     </div>

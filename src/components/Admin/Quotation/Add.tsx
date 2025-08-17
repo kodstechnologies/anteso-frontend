@@ -10,6 +10,7 @@ import qrcode from "../../../assets/quotationImg/qrcode.png"
 import logo from "../../../assets/logo/logo-sm.png"
 import IconTrashLines from "../../Icon/IconTrashLines"
 import { allEmployees, getEnquiryById, createQuotationByEnquiryId } from "../../../api"
+import { showMessage } from "../../common/ShowMessage"
 
 type Item = {
     type: string
@@ -346,14 +347,8 @@ const AddQuotation: React.FC = () => {
                     phone: employees[selectedIndex]?.phone || 0,
                 },
                 items: {
-                    categoryA: aitems.map((item) => ({
-                        ...item,
-                        type: "A",
-                    })),
-                    categoryB: bitems.map((item) => ({
-                        ...item,
-                        type: "B",
-                    })),
+                    categoryA: aitems.map((item) => ({ ...item, type: "A" })),
+                    categoryB: bitems.map((item) => ({ ...item, type: "B" })),
                 },
                 calculations: {
                     subtotal: calculations.subtotal,
@@ -361,7 +356,9 @@ const AddQuotation: React.FC = () => {
                     discountAmount: calculations.discountAmount,
                     totalAmount: calculations.totalAmount,
                 },
-                termsAndConditions: terms,
+                // ✅ FIXED: Save only text array
+                termsAndConditions: terms.map((t) => t.text),
+
                 bankDetails: {
                     hdfc: {
                         accountNumber: "50200007211263",
@@ -383,18 +380,13 @@ const AddQuotation: React.FC = () => {
 
             console.log("Submitting quotation data:", quotationData)
 
-            // Call the API to create quotation
-            const response = await createQuotationByEnquiryId(quotationData,id)
+            const response = await createQuotationByEnquiryId(quotationData, id)
 
             console.log("Quotation created successfully:", response)
-            alert("Quotation submitted successfully!")
-
-            // Navigate back to enquiry list
+            showMessage("Quotation submitted successfully!")
             navigate("/admin/enquiry")
         } catch (error: any) {
             console.error("Failed to submit quotation:", error)
-
-            // Show more specific error message if available
             const errorMessage =
                 error?.response?.data?.message || error?.message || "Failed to submit quotation. Please try again."
             alert(errorMessage)
@@ -402,6 +394,7 @@ const AddQuotation: React.FC = () => {
             setIsSubmitting(false)
         }
     }
+
 
     return (
         <div className="w-full min-h-screen bg-gray-50 p-8 absolute top-0 left-0 z-50 lg:px-[15%]">

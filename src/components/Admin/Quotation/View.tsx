@@ -1,141 +1,247 @@
-import logoA from '../../../assets/quotationImg/NABLlogo.png';
-import logoB from '../../../assets/quotationImg/images.jpg';
-import signature from '../../../assets/quotationImg/signature.png';
-import qrcode from '../../../assets/quotationImg/qrcode.png';
-import { FaAngleRight } from 'react-icons/fa6';
-import Logo from '../../../assets/logo/logo-sm.png'
+import type React from "react"
+import { useState, useEffect } from "react"
+// import { useParams } from "next/navigation"
+import { FaAngleRight } from "react-icons/fa6"
+import { getQuotationByEEnquiryId } from "../../../api"
+import { useParams } from "react-router-dom"
+import logo from "../../../assets/logo/logo-sm.png"
+import logoA from "../../../assets/quotationImg/NABLlogo.png"
 
-const ViewQuotation = () => {
-    const aitems = [
-        {
-            type: '',
-            id: 1,
-            title: 'CT SCAN',
-            description: 'QA + LICENSE + DECOMMISSIONING', // Changed from services
-            quantity: '2',
-            price: '100000',
-            amount: '200000',
-        },
-    ];
-    const bitems = [
-        {
-            type: '',
-            id: 1,
-            title: 'INSTITUTE REGISTRATION',
-            description: "SIZE 7' X 4' FROM REMARKS", // Fixed to empty string
-            quantity: '1',
-            price: '2000',
-            amount: '2000',
-        },
-        {
-            type: '',
-            id: 2,
-            title: 'LEAD SHEET',
-            description: "SIZE 7' X 4' FROM REMARKS 20 SQ FEET", // Changed from services
-            quantity: '1',
-            price: '2000',
-            amount: '2000',
-        },
-    ];
+
+interface QuotationData {
+    _id: string
+    quotationId: string
+    date: string
+    enquiry: {
+        hospitalName: string
+        fullAddress: string
+        city: string
+        district: string
+        state: string
+        pinCode: string
+        contactPerson: string
+        emailAddress: string
+        contactNumber: string
+        services: Array<{
+            machineType: string
+            equipmentNo: string
+            workType: string[]
+            machineModel: string
+            _id: string
+        }>
+        additionalServices: Record<string, string>
+        specialInstructions: string
+    }
+    from: {
+        name: string
+        email: string
+    }
+    discount: number
+    total: number
+    termsAndConditions: string[]
+}
+
+const ViewQuotation: React.FC = () => {
+    const params = useParams()
+    const id = params.id as string
+    console.log("🚀 ~ ViewQuotation ~ id:", id)
+
+    const [quotationData, setQuotationData] = useState<QuotationData | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+        const fetchQuotationData = async () => {
+            try {
+                setLoading(true)
+                console.log("🚀 ~ fetchQuotationData ~ calling API with id:", id)
+                const response = await getQuotationByEEnquiryId(id)
+                console.log("🚀 ~ fetchQuotationData ~ response:", response)
+                setQuotationData(response.data.data)
+                setError(null)
+            } catch (err: any) {
+                setError(err.message || "Failed to fetch quotation data")
+                console.error("Error fetching quotation:", err)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        if (id) {
+            fetchQuotationData()
+        }
+    }, [id])
+
+    if (loading) {
+        return (
+            <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading quotation...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                        <p className="font-bold">Error</p>
+                        <p>{error}</p>
+                    </div>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
+    if (!quotationData) {
+        return (
+            <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center">
+                <p className="text-gray-600">No quotation data found</p>
+            </div>
+        )
+    }
+
+    const aitems =
+        quotationData?.enquiry?.services?.map((service, index) => ({
+            type: "A",
+            id: index + 1,
+            title: service.machineType,
+            description: service.workType.join(" + "),
+            quantity: service.equipmentNo,
+            price: "100000", // You may need to add pricing logic based on your business rules
+            amount: (Number.parseInt(service.equipmentNo) * 100000).toString(),
+        })) || []
+
+    const bitems = quotationData?.enquiry?.additionalServices
+        ? Object.entries(quotationData.enquiry.additionalServices)
+            .filter(([key, value]) => value !== "")
+            .map(([key, value], index) => ({
+                type: "B",
+                id: index + 1,
+                title: key,
+                description: value || "Additional service",
+                quantity: "1",
+                price: "2000", // You may need to add pricing logic
+                amount: "2000",
+            }))
+        : []
+
     const acolumns = [
         {
-            key: 'type',
-            label: 'A',
+            key: "type",
+            label: "A",
         },
         {
-            key: 'id',
-            label: 'S.NO',
+            key: "id",
+            label: "S.NO",
         },
         {
-            key: 'title',
-            label: 'TYPE OF MACHINE',
+            key: "title",
+            label: "TYPE OF MACHINE",
         },
         {
-            key: 'description', // Changed from services
-            label: 'DESCRIPTION OF SERVICES',
+            key: "description", // Changed from services
+            label: "DESCRIPTION OF SERVICES",
         },
         {
-            key: 'quantity',
-            label: 'QTY',
-            class: 'ltr:text-right rtl:text-left',
+            key: "quantity",
+            label: "QTY",
+            class: "ltr:text-right rtl:text-left",
         },
         {
-            key: 'price',
-            label: 'RATE',
-            class: 'ltr:text-right rtl:text-left',
+            key: "price",
+            label: "RATE",
+            class: "ltr:text-right rtl:text-left",
         },
         {
-            key: 'amount',
-            label: 'TOTAL',
-            class: 'ltr:text-right rtl:text-left',
+            key: "amount",
+            label: "TOTAL",
+            class: "ltr:text-right rtl:text-left",
         },
-    ];
+    ]
     const bcolumns = [
         {
-            key: 'type',
-            label: 'B',
+            key: "type",
+            label: "B",
         },
         {
-            key: 'id',
-            label: 'S.NO',
+            key: "id",
+            label: "S.NO",
         },
         {
-            key: 'title',
-            label: 'ADDITIONAL SERVICES',
+            key: "title",
+            label: "ADDITIONAL SERVICES",
         },
         {
-            key: 'description', // Changed from services
-            label: 'SERVICES',
+            key: "description", // Changed from services
+            label: "SERVICES",
         },
         {
-            key: 'quantity',
-            label: 'QTY',
-            class: 'ltr:text-right rtl:text-left',
+            key: "quantity",
+            label: "QTY",
+            class: "ltr:text-right rtl:text-left",
         },
         {
-            key: 'price',
-            label: 'RATE',
-            class: 'ltr:text-right rtl:text-left',
+            key: "price",
+            label: "RATE",
+            class: "ltr:text-right rtl:text-left",
         },
         {
-            key: 'amount',
-            label: 'TOTAL',
-            class: 'ltr:text-right rtl:text-left',
+            key: "amount",
+            label: "TOTAL",
+            class: "ltr:text-right rtl:text-left",
         },
-    ];
-    const discount: number = 10; // 10%
-    const travelCost: number = 0; // ₹0
+    ]
 
-    // Calculate totals
+    const discount: number = quotationData.discount || 10
+    const travelCost: number = 0
+
     const aitemsTotal: number = aitems.reduce((sum, item) => {
-        const amount = parseFloat(item.amount) || 0;
-        return sum + amount;
-    }, 0);
+        const amount = Number.parseFloat(item.amount) || 0
+        return sum + amount
+    }, 0)
 
     const bitemsTotal: number = bitems.reduce((sum, item) => {
-        const amount = parseFloat(item.amount) || 0;
-        return sum + amount;
-    }, 0);
+        const amount = Number.parseFloat(item.amount) || 0
+        return sum + amount
+    }, 0)
 
-    const subtotal: number = aitemsTotal + bitemsTotal;
-    const discountAmount: number = (subtotal * discount) / 100;
-    const totalAmount: number = subtotal - discountAmount + travelCost;
+    const subtotal: number = aitemsTotal + bitemsTotal
+    const discountAmount: number = (subtotal * discount) / 100
+    const totalAmount: number = subtotal - discountAmount + travelCost
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString)
+        return date.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+        })
+    }
 
     return (
         <div className="w-full min-h-screen bg-gray-50 px-8 absolute top-0 left-0 z-50 lg:px-[15%]">
             <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[50rem]">
                 {/* Header */}
-
                 <div className="flex justify-between items-start ">
                     <div>
-                        <img src={Logo} alt="Logo B" className="h-14 " />
+                        <img src={logo} alt="Company Logo" className="h-14 " />
                         <p className=" font-bold text-[.6rem]">AERB Registration No. 14-AFSXE-2148</p>
                     </div>
                     <div className="text-center">
                         <h1 className="text-xl font-bold uppercase">Quotation</h1>
                     </div>
                     <div className="text-right">
-                        <img src={logoA} alt="Logo A" className="h-14 ml-auto " />
+                        <img src={logoA} alt="NABL Logo" className="h-14 ml-auto " />
                         <p className=" font-bold text-[.6rem]">NABL Accreditation No TC-9843</p>
                     </div>
                 </div>
@@ -146,56 +252,56 @@ const ViewQuotation = () => {
                         <table
                             className="text-sm w-[20rem]"
                             style={{
-                                lineHeight: '1.5rem',
+                                lineHeight: "1.5rem",
                             }}
                         >
                             <tr className="text-[.7rem]">
                                 <td>Date:</td>
-                                <td className="pl-2">22-Nov-2024</td>
+                                <td className="pl-2">{formatDate(quotationData.date)}</td>
                             </tr>
                             <tr className="text-[.7rem]">
                                 <td className="font-bold pb-4">To:</td>
                                 <td
                                     className="pl-2"
                                     style={{
-                                        lineHeight: '20px',
+                                        lineHeight: "20px",
                                     }}
                                 >
-                                    <span className="font-bold">CIVIL HOSPITAL KOTLI</span>
+                                    <span className="font-bold">{quotationData.enquiry.hospitalName.toUpperCase()}</span>
                                     <br />
-                                    KOTLI, MANDI, HIMACHAL PRADESH-175003
+                                    {quotationData.enquiry.fullAddress}, {quotationData.enquiry.city}, {quotationData.enquiry.district},{" "}
+                                    {quotationData.enquiry.state}-{quotationData.enquiry.pinCode}
                                 </td>
                             </tr>
 
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">Email:</td>
                                 <td className="pl-2">
-                                    <a href="mailto:khalid020288@gmail.com" className="text-blue-600 hover:underline">
-                                        khalid020288@gmail.com
+                                    <a href={`mailto:${quotationData.enquiry.emailAddress}`} className="text-blue-600 hover:underline">
+                                        {quotationData.enquiry.emailAddress}
                                     </a>
                                 </td>
                             </tr>
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">Contact:</td>
-                                <td className="pl-2">80917 50188</td>
+                                <td className="pl-2">{quotationData.enquiry.contactNumber}</td>
                             </tr>
                             <tr className="text-[.7rem]">
                                 <td className="pl-4 font-bold w-[10rem]">Name:</td>
                                 <td className="pl-2" colSpan={3}>
-                                    Anjana Thakur &nbsp;&nbsp;
+                                    {quotationData.enquiry.contactPerson} &nbsp;&nbsp;
                                 </td>
                             </tr>
                             <tr className="text-[.7rem]">
                                 <td className="pl-4 font-bold w-[10rem]">Phone:</td>
                                 <td className="pl-2" colSpan={3}>
-                                   9317509720  &nbsp;&nbsp;
+                                    {quotationData.enquiry.contactNumber} &nbsp;&nbsp;
                                 </td>
                             </tr>
 
-
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">Quotation:</td>
-                                <td className="pl-2 font-bold">QUO001</td>
+                                <td className="pl-2 font-bold">{quotationData.quotationId}</td>
                             </tr>
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">Expires:</td>
@@ -207,7 +313,7 @@ const ViewQuotation = () => {
                     <div
                         className=""
                         style={{
-                            lineHeight: '17px',
+                            lineHeight: "17px",
                         }}
                     >
                         <p className="font-bold text-black text-[.7rem]">ANTESO Biomedical (OPC) Pvt. Ltd.</p>
@@ -221,55 +327,65 @@ const ViewQuotation = () => {
 
                 {/* Items Tables */}
                 <div className="mt-1">
-                    <table className="w-full text-xs mb-1">
-                        <thead>
-                            <tr>
-                                {acolumns.map((column) => (
-                                    <th key={column.key} className={`${column?.class} px-2  bg-gray-100 text-gray-900 font-bold text-[.6rem]`}>
-                                        {column.label}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="">
-                            {aitems.map((item) => (
-                                <tr key={item.id} className="">
-                                    <td className="px-2 py-1 text-[.6rem]">{item.type}</td>
-                                    <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
-                                    <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
-                                    <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
-                                    <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">{item.quantity}</td>
-                                    <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.price}</td>
-                                    <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
+                    {aitems.length > 0 && (
+                        <table className="w-full text-xs mb-1">
+                            <thead>
+                                <tr>
+                                    {acolumns.map((column) => (
+                                        <th
+                                            key={column.key}
+                                            className={`${column?.class} px-2  bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
+                                        >
+                                            {column.label}
+                                        </th>
+                                    ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="">
+                                {aitems.map((item) => (
+                                    <tr key={item.id} className="">
+                                        <td className="px-2 py-1 text-[.6rem]">{item.type}</td>
+                                        <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
+                                        <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
+                                        <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
+                                        <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">{item.quantity}</td>
+                                        <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.price}</td>
+                                        <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
 
-                    <table className="w-full text-xs mb-6">
-                        <thead>
-                            <tr>
-                                {bcolumns.map((column) => (
-                                    <th key={column.key} className={`${column?.class} px-2 py-1 bg-gray-100 text-gray-900 font-bold text-[.6rem]`}>
-                                        {column.label}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {bitems.map((item) => (
-                                <tr key={item.id}>
-                                    <td className="px-2 py-1 text-[.6rem]">{item.type}</td>
-                                    <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
-                                    <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
-                                    <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
-                                    <td className="px-2 py-1 text-[.6rem]">{item.quantity}</td>
-                                    <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.price}</td>
-                                    <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
+                    {bitems.length > 0 && (
+                        <table className="w-full text-xs mb-6">
+                            <thead>
+                                <tr>
+                                    {bcolumns.map((column) => (
+                                        <th
+                                            key={column.key}
+                                            className={`${column?.class} px-2 py-1 bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
+                                        >
+                                            {column.label}
+                                        </th>
+                                    ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {bitems.map((item) => (
+                                    <tr key={item.id}>
+                                        <td className="px-2 py-1 text-[.6rem]">{item.type}</td>
+                                        <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
+                                        <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
+                                        <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
+                                        <td className="px-2 py-1 text-[.6rem]">{item.quantity}</td>
+                                        <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.price}</td>
+                                        <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
 
                 <div className="flex flex-row-reverse px-4 mt-6">
@@ -280,7 +396,7 @@ const ViewQuotation = () => {
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
-                            <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount.toLocaleString('en-IN')}</div>
+                            <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount.toLocaleString("en-IN")}</div>
                         </div>
                     </div>
                 </div>
@@ -292,35 +408,24 @@ const ViewQuotation = () => {
                     <ul
                         className="list-disc list-outside pl-6 space-y-2 text-gray-700 dark:text-gray-300 text-[.65rem] leading-relaxed"
                         style={{
-                            lineHeight: '10px',
+                            lineHeight: "10px",
                         }}
                     >
-                        <li>In case of License renewal, eLora ID and Password need to be provided by you.</li>
-                        <li>The quotation applies only to the equipment mentioned above. Charges for any additional parameters will be extra.</li>
-                        <li>Repeated Q/A for failed equipment and repeated visits for the same machine will be charged extra.</li>
-                        <li>QA reports will be submitted only after bank realization of 100% payment. In urgent cases, a minimum of 24 hours is required to share the QA report.</li>
-                        <li>QA reports are valid for 2 years for X-Ray Machines and 5 years for Dental X-Rays.</li>
-                        <li>Prices are valid only for the duration of this quotation and are subject to change thereafter.</li>
-                        <li>Services will commence within a week of receiving a formal Purchase Order.</li>
-                        <li>All payments must be made by DD, e-Transfer, or Cheque payable to “ANTESO Biomedical (OPC) Pvt. Ltd.”</li>
-                        <li>Terms of payment: 100% advance payment.</li>
-                        <li>Cheques must be couriered by the customer to our registered address.</li>
-                        <li>QA tests will follow AERB guidelines. We are not responsible for any machine breakdowns during testing.</li>
-                        <li>For institute or RSO registration, OTPs will be sent for verification. Please share them promptly.</li>
-                        <li>Please ensure the accuracy of email IDs before sharing, as they will be used as-is and cannot be recovered later.</li>
-                        <li className="text-green-600">
-                            Share your GST number with the work order if applicable; otherwise, the order will be considered unregistered and no future claims will be entertained.
-                        </li>
+                        {quotationData.termsAndConditions.map((term, index) => (
+                            <li key={index} className={term.includes("GST") ? "text-green-600" : ""}>
+                                {term}
+                            </li>
+                        ))}
                     </ul>
                 </div>
 
                 <div className="mt-4 flex justify-between items-end text-xs">
                     <div>
-                        <img src={signature} alt="Signature" className="mb-2 h-24" />
+                        <img src="/handwritten-signature.png" alt="Signature" className="mb-2 h-24" />
                         <div
                             className="space-y-1"
                             style={{
-                                lineHeight: '10px',
+                                lineHeight: "10px",
                             }}
                         >
                             <p className="text-[.6rem]">
@@ -336,7 +441,7 @@ const ViewQuotation = () => {
                     <div
                         className="text-center"
                         style={{
-                            lineHeight: '5px',
+                            lineHeight: "5px",
                         }}
                     >
                         <p className="font-bold text-[.6rem]">OUR ACCOUNT DETAILS</p>
@@ -346,11 +451,11 @@ const ViewQuotation = () => {
                     </div>
 
                     <div className="text-right space-y-1">
-                        <img src={qrcode} alt="QR Code" className="h-20 mx-auto mb-2" />
+                        <img src="/qr-code.png" alt="QR Code" className="h-20 mx-auto mb-2" />
                         <table className="h-4">
                             <tr
                                 style={{
-                                    fontSize: '.4rem',
+                                    fontSize: ".4rem",
                                 }}
                             >
                                 <td className="pb-3 text-end">Merchant Name:</td>
@@ -358,7 +463,7 @@ const ViewQuotation = () => {
                             </tr>
                             <tr
                                 style={{
-                                    fontSize: '.4rem',
+                                    fontSize: ".4rem",
                                 }}
                             >
                                 <td className="text-end">Mobile Number:</td>
@@ -368,12 +473,13 @@ const ViewQuotation = () => {
                         <div
                             className="text-center text-[.4rem]"
                             style={{
-                                lineHeight: '8px',
+                                lineHeight: "8px",
                             }}
                         >
                             <p>Steps to Pay UPI QR Code</p>
                             <p className="flex justify-center items-center flex-wrap w-[10rem]">
-                                Open UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter Amount
+                                Open UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
+                                Amount
                             </p>
                         </div>
 
@@ -395,11 +501,11 @@ const ViewQuotation = () => {
                 <div
                     className="overflow-x-auto mt-8 text-center"
                     style={{
-                        lineHeight: '1rem',
+                        lineHeight: "1rem",
                     }}
                 >
                     <p className="text-[.6rem]">
-                        For any enquiry contact us{' '}
+                        For any enquiry contact us{" "}
                         <a href="#" className="text-blue-800">
                             info@antesobiomedicalopc.com or antesobiomedical@gmail.com
                         </a>
@@ -408,7 +514,7 @@ const ViewQuotation = () => {
                 </div>
             </div>
         </div>
-    );
-};
+    )
+}
 
-export default ViewQuotation;
+export default ViewQuotation

@@ -7,7 +7,7 @@ import { showMessage } from "../../../common/ShowMessage"
 import { useState, useEffect } from "react"
 import FullScreenLoader from "../../../common/FullScreenLoader"
 // You'll need to create these API functions
-import { getRsoByClientIdAndRsoId, editRsoByClientIDandRsoId } from "../../../../api"
+import { getRsoByHospitalIdAndRsoId, editRsohospitalIdandRsoId } from "../../../../api"
 
 interface RsoData {
   rsoId: string
@@ -23,6 +23,8 @@ interface RsoData {
 const EditRso = () => {
   const navigate = useNavigate()
   const { clientId, rsoId } = useParams()
+  console.log("🚀 ~ EditRso ~ rsoId:", rsoId)
+  console.log("🚀 ~ EditRso ~ clientId:", clientId)
   const [loading, setLoading] = useState(false)
   const [initialData, setInitialData] = useState<RsoData | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
@@ -39,14 +41,14 @@ const EditRso = () => {
     validity: Yup.date().required("Please fill the Field"),
     attachFile: Yup.mixed().nullable(), // Optional for edit
   })
-
+  
   useEffect(() => {
     const fetchRsoData = async () => {
       try {
         setDataLoading(true)
         console.log("🚀 ~ fetchRsoData ~ rsoId:", rsoId)
         console.log("🚀 ~ fetchRsoData ~ clientId:", clientId)
-        const response = await getRsoByClientIdAndRsoId(clientId, rsoId)
+        const response = await getRsoByHospitalIdAndRsoId(clientId, rsoId)
 
         console.log("🚀 ~ fetchRsoData ~ response:", response)
 
@@ -124,7 +126,7 @@ const EditRso = () => {
               }
             })
 
-            const response = await editRsoByClientIDandRsoId(clientId, rsoId, formData)
+            const response = await editRsohospitalIdandRsoId(clientId, rsoId, formData)
             console.log("🚀 ~ onSubmit={ ~ response:", response)
             showMessage("RSO updated successfully!", "success")
             navigate(`/admin/clients/preview/${clientId}`)

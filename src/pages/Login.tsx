@@ -99,7 +99,6 @@ const Login = () => {
                                 <h1 className="text-xl font-extrabold uppercase text-primary leading-snug">Sign in</h1>
                                 <p className="text-base font-medium text-white-dark">Enter your email and password to login</p>
                             </div>
-
                             <form className="space-y-6 dark:text-white" onSubmit={formik.handleSubmit}>
                                 <div>
                                     <label htmlFor="Email" className="block mb-1 font-semibold text-gray-700 dark:text-white">Email</label>
@@ -119,7 +118,6 @@ const Login = () => {
                                         <div className="text-danger mt-1">{formik.errors.email}</div>
                                     )}
                                 </div>
-
                                 <div>
                                     <label htmlFor="Password" className="block mb-1 font-semibold text-gray-700 dark:text-white">Password</label>
                                     <div className="relative text-white-dark">
@@ -145,7 +143,6 @@ const Login = () => {
                                         <div className="text-danger mt-1">{formik.errors.password}</div>
                                     )}
                                 </div>
-
                                 <button
                                     type="submit"
                                     className="btn btn-gradient mt-6 w-full border-0 uppercase shadow-[0_10px_20px_-10px_rgba(67,97,238,0.44)] hover:shadow-lg transition-transform hover:-translate-y-0.5"

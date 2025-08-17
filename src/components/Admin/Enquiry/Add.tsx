@@ -1,4 +1,3 @@
-"use client"
 
 import type React from "react"
 import { useEffect, useState } from "react"
@@ -165,13 +164,15 @@ const AddEnquiry: React.FC = () => {
         city: Yup.string().required("Please fill the Field"),
         district: Yup.string().required("Please fill the Field"),
         state: Yup.string().required("Please fill the Field"),
-        pinCode: Yup.string().required("Please fill the Field"),
+        pinCode: Yup.string()
+            .matches(/^\d{6}$/, "PIN Code must be exactly 6 digits")
+            .required("PIN Code is required"),
         branch: Yup.string().required("Please fill the Field"),
         contactPerson: Yup.string().required("Please fill the Field"),
         emailAddress: Yup.string().email("Invalid email").required("Please fill the Email"),
         contactNumber: Yup.string()
-            .matches(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
-            .required("Please fill the Field"),
+            .matches(/^\d{10}$/, "Contact Number must be exactly 10 digits")
+            .required("Contact Number is required"),
         designation: Yup.string().required("Please fill the Field"),
         specialInstructions: Yup.string().required("Please fill this field"),
         services: Yup.array()
@@ -346,9 +347,22 @@ const AddEnquiry: React.FC = () => {
                                 </div>
                                 <div className={submitCount && errors.pinCode ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="pinCode">PIN Code</label>
-                                    <Field name="pinCode" type="text" id="pinCode" placeholder="Enter PIN Code" className="form-input" />
-                                    {submitCount && errors.pinCode ? <div className="text-danger mt-1">{errors.pinCode}</div> : null}
+                                    <Field
+                                        name="pinCode"
+                                        type="text"
+                                        id="pinCode"
+                                        placeholder="Enter PIN Code"
+                                        className="form-input"
+                                        maxLength={6} // ✅ Prevent more than 6 digits
+                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            e.target.value = e.target.value.replace(/[^0-9]/g, ""); // ✅ Allow only numbers
+                                        }}
+                                    />
+                                    {submitCount && errors.pinCode ? (
+                                        <div className="text-danger mt-1">{errors.pinCode}</div>
+                                    ) : null}
                                 </div>
+
                                 <div className={submitCount && errors.branch ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="branch">Branch Name</label>
                                     <Field name="branch" type="text" id="branch" placeholder="Enter Branch Name" className="form-input" />
@@ -388,6 +402,10 @@ const AddEnquiry: React.FC = () => {
                                         id="contactNumber"
                                         placeholder="Enter Contact Number"
                                         className="form-input"
+                                        maxLength={10} // ✅ Prevent more than 10 digits
+                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            e.target.value = e.target.value.replace(/[^0-9]/g, ""); // ✅ Allow only numbers
+                                        }}
                                     />
                                     {submitCount && errors.contactNumber ? (
                                         <div className="text-danger mt-1">{errors.contactNumber}</div>

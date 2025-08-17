@@ -8,6 +8,7 @@ import { addEmployee, getUnAssignedTools } from '../../../../api';
 
 // Define the interface for the tool data
 interface Tool {
+    _id:string,
     toolId: string;
     nomenclature: string;
     manufacturer: string;
@@ -24,7 +25,7 @@ interface FormValues {
     email: string;
     phone: string;
     technicianType: string;
-    activeStatus: string;
+    activeStatus: 'Active',
     toolIDs: string[];
     tools: { [toolID: string]: string };
     designation: string,
@@ -67,7 +68,10 @@ const AddEngineer = () => {
         designation: Yup.string().required('Please fill the Field'),
         department: Yup.string().required('Please fill the Field'),
         dateOfJoining: Yup.string().required('Please fill the Field'),
-        workingDays: Yup.string().required('Please fill the Field'),
+        workingDays: Yup.number()
+            .typeError('Working days must be a number')
+            .integer('Working days must be a whole number')
+            .required('Please fill the Field'),
         technicianType: Yup.string().required('Please fill the Field'),
         activeStatus: Yup.string().required('Please select status'),
         toolIDs: Yup.array().of(Yup.string()).when('technicianType', {
@@ -114,10 +118,11 @@ const AddEngineer = () => {
                 workingDays: Number(values.workingDays),
                 tools: values.technicianType === "Engineer"
                     ? values.toolIDs.map(toolId => ({
-                        toolId,
+                        toolId, // this is now the Mongo `_id`
                         issueDate: values.tools?.[toolId] || null
                     }))
                     : []
+
             };
 
             await addEmployee(formattedPayload);
@@ -130,8 +135,6 @@ const AddEngineer = () => {
             showMessage(error.message || 'Failed to add employee', 'error');
         }
     };
-
-
 
     return (
         <>
@@ -165,7 +168,7 @@ const AddEngineer = () => {
                     department: '',
                     dateOfJoining: '',
                     workingDays: '',
-                    activeStatus: '',
+                    activeStatus: 'Active',
                     toolIDs: [],
                     tools: {},
 
@@ -196,9 +199,22 @@ const AddEngineer = () => {
                                 {/* Phone */}
                                 <div className={submitCount && errors.phone ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="phone">Phone</label>
-                                    <Field name="phone" type="text" id="phone" className="form-input" placeholder="Enter Phone" />
-                                    {submitCount > 0 && errors.phone && <div className="text-danger mt-1">{errors.phone}</div>}
+                                    <Field
+                                        name="phone"
+                                        type="text"
+                                        id="phone"
+                                        className="form-input"
+                                        placeholder="Enter Phone"
+                                        maxLength={10} // extra safeguard
+                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                        }}
+                                    />
+                                    {submitCount > 0 && errors.phone && (
+                                        <div className="text-danger mt-1">{errors.phone}</div>
+                                    )}
                                 </div>
+
                                 <div className={submitCount && errors.designation ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="designation">Designation</label>
                                     <Field name="designation" type="text" id="designation" className="form-input" placeholder="Enter Designation" />
@@ -206,7 +222,7 @@ const AddEngineer = () => {
                                 </div>
                                 <div className={submitCount && errors.workingDays ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="workingDays">Working Days</label>
-                                    <Field name="workingDays" type="text" id="workingDays" className="form-input" placeholder="Enter Working Days" />
+                                    <Field name="workingDays" type="number" id="workingDays" className="form-input" placeholder="Enter Working Days" />
                                     {submitCount > 0 && errors.workingDays && <div className="text-danger mt-1">{errors.workingDays}</div>}
                                 </div>
                                 <div className={submitCount && errors.dateOfJoining ? 'has-error' : submitCount ? 'has-success' : ''}>
@@ -264,14 +280,14 @@ const AddEngineer = () => {
                                         <p className="text-gray-500">No tools available</p>
                                     ) : (
                                         toolsData.map((tool: Tool) => {
-                                            const isSelected = values.toolIDs.includes(tool.toolId);
+                                            const isSelected = values.toolIDs.includes(tool._id);
                                             return (
-                                                <div key={tool.toolId} className="border-b pb-2">
+                                                <div key={tool._id} className="border-b pb-2">
                                                     <label className="flex items-center space-x-2">
                                                         <Field
                                                             type="checkbox"
                                                             name="toolIDs"
-                                                            value={tool.toolId}
+                                                            value={tool._id}
                                                             className="form-checkbox h-5 w-5 text-primary"
                                                         />
                                                         <span>{tool.nomenclature} ({tool.toolId})</span>
@@ -279,17 +295,17 @@ const AddEngineer = () => {
 
                                                     {isSelected && (
                                                         <div className="mt-2 ml-6">
-                                                            <label htmlFor={`tools.${tool.toolId}`} className="block text-sm">
+                                                            <label htmlFor={`tools.${tool._id}`} className="block text-sm">
                                                                 Issue Date for {tool.toolId}
                                                             </label>
                                                             <Field
-                                                                name={`tools.${tool.toolId}`}
+                                                                name={`tools.${tool._id}`}
                                                                 type="date"
                                                                 className="form-input"
                                                             />
-                                                            {submitCount > 0 && errors.tools?.[tool.toolId] && (
+                                                            {submitCount > 0 && errors.tools?.[tool._id] && (
                                                                 <div className="text-danger text-sm mt-1">
-                                                                    {errors.tools[tool.toolId]}
+                                                                    {errors.tools[tool._id]}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -297,6 +313,7 @@ const AddEngineer = () => {
                                                 </div>
                                             );
                                         })
+
                                     )}
 
                                 </div>
