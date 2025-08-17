@@ -5,6 +5,8 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
 import Employee from "../../models/technician.model.js";
 import Tools from "../../models/tools.model.js";
+import tripModel from "../../models/trip.model.js";
+import expenseModel from "../../models/expense.model.js";
 
 // const add = asyncHandler(async (req, res) => {
 //     try {
@@ -87,7 +89,6 @@ const add = asyncHandler(async (req, res) => {
             name,
             phone,
             email,
-            // address,
             technicianType,
             status,
             tools,
@@ -108,13 +109,21 @@ const add = asyncHandler(async (req, res) => {
             if (!tools || !Array.isArray(tools) || tools.length === 0) {
                 throw new ApiError(400, "Engineer must be assigned at least one tool.");
             }
-            // for (const tool of tools) {
-            //     if (!tool.toolName || typeof tool.toolName !== 'string' || !tool.toolName.trim()) {
-            //         throw new ApiError(400, "Each tool must include a valid toolName.");
-            //     }
-            //     // serialNumber and issueDate are optional
-            // }
+
+            // 🔹 Check each tool's status before assigning
+            for (const t of tools) {
+                const toolDoc = await Tool.findById(t.toolId);
+
+                if (!toolDoc) {
+                    throw new ApiError(404, `Tool with ID ${t.toolId} not found`);
+                }
+
+                if (toolDoc.toolStatus === "assigned") {
+                    throw new ApiError(400, `Tool ${toolDoc.nomenclature} (Serial: ${toolDoc.SrNo}) is already assigned to another employee`);
+                }
+            }
         }
+
         // Create new employee
         const employee = new Employee({
             name,
@@ -128,8 +137,24 @@ const add = asyncHandler(async (req, res) => {
             workingDays,
             tools: technicianType === "engineer" ? tools : [],
         });
+
         await employee.save();
-        console.log("🚀 ~ employee:", employee)
+
+        // 🔹 Update tool status if assigned to engineer
+        if (technicianType === "engineer") {
+            for (const t of tools) {
+                await Tool.findByIdAndUpdate(
+                    t.toolId,
+                    {
+                        toolStatus: "assigned",
+                        technician: employee._id
+                    },
+                    { new: true }
+                );
+            }
+        }
+
+        console.log("🚀 ~ employee:", employee);
 
         return res.status(201).json(
             new ApiResponse(201, employee, "Employee created successfully")
@@ -144,7 +169,11 @@ const getById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
 
-        const technician = await Technician.findById(id).populate("tools");
+        const technician = await Technician.findById(id)
+            .populate({
+                path: "tools.toolId", // populate inside tools array
+                select: "nomenclature manufacturer model SrNo calibrationCertificateNo" // pick only needed fields
+            });
         if (!technician) {
             throw new ApiError(404, "Technician not found");
         }
@@ -154,6 +183,21 @@ const getById = asyncHandler(async (req, res) => {
         throw new ApiError(500, error.message || "Failed to fetch technician");
     }
 });
+
+
+const getAllEmployees = asyncHandler(async (req, res) => {
+    try {
+        const employees = await Technician.find({ technicianType: "engineer" })
+            .populate({
+                path: "tools.toolId", // populate the toolId inside tools array
+                select: "nomenclature manufacturer model" // choose the fields you need
+            });
+        console.log("🚀 ~ employees:", employees)
+        return res.status(200).json(new ApiResponse(200, employees, "All technicians fetched successfully"));
+    } catch (error) {
+        throw new ApiError(500, error.message || "Failed to fetch technicians");
+    }
+})
 
 const getAll = asyncHandler(async (req, res) => {
     try {
@@ -219,19 +263,15 @@ const getUnassignedTools = asyncHandler(async (req, res) => {
 const assignedToolByTechnicianId = asyncHandler(async (req, res) => {
     try {
         const { technicianId } = req.params;
-
         if (!technicianId) {
             throw new ApiError(400, 'Technician ID is required');
         }
-
         // Find tools where technician field matches the given ID
         const tools = await Tools.find({ technician: technicianId });
         console.log("🚀 ~ tools:", tools)
-
         if (!tools || tools.length === 0) {
             throw new ApiError(404, 'No tools assigned to this technician');
         }
-
         return res
             .status(200)
             .json(new ApiResponse(200, tools, 'Assigned tools fetched successfully'));
@@ -280,11 +320,204 @@ const getAllOfficeStaff = asyncHandler(async (req, res) => {
 // const machineDetails = asyncHandler(async (req, res) => {
 //     try {
 //         const {employeeId,orderId,serviceId}=req.body;
-        
+
 //     } catch (error) {
 
 //     }
 // })
 
 
-export default { add, getById, getAll, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff };
+//qa raw --assign engineer
+
+//admin api
+const getTripsWithExpensesByTechnician = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId } = req.params;
+
+        // Get trips for this technician with their expenses populated
+        const trips = await tripModel.find({ technician: technicianId })
+            .populate({
+                path: "expenses",
+                select: "totalExpense balance" // Only these fields from expense
+            })
+            .select("tripName startDate endDate remarks expenses")
+            .lean();
+
+        res.status(200).json({
+            success: true,
+            data: trips
+        });
+
+    } catch (error) {
+        console.error("Error fetching trips with expenses:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error fetching trips with expenses",
+            error: error.message
+        });
+    }
+});
+
+
+//all mobile APIS
+const createTripByTechnicianId = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId } = req.params;
+        console.log("🚀 ~ technicianId:", technicianId)
+        const tripData = req.body;
+
+        // Ensure technicianId is included in the trip
+        const newTrip = await tripModel.create({
+            ...tripData,
+            technician: technicianId // Correct field name from schema
+        });
+
+        res.status(201).json({
+            success: true,
+            message: "Trip created successfully",
+            data: newTrip
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error creating trip"
+        });
+    }
+});
+//patch
+const updateTripByTechnicianIdAndTripId = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId, tripId } = req.params;
+        console.log("🚀 ~ tripId:", tripId)
+        console.log("🚀 ~ technicianId:", technicianId)
+        const updateData = req.body;
+
+        const updatedTrip = await tripModel.findOneAndUpdate(
+            { _id: tripId, technician: technicianId },
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+        console.log("🚀 ~ updatedTrip:", updatedTrip)
+
+        if (!updatedTrip) {
+            return res.status(404).json({
+                success: false,
+                message: "Trip not found for the given technician"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Trip updated successfully",
+            data: updatedTrip
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error updating trip"
+        });
+    }
+});
+const getAllTripsByTechnician = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId } = req.params;
+        const trips = await tripModel.find({ technician: technicianId })
+            .select("tripName startDate endDate remarks") // return only required fields
+            .lean();
+
+        res.status(200).json({
+            success: true,
+            data: trips
+        });
+    } catch (error) {
+        console.error("Error fetching trips:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error fetching trips",
+            error: error.message
+        });
+    }
+});
+const addExpenseByTechnicianAndTripId = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId, tripId } = req.params
+    } catch (error) {
+
+    }
+})
+// Add expense for a technician's trip
+export const addTripExpense = asyncHandler(async (req, res) => {
+    const { tripId, technicianId } = req.params;
+    const { requiredAmount, typeOfExpense, screenshot, date } = req.body;
+
+    // validate
+    const amt = Number(requiredAmount);
+    if (!amt || isNaN(amt) || amt <= 0) {
+        return res.status(400).json({ success: false, message: "Please provide a valid requiredAmount (> 0)." });
+    }
+
+    // find trip
+    const trip = await tripModel.findById(tripId).populate("expenses");
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found." });
+
+    // ensure technician is assigned to this trip
+    if (!trip.technician || trip.technician.toString() !== technicianId) {
+        return res.status(400).json({ success: false, message: "Technician is not assigned to this trip." });
+    }
+
+    // find technician's advance account (created by admin via addAdvanceByTechnicianId)
+    // we expect the admin-created doc to have advancedAmount set (master account)
+    const account = await expenseModel.findOne({ technician: technicianId, advancedAmount: { $exists: true } });
+
+    if (!account) {
+        return res.status(400).json({
+            success: false,
+            message: "No advance account found for this technician. Admin must add advanced amount first."
+        });
+    }
+
+    // check balance
+    const currentBalance = account.balance != null ? Number(account.balance) : Number(account.advancedAmount || 0) - Number(account.totalExpense || 0);
+    if (amt > currentBalance) {
+        return res.status(400).json({ success: false, message: "Not enough balance." });
+    }
+
+    // update account totals
+    account.totalExpense = (account.totalExpense || 0) + amt;
+    account.balance = currentBalance - amt;
+    await account.save();
+
+    // create transaction expense (record for this trip)
+    const transaction = await expenseModel.create({
+        requiredAmount: amt,
+        typeOfExpense,
+        screenshot,
+        technician: technicianId,
+        // For transaction doc we store the amount consumed in totalExpense (per-record) and balance after deduction
+        totalExpense: amt,
+        balance: account.balance
+    });
+
+    // attach transaction to trip
+    trip.expenses.push(transaction._id);
+    await trip.save();
+
+    return res.status(201).json({
+        success: true,
+        message: "Expense added successfully",
+        data: {
+            tripId: trip._id,
+            transaction,
+            accountSummary: {
+                advancedAmount: account.advancedAmount,
+                totalExpense: account.totalExpense,
+                balance: account.balance
+            },
+            submittedData: {
+                requiredAmount, typeOfExpense, screenshot, date
+            }
+        }
+    });
+});
+
+export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician };

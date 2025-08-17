@@ -9,5 +9,5 @@ export const rsoSchema = Joi.object({
     rpId: Joi.string().required(),
     tldBadge: Joi.string().required(),
     validity: Joi.date().required(),
-    attachment: Joi.string().uri().required()
+    attachment: Joi.string().uri()
 });

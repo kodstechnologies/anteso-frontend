@@ -6,6 +6,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { rsoSchema } from '../../validators/rsoValidators.js';
 import Client from '../../models/client.model.js';
+import Hospital from '../../models/hospital.model.js';
 
 // Create
 const add = asyncHandler(async (req, res) => {
@@ -270,6 +271,141 @@ const deletersoByClientId = asyncHandler(async (req, res) => {
 });
 
 
+// ✅ Create RSO for a specific hospital
+const createRsoByHospitalId = asyncHandler(async (req, res) => {
+    const { hospitalId } = req.params;
+
+    // Validate hospital ID
+    if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
+        throw new ApiError(400, 'Invalid hospital ID format');
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) {
+        throw new ApiError(404, 'Hospital not found');
+    }
+
+    // Validate request body with Joi
+    const { error, value } = rsoSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+        throw new ApiError(400, 'Validation Error', error.details.map(e => e.message));
+    }
+
+    // Prevent duplicate RSO IDs
+    const existingRSO = await RSO.findOne({ rsoId: value.rsoId });
+    if (existingRSO) {
+        throw new ApiError(409, 'RSO ID already exists');
+    }
+
+    // Create RSO
+    const newRSO = await RSO.create(value);
+
+    // Link to hospital
+    hospital.rsos.push(newRSO._id);
+    await hospital.save();
+
+    return res.status(201).json(new ApiResponse(201, newRSO, 'RSO created successfully'));
+});
+
+// ✅ Get all RSOs for a hospital
+const getAllRsoByHospitalId = asyncHandler(async (req, res) => {
+    const { hospitalId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
+        throw new ApiError(400, 'Invalid hospital ID format');
+    }
+
+    const hospital = await Hospital.findById(hospitalId).populate('rsos');
+    if (!hospital) {
+        throw new ApiError(404, 'Hospital not found');
+    }
+
+    return res.status(200).json(new ApiResponse(200, hospital.rsos, 'RSOs fetched successfully'));
+});
+
+// ✅ Get RSO by hospitalId + rsoId
+const getRsoByHospitalIdAndRsoId = asyncHandler(async (req, res) => {
+    const { hospitalId, rsoId } = req.params;
+    console.log("🚀 ~ rsoId:", rsoId)
+    console.log("🚀 ~ hospitalId:", hospitalId)
+
+    if (!mongoose.Types.ObjectId.isValid(hospitalId) || !mongoose.Types.ObjectId.isValid(rsoId)) {
+        throw new ApiError(400, 'Invalid ID format');
+    }
+
+    const hospital = await Hospital.findById(hospitalId).populate('rsos');
+    if (!hospital) {
+        throw new ApiError(404, 'Hospital not found');
+    }
+
+    const rso = hospital.rsos.find(r => r._id.toString() === rsoId);
+    if (!rso) {
+        throw new ApiError(404, 'RSO not associated with this hospital');
+    }
+
+    return res.status(200).json(new ApiResponse(200, rso, 'RSO fetched successfully'));
+});
+
+// ✅ Update RSO for a hospital
+const updateRsoByHospitalId = asyncHandler(async (req, res) => {
+    const { hospitalId, rsoId } = req.params;
+    console.log("🚀 ~ rsoId:", rsoId)
+    console.log("🚀 ~ hospitalId:", hospitalId)
+
+    if (!mongoose.Types.ObjectId.isValid(hospitalId) || !mongoose.Types.ObjectId.isValid(rsoId)) {
+        throw new ApiError(400, 'Invalid ID format');
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) {
+        throw new ApiError(404, 'Hospital not found');
+    }
+
+    // Ensure RSO belongs to this hospital
+    if (!hospital.rsos.some(r => r.toString() === rsoId)) {
+        throw new ApiError(404, 'RSO not associated with this hospital');
+    }
+
+    const { error, value } = rsoSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+        throw new ApiError(400, 'Validation Error', error.details.map(e => e.message));
+    }
+
+    const updatedRSO = await RSO.findByIdAndUpdate(rsoId, value, { new: true });
+    if (!updatedRSO) {
+        throw new ApiError(404, 'RSO not found');
+    }
+
+    return res.status(200).json(new ApiResponse(200, updatedRSO, 'RSO updated successfully'));
+});
+
+// ✅ Delete RSO from hospital
+const deleteRsoByHospitalId = asyncHandler(async (req, res) => {
+    const { hospitalId, rsoId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(hospitalId) || !mongoose.Types.ObjectId.isValid(rsoId)) {
+        throw new ApiError(400, 'Invalid ID format');
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) {
+        throw new ApiError(404, 'Hospital not found');
+    }
+
+    // Remove RSO reference from hospital
+    hospital.rsos = hospital.rsos.filter(r => r.toString() !== rsoId);
+    await hospital.save();
+
+    // Delete RSO document
+    const deletedRSO = await RSO.findByIdAndDelete(rsoId);
+    if (!deletedRSO) {
+        throw new ApiError(404, 'RSO not found');
+    }
+
+    return res.status(200).json(new ApiResponse(200, deletedRSO, 'RSO deleted successfully'));
+});
+
+
 export default {
     add,
     getAll,
@@ -280,5 +416,10 @@ export default {
     getAllrsoByClientId,
     getrsoByClientIdAndRsoId,
     updatersoByClientId,
-    deletersoByClientId
+    deletersoByClientId,
+    createRsoByHospitalId,
+    getAllRsoByHospitalId,
+    getRsoByHospitalIdAndRsoId,
+    updateRsoByHospitalId,
+    deleteRsoByHospitalId
 };

@@ -27,6 +27,22 @@ const hospitalSchema = new Schema(
             type: String,
             unique: true,
         },
+        // New: Multiple RSOs linked to this hospital
+        rsos: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: 'RSO',
+                default: [],
+            },
+        ],
+        // New: Multiple Institutes linked to this hospital
+        institutes: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: 'Institute',
+                default: [],
+            },
+        ],
     },
     { timestamps: true }
 );

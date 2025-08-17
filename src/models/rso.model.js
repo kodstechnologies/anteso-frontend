@@ -38,7 +38,6 @@ const rsoSchema = new Schema(
         },
         attachment: {
             type: String, // path or file URL
-            required: false,
         },
     },
     { timestamps: true }

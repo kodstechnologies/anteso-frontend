@@ -101,8 +101,6 @@ const getAll = asyncHandler(async (req, res) => {
     }
 });
 
-
-
 //hospital by client
 const createHospitalByClientId = asyncHandler(async (req, res) => {
     try {
@@ -155,37 +153,70 @@ const updateHospitalByClientIdAndHospitalId = asyncHandler(async (req, res) => {
 const deleteHospitalByClientId = asyncHandler(async (req, res) => {
     try {
         const { clientId, hospitalId } = req.params;
-        console.log("🚀 ~ deleteHospitalByClientId ~ hospitalId:", hospitalId)
-        console.log("🚀 ~ deleteHospitalByClientId ~ clientId:", clientId)
 
+        // Validate IDs
+        if (!mongoose.Types.ObjectId.isValid(clientId) || !mongoose.Types.ObjectId.isValid(hospitalId)) {
+            throw new ApiError(400, 'Invalid ID format');
+        }
+
+        // Find client and hospital
         const client = await Client.findById(clientId);
         if (!client || !client.hospitals.includes(hospitalId)) {
             throw new ApiError(404, 'Hospital not associated with this client');
         }
 
+        const hospital = await Hospital.findById(hospitalId);
+        if (!hospital) {
+            throw new ApiError(404, 'Hospital not found');
+        }
+
+        // Delete all RSOs linked to the hospital
+        if (hospital.rsos && hospital.rsos.length > 0) {
+            await RSO.deleteMany({ _id: { $in: hospital.rsos } });
+        }
+
+        // Delete all Institutes linked to the hospital
+        if (hospital.institutes && hospital.institutes.length > 0) {
+            await Institute.deleteMany({ _id: { $in: hospital.institutes } });
+        }
+
+        // Delete the hospital
         await Hospital.findByIdAndDelete(hospitalId);
+
+        // Remove hospital reference from client
         client.hospitals.pull(hospitalId);
         await client.save();
 
         return res.status(200).json(
-            new ApiResponse(200, null, 'Hospital deleted from client')
+            new ApiResponse(200, null, 'Hospital and all associated RSOs & Institutes deleted successfully')
         );
+
     } catch (error) {
         return res.status(error.statusCode || 500).json(
             new ApiResponse(error.statusCode || 500, null, error.message || 'Something went wrong')
         );
     }
 });
+
 
 const getAllHospitalsByClientId = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
 
-        const client = await Client.findById(id).populate('hospitals');
-        if (!client) throw new ApiError(404, 'Client not found');
+        const client = await Client.findById(id).populate({
+            path: 'hospitals',
+            populate: [
+                { path: 'rsos' },        // Assuming field name is 'rsos' in Hospital schema
+                { path: 'institutes' }   // Assuming field name is 'institutes' in Hospital schema
+            ]
+        });
+
+        if (!client) {
+            throw new ApiError(404, 'Client not found');
+        }
 
         return res.status(200).json(
-            new ApiResponse(200, client.hospitals, 'Hospitals fetched for client')
+            new ApiResponse(200, client.hospitals, 'Hospitals (with RSOs & Institutes) fetched for client')
         );
     } catch (error) {
         return res.status(error.statusCode || 500).json(
@@ -194,12 +225,20 @@ const getAllHospitalsByClientId = asyncHandler(async (req, res) => {
     }
 });
 
+
 const getHospitalByClientIdAndHospitalId = asyncHandler(async (req, res) => {
     try {
         const { clientId, hospitalId } = req.params;
 
-        // Find the client and populate hospitals
-        const client = await Client.findById(clientId).populate('hospitals');
+        // Find the client and populate hospitals with nested RSOs & Institutes
+        const client = await Client.findById(clientId).populate({
+            path: 'hospitals',
+            populate: [
+                { path: 'rsos' },
+                { path: 'institutes' }
+            ]
+        });
+
         if (!client) {
             throw new ApiError(404, 'Client not found');
         }
@@ -214,7 +253,7 @@ const getHospitalByClientIdAndHospitalId = asyncHandler(async (req, res) => {
         }
 
         return res.status(200).json(
-            new ApiResponse(200, hospital, 'Hospital fetched successfully')
+            new ApiResponse(200, hospital, 'Hospital fetched successfully with RSOs & Institutes')
         );
     } catch (error) {
         console.error("Error in getHospitalByClientIdAndHospitalId:", error);
@@ -223,6 +262,7 @@ const getHospitalByClientIdAndHospitalId = asyncHandler(async (req, res) => {
         );
     }
 });
+
 
 
 export default {

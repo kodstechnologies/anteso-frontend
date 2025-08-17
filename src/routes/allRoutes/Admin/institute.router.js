@@ -16,4 +16,12 @@ router.put('/update-institute-by-client-and-institute/:clientId/:instituteId', i
 router.delete('/delete-institute-by-client-and-institute/:clientId/:instituteId', instituteController.deleteInstituteByClientId)
 // router.post('/create-institute-by-client/:id', instituteController.createInstituteByClientId)
 
+
+router.post('/create-institute-by-hospitalId/:hospitalId', instituteController.createInstituteByHospitalId)
+router.get('/get-institute-by-hospitalId-instituteId/:hospitalId/:instituteId', instituteController.getInstituteByHospitalIdAndInstituteId)
+router.put('/update-institute-by-hospitalId-instituteId/:hospitalId/:instituteId', instituteController.updateInstituteByHospitalIdAndInstituteId)
+router.get('/get-all-institutes-by-hospitalId/:hospitalId', instituteController.getAllInstitutesByHospitalId)
+router.delete('/delete-institute-by-hospitalId-instituteId/:hospitalId/:instituteId', instituteController.createInstituteByHospitalId)
+
+
 export default router

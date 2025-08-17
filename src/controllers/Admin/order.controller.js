@@ -6,6 +6,9 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import Services from "../../models/Services.js";
 import User from "../../models/user.model.js";
 import { generateULRReportNumber, generateQATestReportNumber, incrementSequence } from "../../utils/ReportNumberGenerator.js";
+import Employee from "../../models/technician.model.js";
+import Client from "../../models/client.model.js";
+import Hospital from "../../models/hospital.model.js";
 
 const getAllOrders = asyncHandler(async (req, res) => {
     try {
@@ -15,7 +18,6 @@ const getAllOrders = asyncHandler(async (req, res) => {
         if (!orders || orders.length === 0) {
             return res.status(404).json({ message: "No orders found" });
         }
-
         res.status(200).json({
             message: "Orders fetched successfully",
             count: orders.length,
@@ -26,6 +28,7 @@ const getAllOrders = asyncHandler(async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
+
 const getBasicDetailsByOrderId = asyncHandler(async (req, res) => {
     try {
         const { orderId } = req.params;
@@ -55,25 +58,21 @@ const getBasicDetailsByOrderId = asyncHandler(async (req, res) => {
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 });
+
 const getAdditionalServicesByOrderId = asyncHandler(async (req, res) => {
     try {
         const { orderId } = req.params;
-
         if (!orderId) {
             return res.status(400).json({ message: 'Order ID is required' });
         }
-
         const order = await orderModel.findById(orderId).select('additionalServices specialInstructions');
-
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
         }
-
         res.status(200).json({
             additionalServices: order.additionalServices || {},
             specialInstructions: order.specialInstructions || ''
         });
-
     } catch (error) {
         res.status(500).json({ message: error.message || 'Something went wrong' });
     }
@@ -88,7 +87,22 @@ const getAllServicesByOrderId = asyncHandler(async (req, res) => {
         }
 
         // Fetch only the services field of the order
-        const order = await orderModel.findById(orderId).select('services');
+        const order = await orderModel
+            .findById(orderId)
+            .select('services')
+            .populate({
+                path: 'services',
+                populate: [
+                    {
+                        path: 'workTypeDetails.engineer',
+                        model: 'Employee',
+                    },
+                    {
+                        path: 'workTypeDetails.officeStaff',
+                        model: 'Employee',
+                    }
+                ]
+            });
 
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
@@ -107,11 +121,20 @@ const getAllServicesByOrderId = asyncHandler(async (req, res) => {
 //     }
 // }) 
 
+
+//changed after model change
 const getMachineDetailsByOrderId = asyncHandler(async (req, res) => {
     try {
         const { orderId } = req.params;
 
-        const order = await orderModel.findById(orderId).populate("services");
+        const order = await orderModel.findById(orderId)
+            .populate({
+                path: "services",
+                populate: [
+                    { path: "workTypeDetails.engineer", model: "Employee" },
+                    { path: "workTypeDetails.officeStaff", model: "Employee" }
+                ]
+            });
 
         if (!order) {
             throw new ApiError(404, "Order not found");
@@ -132,31 +155,38 @@ const getMachineDetailsByOrderId = asyncHandler(async (req, res) => {
     }
 });
 
-//web
+
 const getQARawByOrderId = asyncHandler(async (req, res) => {
     try {
         const { orderId } = req.params;
 
-        // Fetch the order and populate nested fields
+        // Fetch the order and populate both engineer & office staff fields
         const order = await orderModel.findById(orderId)
             .populate({
                 path: 'services',
-                populate: {
-                    path: 'workTypeDetails.employee',
-                    model: 'Employee',
-                    select: 'name'
-                }
+                populate: [
+                    {
+                        path: 'workTypeDetails.engineer',
+                        model: 'Employee',
+                        select: 'name'
+                    },
+                    {
+                        path: 'workTypeDetails.officeStaff',
+                        model: 'Employee',
+                        select: 'name'
+                    }
+                ]
             });
 
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
         }
-        // Extract info from services with QA Raw
+
+        // Extract info from services
         const qaRawDetails = [];
 
         order.services.forEach(service => {
             service.workTypeDetails.forEach(work => {
-                // if (work.serviceName === 'QA Raw') {
                 qaRawDetails.push({
                     machineType: service.machineType,
                     machineModel: service.machineModel,
@@ -164,11 +194,11 @@ const getQARawByOrderId = asyncHandler(async (req, res) => {
                     rawFile: work.uploadFile,
                     rawPhoto: work.viewFile,
                     remark: work.remark,
-                    employeeName: work.employee?.name || 'Not Assigned',
+                    engineerName: work.engineer?.name || 'Not Assigned',
+                    officeStaffName: work.officeStaff?.name || 'Not Assigned',
                     status: work.status,
                     workType: work.workType
                 });
-                // }
             });
         });
 
@@ -185,14 +215,14 @@ const getQARawByOrderId = asyncHandler(async (req, res) => {
 });
 
 //web app
+//for qa test--change this after chnaging the model
 const updateEmployeeStatus = asyncHandler(async (req, res) => {
     const { orderId, serviceId, employeeId, status } = req.params;
+    console.log("🚀 ~ employeeId:", employeeId)
 
     if (!orderId || !serviceId || !employeeId) {
         return res.status(400).json({ message: "Missing required params" });
     }
-
-
     const employee = await User.findById(employeeId);
     if (!employee || employee.role !== "Employee") {
         return res.status(404).json({ message: "Invalid employee" });
@@ -270,45 +300,196 @@ const updateEmployeeStatus = asyncHandler(async (req, res) => {
 //     });
 // });
 
+
+//create order
+const createOrder = asyncHandler(async (req, res) => {
+    try {
+        console.log("📥 req body:", req.body);
+
+        const {
+            leadOwner, // this will be userId from frontend
+            hospitalName,
+            fullAddress,
+            city,
+            district,
+            state,
+            pinCode,
+            branchName,
+            contactPersonName,
+            emailAddress,
+            contactNumber,
+            designation,
+            advanceAmount,
+            workOrderCopy,
+            partyCodeOrSysId,
+            procNoOrPoNo,
+            procExpiryDate,
+            urgency,
+            services,
+            additionalServices,
+            specialInstructions,
+            courierDetails,
+            reportULRNumber,
+            qaTestReportNumber,
+            rawFile,
+            rawPhoto,
+        } = req.body;
+
+        // ✅ Validate required fields
+        if (
+            !leadOwner ||
+            !hospitalName ||
+            !fullAddress ||
+            !city ||
+            !district ||
+            !state ||
+            !pinCode ||
+            !branchName ||
+            !contactPersonName ||
+            !emailAddress ||
+            !contactNumber
+        ) {
+            throw new ApiError(400, "Missing required fields");
+        }
+
+        // ✅ Find lead owner user
+        const leadOwnerUser = await User.findById(leadOwner).select("name role");
+        console.log("🚀 ~ leadOwnerUser:", leadOwnerUser)
+        if (!leadOwnerUser) {
+            throw new ApiError(404, "Lead owner not found");
+        }
+
+        // ✅ Step 1: Find or create client by phone
+        let client = await Client.findOne({ phone: contactNumber });
+        if (!client) {
+            client = await Client.create({
+                name: contactPersonName,
+                phone: contactNumber,
+                email: emailAddress,
+                address: fullAddress,
+                role: "Customer",
+            });
+        }
+
+        // ✅ Step 2: Create hospital and link to client
+        const hospital = await Hospital.create({
+            name: hospitalName,
+            email: emailAddress,
+            address: fullAddress,
+            branch: branchName,
+            phone: contactNumber,
+            city,
+            district,
+            state,
+            pinCode,
+        });
+
+        if (!client.hospitals.includes(hospital._id)) {
+            client.hospitals.push(hospital._id);
+            await client.save();
+        }
+
+        // ✅ Step 3: Parse services (if stringified)
+        let parsedServices = [];
+        if (services) {
+            if (typeof services === "string") {
+                try {
+                    parsedServices = JSON.parse(services);
+                } catch (err) {
+                    throw new ApiError(400, "Invalid services format, must be JSON array");
+                }
+            } else {
+                parsedServices = services;
+            }
+        }
+
+        // ✅ Step 4: Save services to DB and map ObjectIds
+        let serviceDocs = [];
+        if (parsedServices.length > 0) {
+            serviceDocs = await Services.insertMany(parsedServices);
+            console.log("🚀 ~ serviceDocs:", serviceDocs)
+        }
+
+        // ✅ Step 5: Create order
+        const order = await orderModel.create({
+            leadOwner: leadOwnerUser.name, // 👉 store name instead of ID
+            hospitalName,
+            fullAddress,
+            city,
+            district,
+            state,
+            pinCode,
+            branchName,
+            contactPersonName,
+            emailAddress,
+            contactNumber,
+            designation,
+            advanceAmount,
+            workOrderCopy,
+            partyCodeOrSysId,
+            procNoOrPoNo,
+            procExpiryDate,
+            customer: client._id,
+            urgency,
+            services: serviceDocs.map((s) => s._id),
+            additionalServices,
+            specialInstructions,
+            courierDetails,
+            reportULRNumber,
+            qaTestReportNumber,
+            rawFile,
+            rawPhoto,
+        });
+        console.log("🚀 ~ order:", order)
+
+        return res
+            .status(201)
+            .json(new ApiResponse(201, order, "Order created successfully"));
+    } catch (error) {
+        console.error("❌ Error creating order:", error);
+        throw new ApiError(500, "Failed to create order", [error.message]);
+    }
+});
+
+
+//check this one also
 //mobile--get the order by customerId orderId and status--if status is inprogress then only show that order details
 const startOrder = asyncHandler(async (req, res) => {
     const { employeeId, orderId } = req.params;
-    console.log("🚀 ~ orderId:", orderId)
-    console.log("🚀 ~ employeeId:", employeeId)
 
     if (!mongoose.Types.ObjectId.isValid(orderId) || !mongoose.Types.ObjectId.isValid(employeeId)) {
         return res.status(400).json({ message: 'Invalid orderId or employeeId' });
     }
 
-    // Step 1: Find the order with status 'in progress'
+    // Step 1: Find the order
     const order = await orderModel.findOne({
         _id: orderId,
-        // status: 'assigned'
+        // status: 'assigned' // uncomment if needed
     }).populate({
         path: 'services',
         model: 'Service'
     });
-    console.log("🚀 ~ order:", order)
+
     if (!order) {
-        return res.status(404).json({ message: 'Order not found ' });
+        return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Step 2: Check if any service has workTypeDetails assigned to the given employeeId
-    const hasEmployeeAssigned = order.services.some(service =>
+    // Step 2: Check if employee is assigned as engineer
+    const isEngineerAssigned = order.services.some(service =>
         service.workTypeDetails.some(work =>
-            work.employee?.toString() === employeeId
+            work.engineer?.toString() === employeeId
         )
     );
-    console.log("🚀 ~ employeeId:", employeeId)
 
-    if (!hasEmployeeAssigned) {
-        return res.status(403).json({ message: 'Employee is not assigned to this order' });
+    if (!isEngineerAssigned) {
+        return res.status(403).json({ message: 'Engineer is not assigned to this order' });
     }
+
     // Step 3: Return order
     res.status(200).json(order);
 });
 
-//mobile api
+//mobile api--previously created api -not using this one
 const updateOrderDetails = asyncHandler(async (req, res) => {
     const { orderId, technicianId } = req.params;
     const { machineUpdates: submittedData } = req.body;
@@ -416,7 +597,7 @@ const updateOrderDetails = asyncHandler(async (req, res) => {
         return res.status(500).json({ message: 'Server Error' });
     }
 });
-
+//check in postman
 const getSRFDetails = asyncHandler(async (req, res) => {
     const { technicianId, orderId } = req.params;
 
@@ -429,15 +610,15 @@ const getSRFDetails = asyncHandler(async (req, res) => {
             return res.status(404).json({ message: 'Order not found' });
         }
 
-        // Check if technician is assigned in any service
-        const isTechnicianAssigned = order.services.some(service =>
+        // ✅ Check if this engineer is assigned in any service
+        const isEngineerAssigned = order.services.some(service =>
             service.workTypeDetails.some(work =>
-                work.employee?.toString() === technicianId
+                work.engineer?.toString() === technicianId
             )
         );
 
-        if (!isTechnicianAssigned) {
-            return res.status(403).json({ message: 'Technician is not assigned to this order' });
+        if (!isEngineerAssigned) {
+            return res.status(403).json({ message: 'Engineer is not assigned to this order' });
         }
 
         const srfDetails = {
@@ -456,34 +637,30 @@ const getSRFDetails = asyncHandler(async (req, res) => {
         return res.status(500).json({ message: 'Server Error' });
     }
 });
+
+//check
 const updateOrderServicesByTechnician = asyncHandler(async (req, res) => {
     const { technicianId, orderId } = req.params;
-    console.log("🚀 ~ orderId:", orderId)
-    console.log("🚀 ~ technicianId:", technicianId)
+    console.log("🚀 ~ engineerId:", technicianId)
     const { serviceUpdates } = req.body; // [{ machineType, machineModel, serialNumber, remark, rawFile, rawPhoto }]
-
     try {
         const order = await orderModel.findById(orderId)
             .populate('services')
             .populate('customer');
-
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
         }
-
         const services = order.services;
-
-        // Step 1: Verify technician is assigned
-        const isTechnicianAssigned = services.some(service =>
+        // ✅ Step 1: Verify engineer is assigned
+        const isEngineerAssigned = services.some(service =>
             service.workTypeDetails.some(work =>
-                work.employee?.toString() === technicianId
+                work.engineer?.toString() === technicianId
             )
         );
-        if (!isTechnicianAssigned) {
-            return res.status(403).json({ message: 'Technician not assigned to any service in this order' });
+        if (!isEngineerAssigned) {
+            return res.status(403).json({ message: 'Engineer not assigned to any service in this order' });
         }
-
-        // Step 2: Apply updates
+        // ✅ Step 2: Apply updates
         for (const update of serviceUpdates) {
             const {
                 machineType,
@@ -493,27 +670,24 @@ const updateOrderServicesByTechnician = asyncHandler(async (req, res) => {
                 rawFile,
                 rawPhoto
             } = update;
-
             const matchingService = services.find(
                 service =>
                     service.machineType === machineType &&
-                    service.workTypeDetails.some(work => work.employee?.toString() === technicianId)
+                    service.workTypeDetails.some(work => work.engineer?.toString() === technicianId)
             );
-            console.log("🚀 ~ matchingService:", matchingService)
-
             if (matchingService) {
                 // Update machine-level fields
                 if (machineModel) matchingService.machineModel = machineModel;
                 if (serialNumber) matchingService.serialNumber = serialNumber;
-                if (remark) matchingService.remark = remark;
+                // if (remark) matchingService.remark = remark;
 
-                // Update workTypeDetails for technician
+                // Update workTypeDetails for this engineer
                 matchingService.workTypeDetails.forEach(work => {
-                    if (work.employee?.toString() === technicianId) {
+                    if (work.engineer?.toString() === technicianId) {
                         if (remark) work.remark = remark;
                         if (rawFile) work.uploadFile = rawFile;
                         if (rawPhoto) work.viewFile = rawPhoto;
-                        if (work.status === 'pending' || work.status === 'inprogress') {
+                        if (['pending', 'inprogress'].includes(work.status)) {
                             work.status = 'completed';
                         }
                     }
@@ -521,46 +695,149 @@ const updateOrderServicesByTechnician = asyncHandler(async (req, res) => {
                 await matchingService.save();
             }
         }
-        // Step 3: Update order status
-        const allWorks = services.flatMap(service => service.workTypeDetails);
-        console.log("🚀 ~ allWorks:", allWorks)
-        const allCompleted = allWorks.every(work => work.status === 'completed');
-        console.log("🚀 ~ allCompleted:", allCompleted)
-        const completedCount = allWorks.filter(w => w.status === 'completed').length;
-        console.log("Completed:", completedCount, "of", allWorks.length);
-
-        order.status = allCompleted ? 'completed' : 'in progress';
         await order.save();
-
         return res.status(200).json({
-            message: 'Service updates saved',
+            message: 'Service updates saved successfully',
             orderStatus: order.status
         });
     } catch (error) {
-        console.error('Error in updateOrderServicesByTechnician:', error);
+        console.error('Error in updateOrderServicesByEngineer:', error);
         return res.status(500).json({ message: 'Server error' });
     }
 });
-const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
-    const { technicianId } = req.params;
 
-    if (!technicianId) {
-        return res.status(400).json({ message: 'Technician ID is required' });
+const getUpdatedOrderServices = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId, orderId, serviceId, workType } = req.params;
+        // 1️⃣ Find the order and populate its services
+        const order = await orderModel.findById(orderId)
+            .populate({
+                path: 'services',
+                match: { _id: serviceId }, // get only the specified service
+                populate: {
+                    path: 'workTypeDetails.engineer',
+                    select: 'name'
+                }
+            });
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+        if (!order.services || order.services.length === 0) {
+            return res.status(404).json({ message: 'Service not found in this order' });
+        }
+        const service = order.services[0];
+        // 2️⃣ Filter workTypeDetails for the given technician
+        const technicianWork = service.workTypeDetails.find(
+            w => w.engineer?._id?.toString() === technicianId
+        );
+        if (!technicianWork) {
+            return res.status(403).json({ message: 'Technician not assigned to this service' });
+        }
+        // 3️⃣ Build response with only the updated fields
+        const updatedData = {
+            machineType: service.machineType,
+            machineModel: service.machineModel,
+            serialNumber: service.serialNumber,
+            remark: technicianWork.remark || null,
+            rawFile: technicianWork.uploadFile || null,
+            rawPhoto: technicianWork.viewFile || null
+        };
+        res.status(200).json({
+            success: true,
+            updatedService: updatedData
+        });
+    } catch (error) {
+        console.error('Error fetching updated order service details:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId, orderId, serviceId, workType } = req.params;
+        console.log("🚀 ~ workType:", workType)
+        console.log("🚀 ~ serviceId:", serviceId)
+        console.log("🚀 ~ orderId:", orderId)
+        console.log("🚀 ~ technicianId:", technicianId)
+
+        // 1️⃣ Find the order and populate its services
+        const order = await orderModel.findById(orderId)
+            .populate({
+                path: 'services',
+                match: { _id: serviceId },
+                populate: {
+                    path: 'workTypeDetails.engineer',
+                    select: 'name'
+                }
+            });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        if (!order.services || order.services.length === 0) {
+            return res.status(404).json({ message: 'Service not found in this order' });
+        }
+
+        const service = order.services[0];
+
+        // 2️⃣ Filter workTypeDetails for the given technician & work type
+        const technicianWork = service.workTypeDetails.find(
+            w =>
+                w.engineer?._id?.toString() === technicianId &&
+                w.workType?.toLowerCase() === workType.toLowerCase()
+        );
+
+        if (!technicianWork) {
+            return res.status(403).json({ message: 'Technician not assigned to this work type in this service' });
+        }
+
+        // 3️⃣ Build response with IDs + workType + data
+        const updatedData = {
+            orderId: order._id,
+            serviceId: service._id,
+            technicianId,
+            workType: technicianWork.workType || null,
+            machineType: service.machineType,
+            machineModel: service.machineModel,
+            serialNumber: service.serialNumber,
+            remark: technicianWork.remark || null,
+            rawFile: technicianWork.uploadFile || null,
+            rawPhoto: technicianWork.viewFile || null
+        };
+
+        res.status(200).json({
+            success: true,
+            updatedService: updatedData
+        });
+
+    } catch (error) {
+        console.error('Error fetching updated order service details:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+//check
+const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
+    const { engineerId } = req.params;
+
+    if (!engineerId) {
+        return res.status(400).json({ message: 'Engineer ID is required' });
     }
 
-    // Step 1: Find all services where this technician is assigned (regardless of status)
-    const servicesWithTechnician = await Services.find({
+    // Step 1: Find all services where this engineer is assigned
+    const servicesWithEngineer = await Services.find({
         workTypeDetails: {
             $elemMatch: {
-                employee: new mongoose.Types.ObjectId(technicianId),
+                engineer: new mongoose.Types.ObjectId(engineerId),
             },
         },
     });
 
-    const serviceIds = servicesWithTechnician.map((s) => s._id);
+    const serviceIds = servicesWithEngineer.map((s) => s._id);
 
     if (serviceIds.length === 0) {
-        return res.status(404).json({ message: 'No services found for this technician' });
+        return res.status(404).json({ message: 'No services found for this engineer' });
     }
 
     // Step 2: Find orders that contain those services
@@ -570,8 +847,8 @@ const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
         .populate({
             path: 'services',
             populate: {
-                path: 'workTypeDetails.employee',
-                model: 'Employee',
+                path: 'workTypeDetails.engineer',
+                model: 'Employee', // Assuming engineer is also stored in Employee model
             },
         })
         .populate('customer', 'name email')
@@ -583,7 +860,6 @@ const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
         orders,
     });
 });
-
 const updateCompletedStatus = asyncHandler(async (req, res) => {
     const { orderId, employeeId } = req.params;
     if (!orderId || !employeeId) {
@@ -622,5 +898,299 @@ const updateCompletedStatus = asyncHandler(async (req, res) => {
         qaTestReportNumber: order.qaTestReportNumber
     });
 });
+//qa raw --assign engineer--check in postman
+const assignTechnicianByQARaw = asyncHandler(async (req, res) => {
+    try {
+        const { orderId, serviceId, technicianId } = req.params;
+        console.log("🚀 ~ engineerId:", technicianId)
+        console.log("🚀 ~ serviceId:", serviceId)
+        console.log("🚀 ~ orderId:", orderId)
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, updateCompletedStatus, getAllOrdersForTechnician, startOrder, getSRFDetails, updateOrderServicesByTechnician }
+        // 1. Validate order and service relationship
+        const order = await orderModel.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        if (!order.services.includes(serviceId)) {
+            return res.status(400).json({ message: 'Service not linked to this order' });
+        }
+
+        // 2. Get the service
+        const service = await Services.findById(serviceId);
+        if (!service) {
+            return res.status(404).json({ message: 'Service not found' });
+        }
+
+        // 3. Validate engineer
+        const engineer = await Employee.findById(technicianId);
+        if (!engineer || engineer.technicianType !== 'engineer') {
+            return res.status(400).json({ message: 'Invalid engineer or not an engineer type' });
+        }
+
+        // 4. Assign engineer in workTypeDetails
+        let updated = false;
+        service.workTypeDetails = service.workTypeDetails.map((work) => {
+            // You can uncomment and filter by specific serviceName if needed
+            // if (work.serviceName === 'QA Raw') {
+            work.engineer = technicianId;
+            work.status = 'inprogress';
+            updated = true;
+            // }
+            return work;
+        });
+
+        await service.save();
+
+        res.status(200).json({
+            message: 'Engineer assigned successfully to QA Raw work',
+            service,
+        });
+    } catch (error) {
+        console.error('Error assigning engineer:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+//for qa test
+const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
+    try {
+        const { orderId, serviceId, officeStaffId } = req.params;
+        console.log("🚀 ~ officeStaffId:", officeStaffId);
+        console.log("🚀 ~ serviceId:", serviceId);
+        console.log("🚀 ~ orderId:", orderId);
+
+        // 1. Validate order and service relationship
+        const order = await orderModel.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        if (!order.services.includes(serviceId)) {
+            return res.status(400).json({ message: 'Service not linked to this order' });
+        }
+
+        // 2. Get the service
+        const service = await Services.findById(serviceId);
+        if (!service) {
+            return res.status(404).json({ message: 'Service not found' });
+        }
+
+        // 3. Validate office staff
+        const staff = await Employee.findById(officeStaffId);
+        if (!staff || staff.technicianType !== 'office staff') {
+            return res.status(400).json({ message: 'Invalid staff or not an office staff type' });
+        }
+
+        // 4. Assign office staff in workTypeDetails
+        let updated = false;
+        service.workTypeDetails = service.workTypeDetails.map((work) => {
+            work.officeStaff = officeStaffId;
+            work.status = 'completed';
+            updated = true;
+            return work;
+        });
+
+        await service.save();
+
+        res.status(200).json({
+            message: 'Office staff assigned successfully to work',
+            service,
+        });
+    } catch (error) {
+        console.error('Error assigning office staff:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+const getRawDetailsByTechnician = asyncHandler(async (req, res) => {
+    try {
+
+    } catch (error) {
+
+    }
+})
+const getQaDetails = asyncHandler(async (req, res) => {
+    try {
+        const { orderId, serviceId, technicianId } = req.params;
+        console.log("🚀 ~ engineerId:", technicianId)
+        console.log("🚀 ~ serviceId:", serviceId)
+        console.log("🚀 ~ orderId:", orderId)
+
+        // Step 1: Find the order with populated services and engineers
+        const order = await orderModel.findById(orderId)
+            .populate({
+                path: 'services',
+                populate: {
+                    path: 'workTypeDetails.engineer',
+                    model: 'Employee'
+                }
+            });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Step 2: Find the specific service by serviceId
+        const service = order.services.find(s => s._id.toString() === serviceId);
+        if (!service) {
+            return res.status(404).json({ message: 'Service not found' });
+        }
+
+        // Step 3: Find work assigned to the engineer
+        const engineerWork = service.workTypeDetails.find(work =>
+            work.engineer?._id?.toString() === technicianId
+        );
+        if (!engineerWork) {
+            return res.status(404).json({ message: 'No work found for this engineer' });
+        }
+
+        // Step 4: Construct response
+        const response = {
+            engineerName: engineerWork.engineer?.name || 'N/A',
+            machineModel: service.machineModel || 'N/A',
+            serialNumber: service.serialNumber || 'N/A',
+            rawPhoto: engineerWork.viewFile || 'N/A',
+            rawFile: engineerWork.uploadFile || 'N/A',
+            remark: engineerWork.remark || 'N/A'
+        };
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        console.error("Error fetching QA details:", error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+const getAllOfficeStaff = async (req, res) => {
+    try {
+        const officeStaff = await Employee.find({ technicianType: 'office staff' }).select('name');
+        res.status(200).json({ success: true, data: officeStaff });
+    } catch (error) {
+        console.error("Error fetching office staff:", error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+const updateStaffStatus = asyncHandler(async (req, res) => {
+    try {
+
+    } catch (error) {
+
+    }
+})
+
+const uploadReportByOfficeStaff = asyncHandler(async (req, res) => {
+    try {
+
+    } catch (error) {
+
+    }
+})
+
+const getAssignedTechnicianName = asyncHandler(async (req, res) => {
+    try {
+        const { orderId, serviceId, workType } = req.params;
+
+        // 1. Validate the order contains the service
+        const order = await orderModel.findById(orderId).populate({
+            path: 'services',
+            match: { _id: serviceId },
+            populate: {
+                path: 'workTypeDetails.engineer',
+                select: 'name'
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const service = order.services[0];
+        if (!service) {
+            return res.status(404).json({ message: 'Service not found in this order' });
+        }
+
+        // 2. Find the workType entry
+        const workDetail = service.workTypeDetails.find(
+            w => w.workType === workType
+        );
+
+        if (!workDetail) {
+            return res.status(404).json({ message: 'Work type not found in this service' });
+        }
+
+        if (!workDetail.engineer) {
+            return res.status(404).json({ message: 'No technician assigned for this work type' });
+        }
+
+        // 3. Return the technician's name
+        res.status(200).json({
+            success: true,
+            technicianName: workDetail.engineer.name,
+            status: workDetail.status
+        });
+    } catch (error) {
+        console.error('Error fetching technician name:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+const geAssignedtofficeStaffName = asyncHandler(async (req, res) => {
+    try {
+        const { orderId, serviceId, workType } = req.params;
+
+        // 1. Find order and match service
+        const order = await orderModel.findById(orderId).populate({
+            path: 'services',
+            match: { _id: serviceId },
+            populate: {
+                path: 'workTypeDetails.officeStaff',
+                select: 'name'
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const service = order.services[0];
+        if (!service) {
+            return res.status(404).json({ message: 'Service not found in this order' });
+        }
+
+        // 2. Find workType entry
+        const workDetail = service.workTypeDetails.find(
+            w => w.workType === workType
+        );
+
+        if (!workDetail) {
+            return res.status(404).json({ message: 'Work type not found in this service' });
+        }
+
+        console.log("🚀 ~ workDetail.officeStaff:", workDetail.officeStaff.name)
+        if (!workDetail.officeStaff) {
+            return res.status(404).json({ message: 'No office staff assigned for this work type' });
+        }
+
+        // 3. Return office staff name
+        res.status(200).json({
+            success: true,
+            officeStaffName: workDetail.officeStaff.name,
+            status: workDetail.status
+        });
+
+    } catch (error) {
+        console.error('Error fetching office staff name:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+export const getOrders = asyncHandler(async (req, res) => {
+    try {
+        const { orderId } = req.params
+    } catch (error) {
+        console.error("error ", error.message[0])
+    }
+})
+
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, updateCompletedStatus, getAllOrdersForTechnician, startOrder, getSRFDetails, updateOrderServicesByTechnician, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder }

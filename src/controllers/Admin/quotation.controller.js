@@ -50,6 +50,8 @@ import Services from "../../models/Services.js";
 const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
+        console.log("Incoming Quotation Payload:", req.body)
+
         console.log("🚀 ~ enquiryId:", id)
         const {
             date,
@@ -74,16 +76,17 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
         if (!enquiry) throw new ApiError(404, "Enquiry not found");
         if (!enquiry.customer || !enquiry.customer._id)
             throw new ApiError(400, "Customer info missing in enquiry");
+        console.log("Terms to be saved:", termsAndConditions);
 
         const quotation = await Quotation.create({
             date,
             quotationId: quotationNumber,
             enquiry: enquiry._id,
-            from: enquiry.customer._id,  // ✅ Correct and safe
+            from: enquiry.customer._id,  
             discount: calculations.discount,
             total: calculations.totalAmount,
             quotationStatus: 'Created',
-            termsAndConditions: termsAndConditions.map(term => term.label),
+            termsAndConditions,
         });
 
         console.log("Created Quotation:", quotation);
@@ -125,14 +128,14 @@ const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
     }
 });
 const getQuotationByIds = asyncHandler(async (req, res) => {
-    const { customerId, enquiryId, quotationId } = req.params;
+    const { customerId, enquiryId } = req.params;
 
-    if (!customerId || !enquiryId || !quotationId) {
+    if (!customerId || !enquiryId) {
         throw new ApiError(400, 'Customer ID, Enquiry ID, and Quotation ID are required');
     }
 
     const quotation = await Quotation.findOne({
-        _id: quotationId,
+        // _id: quotationId,
         enquiry: enquiryId,
         from: customerId
     })
@@ -257,6 +260,7 @@ const acceptQuotation = asyncHandler(async (req, res) => {
             _id: enquiryId,
             customer: customerId
         });
+        console.log("🚀 ~ enquiry:", enquiry)
         if (!enquiry) {
             return res.status(404).json({ message: "Enquiry not found for the customer" });
         }
@@ -303,13 +307,14 @@ const acceptQuotation = asyncHandler(async (req, res) => {
             procNoOrPoNo: '',
             urgency: 'normal',
             specialInstructions: enquiry.specialInstructions,
-            additionalServices:enquiry.additionalServices,
+            additionalServices: enquiry.additionalServices,
             services: serviceDocs,
             quotation: quotation._id,
             customer: enquiry.customer // 👈 Make sure this exists in the enquiry
         });
-            console.log("🚀 ~ order:", order)
-            console.log("🚀 ~ order.additionalServices:", order.additionalServices)
+     
+        console.log("🚀 ~ order:", order)
+        console.log("🚀 ~ order.additionalServices:", order.additionalServices)
 
         res.status(200).json({
             message: "Quotation accepted and order created successfully",
@@ -377,8 +382,14 @@ const rejectQuotation = asyncHandler(async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
+const test = asyncHandler(async (req, res) => {
+    return res.status(200).json({ "msg": "hello" })
+    try {
+    } catch (error) {
 
+    }
+})
 
 // const getAcceptedQuotations=
 
-export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds }
+export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, test }

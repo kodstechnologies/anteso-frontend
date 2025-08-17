@@ -5,6 +5,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { instituteSchema } from '../../validators/instituteValidators.js';
 import Client from '../../models/client.model.js';
+import Hospital from '../../models/hospital.model.js';
 
 // ADD Institute
 const add = asyncHandler(async (req, res) => {
@@ -104,7 +105,6 @@ const deleteById = asyncHandler(async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new ApiError(400, 'Invalid Institute ID format');
     }
-
     try {
         const deleted = await Institute.findByIdAndDelete(id);
         if (!deleted) {
@@ -136,6 +136,7 @@ const createInstituteByClientId = asyncHandler(async (req, res) => {
         if (!client) throw new ApiError(404, 'Client not found');
 
         const newInstitute = await Institute.create(value);
+        console.log("🚀 ~ newInstitute:", newInstitute)
         client.institutes.push(newInstitute._id);
         await client.save();
 
@@ -239,6 +240,108 @@ const updateInstituteByClientIdAndInstituteId = asyncHandler(async (req, res) =>
     return res.status(200).json(new ApiResponse(200, updated, 'Institute updated successfully'));
 });
 
+// --------------------- HOSPITAL-BASED RELATIONSHIP ---------------------
+
+// CREATE Institute by Hospital ID
+const createInstituteByHospitalId = asyncHandler(async (req, res) => {
+    const { hospitalId } = req.params;
+    console.log("🚀 ~ hospitalId:", hospitalId)
+    if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
+        throw new ApiError(400, 'Invalid Hospital ID format');
+    }
+
+    const { error, value } = instituteSchema.validate(req.body, { abortEarly: false });
+    if (error) throw new ApiError(400, 'Validation Error', error.details.map(e => e.message));
+
+    const hospital = await Hospital.findById(hospitalId);
+    console.log("🚀 ~ hospital:", hospital)
+    if (!hospital) throw new ApiError(404, 'Hospital not found');
+
+    const newInstitute = await Institute.create(value);
+    if (!hospital.institutes) hospital.institutes = [];
+    hospital.institutes.push(newInstitute._id);
+    await hospital.save();
+
+    return res.status(201).json(new ApiResponse(201, newInstitute, 'Institute created and linked to hospital'));
+});
+
+// GET all Institutes by Hospital ID
+const getAllInstitutesByHospitalId = asyncHandler(async (req, res) => {
+    const { hospitalId } = req.params;
+    console.log("🚀 ~ hospitalId:", hospitalId)
+    if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
+        throw new ApiError(400, 'Invalid Hospital ID format');
+    }
+
+    const hospital = await Hospital.findById(hospitalId).populate('institutes');
+    if (!hospital) throw new ApiError(404, 'Hospital not found');
+
+    return res.status(200).json(new ApiResponse(200, hospital.institutes, 'Institutes fetched successfully'));
+});
+
+// GET specific Institute by Hospital & Institute ID
+const getInstituteByHospitalIdAndInstituteId = asyncHandler(async (req, res) => {
+    const { hospitalId, instituteId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(hospitalId) || !mongoose.Types.ObjectId.isValid(instituteId)) {
+        throw new ApiError(400, 'Invalid ID format');
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital || !hospital.institutes.includes(instituteId)) {
+        throw new ApiError(404, 'Institute not associated with this hospital');
+    }
+
+    const institute = await Institute.findById(instituteId);
+    if (!institute) throw new ApiError(404, 'Institute not found');
+
+    return res.status(200).json(new ApiResponse(200, institute, 'Institute fetched successfully'));
+});
+
+// UPDATE Institute by Hospital ID
+const updateInstituteByHospitalIdAndInstituteId = asyncHandler(async (req, res) => {
+    const { hospitalId, instituteId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(hospitalId) || !mongoose.Types.ObjectId.isValid(instituteId)) {
+        throw new ApiError(400, 'Invalid ID format');
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital || !hospital.institutes.includes(instituteId)) {
+        throw new ApiError(404, 'Institute not associated with this hospital');
+    }
+
+    const { error, value } = instituteSchema.validate(req.body, { abortEarly: false });
+    if (error) throw new ApiError(400, 'Validation Error', error.details.map(e => e.message));
+
+    const updatedInstitute = await Institute.findByIdAndUpdate(instituteId, value, { new: true, runValidators: true });
+    if (!updatedInstitute) throw new ApiError(404, 'Institute not found');
+
+    return res.status(200).json(new ApiResponse(200, updatedInstitute, 'Institute updated successfully'));
+});
+
+// DELETE Institute by Hospital ID
+const deleteInstituteByHospitalId = asyncHandler(async (req, res) => {
+    const { hospitalId, instituteId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(hospitalId) || !mongoose.Types.ObjectId.isValid(instituteId)) {
+        throw new ApiError(400, 'Invalid ID format');
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) throw new ApiError(404, 'Hospital not found');
+
+    const index = hospital.institutes.indexOf(instituteId);
+    if (index === -1) throw new ApiError(404, 'Institute not associated with hospital');
+
+    hospital.institutes.splice(index, 1);
+    await hospital.save();
+
+    const deleted = await Institute.findByIdAndDelete(instituteId);
+    if (!deleted) throw new ApiError(404, 'Institute not found');
+
+    return res.status(200).json(new ApiResponse(200, deleted, 'Institute deleted successfully'));
+});
 
 export default {
     add,
@@ -250,5 +353,10 @@ export default {
     deleteInstituteByClientId,
     getInstituteByClientIdAndInstituteId,
     getAllInstitutesByClientId,
-    createInstituteByClientId
+    createInstituteByClientId,
+    createInstituteByHospitalId,
+    getAllInstitutesByHospitalId,
+    getInstituteByHospitalIdAndInstituteId,
+    updateInstituteByHospitalIdAndInstituteId,
+    deleteInstituteByHospitalId
 };

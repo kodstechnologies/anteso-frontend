@@ -86,8 +86,6 @@ const JWT_USER_SECRET = process.env.JWT_USER_SECRET;
 //     );
 // });
 
-
-
 //test otp functions--without send sms
 
 const HARDCODED_MOBILE = "5252525252";
@@ -120,36 +118,29 @@ export const sendOtp = asyncHandler(async (req, res) => {
         new ApiResponse(200, null, "Mock OTP generated successfully")
     );
 });
+
 export const verifyOtp = asyncHandler(async (req, res) => {
     const verifyOtpSchema = Joi.object({
         mobileNumber: Joi.string().required(),
         otp: Joi.string().length(6).required()
     });
-
     const { error } = verifyOtpSchema.validate(req.body);
     if (error) throw new ApiError(400, error.details[0].message);
-
     const { mobileNumber, otp } = req.body;
-
     if (mobileNumber !== HARDCODED_MOBILE) {
         throw new ApiError(403, "This number is not allowed in test mode.");
     }
-
     if (otp !== HARDCODED_OTP) {
         throw new ApiError(400, "Invalid OTP");
     }
-
     const user = await User.findOne({ phone: mobileNumber });
     if (!user) throw new ApiError(404, "User not found");
-
     const payload = {
         _id: user._id,
         role: user.role,
         phone: user.phone,
     };
-
     const token = jwt.sign(payload, JWT_USER_SECRET, { expiresIn: "1h" });
-
     return res.status(200).json(
         new ApiResponse(200, { token, user }, "OTP verified successfully")
     );

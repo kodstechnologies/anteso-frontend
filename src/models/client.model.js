@@ -20,20 +20,6 @@ const clientSchema = new Schema({
             default: [],
         },
     ],
-    institutes: [
-        {
-            type: Schema.Types.ObjectId,
-            ref: 'Institute',
-            default: [],
-        },
-    ],
-    rsos: [
-        {
-            type: Schema.Types.ObjectId,
-            ref: 'RSO',
-            default: [],
-        },
-    ],
     machines:
     {
         type: Schema.Types.ObjectId,

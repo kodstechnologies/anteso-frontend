@@ -20,7 +20,6 @@ export const authenticate = (req, res, next) => {
             throw new ApiError(401, "Invalid or expired token");
         }
     }
-
     console.log("✅ Token authenticated:", decoded);
     req.user = decoded;
     next();

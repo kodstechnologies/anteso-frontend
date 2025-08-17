@@ -24,7 +24,6 @@
 
 // export default Technician;
 
-
 import mongoose from 'mongoose';
 import User from './user.model.js';
 import { generateReadableId } from '../utils/GenerateReadableId.js';
@@ -39,9 +38,9 @@ const toolSubSchema = new Schema({
         // trim: true,
     },
     toolId: {
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tool"
     },
-
     serialNumber: {
         type: String,
         // required: true,
@@ -91,7 +90,6 @@ const employeeSchema = new Schema({
     },
     tools: [toolSubSchema], // Embedded tool subdocuments
     // tools: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tool" }]
-
 }, {
     timestamps: true,
 });
@@ -102,7 +100,5 @@ employeeSchema.pre('save', async function (next) {
     }
     next();
 });
-
 const Employee = User.discriminator('Employee', employeeSchema);
-
 export default Employee;

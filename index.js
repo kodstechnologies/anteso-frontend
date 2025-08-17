@@ -15,6 +15,8 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // for form data
+
 app.use(cookieParser());
 app.get('/', (req, res) => {
     res.send("test route")

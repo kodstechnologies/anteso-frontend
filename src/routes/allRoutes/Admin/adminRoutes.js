@@ -13,6 +13,7 @@ import TechnicianRoutes from '../Admin/technicianRoutes.js'
 import QuotationRoutes from '../Admin/quotation.router.js'
 import OrderRoutes from '../Admin/order.router.js'
 import PDFRouter from '../Admin/pdf.router.js'
+import ExpenseRouter from '../Admin/expenseRoutes.js'
 import { authenticate } from '../../../middlewares/authMiddleware.js'
 
 // https://anteso-backend.onrender.com
@@ -36,5 +37,7 @@ router.use('/quotation', QuotationRoutes)
 router.use('/courier', CourierRoutes)
 router.use('/orders', OrderRoutes)
 
+
+router.use('/expense', ExpenseRouter)
 
 export default router

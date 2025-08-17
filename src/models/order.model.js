@@ -6,7 +6,10 @@ const orderSchema = new mongoose.Schema({
         type: String,
         unique: true
     },
-    leadOwner: { type: String, required: true },
+    leadOwner: {
+        type: String,
+        required: true
+    },
     hospitalName: { type: String, required: true },
     fullAddress: { type: String, required: true },
     city: { type: String, required: true },
@@ -44,13 +47,13 @@ const orderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'in progress', 'generated', 'completed','paid'],
+        enum: ['pending', 'in progress', 'generated', 'completed', 'paid'],
         default: 'pending'
     },
     quotation: {
         type: Schema.Types.ObjectId,
         ref: 'Quotation',
-        required: true,
+        // required: true,
     },
     reportULRNumber: {
         type: String
