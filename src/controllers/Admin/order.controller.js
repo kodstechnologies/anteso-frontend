@@ -9,6 +9,7 @@ import { generateULRReportNumber, generateQATestReportNumber, incrementSequence 
 import Employee from "../../models/technician.model.js";
 import Client from "../../models/client.model.js";
 import Hospital from "../../models/hospital.model.js";
+import { uploadToS3 } from "../../utils/s3Upload.js";
 
 const getAllOrders = asyncHandler(async (req, res) => {
     try {
@@ -954,10 +955,11 @@ const assignTechnicianByQARaw = asyncHandler(async (req, res) => {
 //for qa test
 const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
     try {
-        const { orderId, serviceId, officeStaffId } = req.params;
+        const { orderId, serviceId, officeStaffId, status } = req.params; // 👈 added status
         console.log("🚀 ~ officeStaffId:", officeStaffId);
         console.log("🚀 ~ serviceId:", serviceId);
         console.log("🚀 ~ orderId:", orderId);
+        console.log("🚀 ~ status:", status);
 
         // 1. Validate order and service relationship
         const order = await orderModel.findById(orderId);
@@ -985,7 +987,7 @@ const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
         let updated = false;
         service.workTypeDetails = service.workTypeDetails.map((work) => {
             work.officeStaff = officeStaffId;
-            work.status = 'completed';
+            work.status = status || work.status; // 👈 use status from req.params
             updated = true;
             return work;
         });
@@ -1001,6 +1003,57 @@ const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+
+
+
+export const completedStatusAndReport = asyncHandler(async (req, res) => {
+    const { technicianId, orderId, serviceId, status } = req.params;
+    console.log("req.body", req.body);
+    // 1️⃣ Validate file
+    if (!req.file) {
+        return res.status(400).json({ message: "File is required" });
+    }
+
+    // 2️⃣ Upload file to S3
+    // uploadToS3 now returns the full URL already
+    const fileUrl = await uploadToS3(req.file);
+
+    // 3️⃣ Fetch the service document
+    const service = await Services.findById(serviceId);
+    if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+    }
+
+    // 4️⃣ Update workTypeDetails for the assigned technician/office staff
+    service.workTypeDetails = service.workTypeDetails.map((work) => {
+        if (
+            work.engineer?.toString() === technicianId ||
+            work.officeStaff?.toString() === technicianId
+        ) {
+            work.uploadFile = fileUrl; // store the full URL
+            work.status = status === "completed" ? "generated" : status;
+        }
+        return work;
+    });
+
+    await service.save();
+
+    // 5️⃣ Update order status if needed
+    const order = await orderModel.findById(orderId);
+    if (order) {
+        order.status = status === "completed" ? "generated" : status;
+        await order.save();
+    }
+
+    // 6️⃣ Send response
+    res.status(200).json({
+        message: "File uploaded and status updated successfully",
+        fileUrl,
+        service,
+    });
+});
+
+// export const 
 const getRawDetailsByTechnician = asyncHandler(async (req, res) => {
     try {
 
@@ -1193,4 +1246,15 @@ export const getOrders = asyncHandler(async (req, res) => {
     }
 })
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, updateCompletedStatus, getAllOrdersForTechnician, startOrder, getSRFDetails, updateOrderServicesByTechnician, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder }
+
+// export const paidStatus = asyncHandler(async (req, res) => {
+//     try {
+//         const { orderId, serviceId, customerId, status } = req.body
+//         const order=orderModel.findById(_id:orderId)
+   
+//     } catch (error) {
+
+//     }
+// })
+
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, updateCompletedStatus, getAllOrdersForTechnician, startOrder, getSRFDetails, updateOrderServicesByTechnician, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport }

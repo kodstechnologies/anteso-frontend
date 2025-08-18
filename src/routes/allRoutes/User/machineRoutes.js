@@ -1,8 +1,13 @@
 import { Router } from "express";
 const router = Router();
+import upload from "../../../middlewares/upload.js";
 import machineController from '../../../controllers/Admin/machine.controller.js'
-router.post('/add/:customerId', machineController.add)
-router.get('/get-machine-by-customer/:id', machineController.getAllMachinesByCustomerId)
+router.post("/add/:customerId", upload.fields([
+    { name: "qaReportAttachment", maxCount: 1 },
+    { name: "licenseReportAttachment", maxCount: 1 },
+    { name: "rawDataAttachment", maxCount: 1 },
+]), machineController.add);
+router.get('/get-machine-by-customer/:customerId', machineController.getAllMachinesByCustomerId)
 router.put('/update/:id/:customerId', machineController.updateById)
 router.delete('/delete-by-id/:id/:customerId', machineController.deleteById)
 // router.get('/get-all', machineController.getAll)

@@ -4,8 +4,70 @@ import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { machineSchema } from '../../validators/machineValidator.js';
 import Customer from '../../models/client.model.js'
+import { uploadToS3 } from '../../utils/s3Upload.js';
 
 // ADD MACHINE
+// const add = asyncHandler(async (req, res) => {
+//     try {
+//         const {
+//             machineType,
+//             make,
+//             model,
+//             serialNumber,
+//             equipmentId,
+//             qaValidity,
+//             licenseValidity,
+//             status,
+//         } = req.body;
+
+//         const { customerId } = req.params;
+
+//         const { error } = machineSchema.validate({
+//             machineType,
+//             make,
+//             model,
+//             serialNumber,
+//             equipmentId,
+//             qaValidity,
+//             licenseValidity,
+//             status,
+//         });
+
+//         if (error) {
+//             throw new ApiError(400, error.details[0].message);
+//         }
+
+//         const qaReportAttachment = req.files?.qaReportAttachment?.[0]?.path;
+//         const licenseReportAttachment = req.files?.licenseReportAttachment?.[0]?.path;
+//         const rawDataAttachment = req.files?.rawDataAttachment?.[0]?.path || null;
+
+//         const existingCustomer = await Customer.findById(customerId);
+//         if (!existingCustomer) {
+//             throw new ApiError(404, "Customer not found.");
+//         }
+
+//         const machine = await Machine.create({
+//             machineType,
+//             make,
+//             model,
+//             serialNumber,
+//             equipmentId,
+//             qaValidity,
+//             licenseValidity,
+//             status,
+//             rawDataAttachment,
+//             qaReportAttachment,
+//             licenseReportAttachment,
+//             customer: customerId,
+//         });
+//         console.log("🚀 ~ machine:", machine)
+
+//         res.status(201).json(new ApiResponse(201, machine, 'Machine added successfully.'));
+//     } catch (error) {
+//         console.error('Error in add machine:', error);
+//         throw new ApiError(500, error?.message || 'Internal Server Error');
+//     }
+// });
 const add = asyncHandler(async (req, res) => {
     try {
         const {
@@ -21,6 +83,7 @@ const add = asyncHandler(async (req, res) => {
 
         const { customerId } = req.params;
 
+        // Validate request body
         const { error } = machineSchema.validate({
             machineType,
             make,
@@ -36,15 +99,24 @@ const add = asyncHandler(async (req, res) => {
             throw new ApiError(400, error.details[0].message);
         }
 
-        const qaReportAttachment = req.files?.qaReportAttachment?.[0]?.path;
-        const licenseReportAttachment = req.files?.licenseReportAttachment?.[0]?.path;
-        const rawDataAttachment = req.files?.rawDataAttachment?.[0]?.path || null;
-
         const existingCustomer = await Customer.findById(customerId);
         if (!existingCustomer) {
             throw new ApiError(404, "Customer not found.");
         }
 
+        // ✅ Upload files to S3 (if they exist)
+        const uploadedFiles = {};
+        console.log("🚀 ~ req.files:", req.files)
+        if (req.files) {
+            for (const [key, fileArray] of Object.entries(req.files)) {
+                if (fileArray.length > 0) {
+                    const s3Result = await uploadToS3(fileArray[0]);
+                    uploadedFiles[key] = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Result.key}`;
+                }
+            }
+        }
+
+        // ✅ Save machine with actual S3 URLs
         const machine = await Machine.create({
             machineType,
             make,
@@ -54,34 +126,52 @@ const add = asyncHandler(async (req, res) => {
             qaValidity,
             licenseValidity,
             status,
-            rawDataAttachment,
-            qaReportAttachment,
-            licenseReportAttachment,
+            rawDataAttachment: uploadedFiles.rawDataAttachment || null,
+            qaReportAttachment: uploadedFiles.qaReportAttachment || null,
+            licenseReportAttachment: uploadedFiles.licenseReportAttachment || null,
             customer: customerId,
         });
-        console.log("🚀 ~ machine:", machine)
 
-        res.status(201).json(new ApiResponse(201, machine, 'Machine added successfully.'));
+        console.log("🚀 ~ machine:", machine);
+
+        res.status(201).json(new ApiResponse(201, machine, "Machine added successfully."));
     } catch (error) {
-        console.error('Error in add machine:', error);
-        throw new ApiError(500, error?.message || 'Internal Server Error');
+        console.error("Error in add machine:", error);
+        throw new ApiError(500, error?.message || "Internal Server Error");
     }
 });
+
 
 // GET ALL MACHINES
 const getAllMachinesByCustomerId = asyncHandler(async (req, res) => {
     try {
         const { customerId } = req.params;
+        console.log("🚀 ~ customerId:", customerId)
         if (!customerId) {
             return res.status(400).json({ success: false, message: "Customer ID is required" });
         }
-        const machines = await Machine.find({ customer: customerId }).populate('customer', 'gstNo');
-        res.status(200).json(ApiResponse(200, machines, "Machines fetched successfully"));
+
+        let machines = await Machine.find({ customer: customerId }).populate('customer', 'gstNo');
+
+        // ✅ Check qaValidity dynamically
+        const today = new Date();
+        machines = machines.map(machine => {
+            const isExpired = machine.qaValidity < today;
+            return {
+                ...machine.toObject(),
+                status: isExpired ? "Expired" : "Active"   // override status in response
+            };
+        });
+
+        res.status(200).json(
+            new ApiResponse(200, machines, "Machines fetched successfully")
+        );
     } catch (error) {
         console.error("Error fetching machines by customer ID:", error);
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
+
 
 // GET MACHINE BY ID
 const getById = asyncHandler(async (req, res) => {
@@ -213,8 +303,5 @@ const searchByType = asyncHandler(async (req, res) => {
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
-
-
-
 
 export default { add, getById, updateById, deleteById, searchByType, getAllMachinesByCustomerId }

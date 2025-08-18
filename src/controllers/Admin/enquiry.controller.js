@@ -41,13 +41,67 @@ import Quotation from "../../models/quotation.model.js";
 //     }
 // });
 
+
+
+// const add = asyncHandler(async (req, res) => {
+//     try {
+//         // Validate input
+//         const { error, value } = enquirySchema.validate(req.body, {
+//             abortEarly: false,
+//         });
+
+//         if (error) {
+//             const errorMessages = error.details.map((err) => err.message);
+//             throw new ApiError(400, "Validation failed", errorMessages);
+//         }
+
+//         let customerId = value.customer;
+
+//         // Check if customer exists (based on email or phone)
+//         if (!customerId) {
+//             const { emailAddress, contactNumber, hospitalName } = value;
+//             let existingCustomer = null;
+//             if (emailAddress) {
+//                 existingCustomer = await User.findOne({ emailAddress });
+//             } else if (contactNumber) {
+//                 existingCustomer = await User.findOne({ contactNumber });
+//             }
+//             if (!existingCustomer) {
+//                 // Create a new customer
+//                 const newCustomer = await User.create({
+//                     name: hospitalName,
+//                     email: emailAddress,
+//                     phone: contactNumber,
+//                 });
+//                 customerId = newCustomer._id;
+//             } else {
+//                 customerId = existingCustomer._id;
+//             }
+//             value.customer = customerId;
+//         }
+//         // Create the enquiry
+//         const newEnquiry = await Enquiry.create(value);
+//         // Push this enquiry to the related customer
+//         await User.findByIdAndUpdate(
+//             customerId,
+//             { $push: { enquiries: newEnquiry._id } },
+//             { new: true }
+//         );
+//         return res
+//             .status(201)
+//             .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
+//     } catch (error) {
+//         console.error("Create Enquiry Error:", error);
+//         throw new ApiError(500, "Failed to create enquiry", [error.message]);
+//     }
+// });
+
 const add = asyncHandler(async (req, res) => {
     try {
-        // Validate input
+        // ✅ Validate input
         const { error, value } = enquirySchema.validate(req.body, {
             abortEarly: false,
         });
-        console.log("🚀 ~ value:", value)
 
         if (error) {
             const errorMessages = error.details.map((err) => err.message);
@@ -56,7 +110,7 @@ const add = asyncHandler(async (req, res) => {
 
         let customerId = value.customer;
 
-        // Check if customer exists (based on email or phone)
+        // ✅ Check if customer exists (based on email or phone)
         if (!customerId) {
             const { emailAddress, contactNumber, hospitalName } = value;
 
@@ -80,15 +134,37 @@ const add = asyncHandler(async (req, res) => {
             }
             value.customer = customerId;
         }
-        // Create the enquiry
+
+        // ✅ Handle file uploads to S3
+        let attachments = [];
+        if (req.files && req.files.length > 0) {
+            const uploadPromises = req.files.map(async (file) => {
+                const { url, key } = await uploadToS3(file);
+                return {
+                    filename: file.originalname,
+                    key,
+                    url,
+                    mimetype: file.mimetype,
+                    size: file.size,
+                };
+            });
+
+            attachments = await Promise.all(uploadPromises);
+        }
+
+        // ✅ Attach files to enquiry payload
+        value.attachments = attachments;
+
+        // ✅ Create the enquiry
         const newEnquiry = await Enquiry.create(value);
-        console.log("🚀 ~ newEnquiry:", newEnquiry)
-        // Push this enquiry to the related customer
+
+        // ✅ Link enquiry to customer
         await User.findByIdAndUpdate(
             customerId,
             { $push: { enquiries: newEnquiry._id } },
             { new: true }
         );
+
         return res
             .status(201)
             .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
@@ -97,12 +173,77 @@ const add = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to create enquiry", [error.message]);
     }
 });
+
+const addByCustomerId = asyncHandler(async (req, res) => {
+    try {
+        const { customerId } = req.params;
+
+        if (!customerId) {
+            throw new ApiError(400, "Customer ID is required");
+        }
+
+        // ✅ Ensure customer exists
+        const existingCustomer = await User.findById(customerId);
+        if (!existingCustomer) {
+            throw new ApiError(404, "Customer not found");
+        }
+
+        // ✅ Validate enquiry input
+        const { error, value } = enquirySchema.validate(req.body, {
+            abortEarly: false,
+        });
+
+        if (error) {
+            const errorMessages = error.details.map((err) => err.message);
+            throw new ApiError(400, "Validation failed", errorMessages);
+        }
+
+        // ✅ Force customer ID into payload
+        value.customer = customerId;
+
+        // ✅ Handle file uploads to S3
+        let attachments = [];
+        if (req.files && req.files.length > 0) {
+            const uploadPromises = req.files.map(async (file) => {
+                const { url, key } = await uploadToS3(file);
+                return {
+                    filename: file.originalname,
+                    key,
+                    url,
+                    mimetype: file.mimetype,
+                    size: file.size,
+                };
+            });
+
+            attachments = await Promise.all(uploadPromises);
+        }
+
+        value.attachments = attachments;
+
+        // ✅ Create enquiry
+        const newEnquiry = await Enquiry.create(value);
+
+        // ✅ Link enquiry to customer
+        await User.findByIdAndUpdate(
+            customerId,
+            { $push: { enquiries: newEnquiry._id } },
+            { new: true }
+        );
+
+        return res
+            .status(201)
+            .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
+    } catch (error) {
+        console.error("Create Enquiry (by customerId) Error:", error);
+        throw new ApiError(500, "Failed to create enquiry", [error.message]);
+    }
+});
+
 const getAll = asyncHandler(async (req, res) => {
     try {
         const enquiries = await Enquiry.find()
             .populate("customer")            // populates the customer info
 
-        // console.log("🚀 ~ getAll ~ enquiries:", enquiries);
 
         const createdQuotations = await Quotation.find({ quotationStatus: "Created" })
             .populate("enquiry")
@@ -216,4 +357,50 @@ const getEnquiryDetailsById = async (req, res) => {
     }
 };
 
-export default { add, getById, deleteById, updateById, getAll, getEnquiryDetailsById };
+const getByCustomerIdEnquiryId = async (req, res) => {
+    try {
+        const { id: enquiryId, customerId } = req.params; // both enquiryId & customerId from params
+
+        if (!enquiryId || !customerId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Enquiry ID and Customer ID are required'
+            });
+        }
+
+        const enquiry = await Enquiry.findOne({
+            _id: enquiryId,
+            customer: customerId
+        }).populate({
+            path: 'customer',
+            model: 'User', // or 'Customer' depending on your schema
+            select: 'name email phone address role'
+        });
+
+        if (!enquiry) {
+            return res.status(404).json({
+                success: false,
+                message: 'Enquiry not found for this customer'
+            });
+        }
+
+        const additionalServices = enquiry.additionalServices || {};
+
+        return res.status(200).json({
+            success: true,
+            enquiryId: enquiry.enquiryId,
+            hospitalName: enquiry.hospitalName,
+            customer: enquiry.customer,
+            machines: enquiry.services, // includes machineType, equipmentNo, etc.
+            additionalServices,
+        });
+    } catch (err) {
+        console.error('Error fetching enquiry details:', err);
+        return res.status(500).json({
+            success: false,
+            message: err?.message || 'Server error'
+        });
+    }
+};
+
+export default { add, getById, deleteById, updateById, getAll, getEnquiryDetailsById, addByCustomerId, getByCustomerIdEnquiryId };

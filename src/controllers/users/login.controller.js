@@ -21,7 +21,7 @@ const JWT_USER_SECRET = process.env.JWT_USER_SECRET;
 //     if (error) throw new ApiError(400, error.details[0].message);
 
 //     const { mobileNumber } = req.body;
-//     const existingUser = await User.findOne({ phone: mobileNumber });
+//      const existingUser = await User.findOne({ phone: mobileNumber, role: "Customer" });
 //     console.log("🚀 ~ existingUser:", existingUser)
 //     if (!existingUser) {
 //         throw new ApiError(404, "Mobile number not registered! Please contact admin.");
@@ -68,8 +68,9 @@ const JWT_USER_SECRET = process.env.JWT_USER_SECRET;
 //     if (otpRecord.expiresAt < new Date()) throw new ApiError(400, "OTP has expired");
 //     if (otpRecord.otp !== otp) throw new ApiError(400, "Invalid OTP");
 
-//     const user = await User.findOne({ phone: mobileNumber });
-//     if (!user) throw new ApiError(404, "User not found");
+//     // ✅ Ensure only "Customer" can log in
+//     const user = await User.findOne({ phone: mobileNumber, role: "Customer" });
+//     if (!user) throw new ApiError(404, "Client not found or not allowed");
 
 //     const payload = {
 //         _id: user._id,
@@ -77,7 +78,7 @@ const JWT_USER_SECRET = process.env.JWT_USER_SECRET;
 //         phone: user.phone,
 //     };
 
-//     const token = jwt.sign(payload, JWT_USER_SECRET, { expiresIn: "1h" });
+//     const token = jwt.sign(payload, JWT_USER_SECRET, { expiresIn: "1d" });
 
 //     await LoginOtp.deleteOne({ mobileNumber });
 
@@ -86,9 +87,10 @@ const JWT_USER_SECRET = process.env.JWT_USER_SECRET;
 //     );
 // });
 
+
 //test otp functions--without send sms
 
-const HARDCODED_MOBILE = "5252525252";
+const HARDCODED_MOBILE = "6655443322";
 const HARDCODED_OTP = "123456";
 
 export const sendOtp = asyncHandler(async (req, res) => {

@@ -7,5 +7,7 @@ router.get('/get-all', EnquiryController.getAll)
 router.get('/get-by-id/:id', EnquiryController.getEnquiryDetailsById)
 router.put('/update/:id', EnquiryController.updateById)
 router.delete('/delete-by-id/:id', EnquiryController.deleteById)
-
+//for mobile
+router.post('/add-by-customerId/:customerId', EnquiryController.addByCustomerId)
+router.post('/get-by-enquiryId-customerId/:enquiryId/:customerId', EnquiryController.getByCustomerIdEnquiryId)
 export default router

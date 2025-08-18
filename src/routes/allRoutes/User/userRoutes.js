@@ -7,7 +7,7 @@ import machineRoutes from '../../../routes/allRoutes/User/machineRoutes.js'
 const router = Router();
 router.use('/send-otp', sendOtp)
 router.use('/verify-otp', verifyOtp)
-router.use(authenticate, authorizeRoles("Admin", "Customer"))
+router.use(authenticate, authorizeRoles("Admin", "Customer",""))
 // router.post('/machines', machineRoutes)
 router.use('/machines', machineRoutes)
 // router.use('/logout')

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import orderController from "../../../controllers/Admin/order.controller.js";
+import upload from "../../../middlewares/upload.js";
 const router = Router();
 router.get('/get-all', orderController.getAllOrders)
 router.get('/basic-details-by-orderId/:orderId', orderController.getBasicDetailsByOrderId)
@@ -31,14 +32,23 @@ router.get('/get/:technicianId/:orderId/:serviceId/:workType', orderController.g
 // router.get()
 //routes for qa raw-- assigning to technician
 router.put('/assign-to-technician/:orderId/:serviceId/:technicianId', orderController.assignTechnicianByQARaw)
-router.put('/assign-to-office-staff/:orderId/:serviceId/:officeStaffId', orderController.assignOfficeStaffByQATest)
+router.put('/assign-to-office-staff/:orderId/:serviceId/:officeStaffId/:status', orderController.assignOfficeStaffByQATest)
 // router.get('/get-qa-details/:orderId/:serviceId/:technicianId',orderController.getQaDetails)
+
+
+// params: technicianId, orderId, serviceId, status, optional remark
+router.post(
+    "/completed-status-report/:technicianId/:orderId/:serviceId/:status",
+    upload.single("file"), // "file" must match your input name
+    orderController.completedStatusAndReport
+);
+
 router.get('/get-qa-details/:orderId/:serviceId/:technicianId', orderController.getQaDetails)
 router.get('/get-all-office-staff', orderController.getAllOfficeStaff)
 router.get('/get-assigned-technician/:orderId/:serviceId/:workType', orderController.getAssignedTechnicianName)
 router.get('/get-assigned-staff/:orderId/:serviceId/:workType', orderController.geAssignedtofficeStaffName)
-
 router.post('/create-order', orderController.createOrder)
 // router.get('/',)
+// router.post('/status-paid')
 
 export default router
