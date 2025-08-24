@@ -10,6 +10,8 @@ import Employee from "../../models/technician.model.js";
 import Client from "../../models/client.model.js";
 import Hospital from "../../models/hospital.model.js";
 import { uploadToS3 } from "../../utils/s3Upload.js";
+import Payment from "../../models/payment.model.js";
+import { getFileUrl, getMultipleFileUrls } from "../../utils/s3Fetch.js";
 
 const getAllOrders = asyncHandler(async (req, res) => {
     try {
@@ -252,6 +254,161 @@ const updateEmployeeStatus = asyncHandler(async (req, res) => {
     });
 });
 
+
+//mobile api
+const getMachineDetails = asyncHandler(async (req, res) => {
+    const { technicianId, orderId, serviceId } = req.params;
+
+    // Validate ObjectIds
+    if (!mongoose.Types.ObjectId.isValid(orderId) ||
+        !mongoose.Types.ObjectId.isValid(serviceId) ||
+        !mongoose.Types.ObjectId.isValid(technicianId)) {
+        return res.status(400).json({ message: "Invalid IDs provided" });
+    }
+
+    try {
+        // Fetch order and populate services
+        const order = await orderModel.findById(orderId).populate('services');
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        // Find the specific service
+        const service = order.services.find(s => s._id.toString() === serviceId);
+        if (!service) return res.status(404).json({ message: "Service not found in this order" });
+
+        // Filter workTypeDetails assigned to this technician
+        const result = service.workTypeDetails
+            .filter(work => work.engineer?.toString() === technicianId)
+            .map(work => ({
+                machineType: service.machineType,
+                workType: work.workType,
+                status: work.status
+            }));
+
+        return res.status(200).json(result);
+
+    } catch (error) {
+        console.error("Error fetching machine details:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+});
+//mobile
+// PATCH /api/orders/:orderId/services/:serviceId/worktypes
+//use this for mobile
+
+
+// PATCH /api/orders/:orderId/services/:serviceId/worktypes/:technicianId
+// const updateServiceWorkType = asyncHandler(async (req, res) => {
+//     const { orderId, serviceId, technicianId, machineType, workType } = req.params;
+//     const { machineModel, serialNumber, uploadFile, viewFile, remark } = req.body;
+
+//     // Validate IDs
+//     if (!mongoose.Types.ObjectId.isValid(orderId) ||
+//         !mongoose.Types.ObjectId.isValid(serviceId) ||
+//         !mongoose.Types.ObjectId.isValid(technicianId)) {
+//         return res.status(400).json({ message: "Invalid IDs" });
+//     }
+
+//     // Step 1: Find order and ensure the service belongs to it
+//     const order = await orderModel.findById(orderId).populate('services');
+//     if (!order) return res.status(404).json({ message: "Order not found" });
+
+//     // Step 2: Find the service by machineType
+//     const service = order.services.find(s => s.machineType === machineType && s._id.equals(serviceId));
+//     if (!service) return res.status(404).json({ message: "Service not found in this order" });
+
+//     // Step 3: Update machineModel and serialNumber if provided
+//     if (machineModel) service.machineModel = machineModel;
+//     if (serialNumber) service.serialNumber = serialNumber;
+
+//     // Step 4: Find workTypeDetail by workType and technician
+//     const workTypeDetail = service.workTypeDetails.find(wt =>
+//         wt.workType === workType &&
+//         ((wt.engineer && wt.engineer.toString() === technicianId) ||
+//             (wt.officeStaff && wt.officeStaff.toString() === technicianId))
+//     );
+
+//     if (!workTypeDetail) {
+//         return res.status(404).json({ message: "WorkTypeDetail not found for this technician" });
+//     }
+
+//     // Step 5: Update optional fields from req.body
+//     if (uploadFile !== undefined) workTypeDetail.uploadFile = uploadFile;
+//     if (viewFile !== undefined) workTypeDetail.viewFile = viewFile;
+//     if (remark !== undefined) workTypeDetail.remark = remark;
+
+//     // Step 6: Save the updated service
+//     await service.save();
+
+//     res.status(200).json({
+//         success: true,
+//         message: "Service workType updated successfully",
+//         service
+//     });
+// });
+
+const updateServiceWorkType = asyncHandler(async (req, res) => {
+    const { orderId, serviceId, technicianId, machineType, workType } = req.params;
+    const { machineModel, serialNumber, remark } = req.body;
+
+    // Validate IDs
+    if (!mongoose.Types.ObjectId.isValid(orderId) ||
+        !mongoose.Types.ObjectId.isValid(serviceId) ||
+        !mongoose.Types.ObjectId.isValid(technicianId)) {
+        return res.status(400).json({ message: "Invalid IDs" });
+    }
+
+    const order = await orderModel.findById(orderId).populate('services');
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const service = order.services.find(s => s.machineType === machineType && s._id.equals(serviceId));
+    if (!service) return res.status(404).json({ message: "Service not found in this order" });
+
+    if (machineModel) service.machineModel = machineModel;
+    if (serialNumber) service.serialNumber = serialNumber;
+
+    const workTypeDetail = service.workTypeDetails.find(wt =>
+        wt.workType === workType &&
+        ((wt.engineer && wt.engineer.toString() === technicianId) ||
+            (wt.officeStaff && wt.officeStaff.toString() === technicianId))
+    );
+
+    if (!workTypeDetail) {
+        return res.status(404).json({ message: "WorkTypeDetail not found for this technician" });
+    }
+
+    // Handle file uploads
+    if (req.files) {
+        // Single uploadFile
+        if (req.files.uploadFile && req.files.uploadFile[0]) {
+            const uploaded = await uploadToS3(req.files.uploadFile[0]);
+            workTypeDetail.uploadFile = uploaded.url;
+        }
+
+        // Multiple viewFiles
+        if (req.files.viewFile && req.files.viewFile.length > 0) {
+            const urls = [];
+            for (let file of req.files.viewFile) {
+                const uploaded = await uploadToS3(file);
+                urls.push(uploaded.url);
+            }
+            workTypeDetail.viewFile = urls; // store array of URLs
+        }
+    }
+
+    // Update remark if present
+    if (remark !== undefined) workTypeDetail.remark = remark;
+
+    await service.save();
+
+    res.status(200).json({
+        success: true,
+        message: "Service workType updated successfully",
+        service
+    });
+});
+
+
+
 //mobile--My orders
 // const getAllInProgressOrders = asyncHandler(async (req, res) => {
 //     const { technicianId, orderId, serviceId } = req.params;
@@ -302,13 +459,14 @@ const updateEmployeeStatus = asyncHandler(async (req, res) => {
 // });
 
 
-//create order
+//create order--by admin
+
 const createOrder = asyncHandler(async (req, res) => {
     try {
         console.log("📥 req body:", req.body);
 
         const {
-            leadOwner, // this will be userId from frontend
+            leadOwner, // userId from frontend
             hospitalName,
             fullAddress,
             city,
@@ -355,7 +513,6 @@ const createOrder = asyncHandler(async (req, res) => {
 
         // ✅ Find lead owner user
         const leadOwnerUser = await User.findById(leadOwner).select("name role");
-        console.log("🚀 ~ leadOwnerUser:", leadOwnerUser)
         if (!leadOwnerUser) {
             throw new ApiError(404, "Lead owner not found");
         }
@@ -404,16 +561,27 @@ const createOrder = asyncHandler(async (req, res) => {
             }
         }
 
-        // ✅ Step 4: Save services to DB and map ObjectIds
+        // ✅ Step 4: Transform workType → workTypeDetails
+        let transformedServices = parsedServices.map((s) => ({
+            ...s,
+            workTypeDetails: (s.workType || []).map((wt) => ({
+                workType: wt,
+                status: "pending",
+            })),
+        }));
+
+        console.log("🚀 ~ transformedServices:", transformedServices);
+
+        // ✅ Step 5: Save services to DB and map ObjectIds
         let serviceDocs = [];
-        if (parsedServices.length > 0) {
-            serviceDocs = await Services.insertMany(parsedServices);
-            console.log("🚀 ~ serviceDocs:", serviceDocs)
+        if (transformedServices.length > 0) {
+            serviceDocs = await Services.insertMany(transformedServices);
+            console.log("🚀 ~ serviceDocs:", serviceDocs);
         }
 
-        // ✅ Step 5: Create order
+        // ✅ Step 6: Create order
         const order = await orderModel.create({
-            leadOwner: leadOwnerUser.name, // 👉 store name instead of ID
+            leadOwner: leadOwnerUser.name, // store name instead of ID
             hospitalName,
             fullAddress,
             city,
@@ -441,7 +609,8 @@ const createOrder = asyncHandler(async (req, res) => {
             rawFile,
             rawPhoto,
         });
-        console.log("🚀 ~ order:", order)
+
+        console.log("🚀 ~ order:", order);
 
         return res
             .status(201)
@@ -451,7 +620,6 @@ const createOrder = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to create order", [error.message]);
     }
 });
-
 
 //check this one also
 //mobile--get the order by customerId orderId and status--if status is inprogress then only show that order details
@@ -639,73 +807,79 @@ const getSRFDetails = asyncHandler(async (req, res) => {
     }
 });
 
-//check
-const updateOrderServicesByTechnician = asyncHandler(async (req, res) => {
-    const { technicianId, orderId } = req.params;
-    console.log("🚀 ~ engineerId:", technicianId)
-    const { serviceUpdates } = req.body; // [{ machineType, machineModel, serialNumber, remark, rawFile, rawPhoto }]
-    try {
-        const order = await orderModel.findById(orderId)
-            .populate('services')
-            .populate('customer');
-        if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
-        const services = order.services;
-        // ✅ Step 1: Verify engineer is assigned
-        const isEngineerAssigned = services.some(service =>
-            service.workTypeDetails.some(work =>
-                work.engineer?.toString() === technicianId
-            )
-        );
-        if (!isEngineerAssigned) {
-            return res.status(403).json({ message: 'Engineer not assigned to any service in this order' });
-        }
-        // ✅ Step 2: Apply updates
-        for (const update of serviceUpdates) {
-            const {
-                machineType,
-                machineModel,
-                serialNumber,
-                remark,
-                rawFile,
-                rawPhoto
-            } = update;
-            const matchingService = services.find(
-                service =>
-                    service.machineType === machineType &&
-                    service.workTypeDetails.some(work => work.engineer?.toString() === technicianId)
-            );
-            if (matchingService) {
-                // Update machine-level fields
-                if (machineModel) matchingService.machineModel = machineModel;
-                if (serialNumber) matchingService.serialNumber = serialNumber;
-                // if (remark) matchingService.remark = remark;
+//check--done
+// const updateOrderServicesByTechnician = asyncHandler(async (req, res) => {
+//     const { technicianId, orderId } = req.params;
+//     console.log("🚀 ~ engineerId:", technicianId)
+//     console.log("🚀 ~ req.params.orderId:", req.params.orderId);
 
-                // Update workTypeDetails for this engineer
-                matchingService.workTypeDetails.forEach(work => {
-                    if (work.engineer?.toString() === technicianId) {
-                        if (remark) work.remark = remark;
-                        if (rawFile) work.uploadFile = rawFile;
-                        if (rawPhoto) work.viewFile = rawPhoto;
-                        if (['pending', 'inprogress'].includes(work.status)) {
-                            work.status = 'completed';
-                        }
-                    }
-                });
-                await matchingService.save();
-            }
-        }
-        await order.save();
-        return res.status(200).json({
-            message: 'Service updates saved successfully',
-            orderStatus: order.status
-        });
-    } catch (error) {
-        console.error('Error in updateOrderServicesByEngineer:', error);
-        return res.status(500).json({ message: 'Server error' });
-    }
-});
+//     const { serviceUpdates } = req.body; // [{ machineType, machineModel, serialNumber, remark, rawFile, rawPhoto }]
+//     try {
+
+//         if (!mongoose.Types.ObjectId.isValid(orderId)) {
+//             return res.status(400).json({ message: "Invalid orderId" });
+//         }
+
+//         const order = await orderModel.findById(orderId).populate('services');
+//         if (!order) {
+//             console.log("Order not found in DB");
+//             return res.status(404).json({ message: "Order not found" });
+//         }
+//         const services = order.services;
+//         // ✅ Step 1: Verify engineer is assigned
+//         const isEngineerAssigned = services.some(service =>
+//             service.workTypeDetails.some(work =>
+//                 work.engineer?.toString() === technicianId
+//             )
+//         );
+//         if (!isEngineerAssigned) {
+//             return res.status(403).json({ message: 'Engineer not assigned to any service in this order' });
+//         }
+//         // ✅ Step 2: Apply updates
+//         for (const update of serviceUpdates) {
+//             const {
+//                 machineType,
+//                 machineModel,
+//                 serialNumber,
+//                 remark,
+//                 rawFile,
+//                 rawPhoto
+//             } = update;
+//             const matchingService = services.find(
+//                 service =>
+//                     service.machineType === machineType &&
+//                     service.workTypeDetails.some(work => work.engineer?.toString() === technicianId)
+//             );
+//             if (matchingService) {
+//                 // Update machine-level fields
+//                 if (machineModel) matchingService.machineModel = machineModel;
+//                 if (serialNumber) matchingService.serialNumber = serialNumber;
+//                 // if (remark) matchingService.remark = remark;
+
+//                 // Update workTypeDetails for this engineer
+//                 matchingService.workTypeDetails.forEach(work => {
+//                     if (work.engineer?.toString() === technicianId) {
+//                         if (remark) work.remark = remark;
+//                         if (rawFile) work.uploadFile = rawFile;
+//                         if (rawPhoto) work.viewFile = rawPhoto;
+//                         if (['pending', 'inprogress'].includes(work.status)) {
+//                             work.status = 'completed';
+//                         }
+//                     }
+//                 });
+//                 await matchingService.save();
+//             }
+//         }
+//         await order.save();
+//         return res.status(200).json({
+//             message: 'Service updates saved successfully',
+//             orderStatus: order.status
+//         });
+//     } catch (error) {
+//         console.error('Error in updateOrderServicesByEngineer:', error);
+//         return res.status(500).json({ message: 'Server error' });
+//     }
+// });
 
 const getUpdatedOrderServices = asyncHandler(async (req, res) => {
     try {
@@ -793,7 +967,16 @@ const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
             return res.status(403).json({ message: 'Technician not assigned to this work type in this service' });
         }
 
-        // 3️⃣ Build response with IDs + workType + data
+        // 3️⃣ Handle single or multiple files
+        const rawFileUrl = Array.isArray(technicianWork.uploadFile)
+            ? await getMultipleFileUrls(technicianWork.uploadFile)
+            : await getFileUrl(technicianWork.uploadFile);
+
+        const rawPhotoUrl = Array.isArray(technicianWork.viewFile)
+            ? await getMultipleFileUrls(technicianWork.viewFile)
+            : await getFileUrl(technicianWork.viewFile);
+
+        // 4️⃣ Build response with IDs + workType + signed URLs
         const updatedData = {
             orderId: order._id,
             serviceId: service._id,
@@ -803,8 +986,8 @@ const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
             machineModel: service.machineModel,
             serialNumber: service.serialNumber,
             remark: technicianWork.remark || null,
-            rawFile: technicianWork.uploadFile || null,
-            rawPhoto: technicianWork.viewFile || null
+            rawFile: rawFileUrl,   // ✅ signed URL(s)
+            rawPhoto: rawPhotoUrl  // ✅ signed URL(s)
         };
 
         res.status(200).json({
@@ -817,6 +1000,7 @@ const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+
 
 //check
 const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
@@ -861,51 +1045,48 @@ const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
         orders,
     });
 });
-const updateCompletedStatus = asyncHandler(async (req, res) => {
-    const { orderId, employeeId } = req.params;
-    if (!orderId || !employeeId) {
-        return res.status(400).json({ message: 'Order ID and Employee ID are required' });
-    }
-    const order = await orderModel.findById(orderId);
-    if (!order) {
-        return res.status(404).json({ message: 'Order not found' });
-    }
-    // Loop through services or assigned employees to update status
-    let updated = false;
-    for (const service of order.services || []) {
-        // if (service.assignedTo?.toString() === employeeId.toString()) {
-        service.status = 'Completed';
-        service.workTypeStatus = 'Completed';
-        // Generate and assign report numbers
-        service.tcReportNumber = generateULRReportNumber();
-        service.qaTestReportNumber = generateQATestReportNumber();
-        order.status = 'completed';
-        order.reportULRNumber = generateULRReportNumber();
-        order.qaTestReportNumber = generateQATestReportNumber();
-        // Increment sequence after generating
-        incrementSequence();
-        await order.save();
-        console.log("🚀 ~ order:", order)
-        updated = true;
-        // }
-    }
-    if (!updated) {
-        return res.status(400).json({ message: 'No matching employee assignment found in order' });
-    }
-    await order.save();
-    res.status(200).json({
-        message: 'Status updated and report numbers generated successfully',
-        reportULRNumber: order.reportULRNumber,
-        qaTestReportNumber: order.qaTestReportNumber
-    });
-});
+// const updateCompletedStatus = asyncHandler(async (req, res) => {
+//     const { orderId, employeeId } = req.params;
+//     if (!orderId || !employeeId) {
+//         return res.status(400).json({ message: 'Order ID and Employee ID are required' });
+//     }
+//     const order = await orderModel.findById(orderId);
+//     if (!order) {
+//         return res.status(404).json({ message: 'Order not found' });
+//     }
+//     // Loop through services or assigned employees to update status
+//     let updated = false;
+//     for (const service of order.services || []) {
+//         // if (service.assignedTo?.toString() === employeeId.toString()) {
+//         service.status = 'Completed';
+//         service.workTypeStatus = 'Completed';
+//         // Generate and assign report numbers
+//         service.tcReportNumber = generateULRReportNumber();
+//         service.qaTestReportNumber = generateQATestReportNumber();
+//         order.status = 'completed';
+//         order.reportULRNumber = generateULRReportNumber();
+//         order.qaTestReportNumber = generateQATestReportNumber();
+//         // Increment sequence after generating
+//         incrementSequence();
+//         await order.save();
+//         console.log("🚀 ~ order:", order)
+//         updated = true;
+//         // }
+//     }
+//     if (!updated) {
+//         return res.status(400).json({ message: 'No matching employee assignment found in order' });
+//     }
+//     await order.save();
+//     res.status(200).json({
+//         message: 'Status updated and report numbers generated successfully',
+//         reportULRNumber: order.reportULRNumber,
+//         qaTestReportNumber: order.qaTestReportNumber
+//     });
+// });
 //qa raw --assign engineer--check in postman
 const assignTechnicianByQARaw = asyncHandler(async (req, res) => {
     try {
-        const { orderId, serviceId, technicianId } = req.params;
-        console.log("🚀 ~ engineerId:", technicianId)
-        console.log("🚀 ~ serviceId:", serviceId)
-        console.log("🚀 ~ orderId:", orderId)
+        const { orderId, serviceId, technicianId, workType } = req.params;
 
         // 1. Validate order and service relationship
         const order = await orderModel.findById(orderId);
@@ -929,22 +1110,19 @@ const assignTechnicianByQARaw = asyncHandler(async (req, res) => {
             return res.status(400).json({ message: 'Invalid engineer or not an engineer type' });
         }
 
-        // 4. Assign engineer in workTypeDetails
-        let updated = false;
-        service.workTypeDetails = service.workTypeDetails.map((work) => {
-            // You can uncomment and filter by specific serviceName if needed
-            // if (work.serviceName === 'QA Raw') {
-            work.engineer = technicianId;
-            work.status = 'inprogress';
-            updated = true;
-            // }
-            return work;
-        });
+        // 4. Find the specific workType and update only that
+        const work = service.workTypeDetails.find(w => w.workType === workType);
+        if (!work) {
+            return res.status(404).json({ message: `WorkType '${workType}' not found in service` });
+        }
+
+        work.engineer = technicianId;
+        work.status = 'inprogress';
 
         await service.save();
 
         res.status(200).json({
-            message: 'Engineer assigned successfully to QA Raw work',
+            message: `Engineer assigned successfully to workType '${workType}'`,
             service,
         });
     } catch (error) {
@@ -952,16 +1130,19 @@ const assignTechnicianByQARaw = asyncHandler(async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+
+
 //for qa test
 const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
     try {
-        const { orderId, serviceId, officeStaffId, status } = req.params; // 👈 added status
+        const { orderId, serviceId, officeStaffId, workType, status } = req.params; // 👈 added workType
         console.log("🚀 ~ officeStaffId:", officeStaffId);
         console.log("🚀 ~ serviceId:", serviceId);
         console.log("🚀 ~ orderId:", orderId);
         console.log("🚀 ~ status:", status);
+        console.log("🚀 ~ workType:", workType);
 
-        // 1. Validate order and service relationship
+        // 1. Validate order
         const order = await orderModel.findById(orderId);
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
@@ -971,31 +1152,37 @@ const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
             return res.status(400).json({ message: 'Service not linked to this order' });
         }
 
-        // 2. Get the service
+        // 2. Validate service
         const service = await Services.findById(serviceId);
         if (!service) {
             return res.status(404).json({ message: 'Service not found' });
         }
 
-        // 3. Validate office staff
+        // 3. Validate staff
         const staff = await Employee.findById(officeStaffId);
         if (!staff || staff.technicianType !== 'office staff') {
             return res.status(400).json({ message: 'Invalid staff or not an office staff type' });
         }
 
-        // 4. Assign office staff in workTypeDetails
+        // 4. Assign office staff to the given workType only
         let updated = false;
         service.workTypeDetails = service.workTypeDetails.map((work) => {
-            work.officeStaff = officeStaffId;
-            work.status = status || work.status; // 👈 use status from req.params
-            updated = true;
+            if (work.workType?.toLowerCase() === workType.toLowerCase()) {
+                work.officeStaff = officeStaffId;
+                work.status = status || work.status;
+                updated = true;
+            }
             return work;
         });
+
+        if (!updated) {
+            return res.status(404).json({ message: `WorkType '${workType}' not found in this service` });
+        }
 
         await service.save();
 
         res.status(200).json({
-            message: 'Office staff assigned successfully to work',
+            message: `Office staff assigned successfully to workType '${workType}'`,
             service,
         });
     } catch (error) {
@@ -1004,54 +1191,98 @@ const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
     }
 });
 
+//in this controller i have both completed and paid status
+// controllers/statusController.js
 
-
-export const completedStatusAndReport = asyncHandler(async (req, res) => {
-    const { technicianId, orderId, serviceId, status } = req.params;
+const completedStatusAndReport = asyncHandler(async (req, res) => {
+    const { technicianId, orderId, serviceId, workType, status } = req.params;
     console.log("req.body", req.body);
-    // 1️⃣ Validate file
-    if (!req.file) {
-        return res.status(400).json({ message: "File is required" });
+
+    let fileUrl = null;
+    let ulrReportNumber = null;
+    let qaTestReportNumber = null;
+
+    // ✅ Only require and upload file if status is 'completed'
+    if (status === "completed") {
+        if (!req.file) {
+            return res.status(400).json({ message: "File is required for completed status" });
+        }
+        try {
+            fileUrl = await uploadToS3(req.file);
+
+            // 👇 Generate report numbers after successful file upload
+            ulrReportNumber = generateULRReportNumber();
+            qaTestReportNumber = generateQATestReportNumber();
+            incrementSequence(); // increment for next use
+
+        } catch (err) {
+            console.error("S3 upload error:", err);
+            return res.status(500).json({ message: "Failed to upload file" });
+        }
     }
 
-    // 2️⃣ Upload file to S3
-    // uploadToS3 now returns the full URL already
-    const fileUrl = await uploadToS3(req.file);
-
-    // 3️⃣ Fetch the service document
+    // Fetch the service document
     const service = await Services.findById(serviceId);
     if (!service) {
         return res.status(404).json({ message: "Service not found" });
     }
 
-    // 4️⃣ Update workTypeDetails for the assigned technician/office staff
+    let updated = false;
+
+    // Update only the specific workType for this technician/office staff
     service.workTypeDetails = service.workTypeDetails.map((work) => {
         if (
-            work.engineer?.toString() === technicianId ||
-            work.officeStaff?.toString() === technicianId
+            work.workType?.toLowerCase() === workType.toLowerCase() &&
+            (work.engineer?.toString() === technicianId ||
+                work.officeStaff?.toString() === technicianId)
         ) {
-            work.uploadFile = fileUrl; // store the full URL
+            if (fileUrl) work.report = fileUrl;
             work.status = status === "completed" ? "generated" : status;
+
+            // 👇 Optionally, also store report numbers inside the workType
+            if (ulrReportNumber) work.ulrReportNumber = ulrReportNumber;
+            if (qaTestReportNumber) work.qaTestReportNumber = qaTestReportNumber;
+
+            updated = true;
         }
         return work;
     });
 
-    await service.save();
-
-    // 5️⃣ Update order status if needed
-    const order = await orderModel.findById(orderId);
-    if (order) {
-        order.status = status === "completed" ? "generated" : status;
-        await order.save();
+    if (!updated) {
+        return res.status(404).json({
+            message: `WorkType '${workType}' not assigned to technician/office staff ${technicianId} in this service`,
+        });
     }
 
-    // 6️⃣ Send response
+    await service.save();
+
+    // Update order status if needed
+    const order = await orderModel.findById(orderId);
+    if (order) {
+        if (status === "paid") {
+            const payment = await Payment.findOne({ orderId });
+            if (!payment || payment.status !== "complete") {
+                return res.status(400).json({
+                    message: "Cannot mark order as paid. Payment is not complete.",
+                });
+            }
+            order.status = "paid";
+            await order.save();
+        }
+    }
+
+    // Send response
     res.status(200).json({
-        message: "File uploaded and status updated successfully",
+        message: `Status for workType '${workType}' updated successfully`,
         fileUrl,
+        ulrReportNumber,
+        qaTestReportNumber,
         service,
+        orderStatus: order?.status,
     });
 });
+
+
 
 // export const 
 const getRawDetailsByTechnician = asyncHandler(async (req, res) => {
@@ -1251,10 +1482,10 @@ export const getOrders = asyncHandler(async (req, res) => {
 //     try {
 //         const { orderId, serviceId, customerId, status } = req.body
 //         const order=orderModel.findById(_id:orderId)
-   
+
 //     } catch (error) {
 
 //     }
 // })
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, updateCompletedStatus, getAllOrdersForTechnician, startOrder, getSRFDetails, updateOrderServicesByTechnician, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport }
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType }

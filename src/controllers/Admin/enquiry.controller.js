@@ -6,6 +6,8 @@ import { enquirySchema } from "../../validators/enquiryValidators.js";
 import mongoose from "mongoose";
 import User from "../../models/user.model.js";
 import Quotation from "../../models/quotation.model.js";
+import orderModel from "../../models/order.model.js";
+import Service from '../../models/Services.js'
 
 // const add = asyncHandler(async (req, res) => {
 //     try {
@@ -98,7 +100,7 @@ import Quotation from "../../models/quotation.model.js";
 
 const add = asyncHandler(async (req, res) => {
     try {
-        // ✅ Validate input
+        // enq Validate input
         const { error, value } = enquirySchema.validate(req.body, {
             abortEarly: false,
         });
@@ -110,7 +112,7 @@ const add = asyncHandler(async (req, res) => {
 
         let customerId = value.customer;
 
-        // ✅ Check if customer exists (based on email or phone)
+        // Check if customer exists (based on email or phone)
         if (!customerId) {
             const { emailAddress, contactNumber, hospitalName } = value;
 
@@ -148,15 +150,38 @@ const add = asyncHandler(async (req, res) => {
                     size: file.size,
                 };
             });
-
             attachments = await Promise.all(uploadPromises);
         }
 
-        // ✅ Attach files to enquiry payload
+        //  Attach files to enquiry payload
         value.attachments = attachments;
 
-        // ✅ Create the enquiry
-        const newEnquiry = await Enquiry.create(value);
+        let serviceIds = [];
+        if (value.services && value.services.length > 0) {
+            console.log("Services payload before insert:", value.services);
+
+            // Transform each service to match Service schema
+            const transformedServices = value.services.map((s) => ({
+                machineType: s.machineType,
+                equipmentNo: s.equipmentNo,
+                machineModel: s.machineModel,
+                serialNumber: s.serialNumber || "",
+                remark: s.remark || "",
+                workTypeDetails: (s.workType || []).map((wt) => ({
+                    workType: wt,
+                    status: "pending"
+                }))
+            }));
+
+            const createdServices = await Service.insertMany(transformedServices);
+            serviceIds = createdServices.map((s) => s._id);
+        }
+
+        // ✅ Create Enquiry with references to services
+        const newEnquiry = await Enquiry.create({
+            ...value,
+            services: serviceIds,
+        });
 
         // ✅ Link enquiry to customer
         await User.findByIdAndUpdate(
@@ -164,7 +189,6 @@ const add = asyncHandler(async (req, res) => {
             { $push: { enquiries: newEnquiry._id } },
             { new: true }
         );
-
         return res
             .status(201)
             .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
@@ -238,7 +262,6 @@ const addByCustomerId = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to create enquiry", [error.message]);
     }
 });
-
 const getAll = asyncHandler(async (req, res) => {
     try {
         const enquiries = await Enquiry.find()
@@ -250,7 +273,7 @@ const getAll = asyncHandler(async (req, res) => {
             .populate("from"); // Optional, if you want user info
 
         // Log for debugging
-        console.log("Created Quotations:", createdQuotations);
+        // console.log("Created Quotations:", createdQuotations);
         console.log(enquiries.map(e => ({
             enquiryId: e.enquiryId,
             quotationStatus: e.quotationStatus || 'No quotation linked'
@@ -328,34 +351,59 @@ const updateById = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to update enquiry", [error.message]);
     }
 });
+
+//changed
 const getEnquiryDetailsById = async (req, res) => {
     try {
         const enquiryId = req.params.id;
 
         const enquiry = await Enquiry.findById(enquiryId)
             .populate({
-                path: 'customer',
-                model: 'User', // or 'Customer' if you’re using discriminator names
-                select: 'name email phone address role ',
+                path: "customer",
+                model: "User", // Base user model
+                select: "name email phone address role",
+            })
+            .populate({
+                path: "services",
+                model: "Service",
+                populate: [
+                    {
+                        path: "workTypeDetails.engineer",
+                        model: "Employee",
+                        select: "name email phone technicianType",
+                    },
+                    {
+                        path: "workTypeDetails.officeStaff",
+                        model: "Employee",
+                        select: "name email phone technicianType",
+                    },
+                ],
             });
 
         if (!enquiry) {
-            return res.status(404).json({ message: 'Enquiry not found' });
+            return res.status(404).json({ message: "Enquiry not found" });
         }
-        const additionalServices = enquiry.additionalServices || {};
 
         return res.status(200).json({
             enquiryId: enquiry.enquiryId,
             hospitalName: enquiry.hospitalName,
             customer: enquiry.customer,
-            machines: enquiry.services, // includes machineType, equipmentNo, etc.
-            additionalServices,
+            services: enquiry.services, // fully populated services
+            additionalServices: enquiry.additionalServices || {},
+            specialInstructions: enquiry.specialInstructions,
+            attachment: enquiry.attachment,
+            enquiryStatus: enquiry.enquiryStatus,
+            enquiryStatusDates: enquiry.enquiryStatusDates,
+            quotationStatus: enquiry.quotationStatus,
+            createdAt: enquiry.createdAt,
         });
     } catch (err) {
-        console.error('Error fetching enquiry details:', err);
-        return res.status(500).json({ message: 'Server error' });
+        console.error("Error fetching enquiry details:", err);
+        return res.status(500).json({ message: "Server error" });
     }
 };
+
+
 
 const getByCustomerIdEnquiryId = async (req, res) => {
     try {
@@ -402,5 +450,204 @@ const getByCustomerIdEnquiryId = async (req, res) => {
         });
     }
 };
+//changed
+const createDirectOrder = asyncHandler(async (req, res) => {
+    try {
+        console.log("Direct Order Payload:", req.body);
+        const {
+            leadOwner,
+            hospitalName,
+            fullAddress,
+            city,
+            district,
+            state,
+            pinCode,
+            branchName,
+            contactPersonName,
+            emailAddress,
+            contactNumber,
+            designation,
+            advanceAmount,
+            urgency,
+            services,
+            additionalServices,
+            specialInstructions,
+        } = req.body;
 
-export default { add, getById, deleteById, updateById, getAll, getEnquiryDetailsById, addByCustomerId, getByCustomerIdEnquiryId };
+        // ✅ Validation
+        if (
+            !hospitalName ||
+            !fullAddress ||
+            !city ||
+            !district ||
+            !state ||
+            !pinCode ||
+            !branchName ||
+            !contactPersonName ||
+            !contactNumber
+        ) {
+            throw new ApiError(400, "Missing required fields");
+        }
+
+        // ✅ Handle customer
+        let customerId = req.body.customer;
+        if (!customerId) {
+            let existingCustomer = null;
+            if (emailAddress) existingCustomer = await User.findOne({ email: emailAddress });
+            else if (contactNumber) existingCustomer = await User.findOne({ phone: contactNumber });
+
+            if (!existingCustomer) {
+                const newCustomer = await User.create({
+                    name: hospitalName,
+                    email: emailAddress,
+                    phone: contactNumber,
+                });
+                customerId = newCustomer._id;
+            } else {
+                customerId = existingCustomer._id;
+            }
+        }
+
+        // ✅ Handle file upload (work order copy)
+        let workOrderCopy = "";
+        if (req.files && req.files.length > 0) {
+            const uploadPromises = req.files.map(async (file) => {
+                const { url } = await uploadToS3(file);
+                return url;
+            });
+            const uploadedFiles = await Promise.all(uploadPromises);
+            workOrderCopy = uploadedFiles[0];
+        }
+
+        // ✅ Create Service documents first
+        // ✅ Create Service documents first
+        let serviceIds = [];
+        if (services && services.length > 0) {
+            const serviceDocs = await Promise.all(
+                services.map(async (s) => {
+                    const serviceDoc = await Service.create({
+                        machineType: s.machineType,
+                        equipmentNo: s.equipmentNo,
+                        machineModel: s.machineModel,
+                        serialNumber: s.serialNumber || "",
+                        remark: s.remark || "",
+                        workTypeDetails: (s.workType || []).map((wt) => ({
+                            workType: wt,
+                            status: "pending"
+                        }))
+                    });
+                    return serviceDoc._id;
+                })
+            );
+            serviceIds = serviceDocs;
+        }
+
+        // ✅ Create Enquiry with references to Service documents
+        const enquiry = await Enquiry.create({
+            leadOwner,
+            hospitalName,
+            fullAddress,
+            city,
+            district,
+            state,
+            pinCode,
+            branch: branchName,
+            contactPerson: contactPersonName,
+            emailAddress,
+            contactNumber,
+            designation,
+            services: serviceIds, // 👈 Only ObjectIds, no embedded services
+            additionalServices: additionalServices || {},
+            specialInstructions,
+            attachment: workOrderCopy,
+            enquiryStatus: "Enquired",
+            enquiryStatusDates: { enquiredOn: new Date() },
+            quotationStatus: null,
+            customer: customerId
+        });
+
+        // ✅ Create Order and link services + enquiry
+        const newOrder = await orderModel.create({
+            leadOwner,
+            hospitalName,
+            fullAddress,
+            city,
+            district,
+            state,
+            pinCode,
+            branchName,
+            contactPersonName,
+            emailAddress,
+            contactNumber,
+            designation,
+            advanceAmount,
+            urgency,
+            services: serviceIds, // same service references
+            specialInstructions,
+            workOrderCopy,
+            customer: customerId,
+            enquiry: enquiry._id
+        });
+
+        return res
+            .status(201)
+            .json(
+                new ApiResponse(
+                    201,
+                    { order: newOrder, enquiry },
+                    "Order & Enquiry created successfully"
+                )
+            );
+
+    } catch (error) {
+        console.error("Create Direct Order Error:", error);
+        throw new ApiError(500, "Failed to create direct order", [error.message]);
+    }
+});
+
+const getAllStates = asyncHandler(async (req, res) => {
+    try {
+        const states = [
+            "Andhra Pradesh",
+            "Arunachal Pradesh",
+            "Assam",
+            "Bihar",
+            "Chhattisgarh",
+            "Goa",
+            "Gujarat",
+            "Haryana",
+            "Himachal Pradesh",
+            "Jharkhand",
+            "Karnataka",
+            "Kerala",
+            "Madhya Pradesh",
+            "Maharashtra",
+            "Manipur",
+            "Meghalaya",
+            "Mizoram",
+            "Nagaland",
+            "Odisha",
+            "Punjab",
+            "Rajasthan",
+            "Sikkim",
+            "Tamil Nadu",
+            "Telangana",
+            "Tripura",
+            "Uttar Pradesh",
+            "Uttarakhand",
+            "West Bengal",
+            "Delhi",
+            "Jammu and Kashmir",
+            "Ladakh",
+            "Puducherry",
+            "Chandigarh",
+            "Andaman and Nicobar Islands",
+            "Lakshadweep",
+            "Dadra and Nagar Haveli and Daman and Diu"
+        ];
+        return res.status(200).json(new ApiResponse(200, states, "success"))
+    } catch (error) {
+        console.log("error", error);
+    }
+})
+export default { add, getById, deleteById, updateById, getAll, getEnquiryDetailsById, addByCustomerId, getByCustomerIdEnquiryId, createDirectOrder, getAllStates };

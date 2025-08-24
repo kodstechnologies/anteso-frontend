@@ -19,65 +19,18 @@ const enquirySchema = new mongoose.Schema({
     emailAddress: { type: String, required: true },
     contactNumber: { type: String, required: true },
     designation: { type: String, required: true },
-
-    // Section 2: Services (multiple entries)
     services: [
         {
-            machineType: {
-                type: String,
-                required: true,
-                enum: [
-                    'Fixed X-Ray',
-                    'Mobile X-Ray',
-                    'C-Arm',
-                    'Cath Lab/Interventional Radiology',
-                    'Mammography',
-                    'CT Scan',
-                    'PET CT',
-                    'CT Simulator',
-                    'OPG',
-                    'CBCT',
-                    'BMD/DEXA',
-                    'Dental IOPA',
-                    'Dental Hand Held',
-                    'O Arm',
-                    'KV Imaging (OBI)',
-                    'Lead Apron Test',
-                    'Thyroid Shield Test',
-                    'Gonad Shield Test',
-                    'Radiation Survey of Radiation Facility',
-                    'Others',
-                ],
-            },
-            equipmentNo: { type: String, required: true },
-            workType: {
-                type: [String],
-                required: true,
-                validate: {
-                    validator: function (arr) {
-                        const allowed = [
-                            'Quality Assurance Test',
-                            'License for Operation',
-                            'Decommissioning',
-                            'Decommissioning and Recommissioning'
-                        ];
-                        return arr.every((val) => allowed.includes(val));
-                    },
-                    message: 'Invalid workType value'
-                }
-            },
-
-            machineModel: { type: String, required: true }
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Service'
         }
     ],
-
     // Section 3: Additional Services (checkboxes)
     additionalServices: {
         type: Map,
-        of: String, // or of: mongoose.Schema.Types.Mixed if you want to allow any value (like undefined)
+        of: String,
         default: {}
     },
-
     // Section 4: Special Instructions & Attachment
     specialInstructions: { type: String },
     attachment: { type: String }, // file URL or path
@@ -85,7 +38,7 @@ const enquirySchema = new mongoose.Schema({
     // Status Tracking
     enquiryStatus: {
         type: String,
-        enum: ['Enquired', 'Quotation Sent', 'Approved','Rejected'],
+        enum: ['Enquired', 'Quotation Sent', 'Approved', 'Rejected'],
         default: 'Enquired'
     },
     enquiryStatusDates: {
@@ -98,7 +51,6 @@ const enquirySchema = new mongoose.Schema({
     //     type: mongoose.Schema.Types.ObjectId,
     //     ref: 'Quotation',
     // },
-
     quotationStatus: {
         type: String,
         enum: ['Create', 'Created', 'Accepted', 'Rejected'],
@@ -119,6 +71,5 @@ enquirySchema.pre('save', async function (next) {
     }
     next();
 });
-
 const Enquiry = mongoose.model('Enquiry', enquirySchema);
 export default Enquiry;

@@ -5,6 +5,8 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { createToolSchema } from "../../validators/toolValidators.js";
 import { generateReadableId } from "../../utils/GenerateReadableId.js";
 import Employee from "../../models/technician.model.js";
+import Tools from "../../models/tools.model.js";
+import { uploadToS3 } from "../../utils/s3Upload.js";
 
 const create = asyncHandler(async (req, res) => {
     console.log("🛠️ Tool body submitted:", req.body);
@@ -15,22 +17,36 @@ const create = asyncHandler(async (req, res) => {
     }
 
     // Generate toolId manually
-    const toolId = await generateReadableId('Tool', 'TL');
+    const toolId = await generateReadableId("Tool", "TL");
 
     // Check for duplicates
-    const exists = await Tool.findOne({ toolId });
+    const exists = await Tools.findOne({ toolId });
     if (exists) {
-        throw new ApiError(409, 'Tool with this ID already exists');
+        throw new ApiError(409, "Tool with this ID already exists");
     }
 
-    const tool = await Tool.create({
+    // Handle file upload (certificate)
+    let certificateUrl = null;
+    if (req.file) {
+        try {
+            const { url } = await uploadToS3(req.file);
+            certificateUrl = url;
+        } catch (err) {
+            console.error("S3 upload error:", err);
+            throw new ApiError(500, "Failed to upload certificate file");
+        }
+    }
+
+    const tool = await Tools.create({
         ...value,
         toolId,
-        toolStatus: 'unassigned', // default value
+        toolStatus: "unassigned", // default value
+        certificate: certificateUrl,
     });
 
-    res.status(201).json(new ApiResponse(201, tool, 'Tool created successfully'));
+    res.status(201).json(new ApiResponse(201, tool, "Tool created successfully"));
 });
+
 const allTools = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -102,25 +118,24 @@ const createToolByTechnician = asyncHandler(async (req, res) => {
 const getEngineerByTool = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    // Step 1: Get tool by ID to access createdAt
+    // Step 1: Get tool by ID
     const tool = await Tool.findById(id);
     if (!tool) {
         return res.status(404).json({ message: 'Tool not found' });
     }
 
-    // Step 2: Find engineer who has this tool assigned (by _id)
+    // Step 2: Find engineer by embedded toolId
     const engineer = await Employee.findOne({
-        'tools.toolName': tool.nomenclature, // match toolName from embedded doc
-        'tools.serialNumber': tool.SrNo,     // match serial number
+        'tools.toolId': tool._id
     });
 
     if (!engineer) {
         return res.status(404).json({ message: 'Engineer not assigned to this tool' });
     }
 
-    // Step 3: Find the matching embedded tool data for issueDate
+    // Step 3: Find assignment info (issueDate)
     const assignedToolData = engineer.tools.find(
-        t => t.toolName === tool.nomenclature && t.serialNumber === tool.SrNo
+        t => t.toolId.toString() === tool._id.toString()
     );
 
     if (!assignedToolData) {

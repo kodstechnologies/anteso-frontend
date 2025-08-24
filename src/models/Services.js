@@ -25,8 +25,14 @@ const workTypeDetailSchema = new mongoose.Schema({
     },
     status: { type: String, enum: workTypeStatusEnum, default: 'pending' },
     uploadFile: { type: String },
-    viewFile: { type: String },
-    remark: { type: String }
+    viewFile: { type: [String], default: [] }, // array of strings    remark: { type: String }
+    report: { type: String },
+    reportULRNumber: {
+        type: String
+    },
+    qaTestReportNumber: {
+        type: String
+    }
 }, { _id: false });
 
 const serviceSchema = new mongoose.Schema({

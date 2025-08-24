@@ -7,6 +7,7 @@ import Employee from "../../models/technician.model.js";
 import Tools from "../../models/tools.model.js";
 import tripModel from "../../models/trip.model.js";
 import expenseModel from "../../models/expense.model.js";
+import advanceAccountModel from "../../models/advanceAccount.model.js";
 
 // const add = asyncHandler(async (req, res) => {
 //     try {
@@ -330,22 +331,111 @@ const getAllOfficeStaff = asyncHandler(async (req, res) => {
 //qa raw --assign engineer
 
 //admin api
+// const getTripsWithExpensesByTechnician = asyncHandler(async (req, res) => {
+//     try {
+//         const { technicianId } = req.params;
+
+//         // 1. Get all trips for this technician with their expenses populated
+//         const trips = await tripModel.find({ technician: technicianId })
+//             .populate({
+//                 path: "expenses",
+//                 select: "typeOfExpense amount date screenshot remarks" // correct fields from Expense schema
+//             })
+//             .select("tripName startDate endDate remarks expenses tripstatus")
+//             .lean();
+
+//         // 2. Get technician's AdvanceAccount (global balance)
+//         const advanceAccount = await advanceAccountModel.findOne({ technician: technicianId }).lean();
+
+//         const currentDate = new Date();
+
+//         // 3. Update tripstatus & calculate per-trip totals
+//         trips.forEach(trip => {
+//             if (trip.endDate && trip.endDate < currentDate) {
+//                 trip.tripstatus = "completed";
+//             } else if (!trip.tripstatus) {
+//                 trip.tripstatus = "ongoing";
+//             }
+
+//             // calculate trip total expense
+//             const tripTotalExpense = trip.expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+//             trip.tripTotalExpense = tripTotalExpense;
+//         });
+
+//         res.status(200).json({
+//             success: true,
+//             data: {
+//                 trips,
+//                 advanceAccount: advanceAccount || {
+//                     advancedAmount: 0,
+//                     totalExpense: 0,
+//                     balance: 0
+//                 }
+//             }
+//         });
+//     } catch (error) {
+//         console.error("Error fetching trips with expenses:", error);
+//         res.status(500).json({
+//             success: false,
+//             message: "Server error fetching trips with expenses",
+//             error: error.message
+//         });
+//     }
+// });
+
 const getTripsWithExpensesByTechnician = asyncHandler(async (req, res) => {
     try {
         const { technicianId } = req.params;
 
-        // Get trips for this technician with their expenses populated
+        // 1. Get all trips for this technician
         const trips = await tripModel.find({ technician: technicianId })
-            .populate({
-                path: "expenses",
-                select: "totalExpense balance" // Only these fields from expense
-            })
-            .select("tripName startDate endDate remarks expenses")
+            .select("tripName startDate endDate remarks tripstatus tripTotalExpense")
             .lean();
+
+        const currentDate = new Date();
+
+        // 2. For each trip, fetch expenses & update totals
+        for (let trip of trips) {
+            const expenses = await expenseModel.find({ trip: trip._id })
+                .select("typeOfExpense requiredAmount date screenshot remarks")
+                .lean();
+
+            trip.expenses = expenses;
+
+            // Update trip status
+            if (trip.endDate && trip.endDate < currentDate) {
+                trip.tripstatus = "completed";
+            } else if (!trip.tripstatus) {
+                trip.tripstatus = "ongoing";
+            }
+
+            // Calculate total expense
+            const tripTotalExpense = expenses.reduce(
+                (sum, exp) => sum + (exp.requiredAmount || 0),
+                0
+            );
+            trip.tripTotalExpense = tripTotalExpense;
+
+            // 👉 Persist the total expense log in DB
+            await tripModel.findByIdAndUpdate(trip._id, {
+                tripstatus: trip.tripstatus,
+                tripTotalExpense
+            });
+        }
+
+        // 3. Get technician’s global AdvanceAccount
+        const advanceAccount = await advanceAccountModel.findOne({ technician: technicianId }).lean();
 
         res.status(200).json({
             success: true,
-            data: trips
+            data: {
+                trips,
+                advanceAccount: advanceAccount || {
+                    advancedAmount: 0,
+                    totalExpense: 0,
+                    balance: 0
+                }
+            }
         });
 
     } catch (error) {
@@ -358,33 +448,93 @@ const getTripsWithExpensesByTechnician = asyncHandler(async (req, res) => {
     }
 });
 
-
 //all mobile APIS
+// const createTripByTechnicianId = asyncHandler(async (req, res) => {
+//     try {
+//         const { technicianId } = req.params;
+//         const tripData = req.body;
+//         // Create trip
+//         const newTrip = await tripModel.create({
+//             ...tripData,
+//             technician: technicianId
+//         });
+
+//         // Find technician's expense (or create one if not exists)
+//         let expense = await expenseModel.findOne({ technician: technicianId });
+
+//         if (!expense) {
+//             expense = new expenseModel({
+//                 technician: technicianId,
+//                 advancedAmount: 0,
+//                 balance: 0,
+//                 totalExpense: 0,
+//                 typeOfExpense: "other",
+//                 date: new Date()
+//             });
+//             await expense.save();
+//         }
+
+//         // Link expense to trip
+//         newTrip.expenses.push(expense._id);
+//         await newTrip.save();
+
+//         res.status(201).json({
+//             success: true,
+//             message: "Trip created successfully",
+//             data: {
+//                 trip: newTrip,
+//                 expense
+//             }
+//         });
+//     } catch (error) {
+//         res.status(500).json({
+//             success: false,
+//             message: error.message || "Error creating trip"
+//         });
+//     }
+// });
+
 const createTripByTechnicianId = asyncHandler(async (req, res) => {
     try {
         const { technicianId } = req.params;
-        console.log("🚀 ~ technicianId:", technicianId)
         const tripData = req.body;
 
-        // Ensure technicianId is included in the trip
+        // ✅ Create a new trip assigned to technician
         const newTrip = await tripModel.create({
             ...tripData,
-            technician: technicianId // Correct field name from schema
+            technician: technicianId,
         });
+
+        // ✅ Ensure AdvanceAccount exists for technician
+        let account = await advanceAccountModel.findOne({ technician: technicianId });
+
+        if (!account) {
+            account = new advanceAccountModel({
+                technician: technicianId,
+                advancedAmount: 0,
+                balance: 0,
+                totalExpense: 0,
+            });
+            await account.save();
+        }
 
         res.status(201).json({
             success: true,
             message: "Trip created successfully",
-            data: newTrip
-        })
+            data: {
+                trip: newTrip,
+                advanceAccount: account,
+            },
+        });
     } catch (error) {
         res.status(500).json({
             success: false,
-            message: error.message || "Error creating trip"
+            message: error.message || "Error creating trip",
         });
     }
 });
-//patch
+
+//patche
 const updateTripByTechnicianIdAndTripId = asyncHandler(async (req, res) => {
     try {
         const { technicianId, tripId } = req.params;
@@ -446,29 +596,121 @@ const addExpenseByTechnicianAndTripId = asyncHandler(async (req, res) => {
     }
 })
 // Add expense for a technician's trip
-export const addTripExpense = asyncHandler(async (req, res) => {
+
+
+
+// export const addTripExpense = asyncHandler(async (req, res) => {
+//     const { tripId, technicianId } = req.params;
+//     const { requiredAmount, typeOfExpense, screenshot, date } = req.body;
+
+//     // validate
+//     const amt = Number(requiredAmount);
+//     if (!amt || isNaN(amt) || amt <= 0) {
+//         return res.status(400).json({ success: false, message: "Please provide a valid requiredAmount (> 0)." });
+//     }
+
+//     // find trip
+//     const trip = await tripModel.findById(tripId).populate("expenses");
+//     if (!trip) return res.status(404).json({ success: false, message: "Trip not found." });
+//     // ensure technician is assigned to this trip
+//     if (!trip.technician || trip.technician.toString() !== technicianId) {
+//         return res.status(400).json({ success: false, message: "Technician is not assigned to this trip." });
+//     }
+//     // find technician's advance account
+//     const account = await expenseModel.findOne({ technician: technicianId, advancedAmount: { $exists: true } });
+//     console.log("🚀 ~ account:", account)
+//     if (!account) {
+//         return res.status(400).json({
+//             success: false,
+//             message: "No advance account found for this technician. Admin must add advanced amount first."
+//         });
+//     }
+//     // check balance
+//     const currentBalance =
+//         account.balance != null
+//             ? Number(account.balance)
+//             : Number(account.advancedAmount || 0) - Number(account.totalExpense || 0);
+
+//     if (amt > currentBalance) {
+//         return res.status(400).json({ success: false, message: "Not enough balance." });
+//     }
+
+//     // update account totals
+//     account.totalExpense = (account.totalExpense || 0) + amt;
+//     account.balance = currentBalance - amt;
+//     await account.save();
+
+
+
+//     // create transaction expense (record for this trip)
+//     const transaction = await expenseModel.create({
+//         requiredAmount: amt,
+//         typeOfExpense,
+//         screenshot,
+//         technician: technicianId,
+//         totalExpense: amt,   // per-record
+//         balance: account.balance
+//     });
+
+//     // attach transaction to trip
+//     trip.expenses.push(transaction._id);
+//     await trip.save();
+
+//     // 🔑 Calculate total expense for this trip
+//     const tripExpenses = await expenseModel.find({ _id: { $in: trip.expenses } });
+//     const tripTotalExpense = tripExpenses.reduce((sum, exp) => sum + (exp.requiredAmount || 0), 0);
+
+//     return res.status(201).json({
+//         success: true,
+//         message: "Expense added successfully",
+//         data: {
+//             tripId: trip._id,
+//             transaction,
+//             accountSummary: {
+//                 advancedAmount: account.advancedAmount,
+//                 totalExpense: account.totalExpense, // overall technician
+//                 balance: account.balance
+//             },
+//             tripSummary: {
+//                 tripTotalExpense // ✅ total just for this trip
+//             },
+//             submittedData: {
+//                 requiredAmount, typeOfExpense, screenshot, date
+//             }
+//         }
+//     });
+// });
+const addTripExpense = asyncHandler(async (req, res) => {
     const { tripId, technicianId } = req.params;
-    const { requiredAmount, typeOfExpense, screenshot, date } = req.body;
+    const { requiredAmount, typeOfExpense, screenshot, date, remarks } = req.body;
 
     // validate
     const amt = Number(requiredAmount);
     if (!amt || isNaN(amt) || amt <= 0) {
-        return res.status(400).json({ success: false, message: "Please provide a valid requiredAmount (> 0)." });
+        return res.status(400).json({
+            success: false,
+            message: "Please provide a valid amount (> 0)."
+        });
     }
 
     // find trip
     const trip = await tripModel.findById(tripId).populate("expenses");
-    if (!trip) return res.status(404).json({ success: false, message: "Trip not found." });
-
+    if (!trip) {
+        return res.status(404).json({ success: false, message: "Trip not found." });
+    }
+    if (trip.status === "completed") {
+        return res.status(400).json({
+            success: false,
+            message: "Cannot add expenses to a completed trip."
+        });
+    }
     // ensure technician is assigned to this trip
     if (!trip.technician || trip.technician.toString() !== technicianId) {
         return res.status(400).json({ success: false, message: "Technician is not assigned to this trip." });
     }
 
-    // find technician's advance account (created by admin via addAdvanceByTechnicianId)
-    // we expect the admin-created doc to have advancedAmount set (master account)
-    const account = await expenseModel.findOne({ technician: technicianId, advancedAmount: { $exists: true } });
-
+    // find technician's advance account
+    const account = await advanceAccountModel.findOne({ technician: technicianId });
     if (!account) {
         return res.status(400).json({
             success: false,
@@ -477,47 +719,53 @@ export const addTripExpense = asyncHandler(async (req, res) => {
     }
 
     // check balance
-    const currentBalance = account.balance != null ? Number(account.balance) : Number(account.advancedAmount || 0) - Number(account.totalExpense || 0);
-    if (amt > currentBalance) {
+    if (amt > account.balance) {
         return res.status(400).json({ success: false, message: "Not enough balance." });
     }
 
     // update account totals
-    account.totalExpense = (account.totalExpense || 0) + amt;
-    account.balance = currentBalance - amt;
+    account.totalExpense += amt;
+    account.balance -= amt;
     await account.save();
 
-    // create transaction expense (record for this trip)
-    const transaction = await expenseModel.create({
-        requiredAmount: amt,
+    // create expense linked to trip
+    const expense = await expenseModel.create({
+        trip: tripId,
         typeOfExpense,
+        requiredAmount: amt,
+        date: date || new Date(),
         screenshot,
-        technician: technicianId,
-        // For transaction doc we store the amount consumed in totalExpense (per-record) and balance after deduction
-        totalExpense: amt,
-        balance: account.balance
+        remarks
     });
 
-    // attach transaction to trip
-    trip.expenses.push(transaction._id);
+    // attach expense to trip
+    trip.expenses.push(expense._id);
     await trip.save();
+
+    // 🔑 Calculate total expense for this trip
+    const tripExpenses = await expenseModel.find({ _id: { $in: trip.expenses } });
+    const tripTotalExpense = tripExpenses.reduce((sum, exp) => sum + (exp.requiredAmount || 0), 0);
 
     return res.status(201).json({
         success: true,
         message: "Expense added successfully",
         data: {
             tripId: trip._id,
-            transaction,
+            expense,
             accountSummary: {
                 advancedAmount: account.advancedAmount,
                 totalExpense: account.totalExpense,
                 balance: account.balance
             },
+            tripSummary: {
+                tripTotalExpense
+            },
             submittedData: {
-                requiredAmount, typeOfExpense, screenshot, date
+                requiredAmount, typeOfExpense, screenshot, date, remarks
             }
         }
     });
 });
+
 
 export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician };

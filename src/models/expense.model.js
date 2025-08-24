@@ -1,34 +1,31 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema } from 'mongoose';
+
 const expenseSchema = new mongoose.Schema({
-    advancedAmount: {
-        type: Number,
+    trip: {
+        type: Schema.Types.ObjectId,
+        ref: 'Trip',
+        required: true
     },
-    requiredAmount: {
-        type: Number,
-    },  
     typeOfExpense: {
         type: String,
         enum: ["travel", "food", "lodging", "other"],
+        required: true
+    },
+    requiredAmount: {
+        type: Number,
+        required: true
     },
     date: {
         type: Date,
         default: Date.now
     },
     screenshot: {
+        type: String // file path or S3 URL
+    },
+    remarks: {
         type: String,
-    },
-    totalExpense: {
-        type: Number,
-        default: 0
-    },
-    balance: {
-        type: Number,
-        default: 0
-    },
-    technician: {
-        type: Schema.Types.ObjectId,
-        ref: 'Employee',
-    },
+        trim: true
+    }
 }, { timestamps: true });
 
-export default mongoose.model("Expense", expenseSchema);
+export default mongoose.model('Expense', expenseSchema);

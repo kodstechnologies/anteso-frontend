@@ -7,6 +7,7 @@ import { ApiResponse } from '../../utils/ApiResponse.js';
 import { rsoSchema } from '../../validators/rsoValidators.js';
 import Client from '../../models/client.model.js';
 import Hospital from '../../models/hospital.model.js';
+import { uploadToS3 } from "../../utils/s3Upload.js";
 
 // Create
 const add = asyncHandler(async (req, res) => {
@@ -273,38 +274,59 @@ const deletersoByClientId = asyncHandler(async (req, res) => {
 
 // ✅ Create RSO for a specific hospital
 const createRsoByHospitalId = asyncHandler(async (req, res) => {
+    console.log("request body",req.body);
+    
     const { hospitalId } = req.params;
 
-    // Validate hospital ID
+    // ✅ Validate hospital ID
     if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
-        throw new ApiError(400, 'Invalid hospital ID format');
+        throw new ApiError(400, "Invalid hospital ID format");
     }
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital) {
-        throw new ApiError(404, 'Hospital not found');
+        throw new ApiError(404, "Hospital not found");
     }
 
-    // Validate request body with Joi
+    // ✅ Validate body with Joi
     const { error, value } = rsoSchema.validate(req.body, { abortEarly: false });
     if (error) {
-        throw new ApiError(400, 'Validation Error', error.details.map(e => e.message));
+        throw new ApiError(400, "Validation Error", error.details.map((e) => e.message));
     }
 
-    // Prevent duplicate RSO IDs
-    const existingRSO = await RSO.findOne({ rsoId: value.rsoId });
-    if (existingRSO) {
-        throw new ApiError(409, 'RSO ID already exists');
+    // ✅ Prevent duplicate RSO IDs
+    if (value.rsoId) {
+        const existingRSO = await RSO.findOne({ rsoId: value.rsoId });
+        if (existingRSO) {
+            throw new ApiError(409, "RSO ID already exists");
+        }
     }
 
-    // Create RSO
-    const newRSO = await RSO.create(value);
+    // ✅ Handle file upload
+    let attachmentUrl = null;
+    if (req.file) {
+        try {
+            const { url } = await uploadToS3(req.file); // or save locally
+            attachmentUrl = url;
+        } catch (err) {
+            console.error("S3 upload error:", err);
+            throw new ApiError(500, "Failed to upload RSO attachment");
+        }
+    }
 
-    // Link to hospital
+    // ✅ Create RSO
+    const newRSO = await RSO.create({
+        ...value,
+        attachment: attachmentUrl,
+    });
+
+    // ✅ Link RSO to hospital
     hospital.rsos.push(newRSO._id);
     await hospital.save();
 
-    return res.status(201).json(new ApiResponse(201, newRSO, 'RSO created successfully'));
+    return res
+        .status(201)
+        .json(new ApiResponse(201, newRSO, "RSO created successfully"));
 });
 
 // ✅ Get all RSOs for a hospital

@@ -1,30 +1,6 @@
-import { asyncHandler } from "../../../utils/AsyncHandler";
-
-export const create = asyncHandler(async () => {
-    try {
-
-    } catch (error) {
-
-    }
-})
-export const getById = asyncHandler(async (req, res) => {
-    try {
-
-    } catch (error) {
-
-    }
-})
-export const getAll = asyncHandler(async (req, res) => {
-    try {
-
-    } catch (error) {
-
-    }
-})
-export const deleteById = asyncHandler(async () => {
-    try {
-
-    } catch (error) {
-
-    }
-})
+import { Router } from "express";
+const router = Router();
+import DealerController from '../../../controllers/Admin/dealer.controller.js'
+router.post('/create-dealer', DealerController.createDealer)
+router.get('/get-all-dealers', DealerController.getAll)
+export default router

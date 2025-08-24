@@ -25,7 +25,14 @@ const tripSchema = new mongoose.Schema({
         type: Schema.Types.ObjectId,
         ref: 'Expense'
     }],
-    
+    tripstatus: {
+        type: String,
+        default: "ongoing"
+    },
+    tripTotalExpense: {
+        type: Number,
+        default: 0
+    }
 }, { timestamps: true });
 
 export default mongoose.model('Trip', tripSchema);

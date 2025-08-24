@@ -14,10 +14,11 @@ router.get('/all-officeStaff', technicianController.getAllOfficeStaff)
 //mobile api
 router.post('/create-trip-by-techinician/:technicianId', technicianController.createTripByTechnicianId)
 router.patch('/update-trip-by-technician-tripId/:technicianId/:tripId', technicianController.updateTripByTechnicianIdAndTripId)
-router.get('/get-all-trips/:technicianId', technicianController.getAllTripsByTechnician)
+// router.get('/get-all-trips/:technicianId', technicianController.getAllTripsByTechnician)
 router.post('/add-trip-expense/:tripId/:technicianId', technicianController.addTripExpense)
 //mobile
 // router.post('/machine-details/:technicianId/:orderId',technicianController.machineDetails)
 
 router.get('/get-trips-per-technician/:technicianId', technicianController.getTripsWithExpensesByTechnician)
+
 export default router

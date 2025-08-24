@@ -18,5 +18,4 @@ const router = Router();
 router.use('/admin', AdminRoutes)
 router.use('/user', UserRoutes)
 
-
 export default router

@@ -6,6 +6,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import orderModel from "../../models/order.model.js";
 import mongoose from "mongoose";
 import Services from "../../models/Services.js";
+import { uploadToS3 } from "../../utils/s3Upload.js";
 
 // export const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
 //     const { enquiryId } = req.params;
@@ -82,7 +83,7 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
             date,
             quotationId: quotationNumber,
             enquiry: enquiry._id,
-            from: enquiry.customer._id,  
+            from: enquiry.customer._id,
             discount: calculations.discount,
             total: calculations.totalAmount,
             quotationStatus: 'Created',
@@ -111,8 +112,14 @@ const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
 
         // Find the quotation associated with the given enquiry ID
         const quotation = await Quotation.findOne({ enquiry: id })
-            .populate('enquiry')
-            .populate('from', 'name email') // Populate employee info
+            .populate({
+                path: 'enquiry',
+                populate: {
+                    path: 'services', // populate services inside enquiry
+                    model: 'Service', // use the correct service model name
+                },
+            })
+            .populate('from', 'name email') // employee info
             .exec();
 
         if (!quotation) {
@@ -127,6 +134,7 @@ const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
         throw new ApiError(500, 'Failed to fetch quotation', [error.message]);
     }
 });
+
 const getQuotationByIds = asyncHandler(async (req, res) => {
     const { customerId, enquiryId } = req.params;
 
@@ -312,7 +320,7 @@ const acceptQuotation = asyncHandler(async (req, res) => {
             quotation: quotation._id,
             customer: enquiry.customer // 👈 Make sure this exists in the enquiry
         });
-     
+
         console.log("🚀 ~ order:", order)
         console.log("🚀 ~ order.additionalServices:", order.additionalServices)
 
@@ -392,4 +400,42 @@ const test = asyncHandler(async (req, res) => {
 
 // const getAcceptedQuotations=
 
-export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, test }
+
+
+const acceptQuotationPDF = asyncHandler(async (req, res) => {
+    try {
+        const { quotationId } = req.params; // quotationId from URL
+        const file = req.file; // uploaded pdf (make sure multer middleware is used)
+
+        if (!file) {
+            return res.status(400).json({ message: "No PDF file uploaded" });
+        }
+
+        // Upload file to AWS S3
+        const { url, key } = await uploadToS3(file, "quotations"); // return { url, key }
+        // Update quotation record
+        const updatedQuotation = await Quotation.findOneAndUpdate(
+            { _id: new mongoose.Types.ObjectId(quotationId) },
+            {
+                customersPDF: url,
+                quotationStatus: "Accepted",
+            },
+            { new: true }
+        );
+
+        if (!updatedQuotation) {
+            return res.status(404).json({ message: "Quotation not found" });
+        }
+
+        res.status(200).json({
+            message: "Quotation accepted and PDF uploaded successfully",
+            quotation: updatedQuotation,
+        });
+    } catch (error) {
+        console.error("Error in acceptQuotationPDF:", error);
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+});
+
+
+export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, test, acceptQuotationPDF }

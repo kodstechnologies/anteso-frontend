@@ -2,6 +2,7 @@ import { Router } from "express";
 const router = Router();
 import RSOController from '../../../controllers/Admin/rso.controller.js'
 import rsoController from "../../../controllers/Admin/rso.controller.js";
+import upload from '../../../middlewares/upload.js'
 // router.post('/add', RSOController.add)
 // router.get('/get-by-id/:id', RSOController.getById)
 // router.put('/update-by-id/:id', RSOController.updateById)
@@ -16,7 +17,7 @@ router.put('/update-rso-by-client/:clientId/:rsoId', RSOController.updatersoByCl
 router.get('/get-rso-by-clienId-and-rsoId/:clientId/:rsoId', RSOController.getrsoByClientIdAndRsoId)
 
 
-router.post('/create-rso-by-hospitalId/:hospitalId', rsoController.createRsoByHospitalId)
+router.post('/create-rso-by-hospitalId/:hospitalId', upload.single("attachment"), rsoController.createRsoByHospitalId)
 router.get('/get-rso-by-hospitalId-rsoId/:hospitalId/:rsoId', rsoController.getRsoByHospitalIdAndRsoId)
 router.get('/get-all-rso-by-hospitalId/:hospitalId', rsoController.getAllRsoByHospitalId)
 router.put('/update-rso-by-hospitalId-rsoId/:hospitalId/:rsoId ', rsoController.updateRsoByHospitalId)
