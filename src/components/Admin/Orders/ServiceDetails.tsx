@@ -1,4 +1,4 @@
-"use client"
+// updated - ser4cices--18 aug
 
 import { useEffect, useState, useCallback } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
@@ -12,6 +12,8 @@ import {
     assignToOfficeStaff,
     getAssignedTechnicianName,
     getAssignedStaffName,
+    getMachineUpdates,
+    completeStatusAndReport,
 } from "../../../api"
 import SuccessAlert from "../../../components/common/SuccessAlert"
 
@@ -67,7 +69,36 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
 
     const [assignedTechnicianDetails, setAssignedTechnicianDetails] = useState<{ [serviceId: string]: any }>({})
     const [assignedStaffDetails, setAssignedStaffDetails] = useState<{ [serviceId: string]: any }>({})
+    const [machineUpdatesData, setMachineUpdatesData] = useState<{ [serviceId: string]: any }>({})
+    const [machineUpdatesLoading, setMachineUpdatesLoading] = useState<{ [serviceId: string]: boolean }>({})
     const workTypes = ["QA Raw", "QA Test", "Elora"]
+    const StatusBadge = ({ status }: { status: string }) => {
+        const getColor = (status: string) => {
+            switch (status.toLowerCase()) {
+                case "pending":
+                    return "bg-gray-200 text-gray-700";
+                case "assigned":
+                    return "bg-blue-100 text-blue-700";
+                case "inprogress":
+                    return "bg-yellow-100 text-yellow-700";
+                case "completed":
+                    return "bg-green-100 text-green-700";
+                case "generated":
+                    return "bg-purple-100 text-purple-700";
+                case "paid":
+                    return "bg-teal-100 text-teal-700";
+                default:
+                    return "bg-gray-100 text-gray-500";
+            }
+        };
+
+        return (
+            <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${getColor(status)}`}>
+                {status}
+            </span>
+        );
+    };
+
     const toggleAccordion = (entryIndex: number) => {
         setOpenIndexes((prev) => ({
             ...prev,
@@ -127,6 +158,7 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
                 })
 
                 setExpandedEntries(expanded)
+                console.log("🚀 ~ expanded:", expanded)
                 const initialStatusMap: { [key: string]: string } = {}
                 const initialSelectedEmployeeMap: { [key: string]: string } = {}
                 const initialQaRawAssignments: { [key: string]: boolean } = {}
@@ -153,7 +185,6 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
 
                         if (workType.toLowerCase().includes("qa") && workType.toLowerCase().includes("raw")) {
                             console.log(`🚀 ~ Checking QA Raw details for machine:`, machine._id)
-
                             const qaRawData = qaRawRes.data.qaRawDetails?.find((detail: any) => {
                                 const matches =
                                     detail.machineId === machine._id ||
@@ -233,15 +264,33 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
             console.log("🚀 ~ Using clean service ID:", cleanServiceId)
             const currentEntry = expandedEntries.find((entry) => serviceId.startsWith(entry.machine._id))
             const actualWorkType = currentEntry?.workTypeDetail.workType || "qa-raw"
-            await assignToTechnicianByQA(orderId, cleanServiceId, technicianId)
+            console.log("🚀 ~ handleQaRawAssignment ~ actualWorkType:", actualWorkType)
+            await assignToTechnicianByQA(orderId, cleanServiceId, technicianId, actualWorkType)
             try {
                 const technicianDetails = await getAssignedTechnicianName(orderId, cleanServiceId, actualWorkType)
+                console.log("🚀 ~ handleQaRawAssignment ~ technicianDetails:", technicianDetails)
                 setAssignedTechnicianDetails((prev) => ({
                     ...prev,
-                    [serviceId]: technicianDetails.data,
+                    [serviceId]: technicianDetails.data.updatedService,
                 }))
             } catch (error) {
                 console.error("Failed to fetch assigned technician details:", error)
+            }
+            try {
+                setMachineUpdatesLoading((prev) => ({ ...prev, [serviceId]: true }))
+                console.log("🚀 ~ Fetching machine updates for:", { technicianId, orderId, cleanServiceId, actualWorkType })
+
+                const machineUpdates = await getMachineUpdates(technicianId, orderId, cleanServiceId, actualWorkType)
+                console.log("🚀 ~ Machine updates response:", machineUpdates.data.updatedService)
+
+                setMachineUpdatesData((prev) => ({
+                    ...prev,
+                    [serviceId]: machineUpdates.data.updatedService,
+                }))
+            } catch (error) {
+                console.error("🚀 ~ Failed to fetch machine updates:", error)
+            } finally {
+                setMachineUpdatesLoading((prev) => ({ ...prev, [serviceId]: false }))
             }
             setQaRawAssignments((prev) => ({ ...prev, [serviceId]: true }))
             setSelectedEmployeeMap((prev) => ({ ...prev, [serviceId]: technicianId }))
@@ -254,43 +303,29 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
             setTimeout(() => setErrorMessage(null), 3000)
         }
     }
-    const handleQaTestUpdate = async (serviceId: string) => {
+    const [qaTestFiles, setQaTestFiles] = useState<{ [key: string]: File[] }>({})
+
+    const handleQaTestUpdate = async (serviceId: string, file?: File[]) => {
         try {
-            const cleanServiceId = serviceId.includes("-") ? serviceId.split("-")[0] : serviceId
-            const officeStaffId = selectedEmployeeMap[serviceId]
+            const staffId = selectedEmployeeMap[serviceId]
             const status = statusMap[serviceId]
 
-            console.log("🚀 ~ Updating QA Test:", { cleanServiceId, officeStaffId, status })
-
-            if (!officeStaffId) {
-                alert("Please select an office staff member before updating.")
-                return
+            const payload = {
+                staffId,
+                serviceId,
+                note: "QA Test Completed", // you can expand
             }
+            const cleanServiceId = serviceId.includes("-")
+                ? serviceId.split("-")[0]
+                : serviceId;
+            console.log("🚀 ~ cleanServiceId:", cleanServiceId);
 
-            const currentEntry = expandedEntries.find((entry) => serviceId.startsWith(entry.machine._id))
-            const actualWorkType = currentEntry?.workTypeDetail.workType || "qa-test"
+            await completeStatusAndReport(staffId, orderId, cleanServiceId, status, payload, file)
 
-            await assignToOfficeStaff(orderId, cleanServiceId, officeStaffId, status)
-
-            try {
-                const staffDetails = await getAssignedStaffName(orderId, cleanServiceId, actualWorkType)
-                setAssignedStaffDetails((prev) => ({
-                    ...prev,
-                    [serviceId]: staffDetails.data,
-                }))
-            } catch (error) {
-                console.error("Failed to fetch assigned staff details:", error)
-            }
-
-            setSuccessMessage("Update successful!")
-            setErrorMessage(null)
-            setEditableMap((prev) => ({ ...prev, [serviceId]: false }))
-            setTimeout(() => setSuccessMessage(null), 3000)
-        } catch (error) {
-            console.error("🚀 ~ QA Test update failed:", error)
-            setErrorMessage("Update failed!")
-            setSuccessMessage(null)
-            setTimeout(() => setErrorMessage(null), 3000)
+            setSuccessMessage("QA Test updated successfully")
+            setEditableMap((prev) => ({ ...prev, [serviceId]: false }));
+        } catch (err: any) {
+            setErrorMessage(err.message)
         }
     }
 
@@ -304,11 +339,8 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
                 alert("Please select an employee before updating.")
                 return
             }
-
             await updateEmployeeWithStatus(orderId, cleanServiceId, employeeId, status)
-
             await fetchData(1000)
-
             setSuccessMessage("Update successful!")
             setErrorMessage(null)
             setEditableMap((prev) => ({ ...prev, [serviceId]: false }))
@@ -367,7 +399,6 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
                                 const isQATest = workType.toLowerCase().includes("qa") && workType.toLowerCase().includes("test")
                                 const isEditable = editableMap[serviceId] || false
                                 const isQaRawAssigned = qaRawAssignments[serviceId] || false
-
                                 return (
                                     <div key={`${serviceId}-accordion`} className="border border-gray-300 rounded-lg shadow-sm mb-4">
                                         <button
@@ -386,7 +417,6 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
                                                 <ChevronDown className="w-5 h-5" />
                                             )}
                                         </button>
-
                                         {openIndexes[accordionIndex] && (
                                             <div className="bg-white px-6 py-4 border-t text-sm text-gray-700 space-y-4">
                                                 {isQARaw ? (
@@ -453,193 +483,339 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
                                                                     />
                                                                 </div>
                                                             </div>
+
                                                             <div className="text-sm text-gray-500">
-                                                                Other details will be shown once available from mobile app.
+                                                                {machineUpdatesLoading[serviceId] ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                                                        <span>Loading machine details...</span>
+                                                                    </div>
+                                                                ) : machineUpdatesData[serviceId] ? (
+                                                                    <div className="space-y-3">
+                                                                        <div className="text-base font-semibold text-gray-700 mb-2">
+                                                                            Machine Update Details:
+                                                                        </div>
+
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                            {machineUpdatesData[serviceId]?.employeeName && (
+                                                                                <div>
+                                                                                    <label className="block text-sm font-semibold text-gray-500 mb-1">
+                                                                                        Employee Name
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={machineUpdatesData[serviceId].employeeName}
+                                                                                        className="w-full px-4 py-2 text-base border border-gray-300 rounded-md bg-gray-50 font-medium"
+                                                                                        readOnly
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+
+                                                                            {machineUpdatesData[serviceId]?.status && (
+                                                                                <div>
+                                                                                    <label className="block text-sm font-semibold text-gray-500 mb-1">
+                                                                                        Update Status
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={machineUpdatesData[serviceId].status}
+                                                                                        className="w-full px-4 py-2 text-base border border-gray-300 rounded-md bg-gray-50 font-medium"
+                                                                                        readOnly
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+
+                                                                            {machineUpdatesData[serviceId]?.machineModel && (
+                                                                                <div>
+                                                                                    <label className="block text-sm font-semibold text-gray-500 mb-1">
+                                                                                        Machine Model
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={machineUpdatesData[serviceId].machineModel}
+                                                                                        className="w-full px-4 py-2 text-base border border-gray-300 rounded-md bg-gray-50 font-medium"
+                                                                                        readOnly
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+
+                                                                            {machineUpdatesData[serviceId]?.serialNumber && (
+                                                                                <div>
+                                                                                    <label className="block text-sm font-semibold text-gray-500 mb-1">
+                                                                                        Serial Number
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={machineUpdatesData[serviceId].serialNumber}
+                                                                                        className="w-full px-4 py-2 text-base border border-gray-300 rounded-md bg-gray-50 font-medium"
+                                                                                        readOnly
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+
+                                                                            {machineUpdatesData[serviceId]?.remark && (
+                                                                                <div className="md:col-span-2">
+                                                                                    <label className="block text-sm font-semibold text-gray-500 mb-1">
+                                                                                        Remark
+                                                                                    </label>
+                                                                                    <textarea
+                                                                                        value={machineUpdatesData[serviceId].remark}
+                                                                                        className="w-full px-4 py-2 text-base border border-gray-300 rounded-md bg-gray-50 font-medium"
+                                                                                        rows={3}
+                                                                                        readOnly
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {(machineUpdatesData[serviceId]?.rawFile ||
+                                                                            machineUpdatesData[serviceId]?.rawPhoto) && (
+                                                                                <div className="mt-4">
+                                                                                    <label className="block text-sm font-semibold text-gray-500 mb-2">
+                                                                                        Attachments
+                                                                                    </label>
+                                                                                    <div className="flex flex-wrap gap-2">
+                                                                                        {machineUpdatesData[serviceId]?.rawFile && (
+                                                                                            <a
+                                                                                                href={machineUpdatesData[serviceId].rawFile}
+                                                                                                target="_blank"
+                                                                                                rel="noopener noreferrer"
+                                                                                                className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100"
+                                                                                            >
+                                                                                                📄 Raw File
+                                                                                            </a>
+                                                                                        )}
+                                                                                        {machineUpdatesData[serviceId]?.rawPhoto && (
+                                                                                            <a
+                                                                                                href={machineUpdatesData[serviceId].rawPhoto}
+                                                                                                target="_blank"
+                                                                                                rel="noopener noreferrer"
+                                                                                                className="inline-flex items-center px-4 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100"
+                                                                                            >
+                                                                                                📷 Raw Photo
+                                                                                            </a>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                    </div>
+
+
+                                                                ) : (
+                                                                    <span className="text-gray-400">No additional details available yet.</span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     )
-                                                ) : isQATest ? (
-                                                    <>
-                                                        {isEditable ? (
-                                                            <>
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                    <div>
-                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Employee</label>
-                                                                        <select
-                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                                                            value={selectedEmployeeMap[serviceId] || ""}
-                                                                            onChange={(e) =>
-                                                                                setSelectedEmployeeMap((prev) => ({
-                                                                                    ...prev,
-                                                                                    [serviceId]: e.target.value,
-                                                                                }))
-                                                                            }
-                                                                        >
-                                                                            <option value="">Select Office Staff</option>
-                                                                            {officeStaff.map((eng) => (
-                                                                                <option key={eng._id} value={eng._id}>
-                                                                                    {`${eng.empId} - ${eng.name}`}
-                                                                                </option>
-                                                                            ))}
-                                                                        </select>
+                                                ) :
+                                                    isQATest ? (
+                                                        <>
+                                                            {isEditable ? (
+                                                                <>
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                        <div>
+                                                                            <label className="block text-xs font-semibold text-gray-500 mb-1">Employee</label>
+                                                                            <select
+                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                                                                value={selectedEmployeeMap[serviceId] || ""}
+                                                                                onChange={(e) =>
+                                                                                    setSelectedEmployeeMap((prev) => ({
+                                                                                        ...prev,
+                                                                                        [serviceId]: e.target.value,
+                                                                                    }))
+                                                                                }
+                                                                            >
+                                                                                <option value="">Select Office Staff</option>
+                                                                                {officeStaff.map((eng) => (
+                                                                                    <option key={eng._id} value={eng._id}>
+                                                                                        {`${eng.empId} - ${eng.name}`}
+                                                                                    </option>
+                                                                                ))}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                                                                            <select
+                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                                                                value={statusMap[serviceId] || "pending"}
+                                                                                onChange={(e) => {
+                                                                                    const updatedStatus = e.target.value
+                                                                                    setStatusMap((prev) => ({ ...prev, [serviceId]: updatedStatus }))
+                                                                                }}
+                                                                            >
+                                                                                <option value="pending">Pending</option>
+                                                                                <option value="inprogress">In Progress</option>
+                                                                                <option value="completed">Completed</option>
+                                                                                <option value="generated">Generated</option>
+                                                                                <option value="paid">Paid</option>
+                                                                            </select>
+                                                                        </div>
                                                                     </div>
-                                                                    <div>
-                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-                                                                        <select
-                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                                                            value={statusMap[serviceId] || "pending"}
-                                                                            onChange={(e) => {
-                                                                                const updatedStatus = e.target.value
-                                                                                setStatusMap((prev) => ({ ...prev, [serviceId]: updatedStatus }))
+
+                                                                    {/* File Upload Only When Completed */}
+                                                                    {statusMap[serviceId] === "completed" && (
+                                                                        <div className="mt-4">
+                                                                            <label className="block text-xs font-semibold text-gray-500 mb-1">Upload QA Test Report</label>
+                                                                            <input
+                                                                                type="file"
+                                                                                multiple
+                                                                                onChange={(e) => {
+                                                                                    const files = e.target.files ? Array.from(e.target.files) : []
+                                                                                    setQaTestFiles((prev: any) => ({
+                                                                                        ...prev,
+                                                                                        [serviceId]: files,
+                                                                                    }))
+                                                                                }}
+                                                                                className="w-full border border-gray-300 rounded-md p-2"
+                                                                            />
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div className="mt-4">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const files = qaTestFiles?.[serviceId] || []
+                                                                                handleQaTestUpdate(serviceId, files)
                                                                             }}
+                                                                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm"
                                                                         >
-                                                                            <option value="pending">Pending</option>
-                                                                            <option value="inprogress">In Progress</option>
-                                                                            <option value="completed">Completed</option>
-                                                                            <option value="generated">Generated</option>
-                                                                            <option value="paid">Paid</option>
-                                                                        </select>
+                                                                            Update
+                                                                        </button>
                                                                     </div>
-                                                                </div>
-                                                                <div className="mt-4">
-                                                                    <button
-                                                                        onClick={() => handleQaTestUpdate(serviceId)}
-                                                                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm"
-                                                                    >
-                                                                        Update
-                                                                    </button>
-                                                                </div>
-                                                            </>
-                                                        ) : (
+
+
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                        <div>
+                                                                            <label className="block text-xs font-semibold text-gray-500 mb-1">
+                                                                                Assigned Staff
+                                                                            </label>
+                                                                            <input
+                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                                                                value={
+                                                                                    assignedStaffDetails[serviceId]?.staffName ||
+                                                                                    officeStaff.find((eng) => eng._id === selectedEmployeeMap[serviceId])?.name ||
+                                                                                    "Not Assigned"
+                                                                                }
+                                                                                readOnly
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                                                                            <input
+                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                                                                value={
+                                                                                    assignedStaffDetails[serviceId]?.status || statusMap[serviceId] || "pending"
+                                                                                }
+                                                                                readOnly
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="mt-4">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setEditableMap((prev) => ({ ...prev, [serviceId]: true }))
+                                                                            }}
+                                                                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm"
+                                                                        >
+                                                                            Edit
+                                                                        </button>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </>
+                                                    )
+                                                        : (
                                                             <>
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                    <div>
-                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">
-                                                                            Assigned Staff
-                                                                        </label>
-                                                                        <input
-                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                                                                            value={
-                                                                                assignedStaffDetails[serviceId]?.staffName ||
-                                                                                officeStaff.find((eng) => eng._id === selectedEmployeeMap[serviceId])?.name ||
-                                                                                "Not Assigned"
-                                                                            }
-                                                                            readOnly
-                                                                        />
-                                                                    </div>
-                                                                    <div>
-                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-                                                                        <input
-                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                                                                            value={
-                                                                                assignedStaffDetails[serviceId]?.status || statusMap[serviceId] || "pending"
-                                                                            }
-                                                                            readOnly
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                                <div className="mt-4">
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setEditableMap((prev) => ({ ...prev, [serviceId]: true }))
-                                                                        }}
-                                                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm"
-                                                                    >
-                                                                        Edit
-                                                                    </button>
-                                                                </div>
+                                                                {isEditable ? (
+                                                                    <>
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                            <div>
+                                                                                <label className="block text-xs font-semibold text-gray-500 mb-1">Employee</label>
+                                                                                <select
+                                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                                                                    value={selectedEmployeeMap[serviceId] || ""}
+                                                                                    onChange={(e) =>
+                                                                                        setSelectedEmployeeMap((prev) => ({
+                                                                                            ...prev,
+                                                                                            [serviceId]: e.target.value,
+                                                                                        }))
+                                                                                    }
+                                                                                >
+                                                                                    <option value="">Select Technician</option>
+                                                                                    {engineers.map((eng) => (
+                                                                                        <option key={eng._id} value={eng._id}>
+                                                                                            {`${eng.empId} - ${eng.name}`}
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                                                                                <select
+                                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                                                                    value={statusMap[serviceId] || "pending"}
+                                                                                    onChange={(e) => {
+                                                                                        const updatedStatus = e.target.value
+                                                                                        setStatusMap((prev) => ({ ...prev, [serviceId]: updatedStatus }))
+                                                                                    }}
+                                                                                >
+                                                                                    <option value="pending">Pending</option>
+                                                                                    <option value="inprogress">In Progress</option>
+                                                                                    <option value="completed">Completed</option>
+                                                                                    <option value="generated">Generated</option>
+                                                                                    <option value="paid">Paid</option>
+                                                                                </select>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="mt-4">
+                                                                            <button
+                                                                                onClick={() => handleOtherWorkTypeUpdate(serviceId)}
+                                                                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm"
+                                                                            >
+                                                                                Update
+                                                                            </button>
+                                                                        </div>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                            <div>
+                                                                                <label className="block text-xs font-semibold text-gray-500 mb-1">Employee</label>
+                                                                                <input
+                                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                                                                    value={
+                                                                                        engineers.find((eng) => eng._id === selectedEmployeeMap[serviceId])?.name ||
+                                                                                        "Not Assigned"
+                                                                                    }
+                                                                                    readOnly
+                                                                                />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                                                                                <input
+                                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                                                                                    value={statusMap[serviceId] || "pending"}
+                                                                                    readOnly
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="mt-4">
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setEditableMap((prev) => ({ ...prev, [serviceId]: true }))
+                                                                                }}
+                                                                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm"
+                                                                            >
+                                                                                Edit
+                                                                            </button>
+                                                                        </div>
+                                                                    </>
+                                                                )}
                                                             </>
                                                         )}
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        {isEditable ? (
-                                                            <>
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                    <div>
-                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Employee</label>
-                                                                        <select
-                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                                                            value={selectedEmployeeMap[serviceId] || ""}
-                                                                            onChange={(e) =>
-                                                                                setSelectedEmployeeMap((prev) => ({
-                                                                                    ...prev,
-                                                                                    [serviceId]: e.target.value,
-                                                                                }))
-                                                                            }
-                                                                        >
-                                                                            <option value="">Select Technician</option>
-                                                                            {engineers.map((eng) => (
-                                                                                <option key={eng._id} value={eng._id}>
-                                                                                    {`${eng.empId} - ${eng.name}`}
-                                                                                </option>
-                                                                            ))}
-                                                                        </select>
-                                                                    </div>
-                                                                    <div>
-                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-                                                                        <select
-                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                                                            value={statusMap[serviceId] || "pending"}
-                                                                            onChange={(e) => {
-                                                                                const updatedStatus = e.target.value
-                                                                                setStatusMap((prev) => ({ ...prev, [serviceId]: updatedStatus }))
-                                                                            }}
-                                                                        >
-                                                                            <option value="pending">Pending</option>
-                                                                            <option value="inprogress">In Progress</option>
-                                                                            <option value="completed">Completed</option>
-                                                                            <option value="generated">Generated</option>
-                                                                            <option value="paid">Paid</option>
-                                                                        </select>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="mt-4">
-                                                                    <button
-                                                                        onClick={() => handleOtherWorkTypeUpdate(serviceId)}
-                                                                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm"
-                                                                    >
-                                                                        Update
-                                                                    </button>
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                    <div>
-                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Employee</label>
-                                                                        <input
-                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                                                                            value={
-                                                                                engineers.find((eng) => eng._id === selectedEmployeeMap[serviceId])?.name ||
-                                                                                "Not Assigned"
-                                                                            }
-                                                                            readOnly
-                                                                        />
-                                                                    </div>
-                                                                    <div>
-                                                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-                                                                        <input
-                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                                                                            value={statusMap[serviceId] || "pending"}
-                                                                            readOnly
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                                <div className="mt-4">
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setEditableMap((prev) => ({ ...prev, [serviceId]: true }))
-                                                                        }}
-                                                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm"
-                                                                    >
-                                                                        Edit
-                                                                    </button>
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                    </>
-                                                )}
                                                 {successMessage && <SuccessAlert message={successMessage} />}
                                                 {errorMessage && (
                                                     <div className="flex items-start gap-3 bg-red-50 border border-red-300 text-red-800 rounded-lg p-4 shadow-md w-full max-w-md mt-4">

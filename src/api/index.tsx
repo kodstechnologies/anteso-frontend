@@ -197,8 +197,8 @@ export const createRsoByHospitalId = async (hospitalId: string, payload: any) =>
 
         const res = await api.post(`/rso/create-rso-by-hospitalId/${hospitalId}`, payload, {
             headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json', // ← Important
+                Authorization: `Bearer ${token}`
+                // 'Content-Type': 'application/json', // ← Important
             },
         });
 
@@ -434,6 +434,24 @@ export const addEnquiry = async (payload: any) => {
         );
     }
 }
+
+export const addEnquiryCreateDirectOrder = async (payload: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.post('/enquiry/create-direct-order-from-enquiry', payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ getClientById ~ error:", error);
+
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch client data"
+        );
+    }
+}
 //used in add quotation
 export const getEnquiryById = async (enquiryId: any) => {
     console.log("🚀 ~ getEnquiryById ~ enquiryId:", enquiryId)
@@ -550,7 +568,7 @@ export const createQuotationByEnquiryId = async (payload: any, id: any) => {
 export const getQuotationByEEnquiryId = async (enquiryId: any) => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.get(`/quotation/get-by-quotation-id/${enquiryId}`, {
+        const res = await api.get(`/quotation/get-by-enquiry-id/${enquiryId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -1017,12 +1035,15 @@ export const getServices = async (orderId: any) => {
 export const getAllTechnicians = async () => {
     try {
         const token = Cookies.get('accessToken')
+        console.log("hi from getAllTechnicianss");
+
         const res = await api.get('/technician/get-all', {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         })
-        return res.data
+        console.log("🚀 ~ getAllTechnicians ~ res:", res)
+        return res.data.data
     } catch (error: any) {
         console.error("🚀 ~ all  technicians ~ error:", error);
         throw new Error(
@@ -1031,6 +1052,7 @@ export const getAllTechnicians = async () => {
     }
 }
 
+// 2.
 export const getMachineDetails = async (id: any) => {
     try {
         const token = Cookies.get('accessToken')
@@ -1039,14 +1061,33 @@ export const getMachineDetails = async (id: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        return res.data
+        return res.data.data
     } catch (error: any) {
         console.error("🚀 ~ all  machines ~ error:", error);
         throw new Error(
             error?.response?.data?.message || "Failed to fetch machines data"
         );
     }
+
 }
+
+// 1.
+// export const getMachineDetails = async (id: any) => {
+//     try {
+//         const token = Cookies.get('accessToken')
+//         const res = await api.get(`/orders/machine-details/${id}`, {
+//             headers: {
+//                 Authorization: `Bearer ${token}`,
+//             },
+//         })
+//         return res.data
+//     } catch (error: any) {
+//         console.error("🚀 ~ all  machines ~ error:", error);
+//         throw new Error(
+//             error?.response?.data?.message || "Failed to fetch machines data"
+//         );
+//     }
+// }
 
 export const getAllOfficeStaff = async () => {
     try {
@@ -1056,7 +1097,7 @@ export const getAllOfficeStaff = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        return res.data
+        return res.data.data
     } catch (error: any) {
         console.error("🚀 ~ all  machines ~ error:", error);
         throw new Error(
@@ -1089,26 +1130,33 @@ export const updateEmployeeWithStatus = async (orderId: string, serviceId: strin
         );
     }
 }
-export const assignToTechnicianByQA = async (orderId: string, serviceId: string, technicianId: string) => {
+
+export const assignToTechnicianByQA = async (
+    orderId: string,
+    serviceId: string,
+    technicianId: string,
+    worktype: string
+) => {
     try {
-        const token = Cookies.get('accessToken')
-        const res = await api.put(`/orders/assign-to-technician/${orderId}/${serviceId}/${technicianId}`, {
-            orderId,
-            serviceId,
-            technicianId,
-        }, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-        return res.data
+        const token = Cookies.get("accessToken");
+        const encodedWorkType = encodeURIComponent(worktype);
+        const res = await api.put(
+            `/orders/assign-to-technician/${orderId}/${serviceId}/${technicianId}/${encodedWorkType}`,
+            {}, // no body since everything is in params
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        return res.data;
     } catch (error: any) {
         console.error("🚀  ~ error:", error);
-        throw new Error(
-            error?.response?.data?.message || "Failed to fetch "
-        );
+        throw new Error(error?.response?.data?.message || "Failed to assign technician");
     }
-}
+};
+
 export const getQARaw = async (orderId: any) => {
     try {
         const token = Cookies.get('accessToken')
@@ -1133,13 +1181,15 @@ export const completedOrderStatus = async () => {
 
     }
 }
-export const assignToOfficeStaff = async (orderId: string, serviceId: string, officeStaffId: string) => {
+export const assignToOfficeStaff = async (orderId: string, serviceId: string, officeStaffId: string, workType: string, status: any) => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.put(`/orders/assign-to-office-staff/${orderId}/${serviceId}/${officeStaffId}`, {
+        const res = await api.put(`/orders/assign-to-office-staff/${orderId}/${serviceId}/${officeStaffId}/${workType}/${status}`, {
             orderId,
             serviceId,
             officeStaffId,
+            workType,
+            status
 
         }, {
             headers: {
@@ -1163,6 +1213,7 @@ export const getAlltripsByTechnicianId = async (id: string) => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ getAlltripsByTechnicianId ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ all  trips ~ error:", error);
@@ -1175,7 +1226,7 @@ export const getAlltripsByTechnicianId = async (id: string) => {
 export const addAdvance = async (id: string, payload: { advancedAmount: number }) => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.post(`/expense/add-advance-to-technician/${id}`, payload, {
+        const res = await api.post(`/advance/add-advance-to-technician/${id}`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json"
@@ -1246,11 +1297,14 @@ export const getEngineerByTool = async () => {
 export const getMachineUpdates = async (technicianId: any, orderId: any, serviceId: any, worktype: any) => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.get(`/orders/get-updated-order-services/${technicianId}/${orderId}/${serviceId}/${worktype}`, {
+
+        const res = await api.get(`/orders/get/${technicianId}/${orderId}/${serviceId}/${encodeURIComponent(worktype)}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         })
+
+        console.log("🚀 ~ getMachineUpdates ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getMachineUpdates ~ error:", error);
@@ -1277,7 +1331,7 @@ export const getEngineerByTools = async (toolId: any) => {
     }
 }
 
-export const createOrder = async (payload:any) => {
+export const createOrder = async (payload: any) => {
     try {
         const token = Cookies.get('accessToken')
         const res = await api.post(`/orders/create-order`, payload, {
@@ -1292,5 +1346,172 @@ export const createOrder = async (payload:any) => {
         throw new Error(
             error?.response?.data?.message || "Failed to createOrder"
         );
+    }
+}
+
+export const completeStatusAndReport = async (
+    technicianId: any,
+    orderId: any,
+    serviceId: any,
+    status: any,
+    payload: any,
+    workType: any,
+    file?: File[]
+) => {
+    console.log("🚀 ~ completeStatusAndReport ~ file:", file)
+    console.log("🚀 ~ completeStatusAndReport ~ status:", status)
+    console.log("🚀 ~ completeStatusAndReport ~ serviceId:", serviceId)
+    console.log("🚀 ~ completeStatusAndReport ~ orderId:", orderId)
+    console.log("🚀 ~ completeStatusAndReport ~ technicianId:", technicianId)
+    try {
+        const token = Cookies.get('accessToken')
+        let dataToSend: any
+        let headers: any = {
+            Authorization: `Bearer ${token}`,
+        }
+        if (file && file.length > 0) {
+            // send files + payload as FormData
+            const formData = new FormData()
+            formData.append("status", status)
+            formData.append("payload", JSON.stringify(payload))
+            file.forEach((file, idx) => {
+                formData.append("file", file) // backend should accept 'files'
+            })
+            dataToSend = formData
+            headers["Content-Type"] = "multipart/form-data"
+        } else {
+            // fallback to JSON payload
+            dataToSend = { status, ...payload }
+            headers["Content-Type"] = "application/json"
+        }
+        const res = await api.post(
+            `/orders/completed-status-report/${technicianId}/${orderId}/${serviceId}/${workType}/${status}`,
+            dataToSend,
+            { headers }
+        )
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ completeStatusAndReport ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to completeStatusAndReport"
+        );
+    }
+}
+
+export const getAllDealers = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/dealers/get-all-dealers`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getEngineerByTools ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const createPayment = async (payload: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.post(`/payment/add-payment`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ createPayment ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to createPayment"
+        );
+    }
+}
+
+export const allOrdersWithClient = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/payment/all-orders-with-client-name`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ allOrdersWithClient ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to allOrdersWithClient"
+        );
+    }
+}
+
+export const getTotalAmount = async (orderId: string) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/payment/get-total-amount`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { orderId }, // send orderId as query
+        });
+        return res;
+    } catch (error: any) {
+        console.error("Failed to get total amount", error);
+        throw new Error(error?.response?.data?.message || "Failed to get total amount");
+    }
+};
+
+
+export const getAllPayments = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/payment/get-all-payments`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getEngineerByTools ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const getAllStates = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/enquiry/all-states`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ all-states ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch all-states"
+        );
+    }
+}
+
+export const geAllAdvances = async (technicianId: string) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/expense/get-advance-amount/${technicianId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ geAllAdvances ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        )
     }
 }

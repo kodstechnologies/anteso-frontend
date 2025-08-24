@@ -174,7 +174,7 @@ const Orders = () => {
                                             <Link to={`/admin/orders/view/${record._id}`} className="flex hover:text-info">
                                                 <IconEye className="w-4.5 h-4.5" />
                                             </Link>
-                                            <Link to={`/admin/orders/edit/${record._id}`} className="flex hover:text-info">
+                                            <Link to={`/admin/clients/preview/${record._id}`} className="flex hover:text-info">
                                                 <IconEdit className="w-4.5 h-4.5" />
                                             </Link>
                                             <button

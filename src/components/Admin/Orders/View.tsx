@@ -20,6 +20,7 @@ import CourierDetails from './CourierDetails';
 import AdditionalServices from './AdditionalServices';
 import ServiceDetails from './ServiceDetails';
 import { getBasicDetailsByOrderId } from '../../../api';
+import ServiceDetails2 from './ServiceDetails2'
 
 // Define interfaces
 interface OptionType {
@@ -121,7 +122,8 @@ const View = () => {
 
             </div>
             {/* Service details */}
-            <ServiceDetails orderId={orderId} />
+            {/* <ServiceDetails orderId={orderId} /> */}
+            <ServiceDetails2 orderId={orderId}/>
             <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
                 <div className="space-y-4">
                     <AdditionalServices />

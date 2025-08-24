@@ -7,8 +7,11 @@ import { FieldArray, Field, Form, Formik, ErrorMessage, type FieldProps } from "
 import { Link, useNavigate } from "react-router-dom"
 import Select from "react-select"
 import { showMessage } from "../../components/common/ShowMessage"
-import { addEnquiry, allEmployees } from "../../api/index" // Update this path
+import { addEnquiry, allEmployees, getAllStates } from "../../api/index" // Update this path
 import logo from '../../assets/logo/logo.png'
+import ShowSuccess from '../../components/common/ShowSuccess'
+import AnimatedTrashIcon from "../../components/common/AnimatedTrashIcon"
+// import SuccessAlert from "../../components/common/ShowSuccess"
 
 // Define interfaces
 interface OptionType {
@@ -16,6 +19,10 @@ interface OptionType {
     label: string
 }
 
+type StateType = {
+    _id: string;
+    name: string; // assuming backend sends `name` for state
+};
 interface MultiSelectFieldProps {
     name: string
     options: OptionType[]
@@ -137,6 +144,8 @@ const AddEnquiry: React.FC = () => {
     const navigate = useNavigate()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [employeeOptions, setEmployeeOptions] = useState<{ label: string; value: string }[]>([]);
+    const [states, setStates] = useState<StateType[]>([]);
+    const [loading, setLoading] = useState(true);
     // useEffect(() => {
     //     const fetchEmployees = async () => {
     //         try {
@@ -158,6 +167,21 @@ const AddEnquiry: React.FC = () => {
     // }, []);
 
 
+    useEffect(() => {
+        const fetchStates = async () => {
+            try {
+                const res = await getAllStates();
+                console.log("🚀 ~ fetchStates ~ res:", res.data.data)
+                setStates(res.data.data); // backend response shape (adjust key if needed)
+            } catch (error) {
+                console.error("Failed to fetch states:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStates();
+    }, []);
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
         // leadOwner: Yup.string().required("Please fill the Field"),
@@ -182,9 +206,19 @@ const AddEnquiry: React.FC = () => {
                     equipmentNo: Yup.string().required("Required"),
                     workType: Yup.array().min(1, "At least one work type is required"),
                     machineModel: Yup.string().required("Required"),
-                }),
+                })
             )
             .min(1, "At least one service is required"),
+        // .test(
+        //     "unique-machineType",
+        //     "Each Machine Type must be unique",
+        //     (services) => {
+        //         if (!services) return true;
+        //         const machineTypes = services.map(s => s.machineType);
+        //         const uniqueTypes = new Set(machineTypes);
+        //         return uniqueTypes.size === machineTypes.length;
+        //     }
+        // ),
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
                 return { ...schema, [service]: Yup.string().nullable() }
@@ -193,46 +227,42 @@ const AddEnquiry: React.FC = () => {
     })
 
     // Form submission handler
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
     const submitForm = async (values: FormValues, { setSubmitting, resetForm }: any) => {
         try {
-            setIsSubmitting(true)
+            setIsSubmitting(true);
 
-            // Generate enquiryID (e.g., ENQ001) - replace with actual logic to fetch existing enquiries
-            const enquiryCount = 1 // Placeholder: Replace with actual count from enquiriesData or API
-            // const newEnquiryID = `ENQ${String(enquiryCount).padStart(3, "0")}`
-            const submissionValues = { ...values, }
+            const submissionValues = { ...values };
 
-            console.log("Submitting form with values:", submissionValues)
+            console.log("Submitting form with values:", submissionValues);
 
-            // Make API call
-            const response = await addEnquiry(submissionValues)
+            // API call
+            const response = await addEnquiry(submissionValues);
 
-            console.log("API Response:", response)
+            console.log("API Response:", response);
 
-            // Show success message
-            showMessage("Enquiry submitted successfully!", "success")
+            // ✅ Show success message with enquiryId
+            const enquiryId = response?.data?.enquiryId || "ENQ-UNKNOWN";
+            setSuccessMessage(`Enquiry submitted successfully! Enquiry ID: ${enquiryId}`);
 
             // Reset form
-            resetForm()
-
-            // Navigate to enquiry list
-            navigate("/admin/enquiry")
+            resetForm();
         } catch (error: any) {
-            console.error("Error submitting enquiry:", error)
-
-            // Show error message
-            const errorMessage = error?.message || "Failed to submit enquiry. Please try again."
-            showMessage(errorMessage, "error")
+            console.error("Error submitting enquiry:", error);
+            const errorMessage = error?.message || "Failed to submit enquiry. Please try again.";
+            showMessage(errorMessage, "error");
         } finally {
-            setIsSubmitting(false)
-            setSubmitting(false)
+            setIsSubmitting(false);
+            setSubmitting(false);
         }
-    }
+    };
+
 
     return (
         <div className="fixed w-[100vw] h-[100vh] left-0 top-0 z-50 sm:px-20 sm:py-4 overflow-y-scroll bg-white">
             <img src={logo} alt="" className="h-14 mt-4 mb-8" />
-            <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
+            {/* <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
                 <li>
                     <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
                         Dashboard
@@ -248,7 +278,7 @@ const AddEnquiry: React.FC = () => {
                         Add Enquiry
                     </Link>
                 </li>
-            </ol>
+            </ol> */}
             <h5 className="font-semibold text-lg mb-4">Enquiry Form</h5>
             <Formik
                 initialValues={{
@@ -281,6 +311,12 @@ const AddEnquiry: React.FC = () => {
                 {({ errors, submitCount, values, setFieldValue, isSubmitting: formikSubmitting }) => (
                     <Form className="space-y-5">
                         {/* Basic Details */}
+                        {successMessage && (
+                            <ShowSuccess
+                                message={successMessage}
+                                onClose={() => setSuccessMessage(null)}
+                            />
+                        )}
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Basic Details</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
@@ -341,11 +377,31 @@ const AddEnquiry: React.FC = () => {
                                     />
                                     {submitCount && errors.district ? <div className="text-danger mt-1">{errors.district}</div> : null}
                                 </div>
-                                <div className={submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""}>
+                                <div
+                                    className={
+                                        submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""
+                                    }
+                                >
                                     <label htmlFor="state">State</label>
-                                    <Field name="state" type="text" id="state" placeholder="Enter State Name" className="form-input" />
-                                    {submitCount && errors.state ? <div className="text-danger mt-1">{errors.state}</div> : null}
+                                    <Field
+                                        as="select"
+                                        name="state"
+                                        id="state"
+                                        className="form-input"
+                                        disabled={loading}
+                                    >
+                                        <option value="">Select State</option>
+                                        {states.map((st, index) => (
+                                            <option key={index} value={String(st)}>
+                                                {String(st)}
+                                            </option>
+                                        ))}
+                                    </Field>
+                                    {submitCount && errors.state ? (
+                                        <div className="text-danger mt-1">{errors.state}</div>
+                                    ) : null}
                                 </div>
+
                                 <div className={submitCount && errors.pinCode ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="pinCode">PIN Code</label>
                                     <Field
@@ -492,17 +548,22 @@ const AddEnquiry: React.FC = () => {
                                                             className="text-red-500 text-sm"
                                                         />
                                                     </div>
+
                                                 </div>
+
                                                 {/* Remove Button */}
                                                 {values.services.length > 1 && (
-                                                    <div className="md:col-span-1 flex justify-end">
-                                                        <button type="button" onClick={() => remove(index)} className="mb-4 text-red-500 text-xs">
-                                                            Remove
-                                                        </button>
+                                                    <div className="md:col-span-12 flex justify-end">
+                                                        <AnimatedTrashIcon onClick={() => remove(index)} />
                                                     </div>
                                                 )}
+
+
                                             </div>
                                         ))}
+                                        {/* {errors.services && typeof errors.services === 'string' && (
+                                            <div className="text-red-500 text-sm">{errors.services}</div>
+                                        )} */}
                                         {/* Add Another Machine */}
                                         <button
                                             type="button"

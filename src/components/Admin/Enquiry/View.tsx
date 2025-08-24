@@ -22,15 +22,20 @@ interface HospitalDetails {
         phone: string | number
         email: string
     }
-    machines: {
-        machineType: string
-        equipmentNo: string | number // Updated based on your latest response
-        workType: string[] // Updated based on your latest response (array of strings)
-        machineModel: string
+    services: {
         _id: string
+        machineType: string
+        equipmentNo: string | number
+        machineModel: string
+        serialNumber?: string
+        remark?: string
+        workTypeDetails: { workType: string; status: string }[]
     }[]
     additionalServices: Record<string, string>
+    specialInstructions?: string
+    attachment?: string
 }
+
 
 // Constants (keeping as per original, though not directly used in this component's render)
 const employeeOptions: OptionType[] = [
@@ -58,7 +63,6 @@ const View = () => {
                 // You might want to set an error state here to display an error message to the user
             }
         }
-
         if (id) {
             // Only fetch if id is available
             fetchDetails()
@@ -117,7 +121,7 @@ const View = () => {
                 <h5 className="text-lg font-bold text-gray-800 mb-6">Service Details</h5>
                 <div className="flex flex-col md:flex-row">
                     <div className="basis-2/3 pr-0 md:pr-4 mb-4 md:mb-0">
-                        {details.machines.map((machine, idx) => (
+                        {details.services.map((machine, idx) => (
                             <div key={idx} className="bg-white p-6 rounded-lg shadow-lg border-2 mb-4 last:mb-0">
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -127,12 +131,13 @@ const View = () => {
                                         </div>
                                         <div>
                                             <span className="font-semibold text-gray-700">Equipment/Serial No.:</span>
-                                            <p className="text-gray-600 mt-1">{machine.equipmentNo}</p> {/* Changed to equipmentNo */}
+                                            <p className="text-gray-600 mt-1">{machine.equipmentNo}</p>
                                         </div>
                                         <div>
                                             <span className="font-semibold text-gray-700">Type Of Work:</span>
-                                            <p className="text-gray-600 mt-1">{machine.workType.join(", ")}</p>{" "}
-                                            {/* Changed to workType and joined */}
+                                            <p className="text-gray-600 mt-1">
+                                                {machine.workTypeDetails.map((wt) => wt.workType).join(", ")}
+                                            </p>
                                         </div>
                                         <div>
                                             <span className="font-semibold text-gray-700">Machine Model:</span>
@@ -142,6 +147,7 @@ const View = () => {
                                 </div>
                             </div>
                         ))}
+
                     </div>
                     <div className="mx-auto md:ml-auto md:mr-0">
                         <div className="flex">

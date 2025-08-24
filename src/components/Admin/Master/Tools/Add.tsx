@@ -75,16 +75,31 @@ const AddTool = () => {
     // };
     const handleSubmit = async (values: ToolFormValues) => {
         try {
-            console.log("🚀 ~ handleSubmit ~ values:", values);
+            const formData = new FormData();
 
-            await addTools(values); // this should be a plain POST with JSON
+            // Loop through all values
+            Object.entries(values).forEach(([key, value]) => {
+                if (key === "certificate" && value instanceof File) {
+                    formData.append("certificate", value); // attach file
+                } else {
+                    formData.append(key, value as string);
+                }
+            });
 
-            showMessage('Tool added successfully!', 'success');
-            navigate('/admin/tools');
+            // Debugging: check FormData content
+            for (let [key, val] of formData.entries()) {
+                console.log(`${key}:`, val);
+            }
+
+            await addTools(formData); // <-- must send FormData not JSON
+
+            showMessage("Tool added successfully!", "success");
+            navigate("/admin/tools");
         } catch (error: any) {
-            showMessage(error.message || 'Failed to add tool', 'error');
+            showMessage(error.message || "Failed to add tool", "error");
         }
     };
+
 
     return (
         <>

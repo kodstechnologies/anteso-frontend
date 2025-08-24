@@ -41,7 +41,9 @@ interface RSO {
 
 const AddHospital = () => {
   const navigate = useNavigate()
-  const { hospitalId } = useParams()
+  const { clientId, hospitalId } = useParams()
+  console.log("🚀 ~ AddHospital ~ clientId:", clientId)
+
   console.log("🚀 ~  ~ hospitalId:", hospitalId)
 
   const [loading, setLoading] = useState(false)
@@ -85,7 +87,7 @@ const AddHospital = () => {
   }, [hospitalId])
 
   const handleAddEntity = (entityType: "institute" | "rso") => {
-    navigate(`/admin/clients/preview/${hospitalId}/add-${entityType}`)
+    navigate(`/admin/clients/preview/${clientId}/${hospitalId}/add-${entityType}`)
   }
 
   const handleEditEntity = (entityId: number | string, entityType: "institute" | "rso") => {
@@ -152,7 +154,7 @@ const AddHospital = () => {
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
           <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
-            Add Hospital
+            View Hospital
           </Link>
         </li>
       </ol>

@@ -2,8 +2,14 @@ import * as Yup from 'yup';
 import { Field, Form, Formik } from 'formik';
 import { Link, useNavigate } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getAllStates } from '../../../../api';
 
+
+type StateType = {
+    _id: string;
+    name: string; // assuming backend sends `name` for state
+};
 // Predefined QA Test options
 const qaTestOptions = [
     { label: 'FIXED X RAY', value: 'FIXED_X_RAY', price: 3500, system: true },
@@ -26,6 +32,8 @@ const AddDealer = () => {
     const [editableOptions, setEditableOptions] = useState(qaTestOptions);
     const [newQaTestName, setNewQaTestName] = useState('');
     const [newQaTestPrice, setNewQaTestPrice] = useState('');
+    const [states, setStates] = useState<StateType[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const SubmittedForm = Yup.object().shape({
         dealersName: Yup.string().required('Please fill the Field'),
@@ -42,6 +50,21 @@ const AddDealer = () => {
         // actual: Yup.number().required('Please fill the Field').min(0, 'Actual cost cannot be negative'),
         // fixed: Yup.number().required('Please fill the Field').min(0, 'Fixed cost cannot be negative'),
     });
+    useEffect(() => {
+        const fetchStates = async () => {
+            try {
+                const res = await getAllStates();
+                console.log("🚀 ~ fetchStates ~ res:", res.data.data)
+                setStates(res.data.data); // backend response shape (adjust key if needed)
+            } catch (error) {
+                console.error("Failed to fetch states:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStates();
+    }, []);
 
     const submitForm = (values: any) => {
         const updatedValues = {
@@ -112,10 +135,29 @@ const AddDealer = () => {
                                     <Field name="city" type="text" id="city" placeholder="Enter City" className="form-input" />
                                     {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
                                 </div>
-                                <div className={submitCount && errors.state ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                <div
+                                    className={
+                                        submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""
+                                    }
+                                >
                                     <label htmlFor="state">State</label>
-                                    <Field name="state" type="text" id="state" placeholder="Enter State" className="form-input" />
-                                    {submitCount && errors.state ? <div className="text-danger mt-1">{errors.state}</div> : null}
+                                    <Field
+                                        as="select"
+                                        name="state"
+                                        id="state"
+                                        className="form-input"
+                                        disabled={loading}
+                                    >
+                                        <option value="">Select State</option>
+                                        {states.map((st, index) => (
+                                            <option key={index} value={String(st)}>
+                                                {String(st)}
+                                            </option>
+                                        ))}
+                                    </Field>
+                                    {submitCount && errors.state ? (
+                                        <div className="text-danger mt-1">{errors.state}</div>
+                                    ) : null}
                                 </div>
                                 <div className={submitCount && errors.pinCode ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="pinCode">Pin Code</label>

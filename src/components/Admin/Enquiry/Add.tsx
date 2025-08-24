@@ -6,7 +6,8 @@ import { FieldArray, Field, Form, Formik, ErrorMessage, type FieldProps } from "
 import { Link, useNavigate } from "react-router-dom"
 import Select from "react-select"
 import { showMessage } from "../../common/ShowMessage"
-import { addEnquiry, allEmployees } from "../../../api/index" // Update this path
+import { addEnquiryCreateDirectOrder, allEmployees, getAllDealers, getAllStates } from "../../../api/index" // Update this path
+import AnimatedTrashIcon from "../../common/AnimatedTrashIcon"
 
 // Define interfaces
 interface OptionType {
@@ -26,6 +27,11 @@ interface Service {
     machineModel: string
 }
 
+type StateType = {
+    _id: string;
+    name: string; // assuming backend sends `name` for state
+};
+
 interface FormValues {
     hospitalName: string
     fullAddress: string
@@ -33,8 +39,8 @@ interface FormValues {
     district: string
     state: string
     pinCode: string
-    branch: string
-    contactPerson: string
+    branchName: string
+    contactPersonName: string
     emailAddress: string
     contactNumber: string
     designation: string
@@ -89,7 +95,7 @@ const serviceOptions: string[] = [
     "LEAD SHEET",
     "LEAD GLASS",
     "LEAD APRON",
-    "THYROID SHIELD",
+    "THYROID SHIELD",                                                                                                                                                                                                                                                                                                                                                                                                   
     "GONAD SHIELD",
     "OTHERS",
 ]
@@ -135,26 +141,54 @@ const AddEnquiry: React.FC = () => {
     const navigate = useNavigate()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [employeeOptions, setEmployeeOptions] = useState<{ label: string; value: string }[]>([]);
+    const [dealerOptions, setDealerOptions] = useState<{ label: string; value: string }[]>([]);
+    const [states, setStates] = useState<StateType[]>([]);
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+        const fetchStates = async () => {
+            try {
+                const res = await getAllStates();
+                console.log("🚀 ~ fetchStates ~ res:", res.data.data)
+                setStates(res.data.data); // backend response shape (adjust key if needed)
+            } catch (error) {
+                console.error("Failed to fetch states:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStates();
+    }, []);
     useEffect(() => {
         const fetchEmployees = async () => {
             try {
                 const data = await allEmployees();
-                console.log("🚀 ~ fetchEmployees ~ data:", data);
-
                 const options = data.map((emp: any) => ({
-                    label: `${emp.name} - employee`, // Add suffix here
-                    value: emp._id, // Use _id as the unique identifier
+                    label: `${emp.name} - employee`,
+                    value: emp._id,
                 }));
-
                 setEmployeeOptions(options);
             } catch (err) {
-                console.error('Failed to load employees', err);
+                console.error("Failed to load employees", err);
+            }
+        };
+
+        const fetchDealers = async () => {
+            try {
+                const res = await getAllDealers();
+                // since your API returns { success, dealers, total }
+                const options = res.data.dealers.map((dealer: any) => ({
+                    label: `${dealer.name} - dealer`,
+                    value: dealer._id,
+                }));
+                setDealerOptions(options);
+            } catch (err) {
+                console.error("Failed to load dealers", err);
             }
         };
 
         fetchEmployees();
+        fetchDealers();
     }, []);
-
 
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
@@ -167,8 +201,8 @@ const AddEnquiry: React.FC = () => {
         pinCode: Yup.string()
             .matches(/^\d{6}$/, "PIN Code must be exactly 6 digits")
             .required("PIN Code is required"),
-        branch: Yup.string().required("Please fill the Field"),
-        contactPerson: Yup.string().required("Please fill the Field"),
+        branchName: Yup.string().required("Please fill the Field"),
+        contactPersonName: Yup.string().required("Please fill the Field"),
         emailAddress: Yup.string().email("Invalid email").required("Please fill the Email"),
         contactNumber: Yup.string()
             .matches(/^\d{10}$/, "Contact Number must be exactly 10 digits")
@@ -182,39 +216,43 @@ const AddEnquiry: React.FC = () => {
                     equipmentNo: Yup.string().required("Required"),
                     workType: Yup.array().min(1, "At least one work type is required"),
                     machineModel: Yup.string().required("Required"),
-                }),
+                })
             )
-            .min(1, "At least one service is required"),
+            .min(1, "At least one service is required")
+            .test(
+                "unique-machineType",
+                "Each Machine Type must be unique",
+                (services) => {
+                    if (!services) return true;
+                    const machineTypes = services.map(s => s.machineType);
+                    const uniqueTypes = new Set(machineTypes);
+                    return uniqueTypes.size === machineTypes.length;
+                }
+            ),
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
-                return { ...schema, [service]: Yup.string().nullable() }
-            }, {}),
+                return { ...schema, [service]: Yup.string().nullable() };
+            }, {})
         ),
-    })
+    });
+
 
     // Form submission handler
     const submitForm = async (values: FormValues, { setSubmitting, resetForm }: any) => {
         try {
             setIsSubmitting(true)
-
             // Generate enquiryID (e.g., ENQ001) - replace with actual logic to fetch existing enquiries
             const enquiryCount = 1 // Placeholder: Replace with actual count from enquiriesData or API
             // const newEnquiryID = `ENQ${String(enquiryCount).padStart(3, "0")}`
             const submissionValues = { ...values, }
-
             console.log("Submitting form with values:", submissionValues)
-
             // Make API call
-            const response = await addEnquiry(submissionValues)
-
+            const response = await addEnquiryCreateDirectOrder(submissionValues)
             console.log("API Response:", response)
-
             // Show success message
             showMessage("Enquiry submitted successfully!", "success")
-
             // Reset form
             resetForm()
-
             // Navigate to enquiry list
             navigate("/admin/enquiry")
         } catch (error: any) {
@@ -258,8 +296,8 @@ const AddEnquiry: React.FC = () => {
                     district: "",
                     state: "",
                     pinCode: "",
-                    branch: "",
-                    contactPerson: "",
+                    branchName: "",
+                    contactPersonName: "",
                     emailAddress: "",
                     contactNumber: "",
                     designation: "",
@@ -287,9 +325,9 @@ const AddEnquiry: React.FC = () => {
                                     <label htmlFor="leadOwner">Lead Owner</label>
                                     <Field as="select" name="leadOwner" className="form-input">
                                         <option value="">Select Lead Owner</option>
-                                        {employeeOptions.map((emp) => (
-                                            <option key={emp.value} value={emp.value}>
-                                                {emp.label}
+                                        {[...employeeOptions, ...dealerOptions].map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
                                             </option>
                                         ))}
                                     </Field>
@@ -297,6 +335,7 @@ const AddEnquiry: React.FC = () => {
                                         <div className="text-danger mt-1">{errors.leadOwner}</div>
                                     ) : null}
                                 </div>
+
 
                                 <div className={submitCount && errors.hospitalName ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="hospitalName">Hospital Name</label>
@@ -340,10 +379,29 @@ const AddEnquiry: React.FC = () => {
                                     />
                                     {submitCount && errors.district ? <div className="text-danger mt-1">{errors.district}</div> : null}
                                 </div>
-                                <div className={submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""}>
+                                <div
+                                    className={
+                                        submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""
+                                    }
+                                >
                                     <label htmlFor="state">State</label>
-                                    <Field name="state" type="text" id="state" placeholder="Enter State Name" className="form-input" />
-                                    {submitCount && errors.state ? <div className="text-danger mt-1">{errors.state}</div> : null}
+                                    <Field
+                                        as="select"
+                                        name="state"
+                                        id="state"
+                                        className="form-input"
+                                        disabled={loading}
+                                    >
+                                        <option value="">Select State</option>
+                                        {states.map((st, index) => (
+                                            <option key={index} value={String(st)}>
+                                                {String(st)}
+                                            </option>
+                                        ))}
+                                    </Field>
+                                    {submitCount && errors.state ? (
+                                        <div className="text-danger mt-1">{errors.state}</div>
+                                    ) : null}
                                 </div>
                                 <div className={submitCount && errors.pinCode ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="pinCode">PIN Code</label>
@@ -363,22 +421,22 @@ const AddEnquiry: React.FC = () => {
                                     ) : null}
                                 </div>
 
-                                <div className={submitCount && errors.branch ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="branch">Branch Name</label>
-                                    <Field name="branch" type="text" id="branch" placeholder="Enter Branch Name" className="form-input" />
-                                    {submitCount && errors.branch ? <div className="text-danger mt-1">{errors.branch}</div> : null}
+                                <div className={submitCount && errors.branchName ? "has-error" : submitCount ? "has-success" : ""}>
+                                    <label htmlFor="branchName">Branch Name</label>
+                                    <Field name="branchName" type="text" id="branchName" placeholder="Enter Branch Name" className="form-input" />
+                                    {submitCount && errors.branchName ? <div className="text-danger mt-1">{errors.branchName}</div> : null}
                                 </div>
-                                <div className={submitCount && errors.contactPerson ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="contactPerson">Contact Person Name</label>
+                                <div className={submitCount && errors.contactPersonName ? "has-error" : submitCount ? "has-success" : ""}>
+                                    <label htmlFor="contactPersonName">Contact Person Name</label>
                                     <Field
-                                        name="contactPerson"
+                                        name="contactPersonName"
                                         type="text"
-                                        id="contactPerson"
+                                        id="contactPersonName"
                                         placeholder="Enter Contact Person Name"
                                         className="form-input"
                                     />
-                                    {submitCount && errors.contactPerson ? (
-                                        <div className="text-danger mt-1">{errors.contactPerson}</div>
+                                    {submitCount && errors.contactPersonName ? (
+                                        <div className="text-danger mt-1">{errors.contactPersonName}</div>
                                     ) : null}
                                 </div>
                                 <div className={submitCount && errors.emailAddress ? "has-error" : submitCount ? "has-success" : ""}>
@@ -402,9 +460,9 @@ const AddEnquiry: React.FC = () => {
                                         id="contactNumber"
                                         placeholder="Enter Contact Number"
                                         className="form-input"
-                                        maxLength={10} // ✅ Prevent more than 10 digits
+                                        maxLength={10}
                                         onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                            e.target.value = e.target.value.replace(/[^0-9]/g, ""); // ✅ Allow only numbers
+                                            e.target.value = e.target.value.replace(/[^0-9]/g, "");
                                         }}
                                     />
                                     {submitCount && errors.contactNumber ? (
@@ -430,6 +488,8 @@ const AddEnquiry: React.FC = () => {
                         {/* Services Section */}
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Services</h5>
+
+
                             <FieldArray name="services">
                                 {({ push, remove }) => (
                                     <>
@@ -494,14 +554,15 @@ const AddEnquiry: React.FC = () => {
                                                 </div>
                                                 {/* Remove Button */}
                                                 {values.services.length > 1 && (
-                                                    <div className="md:col-span-1 flex justify-end">
-                                                        <button type="button" onClick={() => remove(index)} className="mb-4 text-red-500 text-xs">
-                                                            Remove
-                                                        </button>
+                                                    <div className="md:col-span-12 flex justify-end">
+                                                        <AnimatedTrashIcon onClick={() => remove(index)} />
                                                     </div>
                                                 )}
                                             </div>
                                         ))}
+                                        {errors.services && typeof errors.services === 'string' && (
+                                            <div className="text-red-500 text-sm">{errors.services}</div>
+                                        )}
                                         {/* Add Another Machine */}
                                         <button
                                             type="button"
@@ -513,6 +574,7 @@ const AddEnquiry: React.FC = () => {
                                     </>
                                 )}
                             </FieldArray>
+
                         </div>
 
                         {/* Additional Services */}

@@ -1,47 +1,53 @@
 "use client"
-import { CheckCircleIcon } from "lucide-react"
 import { useState, useEffect } from "react"
 import { MdDelete, MdVisibility } from "react-icons/md"
 import { useParams } from "react-router-dom"
-import { addAdvance, getAlltripsByTechnicianId } from "../../../api" // adjust path
-import { log } from "console"
+import { addAdvance, getAlltripsByTechnicianId } from "../../../api"
+import WarningAlert from "./WarningAlert"
 
 interface ExpenseRow {
   id: string
-  name?: string // optional, since your API doesn't return it
   tripname: string
   tripStartDate: string
   tripEndDate: string
-  expense: number
-  balance: number
+  totalExpense: number
+  tripstatus: string
 }
 
 export default function AdvanceManagement() {
-  const [lastAddedAmount, setLastAddedAmount] = useState<number | null>(null)
   const [addAmountValue, setAddAmountValue] = useState<number | "">("")
-  const [isEditable, setIsEditable] = useState(true)
   const { id } = useParams<{ id: string }>()
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
+  const [alertType, setAlertType] = useState<"success" | "warning" | null>(null)
+  const [advances, setAdvances] = useState<number[]>([])
+  const [balance, setBalance] = useState<number>(0)
 
-  // Fetch trips with expenses from backend
+  // Fetch trips + advanceAccount
   useEffect(() => {
     if (!id) return
     const fetchTrips = async () => {
       try {
         const res = await getAlltripsByTechnicianId(id)
-        const tripsData = res.data?.data || []
-        // Flatten into table rows
-        const mapped: ExpenseRow[] = tripsData.map((trip: any) => {
-          const firstExpense = trip.expenses?.[0] || { totalExpense: 0, balance: 0 }
-          return {
-            id: trip._id,
-            tripname: trip.tripName,
-            tripStartDate: new Date(trip.startDate).toLocaleDateString(),
-            tripEndDate: new Date(trip.endDate).toLocaleDateString(),
-            expense: firstExpense.totalExpense || 0,
-            balance: firstExpense.balance || 0
-          }
-        })
+
+        const tripsData = res.data?.data?.trips || []
+        console.log("🚀 ~ fetchTrips ~ tripsData:", tripsData)
+        const advanceAcc = res.data?.data?.advanceAccount || {}
+
+        // ✅ store global balance
+        setBalance(advanceAcc.balance || 0)
+        // ✅ store advance logs in state
+        setAdvances(advanceAcc.logs?.map((log: any) => log.amount) || [])
+        // Flatten trips
+        const mapped: ExpenseRow[] = tripsData.map((trip: any) => ({
+          id: trip._id,
+          tripname: trip.tripName,
+          tripStartDate: new Date(trip.startDate).toLocaleDateString(),
+          tripEndDate: new Date(trip.endDate).toLocaleDateString(),
+          totalExpense: trip.tripTotalExpense || 0,
+          tripstatus: trip.tripstatus
+        }))
+        console.log("🚀 ~ fetchTrips ~ mapped:", mapped)
         setExpenses(mapped)
       } catch (err) {
         console.error("Error fetching trips:", err)
@@ -52,41 +58,27 @@ export default function AdvanceManagement() {
 
   const handleAddAmount = async () => {
     if (typeof addAmountValue !== "number" || addAmountValue <= 0) {
-      alert("Please enter a valid amount.")
+      setAlertMessage("Please enter a valid amount.")
+      setAlertType("warning")
       return
     }
     try {
-      const payload = { advancedAmount: addAmountValue } // must match backend field exactly
+      const payload = { advancedAmount: addAmountValue }
       const res = await addAdvance(id!, payload)
       console.log("Advance added:", res.data)
-      setLastAddedAmount(addAmountValue)
-      setIsEditable(false)
 
-      // Refetch trips to update UI
-      if (id) {
-        const refresh = await getAlltripsByTechnicianId(id)
-        // ... map and set expenses
-      }
+      // ✅ push into advances log (frontend state)
+      setAdvances((prev) => [...prev, addAmountValue])
+
+      // ✅ update balance
+      setBalance((prev) => prev + addAmountValue)
+
+      setAddAmountValue("")
+      setAlertMessage(null)
     } catch (error) {
       console.error("Error adding advance:", error)
-      alert("Failed to add advance amount")
-    }
-  }
-
-  const handleEditAmount = () => setIsEditable(true)
-
-  const handleUpdateAmount = () => {
-    if (typeof addAmountValue === "number" && addAmountValue > 0) {
-      setLastAddedAmount(addAmountValue)
-      setIsEditable(false)
-    } else {
-      alert("Please enter a valid amount.")
-    }
-  }
-
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this record?")) {
-      setExpenses(expenses.filter(exp => exp.id !== id))
+      setAlertMessage("Failed to add advance amount")
+      setAlertType("warning")
     }
   }
 
@@ -98,49 +90,32 @@ export default function AdvanceManagement() {
         <div className="flex items-center gap-3">
           <input
             type="number"
+            min="0"
             value={addAmountValue}
-            onChange={(e) => setAddAmountValue(e.target.value ? Number(e.target.value) : "")}
+            onChange={(e) =>
+              setAddAmountValue(e.target.value ? Number(e.target.value) : "")
+            }
+            onKeyDown={(e) => {
+              if (e.key === "-" || e.key === "e") {
+                e.preventDefault()
+              }
+            }}
             placeholder="Enter amount"
             className="border rounded-lg px-4 py-2 w-1/3 focus:outline-none focus:ring focus:ring-blue-300"
-            readOnly={!isEditable}
           />
-          {isEditable ? (
-            lastAddedAmount === null ? (
-              <button
-                onClick={handleAddAmount}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg"
-              >
-                Add
-              </button>
-            ) : (
-              <button
-                onClick={handleUpdateAmount}
-                className="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-lg"
-              >
-                Update Amount
-              </button>
-            )
-          ) : (
-            <button
-              onClick={handleEditAmount}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-2 rounded-lg"
-            >
-              Edit Amount
-            </button>
-          )}
+
+          <button
+            onClick={handleAddAmount}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg"
+          >
+            Add
+          </button>
         </div>
-        {lastAddedAmount !== null && (
-          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-green-50 to-green-100 shadow-md flex items-center gap-3 border border-green-200">
-            <CheckCircleIcon className="h-6 w-6 text-green-600" />
-            <div>
-              <p className="text-green-800 font-semibold text-lg">
-                ₹{lastAddedAmount}
-              </p>
-              <p className="text-green-600 text-sm">Last Added Amount</p>
-            </div>
-          </div>
+        {alertType === "warning" && alertMessage && (
+          <WarningAlert message={alertMessage} />
         )}
       </div>
+
       {/* Trip Table */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <table className="w-full border-collapse">
@@ -149,32 +124,40 @@ export default function AdvanceManagement() {
               <th className="p-3 border">Trip Name</th>
               <th className="p-3 border">Start Date</th>
               <th className="p-3 border">End Date</th>
-              <th className="p-3 border">Expense</th>
+              <th className="p-3 border">Total Expense</th>
               <th className="p-3 border">Balance</th>
-              <th className="p-3 border">Actions</th>
+              <th className="p-3 border">Trip status</th>
             </tr>
           </thead>
           <tbody>
             {expenses.map((exp) => (
               <tr key={exp.id} className="hover:bg-gray-50">
                 <td className="p-3 border">{exp.tripname}</td>
-                <td className="p-3 border">{exp.tripStartDate}</td>
-                <td className="p-3 border">{exp.tripEndDate}</td>
-                <td className="p-3 border">₹{exp.expense}</td>
-                <td className="p-3 border">₹{exp.balance}</td>
-                <td className="p-3 border flex gap-3">
-                  <button
-                    className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg"
-                  >
-                    <MdVisibility size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(exp.id)}
-                    className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg"
-                  >
-                    <MdDelete size={18} />
-                  </button>
+                <td className="p-3 border">
+                  {exp.tripStartDate ? new Date(exp.tripStartDate).toLocaleDateString("en-GB") : "-"}
                 </td>
+                <td className="p-3 border">
+                  {exp.tripEndDate ? new Date(exp.tripEndDate).toLocaleDateString("en-GB") : "-"}
+                </td>
+
+                <td className="p-3 border text-black font-medium">
+                  ₹{exp.totalExpense}
+                </td>
+                <td className="p-3 border">
+                  <p className="text-black font-medium">₹{balance}</p>
+                  {advances.length > 0 && (
+                    <p className="text-green-600 text-sm">
+                      {advances.join(" + ")}
+                    </p>
+                  )}
+                </td>
+                <td
+                  className={`p-3 border font-medium ${exp.tripstatus === "ongoing" ? "text-green-600" : "text-red-600"
+                    }`}
+                >
+                  {exp.tripstatus}
+                </td>
+
               </tr>
             ))}
             {expenses.length === 0 && (

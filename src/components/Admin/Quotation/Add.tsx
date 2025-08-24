@@ -135,7 +135,7 @@ const ItemsTable: React.FC<{
                 <th className="text-[.7rem] w-36">{title === "A" ? "TYPE OF MACHINE" : "ADDITIONAL SERVICE"}</th>
                 <th className="text-[.7rem]">DESCRIPTION</th>
                 <th className="text-[.7rem]">QTY</th>
-                <th className="text-[.7rem]">RATE</th>
+                {/* <th className="text-[.7rem]">RATE</th> */}
                 <th className="text-[.7rem]">TOTAL</th>
             </tr>
         </thead>
@@ -156,7 +156,7 @@ const ItemsTable: React.FC<{
                             item.description
                         )}
                     </td>
-                    {["quantity", "price", "amount"].map((field) => (
+                    {["quantity", "price"].map((field) => (
                         <td key={field}>
                             <input
                                 value={item[field as keyof Item] as string}
@@ -356,7 +356,7 @@ const AddQuotation: React.FC = () => {
                     discountAmount: calculations.discountAmount,
                     totalAmount: calculations.totalAmount,
                 },
-                // ✅ FIXED: Save only text array
+                //  Save only text array
                 termsAndConditions: terms.map((t) => t.text),
 
                 bankDetails: {

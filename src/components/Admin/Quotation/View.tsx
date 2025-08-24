@@ -6,13 +6,16 @@ import { getQuotationByEEnquiryId } from "../../../api"
 import { useParams } from "react-router-dom"
 import logo from "../../../assets/logo/logo-sm.png"
 import logoA from "../../../assets/quotationImg/NABLlogo.png"
-
+import AntesoQRCode from '../../../assets/quotationImg/qrcode.png'
+import Signature from '../../../assets/quotationImg/signature.png'
 
 interface QuotationData {
     _id: string
     quotationId: string
+
     date: string
     enquiry: {
+        enquiryId: string
         hospitalName: string
         fullAddress: string
         city: string
@@ -25,10 +28,11 @@ interface QuotationData {
         services: Array<{
             machineType: string
             equipmentNo: string
-            workType: string[]
+            workTypeDetails: { workType: string; status: string; viewFile: string[] }[]
             machineModel: string
             _id: string
         }>
+
         additionalServices: Record<string, string>
         specialInstructions: string
     }
@@ -109,17 +113,18 @@ const ViewQuotation: React.FC = () => {
             </div>
         )
     }
-
     const aitems =
         quotationData?.enquiry?.services?.map((service, index) => ({
             type: "A",
             id: index + 1,
             title: service.machineType,
-            description: service.workType.join(" + "),
+            description: service.workTypeDetails?.map(w => w.workType).join(" + ") || "",
             quantity: service.equipmentNo,
-            price: "100000", // You may need to add pricing logic based on your business rules
+            price: "100000",
             amount: (Number.parseInt(service.equipmentNo) * 100000).toString(),
         })) || []
+
+
 
     const bitems = quotationData?.enquiry?.additionalServices
         ? Object.entries(quotationData.enquiry.additionalServices)
@@ -157,11 +162,11 @@ const ViewQuotation: React.FC = () => {
             label: "QTY",
             class: "ltr:text-right rtl:text-left",
         },
-        {
-            key: "price",
-            label: "RATE",
-            class: "ltr:text-right rtl:text-left",
-        },
+        // {
+        //     key: "price",
+        //     label: "RATE",
+        //     class: "ltr:text-right rtl:text-left",
+        // },
         {
             key: "amount",
             label: "TOTAL",
@@ -185,16 +190,16 @@ const ViewQuotation: React.FC = () => {
             key: "description", // Changed from services
             label: "SERVICES",
         },
-        {
-            key: "quantity",
-            label: "QTY",
-            class: "ltr:text-right rtl:text-left",
-        },
-        {
-            key: "price",
-            label: "RATE",
-            class: "ltr:text-right rtl:text-left",
-        },
+        // {
+        //     key: "quantity",
+        //     label: "QTY",
+        //     class: "ltr:text-right rtl:text-left",
+        // },
+        // {
+        //     key: "price",
+        //     label: "RATE",
+        //     class: "ltr:text-right rtl:text-left",
+        // },
         {
             key: "amount",
             label: "TOTAL",
@@ -202,7 +207,8 @@ const ViewQuotation: React.FC = () => {
         },
     ]
 
-    const discount: number = quotationData.discount || 10
+    const discount: number = quotationData.discount
+    console.log("🚀 ~ discount:", discount)
     const travelCost: number = 0
 
     const aitemsTotal: number = aitems.reduce((sum, item) => {
@@ -298,7 +304,10 @@ const ViewQuotation: React.FC = () => {
                                     {quotationData.enquiry.contactNumber} &nbsp;&nbsp;
                                 </td>
                             </tr>
-
+                            <tr className="text-[.7rem]">
+                                <td className="font-bold">Enquiry ID:</td>
+                                <td className="pl-2 font-bold">{quotationData.enquiry.enquiryId}</td>
+                            </tr>
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">Quotation:</td>
                                 <td className="pl-2 font-bold">{quotationData.quotationId}</td>
@@ -349,7 +358,7 @@ const ViewQuotation: React.FC = () => {
                                         <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
                                         <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
                                         <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">{item.quantity}</td>
-                                        <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.price}</td>
+                                        {/* <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.price}</td> */}
                                         <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
                                     </tr>
                                 ))}
@@ -378,7 +387,7 @@ const ViewQuotation: React.FC = () => {
                                         <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
                                         <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
                                         <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
-                                        <td className="px-2 py-1 text-[.6rem]">{item.quantity}</td>
+                                        {/* <td className="px-2 py-1 text-[.6rem]">{item.quantity}</td> */}
                                         <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.price}</td>
                                         <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
                                     </tr>
@@ -421,7 +430,7 @@ const ViewQuotation: React.FC = () => {
 
                 <div className="mt-4 flex justify-between items-end text-xs">
                     <div>
-                        <img src="/handwritten-signature.png" alt="Signature" className="mb-2 h-24" />
+                        <img src={Signature} alt="Signature" className="mb-2 h-24" />
                         <div
                             className="space-y-1"
                             style={{
@@ -451,7 +460,7 @@ const ViewQuotation: React.FC = () => {
                     </div>
 
                     <div className="text-right space-y-1">
-                        <img src="/qr-code.png" alt="QR Code" className="h-20 mx-auto mb-2" />
+                        <img src={AntesoQRCode} alt="QR Code" className="h-20 mx-auto mb-2" />
                         <table className="h-4">
                             <tr
                                 style={{

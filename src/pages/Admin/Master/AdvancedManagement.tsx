@@ -47,7 +47,7 @@ const AdvancedManagement = () => {
                 console.log("🚀 ~ fetchEmployees ~ data:", data)
 
                 // Assuming API returns an array of employees
-                const formatted = data.data?.map((item: any, index: number) => ({
+                const formatted = data?.map((item: any, index: number) => ({
                     ...item,
                     clientId: `EMP${String(index + 1).padStart(3, '0')}`, // unique ID for display
                 }));
@@ -74,6 +74,7 @@ const AdvancedManagement = () => {
 
     useEffect(() => {
         setInitialRecords(() => {
+            if (!Array.isArray(items)) return [];
             return items.filter((item: any) => {
                 return (
                     item.clientId?.toLowerCase().includes(search.toLowerCase()) ||
@@ -84,6 +85,7 @@ const AdvancedManagement = () => {
             });
         });
     }, [search, items]);
+
 
     useEffect(() => {
         const data2 = sortBy(initialRecords, sortStatus.columnAccessor);

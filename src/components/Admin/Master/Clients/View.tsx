@@ -265,6 +265,9 @@ const ViewClients: React.FC = () => {
                         placeholder="Enter Phone Number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         maxLength={10}
+                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10); // only digits, max 10
+                        }}
                       />
                       {submitCount && errors.phone ? (
                         <div className="text-red-500 text-sm mt-1">{errors.phone}</div>

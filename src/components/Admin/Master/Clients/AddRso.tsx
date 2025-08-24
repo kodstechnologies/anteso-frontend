@@ -69,21 +69,29 @@ const AddRso = () => {
           try {
             const formData = new FormData()
 
-            Object.keys(values).forEach((key) => {
-              if (key === "attachFile" && values[key]) {
-                formData.append(key, values[key])
-              } else if (key !== "attachFile") {
-                formData.append(key, values[key])
-              }
-            })
+            // Append non-file fields
+            formData.append("rsoId", values.rsoId)
+            formData.append("password", values.password)
+            formData.append("email", values.email)
+            formData.append("phone", values.phone)
+            formData.append("rpId", values.rpId)
+            formData.append("tldBadge", values.tldBadge)
+            formData.append("validity", values.validity)
+
+            // Append file (only if selected)
+            if (values.attachFile) {
+              formData.append("attachment", values.attachFile) // ✅ backend expects `attachment`
+            }
 
             const response = await createRsoByHospitalId(hospitalId, formData)
-            console.log("🚀 ~ onSubmit={ ~ response:", response)
+            console.log("🚀 ~ onSubmit response:", response)
+
             showMessage("RSO added successfully!", "success")
-            navigate(`/admin/clients/preview/${hospitalId}/rso`)
+            // navigate(`/admin/clients/preview/${hospitalId}/rso`)
           } catch (error: any) {
             const message = error?.response?.data?.message
-            console.log("🚀 ~ onSubmit ~ message:", message)
+            console.log("🚀 ~ onSubmit error:", message)
+
             if (message?.includes("email")) {
               setFieldError("email", message)
             } else if (message?.includes("phone")) {
@@ -98,6 +106,7 @@ const AddRso = () => {
             setLoading(false)
           }
         }}
+
       >
         {({ errors, submitCount, touched, setFieldValue }) => (
           <Form className="space-y-5">
@@ -171,10 +180,11 @@ const AddRso = () => {
                     type="file"
                     id="attachFile"
                     className="form-input"
-                  // onChange={(event) => {
-                  //   setFieldValue("attachFile", event.currentTarget.files[0])
-                  // }}
+                    onChange={(event) => {
+                      setFieldValue("attachFile", event.currentTarget.files?.[0]); // ✅ store file in Formik
+                    }}
                   />
+
                   {submitCount && errors.attachFile ? <div className="text-danger mt-1">{errors.attachFile}</div> : ""}
                 </div>
               </div>

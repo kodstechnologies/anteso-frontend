@@ -6,10 +6,13 @@ import { showMessage } from "../../../common/ShowMessage"
 import { useState } from "react"
 import FullScreenLoader from "../../../common/FullScreenLoader"
 import { createInstituteByHospitalId } from "../../../../api"
+import { Eye, EyeOff } from "lucide-react"
 
 const AddInstitute = () => {
   const navigate = useNavigate()
-  const { hospitalId } = useParams()
+  const { clientId, hospitalId } = useParams()
+  const [showPassword, setShowPassword] = useState(false);
+  console.log("🚀 ~ AddInstitute ~ clientId:", clientId)
   const [loading, setLoading] = useState(false)
 
   const SubmittedForm = Yup.object().shape({
@@ -60,7 +63,7 @@ const AddInstitute = () => {
             const response = await createInstituteByHospitalId(hospitalId, values)
             console.log("🚀 ~ onSubmit={ ~ response:", response)
             showMessage("Institute added successfully!", "success")
-            // navigate(`/admin/clients/preview/${hospitalId}`)
+            navigate(`/admin/clients/preview/${clientId}/${hospitalId}`)
           } catch (error: any) {
             const message = error?.response?.data?.message
             console.log("🚀 ~ onSubmit ~ message:", message)
@@ -90,15 +93,26 @@ const AddInstitute = () => {
                   {submitCount && errors.eloraId ? <div className="text-danger mt-1">{errors.eloraId}</div> : null}
                 </div>
                 <div className={submitCount ? (errors.password ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="password">Password </label>
-                  <Field
-                    name="password"
-                    type="password"
-                    id="password"
-                    placeholder="Enter Password"
-                    className="form-input"
-                  />
-                  {submitCount && errors.password ? <div className="text-danger mt-1">{errors.password}</div> : ""}
+                  <label htmlFor="password">Password</label>
+                  <div className="relative">
+                    <Field
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      placeholder="Enter Password"
+                      className="form-input pr-10" // padding for the icon
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {submitCount && errors.password ? (
+                    <div className="text-danger mt-1">{errors.password}</div>
+                  ) : null}
                 </div>
                 <div className={submitCount ? (errors.email ? "has-error" : "has-success") : ""}>
                   <label htmlFor="email">Email </label>
@@ -115,12 +129,17 @@ const AddInstitute = () => {
                   <label htmlFor="phone">Phone </label>
                   <Field
                     name="phone"
-                    type="text"
+                    type="tel"
                     id="phone"
                     placeholder="Enter Phone Number"
                     className="form-input"
+                    pattern="\d{10}" // exactly 10 digits
                     maxLength={10}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\D/g, ""); // only digits
+                    }}
                   />
+
                   {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : ""}
                 </div>
               </div>

@@ -37,7 +37,6 @@ const Enquiry = () => {
     const [search, setSearch] = useState('');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [rowToDelete, setRowToDelete] = useState<number | null>(null);
-
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
         columnAccessor: 'Hospitalname',
         direction: 'asc',
@@ -260,6 +259,8 @@ const Enquiry = () => {
                                     title: 'Quotation',
                                     sortable: true,
                                     render: ({ id, quotation }) => {
+                                        const hideFile = !quotation || quotation === 'create' || quotation === 'N/A';
+
                                         if (quotation === 'accepted') {
                                             return <span className="text-success font-semibold">Accepted</span>;
                                         }
@@ -298,6 +299,7 @@ const Enquiry = () => {
                                     title: 'Remark',
                                     sortable: false,
                                     render: ({ quotation, remark }) => {
+
                                         if (quotation === 'rejected') {
                                             return (
                                                 <span className="text-danger font-medium">
@@ -308,34 +310,36 @@ const Enquiry = () => {
                                         return <span className="text-gray-400 italic">—</span>;
                                     },
                                 },
-
-
                                 {
                                     accessor: 'action',
                                     title: 'Actions',
                                     sortable: false,
                                     textAlignment: 'center',
-                                    render: ({ id, quotation }) => (
-                                        <div className="flex gap-4 items-center w-max mx-auto">
-                                            {(quotation !== 'create') && (
-                                                <NavLink to={`/admin/quotation/view/${id}`} className="flex hover:text-primary">
-                                                    <IconFile />
+                                    render: ({ id, quotation }) => {
+                                        const hideFile = !quotation || quotation === 'create' || quotation === 'N/A';
+
+                                        return (
+                                            <div className="flex gap-4 items-center w-max mx-auto">
+                                                {!hideFile && (
+                                                    <NavLink to={`/admin/quotation/view/${id}`} className="flex hover:text-primary">
+                                                        <IconFile />
+                                                    </NavLink>
+                                                )}
+
+                                                <NavLink to={`/admin/enquiry/view/${id}`} className="flex hover:text-primary">
+                                                    <IconEye />
                                                 </NavLink>
-                                            )}
-                                            <NavLink to={`/admin/enquiry/view/${id}`} className="flex hover:text-primary">
-                                                <IconEye />
-                                            </NavLink>
+                                                <NavLink to="/admin/enquiry/edit" className="flex hover:text-info">
+                                                    <IconEdit className="w-4.5 h-4.5" />
+                                                </NavLink>
+                                                <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
+                                                    <IconTrashLines />
+                                                </button>
+                                            </div>
+                                        );
+                                    },
+                                }
 
-                                            <NavLink to="/admin/enquiry/edit" className="flex hover:text-info">
-                                                <IconEdit className="w-4.5 h-4.5" />
-                                            </NavLink>
-                                            <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
-                                                <IconTrashLines />
-                                            </button>
-                                        </div>
-                                    )
-
-                                },
                             ]}
                             highlightOnHover
                             totalRecords={initialRecords.length}

@@ -11,7 +11,8 @@ import type { BreadcrumbItem } from "../../common/Breadcrumb"
 import IconHome from "../../Icon/IconHome"
 import IconBox from "../../Icon/IconBox"
 import IconBook from "../../Icon/IconBook"
-import { allEmployees, createOrder } from "../../../api"
+import { allEmployees, createOrder, getAllDealers, getAllStates } from "../../../api"
+import AnimatedTrashIcon from "../../common/AnimatedTrashIcon"
 
 interface OptionType {
     value: string
@@ -57,6 +58,11 @@ interface Employee {
     name: string
     email?: string
 }
+
+type StateType = {
+    _id: string;
+    name: string; // assuming backend sends `name` for state
+};
 
 const MultiSelectField: React.FC<MultiSelectFieldProps> = ({ name, options }) => (
     <Field name={name}>
@@ -139,7 +145,7 @@ const urgencyOptions: string[] = [
 const urgency: string[] = ["normal", "tatkal"]
 const workTypeOptions: OptionType[] = [
     { value: "Quality Assurance Test", label: "Quality Assurance Test" },
-    { value: " License for Operation", label: " License for Operation" },
+    { value: "License for Operation", label: "License for Operation" },
     { value: "Decommissioning", label: "Decommissioning" },
     { value: "Decommissioning and Recommissioning", label: "Decommissioning and Recommissioning" },
 ]
@@ -156,20 +162,51 @@ const CreateOrder: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [employees, setEmployees] = useState<Employee[]>([])
     const [loading, setLoading] = useState(true)
-
+    const [dealers, setDealers] = useState<any[]>([])   // store dealers here
+    const [states, setStates] = useState<StateType[]>([]);
     useEffect(() => {
-        const fetchEmployees = async () => {
+        const fetchData = async () => {
             try {
-                const data = await allEmployees()
-                setEmployees(data)
+                const [empData, dealerResponse] = await Promise.all([
+                    allEmployees(),
+                    getAllDealers()
+                ]);
+
+                setEmployees(empData || []);
+
+                // Access dealer array properly
+                const dealerList = Array.isArray(dealerResponse.data.dealers)
+                    ? dealerResponse.data.dealers
+                    : [];
+
+                setDealers(dealerList);
+
+                console.log("🚀 ~ fetchData ~ dealerList:", dealerList);
             } catch (error) {
-                console.error("Error fetching employees:", error)
+                console.error("Error fetching employees or dealers:", error);
             } finally {
-                setLoading(false)
+                setLoading(false);
             }
-        }
-        fetchEmployees()
-    }, [])
+        };
+
+        fetchData();
+    }, []);
+    useEffect(() => {
+        const fetchStates = async () => {
+            try {
+                const res = await getAllStates();
+                console.log("🚀 ~ fetchStates ~ res:", res.data.data)
+                setStates(res.data.data); // backend response shape (adjust key if needed)
+            } catch (error) {
+                console.error("Failed to fetch states:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStates();
+    }, []);
+
 
     const SubmittedForm = Yup.object().shape({
         leadOwner: Yup.string().required("Please fill the Field"),
@@ -190,12 +227,22 @@ const CreateOrder: React.FC = () => {
             .of(
                 Yup.object().shape({
                     machineType: Yup.string().required("Required"),
-                    equipmentNo: Yup.number().required("Required").positive().integer(),
+                    equipmentNo: Yup.string().required("Required"),
                     workType: Yup.array().min(1, "At least one work type is required"),
                     machineModel: Yup.string().required("Required"),
-                }),
+                })
             )
-            .min(1, "At least one service is required"),
+            .min(1, "At least one service is required")
+            .test(
+                "unique-machineType",
+                "Each Machine Type must be unique",
+                (services) => {
+                    if (!services) return true;
+                    const machineTypes = services.map(s => s.machineType);
+                    const uniqueTypes = new Set(machineTypes);
+                    return uniqueTypes.size === machineTypes.length;
+                }
+            ),
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
                 return { ...schema, [service]: Yup.string().nullable() }
@@ -205,7 +252,10 @@ const CreateOrder: React.FC = () => {
         partyCodeOrSysId: Yup.string().required("Please fill the Field"),
         procNoOrPoNo: Yup.string().required("Please fill the Field"),
         procExpiryDate: Yup.date().required("Please fill the Expiry Date").typeError("Invalid date format"),
-        instruction: Yup.string()
+        instruction: Yup.string(),
+        urgency: Yup.string()
+            .oneOf(['normal', 'tatkal'], 'Select a valid urgency')
+            .required('Urgency is required')
     })
 
     const submitForm = async (values: FormValues) => {
@@ -300,15 +350,24 @@ const CreateOrder: React.FC = () => {
                                         {loading ? (
                                             <option disabled>Loading...</option>
                                         ) : (
-                                            employees.map((emp) => (
-                                                <option key={emp._id} value={emp._id}>
-                                                    {emp.name} - Employee
-                                                </option>
-                                            ))
+                                            <>
+                                                {employees.map((emp) => (
+                                                    <option key={emp._id} value={emp._id}>
+                                                        {emp.name} - Employee
+                                                    </option>
+                                                ))}
+                                                {dealers.map((dealer) => (
+                                                    <option key={dealer._id} value={dealer._id}>
+                                                        {dealer.name} - Dealer
+                                                    </option>
+                                                ))}
+
+                                            </>
                                         )}
                                     </Field>
                                     <ErrorMessage name="leadOwner" component="div" className="text-danger mt-1" />
                                 </div>
+
                                 <div className={submitCount && errors.hospitalName ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="hospitalName">Hospital Name</label>
                                     <Field
@@ -351,10 +410,29 @@ const CreateOrder: React.FC = () => {
                                     />
                                     {submitCount && errors.district ? <div className="text-danger mt-1">{errors.district}</div> : null}
                                 </div>
-                                <div className={submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""}>
+                                <div
+                                    className={
+                                        submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""
+                                    }
+                                >
                                     <label htmlFor="state">State</label>
-                                    <Field name="state" type="text" id="state" placeholder="Enter State Name" className="form-input" />
-                                    {submitCount && errors.state ? <div className="text-danger mt-1">{errors.state}</div> : null}
+                                    <Field
+                                        as="select"
+                                        name="state"
+                                        id="state"
+                                        className="form-input"
+                                        disabled={loading}
+                                    >
+                                        <option value="">Select State</option>
+                                        {states.map((st, index) => (
+                                            <option key={index} value={String(st)}>
+                                                {String(st)}
+                                            </option>
+                                        ))}
+                                    </Field>
+                                    {submitCount && errors.state ? (
+                                        <div className="text-danger mt-1">{errors.state}</div>
+                                    ) : null}
                                 </div>
                                 <div className={submitCount && errors.pinCode ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="pinCode">PIN Code</label>
@@ -474,7 +552,6 @@ const CreateOrder: React.FC = () => {
                                         <div className="text-danger mt-1">{errors.procExpiryDate}</div>
                                     ) : null}
                                 </div>
-                                {/* ✅ Urgency Dropdown at root level (not inside services) */}
                                 <div className={submitCount && errors.urgency ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="urgency">Urgency</label>
                                     <Field as="select" name="urgency" id="urgency" className="form-select w-full">
@@ -487,7 +564,6 @@ const CreateOrder: React.FC = () => {
                                     </Field>
                                     <ErrorMessage name="urgency" component="div" className="text-danger mt-1" />
                                 </div>
-
                             </div>
                         </div>
                         <div className="panel">
@@ -552,14 +628,15 @@ const CreateOrder: React.FC = () => {
                                                     </div>
                                                 </div>
                                                 {values.services.length > 1 && (
-                                                    <div className="md:col-span-1 flex justify-end">
-                                                        <button type="button" onClick={() => remove(index)} className="mb-4 text-red-500 text-xs">
-                                                            Remove
-                                                        </button>
+                                                    <div className="md:col-span-12 flex justify-end">
+                                                        <AnimatedTrashIcon onClick={() => remove(index)} />
                                                     </div>
                                                 )}
                                             </div>
                                         ))}
+                                        {errors.services && typeof errors.services === 'string' && (
+                                            <div className="text-red-500 text-sm">{errors.services}</div>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={() => push({ machineType: "", equipmentNo: 1, workType: [], machineModel: "" })}
@@ -610,9 +687,9 @@ const CreateOrder: React.FC = () => {
                             <h5 className="font-semibold text-lg mb-4">Special Instructions</h5>
                             <div className="grid grid-cols-1 gap-4">
                                 <Field
-                                    name="instruction"   // ✅ corrected
+                                    name="instruction"
                                     type="text"
-                                    id="instruction"     // ✅ corrected
+                                    id="instruction"
                                     placeholder="Enter special instruction"
                                     className="form-input"
                                 />
@@ -632,5 +709,4 @@ const CreateOrder: React.FC = () => {
         </>
     )
 }
-
 export default CreateOrder

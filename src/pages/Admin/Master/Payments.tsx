@@ -11,11 +11,11 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconCreditCard from '../../../components/Icon/IconCreditCard';
-import { paymentdata } from '../../../data';
 import FadeInModal from '../../../components/common/FadeInModal';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
-
+// ✅ import your API call
+import { getAllPayments } from '../../../api';
 
 const Payments = () => {
   const dispatch = useDispatch();
@@ -23,13 +23,13 @@ const Payments = () => {
     dispatch(setPageTitle('Payments'));
   }, []);
 
-  const [items, setItems] = useState(paymentdata);
+  const [items, setItems] = useState<any[]>([]); // start empty
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZES = [10, 20, 30, 50];
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-  const [initialRecords, setInitialRecords] = useState(sortBy(items, 'paymentId'));
-  const [records, setRecords] = useState(initialRecords);
+  const [initialRecords, setInitialRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<any[]>([]);
   const [selectedRecords, setSelectedRecords] = useState<any>([]);
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
     columnAccessor: 'paymentId',
@@ -37,6 +37,34 @@ const Payments = () => {
   });
   const [openModal, setOpenModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState<any>(null);
+
+  // ✅ Fetch payments on mount
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        const res = await getAllPayments();
+        console.log("🚀 ~ fetchPayments ~ res:", res)
+        const backendPayments = res.data.payments.map((p: any) => ({
+          id: p._id,
+          paymentId: p._id.slice(-6).toUpperCase(), // shorten for table
+          srfClient: p.orderId
+            ? `${p.orderId.srfNumber} - ${p.orderId.hospitalName}`
+            : 'N/A',
+          totalAmount: p.orderId?.totalAmount || 0,
+          paymentAmount: p.amount || 0,
+          paymentType: p.paymentType,
+          utrNumber: p.utrNumber || 'N/A',
+          screenshotUrl: p.screenshotUrl || null,
+        }));
+        setItems(backendPayments);
+        setInitialRecords(sortBy(backendPayments, 'paymentId'));
+      } catch (err) {
+        console.error('❌ Failed to fetch payments:', err);
+      }
+    };
+
+    fetchPayments();
+  }, []);
 
   useEffect(() => {
     const from = (page - 1) * pageSize;
@@ -148,7 +176,7 @@ const Payments = () => {
                     >
                       <InformationCircleIcon className="w-5 h-5 cursor-pointer" />
                     </button>
-                  )
+                  ),
                 },
 
                 {
@@ -156,13 +184,23 @@ const Payments = () => {
                   title: 'Actions',
                   render: ({ id }) => (
                     <div className="flex gap-4 items-center w-max mx-auto">
-                      <NavLink to={`/admin/payments/view/${id}`} className="flex hover:text-primary">
+                      <NavLink
+                        to={`/admin/payments/view/${id}`}
+                        className="flex hover:text-primary"
+                      >
                         <IconEye />
                       </NavLink>
-                      <NavLink to={`/admin/payments/edit/${id}`} className="flex hover:text-info">
+                      <NavLink
+                        to={`/admin/payments/edit/${id}`}
+                        className="flex hover:text-info"
+                      >
                         <IconEdit />
                       </NavLink>
-                      <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
+                      <button
+                        type="button"
+                        className="flex hover:text-danger"
+                        onClick={() => deleteRow(id)}
+                      >
                         <IconTrashLines />
                       </button>
                     </div>
@@ -180,14 +218,19 @@ const Payments = () => {
               onSortStatusChange={setSortStatus}
               selectedRecords={selectedRecords}
               onSelectedRecordsChange={setSelectedRecords}
-              paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
+              paginationText={({ from, to, totalRecords }) =>
+                `Showing ${from} to ${to} of ${totalRecords} entries`
+              }
             />
           </div>
         </div>
       </div>
-      <FadeInModal open={openModal} onClose={() => setOpenModal(false)} title="Payment Screenshot">
+      <FadeInModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        title="Payment Screenshot"
+      >
         <div className="space-y-4">
-
           {selectedRow?.screenshotUrl ? (
             <div className="flex justify-center">
               <div className="max-h-[400px] max-w-xs overflow-y-auto border rounded">
@@ -199,13 +242,12 @@ const Payments = () => {
               </div>
             </div>
           ) : (
-            <p className="text-center text-gray-500">No screenshot available</p>
+            <p className="text-center text-gray-500">
+              No screenshot available
+            </p>
           )}
-
         </div>
       </FadeInModal>
-
-
     </>
   );
 };
