@@ -133,16 +133,21 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             return defaultValue
         }
     }
-
+    useEffect(() => {
+        fetchDropdownData();
+    }, []);
     const fetchDropdownData = async () => {
         try {
+            console.log("hi---");
+            
             setLoadingDropdowns(true)
             const [techniciansData, staffData] = await Promise.all([getAllTechnicians(), getAllOfficeStaff()])
+            console.log('-------------------------------------------------------------------------');
 
             console.log("🚀 ~ fetchDropdownData ~ technicians:", techniciansData)
             console.log("🚀 ~ fetchDropdownData ~ office staff:", staffData)
 
-            setTechnicians(techniciansData || [])
+            setTechnicians(techniciansData.data|| [])
             setOfficeStaff(staffData || [])
         } catch (error) {
             console.error("Error fetching dropdown data:", error)
@@ -549,7 +554,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
             if (!parentService) throw new Error("Parent service not found")
 
-            const serviceId =workType.id.split("-")[0]
+            const serviceId = workType.id.split("-")[0]
             const workTypeName = parentService.workTypeName
 
             // Use different API calls based on status
@@ -960,31 +965,31 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 )}
 
                                                                 {(selectedStatuses[workType.id] === "completed") && (
-                                                                        <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
-                                                                            <label className="block text-sm font-medium text-green-700">
-                                                                                Upload File (Optional)
-                                                                            </label>
-                                                                            <input
-                                                                                type="file"
-                                                                                onChange={(e) => {
-                                                                                    const file = e.target.files?.[0]
-                                                                                    if (file) handleFileUpload(workType.id, file)
-                                                                                }}
-                                                                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
-                                                                            />
+                                                                    <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
+                                                                        <label className="block text-sm font-medium text-green-700">
+                                                                            Upload File (Optional)
+                                                                        </label>
+                                                                        <input
+                                                                            type="file"
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files?.[0]
+                                                                                if (file) handleFileUpload(workType.id, file)
+                                                                            }}
+                                                                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
+                                                                        />
 
-                                                                            <div className="grid grid-cols-2 gap-3 mt-3">
-                                                                                <div className="p-2 bg-white rounded border">
-                                                                                    <label className="text-xs text-gray-500">Report Number</label>
-                                                                                    <p className="font-medium text-sm">{workType.reportNumber}</p>
-                                                                                </div>
-                                                                                <div className="p-2 bg-white rounded border">
-                                                                                    <label className="text-xs text-gray-500">URL Number</label>
-                                                                                    <p className="font-medium text-sm">{workType.urlNumber}</p>
-                                                                                </div>
+                                                                        <div className="grid grid-cols-2 gap-3 mt-3">
+                                                                            <div className="p-2 bg-white rounded border">
+                                                                                <label className="text-xs text-gray-500">Report Number</label>
+                                                                                <p className="font-medium text-sm">{workType.reportNumber}</p>
+                                                                            </div>
+                                                                            <div className="p-2 bg-white rounded border">
+                                                                                <label className="text-xs text-gray-500">URL Number</label>
+                                                                                <p className="font-medium text-sm">{workType.urlNumber}</p>
                                                                             </div>
                                                                         </div>
-                                                                    )}
+                                                                    </div>
+                                                                )}
 
                                                                 {uploadedFiles[workType.id] && (
                                                                     <div className="p-3 bg-green-50 rounded-md border border-green-200">

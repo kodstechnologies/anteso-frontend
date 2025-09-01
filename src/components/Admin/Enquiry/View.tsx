@@ -52,9 +52,7 @@ const employeeOptions: OptionType[] = [
 const View = () => {
     const { id } = useParams<{ id: string }>() // Use useParams from react-router-dom
     console.log("🚀 ~ View ~ id:", id)
-
     const [details, setDetails] = useState<HospitalDetails | null>(null)
-
     useEffect(() => {
         const fetchDetails = async () => {
             try {
@@ -72,7 +70,6 @@ const View = () => {
             fetchDetails()
         }
     }, [id]) // Re-run effect if 'id' changes
-
     if (!details) return <div className="text-gray-600 p-6">Loading...</div>
 
     const fields = [

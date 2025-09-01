@@ -225,10 +225,8 @@ const AddEnquiry: React.FC = () => {
             }, {}),
         ),
     })
-
     // Form submission handler
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
     const submitForm = async (values: FormValues, { setSubmitting, resetForm }: any) => {
         try {
             setIsSubmitting(true);

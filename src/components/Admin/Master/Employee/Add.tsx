@@ -248,7 +248,7 @@ const AddEngineer = () => {
                                     <label htmlFor="technicianType">Role</label>
                                     <Field as="select" name="technicianType" className="form-select">
                                         <option value="" disabled>Select Role</option>
-                                        <option value="Office Staff">Office Staff</option>
+                                        <option value="office-staff">Office Staff</option>
                                         <option value="Engineer">Engineer</option>
                                     </Field>
                                     {submitCount > 0 && errors.technicianType && <div className="text-danger mt-1">{errors.technicianType}</div>}

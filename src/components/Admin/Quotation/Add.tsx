@@ -9,7 +9,7 @@ import signature from "../../../assets/quotationImg/signature.png"
 import qrcode from "../../../assets/quotationImg/qrcode.png"
 import logo from "../../../assets/logo/logo-sm.png"
 import IconTrashLines from "../../Icon/IconTrashLines"
-import { allEmployees, getEnquiryById, createQuotationByEnquiryId } from "../../../api"
+import { allEmployees, getEnquiryById, createQuotationByEnquiryId, getAllDealers } from "../../../api"
 import { showMessage } from "../../common/ShowMessage"
 
 type Item = {
@@ -188,6 +188,7 @@ const AddQuotation: React.FC = () => {
     const [terms, setTerms] = useState(INITIAL_TERMS.map((text, index) => ({ id: index + 1, text })))
     const [quotationNumber, setQuotationNumber] = useState("QUO001")
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [dealers, setDealers] = useState<any[]>([])   // store dealers here
 
     const [aitems, setAItems] = useState<Item[]>([
         {
@@ -259,18 +260,45 @@ const AddQuotation: React.FC = () => {
         fetchEnquiry()
     }, [id])
 
+    const [people, setPeople] = useState<any[]>([])
+
     useEffect(() => {
-        const fetchEmployees = async () => {
+        const fetchData = async () => {
             try {
-                const res = await allEmployees()
-                console.log("🚀 ~ fetchEmployees ~ res:", res)
-                setEmployees(res)
+                const [empData, dealerResponse] = await Promise.all([
+                    allEmployees(),
+                    getAllDealers()
+                ]);
+
+                const employeeList = (empData || []).map((e: any) => ({
+                    ...e,
+                    type: "employee",
+                }));
+
+                const dealerList = Array.isArray(dealerResponse.data.dealers)
+                    ? dealerResponse.data.dealers.map((d: any) => ({
+                        ...d,
+                        type: "dealer",
+                    }))
+                    : [];
+
+                setEmployees(employeeList);
+                setDealers(dealerList);
+
+                // ✅ Merge both for dropdown
+                setPeople([...employeeList, ...dealerList]);
+
+                console.log("🚀 ~ fetchData ~ people:", [...employeeList, ...dealerList]);
             } catch (error) {
-                console.error("Failed to fetch employees", error)
+                console.error("Error fetching employees or dealers:", error);
+            } finally {
+                setLoading(false);
             }
-        }
-        fetchEmployees()
-    }, [])
+        };
+
+        fetchData();
+    }, []);
+
 
     // Handlers
     const handleItemChange = (
@@ -463,15 +491,18 @@ const AddQuotation: React.FC = () => {
                                         value={selectedIndex}
                                         onChange={(e) => setSelectedIndex(Number(e.target.value))}
                                     >
-                                        {employees.map((emp, index) => (
-                                            <option key={emp._id} value={index}>
-                                                {emp.name} (employee)
+                                        {people.map((person, index) => (
+                                            <option key={person._id} value={index}>
+                                                {person.name} ({person.type})
                                             </option>
                                         ))}
                                     </select>
                                 </td>
-                                <td className="pl-2">{employees[selectedIndex]?.phone || ""}</td>
+
+                                {/* Only show selected person's phone */}
+                                <td className="pl-2">{people[selectedIndex]?.phone || ""}</td>
                             </tr>
+
                             <tr className="h-5"></tr>
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">Quotation:</td>
@@ -488,7 +519,6 @@ const AddQuotation: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
-
                 {/* Items Tables */}
                 <div>
                     <h2 className="font-semibold text-gray-800 mb-4 text-[.8rem]">Quotation Details</h2>

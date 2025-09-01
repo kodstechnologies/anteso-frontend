@@ -1035,15 +1035,15 @@ export const getServices = async (orderId: any) => {
 export const getAllTechnicians = async () => {
     try {
         const token = Cookies.get('accessToken')
-        console.log("hi from getAllTechnicianss");
+        // console.log("hi from getAllTechnicianss");
 
         const res = await api.get('/technician/get-all', {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllTechnicians ~ res:", res)
-        return res.data.data
+        // console.log("🚀 ~ getAllTechnicians ~ res:", res)
+        return res.data
     } catch (error: any) {
         console.error("🚀 ~ all  technicians ~ error:", error);
         throw new Error(
