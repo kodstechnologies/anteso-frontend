@@ -1,18 +1,18 @@
-"use client"
+
 
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import IconEye from "../../Icon/IconEye" // Assuming this path is correct in your project
+import FormattedDate from "../../common/FormattedDate"
 
 // Assuming this is your actual API function import
 import { getEnquiryDetailsById } from "../../../api"
-
+import Timeline from "../../common/AnimatedTimeline"
 // Define interfaces
 interface OptionType {
     value: string
     label: string
 }
-
 interface HospitalDetails {
     enquiryId: string
     hospitalName: string
@@ -34,6 +34,11 @@ interface HospitalDetails {
     additionalServices: Record<string, string>
     specialInstructions?: string
     attachment?: string
+    enquiryStatusDates: {
+        enquiredOn?: string
+        quotationSentOn?: string
+        approvedOn?: string
+    }
 }
 
 
@@ -44,7 +49,6 @@ const employeeOptions: OptionType[] = [
     { value: "Employee 3", label: "Employee 3" },
     { value: "Employee 4", label: "Employee 4" },
 ]
-
 const View = () => {
     const { id } = useParams<{ id: string }>() // Use useParams from react-router-dom
     console.log("🚀 ~ View ~ id:", id)
@@ -115,7 +119,6 @@ const View = () => {
                     ))}
                 </div>
             </div>
-
             {/* Service details */}
             <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
                 <h5 className="text-lg font-bold text-gray-800 mb-6">Service Details</h5>
@@ -147,31 +150,9 @@ const View = () => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                    <Timeline details={details} />
 
-                    </div>
-                    <div className="mx-auto md:ml-auto md:mr-0">
-                        <div className="flex">
-                            <div className="relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-[15px] before:w-2.5 before:h-2.5 before:border-2 before:border-primary before:rounded-full after:absolute after:left-1/2 after:-translate-x-1/2 after:top-[25px] after:-bottom-[15px] after:w-0 after:h-auto after:border-l-2 after:border-primary after:rounded-full"></div>
-                            <div className="p-2.5 self-center ltr:ml-2.5 rtl:ltr:mr-2.5 rtl:ml-2.5">
-                                <p className="text-[#3b3f5c] dark:text-white-light font-semibold text-[13px]">Enquired on</p>
-                                <p className="text-white-dark text-xs font-bold self-center min-w-[100px]">10-06-2025 10AM</p>
-                            </div>
-                        </div>
-                        <div className="flex">
-                            <div className="relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-[15px] before:w-2.5 before:h-2.5 before:border-2 before:border-secondary before:rounded-full after:absolute after:left-1/2 after:-translate-x-1/2 after:top-[25px] after:-bottom-[15px] after:w-0 after:h-auto after:border-l-2 after:border-secondary after:rounded-full"></div>
-                            <div className="p-2.5 self-center ltr:ml-2.5 rtl:ltr:mr-2.5 rtl:ml-2.5">
-                                <p className="text-[#3b3f5c] dark:text-white-light font-semibold text-[13px]">Qutation sent</p>
-                                <p className="text-white-dark text-xs font-bold self-center min-w-[100px]">10-06-2025 10AM</p>
-                            </div>
-                        </div>
-                        <div className="flex">
-                            <div className="relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-[15px] before:w-2.5 before:h-2.5 before:border-2 before:border-success before:rounded-full after:absolute after:left-1/2 after:-translate-x-1/2 after:top-[25px] after:-bottom-[15px] after:w-0 after:h-auto after:border-l-2 after:border-success after:rounded-full"></div>
-                            <div className="p-2.5 self-center ltr:ml-2.5 rtl:ltr:mr-2.5 rtl:ml-2.5">
-                                <p className="text-[#3b3f5c] dark:text-white-light font-semibold text-[13px]">Approved</p>
-                                <p className="text-white-dark text-xs font-bold self-center min-w-[100px]">10-06-2025 10AM</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -186,7 +167,6 @@ const View = () => {
                     ))}
                 </div>
             </div>
-
             {/* Special Instruction */}
             <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
                 <h5 className="text-lg font-bold text-gray-800 mb-6"> Special Instruction</h5>
