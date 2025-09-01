@@ -13,6 +13,8 @@ import {
 } from "../../../../api"
 import { showMessage } from "../../../common/ShowMessage"
 import FullScreenLoader from "../../../common/FullScreenLoader"
+import ConfirmModal from '../../../../components/common/ConfirmModal';
+
 
 // Define interfaces
 interface Hospital {
@@ -72,8 +74,14 @@ const ViewClients: React.FC = () => {
     phone: Yup.string()
       .matches(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
       .required("Please fill the Field"),
-    gstNo: Yup.string().required("Please fill the Field"),
+    gstNo: Yup.string()
+      .matches(
+        /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+        'Invalid GST Number(eg. 27ABCDE1234F1Z5)'
+      )
+      .required('Please fill the Field'),
     branch: Yup.string().required("Please fill the Field"),
+    email: Yup.string().email('Invalid email').required('Please fill the Email'),
   })
 
   useEffect(() => {
@@ -101,7 +109,6 @@ const ViewClients: React.FC = () => {
     try {
       const hospitalData = await getAllHospitalsByClientId(id)
       console.log("Hospitals:", hospitalData)
-
       // Update state with fetched data
       setHospitals(hospitalData.data || [])
     } catch (error) {
@@ -131,23 +138,29 @@ const ViewClients: React.FC = () => {
   }
 
   const handleDeleteConfirm = async () => {
-    if (!deleteItem || !clientId) return
+    if (!deleteItem || !clientId) return;
 
-    setDeleteLoading(true)
+    setDeleteLoading(true);
     try {
-      await deleteHospitalByClientIdAndHospitalId(clientId, deleteItem.id)
-      setHospitals(hospitals.filter((h) => (h._id || h.id) !== deleteItem.id))
-      showMessage("Hospital deleted successfully!", "success")
-      setShowDeleteModal(false)
-      setDeleteItem(null)
+      const res = await deleteHospitalByClientIdAndHospitalId(clientId, deleteItem.id);
+      console.log("Delete API response:", res);
+
+      setHospitals((prev) =>
+        prev.filter((h) => String(h._id || h.id) !== String(deleteItem.id))
+      );
+
+      showMessage("Hospital deleted successfully!", "success");
+      setShowDeleteModal(false);
+      setDeleteItem(null);
     } catch (error: any) {
-      console.error("Error deleting hospital:", error)
-      const message = error?.response?.data?.message || "Failed to delete hospital"
-      showMessage(message, "error")
+      console.error("Error deleting hospital:", error);
+      const message = error?.response?.data?.message || "Failed to delete hospital";
+      showMessage(message, "error");
     } finally {
-      setDeleteLoading(false)
+      setDeleteLoading(false);
     }
-  }
+  };
+
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>
@@ -275,23 +288,34 @@ const ViewClients: React.FC = () => {
                         ""
                       )}
                     </div>
-                    <div className={submitCount ? (errors.gstNo ? "has-error" : "has-success") : ""}>
-                      <label htmlFor="gstNo" className="block text-sm font-medium text-gray-700 mb-1">
-                        GST Number
-                      </label>
-                      <Field
-                        name="gstNo"
-                        type="text"
-                        id="gstNo"
-                        placeholder="Enter GST Number"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        maxLength={15}
-                      />
+                    <div className={submitCount ? (errors.gstNo ? 'has-error' : 'has-success') : ''}>
+                      <label htmlFor="gstNo">GST Number </label>
+                      <Field name="gstNo">
+                        {({
+                          field,
+                          form,
+                        }: {
+                          field: { name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onBlur: (e: React.FocusEvent<HTMLInputElement>) => void };
+                          form: { setFieldValue: (field: string, value: any, shouldValidate?: boolean) => void };
+                        }) => (
+                          <input
+                            {...field}
+                            type="text"
+                            id="gstNo"
+                            placeholder="Enter GST Number"
+                            className="form-input"
+                            maxLength={15}
+                            onChange={(e) => {
+                              // Allow only uppercase letters and digits
+                              const value = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+                              form.setFieldValue(field.name, value);
+                            }}
+                          />
+                        )}
+                      </Field>
                       {submitCount && errors.gstNo ? (
-                        <div className="text-red-500 text-sm mt-1">{errors.gstNo}</div>
-                      ) : (
-                        ""
-                      )}
+                        <div className="text-danger mt-1">{errors.gstNo as string}</div>
+                      ) : null}
                     </div>
                     <div className={submitCount ? (errors.branch ? "has-error" : "has-success") : ""}>
                       <label htmlFor="branch" className="block text-sm font-medium text-gray-700 mb-1">
@@ -309,6 +333,11 @@ const ViewClients: React.FC = () => {
                       ) : (
                         ""
                       )}
+                    </div>
+                    <div className={submitCount ? (errors.email ? 'has-error' : 'has-success') : ''}>
+                      <label htmlFor="email">Email </label>
+                      <Field name="email" type="text" id="email" placeholder="Enter Email Address" className="form-input" />
+                      {submitCount && errors.email ? <div className="text-danger mt-1">{errors.email}</div> : ''}
                     </div>
                   </div>
                   <div className="flex justify-end">
@@ -410,6 +439,17 @@ const ViewClients: React.FC = () => {
                     </tr>
                   )}
                 </tbody>
+                <ConfirmModal
+                  open={showDeleteModal}
+                  onClose={() => setShowDeleteModal(false)}
+                  onConfirm={handleDeleteConfirm}
+                  title="Confirm Deletion"
+                  message={
+                    deleteItem
+                      ? `Are you sure you want to delete hospital "${deleteItem.name}"? This action cannot be undone.`
+                      : "Are you sure you want to delete this hospital?"
+                  }
+                />
               </table>
             </div>
           </div>
