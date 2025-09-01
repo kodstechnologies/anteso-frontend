@@ -34,7 +34,6 @@ const workTypeDetailSchema = new mongoose.Schema({
         type: String
     }
 }, { _id: false });
-
 const serviceSchema = new mongoose.Schema({
     machineType: {
         type: String,
@@ -53,7 +52,7 @@ const serviceSchema = new mongoose.Schema({
     remark: String,
     workTypeDetails: [workTypeDetailSchema],
     verificationResponse: String,
-    status: String
+    status: String,
+    totalAmount: String
 }, { timestamps: true });
-
 export default mongoose.model('Service', serviceSchema);

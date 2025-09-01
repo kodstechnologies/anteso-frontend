@@ -93,6 +93,7 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
         console.log("Created Quotation:", quotation);
         await Enquiry.findByIdAndUpdate(enquiry._id, {
             quotationStatus: quotation.quotationStatus,
+            "enquiryStatusDates.quotationSentOn": quotation.date || new Date(),
         });
         return res
             .status(201)
@@ -134,7 +135,6 @@ const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
         throw new ApiError(500, 'Failed to fetch quotation', [error.message]);
     }
 });
-
 const getQuotationByIds = asyncHandler(async (req, res) => {
     const { customerId, enquiryId } = req.params;
 
@@ -258,27 +258,25 @@ const acceptQuotation = asyncHandler(async (req, res) => {
         if (!quotation) {
             return res.status(404).json({ message: "Quotation not found" });
         }
-
         // Update quotation status
         quotation.quotationStatus = 'Accepted';
         await quotation.save();
 
         // 2. Find the related enquiry
+        // 2. Find the related enquiry and populate services
         const enquiry = await Enquiry.findOne({
             _id: enquiryId,
             customer: customerId
-        });
+        }).populate("services");
         console.log("🚀 ~ enquiry:", enquiry)
         if (!enquiry) {
             return res.status(404).json({ message: "Enquiry not found for the customer" });
         }
-
         // Update enquiry status
         enquiry.enquiryStatus = 'Approved';
         enquiry.quotationStatus = 'Accepted';
         enquiry.enquiryStatusDates.approvedOn = new Date();
         await enquiry.save();
-
         // 3. Create Service documents
         const serviceDocs = await Promise.all(
             enquiry.services.map(async (service) => {
@@ -286,9 +284,10 @@ const acceptQuotation = asyncHandler(async (req, res) => {
                     machineType: service.machineType,
                     equipmentNo: service.equipmentNo,
                     machineModel: service.machineModel,
-                    workTypeDetails: service.workType.map(wt => ({
-                        workType: wt,
-                        // serviceName: 'Elora',
+                    workTypeDetails: (service.workTypeDetails || []).map(wt => ({
+                        workType: wt.workType,
+                        serviceName: wt.serviceName,
+                        status: wt.status || "pending",
                     })),
                 });
                 await newService.save();
@@ -390,17 +389,16 @@ const rejectQuotation = asyncHandler(async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
-const test = asyncHandler(async (req, res) => {
-    return res.status(200).json({ "msg": "hello" })
-    try {
-    } catch (error) {
 
-    }
-})
+// const test = asyncHandler(async (req, res) => {
+//     return res.status(200).json({ "msg": "hello" })
+//     try {
+//     } catch (error) {
+
+//     }
+// })
 
 // const getAcceptedQuotations=
-
-
 
 const acceptQuotationPDF = asyncHandler(async (req, res) => {
     try {
@@ -437,5 +435,4 @@ const acceptQuotationPDF = asyncHandler(async (req, res) => {
     }
 });
 
-
-export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, test, acceptQuotationPDF }
+export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, acceptQuotationPDF }

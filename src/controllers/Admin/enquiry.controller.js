@@ -8,6 +8,7 @@ import User from "../../models/user.model.js";
 import Quotation from "../../models/quotation.model.js";
 import orderModel from "../../models/order.model.js";
 import Service from '../../models/Services.js'
+import AdditionalService from "../../models/additionalService.model.js";
 
 // const add = asyncHandler(async (req, res) => {
 //     try {
@@ -98,21 +99,238 @@ import Service from '../../models/Services.js'
 //     }
 // });
 
+
+//after adding additional services--wrong one
+// const add = asyncHandler(async (req, res) => {
+//     try {
+//         // enq Validate input
+//         const { error, value } = enquirySchema.validate(req.body, {
+//             abortEarly: false,
+//         });
+//         if (error) {
+//             const errorMessages = error.details.map((err) => err.message);
+//             throw new ApiError(400, "Validation failed", errorMessages);
+//         }
+
+//         let customerId = value.customer;
+
+//         // Check if customer exists (based on email or phone)
+//         if (!customerId) {
+//             const { emailAddress, contactNumber, hospitalName } = value;
+
+//             let existingCustomer = null;
+//             if (emailAddress) {
+//                 existingCustomer = await User.findOne({ emailAddress });
+//             } else if (contactNumber) {
+//                 existingCustomer = await User.findOne({ contactNumber });
+//             }
+
+//             if (!existingCustomer) {
+//                 // Create a new customer
+//                 const newCustomer = await User.create({
+//                     name: hospitalName,
+//                     email: emailAddress,
+//                     phone: contactNumber,
+//                 });
+//                 customerId = newCustomer._id;
+//             } else {
+//                 customerId = existingCustomer._id;
+//             }
+//             value.customer = customerId;
+//         }
+//         // Handle file uploads to S3
+//         let attachments = [];
+//         if (req.files && req.files.length > 0) {
+//             const uploadPromises = req.files.map(async (file) => {
+//                 const { url, key } = await uploadToS3(file);
+//                 return {
+//                     filename: file.originalname,
+//                     key,
+//                     url,
+//                     mimetype: file.mimetype,
+//                     size: file.size,
+//                 };
+//             });
+//             attachments = await Promise.all(uploadPromises);
+//         }
+//         //  Attach files to enquiry payload
+//         value.attachments = attachments;
+//         let serviceIds = [];
+//         if (value.services && value.services.length > 0) {
+//             console.log("Services payload before insert:", value.services);
+
+//             // Transform each service to match Service schema
+//             const transformedServices = value.services.map((s) => ({
+//                 machineType: s.machineType,
+//                 equipmentNo: s.equipmentNo,
+//                 machineModel: s.machineModel,
+//                 serialNumber: s.serialNumber || "",
+//                 remark: s.remark || "",
+//                 workTypeDetails: (s.workType || []).map((wt) => ({
+//                     workType: wt,
+//                     status: "pending"
+//                 }))
+//             }));
+//             const createdServices = await Service.insertMany(transformedServices);
+//             serviceIds = createdServices.map((s) => s._id);
+//         }
+//         // ✅ Create Enquiry with references to services
+//         const newEnquiry = await Enquiry.create({
+//             ...value,
+//             services: serviceIds,
+//             enquiryStatusDates: {
+//                 enquiredOn: new Date()
+//             }
+//         });
+//         // ✅ Link enquiry to customer
+//         await User.findByIdAndUpdate(
+//             customerId,
+//             { $push: { enquiries: newEnquiry._id } },
+//             { new: true }
+//         );
+//         return res
+//             .status(201)
+//             .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
+//     } catch (error) {
+//         console.error("Create Enquiry Error:", error);
+//         throw new ApiError(500, "Failed to create enquiry", [error.message]);
+//     }
+// });
+
+
+//not working
+// const add = asyncHandler(async (req, res) => {
+//     try {
+//         // ✅ Validate input
+//         const { error, value } = enquirySchema.validate(req.body, {
+//             abortEarly: false,
+//         });
+//         if (error) {
+//             const errorMessages = error.details.map((err) => err.message);
+//             throw new ApiError(400, "Validation failed", errorMessages);
+//         }
+//         console.log("Received AdditionalServices:", value.additionalServices);
+
+//         let customerId = value.customer;
+
+//         // ✅ Check if customer exists or create new
+//         if (!customerId) {
+//             const { emailAddress, contactNumber, hospitalName } = value;
+
+//             let existingCustomer = null;
+//             if (emailAddress) {
+//                 existingCustomer = await User.findOne({ emailAddress });
+//             } else if (contactNumber) {
+//                 existingCustomer = await User.findOne({ contactNumber });
+//             }
+
+//             if (!existingCustomer) {
+//                 const newCustomer = await User.create({
+//                     name: hospitalName,
+//                     email: emailAddress,
+//                     phone: contactNumber,
+//                 });
+//                 customerId = newCustomer._id;
+//             } else {
+//                 customerId = existingCustomer._id;
+//             }
+//             value.customer = customerId;
+//         }
+
+//         //  Handle file uploads to S3
+//         let attachments = [];
+//         if (req.files && req.files.length > 0) {
+//             const uploadPromises = req.files.map(async (file) => {
+//                 const { url, key } = await uploadToS3(file);
+//                 return {
+//                     filename: file.originalname,
+//                     key,
+//                     url,
+//                     mimetype: file.mimetype,
+//                     size: file.size,
+//                 };
+//             });
+//             attachments = await Promise.all(uploadPromises);
+//         }
+//         value.attachments = attachments;
+
+//         //  Create Services first
+//         let serviceIds = [];
+//         if (value.services && value.services.length > 0) {
+//             const transformedServices = value.services.map((s) => ({
+//                 machineType: s.machineType,
+//                 equipmentNo: s.equipmentNo,
+//                 machineModel: s.machineModel,
+//                 serialNumber: s.serialNumber || "",
+//                 remark: s.remark || "",
+//                 workTypeDetails: (s.workType || []).map((wt) => ({
+//                     workType: wt,
+//                     status: "pending",
+//                 })),
+//             }));
+//             const createdServices = await Service.insertMany(transformedServices);
+//             serviceIds = createdServices.map((s) => s._id);
+//         }
+
+//         //  Create Additional Services (new logic)
+//         let additionalServiceIds = [];
+//         if (value.additionalServices && value.additionalServices.length > 0) {
+//             // Suppose frontend sends array of { name, description } objects
+//             const createdAdditionalServices = await AdditionalService.insertMany(
+//                 value.additionalServices.map((a) => ({
+//                     name: a.name,
+//                     description: a.description || "",
+//                 }))
+//             );
+//             additionalServiceIds = createdAdditionalServices.map((a) => a._id);
+//         }
+
+//         const {
+//             additionalServices, // remove raw additional services from value
+//             services,
+//             ...rest
+//         } = value;
+
+//         const newEnquiry = await Enquiry.create({
+//             ...rest,
+//             services: serviceIds,
+//             additionalServices: additionalServiceIds, // only ObjectIds here
+//             enquiryStatusDates: {
+//                 enquiredOn: new Date(),
+//             },
+//         });
+
+//         //  Link enquiry to customer
+//         await User.findByIdAndUpdate(
+//             customerId,
+//             { $push: { enquiries: newEnquiry._id } },
+//             { new: true }
+//         );
+
+//         return res
+//             .status(201)
+//             .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
+//     } catch (error) {
+//         console.error("Create Enquiry Error:", error);
+//         throw new ApiError(500, "Failed to create enquiry", [error.message]);
+//     }
+// });
+
 const add = asyncHandler(async (req, res) => {
     try {
-        // enq Validate input
+        // ✅ Validate input
         const { error, value } = enquirySchema.validate(req.body, {
             abortEarly: false,
         });
-
         if (error) {
             const errorMessages = error.details.map((err) => err.message);
             throw new ApiError(400, "Validation failed", errorMessages);
         }
+        console.log("Received AdditionalServices:", value.additionalServices);
 
         let customerId = value.customer;
 
-        // Check if customer exists (based on email or phone)
+        // ✅ Check if customer exists or create new
         if (!customerId) {
             const { emailAddress, contactNumber, hospitalName } = value;
 
@@ -124,7 +342,6 @@ const add = asyncHandler(async (req, res) => {
             }
 
             if (!existingCustomer) {
-                // Create a new customer
                 const newCustomer = await User.create({
                     name: hospitalName,
                     email: emailAddress,
@@ -137,7 +354,7 @@ const add = asyncHandler(async (req, res) => {
             value.customer = customerId;
         }
 
-        // ✅ Handle file uploads to S3
+        //  Handle file uploads to S3
         let attachments = [];
         if (req.files && req.files.length > 0) {
             const uploadPromises = req.files.map(async (file) => {
@@ -152,15 +369,11 @@ const add = asyncHandler(async (req, res) => {
             });
             attachments = await Promise.all(uploadPromises);
         }
-
-        //  Attach files to enquiry payload
         value.attachments = attachments;
 
+        // ✅ Create Services first
         let serviceIds = [];
         if (value.services && value.services.length > 0) {
-            console.log("Services payload before insert:", value.services);
-
-            // Transform each service to match Service schema
             const transformedServices = value.services.map((s) => ({
                 machineType: s.machineType,
                 equipmentNo: s.equipmentNo,
@@ -169,15 +382,42 @@ const add = asyncHandler(async (req, res) => {
                 remark: s.remark || "",
                 workTypeDetails: (s.workType || []).map((wt) => ({
                     workType: wt,
-                    status: "pending"
-                }))
+                    status: "pending",
+                })),
             }));
-
             const createdServices = await Service.insertMany(transformedServices);
             serviceIds = createdServices.map((s) => s._id);
         }
 
-        // ✅ Create Enquiry with references to services
+        // ✅ Create Additional Services with description + totalAmount
+        // let additionalServiceIds = [];
+        // if (value.additionalServices && Object.keys(value.additionalServices).length > 0) {
+        //     const createdAdditionalServices = await AdditionalService.insertMany(
+        //         Object.entries(value.additionalServices).map(([name, data]) => ({
+        //             name,
+        //             description: data.description || "",
+        //             totalAmount: data.totalAmount || 0,
+        //         }))
+        //     );
+        //     additionalServiceIds = createdAdditionalServices.map(a => a._id);
+        // }
+
+
+        // // remove raw arrays from value before creating enquiry
+        // const {
+        //     additionalServices, // strip raw
+        //     services,
+        //     ...rest
+        // } = value;
+
+        // const newEnquiry = await Enquiry.create({
+        //     ...rest,
+        //     services: serviceIds,
+        //     additionalServices: additionalServiceIds, // ✅ link ObjectIds
+        //     enquiryStatusDates: {
+        //         enquiredOn: new Date(),
+        //     },
+        // });
         const newEnquiry = await Enquiry.create({
             ...value,
             services: serviceIds,
@@ -189,6 +429,7 @@ const add = asyncHandler(async (req, res) => {
             { $push: { enquiries: newEnquiry._id } },
             { new: true }
         );
+
         return res
             .status(201)
             .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
@@ -197,6 +438,7 @@ const add = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to create enquiry", [error.message]);
     }
 });
+
 
 const addByCustomerId = asyncHandler(async (req, res) => {
     try {
@@ -402,9 +644,6 @@ const getEnquiryDetailsById = async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 };
-
-
-
 const getByCustomerIdEnquiryId = async (req, res) => {
     try {
         const { id: enquiryId, customerId } = req.params; // both enquiryId & customerId from params
@@ -520,7 +759,6 @@ const createDirectOrder = asyncHandler(async (req, res) => {
         }
 
         // ✅ Create Service documents first
-        // ✅ Create Service documents first
         let serviceIds = [];
         if (services && services.length > 0) {
             const serviceDocs = await Promise.all(
@@ -542,7 +780,23 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             serviceIds = serviceDocs;
         }
 
-        // ✅ Create Enquiry with references to Service documents
+        // ✅ Create AdditionalService documents
+        let additionalServiceIds = [];
+        if (additionalServices && additionalServices.length > 0) {
+            const additionalServiceDocs = await Promise.all(
+                additionalServices.map(async (a) => {
+                    const additionalDoc = await AdditionalService.create({
+                        name: a.name,
+                        description: a.description || "",
+                        status: "pending"
+                    });
+                    return additionalDoc._id;
+                })
+            );
+            additionalServiceIds = additionalServiceDocs;
+        }
+
+        // ✅ Create Enquiry with references to Service + AdditionalService
         const enquiry = await Enquiry.create({
             leadOwner,
             hospitalName,
@@ -556,8 +810,8 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             emailAddress,
             contactNumber,
             designation,
-            services: serviceIds, // 👈 Only ObjectIds, no embedded services
-            additionalServices: additionalServices || {},
+            services: serviceIds,
+            additionalServices: additionalServiceIds,
             specialInstructions,
             attachment: workOrderCopy,
             enquiryStatus: "Enquired",
@@ -582,7 +836,8 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             designation,
             advanceAmount,
             urgency,
-            services: serviceIds, // same service references
+            services: serviceIds,
+            additionalServices: additionalServiceIds, // keep reference in order as well
             specialInstructions,
             workOrderCopy,
             customer: customerId,
@@ -598,7 +853,6 @@ const createDirectOrder = asyncHandler(async (req, res) => {
                     "Order & Enquiry created successfully"
                 )
             );
-
     } catch (error) {
         console.error("Create Direct Order Error:", error);
         throw new ApiError(500, "Failed to create direct order", [error.message]);
@@ -650,4 +904,5 @@ const getAllStates = asyncHandler(async (req, res) => {
         console.log("error", error);
     }
 })
+
 export default { add, getById, deleteById, updateById, getAll, getEnquiryDetailsById, addByCustomerId, getByCustomerIdEnquiryId, createDirectOrder, getAllStates };

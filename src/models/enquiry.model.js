@@ -31,6 +31,12 @@ const enquirySchema = new mongoose.Schema({
         of: String,
         default: {}
     },
+    // additionalServices: [
+    //     {
+    //         type: mongoose.Schema.Types.ObjectId,
+    //         ref: 'AdditionalService'
+    //     }
+    // ],
     // Section 4: Special Instructions & Attachment
     specialInstructions: { type: String },
     attachment: { type: String }, // file URL or path
@@ -46,7 +52,6 @@ const enquirySchema = new mongoose.Schema({
         quotationSentOn: { type: Date },
         approvedOn: { type: Date }
     },
-
     // quotation: {
     //     type: mongoose.Schema.Types.ObjectId,
     //     ref: 'Quotation',
@@ -56,13 +61,21 @@ const enquirySchema = new mongoose.Schema({
         enum: ['Create', 'Created', 'Accepted', 'Rejected'],
         default: 'Create'
     },
-
     // Customer Reference (from User base model)
     customer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User', // base model name
         required: false,
         default: null
+    },
+    subtotalAmount: {
+        type: String
+    },
+    discount: {
+        type: String
+    },
+    grandTotal: {
+        type: String
     }
 }, { timestamps: true });
 enquirySchema.pre('save', async function (next) {

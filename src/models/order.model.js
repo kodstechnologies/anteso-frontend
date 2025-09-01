@@ -40,6 +40,12 @@ const orderSchema = new mongoose.Schema({
         of: String,
         default: {}
     },
+    // additionalServices: [
+    //     {
+    //         type: mongoose.Schema.Types.ObjectId,
+    //         ref: 'AdditionalService'
+    //     }
+    // ],
     specialInstructions: { type: String },
     courierDetails: {
         type: mongoose.Schema.Types.ObjectId,
@@ -55,7 +61,6 @@ const orderSchema = new mongoose.Schema({
         ref: 'Quotation',
         // required: true,
     },
-    
     rawFile: { type: String },
     rawPhoto: { type: String },
 }, { timestamps: true });
