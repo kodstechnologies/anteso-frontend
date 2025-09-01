@@ -734,7 +734,6 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             let existingCustomer = null;
             if (emailAddress) existingCustomer = await User.findOne({ email: emailAddress });
             else if (contactNumber) existingCustomer = await User.findOne({ phone: contactNumber });
-
             if (!existingCustomer) {
                 const newCustomer = await User.create({
                     name: hospitalName,
@@ -746,7 +745,6 @@ const createDirectOrder = asyncHandler(async (req, res) => {
                 customerId = existingCustomer._id;
             }
         }
-
         // ✅ Handle file upload (work order copy)
         let workOrderCopy = "";
         if (req.files && req.files.length > 0) {
@@ -779,7 +777,6 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             );
             serviceIds = serviceDocs;
         }
-
         // ✅ Create AdditionalService documents
         let additionalServiceIds = [];
         if (additionalServices && additionalServices.length > 0) {
@@ -795,7 +792,6 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             );
             additionalServiceIds = additionalServiceDocs;
         }
-
         // ✅ Create Enquiry with references to Service + AdditionalService
         const enquiry = await Enquiry.create({
             leadOwner,
