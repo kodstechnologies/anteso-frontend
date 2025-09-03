@@ -35,17 +35,17 @@ const orderSchema = new mongoose.Schema({
     urgency: { type: String, enum: ['normal', 'tatkal'] },
     //  Reference to the  Service model
     services: [{ type: Schema.Types.ObjectId, ref: 'Service' }],
-    additionalServices: {
-        type: Map,
-        of: String,
-        default: {}
-    },
-    // additionalServices: [
-    //     {
-    //         type: mongoose.Schema.Types.ObjectId,
-    //         ref: 'AdditionalService'
-    //     }
-    // ],
+    // additionalServices: {
+    //     type: Map,
+    //     of: String,
+    //     default: {}
+    // },
+    additionalServices: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'AdditionalService'
+        }
+    ],
     specialInstructions: { type: String },
     courierDetails: {
         type: mongoose.Schema.Types.ObjectId,

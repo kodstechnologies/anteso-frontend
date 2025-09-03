@@ -6,7 +6,9 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import orderModel from "../../models/order.model.js";
 import mongoose from "mongoose";
 import Services from "../../models/Services.js";
+import AdditionalService from '../../models/additionalService.model.js'
 import { uploadToS3 } from "../../utils/s3Upload.js";
+
 
 // export const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
 //     const { enquiryId } = req.params;
@@ -48,56 +50,239 @@ import { uploadToS3 } from "../../utils/s3Upload.js";
 
 
 
+// const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
+//     try {
+//         const { id } = req.params;
+//         console.log("Incoming Quotation Payload:----->", req.body)
+
+//         console.log("🚀 ~ enquiryId:", id)
+//         const {
+//             date,
+//             quotationNumber,
+//             expiryDate,
+//             customer,
+//             assignedEmployee,
+//             termsAndConditions,
+//             calculations,
+//             items,
+//         } = req.body;
+//         console.log("🚀 ~ customer-------------->:", customer)
+
+//         if (!assignedEmployee || !calculations || !items) {
+//             throw new ApiError(400, 'Missing required fields');
+//         }
+
+//         // Now directly fetch by enquiry ID
+//         const enquiry = await Enquiry.findById(id).populate("customer");
+//         console.log("enquiry.customer:", enquiry.customer);
+
+//         if (!enquiry) throw new ApiError(404, "Enquiry not found");
+//         if (!enquiry.customer || !enquiry.customer._id)
+//             throw new ApiError(400, "Customer info missing in enquiry");
+//         console.log("Terms to be saved:", termsAndConditions);
+
+//         const quotation = await Quotation.create({
+//             date,
+//             quotationId: quotationNumber,
+//             enquiry: enquiry._id,
+//             from: enquiry.customer._id,
+//             discount: calculations.discount,
+//             total: calculations.totalAmount,
+//             quotationStatus: 'Created',
+//             termsAndConditions,
+//         });
+
+//         console.log("Created Quotation:", quotation);
+//         await Enquiry.findByIdAndUpdate(enquiry._id, {
+//             quotationStatus: quotation.quotationStatus,
+//             "enquiryStatusDates.quotationSentOn": quotation.date || new Date(),
+//         });
+//         return res
+//             .status(201)
+//             .json(new ApiResponse(201, quotation, 'Quotation created successfully'));
+//     } catch (error) {
+//         console.error("Error creating quotation:", error);
+//         throw new ApiError(500, 'Failed to create quotation', [error.message]);
+//     }
+// });
+
+// const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
+//     try {
+//         const { id } = req.params;
+//         const {
+//             date,
+//             quotationNumber,
+//             customer,
+//             assignedEmployee,
+//             items,
+//             calculations,
+//             termsAndConditions,
+//             bankDetails,
+//             companyDetails,
+//         } = req.body;
+
+//         console.log("🚀 ~ req.body:", req.body);
+
+//         if (!assignedEmployee) throw new ApiError(400, 'Assigned employee is required');
+
+//         // Fetch enquiry to check if it exists
+//         const enquiry = await Enquiry.findById(id).populate('customer');
+//         if (!enquiry) throw new ApiError(404, 'Enquiry not found');
+//         if (!enquiry.customer || !enquiry.customer._id)
+//             throw new ApiError(400, 'Customer info missing in enquiry');
+
+//         // Create quotation using frontend-calculated values
+//         const quotation = await Quotation.create({
+//             date,
+//             quotationId: quotationNumber,
+//             enquiry: enquiry._id,
+//             from: enquiry.customer._id,
+//             customer,
+//             assignedEmployee,
+//             items,
+//             calculations,
+//             bankDetails,
+//             companyDetails,
+//             discount: calculations?.discountAmount || 0,
+//             total: calculations?.totalAmount || 0,
+//             quotationStatus: 'Created',
+//             termsAndConditions,
+//         });
+
+//         // Update enquiry with quotation status and date
+//         await Enquiry.findByIdAndUpdate(enquiry._id, {
+//             quotationStatus: quotation.quotationStatus,
+//             "enquiryStatusDates.quotationSentOn": quotation.date || new Date(),
+//             subtotalAmount: calculations?.subtotal || 0,
+//             discount: calculations?.discountAmount || 0,
+//             grandTotal: calculations?.totalAmount || 0
+//         });
+
+//         return res.status(201).json(
+//             new ApiResponse(201, quotation, 'Quotation created successfully')
+//         );
+
+//     } catch (error) {
+//         console.error("Error creating quotation:", error);
+//         throw new ApiError(500, 'Failed to create quotation', [error.message]);
+//     }
+// });
 const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        console.log("Incoming Quotation Payload:", req.body)
-
-        console.log("🚀 ~ enquiryId:", id)
         const {
             date,
             quotationNumber,
-            expiryDate,
             customer,
             assignedEmployee,
-            termsAndConditions,
-            calculations,
             items,
+            calculations,
+            termsAndConditions,
+            bankDetails,
+            companyDetails,
         } = req.body;
-        console.log("🚀 ~ customer-------------->:", customer)
 
-        if (!assignedEmployee || !calculations || !items) {
-            throw new ApiError(400, 'Missing required fields');
-        }
+        console.log("🚀 ~ req.body:", req.body);
 
-        // Now directly fetch by enquiry ID
-        const enquiry = await Enquiry.findById(id).populate("customer");
-        console.log("enquiry.customer:", enquiry.customer);
+        if (!assignedEmployee) throw new ApiError(400, 'Assigned employee is required');
 
-        if (!enquiry) throw new ApiError(404, "Enquiry not found");
+        // Fetch enquiry and populate services/additional services
+        const enquiry = await Enquiry.findById(id)
+            .populate('services')
+            .populate('additionalServices')
+            .populate('customer');
+
+        if (!enquiry) throw new ApiError(404, 'Enquiry not found');
         if (!enquiry.customer || !enquiry.customer._id)
-            throw new ApiError(400, "Customer info missing in enquiry");
-        console.log("Terms to be saved:", termsAndConditions);
+            throw new ApiError(400, 'Customer info missing in enquiry');
 
+        // Create snapshots of services with totalAmount
+        // const serviceSnapshots = items.services.map(s => ({
+        //     id: s.id,
+        //     machineType: s.machineType,
+        //     equipmentNo: s.equipmentNo,
+        //     machineModel: s.machineModel,
+        //     serialNumber: s.serialNumber,
+        //     remark: s.remark,
+        //     totalAmount: s.totalAmount, // directly from frontend
+        // }));
+
+        const serviceSnapshots = items.services.map(s => ({
+            id: s.id, // frontend sends real ObjectId
+            machineType: s.machineType,
+            equipmentNo: s.equipmentNo,
+            machineModel: s.machineModel,
+            serialNumber: s.serialNumber,
+            remark: s.remark,
+            totalAmount: s.totalAmount, // ✅ directly from frontend
+        }));
+        console.log("Service snapshots for DB update:", serviceSnapshots);
+
+
+        const additionalServiceSnapshots = items.additionalServices.map(s => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            totalAmount: s.totalAmount, // directly from frontend
+        }));
+
+
+        // Create quotation with service snapshots and other data
+        // Create quotation with service snapshots and other data
         const quotation = await Quotation.create({
             date,
             quotationId: quotationNumber,
             enquiry: enquiry._id,
             from: enquiry.customer._id,
-            discount: calculations.discount,
-            total: calculations.totalAmount,
+            customer,
+            assignedEmployee,
+            items: {
+                services: serviceSnapshots,
+                additionalServices: additionalServiceSnapshots,
+            },
+            calculations,
+            bankDetails,
+            companyDetails,
+            discount: calculations?.discountAmount || 0,
+            total: calculations?.totalAmount || 0,
             quotationStatus: 'Created',
             termsAndConditions,
         });
 
-        console.log("Created Quotation:", quotation);
+        // **Update the actual Service and AdditionalService totals in DB**
+        // Update the actual Service and AdditionalService totals in DB
+
+        await Promise.all(serviceSnapshots
+            .filter(s => mongoose.Types.ObjectId.isValid(s.id)) // ✅ only update valid ids
+            .map(s => Services.findByIdAndUpdate(
+                s.id,
+                { $set: { totalAmount: s.totalAmount } },
+                { new: true }
+            ))
+        );
+
+
+        await Promise.all(additionalServiceSnapshots
+            .filter(s => s.id) // ✅ same for additional services
+            .map(s => AdditionalService.findByIdAndUpdate(s.id, { totalAmount: s.totalAmount }))
+        );
+
+
+        // Update enquiry with totals and quotation status
         await Enquiry.findByIdAndUpdate(enquiry._id, {
             quotationStatus: quotation.quotationStatus,
             "enquiryStatusDates.quotationSentOn": quotation.date || new Date(),
+            subtotalAmount: calculations?.subtotal || 0,
+            discount: calculations?.discountAmount || 0,
+            grandTotal: calculations?.totalAmount || 0,
         });
-        return res
-            .status(201)
-            .json(new ApiResponse(201, quotation, 'Quotation created successfully'));
+
+        // Return response
+        return res.status(201).json(
+            new ApiResponse(201, quotation, 'Quotation created successfully')
+        );
+
+
     } catch (error) {
         console.error("Error creating quotation:", error);
         throw new ApiError(500, 'Failed to create quotation', [error.message]);
@@ -115,10 +300,17 @@ const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
         const quotation = await Quotation.findOne({ enquiry: id })
             .populate({
                 path: 'enquiry',
-                populate: {
-                    path: 'services', // populate services inside enquiry
-                    model: 'Service', // use the correct service model name
-                },
+                populate: [
+                    {
+                        path: 'services', // populate services inside enquiry
+                        model: 'Service',
+                    },
+                    {
+                        path: 'additionalServices', // populate additionalServices inside enquiry
+                        model: 'AdditionalService',
+                        select: 'name description totalAmount', // select only these fields
+                    },
+                ],
             })
             .populate('from', 'name email') // employee info
             .exec();
@@ -135,6 +327,7 @@ const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
         throw new ApiError(500, 'Failed to fetch quotation', [error.message]);
     }
 });
+
 const getQuotationByIds = asyncHandler(async (req, res) => {
     const { customerId, enquiryId } = req.params;
 
@@ -156,6 +349,7 @@ const getQuotationByIds = asyncHandler(async (req, res) => {
 
     res.status(200).json(new ApiResponse(200, quotation, 'Quotation fetched successfully'));
 });
+
 // for mobile app
 // const acceptQuotation = asyncHandler(async (req, res) => {
 //     try {

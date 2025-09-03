@@ -53,6 +53,6 @@ const serviceSchema = new mongoose.Schema({
     workTypeDetails: [workTypeDetailSchema],
     verificationResponse: String,
     status: String,
-    totalAmount: String
+    totalAmount: Number
 }, { timestamps: true });
 export default mongoose.model('Service', serviceSchema);

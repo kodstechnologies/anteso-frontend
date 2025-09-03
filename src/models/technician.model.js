@@ -59,7 +59,7 @@ const employeeSchema = new Schema({
         unique: true,
         index: true,
     },
-    status: {
+    status: {   
         type: String,
         enum: ['active', 'inactive'],
         default: 'active',

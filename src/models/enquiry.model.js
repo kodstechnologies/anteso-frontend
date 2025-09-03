@@ -26,17 +26,17 @@ const enquirySchema = new mongoose.Schema({
         }
     ],
     // Section 3: Additional Services (checkboxes)
-    additionalServices: {
-        type: Map,
-        of: String,
-        default: {}
-    },
-    // additionalServices: [
-    //     {
-    //         type: mongoose.Schema.Types.ObjectId,
-    //         ref: 'AdditionalService'
-    //     }
-    // ],
+    // additionalServices: {
+    //     type: Map,
+    //     of: String,
+    //     default: {}
+    // },
+    additionalServices: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'AdditionalService'
+        }
+    ],
     // Section 4: Special Instructions & Attachment
     specialInstructions: { type: String },
     attachment: { type: String }, // file URL or path

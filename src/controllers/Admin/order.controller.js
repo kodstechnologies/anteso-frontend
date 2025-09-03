@@ -1001,7 +1001,6 @@ const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
     }
 });
 
-
 //check
 const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
     const { engineerId } = req.params;
@@ -1476,7 +1475,13 @@ export const getOrders = asyncHandler(async (req, res) => {
         console.error("error ", error.message[0])
     }
 })
+export const editOrder = async (req, res) => {
+    try {
 
+    } catch (error) {
+
+    }
+}
 
 // export const paidStatus = asyncHandler(async (req, res) => {
 //     try {
@@ -1488,4 +1493,4 @@ export const getOrders = asyncHandler(async (req, res) => {
 //     }
 // })
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType }
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, }

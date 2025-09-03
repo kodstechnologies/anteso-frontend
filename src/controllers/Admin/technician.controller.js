@@ -98,6 +98,7 @@ const add = asyncHandler(async (req, res) => {
             dateOfJoining,
             workingDays
         } = req.body;
+        console.log("🚀 ~ technicianType:", technicianType)
 
         // Basic validation
         if (!name || !phone || !email || !technicianType ||
@@ -188,21 +189,25 @@ const getById = asyncHandler(async (req, res) => {
 
 const getAllEmployees = asyncHandler(async (req, res) => {
     try {
-        const employees = await Technician.find({ technicianType: "engineer" })
+        const employees = await Technician.find()  // 👈 no filter
             .populate({
-                path: "tools.toolId", // populate the toolId inside tools array
-                select: "nomenclature manufacturer model" // choose the fields you need
+                path: "tools.toolId",
+                select: "nomenclature manufacturer model"
             });
-        console.log("🚀 ~ employees:", employees)
+
+        console.log("🚀 ~ employees:", employees);
+
         return res.status(200).json(new ApiResponse(200, employees, "All technicians fetched successfully"));
     } catch (error) {
         throw new ApiError(500, error.message || "Failed to fetch technicians");
     }
-})
+});
 
 const getAll = asyncHandler(async (req, res) => {
     try {
-        const technicians = await Technician.find({ technicianType: "engineer" }).populate("tools");
+        const technicians = await Technician.find({ technicianType: "engineer" })
+        console.log("🚀 ~ technicians:", technicians)
+        // .populate("tools");
         // console.log("🚀 ~ technicians:", technicians)
 
         return res.status(200).json(new ApiResponse(200, technicians, "All technicians fetched successfully"));
