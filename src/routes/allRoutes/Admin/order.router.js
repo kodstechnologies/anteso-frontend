@@ -56,7 +56,6 @@ router.post(
     upload.single("file"), // "file" must match your input name
     orderController.completedStatusAndReport
 );
-
 router.get('/get-qa-details/:orderId/:serviceId/:technicianId', orderController.getQaDetails)
 router.get('/get-all-office-staff', orderController.getAllOfficeStaff)
 router.get('/get-assigned-technician/:orderId/:serviceId/:workType', orderController.getAssignedTechnicianName)

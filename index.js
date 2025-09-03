@@ -22,6 +22,8 @@ app.get('/', (req, res) => {
     res.send("test route")
 })
 
+//test push
+
 app.use('/anteso', mainRouter)
 app.use(errorHandler);
 const startServer = async () => {

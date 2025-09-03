@@ -68,18 +68,26 @@ const getAdditionalServicesByOrderId = asyncHandler(async (req, res) => {
         if (!orderId) {
             return res.status(400).json({ message: 'Order ID is required' });
         }
-        const order = await orderModel.findById(orderId).select('additionalServices specialInstructions');
+
+        // ✅ Populate only name & description from AdditionalService
+        const order = await orderModel
+            .findById(orderId)
+            .populate('additionalServices', 'name description') // 👈 only these fields
+            .select('additionalServices specialInstructions');
+
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
         }
+
         res.status(200).json({
-            additionalServices: order.additionalServices || {},
+            additionalServices: order.additionalServices || [],
             specialInstructions: order.specialInstructions || ''
         });
     } catch (error) {
         res.status(500).json({ message: error.message || 'Something went wrong' });
     }
 });
+
 const getAllServicesByOrderId = asyncHandler(async (req, res) => {
     try {
         const { orderId } = req.params;
@@ -463,7 +471,7 @@ const updateServiceWorkType = asyncHandler(async (req, res) => {
 
 const createOrder = asyncHandler(async (req, res) => {
     try {
-        console.log("📥 req body:", req.body);
+        console.log("hi---📥 req body:", req.body);
 
         const {
             leadOwner, // userId from frontend
@@ -485,7 +493,7 @@ const createOrder = asyncHandler(async (req, res) => {
             procExpiryDate,
             urgency,
             services,
-            additionalServices,
+            additionalServices, // will handle as references
             specialInstructions,
             courierDetails,
             reportULRNumber,
@@ -579,7 +587,39 @@ const createOrder = asyncHandler(async (req, res) => {
             console.log("🚀 ~ serviceDocs:", serviceDocs);
         }
 
-        // ✅ Step 6: Create order
+        // ✅ Step 6: Parse and upsert additionalServices
+        let parsedAdditional = [];
+        if (additionalServices) {
+            if (typeof additionalServices === "string") {
+                try {
+                    parsedAdditional = JSON.parse(additionalServices);
+                } catch (err) {
+                    throw new ApiError(400, "Invalid additionalServices format, must be JSON array");
+                }
+            } else {
+                parsedAdditional = additionalServices;
+            }
+        }
+
+        // Expected format: [{ name: "INSTITUTE REGISTRATION", description: "", totalAmount: 1000 }]
+        let additionalServiceDocs = [];
+        if (Array.isArray(parsedAdditional) && parsedAdditional.length > 0) {
+            additionalServiceDocs = await Promise.all(
+                parsedAdditional.map(async (svc) => {
+                    let existing = await AdditionalService.findOne({ name: svc.name });
+                    if (!existing) {
+                        existing = await AdditionalService.create({
+                            name: svc.name,
+                            description: svc.description || "",
+                            totalAmount: svc.totalAmount || 0,
+                        });
+                    }
+                    return existing._id;
+                })
+            );
+        }
+
+        // ✅ Step 7: Create order
         const order = await orderModel.create({
             leadOwner: leadOwnerUser.name, // store name instead of ID
             hospitalName,
@@ -601,7 +641,7 @@ const createOrder = asyncHandler(async (req, res) => {
             customer: client._id,
             urgency,
             services: serviceDocs.map((s) => s._id),
-            additionalServices,
+            additionalServices: additionalServiceDocs, // ✅ only ObjectIds here
             specialInstructions,
             courierDetails,
             reportULRNumber,
@@ -620,6 +660,7 @@ const createOrder = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to create order", [error.message]);
     }
 });
+
 
 //check this one also
 //mobile--get the order by customerId orderId and status--if status is inprogress then only show that order details
