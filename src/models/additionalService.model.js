@@ -31,7 +31,6 @@
 //     additionalServiceSchema
 // );
 
-
 import mongoose from "mongoose";
 const additionalServiceSchema = new mongoose.Schema(
     {
@@ -59,13 +58,17 @@ const additionalServiceSchema = new mongoose.Schema(
         totalAmount: {
             type: Number,
         },
+        status:{
+            type:String
+        },
+        remark:{
+            type:String
+        }
     },
     { timestamps: true }
 );
-
 const AdditionalService = mongoose.model(
     "AdditionalService",
     additionalServiceSchema
 );
-
 export default AdditionalService;

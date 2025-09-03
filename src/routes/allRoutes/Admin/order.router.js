@@ -53,7 +53,7 @@ router.put('/assign-to-office-staff/:orderId/:serviceId/:officeStaffId/:workType
 // params: technicianId, orderId, serviceId, status, optional remark
 router.post(
     "/completed-status-report/:technicianId/:orderId/:serviceId/:workType/:status",
-    upload.single("file"), // "file" must match your input name
+    upload.single("file"), // "file" must match your input namer
     orderController.completedStatusAndReport
 );
 router.get('/get-qa-details/:orderId/:serviceId/:technicianId', orderController.getQaDetails)
@@ -61,6 +61,7 @@ router.get('/get-all-office-staff', orderController.getAllOfficeStaff)
 router.get('/get-assigned-technician/:orderId/:serviceId/:workType', orderController.getAssignedTechnicianName)
 router.get('/get-assigned-staff/:orderId/:serviceId/:workType', orderController.geAssignedtofficeStaffName)
 router.post('/create-order', orderController.createOrder)
+router.put('/update-additional-service/:id',orderController.updateAdditionalService)
 // router.get('/',)
 // router.post('/status-paid')
 

@@ -49,7 +49,6 @@ import { uploadToS3 } from "../../utils/s3Upload.js";
 // });
 
 
-
 // const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
 //     try {
 //         const { id } = req.params;
@@ -105,7 +104,6 @@ import { uploadToS3 } from "../../utils/s3Upload.js";
 //         throw new ApiError(500, 'Failed to create quotation', [error.message]);
 //     }
 // });
-
 // const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
 //     try {
 //         const { id } = req.params;
@@ -191,11 +189,9 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
             .populate('services')
             .populate('additionalServices')
             .populate('customer');
-
         if (!enquiry) throw new ApiError(404, 'Enquiry not found');
         if (!enquiry.customer || !enquiry.customer._id)
             throw new ApiError(400, 'Customer info missing in enquiry');
-
         // Create snapshots of services with totalAmount
         // const serviceSnapshots = items.services.map(s => ({
         //     id: s.id,
@@ -214,7 +210,7 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
             machineModel: s.machineModel,
             serialNumber: s.serialNumber,
             remark: s.remark,
-            totalAmount: s.totalAmount, // ✅ directly from frontend
+            totalAmount: s.totalAmount, //  directly from frontend
         }));
         console.log("Service snapshots for DB update:", serviceSnapshots);
 
@@ -227,7 +223,6 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
         }));
 
 
-        // Create quotation with service snapshots and other data
         // Create quotation with service snapshots and other data
         const quotation = await Quotation.create({
             date,
@@ -439,6 +434,7 @@ const getQuotationByIds = asyncHandler(async (req, res) => {
 //     }
 // });
 
+
 const acceptQuotation = asyncHandler(async (req, res) => {
     try {
         const { customerId, enquiryId, quotationId } = req.params;
@@ -591,7 +587,6 @@ const rejectQuotation = asyncHandler(async (req, res) => {
 
 //     }
 // })
-
 // const getAcceptedQuotations=
 
 const acceptQuotationPDF = asyncHandler(async (req, res) => {

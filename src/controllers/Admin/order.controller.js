@@ -12,6 +12,7 @@ import Hospital from "../../models/hospital.model.js";
 import { uploadToS3 } from "../../utils/s3Upload.js";
 import Payment from "../../models/payment.model.js";
 import { getFileUrl, getMultipleFileUrls } from "../../utils/s3Fetch.js";
+import AdditionalService from "../../models/additionalService.model.js";
 
 const getAllOrders = asyncHandler(async (req, res) => {
     try {
@@ -1534,4 +1535,32 @@ export const editOrder = async (req, res) => {
 //     }
 // })
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, }
+
+
+// Update Additional Service
+export const updateAdditionalService = async (req, res) => {
+    try {
+        const { id } = req.params; // service ID from URL
+        const { status, remark } = req.body; // values from fronten
+        if (!id) {
+            return res.status(400).json({ message: "Service ID is required" });
+        }
+        const updatedService = await AdditionalService.findByIdAndUpdate(
+            id,
+            { status, remark },
+            { new: true, runValidators: true }
+        );
+        if (!updatedService) {
+            return res.status(404).json({ message: "Service not found" });
+        }
+        res.status(200).json({
+            message: "Additional Service updated successfully",
+            service: updatedService,
+        });
+    } catch (error) {
+        console.error("Error updating additional service:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService }
