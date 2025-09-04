@@ -6,6 +6,7 @@ import LoginOtp from "../../models/otpLogins.model.js";
 import sendSMS from "../../utils/SendSMS.js";
 import User from "../../models/user.model.js";
 import jwt from "jsonwebtoken";
+import Employee from "../../models/technician.model.js";
 
 const JWT_USER_SECRET = process.env.JWT_USER_SECRET;
 
