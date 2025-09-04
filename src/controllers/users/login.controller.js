@@ -123,9 +123,17 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     if (otpRecord.expiresAt < new Date()) throw new ApiError(400, "OTP has expired");
     if (otpRecord.otp !== otp) throw new ApiError(400, "Invalid OTP");
 
-    // ✅ Ensure only "Customer" can log in
-    const user = await User.findOne({ phone: mobileNumber, role: "Customer" });
-    if (!user) throw new ApiError(404, "Client not found or not allowed");
+    // ✅ Allow "Customer" OR "Employee" with technicianType = "engineer"
+    let user = await User.findOne({ phone: mobileNumber, role: "Customer" });
+
+    if (!user) {
+        user = await User.findOne({ phone: mobileNumber, role: "Employee" }).populate("Employee");
+        if (!user) throw new ApiError(404, "User not found or not allowed");
+
+        // make sure it is an engineer
+        const employee = await Employee.findOne({ _id: user._id, technicianType: "engineer" });
+        if (!employee) throw new ApiError(403, "Only engineers are allowed");
+    }
 
     const payload = {
         _id: user._id,
@@ -141,6 +149,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
         new ApiResponse(200, { token, user }, "OTP verified successfully")
     );
 });
+
 
 
 //test otp functions--without send sms
