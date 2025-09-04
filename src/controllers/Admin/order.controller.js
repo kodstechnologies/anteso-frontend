@@ -473,7 +473,6 @@ const updateServiceWorkType = asyncHandler(async (req, res) => {
 const createOrder = asyncHandler(async (req, res) => {
     try {
         console.log("hi---📥 req body:", req.body);
-
         const {
             leadOwner, // userId from frontend
             hospitalName,

@@ -66,7 +66,7 @@ const employeeSchema = new Schema({
     },
     technicianType: {
         type: String,
-        enum: ['office staff', 'engineer'],
+        enum: ['office-staff', 'engineer'],
         required: true,
     },
     designation: {

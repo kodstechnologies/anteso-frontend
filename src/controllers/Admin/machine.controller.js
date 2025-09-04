@@ -5,6 +5,7 @@ import { ApiResponse } from '../../utils/ApiResponse.js';
 import { machineSchema } from '../../validators/machineValidator.js';
 import Customer from '../../models/client.model.js'
 import { uploadToS3 } from '../../utils/s3Upload.js';
+import { getMultipleFileUrls } from '../../utils/s3Fetch.js';
 
 // ADD MACHINE
 // const add = asyncHandler(async (req, res) => {
@@ -146,32 +147,51 @@ const add = asyncHandler(async (req, res) => {
 const getAllMachinesByCustomerId = asyncHandler(async (req, res) => {
     try {
         const { customerId } = req.params;
-        console.log("🚀 ~ customerId:", customerId)
         if (!customerId) {
             return res.status(400).json({ success: false, message: "Customer ID is required" });
         }
 
         let machines = await Machine.find({ customer: customerId }).populate('customer', 'gstNo');
 
-        // ✅ Check qaValidity dynamically
+        if (!machines || machines.length === 0) {
+            return res.status(404).json({ success: false, message: "No machines found for this customer" });
+        }
+
         const today = new Date();
-        machines = machines.map(machine => {
-            const isExpired = machine.qaValidity < today;
-            return {
-                ...machine.toObject(),
-                status: isExpired ? "Expired" : "Active"   // override status in response
-            };
-        });
+
+        // Generate signed URLs for all attachments
+        const machinesWithUrls = await Promise.all(
+            machines.map(async (machine) => {
+                const rawDataUrls = machine.rawDataAttachment
+                    ? await getMultipleFileUrls([machine.rawDataAttachment])
+                    : [];
+                const qaReportUrls = machine.qaReportAttachment
+                    ? await getMultipleFileUrls([machine.qaReportAttachment])
+                    : [];
+                const licenseReportUrls = machine.licenseReportAttachment
+                    ? await getMultipleFileUrls([machine.licenseReportAttachment])
+                    : [];
+
+                const isExpired = machine.qaValidity < today;
+
+                return {
+                    ...machine.toObject(),
+                    status: isExpired ? "Expired" : "Active",
+                    rawDataAttachmentUrls: rawDataUrls,
+                    qaReportAttachmentUrls: qaReportUrls,
+                    licenseReportAttachmentUrls: licenseReportUrls,
+                };
+            })
+        );
 
         res.status(200).json(
-            new ApiResponse(200, machines, "Machines fetched successfully")
+            new ApiResponse(200, machinesWithUrls, "Machines fetched successfully")
         );
     } catch (error) {
-        console.error("Error fetching machines by customer ID:", error);
+        console.error("❌ Error fetching machines by customer ID:", error);
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
-
 
 // GET MACHINE BY ID
 const getById = asyncHandler(async (req, res) => {
@@ -259,7 +279,11 @@ const updateById = asyncHandler(async (req, res) => {
 const deleteById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
+        console.log("hi");
+        
+        console.log("🚀 ~ id:", id)
         const { customerId } = req.query;
+        console.log("🚀 ~ customerId:", customerId)
 
         let query = { _id: id };
         if (customerId) {
@@ -278,11 +302,11 @@ const deleteById = asyncHandler(async (req, res) => {
     }
 });
 
-// controllers/Admin/machine.controller.js
 const searchByType = asyncHandler(async (req, res) => {
     try {
         const { type } = req.query;
         const { customerId } = req.params;
+        console.log("🚀 ~ customerId:", customerId)
 
         if (!type) {
             return res.status(400).json({ success: false, message: "Machine type is required" });
@@ -303,5 +327,4 @@ const searchByType = asyncHandler(async (req, res) => {
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
-
 export default { add, getById, updateById, deleteById, searchByType, getAllMachinesByCustomerId }

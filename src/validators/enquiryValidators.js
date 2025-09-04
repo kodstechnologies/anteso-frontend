@@ -217,7 +217,7 @@ const serviceSchema = Joi.object({
         )
         .required(),
 
-    equipmentNo: Joi.string().required(),
+    equipmentNo: Joi.string().allow('', null),
 
     workType: Joi.array()
         .items(
@@ -230,7 +230,7 @@ const serviceSchema = Joi.object({
         )
         .required(),
 
-    machineModel: Joi.string().required(),
+    machineModel: Joi.string().allow('', null),
 });
 
 // ✅ Sub-schema for Additional Services
