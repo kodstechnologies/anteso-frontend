@@ -73,7 +73,7 @@ const getAdditionalServicesByOrderId = asyncHandler(async (req, res) => {
         // ✅ Populate only name & description from AdditionalService
         const order = await orderModel
             .findById(orderId)
-            .populate('additionalServices', 'name description') // 👈 only these fields
+            .populate('additionalServices', 'name description remark status') // 👈 only these fields
             .select('additionalServices specialInstructions');
 
         if (!order) {

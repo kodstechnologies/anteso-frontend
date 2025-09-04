@@ -56,7 +56,7 @@ const JWT_USER_SECRET = process.env.JWT_USER_SECRET;
 export const sendOtp = asyncHandler(async (req, res) => {
     const mobileVerifySchema = Joi.object({
         mobileNumber: Joi.string().required(),
-    });e
+    });
 
     const { error } = mobileVerifySchema.validate(req.body);
     if (error) throw new ApiError(400, error.details[0].message);
