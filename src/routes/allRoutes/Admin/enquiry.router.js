@@ -17,9 +17,9 @@ router.delete('/delete-by-id/:id', EnquiryController.deleteById)//--5
 //for mobile
 // router.post('/add-by-customerId/:customerId', EnquiryController.addByCustomerId)//--6--done -need testing
 router.post(
-    "/add-by-customerId/:customerId",
-    upload.single("attachment"),  
-    EnquiryController.addByCustomerId
+    "/add-by-hospitalId/:hospitalId",
+    upload.single("attachment"),
+    EnquiryController.addByHospitalId
 );
 router.post('/get-by-enquiryId-customerId/:enquiryId/:customerId', EnquiryController.getByCustomerIdEnquiryId)//--7-done need testing
 

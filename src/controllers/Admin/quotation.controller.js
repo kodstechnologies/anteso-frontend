@@ -165,13 +165,132 @@ import { uploadToS3 } from "../../utils/s3Upload.js";
 //         throw new ApiError(500, 'Failed to create quotation', [error.message]);
 //     }
 // });
+// const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
+//     try {
+//         const { id } = req.params;
+//         const {
+//             date,
+//             quotationNumber,
+//             customer,
+//             assignedEmployee,
+//             items,
+//             calculations,
+//             termsAndConditions,
+//             bankDetails,
+//             companyDetails,
+//         } = req.body;
+
+//         console.log("🚀 ~ req.body:", req.body);
+
+//         if (!assignedEmployee) throw new ApiError(400, 'Assigned employee is required');
+
+//         // Fetch enquiry and populate services/additional services
+//         const enquiry = await Enquiry.findById(id)
+//             .populate('services')
+//             .populate('additionalServices')
+//             .populate('customer');
+//         if (!enquiry) throw new ApiError(404, 'Enquiry not found');
+//         if (!enquiry.customer || !enquiry.customer._id)
+//             throw new ApiError(400, 'Customer info missing in enquiry');
+//         // Create snapshots of services with totalAmount
+//         // const serviceSnapshots = items.services.map(s => ({
+//         //     id: s.id,
+//         //     machineType: s.machineType,
+//         //     equipmentNo: s.equipmentNo,
+//         //     machineModel: s.machineModel,
+//         //     serialNumber: s.serialNumber,
+//         //     remark: s.remark,
+//         //     totalAmount: s.totalAmount, // directly from frontend
+//         // }));
+
+//         const serviceSnapshots = items.services.map(s => ({
+//             id: s.id, // frontend sends real ObjectId
+//             machineType: s.machineType,
+//             equipmentNo: s.equipmentNo,
+//             machineModel: s.machineModel,
+//             serialNumber: s.serialNumber,
+//             remark: s.remark,
+//             totalAmount: s.totalAmount, //  directly from frontend
+//         }));
+//         console.log("Service snapshots for DB update:", serviceSnapshots);
+
+
+//         const additionalServiceSnapshots = items.additionalServices.map(s => ({
+//             id: s.id,
+//             name: s.name,
+//             description: s.description,
+//             totalAmount: s.totalAmount, // directly from frontend
+//         }));
+
+
+//         // Create quotation with service snapshots and other data
+//         const quotation = await Quotation.create({
+//             date,
+//             quotationId: quotationNumber,
+//             enquiry: enquiry._id,
+//             from: enquiry.customer._id,
+//             customer,
+//             assignedEmployee,
+//             items: {
+//                 services: serviceSnapshots,
+//                 additionalServices: additionalServiceSnapshots,
+//             },
+//             calculations,
+//             bankDetails,
+//             companyDetails,
+//             discount: calculations?.discountAmount || 0,
+//             total: calculations?.totalAmount || 0,
+//             quotationStatus: 'Created',
+//             termsAndConditions,
+//         });
+
+//         // **Update the actual Service and AdditionalService totals in DB**
+//         // Update the actual Service and AdditionalService totals in DB
+
+//         await Promise.all(serviceSnapshots
+//             .filter(s => mongoose.Types.ObjectId.isValid(s.id)) // ✅ only update valid ids
+//             .map(s => Services.findByIdAndUpdate(
+//                 s.id,
+//                 { $set: { totalAmount: s.totalAmount } },
+//                 { new: true }
+//             ))
+//         );
+
+
+//         await Promise.all(additionalServiceSnapshots
+//             .filter(s => s.id) // ✅ same for additional services
+//             .map(s => AdditionalService.findByIdAndUpdate(s.id, { totalAmount: s.totalAmount }))
+//         );
+
+
+//         // Update enquiry with totals and quotation status
+//         await Enquiry.findByIdAndUpdate(enquiry._id, {
+//             quotationStatus: quotation.quotationStatus,
+//             "enquiryStatusDates.quotationSentOn": quotation.date || new Date(),
+//             subtotalAmount: calculations?.subtotal || 0,
+//             discount: calculations?.discountAmount || 0,
+//             grandTotal: calculations?.totalAmount || 0,
+//         });
+
+//         // Return response
+//         return res.status(201).json(
+//             new ApiResponse(201, quotation, 'Quotation created successfully')
+//         );
+
+
+//     } catch (error) {
+//         console.error("Error creating quotation:", error);
+//         throw new ApiError(500, 'Failed to create quotation', [error.message]);
+//     }
+// });
+
+
 const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id } = req.params; // enquiryId
         const {
             date,
             quotationNumber,
-            customer,
             assignedEmployee,
             items,
             calculations,
@@ -180,56 +299,41 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
             companyDetails,
         } = req.body;
 
-        console.log("🚀 ~ req.body:", req.body);
+        if (!assignedEmployee) throw new ApiError(400, "Assigned employee is required");
 
-        if (!assignedEmployee) throw new ApiError(400, 'Assigned employee is required');
-
-        // Fetch enquiry and populate services/additional services
+        // Fetch enquiry with hospital & services
         const enquiry = await Enquiry.findById(id)
-            .populate('services')
-            .populate('additionalServices')
-            .populate('customer');
-        if (!enquiry) throw new ApiError(404, 'Enquiry not found');
-        if (!enquiry.customer || !enquiry.customer._id)
-            throw new ApiError(400, 'Customer info missing in enquiry');
-        // Create snapshots of services with totalAmount
-        // const serviceSnapshots = items.services.map(s => ({
-        //     id: s.id,
-        //     machineType: s.machineType,
-        //     equipmentNo: s.equipmentNo,
-        //     machineModel: s.machineModel,
-        //     serialNumber: s.serialNumber,
-        //     remark: s.remark,
-        //     totalAmount: s.totalAmount, // directly from frontend
-        // }));
+            .populate("services")
+            .populate("additionalServices")
+            .populate("hospital");
 
-        const serviceSnapshots = items.services.map(s => ({
-            id: s.id, // frontend sends real ObjectId
+        if (!enquiry) throw new ApiError(404, "Enquiry not found");
+        if (!enquiry.hospital) throw new ApiError(400, "Hospital info missing in enquiry");
+
+        // Prepare snapshots
+        const serviceSnapshots = items.services.map((s) => ({
+            id: s.id,
             machineType: s.machineType,
             equipmentNo: s.equipmentNo,
             machineModel: s.machineModel,
             serialNumber: s.serialNumber,
             remark: s.remark,
-            totalAmount: s.totalAmount, //  directly from frontend
+            totalAmount: s.totalAmount,
         }));
-        console.log("Service snapshots for DB update:", serviceSnapshots);
 
-
-        const additionalServiceSnapshots = items.additionalServices.map(s => ({
+        const additionalServiceSnapshots = items.additionalServices.map((s) => ({
             id: s.id,
             name: s.name,
             description: s.description,
-            totalAmount: s.totalAmount, // directly from frontend
+            totalAmount: s.totalAmount,
         }));
 
-
-        // Create quotation with service snapshots and other data
+        // Create quotation
         const quotation = await Quotation.create({
             date,
             quotationId: quotationNumber,
             enquiry: enquiry._id,
-            from: enquiry.customer._id,
-            customer,
+            from: enquiry.hospital._id, // ✅ hospital reference
             assignedEmployee,
             items: {
                 services: serviceSnapshots,
@@ -240,30 +344,37 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
             companyDetails,
             discount: calculations?.discountAmount || 0,
             total: calculations?.totalAmount || 0,
-            quotationStatus: 'Created',
+            quotationStatus: "Created",
             termsAndConditions,
         });
 
-        // **Update the actual Service and AdditionalService totals in DB**
-        // Update the actual Service and AdditionalService totals in DB
-
-        await Promise.all(serviceSnapshots
-            .filter(s => mongoose.Types.ObjectId.isValid(s.id)) // ✅ only update valid ids
-            .map(s => Services.findByIdAndUpdate(
-                s.id,
-                { $set: { totalAmount: s.totalAmount } },
-                { new: true }
-            ))
+        // Update service totals in DB
+        await Promise.all(
+            serviceSnapshots
+                .filter((s) => mongoose.Types.ObjectId.isValid(s.id))
+                .map((s) =>
+                    Services.findByIdAndUpdate(
+                        s.id,
+                        { $set: { totalAmount: s.totalAmount } },
+                        { new: true }
+                    )
+                )
         );
 
-
-        await Promise.all(additionalServiceSnapshots
-            .filter(s => s.id) // ✅ same for additional services
-            .map(s => AdditionalService.findByIdAndUpdate(s.id, { totalAmount: s.totalAmount }))
+        // Update additional service totals
+        await Promise.all(
+            additionalServiceSnapshots
+                .filter((s) => mongoose.Types.ObjectId.isValid(s.id))
+                .map((s) =>
+                    AdditionalService.findByIdAndUpdate(
+                        s.id,
+                        { $set: { totalAmount: s.totalAmount } },
+                        { new: true }
+                    )
+                )
         );
 
-
-        // Update enquiry with totals and quotation status
+        // Update enquiry with quotation info
         await Enquiry.findByIdAndUpdate(enquiry._id, {
             quotationStatus: quotation.quotationStatus,
             "enquiryStatusDates.quotationSentOn": quotation.date || new Date(),
@@ -272,17 +383,15 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
             grandTotal: calculations?.totalAmount || 0,
         });
 
-        // Return response
-        return res.status(201).json(
-            new ApiResponse(201, quotation, 'Quotation created successfully')
-        );
-
-
+        return res
+            .status(201)
+            .json(new ApiResponse(201, quotation, "Quotation created successfully"));
     } catch (error) {
         console.error("Error creating quotation:", error);
-        throw new ApiError(500, 'Failed to create quotation', [error.message]);
+        throw new ApiError(500, "Failed to create quotation", [error.message]);
     }
 });
+
 const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;

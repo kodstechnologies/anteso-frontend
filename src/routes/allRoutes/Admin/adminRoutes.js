@@ -23,7 +23,7 @@ import { verifyAccessToken } from '../../../middlewares/adminAuthMiddleware.js';
 import { authorizeRoles } from '../../../middlewares/authorizeRoles.js';
 const router = Router();
 router.use('/auth', AuthRouter)
-router.use(authenticate, authorizeRoles("admin", "Customer", "Technician"))
+router.use(authenticate, authorizeRoles("admin", "Customer", "Technician","Employee"))
 
 router.use('/clients', ClientRoutes)
 router.use('/hospital', HospitalRoutes)

@@ -68,6 +68,10 @@ const enquirySchema = new mongoose.Schema({
         required: false,
         default: null
     },
+    hospital: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Hospital',
+    },
     subtotalAmount: {
         type: String
     },

@@ -48,6 +48,13 @@ const hospitalSchema = new Schema(
                 default: [],
             },
         ],
+        enquiries: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Enquiry",
+            }
+        ],
+
     },
     { timestamps: true }
 );

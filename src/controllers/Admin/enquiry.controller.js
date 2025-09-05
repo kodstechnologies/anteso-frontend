@@ -10,6 +10,7 @@ import orderModel from "../../models/order.model.js";
 import Service from '../../models/Services.js'
 import AdditionalService from "../../models/additionalService.model.js";
 import { uploadToS3 } from '../../utils/s3Upload.js'
+import Hospital from '../../models/hospital.model.js'
 // const add = asyncHandler(async (req, res) => {
 //     try {
 //         // Validate input
@@ -1139,7 +1140,7 @@ const createDirectOrder = asyncHandler(async (req, res) => {
                 )
             );
         }
-m
+        m
         // Dealer/Admin/Manager → create Order as well
         const newOrder = await orderModel.create({
             leadOwner,
@@ -1349,17 +1350,95 @@ m
 //         throw new ApiError(500, "Failed to create enquiry", [error.message]);
 //     }
 // });
-const addByCustomerId = asyncHandler(async (req, res) => {
-    try {
-        const { customerId } = req.params;
-        if (!customerId) throw new ApiError(400, "Customer ID is required");
 
-        const existingCustomer = await User.findById(customerId);
-        if (!existingCustomer) throw new ApiError(404, "Customer not found");
+
+// const addByCustomerId = asyncHandler(async (req, res) => {
+//     try {
+//         const { customerId } = req.params;
+//         if (!customerId) throw new ApiError(400, "Customer ID is required");
+
+//         const existingCustomer = await User.findById(customerId);
+//         if (!existingCustomer) throw new ApiError(404, "Customer not found");
+
+//         let value = { ...req.body };
+
+//         // parse JSON fields
+//         if (value.services && typeof value.services === "string") {
+//             try { value.services = JSON.parse(value.services); } catch { value.services = []; }
+//         }
+//         if (value.additionalServices && typeof value.additionalServices === "string") {
+//             try { value.additionalServices = JSON.parse(value.additionalServices); } catch { value.additionalServices = {}; }
+//         }
+
+//         value.customer = customerId;
+
+//         // ✅ Single file upload
+//         if (req.file) {
+//             const { url } = await uploadToS3(req.file);
+//             value.attachment = url; // only URL stored
+//         }
+
+//         // create services
+//         let serviceIds = [];
+//         if (Array.isArray(value.services) && value.services.length > 0) {
+//             const transformedServices = value.services.map((s) => ({
+//                 machineType: s.machineType,
+//                 equipmentNo: s.equipmentNo,
+//                 machineModel: s.machineModel,
+//                 serialNumber: s.serialNumber || "",
+//                 remark: s.remark || "",
+//                 workTypeDetails: (s.workType || []).map((wt) => ({
+//                     workType: wt,
+//                     status: "pending",
+//                 })),
+//             }));
+//             const createdServices = await Service.insertMany(transformedServices);
+//             serviceIds = createdServices.map((s) => s._id);
+//         }
+
+//         // create additional services
+//         let additionalServiceIds = [];
+//         if (value.additionalServices && typeof value.additionalServices === "object" && Object.keys(value.additionalServices).length > 0) {
+//             const createdAdditionalServices = await AdditionalService.insertMany(
+//                 Object.entries(value.additionalServices).map(([name, data]) => ({
+//                     name,
+//                     description: data.description || "",
+//                     totalAmount: data.totalAmount || 0,
+//                 }))
+//             );
+//             additionalServiceIds = createdAdditionalServices.map((a) => a._id);
+//         }
+
+//         // final enquiry
+//         const newEnquiry = await Enquiry.create({
+//             ...value,
+//             services: serviceIds,
+//             additionalServices: additionalServiceIds,
+//             enquiryStatusDates: { enquiredOn: new Date() },
+//         });
+
+//         await User.findByIdAndUpdate(customerId, { $push: { enquiries: newEnquiry._id } });
+
+//         return res.status(201).json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
+//     } catch (error) {
+//         console.error("Create Enquiry Error:", error);
+//         throw new ApiError(500, "Failed to create enquiry", [error.message]);
+//     }
+// });
+
+
+const addByHospitalId = asyncHandler(async (req, res) => {
+    try {
+        const { hospitalId } = req.params;
+        if (!hospitalId) throw new ApiError(400, "Hospital ID is required");
+
+        // 🔍 Check if hospital exists
+        const existingHospital = await Hospital.findById(hospitalId);
+        if (!existingHospital) throw new ApiError(404, "Hospital not found");
 
         let value = { ...req.body };
 
-        // parse JSON fields
+        // Parse JSON fields safely
         if (value.services && typeof value.services === "string") {
             try { value.services = JSON.parse(value.services); } catch { value.services = []; }
         }
@@ -1367,15 +1446,21 @@ const addByCustomerId = asyncHandler(async (req, res) => {
             try { value.additionalServices = JSON.parse(value.additionalServices); } catch { value.additionalServices = {}; }
         }
 
-        value.customer = customerId;
+        // ✅ Attach hospital
+        value.hospital = hospitalId;
+
+        // ✅ Attach customer if passed (optional)
+        if (req.body.customerId) {
+            value.customer = req.body.customerId;
+        }
 
         // ✅ Single file upload
         if (req.file) {
             const { url } = await uploadToS3(req.file);
-            value.attachment = url; // only URL stored
+            value.attachment = url;
         }
 
-        // create services
+        // Create services
         let serviceIds = [];
         if (Array.isArray(value.services) && value.services.length > 0) {
             const transformedServices = value.services.map((s) => ({
@@ -1393,7 +1478,7 @@ const addByCustomerId = asyncHandler(async (req, res) => {
             serviceIds = createdServices.map((s) => s._id);
         }
 
-        // create additional services
+        // Create additional services
         let additionalServiceIds = [];
         if (value.additionalServices && typeof value.additionalServices === "object" && Object.keys(value.additionalServices).length > 0) {
             const createdAdditionalServices = await AdditionalService.insertMany(
@@ -1406,7 +1491,7 @@ const addByCustomerId = asyncHandler(async (req, res) => {
             additionalServiceIds = createdAdditionalServices.map((a) => a._id);
         }
 
-        // final enquiry
+        // Final enquiry creation
         const newEnquiry = await Enquiry.create({
             ...value,
             services: serviceIds,
@@ -1414,15 +1499,21 @@ const addByCustomerId = asyncHandler(async (req, res) => {
             enquiryStatusDates: { enquiredOn: new Date() },
         });
 
-        await User.findByIdAndUpdate(customerId, { $push: { enquiries: newEnquiry._id } });
+        // 🔗 Link enquiry to hospital
+        await Hospital.findByIdAndUpdate(
+            hospitalId,
+            { $push: { enquiries: newEnquiry._id } },
+            { new: true }
+        );
 
-        return res.status(201).json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
+        return res
+            .status(201)
+            .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
     } catch (error) {
         console.error("Create Enquiry Error:", error);
         throw new ApiError(500, "Failed to create enquiry", [error.message]);
     }
 });
-
 
 const getAll = asyncHandler(async (req, res) => {
     try {
@@ -1718,4 +1809,4 @@ const getAllStates = asyncHandler(async (req, res) => {
     }
 })
 
-export default { add, getById, deleteById, updateById, getAll, getEnquiryDetailsById, addByCustomerId, getByCustomerIdEnquiryId, createDirectOrder, getAllStates };
+export default { add, getById, deleteById, updateById, getAll, getEnquiryDetailsById, addByHospitalId, getByCustomerIdEnquiryId, createDirectOrder, getAllStates };

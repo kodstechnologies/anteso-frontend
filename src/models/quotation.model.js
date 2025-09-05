@@ -19,9 +19,10 @@ const quotationSchema = new Schema(
         },
         from: {
             type: Schema.Types.ObjectId,
-            ref: 'User',
+            ref: 'Hospital',
             required: true,
         },
+    
         discount: {
             type: Number,
             default: 0,
