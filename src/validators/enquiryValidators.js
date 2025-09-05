@@ -186,8 +186,6 @@
 //     customer: Joi.string().optional(),
 // });
 
-
-
 import Joi from "joi";
 
 // ✅ Sub-schema for Services

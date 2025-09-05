@@ -98,6 +98,7 @@ const allOrdersWithClientName = asyncHandler(async (req, res) => {
             ...order,
             srfNumberWithHospital: `${order.srfNumber} - ${order.hospitalName}`,
         }));
+        console.log("🚀 ~ formattedOrders:", formattedOrders)
 
         res.status(200).json({
             success: true,
@@ -111,7 +112,6 @@ const allOrdersWithClientName = asyncHandler(async (req, res) => {
         });
     }
 });
-
 
 const getTotalAmount = asyncHandler(async (req, res) => {
     try {
