@@ -79,7 +79,7 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
-          
+
         } = req.body;
 
         const { customerId } = req.params;
@@ -168,11 +168,24 @@ const getAllMachinesByCustomerId = asyncHandler(async (req, res) => {
                     ? await getMultipleFileUrls([machine.licenseReportAttachment])
                     : [];
 
-                const isExpired = machine.qaValidity < today;
+                // ✅ Check expiry for both dates
+                const isQaExpired = machine.qaValidity < today;
+                const isLicenseExpired = machine.licenseValidity < today;
+
+                let status = "Active";
+                let expiredFields = [];
+
+                if (isQaExpired) expiredFields.push("qaValidity");
+                if (isLicenseExpired) expiredFields.push("licenseValidity");
+
+                if (expiredFields.length > 0) {
+                    status = "Expired";
+                }
 
                 return {
                     ...machine.toObject(),
-                    status: isExpired ? "Expired" : "Active",
+                    status,                  // "Active" or "Expired"
+                    expiredFields,           // ["qaValidity"], ["licenseValidity"], or ["qaValidity","licenseValidity"]
                     rawDataAttachmentUrls: rawDataUrls,
                     qaReportAttachmentUrls: qaReportUrls,
                     licenseReportAttachmentUrls: licenseReportUrls,
@@ -276,7 +289,7 @@ const deleteById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
         console.log("hi");
-        
+
         console.log("🚀 ~ id:", id)
         const { customerId } = req.query;
         console.log("🚀 ~ customerId:", customerId)
