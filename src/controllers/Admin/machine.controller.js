@@ -155,22 +155,25 @@ const add = asyncHandler(async (req, res) => {
 
 
 // GET ALL MACHINES
-const getAllMachinesByCustomerId = asyncHandler(async (req, res) => {
+// ✅ Get all machines by Hospital ID
+const getAllMachinesByHospitalId = asyncHandler(async (req, res) => {
     try {
-        const { customerId } = req.params;
-        if (!customerId) {
-            return res.status(400).json({ success: false, message: "Customer ID is required" });
+        const { hospitalId } = req.params;
+        if (!hospitalId) {
+            return res.status(400).json({ success: false, message: "Hospital ID is required" });
         }
 
-        let machines = await Machine.find({ customer: customerId }).populate('customer', 'gstNo');
+        // ✅ Find machines linked to this hospital
+        let machines = await Machine.find({ hospital: hospitalId })
+            .populate('hospital', 'name gstNo');
 
         if (!machines || machines.length === 0) {
-            return res.status(404).json({ success: false, message: "No machines found for this customer" });
+            return res.status(404).json({ success: false, message: "No machines found for this hospital" });
         }
 
         const today = new Date();
 
-        // Generate signed URLs for all attachments
+        // ✅ Add signed URLs & expiry status
         const machinesWithUrls = await Promise.all(
             machines.map(async (machine) => {
                 const rawDataUrls = machine.rawDataAttachment
@@ -183,7 +186,7 @@ const getAllMachinesByCustomerId = asyncHandler(async (req, res) => {
                     ? await getMultipleFileUrls([machine.licenseReportAttachment])
                     : [];
 
-                // ✅ Check expiry for both dates
+                // ✅ Check expiry
                 const isQaExpired = machine.qaValidity < today;
                 const isLicenseExpired = machine.licenseValidity < today;
 
@@ -200,7 +203,7 @@ const getAllMachinesByCustomerId = asyncHandler(async (req, res) => {
                 return {
                     ...machine.toObject(),
                     status,                  // "Active" or "Expired"
-                    expiredFields,           // ["qaValidity"], ["licenseValidity"], or ["qaValidity","licenseValidity"]
+                    expiredFields,           // ["qaValidity"], ["licenseValidity"], etc.
                     rawDataAttachmentUrls: rawDataUrls,
                     qaReportAttachmentUrls: qaReportUrls,
                     licenseReportAttachmentUrls: licenseReportUrls,
@@ -209,37 +212,41 @@ const getAllMachinesByCustomerId = asyncHandler(async (req, res) => {
         );
 
         res.status(200).json(
-            new ApiResponse(200, machinesWithUrls, "Machines fetched successfully")
+            new ApiResponse(200, machinesWithUrls, "Machines fetched successfully by hospital")
         );
     } catch (error) {
-        console.error("❌ Error fetching machines by customer ID:", error);
+        console.error("❌ Error fetching machines by hospital ID:", error);
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
+
 
 // GET MACHINE BY ID
 const getById = asyncHandler(async (req, res) => {
     try {
-        const { id, customerId } = req.params;
+        const { id, hospitalId } = req.params;
 
-        if (!id || !customerId) {
-            return res.status(400).json({ success: false, message: 'Machine ID and Customer ID are required' });
+        if (!id || !hospitalId) {
+            return res.status(400).json({ success: false, message: 'Machine ID and Hospital ID are required' });
         }
 
+        // ✅ Find machine by id and hospital
         const machine = await Machine.findOne({
             _id: id,
-            customer: customerId,
-        }).populate('customer');
+            hospital: hospitalId,
+        }).populate('hospital');
 
         if (!machine) {
-            throw new ApiError(404, 'Machine not found for this customer');
+            throw new ApiError(404, 'Machine not found for this hospital');
         }
 
         res.status(200).json(new ApiResponse(200, machine, 'Machine fetched successfully.'));
     } catch (error) {
+        console.error("❌ Error fetching machine by ID and hospital:", error);
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
+
 
 // UPDATE MACHINE BY ID and customerId
 const updateById = asyncHandler(async (req, res) => {
@@ -326,26 +333,32 @@ const deleteById = asyncHandler(async (req, res) => {
 const searchByType = asyncHandler(async (req, res) => {
     try {
         const { type } = req.query;
-        const { customerId } = req.params;
-        console.log("🚀 ~ customerId:", customerId)
+        const { hospitalId } = req.params;
+        console.log("🚀 ~ hospitalId:", hospitalId);
 
         if (!type) {
             return res.status(400).json({ success: false, message: "Machine type is required" });
         }
 
-        if (!customerId) {
-            return res.status(400).json({ success: false, message: "Customer ID is required" });
+        if (!hospitalId) {
+            return res.status(400).json({ success: false, message: "Hospital ID is required" });
         }
 
+        // ✅ Search by machine type within a specific hospital
         const machines = await Machine.find({
             machineType: { $regex: type, $options: "i" },
-            customer: customerId,
+            hospital: hospitalId,
         });
 
-        res.status(200).json(new ApiResponse(200, machines));
+        if (!machines || machines.length === 0) {
+            return res.status(404).json({ success: false, message: "No machines found for this type in this hospital" });
+        }
+
+        res.status(200).json(new ApiResponse(200, machines, "Machines fetched successfully by type"));
     } catch (error) {
-        console.error("Error in searchByType:", error);
+        console.error("❌ Error in searchByType:", error);
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
-export default { add, getById, updateById, deleteById, searchByType, getAllMachinesByCustomerId }
+
+export default { add, getById, updateById, deleteById, searchByType, getAllMachinesByHospitalId }
