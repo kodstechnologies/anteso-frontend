@@ -298,7 +298,7 @@ const assignedToolByTechnicianId = asyncHandler(async (req, res) => {
 
 const getAllOfficeStaff = asyncHandler(async (req, res) => {
     try {
-        const officeStaff = await Employee.find({ technicianType: 'office staff' }).select("-password"); // exclude password
+        const officeStaff = await Employee.find({ technicianType: 'office-staff' }).select("-password"); // exclude password
 
         if (!officeStaff || officeStaff.length === 0) {
             throw new ApiError(404, "No office staff found");

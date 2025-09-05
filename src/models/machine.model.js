@@ -4,21 +4,26 @@ const { Schema } = mongoose;
 
 // Hardcoded list of machine types
 const MACHINE_TYPES = [
-    'X-Ray',
-    'Ultrasound',
-    'MRI',
-    'CT Scan',
-    'ECG',
-    'Ventilator',
-    'Defibrillator',
-    'Infusion Pump',
-    'Anesthesia Machine',
-    'Endoscope',
-    'Patient Monitor',
-    'Suction Machine',
-    'Autoclave',
-    'Centrifuge',
-    'Incubator',
+    "Fixed X-Ray",
+    "Mobile X-Ray",
+    "C-Arm",
+    "Cath Lab/Interventional Radiology",
+    "Mammography",
+    "CT Scan",
+    "PET CT",
+    "CT Simulator",
+    "OPG",
+    "CBCT",
+    "BMD/DEXA",
+    "Dental IOPA",
+    "Dental Hand Held",
+    "O Arm",
+    "KV Imaging (OBI)",
+    "Lead Apron Test",
+    "Thyroid Shield Test",
+    "Gonad Shield Test",
+    "Radiation Survey of Radiation Facility",
+    "Others",
 ];
 
 const machineSchema = new Schema(
@@ -73,10 +78,10 @@ const machineSchema = new Schema(
             type: String,
             required: false,
         },
-        status:{
-            type:String,
-            enum:['Active','Pending','Expired'],
-            default:'Active'
+        status: {
+            type: String,
+            enum: ['Active', 'Pending', 'Expired'],
+            default: 'Active'
         },
         customer: {
             type: Schema.Types.ObjectId,

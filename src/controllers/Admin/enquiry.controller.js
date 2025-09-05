@@ -983,7 +983,6 @@ const createDirectOrder = asyncHandler(async (req, res) => {
     }
 });
 
-
 // const addByCustomerId = asyncHandler(async (req, res) => {
 //     try {
 //         const { customerId } = req.params;
