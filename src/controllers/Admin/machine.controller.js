@@ -79,7 +79,7 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
-            status,
+          
         } = req.body;
 
         const { customerId } = req.params;
@@ -93,7 +93,6 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
-            status,
         });
 
         if (error) {
@@ -116,7 +115,6 @@ const add = asyncHandler(async (req, res) => {
                 }
             }
         }
-
         // ✅ Save machine with actual S3 URLs
         const machine = await Machine.create({
             machineType,
@@ -126,13 +124,11 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
-            status,
             rawDataAttachment: uploadedFiles.rawDataAttachment || null,
             qaReportAttachment: uploadedFiles.qaReportAttachment || null,
             licenseReportAttachment: uploadedFiles.licenseReportAttachment || null,
             customer: customerId,
         });
-
         console.log("🚀 ~ machine:", machine);
 
         res.status(201).json(new ApiResponse(201, machine, "Machine added successfully."));

@@ -8,5 +8,5 @@ export const machineSchema = Joi.object({
     equipmentId: Joi.string().required().label('Equipment ID'),
     qaValidity: Joi.date().required().label('QA Validity'),
     licenseValidity: Joi.date().required().label('License Validity'),
-    status: Joi.string().required().label('Status'),
+    status: Joi.string().label('Status'),
 });

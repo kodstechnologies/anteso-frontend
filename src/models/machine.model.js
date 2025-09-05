@@ -61,11 +61,11 @@ const machineSchema = new Schema(
             type: Date,
             required: true,
         },
-        status: {
-            type: String,
-            // enum: ['Working', 'Not Working', 'Under Maintenance', 'Decommissioned'],
-            required: true,
-        },
+        // status: {
+        //     type: String,
+        //     enum: ['Working', 'Not Working', 'Under Maintenance'],
+        //     required: true,
+        // },
         rawDataAttachment: {
             type: String,
             default: null,
@@ -80,8 +80,7 @@ const machineSchema = new Schema(
         },
         status: {
             type: String,
-            enum: ['Active', 'Pending', 'Expired'],
-            default: 'Active'
+            enum: ['Active', 'Expired']
         },
         customer: {
             type: Schema.Types.ObjectId,
