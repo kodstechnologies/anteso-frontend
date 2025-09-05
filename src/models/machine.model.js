@@ -82,9 +82,14 @@ const machineSchema = new Schema(
             type: String,
             enum: ['Active', 'Expired']
         },
-        customer: {
+        // customer: {
+        //     type: Schema.Types.ObjectId,
+        //     ref: 'Customer',
+        //     required: true,
+        // },
+        hospital: {   // ✅ machine knows which hospital it belongs to
             type: Schema.Types.ObjectId,
-            ref: 'Customer',
+            ref: 'Hospital',
             required: true,
         },
     },

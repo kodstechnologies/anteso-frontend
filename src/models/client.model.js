@@ -20,11 +20,11 @@ const clientSchema = new Schema({
             default: [],
         },
     ],
-    machines:
-    {
-        type: Schema.Types.ObjectId,
-        ref: 'Machine',
-    },
+    // machines:
+    // {
+    //     type: Schema.Types.ObjectId,
+    //     ref: 'Machine',
+    // },
     // models/customer.model.js
     enquiries: [
         {

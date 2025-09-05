@@ -797,6 +797,194 @@ const add = asyncHandler(async (req, res) => {
 //     }
 // });
 
+// const createDirectOrder = asyncHandler(async (req, res) => {
+//     try {
+//         console.log("Direct Order Payload:", req.body);
+
+//         const {
+//             leadOwner,
+//             hospitalName,
+//             fullAddress,
+//             city,
+//             district,
+//             state,
+//             pinCode,
+//             branchName,
+//             contactPersonName,
+//             emailAddress,
+//             contactNumber,
+//             designation,
+//             advanceAmount,
+//             urgency,
+//             services,
+//             additionalServices,
+//             specialInstructions,
+//         } = req.body;
+
+//         // ✅ Validation
+//         if (
+//             !hospitalName ||
+//             !fullAddress ||
+//             !city ||
+//             !district ||
+//             !state ||
+//             !pinCode ||
+//             !branchName ||
+//             !contactPersonName ||
+//             !contactNumber
+//         ) {
+//             throw new ApiError(400, "Missing required fields");
+//         }
+
+//         // ✅ Check leadOwner in User table
+//         let leadOwnerUser = null;
+//         if (leadOwner) {
+//             leadOwnerUser = await User.findById(leadOwner);
+//         }
+
+//         // ✅ Handle customer
+//         let customerId = req.body.customer;
+//         if (!customerId) {
+//             let existingCustomer = null;
+//             if (emailAddress) existingCustomer = await User.findOne({ email: emailAddress });
+//             else if (contactNumber) existingCustomer = await User.findOne({ phone: contactNumber });
+
+//             if (!existingCustomer) {
+//                 const newCustomer = await User.create({
+//                     name: hospitalName,
+//                     email: emailAddress,
+//                     phone: contactNumber,
+//                 });
+//                 customerId = newCustomer._id;
+//             } else {
+//                 customerId = existingCustomer._id;
+//             }
+//         }
+
+//         // ✅ Handle file upload (work order copy)
+//         let workOrderCopy = "";
+//         if (req.files && req.files.length > 0) {
+//             const uploadPromises = req.files.map(async (file) => {
+//                 const { url } = await uploadToS3(file);
+//                 return url;
+//             });
+//             const uploadedFiles = await Promise.all(uploadPromises);
+//             workOrderCopy = uploadedFiles[0];
+//         }
+
+//         // ✅ Create Service documents
+//         let serviceIds = [];
+//         if (services && services.length > 0) {
+//             const serviceDocs = await Promise.all(
+//                 services.map(async (s) => {
+//                     const serviceDoc = await Service.create({
+//                         machineType: s.machineType,
+//                         equipmentNo: s.equipmentNo,
+//                         machineModel: s.machineModel,
+//                         serialNumber: s.serialNumber || "",
+//                         remark: s.remark || "",
+//                         workTypeDetails: (s.workType || []).map((wt) => ({
+//                             workType: wt,
+//                             status: "pending",
+//                         })),
+//                     });
+//                     return serviceDoc._id;
+//                 })
+//             );
+//             serviceIds = serviceDocs;
+//         }
+
+//         // ✅ Create AdditionalService documents
+//         let additionalServiceIds = [];
+//         if (additionalServices && Object.keys(additionalServices).length > 0) {
+//             const additionalServiceDocs = await AdditionalService.insertMany(
+//                 Object.entries(additionalServices).map(([name, data]) => ({
+//                     name,
+//                     description: data?.description || "",
+//                     totalAmount: data?.totalAmount || 0,
+//                 }))
+//             );
+//             additionalServiceIds = additionalServiceDocs.map((a) => a._id);
+//         }
+
+//         // ✅ Always create Enquiry first
+//         const enquiry = await Enquiry.create({
+//             leadOwner,
+//             hospitalName,
+//             fullAddress,
+//             city,
+//             district,
+//             state,
+//             pinCode,
+//             branch: branchName,
+//             contactPerson: contactPersonName,
+//             emailAddress,
+//             contactNumber,
+//             designation,
+//             services: serviceIds,
+//             additionalServices: additionalServiceIds,
+//             specialInstructions,
+//             attachment: workOrderCopy,
+//             enquiryStatus: "Enquired",
+//             enquiryStatusDates: { enquiredOn: new Date() },
+//             quotationStatus: "Create", // 🔑 so it can move to quotation next
+//             customer: customerId,
+//         });
+
+//         // ❌ If leadOwner is Employee → Only Enquiry
+//         if (leadOwnerUser && leadOwnerUser.role === "Employee") {
+//             return res
+//                 .status(201)
+//                 .json(
+//                     new ApiResponse(
+//                         201,
+//                         { enquiry },
+//                         "Enquiry created successfully (Lead Owner is Employee). Continue to Quotation."
+//                     )
+//                 );
+//         }
+
+//         // ✅ Else (Admin/Manager/etc.) → create Order as well
+//         const newOrder = await orderModel.create({
+//             leadOwner,
+//             hospitalName,
+//             fullAddress,
+//             city,
+//             district,
+//             state,
+//             pinCode,
+//             branchName,
+//             contactPersonName,
+//             emailAddress,
+//             contactNumber,
+//             designation,
+//             advanceAmount,
+//             urgency,
+//             services: serviceIds,
+//             additionalServices: additionalServiceIds,
+//             specialInstructions,
+//             workOrderCopy,
+//             customer: customerId,
+//             enquiry: enquiry._id,
+//         });
+
+//         return res
+//             .status(201)
+//             .json(
+//                 new ApiResponse(
+//                     201,
+//                     { order: newOrder, enquiry },
+//                     "Order & Enquiry created successfully"
+//                 )
+//             );
+//     } catch (error) {
+//         console.error("Create Direct Order Error:", error);
+//         throw new ApiError(500, "Failed to create direct order", [error.message]);
+//     }
+// });
+
+
+
 const createDirectOrder = asyncHandler(async (req, res) => {
     try {
         console.log("Direct Order Payload:", req.body);
@@ -821,7 +1009,7 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             specialInstructions,
         } = req.body;
 
-        // ✅ Validation
+        // Validation
         if (
             !hospitalName ||
             !fullAddress ||
@@ -836,13 +1024,13 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             throw new ApiError(400, "Missing required fields");
         }
 
-        // ✅ Check leadOwner in User table
+        // Find leadOwner in User
         let leadOwnerUser = null;
         if (leadOwner) {
             leadOwnerUser = await User.findById(leadOwner);
         }
 
-        // ✅ Handle customer
+        // Handle customer
         let customerId = req.body.customer;
         if (!customerId) {
             let existingCustomer = null;
@@ -861,7 +1049,7 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             }
         }
 
-        // ✅ Handle file upload (work order copy)
+        // File upload
         let workOrderCopy = "";
         if (req.files && req.files.length > 0) {
             const uploadPromises = req.files.map(async (file) => {
@@ -872,7 +1060,7 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             workOrderCopy = uploadedFiles[0];
         }
 
-        // ✅ Create Service documents
+        // Services
         let serviceIds = [];
         if (services && services.length > 0) {
             const serviceDocs = await Promise.all(
@@ -894,7 +1082,7 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             serviceIds = serviceDocs;
         }
 
-        // ✅ Create AdditionalService documents
+        // Additional Services
         let additionalServiceIds = [];
         if (additionalServices && Object.keys(additionalServices).length > 0) {
             const additionalServiceDocs = await AdditionalService.insertMany(
@@ -907,8 +1095,8 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             additionalServiceIds = additionalServiceDocs.map((a) => a._id);
         }
 
-        // ✅ Always create Enquiry first
-        const enquiry = await Enquiry.create({
+        // Always create enquiry first
+        const enquiryPayload = {
             leadOwner,
             hospitalName,
             fullAddress,
@@ -927,24 +1115,32 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             attachment: workOrderCopy,
             enquiryStatus: "Enquired",
             enquiryStatusDates: { enquiredOn: new Date() },
-            quotationStatus: "Create", // 🔑 so it can move to quotation next
             customer: customerId,
-        });
+        };
 
-        // ❌ If leadOwner is Employee → Only Enquiry
-        if (leadOwnerUser && leadOwnerUser.role === "Employee") {
-            return res
-                .status(201)
-                .json(
-                    new ApiResponse(
-                        201,
-                        { enquiry },
-                        "Enquiry created successfully (Lead Owner is Employee). Continue to Quotation."
-                    )
-                );
+        // ✨ Differentiate quotation logic by role
+        if (leadOwnerUser?.role === "Dealer") {
+            enquiryPayload.quotationStatus = null; // Dealer → no quotation
+        } else if (leadOwnerUser?.role === "Employee") {
+            enquiryPayload.quotationStatus = "Create"; // Enquiry only, no order
+        } else {
+            enquiryPayload.quotationStatus = "Create"; // Admin/Manager → normal quotation flow
         }
 
-        // ✅ Else (Admin/Manager/etc.) → create Order as well
+        const enquiry = await Enquiry.create(enquiryPayload);
+
+        // Employee → stop here
+        if (leadOwnerUser?.role === "Employee") {
+            return res.status(201).json(
+                new ApiResponse(
+                    201,
+                    { enquiry },
+                    "Enquiry created successfully (Lead Owner is Employee). No order created."
+                )
+            );
+        }
+m
+        // Dealer/Admin/Manager → create Order as well
         const newOrder = await orderModel.create({
             leadOwner,
             hospitalName,
@@ -967,21 +1163,21 @@ const createDirectOrder = asyncHandler(async (req, res) => {
             customer: customerId,
             enquiry: enquiry._id,
         });
-
-        return res
-            .status(201)
-            .json(
-                new ApiResponse(
-                    201,
-                    { order: newOrder, enquiry },
-                    "Order & Enquiry created successfully"
-                )
-            );
+        return res.status(201).json(
+            new ApiResponse(
+                201,
+                { order: newOrder, enquiry },
+                leadOwnerUser?.role === "Dealer"
+                    ? "Direct Order created for Dealer (no quotation)."
+                    : "Order & Enquiry created successfully"
+            )
+        );
     } catch (error) {
         console.error("Create Direct Order Error:", error);
         throw new ApiError(500, "Failed to create direct order", [error.message]);
     }
 });
+
 
 // const addByCustomerId = asyncHandler(async (req, res) => {
 //     try {

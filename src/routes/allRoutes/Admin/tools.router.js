@@ -12,4 +12,7 @@ router.get('/get-engineer-by-tool/:id', toolsController.getEngineerByTool)
 
 //tools by employee
 
+router.get('/all-tools-by-technicianId/:technicianId',toolsController.getAllToolsByTechnicianId)
+router.get('/get-tools-by-technicanId-and-toolId/:technicianId/:toolId',toolsController.getToolByTechnicianAndTool)
+
 export default router

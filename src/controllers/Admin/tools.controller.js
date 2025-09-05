@@ -161,4 +161,93 @@ const getEngineerByTool = asyncHandler(async (req, res) => {
     });
 });
 
-export default { create, allTools, updateById, deleteById, getById, getEngineerByTool };
+
+
+const getAllToolsByTechnicianId = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId } = req.params;
+
+        if (!technicianId) {
+            return res.status(400).json({
+                success: false,
+                message: "Technician ID is required",
+            });
+        }
+
+        // Find employee/technician by ID and populate tool details
+        const technician = await Employee.findById(technicianId)
+            .populate("tools.toolId", "toolId SrNo nomenclature manufacturer model calibrationCertificateNo calibrationValidTill range toolStatus");
+
+        if (!technician) {
+            return res.status(404).json({
+                success: false,
+                message: "Technician not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            technicianId: technician._id,
+            tools: technician.tools || [],
+        });
+    } catch (error) {
+        console.error("Error fetching tools by technician:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching tools",
+            error: error.message,
+        });
+    }
+});
+
+
+const getToolByTechnicianAndTool = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId, toolId } = req.params;
+
+        if (!technicianId || !toolId) {
+            return res.status(400).json({
+                success: false,
+                message: "Technician ID and Tool ID are required",
+            });
+        }
+
+        // Find the technician and populate the tools array
+        const technician = await Employee.findById(technicianId)
+            .populate("tools.toolId", "toolId SrNo nomenclature manufacturer model calibrationCertificateNo calibrationValidTill range toolStatus");
+
+        if (!technician) {
+            return res.status(404).json({
+                success: false,
+                message: "Technician not found",
+            });
+        }
+
+        // Find the specific tool in technician's tools array
+        const tool = technician.tools.find(
+            (t) => t.toolId && t.toolId._id.toString() === toolId
+        );
+
+        if (!tool) {
+            return res.status(404).json({
+                success: false,
+                message: "Tool not assigned to this technician",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            technicianId: technician._id,
+            tool,
+        });
+    } catch (error) {
+        console.error("Error fetching tool by technician and tool:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching tool",
+            error: error.message,
+        });
+    }
+});
+
+export default { create, allTools, updateById, deleteById, getById, getEngineerByTool, getAllToolsByTechnicianId, getToolByTechnicianAndTool };

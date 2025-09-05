@@ -27,6 +27,11 @@ const hospitalSchema = new Schema(
             type: String,
             unique: true,
         },
+        machines:
+        {
+            type: Schema.Types.ObjectId,
+            ref: 'Machine',
+        },
         // New: Multiple RSOs linked to this hospital
         rsos: [
             {

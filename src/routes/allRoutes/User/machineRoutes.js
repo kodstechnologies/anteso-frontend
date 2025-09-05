@@ -2,7 +2,7 @@ import { Router } from "express";
 const router = Router();
 import upload from "../../../middlewares/upload.js";
 import machineController from '../../../controllers/Admin/machine.controller.js'
-router.post("/add/:customerId", upload.fields([
+router.post("/add/:customerId/:hospitalId", upload.fields([
     { name: "qaReportAttachment", maxCount: 1 },
     { name: "licenseReportAttachment", maxCount: 1 },
     { name: "rawDataAttachment", maxCount: 1 },

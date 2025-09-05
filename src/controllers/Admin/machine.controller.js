@@ -6,6 +6,7 @@ import { machineSchema } from '../../validators/machineValidator.js';
 import Customer from '../../models/client.model.js'
 import { uploadToS3 } from '../../utils/s3Upload.js';
 import { getMultipleFileUrls } from '../../utils/s3Fetch.js';
+import Hospital from '../../models/hospital.model.js'
 
 // ADD MACHINE
 // const add = asyncHandler(async (req, res) => {
@@ -71,6 +72,8 @@ import { getMultipleFileUrls } from '../../utils/s3Fetch.js';
 // });
 const add = asyncHandler(async (req, res) => {
     try {
+        const { customerId, hospitalId } = req.params;
+
         const {
             machineType,
             make,
@@ -79,12 +82,10 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
-
+            status,
         } = req.body;
 
-        const { customerId } = req.params;
-
-        // Validate request body
+        // ✅ Validate request body
         const { error } = machineSchema.validate({
             machineType,
             make,
@@ -93,20 +94,29 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
+            status,
         });
-
         if (error) {
             throw new ApiError(400, error.details[0].message);
         }
 
-        const existingCustomer = await Customer.findById(customerId);
-        if (!existingCustomer) {
+        // ✅ Check customer exists
+        const customer = await Customer.findById(customerId).populate("hospitals");
+        if (!customer) {
             throw new ApiError(404, "Customer not found.");
+        }
+
+        // ✅ Check hospital exists and belongs to this customer
+        const hospital = await Hospital.findOne({
+            _id: hospitalId,
+            _id: { $in: customer.hospitals },
+        });
+        if (!hospital) {
+            throw new ApiError(404, "Hospital not found for this customer.");
         }
 
         // ✅ Upload files to S3 (if they exist)
         const uploadedFiles = {};
-        console.log("🚀 ~ req.files:", req.files)
         if (req.files) {
             for (const [key, fileArray] of Object.entries(req.files)) {
                 if (fileArray.length > 0) {
@@ -115,7 +125,8 @@ const add = asyncHandler(async (req, res) => {
                 }
             }
         }
-        // ✅ Save machine with actual S3 URLs
+
+        // ✅ Create machine linked to hospital
         const machine = await Machine.create({
             machineType,
             make,
@@ -124,16 +135,20 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
+            status: status || "Active",
             rawDataAttachment: uploadedFiles.rawDataAttachment || null,
             qaReportAttachment: uploadedFiles.qaReportAttachment || null,
             licenseReportAttachment: uploadedFiles.licenseReportAttachment || null,
-            customer: customerId,
+            hospital: hospitalId,
         });
-        console.log("🚀 ~ machine:", machine);
 
-        res.status(201).json(new ApiResponse(201, machine, "Machine added successfully."));
+        // ✅ Update hospital with this machine (replace existing since only 1 allowed)
+        hospital.machines = machine._id;
+        await hospital.save();
+
+        res.status(201).json(new ApiResponse(201, machine, "Machine added successfully to hospital."));
     } catch (error) {
-        console.error("Error in add machine:", error);
+        console.error("Error in addMachine:", error);
         throw new ApiError(500, error?.message || "Internal Server Error");
     }
 });
@@ -226,12 +241,11 @@ const getById = asyncHandler(async (req, res) => {
     }
 });
 
-// UPDATE MACHINE BY ID
+// UPDATE MACHINE BY ID and customerId
 const updateById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
         const { customerId } = req.query;
-
         let query = { _id: id };
         if (customerId) {
             query = { _id: id, client: customerId };
@@ -250,7 +264,6 @@ const updateById = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
-            status,
             client,
         } = req.body;
 
@@ -270,7 +283,7 @@ const updateById = asyncHandler(async (req, res) => {
         existingMachine.equipmentId = equipmentId;
         existingMachine.qaValidity = qaValidity;
         existingMachine.licenseValidity = licenseValidity;
-        existingMachine.status = status;
+
         existingMachine.client = client;
         existingMachine.qaReportAttachment = qaReportAttachment;
         existingMachine.licenseReportAttachment = licenseReportAttachment;
@@ -283,7 +296,6 @@ const updateById = asyncHandler(async (req, res) => {
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
-
 // DELETE MACHINE BY ID
 const deleteById = asyncHandler(async (req, res) => {
     try {
