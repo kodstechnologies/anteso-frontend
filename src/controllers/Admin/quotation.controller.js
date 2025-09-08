@@ -825,4 +825,62 @@ const acceptQuotationPDF = asyncHandler(async (req, res) => {
     }
 });
 
-export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, acceptQuotationPDF }
+
+export const downloadQuotationPdf = asyncHandler(async (req, res) => {
+    try {
+        const { hospitalId, quotationId } = req.params;
+        console.log("🚀 ~ quotationId:", quotationId)
+        console.log("🚀 ~ hospitalId:", hospitalId)
+
+        if (!quotationId || !hospitalId) {
+            return res.status(400).json({
+                success: false,
+                message: "quotationId and hospitalId are required",
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "PDF file is required",
+            });
+        }
+
+        // 1️⃣ Upload file to S3
+        const { url } = await uploadToS3(req.file);
+
+        // 2️⃣ Save URL in MongoDB
+        const quotation = await Quotation.findByIdAndUpdate(
+            quotationId,
+            {
+                $set: {
+                    pdfUrl: url,
+                    hospital: hospitalId, // ensures hospital is linked
+                },
+            },
+            { new: true }
+        );
+
+        if (!quotation) {
+            return res.status(404).json({
+                success: false,
+                message: "Quotation not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Quotation PDF uploaded successfully",
+            pdfUrl: url,
+            quotation,
+        });
+    } catch (error) {
+        console.error("Error uploading quotation PDF:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Server error",
+        });
+    }
+});
+
+export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, acceptQuotationPDF, downloadQuotationPdf }

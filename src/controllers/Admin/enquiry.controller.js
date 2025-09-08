@@ -2207,7 +2207,8 @@ const getByHospitalIdEnquiryId = async (req, res) => {
             services: enquiry.services, // now populated with full details
             additionalServices: enquiry.additionalServices,
             specialInstructions: enquiry.specialInstructions,
-            enquiryStatus: enquiry.enquiryStatus
+            enquiryStatus: enquiry.enquiryStatus,
+             enquiryStatusDates: enquiry.enquiryStatusDates,
         });
     } catch (err) {
         console.error("Error fetching enquiry details:", err);

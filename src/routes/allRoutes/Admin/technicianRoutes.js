@@ -21,4 +21,5 @@ router.post('/add-trip-expense/:tripId/:technicianId', technicianController.addT
 
 router.get('/get-trips-per-technician/:technicianId', technicianController.getTripsWithExpensesByTechnician)
 
+router.get('/get-transaction-logs/:technicianId/:tripId/:expenseId',technicianController.getTransactionLogs)
 export default router

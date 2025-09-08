@@ -22,7 +22,7 @@ const quotationSchema = new Schema(
             ref: 'Hospital',
             required: true,
         },
-    
+
         discount: {
             type: Number,
             default: 0,
@@ -43,6 +43,11 @@ const quotationSchema = new Schema(
             type: String
         },
         termsAndConditions: [String],
+        pdfUrl: {
+            type: String,
+            default: null,
+        },
+
     },
     { timestamps: true }
 );

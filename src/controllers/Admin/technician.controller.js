@@ -772,5 +772,55 @@ const addTripExpense = asyncHandler(async (req, res) => {
     });
 });
 
+const getTransactionLogs = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId, tripId, expenseId } = req.params;
 
-export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician };
+        if (!technicianId || !tripId || !expenseId) {
+            return res.status(400).json({
+                success: false,
+                message: "technicianId, tripId, and expenseId are required"
+            });
+        }
+
+        // 1️⃣ Find trip with technician and tripId
+        const trip = await tripModel.findOne({
+            _id: tripId,
+            technician: technicianId,
+        }).populate({
+            path: "expenses",
+            match: { _id: expenseId }, // filter expenseId
+            select: "typeOfExpense requiredAmount createdAt" // only required fields
+        });
+
+        if (!trip) {
+            return res.status(404).json({
+                success: false,
+                message: "Trip not found for given technicianId"
+            });
+        }
+
+        if (!trip.expenses || trip.expenses.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Expense not found in this trip"
+            });
+        }
+
+        // ✅ return expense logs
+        return res.status(200).json({
+            success: true,
+            data: trip.expenses[0]  // since filtering by expenseId gives single doc
+        });
+
+    } catch (error) {
+        console.error("Error fetching transaction logs:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+});
+
+export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician, getTransactionLogs };
