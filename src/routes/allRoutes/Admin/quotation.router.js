@@ -9,8 +9,12 @@ router.put('/accept-quotation/:hospitalId/:enquiryId/:quotationId', quotationCon
 router.put('/reject-quotation/:customerId/:enquiryId/:quotationId', quotationController.rejectQuotation)
 router.post('/accept-quotation-pdf/:quotationId', upload.single("pdf"), quotationController.acceptQuotationPDF)
 router.post(
-    "save-quotation-pdf/:hospitalId/:quotationId",
+    "/save-quotation-pdf/:hospitalId/:quotationId",
     upload.single("file"),
     quotationController.downloadQuotationPdf
 );
+router.post('/share-quotation/:hospitalId/:enquiryId/:quotationId', quotationController.shareQuotation)
+router.get('/get-quotation-pdf/:hospitalId/:enquiryId',quotationController.getQuotationPdfUrl)
+//mobile api
+// router.get('/get-quotation-pdf/:hospitalId/:enquiryId/:quotationId')
 export default router

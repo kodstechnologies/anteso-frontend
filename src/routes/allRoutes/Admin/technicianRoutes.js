@@ -1,5 +1,6 @@
 import { Router } from "express";
 import technicianController from "../../../controllers/Admin/technician.controller.js";
+import upload from "../../../middlewares/upload.js";
 const router = Router();
 router.post('/add', technicianController.add)
 router.get('/get-by-id/:id', technicianController.getById)
@@ -15,11 +16,15 @@ router.get('/all-officeStaff', technicianController.getAllOfficeStaff)
 router.post('/create-trip-by-techinician/:technicianId', technicianController.createTripByTechnicianId)
 router.patch('/update-trip-by-technician-tripId/:technicianId/:tripId', technicianController.updateTripByTechnicianIdAndTripId)
 // router.get('/get-all-trips/:technicianId', technicianController.getAllTripsByTechnician)
-router.post('/add-trip-expense/:tripId/:technicianId', technicianController.addTripExpense)
+router.post(
+    "/add-trip-expense/:tripId/:technicianId",
+    upload.single("screenshot"),
+    technicianController.addTripExpense
+);
 //mobile
 // router.post('/machine-details/:technicianId/:orderId',technicianController.machineDetails)
 
 router.get('/get-trips-per-technician/:technicianId', technicianController.getTripsWithExpensesByTechnician)
 
-router.get('/get-transaction-logs/:technicianId/:tripId/:expenseId',technicianController.getTransactionLogs)
+router.get('/get-transaction-logs/:technicianId/:tripId/:expenseId', technicianController.getTransactionLogs)
 export default router

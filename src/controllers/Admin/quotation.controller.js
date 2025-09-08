@@ -396,6 +396,7 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
 const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
+        console.log("🚀 ~ id:", id)
 
         if (!id) {
             throw new ApiError(400, 'Enquiry ID is required');
@@ -826,7 +827,7 @@ const acceptQuotationPDF = asyncHandler(async (req, res) => {
 });
 
 
-export const downloadQuotationPdf = asyncHandler(async (req, res) => {
+const downloadQuotationPdf = asyncHandler(async (req, res) => {
     try {
         const { hospitalId, quotationId } = req.params;
         console.log("🚀 ~ quotationId:", quotationId)
@@ -883,4 +884,102 @@ export const downloadQuotationPdf = asyncHandler(async (req, res) => {
     }
 });
 
-export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, acceptQuotationPDF, downloadQuotationPdf }
+
+//mobile
+const shareQuotation = asyncHandler(async (req, res) => {
+    try {
+        const { hospitalId, enquiryId, quotationId } = req.params;
+        console.log("🚀 ~ quotationId:", quotationId)
+        console.log("🚀 ~ enquiryId:", enquiryId)
+        console.log("🚀 ~ hospitalId:", hospitalId)
+
+        if (!hospitalId || !enquiryId || !quotationId) {
+            return res.status(400).json({
+                success: false,
+                message: "hospitalId, enquiryId, and quotationId are required",
+            });
+        }
+
+        // Find the quotation by quotationId and enquiryId
+        const quotation = await Quotation.findOne({
+            _id: quotationId,
+            enquiry: enquiryId,
+        });
+
+        if (!quotation) {
+            return res.status(404).json({
+                success: false,
+                message: "Quotation not found for the given IDs",
+            });
+        }
+
+        if (!quotation.pdfUrl) {
+            return res.status(400).json({
+                success: false,
+                message: "Quotation PDF not uploaded yet. Cannot share.",
+            });
+        }
+
+        // Return the existing PDF URL
+        res.status(200).json({
+            success: true,
+            message: "Quotation PDF shared successfully",
+            data: {
+                hospitalId,
+                enquiryId,
+                quotationId,
+                pdfUrl: quotation.pdfUrl, // ✅ fetched from the quotation itself
+            },
+        });
+    } catch (error) {
+        console.error("Error sharing quotation:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to share quotation",
+            error: error.message,
+        });
+    }
+});
+
+//mobile
+const getQuotationPdfUrl = asyncHandler(async (req, res) => {
+    try {
+        const { hospitalId, enquiryId } = req.params;
+
+        if (!hospitalId || !enquiryId) {
+            return res.status(400).json({
+                success: false,
+                message: "hospitalId and enquiryId are required",
+            });
+        }
+
+        // Find the quotation for the given hospital and enquiry
+        const quotation = await Quotation.findOne({
+            from: hospitalId,
+            enquiry: enquiryId,
+        }).select("pdfUrl"); // Only select the pdfUrl field
+
+        if (!quotation || !quotation.pdfUrl) {
+            return res.status(404).json({
+                success: false,
+                message: "Quotation PDF not found for the given hospital and enquiry",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            pdfUrl: quotation.pdfUrl,
+        });
+    } catch (error) {
+        console.error("Error fetching quotation PDF URL:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch quotation PDF URL",
+            error: error.message,
+        });
+    }
+});
+
+
+
+export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, acceptQuotationPDF, downloadQuotationPdf, shareQuotation, getQuotationPdfUrl }

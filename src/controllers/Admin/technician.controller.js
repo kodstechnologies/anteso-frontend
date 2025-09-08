@@ -8,6 +8,7 @@ import Tools from "../../models/tools.model.js";
 import tripModel from "../../models/trip.model.js";
 import expenseModel from "../../models/expense.model.js";
 import advanceAccountModel from "../../models/advanceAccount.model.js";
+import { uploadToS3 } from "../../utils/s3Upload.js";
 
 // const add = asyncHandler(async (req, res) => {
 //     try {
@@ -392,20 +393,29 @@ const getTripsWithExpensesByTechnician = asyncHandler(async (req, res) => {
     try {
         const { technicianId } = req.params;
 
-        // 1. Get all trips for this technician
+        // 1️⃣ Get all trips for this technician
         const trips = await tripModel.find({ technician: technicianId })
             .select("tripName startDate endDate remarks tripstatus tripTotalExpense")
             .lean();
 
         const currentDate = new Date();
 
-        // 2. For each trip, fetch expenses & update totals
+        // 2️⃣ For each trip, fetch expenses & update totals
         for (let trip of trips) {
             const expenses = await expenseModel.find({ trip: trip._id })
-                .select("typeOfExpense requiredAmount date screenshot remarks")
+                .select("typeOfExpense requiredAmount date screenshot remarks createdAt")
                 .lean();
 
-            trip.expenses = expenses;
+            // Map to include screenshot URL
+            trip.expenses = expenses.map(exp => ({
+                _id: exp._id,
+                typeOfExpense: exp.typeOfExpense,
+                requiredAmount: exp.requiredAmount,
+                date: exp.date,
+                remarks: exp.remarks,
+                screenshotUrl: exp.screenshot || null,
+                createdAt: exp.createdAt
+            }));
 
             // Update trip status
             if (trip.endDate && trip.endDate < currentDate) {
@@ -421,14 +431,14 @@ const getTripsWithExpensesByTechnician = asyncHandler(async (req, res) => {
             );
             trip.tripTotalExpense = tripTotalExpense;
 
-            // 👉 Persist the total expense log in DB
+            // Persist updated trip totals/status in DB
             await tripModel.findByIdAndUpdate(trip._id, {
                 tripstatus: trip.tripstatus,
                 tripTotalExpense
             });
         }
 
-        // 3. Get technician’s global AdvanceAccount
+        // 3️⃣ Get technician’s global AdvanceAccount
         const advanceAccount = await advanceAccountModel.findOne({ technician: technicianId }).lean();
 
         res.status(200).json({
@@ -546,11 +556,12 @@ const updateTripByTechnicianIdAndTripId = asyncHandler(async (req, res) => {
         console.log("🚀 ~ tripId:", tripId)
         console.log("🚀 ~ technicianId:", technicianId)
         const updateData = req.body;
+        console.log("🚀 ~ updateData:", updateData)
 
         const updatedTrip = await tripModel.findOneAndUpdate(
             { _id: tripId, technician: technicianId },
             { $set: updateData },
-            { new: true, runValidators: true }
+            // { new: true, runValidators: true }
         );
         console.log("🚀 ~ updatedTrip:", updatedTrip)
 
@@ -687,7 +698,8 @@ const addExpenseByTechnicianAndTripId = asyncHandler(async (req, res) => {
 // });
 const addTripExpense = asyncHandler(async (req, res) => {
     const { tripId, technicianId } = req.params;
-    const { requiredAmount, typeOfExpense, screenshot, date, remarks } = req.body;
+    const { requiredAmount, typeOfExpense, date, remarks } = req.body;
+    const file = req.file; // multer puts the file here
 
     // validate
     const amt = Number(requiredAmount);
@@ -703,13 +715,9 @@ const addTripExpense = asyncHandler(async (req, res) => {
     if (!trip) {
         return res.status(404).json({ success: false, message: "Trip not found." });
     }
-    if (trip.status === "completed") {
-        return res.status(400).json({
-            success: false,
-            message: "Cannot add expenses to a completed trip."
-        });
+    if (trip.tripstatus === "completed") {
+        return res.status(400).json({ success: false, message: "Cannot add expenses to a completed trip." });
     }
-    // ensure technician is assigned to this trip
     if (!trip.technician || trip.technician.toString() !== technicianId) {
         return res.status(400).json({ success: false, message: "Technician is not assigned to this trip." });
     }
@@ -728,6 +736,13 @@ const addTripExpense = asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, message: "Not enough balance." });
     }
 
+    // upload screenshot if present
+    let screenshotUrl = null;
+    if (file) {
+        const { url } = await uploadToS3(file);
+        screenshotUrl = url;
+    }
+
     // update account totals
     account.totalExpense += amt;
     account.balance -= amt;
@@ -739,7 +754,7 @@ const addTripExpense = asyncHandler(async (req, res) => {
         typeOfExpense,
         requiredAmount: amt,
         date: date || new Date(),
-        screenshot,
+        screenshot: screenshotUrl,
         remarks
     });
 
@@ -747,7 +762,7 @@ const addTripExpense = asyncHandler(async (req, res) => {
     trip.expenses.push(expense._id);
     await trip.save();
 
-    // 🔑 Calculate total expense for this trip
+    // calculate total expense for this trip
     const tripExpenses = await expenseModel.find({ _id: { $in: trip.expenses } });
     const tripTotalExpense = tripExpenses.reduce((sum, exp) => sum + (exp.requiredAmount || 0), 0);
 
@@ -762,15 +777,12 @@ const addTripExpense = asyncHandler(async (req, res) => {
                 totalExpense: account.totalExpense,
                 balance: account.balance
             },
-            tripSummary: {
-                tripTotalExpense
-            },
-            submittedData: {
-                requiredAmount, typeOfExpense, screenshot, date, remarks
-            }
+            tripSummary: { tripTotalExpense },
+            submittedData: { requiredAmount, typeOfExpense, date, remarks, screenshotUrl }
         }
     });
 });
+
 
 const getTransactionLogs = asyncHandler(async (req, res) => {
     try {
