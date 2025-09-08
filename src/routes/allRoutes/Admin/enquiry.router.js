@@ -21,6 +21,7 @@ router.post(
     upload.single("attachment"),
     EnquiryController.addByHospitalId
 );
-router.post('/get-by-enquiryId-customerId/:enquiryId/:customerId', EnquiryController.getByCustomerIdEnquiryId)//--7-done need testing
+router.get('/get-all-enquiries-by-hospital/:hospitalId', EnquiryController.getAllEnquiriesByHospitalId)
+router.get('/get-by-enquiryId-hospitalId/:enquiryId/:hospitalId', EnquiryController.getByHospitalIdEnquiryId)//--7-done need testing
 
 export default router

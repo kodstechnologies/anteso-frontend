@@ -49,7 +49,6 @@ router.put('/assign-to-technician/:orderId/:serviceId/:technicianId/:workType', 
 router.put('/assign-to-office-staff/:orderId/:serviceId/:officeStaffId/:workType/:status', orderController.assignOfficeStaffByQATest)
 // router.get('/get-qa-details/:orderId/:serviceId/:technicianId',orderController.getQaDetails)
 
-
 // params: technicianId, orderId, serviceId, status, optional remark
 router.post(
     "/completed-status-report/:technicianId/:orderId/:serviceId/:workType/:status",

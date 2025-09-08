@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-const workTypeStatusEnum = ['pending', 'inprogress', 'completed', 'generated', 'paid'];
+const workTypeStatusEnum = ['pending', 'in progress', 'completed', 'generated', 'paid'];
 const serviceNameEnum = ['QA Test', 'Elora', 'QA Raw'];
 const workTypeDetailSchema = new mongoose.Schema({
     workType: {

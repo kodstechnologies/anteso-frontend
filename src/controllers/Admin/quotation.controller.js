@@ -288,6 +288,7 @@ import { uploadToS3 } from "../../utils/s3Upload.js";
 const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params; // enquiryId
+        console.log("🚀 ~ id:", id)
         const {
             date,
             quotationNumber,
@@ -391,7 +392,7 @@ const createQuotationByEnquiryId = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to create quotation", [error.message]);
     }
 });
-
+//web
 const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
@@ -431,28 +432,28 @@ const getQuotationByEnquiryId = asyncHandler(async (req, res) => {
         throw new ApiError(500, 'Failed to fetch quotation', [error.message]);
     }
 });
-
+//mobile
 const getQuotationByIds = asyncHandler(async (req, res) => {
-    const { customerId, enquiryId } = req.params;
+    const { hospitalId, enquiryId } = req.params;
 
-    if (!customerId || !enquiryId) {
-        throw new ApiError(400, 'Customer ID, Enquiry ID, and Quotation ID are required');
+    if (!enquiryId || !hospitalId) {
+        throw new ApiError(400, 'Enquiry ID and Hospital ID are required');
     }
 
     const quotation = await Quotation.findOne({
-        // _id: quotationId,
         enquiry: enquiryId,
-        from: customerId
+        from: hospitalId   // 👈 use `from` since schema has this
     })
-        .populate('enquiry') // Optional: populate enquiry details
-        .populate('from');   // Optional: populate user/customer details
+        .populate('enquiry')   // populate enquiry details
+        .populate('from');     // populate hospital details
 
     if (!quotation) {
-        throw new ApiError(404, 'Quotation not found for the given criteria');
+        throw new ApiError(404, 'Quotation not found for the given enquiry and hospital');
     }
 
     res.status(200).json(new ApiResponse(200, quotation, 'Quotation fetched successfully'));
 });
+
 
 // for mobile app
 // const acceptQuotation = asyncHandler(async (req, res) => {
@@ -544,39 +545,130 @@ const getQuotationByIds = asyncHandler(async (req, res) => {
 // });
 
 
+// const acceptQuotation = asyncHandler(async (req, res) => {
+//     try {
+//         const { customerId, enquiryId, quotationId } = req.params;
+
+//         // 1. Find the quotation
+//         const quotation = await Quotation.findOne({
+//             _id: quotationId,
+//             enquiry: enquiryId,
+//             from: customerId
+//         });
+//         if (!quotation) {
+//             return res.status(404).json({ message: "Quotation not found" });
+//         }
+//         // Update quotation status
+//         quotation.quotationStatus = 'Accepted';
+//         await quotation.save();
+
+//         // 2. Find the related enquiry
+//         // 2. Find the related enquiry and populate services
+//         const enquiry = await Enquiry.findOne({
+//             _id: enquiryId,
+//             customer: customerId
+//         }).populate("services");
+//         console.log("🚀 ~ enquiry:", enquiry)
+//         if (!enquiry) {
+//             return res.status(404).json({ message: "Enquiry not found for the customer" });
+//         }
+//         // Update enquiry status
+//         enquiry.enquiryStatus = 'Approved';
+//         enquiry.quotationStatus = 'Accepted';
+//         enquiry.enquiryStatusDates.approvedOn = new Date();
+//         await enquiry.save();
+//         // 3. Create Service documents
+//         const serviceDocs = await Promise.all(
+//             enquiry.services.map(async (service) => {
+//                 const newService = new Services({
+//                     machineType: service.machineType,
+//                     equipmentNo: service.equipmentNo,
+//                     machineModel: service.machineModel,
+//                     workTypeDetails: (service.workTypeDetails || []).map(wt => ({
+//                         workType: wt.workType,
+//                         serviceName: wt.serviceName,
+//                         status: wt.status || "pending",
+//                     })),
+//                 });
+//                 await newService.save();
+//                 return newService._id;
+//             })
+//         );
+//         // 4. Create Order with service IDs
+//         const order = await orderModel.create({
+//             leadOwner: enquiry.leadOwner,
+//             hospitalName: enquiry.hospitalName,
+//             fullAddress: enquiry.fullAddress,
+//             city: enquiry.city,
+//             district: enquiry.district,
+//             state: enquiry.state,
+//             pinCode: enquiry.pinCode,
+//             branchName: enquiry.branch,
+//             contactPersonName: enquiry.contactPerson,
+//             emailAddress: enquiry.emailAddress,
+//             contactNumber: enquiry.contactNumber,
+//             designation: enquiry.designation,
+//             advanceAmount: 0,
+//             workOrderCopy: '',
+//             partyCodeOrSysId: '',
+//             procNoOrPoNo: '',
+//             urgency: 'normal',
+//             specialInstructions: enquiry.specialInstructions,
+//             additionalServices: enquiry.additionalServices,
+//             services: serviceDocs,
+//             quotation: quotation._id,
+//             customer: enquiry.customer // 👈 Make sure this exists in the enquiry
+//         });
+
+//         console.log("🚀 ~ order:", order)
+//         console.log("🚀 ~ order.additionalServices:", order.additionalServices)
+
+//         res.status(200).json({
+//             message: "Quotation accepted and order created successfully",
+//             quotation,
+//             order
+//         });
+
+//     } catch (error) {
+//         console.error("Error in acceptQuotation:", error);
+//         res.status(500).json({ message: "Server error", error: error.message });
+//     }
+// });
+
 const acceptQuotation = asyncHandler(async (req, res) => {
     try {
-        const { customerId, enquiryId, quotationId } = req.params;
+        const { hospitalId, enquiryId, quotationId } = req.params;
 
-        // 1. Find the quotation
+        // 1. Find the quotation by enquiry + hospital
         const quotation = await Quotation.findOne({
             _id: quotationId,
             enquiry: enquiryId,
-            from: customerId
+            from: hospitalId
         });
         if (!quotation) {
-            return res.status(404).json({ message: "Quotation not found" });
+            return res.status(404).json({ message: "Quotation not found for this hospital" });
         }
+
         // Update quotation status
         quotation.quotationStatus = 'Accepted';
         await quotation.save();
 
-        // 2. Find the related enquiry
-        // 2. Find the related enquiry and populate services
+        // 2. Find the related enquiry (with services)
         const enquiry = await Enquiry.findOne({
             _id: enquiryId,
-            customer: customerId
+            hospital: hospitalId
         }).populate("services");
-        console.log("🚀 ~ enquiry:", enquiry)
         if (!enquiry) {
-            return res.status(404).json({ message: "Enquiry not found for the customer" });
+            return res.status(404).json({ message: "Enquiry not found for this hospital" });
         }
+
         // Update enquiry status
         enquiry.enquiryStatus = 'Approved';
         enquiry.quotationStatus = 'Accepted';
         enquiry.enquiryStatusDates.approvedOn = new Date();
         await enquiry.save();
-        // 3. Create Service documents
+
+        // 3. Create new Service documents (clones)
         const serviceDocs = await Promise.all(
             enquiry.services.map(async (service) => {
                 const newService = new Services({
@@ -593,9 +685,11 @@ const acceptQuotation = asyncHandler(async (req, res) => {
                 return newService._id;
             })
         );
+
         // 4. Create Order with service IDs
         const order = await orderModel.create({
             leadOwner: enquiry.leadOwner,
+            hospital: hospitalId, // 👈 Link hospital directly
             hospitalName: enquiry.hospitalName,
             fullAddress: enquiry.fullAddress,
             city: enquiry.city,
@@ -616,11 +710,8 @@ const acceptQuotation = asyncHandler(async (req, res) => {
             additionalServices: enquiry.additionalServices,
             services: serviceDocs,
             quotation: quotation._id,
-            customer: enquiry.customer // 👈 Make sure this exists in the enquiry
+            customer: enquiry.customer // still keep if you want customer reference
         });
-
-        console.log("🚀 ~ order:", order)
-        console.log("🚀 ~ order.additionalServices:", order.additionalServices)
 
         res.status(200).json({
             message: "Quotation accepted and order created successfully",
@@ -633,6 +724,7 @@ const acceptQuotation = asyncHandler(async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
+
 
 const rejectQuotation = asyncHandler(async (req, res) => {
     try {

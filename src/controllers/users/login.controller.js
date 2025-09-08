@@ -84,6 +84,7 @@ export const sendOtp = asyncHandler(async (req, res) => {
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log("🚀 ~ otp:", otp)
     console.log("🚀 ~ sendOtp ~ otp:", otp);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 

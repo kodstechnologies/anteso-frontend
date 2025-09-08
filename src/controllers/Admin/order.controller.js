@@ -358,6 +358,7 @@ const getMachineDetails = asyncHandler(async (req, res) => {
 const updateServiceWorkType = asyncHandler(async (req, res) => {
     const { orderId, serviceId, technicianId, machineType, workType } = req.params;
     const { machineModel, serialNumber, remark } = req.body;
+    console.log("🚀 ~ remark:", remark)
 
     // Validate IDs
     if (!mongoose.Types.ObjectId.isValid(orderId) ||
@@ -405,8 +406,12 @@ const updateServiceWorkType = asyncHandler(async (req, res) => {
     }
 
     // Update remark if present
-    if (remark !== undefined) workTypeDetail.remark = remark;
+    // Update remark if present
+    if (remark !== undefined) {
+        service.remark = remark;
+    }
 
+    // Save service after all changes
     await service.save();
 
     res.status(200).json({
@@ -414,8 +419,8 @@ const updateServiceWorkType = asyncHandler(async (req, res) => {
         message: "Service workType updated successfully",
         service
     });
-});
 
+});
 
 
 //mobile--My orders
@@ -1018,6 +1023,18 @@ const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
             : await getFileUrl(technicianWork.viewFile);
 
         // 4️⃣ Build response with IDs + workType + signed URLs
+        // const updatedData = {
+        //     orderId: order._id,
+        //     serviceId: service._id,
+        //     technicianId,
+        //     workType: technicianWork.workType || null,
+        //     machineType: service.machineType,
+        //     machineModel: service.machineModel,
+        //     serialNumber: service.serialNumber,
+        //     remark: technicianWork.remark || null,
+        //     rawFile: rawFileUrl,   // ✅ signed URL(s)
+        //     rawPhoto: rawPhotoUrl  // ✅ signed URL(s)
+        // };
         const updatedData = {
             orderId: order._id,
             serviceId: service._id,
@@ -1026,11 +1043,12 @@ const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
             machineType: service.machineType,
             machineModel: service.machineModel,
             serialNumber: service.serialNumber,
-            remark: technicianWork.remark || null,
-            rawFile: rawFileUrl,   // ✅ signed URL(s)
-            rawPhoto: rawPhotoUrl  // ✅ signed URL(s)
+            remark: service.remark || null,   // ✅ from service level
+            rawFile: rawFileUrl,
+            rawPhoto: rawPhotoUrl
         };
 
+        console.log("🚀 ~ updatedData.remark:", updatedData.remark)
         res.status(200).json({
             success: true,
             updatedService: updatedData
@@ -1127,7 +1145,6 @@ const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
 const assignTechnicianByQARaw = asyncHandler(async (req, res) => {
     try {
         const { orderId, serviceId, technicianId, workType } = req.params;
-
         // 1. Validate order and service relationship
         const order = await orderModel.findById(orderId);
         if (!order) {
@@ -1157,7 +1174,7 @@ const assignTechnicianByQARaw = asyncHandler(async (req, res) => {
         }
 
         work.engineer = technicianId;
-        work.status = 'inprogress';
+        work.status = 'in progress';
 
         await service.save();
 
@@ -1200,7 +1217,7 @@ const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
 
         // 3. Validate staff
         const staff = await Employee.findById(officeStaffId);
-        if (!staff || staff.technicianType !== 'office staff') {
+        if (!staff || staff.technicianType !== 'office-staff') {
             return res.status(400).json({ message: 'Invalid staff or not an office staff type' });
         }
 
