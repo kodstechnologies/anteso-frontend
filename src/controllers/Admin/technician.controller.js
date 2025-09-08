@@ -553,17 +553,20 @@ const createTripByTechnicianId = asyncHandler(async (req, res) => {
 const updateTripByTechnicianIdAndTripId = asyncHandler(async (req, res) => {
     try {
         const { technicianId, tripId } = req.params;
-        console.log("🚀 ~ tripId:", tripId)
-        console.log("🚀 ~ technicianId:", technicianId)
         const updateData = req.body;
-        console.log("🚀 ~ updateData:", updateData)
+
+        // Trim all string fields in updateData
+        Object.keys(updateData).forEach(key => {
+            if (typeof updateData[key] === 'string') {
+                updateData[key] = updateData[key].trim();
+            }
+        });
 
         const updatedTrip = await tripModel.findOneAndUpdate(
             { _id: tripId, technician: technicianId },
             { $set: updateData },
-            // { new: true, runValidators: true }
+            { new: true, runValidators: true } // return updated doc
         );
-        console.log("🚀 ~ updatedTrip:", updatedTrip)
 
         if (!updatedTrip) {
             return res.status(404).json({
@@ -584,6 +587,9 @@ const updateTripByTechnicianIdAndTripId = asyncHandler(async (req, res) => {
         });
     }
 });
+
+
+
 const getAllTripsByTechnician = asyncHandler(async (req, res) => {
     try {
         const { technicianId } = req.params;
