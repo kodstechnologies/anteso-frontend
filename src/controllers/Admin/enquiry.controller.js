@@ -1818,8 +1818,6 @@ const createDirectOrder = asyncHandler(async (req, res) => {
 // });
 
 
-
-
 const addByHospitalId = asyncHandler(async (req, res) => {
     try {
         const { hospitalId } = req.params;

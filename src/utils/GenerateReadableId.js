@@ -7,7 +7,6 @@ export const generateReadableId = async (entityName, prefix) => {
         { $inc: { seq: 1 } },
         { new: true, upsert: true }
     );
-
     const paddedNumber = String(counter.seq).padStart(3, '0');
     return `${prefix}${paddedNumber}`;
 };

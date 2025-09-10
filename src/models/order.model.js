@@ -61,6 +61,13 @@ const orderSchema = new mongoose.Schema({
         ref: 'Quotation',
         // required: true,
     },
+    payment:
+    {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Payment",
+    },
+
+
     rawFile: { type: String },
     rawPhoto: { type: String },
 }, { timestamps: true });

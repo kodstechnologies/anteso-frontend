@@ -55,6 +55,7 @@ router.post(
     upload.single("file"), // "file" must match your input namer
     orderController.completedStatusAndReport
 );
+
 router.get('/get-qa-details/:orderId/:serviceId/:technicianId', orderController.getQaDetails)
 router.get('/get-all-office-staff', orderController.getAllOfficeStaff)
 router.get('/get-assigned-technician/:orderId/:serviceId/:workType', orderController.getAssignedTechnicianName)
@@ -63,5 +64,7 @@ router.post('/create-order', orderController.createOrder)
 router.put('/update-additional-service/:id',orderController.updateAdditionalService)
 // router.get('/',)
 // router.post('/status-paid')
+
+router.put('/edit-documents',orderController.editDocuments)
 
 export default router

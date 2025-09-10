@@ -1,9 +1,14 @@
+import orderModel from "../../models/order.model.js";
 import Order from "../../models/order.model.js";
 import Payment from "../../models/payment.model.js";
+import User from "../../models/user.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/AsyncHandler.js";
+import { generateReadableId } from "../../utils/GenerateReadableId.js";
 import { uploadToS3 } from "../../utils/s3Upload.js";
+import mongoose from "mongoose";
+
 const addPayment = asyncHandler(async (req, res) => {
     try {
         const { orderId, totalAmount, paymentAmount, paymentType, utrNumber } = req.body;
@@ -57,6 +62,8 @@ const addPayment = asyncHandler(async (req, res) => {
         });
     }
 });
+
+
 // const allOrdersWithClientName = asyncHandler(async (req, res) => {
 //     try {
 //         // Fetch all orders
@@ -82,26 +89,51 @@ const addPayment = asyncHandler(async (req, res) => {
 
 const allOrdersWithClientName = asyncHandler(async (req, res) => {
     try {
-        // 1Fetch all orders and populate leadOwner to check their role
-        let orders = await Order.find({})
-            .populate({
-                path: "leadOwner",
-                select: "role",
-                match: { role: { $ne: "Dealer" } }, // exclude Dealers at DB level
-            })
+
+        // 1️⃣ Fetch all orders
+        let orders = await orderModel.find({})
             .select("srfNumber hospitalName leadOwner")
+            .sort({ createdAt: -1 })
             .lean();
 
-        // Remove orders where populate returned null (because they were Dealers)
-        orders = orders.filter((order) => order.leadOwner !== null);
-        //  Append hospitalName to srfNumber
-        const formattedOrders = orders.map((order) => ({
-            ...order,
-            srfNumberWithHospital: `${order.srfNumber} - ${order.hospitalName}`,
-        }));
+        if (!orders || orders.length === 0) {
+            return res.status(404).json({ message: "No orders found" });
+        }
+
+        // 2️⃣ Get unique non-empty leadOwner IDs
+        const leadOwnerIds = [...new Set(orders.map(o => o.leadOwner).filter(Boolean))];
+
+        // 3️⃣ Fetch users for these leadOwners
+        const users = await User.find({ _id: { $in: leadOwnerIds } })
+            .select("_id name role email")
+            .lean();
+
+        // Build lookup map
+        const userMap = {};
+        users.forEach(u => {
+            userMap[u._id.toString()] = u;
+        });
+
+        // 4️⃣ Filter orders
+        orders = orders.filter(order => {
+            if (!order.leadOwner) return true; // ✅ keep if no leadOwner
+            const owner = userMap[order.leadOwner?.toString()];
+            return owner && owner.role !== "Dealer"; // ✅ keep only if not Dealer
+        });
+
+        // 5️⃣ Append hospitalName and owner details
+        const formattedOrders = orders.map(order => {
+            const owner = order.leadOwner ? userMap[order.leadOwner?.toString()] : null;
+            return {
+                ...order,
+                srfNumberWithHospital: `${order.srfNumber} - ${order.hospitalName}`,
+                leadOwnerDetails: owner, // can be null if no leadOwner
+            };
+        });
 
         res.status(200).json({
             success: true,
+            count: formattedOrders.length,
             orders: formattedOrders,
         });
     } catch (error) {
@@ -151,7 +183,6 @@ const allOrdersWithClientName = asyncHandler(async (req, res) => {
 //         });
 //     }
 // });
-
 
 const getTotalAmount = asyncHandler(async (req, res) => {
     const { srfNumber } = req.query;  // ✅ expect srfNumber

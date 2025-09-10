@@ -1250,7 +1250,6 @@ const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
 
 //in this controller i have both completed and paid status
 // controllers/statusController.js
-
 const completedStatusAndReport = asyncHandler(async (req, res) => {
     const { technicianId, orderId, serviceId, workType, status } = req.params;
     console.log("req.body", req.body);
@@ -1338,7 +1337,6 @@ const completedStatusAndReport = asyncHandler(async (req, res) => {
         orderStatus: order?.status,
     });
 });
-
 
 
 // export const 
@@ -1579,4 +1577,17 @@ export const updateAdditionalService = async (req, res) => {
     }
 };
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService }
+
+// const assignToOfficeStff
+
+const editDocuments = asyncHandler(async (req, res) => {
+    try {
+
+    } catch (error) {
+
+    }
+})
+
+
+
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments }

@@ -157,45 +157,58 @@ import Payment from "../../models/payment.model.js";
 
 const getAllOrdersWithType = asyncHandler(async (req, res) => {
   try {
-    let orders = await Order.find()
-      .populate("customer", "name __t") // only get name + discriminator
+    // 1️⃣ Get all complete payments
+    const completePayments = await Payment.find({ paymentType: "complete" })
       .populate({
-        path: "quotation",
-        populate: {
-          path: "enquiry",
-          populate: { path: "hospital", select: "name" }, // only get hospital name
-        },
+        path: "orderId",
+        populate: [
+          { path: "customer", select: "name __t" },
+          {
+            path: "quotation",
+            populate: {
+              path: "enquiry",
+              populate: { path: "hospital", select: "name" },
+            },
+          },
+        ],
       })
-      .select("_id srfNumber quotation customer hospitalName leadOwner") // ✅ include _id
       .lean();
 
-    const formattedOrders = orders.map((order) => {
-      let type = "Unknown";
-      let name = "";
+    // 2️⃣ Format orders with payment info
+    const formattedOrders = completePayments
+      .filter(p => p.orderId) // ensure order exists
+      .map((p) => {
+        const order = p.orderId;
+        let type = "Unknown";
+        let name = "";
 
-      if (order.customer?.__t === "Dealer") {
-        type = "Dealer";
-        name = order.customer?.name || order.leadOwner || "Unknown Dealer";
-      } else if (order.quotation?.enquiry?.hospital) {
-        type = "Hospital";
-        name = order.quotation.enquiry.hospital?.name || "Unknown Hospital";
-      } else if (order.hospitalName) {
-        // Direct Order fallback
-        type = "Hospital";
-        name = order.hospitalName;
-      } else if (order.leadOwner) {
-        // If leadOwner is filled but no hospitalName
-        type = "Dealer";
-        name = order.leadOwner;
-      }
+        if (order.customer?.__t === "Dealer") {
+          type = "Dealer";
+          name = order.customer?.name || order.leadOwner || "Unknown Dealer";
+        } else if (order.quotation?.enquiry?.hospital) {
+          type = "Hospital";
+          name = order.quotation.enquiry.hospital?.name || "Unknown Hospital";
+        } else if (order.hospitalName) {
+          type = "Hospital";
+          name = order.hospitalName;
+        } else if (order.leadOwner) {
+          type = "Dealer";
+          name = order.leadOwner;
+        }
 
-      return {
-        orderId: order._id, // ✅ add orderId here
-        srfNumber: order.srfNumber,
-        name,
-        type,
-      };
-    });
+        return {
+          orderId: order._id,
+          srfNumber: order.srfNumber,
+          name,
+          type,
+          payment: {
+            paymentId: p.paymentId,
+            paymentAmount: p.paymentAmount,
+            paymentType: p.paymentType,
+            paymentStatus: p.paymentStatus,
+          },
+        };
+      });
 
     res.status(200).json({
       success: true,
@@ -391,7 +404,7 @@ const createInvoice = asyncHandler(async (req, res) => {
     const grandTotal = subtotal + totalTax - discountAmount;
 
     // Generate invoiceId
-    const invoiceId = await generateReadableId("INV");
+    const invoiceId = await generateReadableId("Invoice", "INV");
 
     // Create Invoice
     const newInvoice = await Invoice.create({

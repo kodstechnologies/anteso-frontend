@@ -555,18 +555,22 @@ const updateTripByTechnicianIdAndTripId = asyncHandler(async (req, res) => {
         const { technicianId, tripId } = req.params;
         const updateData = req.body;
 
-        // Trim all string fields in updateData
         Object.keys(updateData).forEach(key => {
             if (typeof updateData[key] === 'string') {
                 updateData[key] = updateData[key].trim();
             }
         });
 
+        // Update trip and populate expenses
         const updatedTrip = await tripModel.findOneAndUpdate(
             { _id: tripId, technician: technicianId },
             { $set: updateData },
-            { new: true, runValidators: true } // return updated doc
-        );
+            { new: true, runValidators: true }
+        )
+            .populate({
+                path: "expenses",
+                select: "typeOfExpense requiredAmount date screenshot remarks createdAt"
+            });
 
         if (!updatedTrip) {
             return res.status(404).json({
@@ -587,6 +591,7 @@ const updateTripByTechnicianIdAndTripId = asyncHandler(async (req, res) => {
         });
     }
 });
+
 
 const getAllTripsByTechnician = asyncHandler(async (req, res) => {
     try {
@@ -971,4 +976,4 @@ const getTripByTechnicianAndTrip = asyncHandler(async (req, res) => {
 });
 
 
-export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician, getTransactionLogs, getTripExpenseByTechnicianTripExpenseId ,getTripByTechnicianAndTrip};
+export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician, getTransactionLogs, getTripExpenseByTechnicianTripExpenseId, getTripByTechnicianAndTrip };
