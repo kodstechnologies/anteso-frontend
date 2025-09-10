@@ -887,5 +887,88 @@ const getTripExpenseByTechnicianTripExpenseId = asyncHandler(async (req, res) =>
 });
 
 
+const getTripByTechnicianAndTrip = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId, tripId } = req.params;
 
-export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician, getTransactionLogs, getTripExpenseByTechnicianTripExpenseId };
+        // 1️⃣ Find trip with expenses
+        const trip = await tripModel.findOne({
+            _id: tripId,
+            technician: technicianId
+        })
+            .populate({
+                path: "expenses",
+                select: "typeOfExpense requiredAmount date screenshot remarks createdAt"
+            })
+            .lean();
+
+        if (!trip) {
+            return res.status(404).json({
+                success: false,
+                message: "Trip not found for this technician"
+            });
+        }
+
+        // 2️⃣ Calculate tripTotalExpense
+        const tripTotalExpense = (trip.expenses || []).reduce(
+            (sum, exp) => sum + (exp.requiredAmount || 0),
+            0
+        );
+
+        // 3️⃣ Update trip status (completed/ongoing)
+        const currentDate = new Date();
+        if (trip.endDate && trip.endDate < currentDate) {
+            trip.tripstatus = "completed";
+        } else if (!trip.tripstatus) {
+            trip.tripstatus = "ongoing";
+        }
+
+        // 4️⃣ Save updated status + total expense in DB
+        await tripModel.findByIdAndUpdate(trip._id, {
+            tripstatus: trip.tripstatus,
+            tripTotalExpense
+        });
+
+        // 5️⃣ Get technician’s advance account
+        const advanceAccount = await advanceAccountModel.findOne({ technician: technicianId }).lean();
+
+        res.status(200).json({
+            success: true,
+            data: {
+                trip: {
+                    _id: trip._id,
+                    tripName: trip.tripName,
+                    startDate: trip.startDate,
+                    endDate: trip.endDate,
+                    remarks: trip.remarks,
+                    tripstatus: trip.tripstatus,
+                    tripTotalExpense,
+                    expenses: trip.expenses.map(exp => ({
+                        _id: exp._id,
+                        typeOfExpense: exp.typeOfExpense,
+                        requiredAmount: exp.requiredAmount,
+                        date: exp.date,
+                        remarks: exp.remarks,
+                        screenshotUrl: exp.screenshot || null,
+                        createdAt: exp.createdAt
+                    }))
+                },
+                advanceAccount: advanceAccount || {
+                    advancedAmount: 0,
+                    totalExpense: 0,
+                    balance: 0
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching trip by technician and trip:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error fetching trip",
+            error: error.message
+        });
+    }
+});
+
+
+export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician, getTransactionLogs, getTripExpenseByTechnicianTripExpenseId ,getTripByTechnicianAndTrip};

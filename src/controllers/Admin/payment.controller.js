@@ -80,41 +80,38 @@ const addPayment = asyncHandler(async (req, res) => {
 //     }
 // });
 
-// const allOrdersWithClientName = asyncHandler(async (req, res) => {
-//     try {
-//         // 1Fetch all orders and populate leadOwner to check their role
-//         let orders = await Order.find({})
-//             .populate({
-//                 path: "leadOwner",
-//                 select: "role",
-//                 match: { role: { $ne: "Dealer" } }, // exclude Dealers at DB level
-//             })
-//             .select("srfNumber hospitalName leadOwner")
-//             .lean();
+const allOrdersWithClientName = asyncHandler(async (req, res) => {
+    try {
+        // 1Fetch all orders and populate leadOwner to check their role
+        let orders = await Order.find({})
+            .populate({
+                path: "leadOwner",
+                select: "role",
+                match: { role: { $ne: "Dealer" } }, // exclude Dealers at DB level
+            })
+            .select("srfNumber hospitalName leadOwner")
+            .lean();
 
-//         // Remove orders where populate returned null (because they were Dealers)
-//         orders.forEach((o) => {
-//             console.log("👉 Order:", o.srfNumber, "LeadOwner:", o.leadOwner);
-//         });
+        // Remove orders where populate returned null (because they were Dealers)
+        orders = orders.filter((order) => order.leadOwner !== null);
+        //  Append hospitalName to srfNumber
+        const formattedOrders = orders.map((order) => ({
+            ...order,
+            srfNumberWithHospital: `${order.srfNumber} - ${order.hospitalName}`,
+        }));
 
-//         //  Append hospitalName to srfNumber
-//         const formattedOrders = orders.map((order) => ({
-//             ...order,
-//             srfNumberWithHospital: `${order.srfNumber} - ${order.hospitalName}`,
-//         }));
-
-//         res.status(200).json({
-//             success: true,
-//             orders: formattedOrders,
-//         });
-//     } catch (error) {
-//         console.error("❌ Error fetching orders:", error);
-//         res.status(500).json({
-//             success: false,
-//             message: error.message || "Internal Server Error",
-//         });
-//     }
-// });
+        res.status(200).json({
+            success: true,
+            orders: formattedOrders,
+        });
+    } catch (error) {
+        console.error("❌ Error fetching orders:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Internal Server Error",
+        });
+    }
+});
 
 // const getTotalAmount = asyncHandler(async (req, res) => {
 
@@ -155,50 +152,6 @@ const addPayment = asyncHandler(async (req, res) => {
 //     }
 // });
 
-const allOrdersWithClientName = asyncHandler(async (req, res) => {
-    try {
-        let orders = await Order.find({})
-            .populate({ path: "leadOwner", select: "role" })
-            .select("srfNumber hospitalName leadOwner")
-            .lean();
-
-        // Filter dealers
-        orders = orders.filter((order) => {
-            // Case 1: populated user
-            if (order.leadOwner && typeof order.leadOwner === "object" && order.leadOwner.role) {
-                return order.leadOwner.role !== "Dealer";
-            }
-
-            // Case 2: raw ObjectId (populate failed → exclude)
-            if (typeof order.leadOwner === "string" && /^[0-9a-fA-F]{24}$/.test(order.leadOwner)) {
-                return false;
-            }
-
-            // Case 3: plain string (like "D2" or "Dealer")
-            if (typeof order.leadOwner === "string") {
-                return !["d2", "dealer"].includes(order.leadOwner.toLowerCase());
-            }
-
-            return true;
-        });
-
-        const formattedOrders = orders.map((order) => ({
-            ...order,
-            srfNumberWithHospital: `${order.srfNumber} - ${order.hospitalName}`,
-        }));
-
-        res.status(200).json({
-            success: true,
-            orders: formattedOrders,
-        });
-    } catch (error) {
-        console.error("❌ Error fetching orders:", error);
-        res.status(500).json({
-            success: false,
-            message: error.message || "Internal Server Error",
-        });
-    }
-});
 
 const getTotalAmount = asyncHandler(async (req, res) => {
     const { srfNumber } = req.query;  // ✅ expect srfNumber

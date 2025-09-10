@@ -1,5 +1,4 @@
 import mongoose, { Schema } from 'mongoose';
-
 const expenseSchema = new mongoose.Schema({
     trip: {
         type: Schema.Types.ObjectId,
@@ -27,5 +26,4 @@ const expenseSchema = new mongoose.Schema({
         trim: true
     }
 }, { timestamps: true });
-
 export default mongoose.model('Expense', expenseSchema);

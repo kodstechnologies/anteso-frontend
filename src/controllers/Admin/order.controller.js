@@ -627,6 +627,7 @@ const createOrder = asyncHandler(async (req, res) => {
         // ✅ Step 7: Create order
         const order = await orderModel.create({
             leadOwner: leadOwnerUser.name, // store name instead of ID
+            // leadOwner: leadOwnerUser._id,
             hospitalName,
             fullAddress,
             city,
@@ -665,7 +666,6 @@ const createOrder = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to create order", [error.message]);
     }
 });
-
 
 //check this one also
 //mobile--get the order by customerId orderId and status--if status is inprogress then only show that order details

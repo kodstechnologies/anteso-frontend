@@ -29,4 +29,6 @@ router.get('/get-trips-per-technician/:technicianId', technicianController.getTr
 router.get('/get-trip-expenses/:technicianId/:tripId/:expenseId',technicianController.getTripExpenseByTechnicianTripExpenseId)
 
 router.get('/get-transaction-logs/:technicianId/:tripId', technicianController.getTransactionLogs)
+
+router.get('/get-trip/:technicianId/:tripId',technicianController.getTripByTechnicianAndTrip)
 export default router
