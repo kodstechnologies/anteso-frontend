@@ -355,6 +355,7 @@ const getMachineDetails = asyncHandler(async (req, res) => {
 //     });
 // });
 
+
 const updateServiceWorkType = asyncHandler(async (req, res) => {
     const { orderId, serviceId, technicianId, machineType, workType } = req.params;
     const { machineModel, serialNumber, remark } = req.body;

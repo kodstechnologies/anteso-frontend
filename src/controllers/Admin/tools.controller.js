@@ -185,10 +185,21 @@ const getAllToolsByTechnicianId = asyncHandler(async (req, res) => {
             });
         }
 
+        // Flatten the toolId object into the tool response
+        const formattedTools = technician.tools.map(tool => {
+            if (tool.toolId && typeof tool.toolId === "object") {
+                return {
+                    ...tool.toolId.toObject(),
+                    issueDate: tool.issueDate
+                };
+            }
+            return tool;
+        });
+
         return res.status(200).json({
             success: true,
             technicianId: technician._id,
-            tools: technician.tools || [],
+            tools: formattedTools,
         });
     } catch (error) {
         console.error("Error fetching tools by technician:", error);
@@ -199,6 +210,7 @@ const getAllToolsByTechnicianId = asyncHandler(async (req, res) => {
         });
     }
 });
+
 
 
 const getToolByTechnicianAndTool = asyncHandler(async (req, res) => {
