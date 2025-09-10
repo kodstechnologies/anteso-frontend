@@ -588,8 +588,6 @@ const updateTripByTechnicianIdAndTripId = asyncHandler(async (req, res) => {
     }
 });
 
-
-
 const getAllTripsByTechnician = asyncHandler(async (req, res) => {
     try {
         const { technicianId } = req.params;
@@ -702,6 +700,7 @@ const addExpenseByTechnicianAndTripId = asyncHandler(async (req, res) => {
 //         }
 //     });
 // });
+
 const addTripExpense = asyncHandler(async (req, res) => {
     const { tripId, technicianId } = req.params;
     const { requiredAmount, typeOfExpense, date, remarks } = req.body;
@@ -790,45 +789,44 @@ const addTripExpense = asyncHandler(async (req, res) => {
 });
 
 
+
 const getTransactionLogs = asyncHandler(async (req, res) => {
     try {
-        const { technicianId, tripId, expenseId } = req.params;
+        const { technicianId, tripId } = req.params;
+        console.log("🚀 ~ tripId:", tripId)
+        console.log("🚀 ~ technicianId:", technicianId)
 
-        if (!technicianId || !tripId || !expenseId) {
+        if (!technicianId || !tripId) {
             return res.status(400).json({
                 success: false,
-                message: "technicianId, tripId, and expenseId are required"
+                message: "technicianId and tripId are required"
             });
         }
-
-        // 1️⃣ Find trip with technician and tripId
+        // Find trip with technician and tripId and populate all expenses
         const trip = await tripModel.findOne({
             _id: tripId,
             technician: technicianId,
         }).populate({
             path: "expenses",
-            match: { _id: expenseId }, // filter expenseId
-            select: "typeOfExpense requiredAmount createdAt" // only required fields
+            select: "typeOfExpense requiredAmount createdAt date "
         });
-
         if (!trip) {
             return res.status(404).json({
                 success: false,
                 message: "Trip not found for given technicianId"
             });
         }
-
         if (!trip.expenses || trip.expenses.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: "Expense not found in this trip"
+                message: "No expenses found for this trip"
             });
         }
 
-        // ✅ return expense logs
+        // Return all expense logs
         return res.status(200).json({
             success: true,
-            data: trip.expenses[0]  // since filtering by expenseId gives single doc
+            data: trip.expenses
         });
 
     } catch (error) {
@@ -841,4 +839,53 @@ const getTransactionLogs = asyncHandler(async (req, res) => {
     }
 });
 
-export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician, getTransactionLogs };
+const getTripExpenseByTechnicianTripExpenseId = asyncHandler(async (req, res) => {
+    try {
+        const { technicianId, tripId, expenseId } = req.params;
+
+        if (!technicianId || !tripId || !expenseId) {
+            return res.status(400).json({
+                success: false,
+                message: "technicianId, tripId, and expenseId are required"
+            });
+        }
+        // Find the trip and populate the specific expense
+        const trip = await tripModel.findOne({
+            _id: tripId,
+            technician: technicianId
+        }).populate({
+            path: "expenses",
+            match: { _id: expenseId }, // filter by expenseId
+            select: "typeOfExpense requiredAmount createdAt date screenshot remarks"
+        });
+        if (!trip) {
+            return res.status(404).json({
+                success: false,
+                message: "Trip not found for the given technicianId"
+            });
+        }
+        if (!trip.expenses || trip.expenses.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Expense not found in this trip"
+            });
+        }
+        // Return the single expense
+        return res.status(200).json({
+            success: true,
+            data: trip.expenses[0] // filtered by expenseId
+        });
+
+    } catch (error) {
+        console.error("Error fetching trip expense:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+});
+
+
+
+export default { add, getById, getAll, getAllEmployees, updateById, deleteById, getUnassignedTools, assignedToolByTechnicianId, getAllOfficeStaff, createTripByTechnicianId, updateTripByTechnicianIdAndTripId, getAllTripsByTechnician, addTripExpense, getTripsWithExpensesByTechnician, getTransactionLogs, getTripExpenseByTechnicianTripExpenseId };

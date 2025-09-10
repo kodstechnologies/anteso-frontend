@@ -6,7 +6,7 @@ router.post('/create/:id', quotationController.createQuotationByEnquiryId)
 router.get('/get-by-enquiry-id/:id', quotationController.getQuotationByEnquiryId)
 router.get('/get-quotation-by-hospital-enq-quo-ids/:hospitalId/:enquiryId', quotationController.getQuotationByIds)
 router.put('/accept-quotation/:hospitalId/:enquiryId/:quotationId', quotationController.acceptQuotation)
-router.put('/reject-quotation/:customerId/:enquiryId/:quotationId', quotationController.rejectQuotation)
+router.put('/reject-quotation/:hospitalId/:enquiryId/:quotationId', quotationController.rejectQuotation)
 router.post('/accept-quotation-pdf/:quotationId', upload.single("pdf"), quotationController.acceptQuotationPDF)
 router.post(
     "/save-quotation-pdf/:hospitalId/:quotationId",

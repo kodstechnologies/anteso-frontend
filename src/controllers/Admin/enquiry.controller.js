@@ -1345,7 +1345,6 @@ const add = asyncHandler(async (req, res) => {
 const createDirectOrder = asyncHandler(async (req, res) => {
     try {
         console.log("Direct Order Payload:", req.body);
-
         const {
             leadOwner,
             hospitalName,

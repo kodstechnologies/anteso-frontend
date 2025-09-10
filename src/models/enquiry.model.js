@@ -55,7 +55,8 @@ const enquirySchema = new mongoose.Schema({
     // quotation: {
     //     type: mongoose.Schema.Types.ObjectId,
     //     ref: 'Quotation',
-    // },
+    // },\
+    
     quotationStatus: {
         type: String,
         enum: ['Create', 'Created', 'Accepted', 'Rejected'],

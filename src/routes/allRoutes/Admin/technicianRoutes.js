@@ -26,5 +26,7 @@ router.post(
 
 router.get('/get-trips-per-technician/:technicianId', technicianController.getTripsWithExpensesByTechnician)
 
-router.get('/get-transaction-logs/:technicianId/:tripId/:expenseId', technicianController.getTransactionLogs)
+router.get('/get-trip-expenses/:technicianId/:tripId/:expenseId',technicianController.getTripExpenseByTechnicianTripExpenseId)
+
+router.get('/get-transaction-logs/:technicianId/:tripId', technicianController.getTransactionLogs)
 export default router

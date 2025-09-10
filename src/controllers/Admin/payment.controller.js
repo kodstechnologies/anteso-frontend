@@ -7,13 +7,15 @@ import { uploadToS3 } from "../../utils/s3Upload.js";
 const addPayment = asyncHandler(async (req, res) => {
     try {
         const { orderId, totalAmount, paymentAmount, paymentType, utrNumber } = req.body;
-
-        console.log("🚀 ~ orderId:", orderId);
-
+        console.log("🚀 ~ utrNumber:", utrNumber)
+        console.log("🚀 ~ paymentType:", paymentType)
+        console.log("🚀 ~ paymentAmount:", paymentAmount)
+        console.log("🚀 ~ totalAmount:", totalAmount)
+        console.log("🚀 ~ orderId:", orderId)
         // Validation
-        if (!orderId || !paymentType || !utrNumber) {
+        if (!orderId || !paymentType) {
             res.status(400);
-            throw new Error("orderId, paymentType, and utrNumber are required");
+            throw new Error("orderId and paymentType are required");
         }
 
         // Find order by _id
@@ -39,6 +41,8 @@ const addPayment = asyncHandler(async (req, res) => {
             utrNumber,
             screenshot: screenshotUrl,
         });
+        console.log("🚀 ~ payment:", payment)
+        console.log("🚀 ~ payment:", payment.paymentType)
 
         res.status(201).json({
             success: true,
@@ -76,29 +80,112 @@ const addPayment = asyncHandler(async (req, res) => {
 //     }
 // });
 
+// const allOrdersWithClientName = asyncHandler(async (req, res) => {
+//     try {
+//         // 1Fetch all orders and populate leadOwner to check their role
+//         let orders = await Order.find({})
+//             .populate({
+//                 path: "leadOwner",
+//                 select: "role",
+//                 match: { role: { $ne: "Dealer" } }, // exclude Dealers at DB level
+//             })
+//             .select("srfNumber hospitalName leadOwner")
+//             .lean();
+
+//         // Remove orders where populate returned null (because they were Dealers)
+//         orders.forEach((o) => {
+//             console.log("👉 Order:", o.srfNumber, "LeadOwner:", o.leadOwner);
+//         });
+
+//         //  Append hospitalName to srfNumber
+//         const formattedOrders = orders.map((order) => ({
+//             ...order,
+//             srfNumberWithHospital: `${order.srfNumber} - ${order.hospitalName}`,
+//         }));
+
+//         res.status(200).json({
+//             success: true,
+//             orders: formattedOrders,
+//         });
+//     } catch (error) {
+//         console.error("❌ Error fetching orders:", error);
+//         res.status(500).json({
+//             success: false,
+//             message: error.message || "Internal Server Error",
+//         });
+//     }
+// });
+
+// const getTotalAmount = asyncHandler(async (req, res) => {
+
+//     try {
+//         const { orderId } = req.query; // get from query
+
+//         if (!orderId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "orderId is required",
+//             });
+//         }
+
+//         const order = await Order.findById(orderId).populate('quotation');
+//         if (!order) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "Order not found",
+//             });
+//         }
+
+//         if (!order.quotation) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "Quotation not found for this order",
+//             });
+//         }
+
+//         res.status(200).json({
+//             success: true,
+//             totalAmount: order.quotation.total,
+//         });
+//     } catch (error) {
+//         res.status(500).json({
+//             success: false,
+//             message: error.message,
+//         });
+//     }
+// });
+
 const allOrdersWithClientName = asyncHandler(async (req, res) => {
     try {
-        // 1Fetch all orders and populate leadOwner to check their role
         let orders = await Order.find({})
-            .populate("leadOwner", "role") // only fetch role
+            .populate({ path: "leadOwner", select: "role" })
             .select("srfNumber hospitalName leadOwner")
             .lean();
-        //  Fetch all payments with type "complete"
-        const completePayments = await Payment.find({ paymentType: "complete" }).select("orderId").lean();
-        const completedOrderIds = completePayments.map((p) => p.orderId.toString());
-        // Filter orders
-        orders = orders.filter(
-            (order) =>
-                !completedOrderIds.includes(order._id.toString()) && // exclude fully paid
-                (!order.leadOwner || order.leadOwner.role !== "Dealer") // exclude dealer orders
-        );
 
-        //  Append hospitalName to srfNumber
+        // Filter dealers
+        orders = orders.filter((order) => {
+            // Case 1: populated user
+            if (order.leadOwner && typeof order.leadOwner === "object" && order.leadOwner.role) {
+                return order.leadOwner.role !== "Dealer";
+            }
+
+            // Case 2: raw ObjectId (populate failed → exclude)
+            if (typeof order.leadOwner === "string" && /^[0-9a-fA-F]{24}$/.test(order.leadOwner)) {
+                return false;
+            }
+
+            // Case 3: plain string (like "D2" or "Dealer")
+            if (typeof order.leadOwner === "string") {
+                return !["d2", "dealer"].includes(order.leadOwner.toLowerCase());
+            }
+
+            return true;
+        });
+
         const formattedOrders = orders.map((order) => ({
             ...order,
             srfNumberWithHospital: `${order.srfNumber} - ${order.hospitalName}`,
         }));
-        console.log("🚀 ~ formattedOrders:", formattedOrders)
 
         res.status(200).json({
             success: true,
@@ -114,42 +201,30 @@ const allOrdersWithClientName = asyncHandler(async (req, res) => {
 });
 
 const getTotalAmount = asyncHandler(async (req, res) => {
-    try {
-        const { orderId } = req.query; // get from query
+    const { srfNumber } = req.query;  // ✅ expect srfNumber
 
-        if (!orderId) {
-            return res.status(400).json({
-                success: false,
-                message: "orderId is required",
-            });
-        }
-
-        const order = await Order.findById(orderId).populate('quotation');
-        if (!order) {
-            return res.status(404).json({
-                success: false,
-                message: "Order not found",
-            });
-        }
-
-        if (!order.quotation) {
-            return res.status(404).json({
-                success: false,
-                message: "Quotation not found for this order",
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            totalAmount: order.quotation.total,
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+    if (!srfNumber) {
+        return res.status(400).json({ success: false, message: "SRF number is required" });
     }
+
+    // Find order by SRF number and populate its quotation
+    const order = await Order.findOne({ srfNumber })
+        .populate("quotation", "total"); // only bring 'total' field from quotation
+
+    if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    if (!order.quotation) {
+        return res.status(404).json({ success: false, message: "Quotation not found for this order" });
+    }
+
+    res.json({
+        success: true,
+        totalAmount: order.quotation.total,  // ✅ use quotation total
+    });
 });
+
 const getAllPayments = asyncHandler(async (req, res) => {
     try {
         const payments = await Payment.find()
@@ -173,24 +248,34 @@ const getAllPayments = asyncHandler(async (req, res) => {
         });
     }
 });
+// controllers/payment.controller.js
 const getPaymentsBySrf = asyncHandler(async (req, res) => {
-    const { srfNumber } = req.params; // actually orderId
-    console.log("🚀 ~ orderId:", srfNumber);
+    const { srfNumber } = req.params; // SRF number from URL
 
-    if (!srfNumber) throw new ApiError(400, "Order ID required");
+    if (!srfNumber) {
+        return res.status(400).json({ success: false, message: "SRF number is required" });
+    }
 
-    const order = await Order.findById(srfNumber);
-    if (!order) throw new ApiError(404, "Order not found");
+    // 1. Find the order by its srfNumber
+    const order = await Order.findOne({ srfNumber });
+    if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+    }
 
-    const payments = await Payment.find({ srfNumber: order._id });
-    res.status(200).json(new ApiResponse(200, payments, "Payments fetched"));
+    // 2. Find payments linked to that orderId
+    const payments = await Payment.find({ orderId: order._id });
+
+    res.status(200).json({
+        success: true,
+        data: payments,
+        message: "Payments fetched successfully",
+    });
 });
 
 // 🔹 Search payments by SRF number (example: ABSRF/2025/09/004)
 const searchBySRF = asyncHandler(async (req, res) => {
     try {
         const { srfNumber } = req.query; // pass ?srfNumber=ABSRF/2025/09/004
-        console.log("🚀 ~ srfNumber:", srfNumber)
 
         if (!srfNumber) {
             throw new ApiError(400, "SRF number is required");
@@ -239,7 +324,6 @@ const searchBySRF = asyncHandler(async (req, res) => {
         throw new ApiError(500, error.message || "Failed to search payments");
     }
 });
-
 // const searchBySRF = asyncHandler(async (req, res) => {
 //     try {
 //         const { srfNumber } = req.query;
@@ -331,7 +415,7 @@ const getPaymentById = asyncHandler(async (req, res) => {
 });
 
 
-export const deletePayment = asyncHandler(async (req, res) => {
+const deletePayment = asyncHandler(async (req, res) => {
     try {
         const { paymentId } = req.params;
 
@@ -371,4 +455,57 @@ export const deletePayment = asyncHandler(async (req, res) => {
     }
 });
 
-export default { addPayment, allOrdersWithClientName, getTotalAmount, getAllPayments, getPaymentsBySrf, getPaymentById, searchBySRF, deletePayment };
+
+// ✅ Get payment by ID
+// export const getPaymentById = asyncHandler(async (req, res) => {
+//     try {
+//         const { id } = req.params;
+//         if (!id) {
+//             return res.status(400).json({ success: false, message: "Payment ID is required" });
+//         }
+
+//         const payment = await Payment.findById(id).populate("orderId", "srfNumber hospitalName");
+//         if (!payment) {
+//             return res.status(404).json({ success: false, message: "Payment not found" });
+//         }
+
+//         res.status(200).json({ success: true, payment });
+//     } catch (error) {
+//         console.error("Error in getPaymentById:", error);
+//         res.status(500).json({ success: false, message: "Failed to fetch payment" });
+//     }
+// });
+
+// ✅ Edit payment by ID
+const editPaymentById = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { totalAmount, paymentAmount, paymentType, utrNumber, screenshot } = req.body;
+
+        if (!id) {
+            return res.status(400).json({ success: false, message: "Payment ID is required" });
+        }
+
+        const payment = await Payment.findById(id);
+        if (!payment) {
+            return res.status(404).json({ success: false, message: "Payment not found" });
+        }
+
+        // Update fields if provided
+        if (totalAmount !== undefined) payment.totalAmount = totalAmount;
+        if (paymentAmount !== undefined) payment.paymentAmount = paymentAmount;
+        if (paymentType) payment.paymentType = paymentType;
+        if (utrNumber) payment.utrNumber = utrNumber;
+        if (screenshot) payment.screenshot = screenshot;
+
+        await payment.save();
+
+        res.status(200).json({ success: true, message: "Payment updated successfully", payment });
+    } catch (error) {
+        console.error("Error in editPaymentById:", error);
+        res.status(500).json({ success: false, message: "Failed to update payment" });
+    }
+});
+
+
+export default { addPayment, allOrdersWithClientName, getTotalAmount, getAllPayments, getPaymentsBySrf, getPaymentById, searchBySRF, deletePayment, editPaymentById };

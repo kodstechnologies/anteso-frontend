@@ -727,60 +727,60 @@ const acceptQuotation = asyncHandler(async (req, res) => {
 });
 
 
-const rejectQuotation = asyncHandler(async (req, res) => {
-    try {
-        const { customerId, enquiryId, quotationId } = req.params;
-        const { rejectionRemark } = req.body;
+// const rejectQuotation = asyncHandler(async (req, res) => {
+//     try {
+//         const { customerId, enquiryId, quotationId } = req.params;
+//         const { rejectionRemark } = req.body;
 
-        console.log("Rejecting Quotation:", { quotationId, enquiryId, customerId, rejectionRemark });
+//         console.log("Rejecting Quotation:", { quotationId, enquiryId, customerId, rejectionRemark });
 
-        // 1. Find the quotation and ensure it belongs to the customer and enquiry
-        const quotation = await Quotation.findOne({
-            _id: quotationId,
-            enquiry: enquiryId,
-            from: customerId
-        });
+//         // 1. Find the quotation and ensure it belongs to the customer and enquiry
+//         const quotation = await Quotation.findOne({
+//             _id: quotationId,
+//             enquiry: enquiryId,
+//             from: customerId
+//         });
 
-        if (!quotation) {
-            return res.status(404).json({ message: "Quotation not found for the provided customer and enquiry" });
-        }
+//         if (!quotation) {
+//             return res.status(404).json({ message: "Quotation not found for the provided customer and enquiry" });
+//         }
 
-        // 2. Prevent rejecting already accepted quotations
-        if (quotation.quotationStatus === 'Accepted') {
-            return res.status(400).json({
-                message: "Cannot reject a quotation that has already been accepted"
-            });
-        }
+//         // 2. Prevent rejecting already accepted quotations
+//         if (quotation.quotationStatus === 'Accepted') {
+//             return res.status(400).json({
+//                 message: "Cannot reject a quotation that has already been accepted"
+//             });
+//         }
 
-        // 3. Reject the quotation
-        quotation.quotationStatus = 'Rejected';
-        quotation.rejectionRemark = rejectionRemark;
-        await quotation.save();
+//         // 3. Reject the quotation
+//         quotation.quotationStatus = 'Rejected';
+//         quotation.rejectionRemark = rejectionRemark;
+//         await quotation.save();
 
-        // 4. Find and update the corresponding enquiry
-        const enquiry = await Enquiry.findOne({
-            _id: enquiryId,
-            customer: customerId
-        });
+//         // 4. Find and update the corresponding enquiry
+//         const enquiry = await Enquiry.findOne({
+//             _id: enquiryId,
+//             customer: customerId
+//         });
 
-        if (!enquiry) {
-            return res.status(404).json({ message: "Related enquiry not found for the customer" });
-        }
+//         if (!enquiry) {
+//             return res.status(404).json({ message: "Related enquiry not found for the customer" });
+//         }
 
-        enquiry.enquiryStatus = 'Rejected';
-        enquiry.quotationStatus = 'Rejected';
-        await enquiry.save();
+//         enquiry.enquiryStatus = 'Rejected';
+//         enquiry.quotationStatus = 'Rejected';
+//         await enquiry.save();
 
-        res.status(200).json({
-            message: "Quotation rejected successfully",
-            quotation
-        });
+//         res.status(200).json({
+//             message: "Quotation rejected successfully",
+//             quotation
+//         });
 
-    } catch (error) {
-        console.error("Error in rejectQuotation:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
-    }
-});
+//     } catch (error) {
+//         console.error("Error in rejectQuotation:", error);
+//         res.status(500).json({ message: "Server error", error: error.message });
+//     }
+// });
 
 // const test = asyncHandler(async (req, res) => {
 //     return res.status(200).json({ "msg": "hello" })
@@ -790,6 +790,72 @@ const rejectQuotation = asyncHandler(async (req, res) => {
 //     }
 // })
 // const getAcceptedQuotations=
+
+const rejectQuotation = asyncHandler(async (req, res) => {
+    try {
+        const { hospitalId, enquiryId, quotationId } = req.params;
+        console.log("🚀 ~ quotationId:", quotationId)
+        console.log("🚀 ~ enquiryId:", enquiryId)
+        console.log("🚀 ~ hospitalId:", hospitalId)
+        const { rejectionRemark } = req.body;
+
+        console.log("Rejecting Quotation:", { quotationId, enquiryId, hospitalId, rejectionRemark });
+
+        // 1️⃣ Find the quotation and ensure it belongs to the hospital and enquiry
+        const quotation = await Quotation.findOne({
+            _id: quotationId,
+            enquiry: enquiryId,
+            from: hospitalId   // changed from "from: customerId"
+        });
+
+        if (!quotation) {
+            return res.status(404).json({
+                message: "Quotation not found for the provided hospital and enquiry"
+            });
+        }
+
+        // 2️⃣ Prevent rejecting already accepted quotations
+        if (quotation.quotationStatus === "Accepted") {
+            return res.status(400).json({
+                message: "Cannot reject a quotation that has already been accepted"
+            });
+        }
+
+        // 3️⃣ Reject the quotation
+        quotation.quotationStatus = "Rejected";
+        quotation.rejectionRemark = rejectionRemark;
+        await quotation.save();
+
+        // 4️⃣ Find and update the corresponding enquiry
+        const enquiry = await Enquiry.findOne({
+            _id: enquiryId,
+            hospital: hospitalId   // changed from "customer: customerId"
+        });
+
+        if (!enquiry) {
+            return res.status(404).json({
+                message: "Related enquiry not found for the hospital"
+            });
+        }
+
+        enquiry.enquiryStatus = "Rejected";
+        enquiry.quotationStatus = "Rejected";
+        await enquiry.save();
+
+        res.status(200).json({
+            message: "Quotation rejected successfully",
+            quotation
+        });
+
+    } catch (error) {
+        console.error("Error in rejectQuotation:", error);
+        res.status(500).json({
+            message: "Server error",
+            error: error.message
+        });
+    }
+});
+
 
 const acceptQuotationPDF = asyncHandler(async (req, res) => {
     try {
@@ -885,7 +951,6 @@ const downloadQuotationPdf = asyncHandler(async (req, res) => {
 });
 
 
-//mobile
 const shareQuotation = asyncHandler(async (req, res) => {
     try {
         const { hospitalId, enquiryId, quotationId } = req.params;
@@ -979,7 +1044,6 @@ const getQuotationPdfUrl = asyncHandler(async (req, res) => {
         });
     }
 });
-
 
 
 export default { acceptQuotation, rejectQuotation, createQuotationByEnquiryId, getQuotationByEnquiryId, getQuotationByIds, acceptQuotationPDF, downloadQuotationPdf, shareQuotation, getQuotationPdfUrl }

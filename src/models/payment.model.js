@@ -24,11 +24,14 @@ const paymentSchema = new Schema(
         },
         utrNumber: {
             type: String,
-            required: true,
         },
         screenshot: {
             type: String, // Can store URL or file path
         },
+        paymentStatus:{
+            type:String,
+            enum:['paid','pending']
+        }
     },
     { timestamps: true }
 );
