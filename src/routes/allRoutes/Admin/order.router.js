@@ -17,7 +17,12 @@ router.get('/machine-details/:orderId', orderController.getMachineDetailsByOrder
 // PATCH  partially updating
 //web
 router.patch("/update-employee/:orderId/:serviceId/:employeeId/:status", orderController.updateEmployeeStatus)
+
+
+//has to be changed
 router.get('/get-qa-raw/:orderId', orderController.getQARawByOrderId)
+
+
 // router.patch('/this-is-dummy-route',orderController.updateEmployeeStatus)
 // router.put('/update-complete-status/:orderId/:employeeId', orderController.updateCompletedStatus)
 //mobile
@@ -46,6 +51,8 @@ router.get('/get/:technicianId/:orderId/:serviceId/:workType', orderController.g
 // router.get()
 //routes for qa raw-- assigning to technician
 router.put('/assign-to-technician/:orderId/:serviceId/:technicianId/:workType', orderController.assignTechnicianByQARaw)
+
+//has to be changed
 router.put('/assign-to-office-staff/:orderId/:serviceId/:officeStaffId/:workType/:status', orderController.assignOfficeStaffByQATest)
 // router.get('/get-qa-details/:orderId/:serviceId/:technicianId',orderController.getQaDetails)
 
@@ -61,10 +68,16 @@ router.get('/get-all-office-staff', orderController.getAllOfficeStaff)
 router.get('/get-assigned-technician/:orderId/:serviceId/:workType', orderController.getAssignedTechnicianName)
 router.get('/get-assigned-staff/:orderId/:serviceId/:workType', orderController.geAssignedtofficeStaffName)
 router.post('/create-order', orderController.createOrder)
-router.put('/update-additional-service/:id',orderController.updateAdditionalService)
+router.put('/update-additional-service/:id', orderController.updateAdditionalService)
 // router.get('/',)
 // router.post('/status-paid')
 
-router.put('/edit-documents',orderController.editDocuments)
-
+router.patch(
+    "/edit-documents/:orderId/:serviceId/:technicianId/:workType",
+    upload.fields([
+        { name: "uploadFile", maxCount: 1 },   // Single file
+        { name: "viewFile", maxCount: 10 },    // Multiple files
+    ]),
+    orderController.editDocuments
+);
 export default router

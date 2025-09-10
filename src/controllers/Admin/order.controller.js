@@ -189,7 +189,6 @@ const getQARawByOrderId = asyncHandler(async (req, res) => {
                     }
                 ]
             });
-
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
         }
@@ -1064,7 +1063,6 @@ const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
 //check
 const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
     const { engineerId } = req.params;
-
     if (!engineerId) {
         return res.status(400).json({ message: 'Engineer ID is required' });
     }
@@ -1193,7 +1191,7 @@ const assignTechnicianByQARaw = asyncHandler(async (req, res) => {
 //for qa test
 const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
     try {
-        const { orderId, serviceId, officeStaffId, workType, status } = req.params; // 👈 added workType
+        const { orderId, serviceId, officeStaffId, workType, status } = req.params; 
         console.log("🚀 ~ officeStaffId:", officeStaffId);
         console.log("🚀 ~ serviceId:", serviceId);
         console.log("🚀 ~ orderId:", orderId);
@@ -1215,7 +1213,7 @@ const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
         if (!service) {
             return res.status(404).json({ message: 'Service not found' });
         }
-
+        
         // 3. Validate staff
         const staff = await Employee.findById(officeStaffId);
         if (!staff || staff.technicianType !== 'office-staff') {
@@ -1581,13 +1579,95 @@ export const updateAdditionalService = async (req, res) => {
 
 // const assignToOfficeStff
 
+// PATCH controller
 const editDocuments = asyncHandler(async (req, res) => {
     try {
+        const { orderId, serviceId, technicianId, workType } = req.params;
 
+        // ✅ Upload files to S3
+        let uploadFileUrl = null;
+        let viewFileUrls = [];
+
+        if (req.files?.uploadFile?.[0]) {
+            const uploaded = await uploadToS3(req.files.uploadFile[0]);
+            uploadFileUrl = uploaded.url;
+        }
+
+        if (req.files?.viewFile?.length > 0) {
+            const uploads = await Promise.all(
+                req.files.viewFile.map((file) => uploadToS3(file))
+            );
+            viewFileUrls = uploads.map((u) => u.url);
+        }
+
+        if (!uploadFileUrl && viewFileUrls.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "No files uploaded",
+            });
+        }
+
+        // ✅ Ensure order exists
+        const order = await orderModel.findById(orderId).populate("services");
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Order not found",
+            });
+        }
+
+        // ✅ Ensure service exists
+        const service = await Services.findById(serviceId);
+        if (!service) {
+            return res.status(404).json({
+                success: false,
+                message: "Service not found",
+            });
+        }
+
+        // ✅ Find workTypeDetails matching workType & technician
+        const workTypeDetail = service.workTypeDetails.find(
+            (wt) =>
+                wt.workType === workType &&
+                (wt.engineer?.toString() === technicianId ||
+                    wt.officeStaff?.toString() === technicianId)
+        );
+
+        if (!workTypeDetail) {
+            return res.status(404).json({
+                success: false,
+                message: "Work type detail not found for this technician",
+            });
+        }
+
+        // ✅ Update fields
+        if (uploadFileUrl) {
+            workTypeDetail.uploadFile = uploadFileUrl;
+        }
+        if (viewFileUrls.length > 0) {
+            workTypeDetail.viewFile = [
+                ...(workTypeDetail.viewFile || []),
+                ...viewFileUrls,
+            ];
+        }
+
+        await service.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Documents updated successfully",
+            data: workTypeDetail,
+        });
     } catch (error) {
-
+        console.error("Error in editDocuments:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error while updating documents",
+            error: error.message,
+        });
     }
-})
+});
+
 
 
 

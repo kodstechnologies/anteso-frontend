@@ -226,7 +226,10 @@ const getToolByTechnicianAndTool = asyncHandler(async (req, res) => {
 
         // Find the technician and populate the tools array
         const technician = await Employee.findById(technicianId)
-            .populate("tools.toolId", "toolId SrNo nomenclature manufacturer model calibrationCertificateNo calibrationValidTill range toolStatus");
+            .populate(
+                "tools.toolId",
+                "toolId SrNo nomenclature manufacturer model calibrationCertificateNo calibrationValidTill range toolStatus"
+            );
 
         if (!technician) {
             return res.status(404).json({
@@ -236,21 +239,27 @@ const getToolByTechnicianAndTool = asyncHandler(async (req, res) => {
         }
 
         // Find the specific tool in technician's tools array
-        const tool = technician.tools.find(
+        const toolDoc = technician.tools.find(
             (t) => t.toolId && t.toolId._id.toString() === toolId
         );
 
-        if (!tool) {
+        if (!toolDoc) {
             return res.status(404).json({
                 success: false,
                 message: "Tool not assigned to this technician",
             });
         }
 
+        // Flatten toolId + issueDate
+        const formattedTool = {
+            ...toolDoc.toolId.toObject(),
+            issueDate: toolDoc.issueDate
+        };
+
         return res.status(200).json({
             success: true,
             technicianId: technician._id,
-            tool,
+            tool: formattedTool,
         });
     } catch (error) {
         console.error("Error fetching tool by technician and tool:", error);
