@@ -1294,7 +1294,7 @@ const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
         } else {
             await QATest.findByIdAndUpdate(workDetail.QAtest, { officeStaff: officeStaffId });
         }
-        
+
         // 6️⃣ Update status if provided
         if (status) workDetail.status = status;
 
@@ -1538,55 +1538,61 @@ const getAssignedTechnicianName = asyncHandler(async (req, res) => {
     }
 });
 
-const geAssignedtofficeStaffName = asyncHandler(async (req, res) => {
+
+
+const getAssignedOfficeStaffName = asyncHandler(async (req, res) => {
     try {
         const { orderId, serviceId, workType } = req.params;
 
-        // 1. Find order and match service
+        // 1️⃣ Populate services → workTypeDetails → QAtest → officeStaff
         const order = await orderModel.findById(orderId).populate({
-            path: 'services',
+            path: "services",
             match: { _id: serviceId },
             populate: {
-                path: 'workTypeDetails.officeStaff',
-                select: 'name'
+                path: "workTypeDetails.QAtest",   // populate QATest first
+                populate: {
+                    path: "officeStaff",          // then populate officeStaff inside QATest
+                    select: "name"
+                }
             }
         });
 
         if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
+            return res.status(404).json({ message: "Order not found" });
         }
 
         const service = order.services[0];
         if (!service) {
-            return res.status(404).json({ message: 'Service not found in this order' });
+            return res.status(404).json({ message: "Service not found in this order" });
         }
 
-        // 2. Find workType entry
+        // 2️⃣ Find workType entry
         const workDetail = service.workTypeDetails.find(
             w => w.workType === workType
         );
 
         if (!workDetail) {
-            return res.status(404).json({ message: 'Work type not found in this service' });
+            return res.status(404).json({ message: "Work type not found in this service" });
         }
 
-        console.log("🚀 ~ workDetail.officeStaff:", workDetail.officeStaff.name)
-        if (!workDetail.officeStaff) {
-            return res.status(404).json({ message: 'No office staff assigned for this work type' });
+        if (!workDetail.QAtest || !workDetail.QAtest.officeStaff) {
+            return res.status(404).json({ message: "No office staff assigned for this work type" });
         }
 
-        // 3. Return office staff name
+        // 3️⃣ Return office staff name
         res.status(200).json({
             success: true,
-            officeStaffName: workDetail.officeStaff.name,
+            officeStaffName: workDetail.QAtest.officeStaff.name,
             status: workDetail.status
         });
 
     } catch (error) {
-        console.error('Error fetching office staff name:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error("Error fetching office staff name:", error);
+        res.status(500).json({ message: "Internal server error", error: error.message });
     }
 });
+
+
 
 export const getOrders = asyncHandler(async (req, res) => {
     try {
@@ -1736,4 +1742,4 @@ const editDocuments = asyncHandler(async (req, res) => {
 
 
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, geAssignedtofficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments }
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments }

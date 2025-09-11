@@ -156,7 +156,7 @@ import Hospital from '../../models/hospital.model.js'
 
 const add = asyncHandler(async (req, res) => {
     try {
-        const { customerId, hospitalId } = req.params;
+        const { hospitalId } = req.params;
 
         const {
             machineType,
@@ -182,19 +182,10 @@ const add = asyncHandler(async (req, res) => {
             throw new ApiError(400, error.details[0].message);
         }
 
-        // ✅ Check customer exists
-        const customer = await Customer.findById(customerId).populate("hospitals");
-        if (!customer) {
-            throw new ApiError(404, "Customer not found.");
-        }
-
-        // ✅ Check hospital exists and belongs to this customer
-        const hospital = await Hospital.findOne({
-            _id: hospitalId,
-            _id: { $in: customer.hospitals },
-        });
+        // ✅ Check hospital exists
+        const hospital = await Hospital.findById(hospitalId);
         if (!hospital) {
-            throw new ApiError(404, "Hospital not found for this customer.");
+            throw new ApiError(404, "Hospital not found.");
         }
 
         // ✅ Upload files to S3 (if they exist)
@@ -251,7 +242,6 @@ const add = asyncHandler(async (req, res) => {
         throw new ApiError(500, error?.message || "Internal Server Error");
     }
 });
-
 
 
 // GET ALL MACHINES
@@ -321,7 +311,6 @@ const getAllMachinesByHospitalId = asyncHandler(async (req, res) => {
         throw new ApiError(500, error?.message || 'Internal Server Error');
     }
 });
-
 
 // GET MACHINE BY ID
 const getById = asyncHandler(async (req, res) => {
