@@ -23,4 +23,6 @@ router.get('/get-all-rso-by-hospitalId/:hospitalId', rsoController.getAllRsoByHo
 router.put('/update-rso-by-hospitalId-rsoId/:hospitalId/:rsoId ', rsoController.updateRsoByHospitalId)
 router.delete('/delete-rso-by-hospitalId-rsoId/:hospitalId/:rsoId', rsoController.deleteRsoByHospitalId)
 
+
+//dummy router
 export default router

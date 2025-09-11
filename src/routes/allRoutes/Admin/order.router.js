@@ -19,7 +19,7 @@ router.get('/machine-details/:orderId', orderController.getMachineDetailsByOrder
 router.patch("/update-employee/:orderId/:serviceId/:employeeId/:status", orderController.updateEmployeeStatus)
 
 
-//has to be changed
+//has to be changed--changed now
 router.get('/get-qa-raw/:orderId', orderController.getQARawByOrderId)
 
 

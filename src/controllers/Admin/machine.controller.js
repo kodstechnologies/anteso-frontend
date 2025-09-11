@@ -234,7 +234,13 @@ const getById = asyncHandler(async (req, res) => {
         const machine = await Machine.findOne({
             _id: id,
             hospital: hospitalId,
-        }).populate('hospital');
+        }).populate({
+            path: 'hospital',
+            populate: [
+                { path: 'rsos', model: 'RSO' },
+                { path: 'institutes', model: 'Institute' }
+            ]
+        });
 
         if (!machine) {
             throw new ApiError(404, 'Machine not found for this hospital');
