@@ -2227,7 +2227,6 @@ const getAllEnquiriesByHospitalId = asyncHandler(async (req, res) => {
             .populate("services", "machineType equipmentNo machineModel serialNumber totalAmount status")
             .populate("additionalServices", "name");
 
-
         if (!enquiries || enquiries.length === 0) {
             throw new ApiError(404, "No enquiries found for this hospital");
         }

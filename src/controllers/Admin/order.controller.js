@@ -142,10 +142,10 @@ const getMachineDetailsByOrderId = asyncHandler(async (req, res) => {
         const order = await orderModel.findById(orderId)
             .populate({
                 path: "services",
-                populate: [
-                    { path: "workTypeDetails.engineer", model: "Employee" },
-                    { path: "workTypeDetails.officeStaff", model: "Employee" }
-                ]
+                // populate: [
+                //     { path: "workTypeDetails.engineer", model: "Employee" },
+                //     { path: "workTypeDetails.officeStaff", model: "Employee" }
+                // ]
             });
 
         if (!order) {
