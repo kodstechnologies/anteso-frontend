@@ -36,7 +36,6 @@ const additionalServiceSchema = new mongoose.Schema(
     {
         name: {
             type: String,
-            required: true,
             enum: [
                 "INSTITUTE REGISTRATION",
                 "RSO REGISTRATION, NOMINATION & APPROVAL",
