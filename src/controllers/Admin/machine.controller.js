@@ -70,6 +70,90 @@ import Hospital from '../../models/hospital.model.js'
 //         throw new ApiError(500, error?.message || 'Internal Server Error');
 //     }
 // });
+
+// const add = asyncHandler(async (req, res) => {
+//     try {
+//         const { customerId, hospitalId } = req.params;
+
+//         const {
+//             machineType,
+//             make,
+//             model,
+//             serialNumber,
+//             equipmentId,
+//             qaValidity,
+//             licenseValidity,
+//             status,
+//         } = req.body;
+
+//         // ✅ Validate request body
+//         const { error } = machineSchema.validate({
+//             machineType,
+//             make,
+//             model,
+//             serialNumber,
+//             equipmentId,
+//             qaValidity,
+//             licenseValidity,
+//             status,
+//         });
+//         if (error) {
+//             throw new ApiError(400, error.details[0].message);
+//         }
+
+//         // ✅ Check customer exists
+//         const customer = await Customer.findById(customerId).populate("hospitals");
+//         if (!customer) {
+//             throw new ApiError(404, "Customer not found.");
+//         }
+
+//         // ✅ Check hospital exists and belongs to this customer
+//         const hospital = await Hospital.findOne({
+//             _id: hospitalId,
+//             _id: { $in: customer.hospitals },
+//         });
+//         if (!hospital) {
+//             throw new ApiError(404, "Hospital not found for this customer.");
+//         }
+
+//         // ✅ Upload files to S3 (if they exist)
+//         const uploadedFiles = {};
+//         if (req.files) {
+//             for (const [key, fileArray] of Object.entries(req.files)) {
+//                 if (fileArray.length > 0) {
+//                     const s3Result = await uploadToS3(fileArray[0]);
+//                     uploadedFiles[key] = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Result.key}`;
+//                 }
+//             }
+//         }
+
+//         // ✅ Create machine linked to hospital
+//         const machine = await Machine.create({
+//             machineType,
+//             make,
+//             model,
+//             serialNumber,
+//             equipmentId,
+//             qaValidity,
+//             licenseValidity,
+//             status: status || "Active",
+//             rawDataAttachment: uploadedFiles.rawDataAttachment || null,
+//             qaReportAttachment: uploadedFiles.qaReportAttachment || null,
+//             licenseReportAttachment: uploadedFiles.licenseReportAttachment || null,
+//             hospital: hospitalId,
+//         });
+
+//         // ✅ Update hospital with this machine (replace existing since only 1 allowed)
+//         hospital.machines = machine._id;
+//         await hospital.save();
+
+//         res.status(201).json(new ApiResponse(201, machine, "Machine added successfully to hospital."));
+//     } catch (error) {
+//         console.error("Error in addMachine:", error);
+//         throw new ApiError(500, error?.message || "Internal Server Error");
+//     }
+// });
+
 const add = asyncHandler(async (req, res) => {
     try {
         const { customerId, hospitalId } = req.params;
@@ -82,7 +166,6 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
-            status,
         } = req.body;
 
         // ✅ Validate request body
@@ -94,7 +177,6 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
-            status,
         });
         if (error) {
             throw new ApiError(400, error.details[0].message);
@@ -126,6 +208,21 @@ const add = asyncHandler(async (req, res) => {
             }
         }
 
+        // ✅ Determine machine status based on qaValidity & licenseValidity
+        const today = new Date();
+        const isQaExpired = new Date(qaValidity) < today;
+        const isLicenseExpired = new Date(licenseValidity) < today;
+
+        let status = "Active";
+        let expiredFields = [];
+
+        if (isQaExpired) expiredFields.push("qaValidity");
+        if (isLicenseExpired) expiredFields.push("licenseValidity");
+
+        if (expiredFields.length > 0) {
+            status = "Expired";
+        }
+
         // ✅ Create machine linked to hospital
         const machine = await Machine.create({
             machineType,
@@ -135,7 +232,7 @@ const add = asyncHandler(async (req, res) => {
             equipmentId,
             qaValidity,
             licenseValidity,
-            status: status || "Active",
+            status,
             rawDataAttachment: uploadedFiles.rawDataAttachment || null,
             qaReportAttachment: uploadedFiles.qaReportAttachment || null,
             licenseReportAttachment: uploadedFiles.licenseReportAttachment || null,
@@ -146,12 +243,15 @@ const add = asyncHandler(async (req, res) => {
         hospital.machines = machine._id;
         await hospital.save();
 
-        res.status(201).json(new ApiResponse(201, machine, "Machine added successfully to hospital."));
+        res.status(201).json(
+            new ApiResponse(201, machine, "Machine added successfully to hospital.")
+        );
     } catch (error) {
-        console.error("Error in addMachine:", error);
+        console.error("❌ Error in addMachine:", error);
         throw new ApiError(500, error?.message || "Internal Server Error");
     }
 });
+
 
 
 // GET ALL MACHINES
@@ -188,7 +288,9 @@ const getAllMachinesByHospitalId = asyncHandler(async (req, res) => {
 
                 // ✅ Check expiry
                 const isQaExpired = machine.qaValidity < today;
+                console.log("🚀 ~ isQaExpired:", isQaExpired)
                 const isLicenseExpired = machine.licenseValidity < today;
+                console.log("🚀 ~ isLicenseExpired:", isLicenseExpired)
 
                 let status = "Active";
                 let expiredFields = [];
@@ -202,7 +304,7 @@ const getAllMachinesByHospitalId = asyncHandler(async (req, res) => {
 
                 return {
                     ...machine.toObject(),
-                    status,                  // "Active" or "Expired"
+                    status,
                     expiredFields,           // ["qaValidity"], ["licenseValidity"], etc.
                     rawDataAttachmentUrls: rawDataUrls,
                     qaReportAttachmentUrls: qaReportUrls,
