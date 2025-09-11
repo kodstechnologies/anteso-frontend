@@ -2203,7 +2203,7 @@ const getByHospitalIdEnquiryId = async (req, res) => {
             additionalServices: enquiry.additionalServices,
             specialInstructions: enquiry.specialInstructions,
             enquiryStatus: enquiry.enquiryStatus,
-             enquiryStatusDates: enquiry.enquiryStatusDates,
+            enquiryStatusDates: enquiry.enquiryStatusDates,
         });
     } catch (err) {
         console.error("Error fetching enquiry details:", err);
@@ -2222,11 +2222,11 @@ const getAllEnquiriesByHospitalId = asyncHandler(async (req, res) => {
             throw new ApiError(400, "Hospital ID is required");
         }
 
-        // ✅ Fetch all enquiries for this hospital
         const enquiries = await Enquiry.find({ hospital: hospitalId })
-            .populate("hospital", "name email address") // optional hospital details
-            .populate("services", "name price")         // optional service details
-            .populate("additionalServices", "name");    // optional additional services
+            .populate("hospital", "name email address")
+            .populate("services", "machineType equipmentNo machineModel serialNumber totalAmount status")
+            .populate("additionalServices", "name");
+
 
         if (!enquiries || enquiries.length === 0) {
             throw new ApiError(404, "No enquiries found for this hospital");
