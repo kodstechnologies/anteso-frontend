@@ -215,7 +215,7 @@ const add = asyncHandler(async (req, res) => {
         }
 
         // ✅ Create machine linked to hospital
-        const machine = await Machine.create({
+        let machine = await Machine.create({
             machineType,
             make,
             model,
@@ -230,24 +230,25 @@ const add = asyncHandler(async (req, res) => {
             hospital: hospitalId,
         });
 
-        // ✅ Update hospital with this machine (replace existing since only 1 allowed)
+        // ✅ Update hospital with this machine
         hospital.machines = machine._id;
         await hospital.save();
 
-        // ✅ Populate hospital with machine + rsos + institutes
-        const populatedHospital = await Hospital.findById(hospitalId)
-            .populate("machines")
-            .populate("rsos")
-            .populate("institutes");
+        // ✅ Re-fetch machine with populated hospital (including rsos + institutes)
+        machine = await Machine.findById(machine._id).populate({
+            path: "hospital",
+            populate: ["rsos", "institutes", "machines"],
+        });
 
         res.status(201).json(
-            new ApiResponse(201, { machine, hospital: populatedHospital }, "Machine added successfully to hospital.")
+            new ApiResponse(201, machine, "Machine added successfully to hospital.")
         );
     } catch (error) {
         console.error("❌ Error in addMachine:", error);
         throw new ApiError(500, error?.message || "Internal Server Error");
     }
 });
+
 
 // GET ALL MACHINES
 // ✅ Get all machines by Hospital ID

@@ -69,7 +69,7 @@ router.get('/get-qa-details/:orderId/:serviceId/:technicianId', orderController.
 router.get('/get-all-office-staff', orderController.getAllOfficeStaff)
 router.get('/get-assigned-technician/:orderId/:serviceId/:workType', orderController.getAssignedTechnicianName)
 
-//has to be changed
+//has to be changed--changed
 router.get('/get-assigned-staff/:orderId/:serviceId/:workType', orderController.getAssignedOfficeStaffName)
 router.post('/create-order', orderController.createOrder)
 router.put('/update-additional-service/:id', orderController.updateAdditionalService)
