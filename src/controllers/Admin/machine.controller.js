@@ -234,14 +234,21 @@ const add = asyncHandler(async (req, res) => {
         hospital.machines = machine._id;
         await hospital.save();
 
+        // ✅ Populate hospital with machine + rsos + institutes
+        const populatedHospital = await Hospital.findById(hospitalId)
+            .populate("machines")
+            .populate("rsos")
+            .populate("institutes");
+
         res.status(201).json(
-            new ApiResponse(201, machine, "Machine added successfully to hospital.")
+            new ApiResponse(201, { machine, hospital: populatedHospital }, "Machine added successfully to hospital.")
         );
     } catch (error) {
         console.error("❌ Error in addMachine:", error);
         throw new ApiError(500, error?.message || "Internal Server Error");
     }
 });
+
 
 
 // GET ALL MACHINES
