@@ -249,8 +249,6 @@ const add = asyncHandler(async (req, res) => {
     }
 });
 
-
-
 // GET ALL MACHINES
 // ✅ Get all machines by Hospital ID
 const getAllMachinesByHospitalId = asyncHandler(async (req, res) => {

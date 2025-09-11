@@ -25,7 +25,7 @@ const workTypeDetailSchema = new mongoose.Schema({
     // },
     QAtest: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "QAtest"
+        ref: "QATest"
     },
     elora: {
         type: mongoose.Schema.Types.ObjectId,
