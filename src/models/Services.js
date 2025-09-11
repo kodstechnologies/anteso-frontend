@@ -23,6 +23,14 @@ const workTypeDetailSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Employee' // Only those with technicianType = 'office staff'
     },
+    // QAtest: {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "QAtest"
+    // },
+    // elora: {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "elora"
+    // },
     status: { type: String, enum: workTypeStatusEnum, default: 'pending' },
     uploadFile: { type: String },
     viewFile: { type: [String], default: [] }, // array of strings    remark: { type: String }

@@ -266,7 +266,6 @@ const getUnassignedTools = asyncHandler(async (req, res) => {
         throw new Error('Failed to fetch unassigned tools');
     }
 });
-
 const assignedToolByTechnicianId = asyncHandler(async (req, res) => {
     try {
         const { technicianId } = req.params;
@@ -922,7 +921,7 @@ const getTripByTechnicianAndTrip = asyncHandler(async (req, res) => {
 
         // 3️⃣ Update trip status (completed/ongoing)
         const currentDate = new Date();
-        if (trip.endDate && trip.endDate < currentDate) {
+        if (trip.endDate && trip.endDate < currentDate && trip.startDate.toDateString() !== trip.endDate.toDateString()) {
             trip.tripstatus = "completed";
         } else if (!trip.tripstatus) {
             trip.tripstatus = "ongoing";

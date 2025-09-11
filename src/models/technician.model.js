@@ -69,7 +69,7 @@ const employeeSchema = new Schema({
         enum: ['office-staff', 'engineer'],
         required: true,
     },
-    designation: {
+    designation: {  
         type: String,
         required: true,
         trim: true,
