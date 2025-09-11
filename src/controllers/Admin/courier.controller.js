@@ -25,6 +25,7 @@ const addCourier = asyncHandler(async (req, res) => {
 
 const getAllCompanies = asyncHandler(async (req, res) => {
     const companies = await Courier.find().sort({ createdAt: -1 });
+    console.log("🚀 ~ companies:", companies)
 
     res.status(200).json(new ApiResponse(200, companies, "Courier companies fetched successfully"));
 });
@@ -34,6 +35,7 @@ const getCompanyById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const company = await Courier.findById(id);
+    console.log("🚀 ~ company:", company)
     if (!company) {
         throw new ApiError(404, "Courier company not found");
     }

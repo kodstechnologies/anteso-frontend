@@ -14,6 +14,7 @@ import Payment from "../../models/payment.model.js";
 import { getFileUrl, getMultipleFileUrls } from "../../utils/s3Fetch.js";
 import AdditionalService from "../../models/additionalService.model.js";
 import QATest from "../../models/QATest.model.js";
+import Elora from "../../models/elora.model.js";
 
 const getAllOrders = asyncHandler(async (req, res) => {
     try {
@@ -1061,6 +1062,7 @@ const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
     }
 });
 
+
 //check
 const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
     const { engineerId } = req.params;
@@ -1739,6 +1741,77 @@ const editDocuments = asyncHandler(async (req, res) => {
 });
 
 
+const assignStaffByElora = asyncHandler(async (req, res) => {
+    try {
+        const { orderId, serviceId, officeStaffId, workType, status } = req.params;
+
+        console.log("🚀 officeStaffId:", officeStaffId);
+        console.log("🚀 serviceId:", serviceId);
+        console.log("🚀 orderId:", orderId);
+        console.log("🚀 workType:", workType);
+        console.log("🚀 status:", status);
+
+        // 1️⃣ Validate order
+        const order = await orderModel.findById(orderId);
+        if (!order) return res.status(404).json({ message: "Order not found" });
+
+        if (!order.services.includes(serviceId)) {
+            return res.status(400).json({ message: "Service not linked to this order" });
+        }
+
+        // 2️⃣ Validate service
+        const service = await Services.findById(serviceId);
+        if (!service) return res.status(404).json({ message: "Service not found" });
+
+        // 3️⃣ Validate office staff
+        const staff = await Employee.findById(officeStaffId);
+        if (!staff || staff.technicianType !== "office-staff") {
+            return res
+                .status(400)
+                .json({ message: "Invalid staff or not an office staff type" });
+        }
+
+        // 4️⃣ Find the workTypeDetail by workType param
+        const workDetail = service.workTypeDetails.find(
+            (w) => w.workType && w.workType.toLowerCase() === workType.toLowerCase()
+        );
+
+        if (!workDetail) {
+            return res
+                .status(404)
+                .json({ message: `WorkType '${workType}' not found in this service` });
+        }
+
+        // 5️⃣ Create or update Elora subdocument
+        if (!workDetail.elora) {
+            // create a new Elora document
+            const newElora = await Elora.create({ officeStaff: officeStaffId });
+            workDetail.elora = newElora._id;
+        } else {
+            await Elora.findByIdAndUpdate(workDetail.elora, {
+                officeStaff: officeStaffId,
+            });
+        }
+
+        // 6️⃣ Update status if provided
+        if (status) workDetail.status = status;
+
+        // 7️⃣ Save service
+        await service.save();
+
+        res.status(200).json({
+            message: `Office staff assigned successfully to Elora for workType '${workType}'`,
+            service,
+        });
+    } catch (error) {
+        console.error("❌ Error assigning office staff to Elora:", error);
+        res
+            .status(500)
+            .json({ message: "Internal server error", error: error.message });
+    }
+});
 
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments }
+
+
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments, assignStaffByElora }

@@ -18,10 +18,8 @@ router.get('/machine-details/:orderId', orderController.getMachineDetailsByOrder
 //web
 router.patch("/update-employee/:orderId/:serviceId/:employeeId/:status", orderController.updateEmployeeStatus)
 
-
 //has to be changed--changed now
 router.get('/get-qa-raw/:orderId', orderController.getQARawByOrderId)
-
 
 // router.patch('/this-is-dummy-route',orderController.updateEmployeeStatus)
 // router.put('/update-complete-status/:orderId/:employeeId', orderController.updateCompletedStatus)
@@ -84,4 +82,8 @@ router.patch(
     ]),
     orderController.editDocuments
 );
+
+
+router.put('/assign-staff-by-elora/:orderId/:serviceId/:officeStaffId/:workType/:status',orderController.assignStaffByElora)
+
 export default router

@@ -281,7 +281,7 @@ export const enquirySchema = Joi.object({
     contactNumber: Joi.string().required(),
     designation: Joi.string().required(),
 
-    services: Joi.array().items(serviceSchema).required(),
+    services: Joi.array().items(serviceSchema),
 
     additionalServices: additionalServicesSchema, // ✅ now matches Mongoose schema
 
