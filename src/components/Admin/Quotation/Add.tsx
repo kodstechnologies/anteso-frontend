@@ -1,4 +1,3 @@
-"use client"
 
 import type React from "react"
 import { useEffect, useState } from "react"
@@ -15,11 +14,26 @@ import { showMessage } from "../../common/ShowMessage"
 type Item = {
     type: string
     id: number
+    name?: string;
     title: string
     description?: string
     quantity: string
     price: string
     amount: string
+}
+interface ServiceItem extends Item {
+    machineType: string;
+    equipmentNo?: string;
+    machineModel?: string;
+    serialNumber?: string;
+    remark?: string;
+    totalAmount?: number;
+}
+
+interface AdditionalServiceItem extends Item {
+    name: string;
+    description?: string;
+    totalAmount?: number;
 }
 
 type Employee = {
@@ -49,6 +63,7 @@ type QuotationData = {
         phone: string
         hospitalName: string
     }
+
     assignedEmployee: {
         id: string
         name: string
@@ -178,7 +193,6 @@ const AddQuotation: React.FC = () => {
     const navigate = useNavigate()
     const { id } = useParams()
     console.log("🚀 ~ AddQuotation ~ id:", id)
-
     // State
     const [discount, setDiscount] = useState<number>(10)
     const [employees, setEmployees] = useState<Employee[]>([])
@@ -225,34 +239,53 @@ const AddQuotation: React.FC = () => {
                 setEnquiryData(data)
 
                 // Machines → aitems
-                if (Array.isArray(data.machines)) {
-                    const machineData: Item[] = data.machines.map((machine: any, index: number) => ({
-                        id: index + 1,
+                // ✅ Correct (backend sends "services")
+                if (Array.isArray(data.services)) {
+                    const serviceData: Item[] = data.services.map((service: any, idx: number) => ({
+                        id: service._id,
                         type: "A",
-                        title: machine.machineType || "",
-                        description: Array.isArray(machine.workType) ? machine.workType.join(", ") : "",
+                        title: service.machineType || "",
+                        description: service.workTypeDetails
+                            ? service.workTypeDetails.map((w: any) => w.workType).join(", ")
+                            : "",
+                        quantity: service.equipmentNo || "1",
+                        price: service.totalAmount ? service.totalAmount.toString() : "",
+                        amount: service.totalAmount ? service.totalAmount.toString() : "",
+                    }));
+                    setAItems(serviceData);
+                }
+
+
+                // Additional Services → bitems
+                if (Array.isArray(data.additionalServices)) {
+                    const serviceData: Item[] = data.additionalServices.map((service: any) => ({
+                        id: service._id, // ✔️ Use ObjectId from DB
+                        type: "B",
+                        title: service.name || "",
+                        description: service.description || "",
                         quantity: "1",
                         price: "",
                         amount: "",
-                    }))
-                    setAItems(machineData)
-                }
+                    }));
+                    setBItems(serviceData);
 
-                // Additional Services → bitems
-                if (data.additionalServices && typeof data.additionalServices === "object") {
-                    const serviceData: Item[] = Object.entries(data.additionalServices).map(
-                        ([key, value]: [string, any], index: number) => ({
-                            id: index + 1,
+                } else if (typeof data.additionalServices === "object") {
+                    // if backend sends object
+                    const serviceData: Item[] = Object.values(data.additionalServices).map(
+                        (service: any) => ({
+                            id: service._id, // ✅ Use ObjectId from MongoDB
                             type: "B",
-                            title: key,
-                            description: value || "",
+                            title: service.name || "",
+                            description: service.description || "",
                             quantity: "1",
                             price: "",
                             amount: "",
-                        }),
+                        })
                     )
+
                     setBItems(serviceData)
                 }
+
             } catch (err) {
                 console.error("Failed to fetch enquiry:", err)
             }
@@ -301,6 +334,25 @@ const AddQuotation: React.FC = () => {
 
 
     // Handlers
+    // const handleItemChange = (
+    //     listSetter: React.Dispatch<React.SetStateAction<Item[]>>,
+    //     items: Item[],
+    //     index: number,
+    //     key: StringItemKeys,
+    //     value: string,
+    // ) => {
+    //     // Prevent quantity changes
+    //     if (key === "quantity") return
+
+    //     const updated = [...items]
+    //     updated[index][key] = value
+    //     if (key === "price") {
+    //         const qty = Number.parseFloat(updated[index].quantity) || 1
+    //         const price = Number.parseFloat(updated[index].price) || 0
+    //         updated[index].amount = (qty * price).toString()
+    //     }
+    //     listSetter(updated)
+    // }
     const handleItemChange = (
         listSetter: React.Dispatch<React.SetStateAction<Item[]>>,
         items: Item[],
@@ -308,18 +360,20 @@ const AddQuotation: React.FC = () => {
         key: StringItemKeys,
         value: string,
     ) => {
-        // Prevent quantity changes
-        if (key === "quantity") return
+        if (key === "quantity") return;
 
-        const updated = [...items]
-        updated[index][key] = value
+        const updated = [...items];
+        updated[index][key] = value;
+
         if (key === "price") {
-            const qty = Number.parseFloat(updated[index].quantity) || 1
-            const price = Number.parseFloat(updated[index].price) || 0
-            updated[index].amount = (qty * price).toString()
+            const qty = Number.parseFloat(updated[index].quantity) || 1;
+            const price = Number.parseFloat(updated[index].price) || 0;
+            updated[index].amount = (qty * price).toString();  // 👈 Works for both
         }
-        listSetter(updated)
-    }
+
+        listSetter(updated);
+    };
+
 
     const handleTerms = {
         add: () => {
@@ -351,10 +405,186 @@ const AddQuotation: React.FC = () => {
     }
 
     // Submit Handler
-    const handleSubmitQuotation = async () => {
-        setIsSubmitting(true)
+    // const handleSubmitQuotation = async () => {
+    //     setIsSubmitting(true)
 
+    //     try {
+    //         const quotationData: QuotationData = {
+    //             date: new Date().toLocaleDateString("en-GB", {
+    //                 day: "2-digit",
+    //                 month: "short",
+    //                 year: "numeric",
+    //             }),
+    //             quotationNumber,
+    //             expiryDate: "30 days from above date",
+    //             customer: {
+    //                 name: enquiryData?.customer?.name || "",
+    //                 email: enquiryData?.customer?.email || "",
+    //                 phone: enquiryData?.customer?.phone || "",
+    //                 hospitalName: enquiryData?.hospitalName || "",
+    //             },
+    //             assignedEmployee: {
+    //                 id: employees[selectedIndex]?._id || "",
+    //                 name: employees[selectedIndex]?.name || "",
+    //                 phone: employees[selectedIndex]?.phone || 0,
+    //             },
+    //             items: {
+    //                 categoryA: aitems.map((item) => ({ ...item, type: "A" })),
+    //                 categoryB: bitems.map((item) => ({ ...item, type: "B" })),
+    //             },
+    //             calculations: {
+    //                 subtotal: calculations.subtotal,
+    //                 discount,
+    //                 discountAmount: calculations.discountAmount,
+    //                 totalAmount: calculations.totalAmount,
+    //             },
+    //             //  Save only text array
+    //             termsAndConditions: terms.map((t) => t.text),
+
+    //             bankDetails: {
+    //                 hdfc: {
+    //                     accountNumber: "50200007211263",
+    //                     ifsc: "HDFC0000711",
+    //                     branch: "HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA",
+    //                 },
+    //                 icici: {
+    //                     accountNumber: "344305001088",
+    //                     ifsc: "ICIC0003443",
+    //                     branch: "ICICI BANK ROHINI",
+    //                 },
+    //             },
+    //             companyDetails: {
+    //                 gstNumber: "07AAMCA8142J1ZE",
+    //                 aerbRegistration: "14-AFSXE-2148",
+    //                 nablAccreditation: "TC-9843",
+    //             },
+    //         }
+
+    //         console.log("Submitting quotation data:", quotationData)
+
+    //         const response = await createQuotationByEnquiryId(quotationData, id)
+
+    //         console.log("Quotation created successfully:", response)
+    //         showMessage("Quotation submitted successfully!")
+    //         navigate("/admin/enquiry")
+    //     } catch (error: any) {
+    //         console.error("Failed to submit quotation:", error)
+    //         const errorMessage =
+    //             error?.response?.data?.message || error?.message || "Failed to submit quotation. Please try again."
+    //         alert(errorMessage)
+    //     } finally {
+    //         setIsSubmitting(false)
+    //     }
+    // }
+    //wrking
+    // const handleSubmitQuotation = async () => {
+    //     setIsSubmitting(true)
+
+    //     try {
+    //         const quotationData: QuotationData = {
+    //             date: new Date().toLocaleDateString("en-GB", {
+    //                 day: "2-digit",
+    //                 month: "short",
+    //                 year: "numeric",
+    //             }),
+    //             quotationNumber,
+    //             expiryDate: "30 days from above date",
+    //             customer: {
+    //                 name: enquiryData?.customer?.name || "",
+    //                 email: enquiryData?.customer?.email || "",
+    //                 phone: enquiryData?.customer?.phone || "",
+    //                 hospitalName: enquiryData?.hospitalName || "",
+    //             },
+    //             assignedEmployee: {
+    //                 id: employees[selectedIndex]?._id || "",
+    //                 name: employees[selectedIndex]?.name || "",
+    //                 phone: employees[selectedIndex]?.phone || 0,
+    //             },
+    //             items: {
+    //                 categoryA: aitems.map((item) => ({
+    //                     ...item,
+    //                     type: "A",
+    //                     amount: Number.parseFloat(item.amount || "0"),
+    //                 })),
+    //                 categoryB: bitems.map((item) => ({
+    //                     ...item,
+    //                     type: "B",
+    //                     amount: Number.parseFloat(item.amount || "0"),
+    //                 })),
+    //             },
+    //             calculations: {
+    //                 subtotal: calculations.subtotal,
+    //                 discount,
+    //                 discountAmount: calculations.discountAmount,
+    //                 totalAmount: calculations.totalAmount,
+    //             },
+    //             termsAndConditions: terms.map((t) => t.text),
+    //             bankDetails: {
+    //                 hdfc: {
+    //                     accountNumber: "50200007211263",
+    //                     ifsc: "HDFC0000711",
+    //                     branch: "HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA",
+    //                 },
+    //                 icici: {
+    //                     accountNumber: "344305001088",
+    //                     ifsc: "ICIC0003443",
+    //                     branch: "ICICI BANK ROHINI",
+    //                 },
+    //             },
+    //             companyDetails: {
+    //                 gstNumber: "07AAMCA8142J1ZE",
+    //                 aerbRegistration: "14-AFSXE-2148",
+    //                 nablAccreditation: "TC-9843",
+    //             },
+    //         }
+
+    //         console.log("Submitting quotation data:", quotationData)
+
+    //         const response = await createQuotationByEnquiryId(quotationData, id)
+    //         console.log("Quotation created successfully:", response)
+    //         showMessage("Quotation submitted successfully!")
+    //         navigate("/admin/enquiry")
+    //     } catch (error: any) {
+    //         console.error("Failed to submit quotation:", error)
+    //         const errorMessage =
+    //             error?.response?.data?.message || error?.message || "Failed to submit quotation. Please try again."
+    //         alert(errorMessage)
+    //     } finally {
+    //         setIsSubmitting(false)
+    //     }
+    // }
+    const handleSubmitQuotation = async () => {
+        setIsSubmitting(true);
         try {
+            // Create snapshots of your services and additional services
+            const serviceSnapshots = aitems.map((s) => {
+                const qty = Number.parseFloat(s.quantity || "1");
+                const price = Number.parseFloat(s.price || "0");
+                const total = qty * price;
+                return {
+                    id: typeof s.id === "string" ? s.id : s.id?.toString(),
+                    machineType: s.title,
+                    equipmentNo: (s as any).equipmentNo,
+                    machineModel: (s as any).machineModel,
+                    serialNumber: (s as any).serialNumber,
+                    remark: (s as any).remark,
+                    totalAmount: total,  // 👈 computed directly here
+                };
+            });
+
+            const additionalServiceSnapshots = bitems.map((s) => {
+                const qty = Number.parseFloat(s.quantity || "1");
+                const price = Number.parseFloat(s.price || "0");
+                const total = qty * price;
+
+                return {
+                    id: typeof s.id === "string" ? s.id : undefined,
+                    name: s.title,
+                    description: s.description,
+                    totalAmount: total,   // 👈 compute here instead of relying on amount
+                };
+            });
+
             const quotationData: QuotationData = {
                 date: new Date().toLocaleDateString("en-GB", {
                     day: "2-digit",
@@ -375,18 +605,16 @@ const AddQuotation: React.FC = () => {
                     phone: employees[selectedIndex]?.phone || 0,
                 },
                 items: {
-                    categoryA: aitems.map((item) => ({ ...item, type: "A" })),
-                    categoryB: bitems.map((item) => ({ ...item, type: "B" })),
+                    services: serviceSnapshots,
+                    additionalServices: additionalServiceSnapshots,
                 },
                 calculations: {
                     subtotal: calculations.subtotal,
-                    discount,
+                    discount: discount,
                     discountAmount: calculations.discountAmount,
                     totalAmount: calculations.totalAmount,
                 },
-                //  Save only text array
-                termsAndConditions: terms.map((t) => t.text),
-
+                termsAndConditions: terms.map(t => t.text),
                 bankDetails: {
                     hdfc: {
                         accountNumber: "50200007211263",
@@ -404,24 +632,24 @@ const AddQuotation: React.FC = () => {
                     aerbRegistration: "14-AFSXE-2148",
                     nablAccreditation: "TC-9843",
                 },
-            }
+            };
 
-            console.log("Submitting quotation data:", quotationData)
+            console.log("Submitting quotation data:", quotationData);
 
-            const response = await createQuotationByEnquiryId(quotationData, id)
+            const response = await createQuotationByEnquiryId(quotationData, id);
 
-            console.log("Quotation created successfully:", response)
-            showMessage("Quotation submitted successfully!")
-            navigate("/admin/enquiry")
+            console.log("Quotation created successfully:", response);
+            showMessage("Quotation submitted successfully!");
+            navigate("/admin/enquiry");
         } catch (error: any) {
-            console.error("Failed to submit quotation:", error)
+            console.error("Failed to submit quotation:", error);
             const errorMessage =
-                error?.response?.data?.message || error?.message || "Failed to submit quotation. Please try again."
-            alert(errorMessage)
+                error?.response?.data?.message || error?.message || "Failed to submit quotation. Please try again.";
+            alert(errorMessage);
         } finally {
-            setIsSubmitting(false)
+            setIsSubmitting(false);
         }
-    }
+    };
 
 
     return (

@@ -8,8 +8,8 @@ import WarningAlert from "./WarningAlert"
 interface ExpenseRow {
   id: string
   tripname: string
-  tripStartDate: string
-  tripEndDate: string
+  startDate: string   // raw ISO string
+  endDate: string     // raw ISO string
   totalExpense: number
   tripstatus: string
 }
@@ -42,11 +42,13 @@ export default function AdvanceManagement() {
         const mapped: ExpenseRow[] = tripsData.map((trip: any) => ({
           id: trip._id,
           tripname: trip.tripName,
-          tripStartDate: new Date(trip.startDate).toLocaleDateString(),
-          tripEndDate: new Date(trip.endDate).toLocaleDateString(),
+          startDate: trip.startDate,   // raw ISO string
+          endDate: trip.endDate,       // raw ISO string
           totalExpense: trip.tripTotalExpense || 0,
           tripstatus: trip.tripstatus
         }))
+        setExpenses(mapped)
+
         console.log("🚀 ~ fetchTrips ~ mapped:", mapped)
         setExpenses(mapped)
       } catch (err) {
@@ -134,11 +136,12 @@ export default function AdvanceManagement() {
               <tr key={exp.id} className="hover:bg-gray-50">
                 <td className="p-3 border">{exp.tripname}</td>
                 <td className="p-3 border">
-                  {exp.tripStartDate ? new Date(exp.tripStartDate).toLocaleDateString("en-GB") : "-"}
+                  {exp.startDate ? new Date(exp.startDate).toLocaleDateString("en-GB") : "-"}
                 </td>
                 <td className="p-3 border">
-                  {exp.tripEndDate ? new Date(exp.tripEndDate).toLocaleDateString("en-GB") : "-"}
+                  {exp.endDate ? new Date(exp.endDate).toLocaleDateString("en-GB") : "-"}
                 </td>
+
 
                 <td className="p-3 border text-black font-medium">
                   ₹{exp.totalExpense}

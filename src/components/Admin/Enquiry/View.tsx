@@ -9,6 +9,13 @@ import FormattedDate from "../../common/FormattedDate"
 import { getEnquiryDetailsById } from "../../../api"
 import Timeline from "../../common/AnimatedTimeline"
 // Define interfaces
+
+interface AdditionalService {
+    _id: string
+    name: string
+    description?: string
+    totalAmount?: number
+}
 interface OptionType {
     value: string
     label: string
@@ -31,8 +38,7 @@ interface HospitalDetails {
         remark?: string
         workTypeDetails: { workType: string; status: string }[]
     }[]
-    additionalServices: Record<string, string>
-    specialInstructions?: string
+    additionalServices: AdditionalService[]   // ✅ Change here    specialInstructions?: string
     attachment?: string
     enquiryStatusDates: {
         enquiredOn?: string
@@ -154,14 +160,19 @@ const View = () => {
             </div>
 
             {/* Additional Services */}
+            {/* Additional Services */}
             <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
                 <h5 className="text-lg font-bold text-gray-800 mb-6">Additional Services</h5>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm text-gray-700">
-                    {additionalServiceKeys.map((serviceName, idx) => (
-                        <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
-                            <div className="text-gray-800 font-medium">{serviceName}</div>
-                        </div>
-                    ))}
+                    {details.additionalServices && details.additionalServices.length > 0 ? (
+                        details.additionalServices.map((service, idx) => (
+                            <div key={service._id || idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
+                                <div className="text-gray-800 font-medium">{service.name}</div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="col-span-full text-gray-500 italic">No additional services</div>
+                    )}
                 </div>
             </div>
             {/* Special Instruction */}

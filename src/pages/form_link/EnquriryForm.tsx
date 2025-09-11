@@ -1,4 +1,4 @@
-"use client"
+
 
 import type React from "react"
 import { useEffect, useState } from "react"
@@ -49,7 +49,10 @@ interface FormValues {
     designation: string
     specialInstructions: string
     services: Service[]
-    additionalServices: Record<string, string | undefined>
+    additionalServices: Record<
+        string,
+        { description: string } | undefined
+    >
 }
 
 // Custom component for multi-select field
@@ -150,7 +153,6 @@ const AddEnquiry: React.FC = () => {
     //     const fetchEmployees = async () => {
     //         try {
     //             const data = await allEmployees();
-    //             console.log("🚀 ~ fetchEmployees ~ data:", data);
 
     //             const options = data.map((emp: any) => ({
     //                 label: `${emp.name} - employee`, // Add suffix here
@@ -171,7 +173,6 @@ const AddEnquiry: React.FC = () => {
         const fetchStates = async () => {
             try {
                 const res = await getAllStates();
-                console.log("🚀 ~ fetchStates ~ res:", res.data.data)
                 setStates(res.data.data); // backend response shape (adjust key if needed)
             } catch (error) {
                 console.error("Failed to fetch states:", error);
@@ -198,14 +199,14 @@ const AddEnquiry: React.FC = () => {
             .matches(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
             .required("Please fill the Field"),
         designation: Yup.string().required("Please fill the Field"),
-        specialInstructions: Yup.string().required("Please fill this field"),
+        specialInstructions: Yup.string(),
         services: Yup.array()
             .of(
                 Yup.object().shape({
                     machineType: Yup.string().required("Required"),
-                    equipmentNo: Yup.string().required("Required"),
+                    equipmentNo: Yup.string(),
                     workType: Yup.array().min(1, "At least one work type is required"),
-                    machineModel: Yup.string().required("Required"),
+                    machineModel: Yup.string(),
                 })
             )
             .min(1, "At least one service is required"),
@@ -221,8 +222,13 @@ const AddEnquiry: React.FC = () => {
         // ),
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
-                return { ...schema, [service]: Yup.string().nullable() }
-            }, {}),
+                return {
+                    ...schema,
+                    [service]: Yup.object({
+                        description: Yup.string().nullable(),
+                    }).nullable(),
+                }
+            }, {})
         ),
     })
     // Form submission handler
@@ -231,30 +237,49 @@ const AddEnquiry: React.FC = () => {
         try {
             setIsSubmitting(true);
 
-            const submissionValues = { ...values };
+            // 🔹 Transform services
+            const transformedServices = values.services.map((s) => ({
+                machineType: s.machineType,
+                equipmentNo: s.equipmentNo,
+                machineModel: s.machineModel,
+                workType: s.workType || [],
+            }));
 
-            console.log("Submitting form with values:", submissionValues);
+            // 🔹 Just use additionalServices directly
+            const submissionValues = {
+                ...values,
+                services: transformedServices,
+                additionalServices: Object.fromEntries(
+                    Object.entries(values.additionalServices)
+                        .filter(([_, val]) => val !== undefined)
+                        .map(([name, val]) => [name, { description: val?.description || "" }])
+                ),
+            }
 
-            // API call
+            console.log("🚀 Final Submission Payload:", submissionValues);
+
             const response = await addEnquiry(submissionValues);
 
-            console.log("API Response:", response);
 
-            // ✅ Show success message with enquiryId
-            const enquiryId = response?.data?.enquiryId || "ENQ-UNKNOWN";
-            setSuccessMessage(`Enquiry submitted successfully! Enquiry ID: ${enquiryId}`);
-
-            // Reset form
-            resetForm();
+            const data = response?.data;
+            if (data?.existingCustomer) {
+                showMessage("Customer already exists. Please enquire via mobile app.", "warning");
+            } else {
+                const enquiryId = data?.enquiryId || "ENQ-UNKNOWN";
+                setSuccessMessage(`Enquiry submitted successfully! Enquiry ID: ${enquiryId}`);
+                resetForm();
+            }
         } catch (error: any) {
             console.error("Error submitting enquiry:", error);
-            const errorMessage = error?.message || "Failed to submit enquiry. Please try again.";
-            showMessage(errorMessage, "error");
+            showMessage(error?.message || "Failed to submit enquiry. Please try again.", "error");
         } finally {
             setIsSubmitting(false);
             setSubmitting(false);
         }
     };
+
+
+
 
 
     return (
@@ -576,41 +601,53 @@ const AddEnquiry: React.FC = () => {
                         </div>
 
                         {/* Additional Services */}
+                        {/* Additional Services */}
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Additional Services</h5>
                             {serviceOptions.map((service) => (
                                 <div
                                     key={service}
-                                    className="grid grid-cols-1 sm:grid-cols-3 items-start gap-4 py-2 border-b border-gray-200"
+                                    className="grid grid-cols-1 sm:grid-cols-5 items-start gap-4 py-2 border-b border-gray-200"
                                 >
-                                    <div className="flex items-center gap-2">
+                                    {/* Checkbox */}
+                                    <div className="flex items-center gap-2 sm:col-span-2">
                                         <input
                                             type="checkbox"
                                             checked={values.additionalServices[service] !== undefined}
                                             onChange={() => {
                                                 if (values.additionalServices[service] !== undefined) {
-                                                    setFieldValue(`additionalServices.${service}`, undefined) // Uncheck
+                                                    setFieldValue(`additionalServices.${service}`, undefined)
                                                 } else {
-                                                    setFieldValue(`additionalServices.${service}`, "") // Check with empty string
+                                                    setFieldValue(`additionalServices.${service}`, {
+                                                        description: "",
+                                                        totalAmount: 0,
+                                                    })
                                                 }
                                             }}
-                                            className={`form-checkbox h-5 w-5 transition-colors duration-200 ${values.additionalServices[service] !== undefined ? "text-blue-600" : "text-gray-400"}`}
+                                            className={`form-checkbox h-5 w-5 transition-colors duration-200 ${values.additionalServices[service] !== undefined
+                                                ? "text-blue-600"
+                                                : "text-gray-400"
+                                                }`}
                                         />
                                         <span>{service}</span>
                                     </div>
+
+                                    {/* If checked, show inputs */}
                                     {values.additionalServices[service] !== undefined && (
-                                        <div className="sm:col-span-2 mt-2 sm:mt-0">
+                                        <div className="sm:col-span-3">
                                             <Field
                                                 type="text"
-                                                name={`additionalServices.${service}`}
-                                                placeholder="Enter info..."
+                                                name={`additionalServices.${service}.description`}
+                                                placeholder="Enter description..."
                                                 className="form-input w-full"
                                             />
                                         </div>
                                     )}
+
                                 </div>
                             ))}
                         </div>
+
 
                         {/* specialInstructions */}
                         <div className="panel">

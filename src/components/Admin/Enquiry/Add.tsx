@@ -189,7 +189,6 @@ const AddEnquiry: React.FC = () => {
         fetchEmployees();
         fetchDealers();
     }, []);
-
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
         leadOwner: Yup.string().required("Please fill the Field"),
@@ -208,34 +207,33 @@ const AddEnquiry: React.FC = () => {
             .matches(/^\d{10}$/, "Contact Number must be exactly 10 digits")
             .required("Contact Number is required"),
         designation: Yup.string().required("Please fill the Field"),
-        specialInstructions: Yup.string().required("Please fill this field"),
+        specialInstructions: Yup.string(),
         services: Yup.array()
             .of(
                 Yup.object().shape({
                     machineType: Yup.string().required("Required"),
-                    equipmentNo: Yup.string().required("Required"),
+                    equipmentNo: Yup.string(),
                     workType: Yup.array().min(1, "At least one work type is required"),
-                    machineModel: Yup.string().required("Required"),
+                    machineModel: Yup.string(),
                 })
             )
-            .min(1, "At least one service is required")
-            .test(
-                "unique-machineType",
-                "Each Machine Type must be unique",
-                (services) => {
-                    if (!services) return true;
-                    const machineTypes = services.map(s => s.machineType);
-                    const uniqueTypes = new Set(machineTypes);
-                    return uniqueTypes.size === machineTypes.length;
-                }
-            ),
+            .min(1, "At least one service is required"),
+            // .test(
+            //     "unique-machineType",
+            //     "Each Machine Type must be unique",
+            //     (services) => {
+            //         if (!services) return true;
+            //         const machineTypes = services.map(s => s.machineType);
+            //         const uniqueTypes = new Set(machineTypes);
+            //         return uniqueTypes.size === machineTypes.length;
+            //     }
+            // ),
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
                 return { ...schema, [service]: Yup.string().nullable() };
             }, {})
         ),
     });
-
 
     // Form submission handler
     const submitForm = async (values: FormValues, { setSubmitting, resetForm }: any) => {

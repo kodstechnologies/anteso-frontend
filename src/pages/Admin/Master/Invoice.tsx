@@ -6,39 +6,79 @@ import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../../store/themeConfigSlice';
 import IconTrashLines from '../../../components/Icon/IconTrashLines';
 import IconPlus from '../../../components/Icon/IconPlus';
-import IconEdit from '../../../components/Icon/IconEdit';
-import IconEye from '../../../components/Icon/IconEye';
+import IconFile from '../../../components/Icon/IconFile';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconCreditCard from '../../../components/Icon/IconCreditCard';
-import { invoicedata } from '../../../data';
-import IconFile from '../../../components/Icon/IconFile';
+import { getAllInvoices } from '../../../api';
+import Cookies from 'js-cookie';
 
-const Invoices = () => {
+// Define types for invoice and payment
+interface Payment {
+  paymentType: 'advance' | 'balance' | 'complete';
+  paymentAmount: number;
+  paymentStatus: 'paid' | 'pending';
+  utrNumber: string;
+}
+
+interface Invoice {
+  _id: string;
+  invoiceId: string;
+  srfNumber: string;
+  buyerName: string;
+  address: string;
+  state: string;
+  gstin?: string;
+  grandtotal: number;
+  payment?: Payment;
+  status?: 'Paid' | 'Pending';
+}
+
+const Invoices: React.FC = () => {
   const dispatch = useDispatch();
-  useEffect(() => {
-    dispatch(setPageTitle('Invoices'));
-  }, []);
-
-  const [items, setItems] = useState(invoicedata);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<Invoice[]>([]);
+  const [search, setSearch] = useState<string>('');
+  const [page, setPage] = useState<number>(1);
   const PAGE_SIZES = [10, 20, 30, 50];
-  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-  const [initialRecords, setInitialRecords] = useState(sortBy(items, 'invoiceId'));
-  const [records, setRecords] = useState(initialRecords);
-  const [selectedRecords, setSelectedRecords] = useState<any>([]);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
+  const [initialRecords, setInitialRecords] = useState<Invoice[]>([]);
+  const [records, setRecords] = useState<Invoice[]>([]);
+  const [selectedRecords, setSelectedRecords] = useState<Invoice[]>([]);
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
     columnAccessor: 'invoiceId',
     direction: 'asc',
   });
 
   useEffect(() => {
+    dispatch(setPageTitle('Invoices'));
+  }, [dispatch]);
+
+  // Fetch invoices from API
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        const res = await getAllInvoices();
+        const data: Invoice[] = res.data.data.map((item: Invoice) => ({
+          ...item,
+          status: item.payment?.paymentStatus === 'paid' ? 'Paid' : 'Pending',
+        }));
+        setItems(data);
+        setInitialRecords(sortBy(data, 'invoiceId'));
+      } catch (err) {
+        console.error('Failed to fetch invoices:', err);
+      }
+    };
+    fetchInvoices();
+  }, []);
+
+  // Pagination
+  useEffect(() => {
     const from = (page - 1) * pageSize;
     const to = from + pageSize;
     setRecords([...initialRecords.slice(from, to)]);
   }, [page, pageSize, initialRecords]);
 
+  // Search filter
   useEffect(() => {
     setInitialRecords(() =>
       items.filter((item) =>
@@ -49,15 +89,16 @@ const Invoices = () => {
     );
   }, [search, items]);
 
+  // Sorting
   useEffect(() => {
     const sorted = sortBy(initialRecords, sortStatus.columnAccessor);
     setRecords(sortStatus.direction === 'desc' ? sorted.reverse() : sorted);
     setPage(1);
   }, [sortStatus]);
 
-  const deleteRow = (id: number) => {
+  const deleteRow = (id: string) => {
     if (window.confirm('Are you sure you want to delete this invoice?')) {
-      const updated = items.filter((p: any) => p.id !== id);
+      const updated = items.filter((p) => p._id !== id);
       setItems(updated);
       setInitialRecords(updated);
       setRecords(updated);
@@ -100,88 +141,45 @@ const Invoices = () => {
               className="whitespace-nowrap table-hover"
               records={records}
               columns={[
-                {
-                  accessor: 'invoiceId',
-                  title: 'Invoice ID',
-                  sortable: true,
-                },
-                {
-                  accessor: 'srfno',
-                  title: 'SRF No',
-                  sortable: true,
-                },
-                {
-                  accessor: 'buyerName',
-                  title: 'Customer Name',
-                  sortable: true,
-                },
-                {
-                  accessor: 'address',
-                  title: 'Address',
-                  sortable: true,
-                },
-                {
-                  accessor: 'state',
-                  title: 'State',
-                  sortable: true,
-                },
-                {
-                  accessor: 'gstin',
-                  title: 'GSTIN',
-                  sortable: true,
-                },
+                { accessor: 'invoiceId', title: 'Invoice ID', sortable: true },
+                { accessor: 'srfNumber', title: 'SRF No', sortable: true },
+                { accessor: 'buyerName', title: 'Customer Name', sortable: true },
+                { accessor: 'address', title: 'Address', sortable: true },
+                { accessor: 'state', title: 'State', sortable: true },
+                // { accessor: 'gstin', title: 'GSTIN', sortable: true },
+                { accessor: 'grandtotal', title: 'Total Amount', sortable: true },
                 // {
-                //   accessor: 'machineType',
-                //   title: 'Machine Type',
+                //   accessor: 'status',
+                //   title: 'Status',
                 //   sortable: true,
+                //   render: (row: Invoice) => (
+                //     <span
+                //       className={`w-24 inline-block text-center px-3 py-1 rounded-full text-xs font-semibold ${
+                //         row.status === 'Paid'
+                //           ? 'bg-green-100 text-green-700'
+                //           : 'bg-red-100 text-red-700'
+                //       }`}
+                //     >
+                //       {row.status}
+                //     </span>
+                //   ),
                 // },
-                // {
-                //   accessor: 'quantity',
-                //   title: 'Quantity',
-                //   sortable: true,
-                // },
-                // {
-                //   accessor: 'rate',
-                //   title: 'Rate',
-                //   sortable: true,
-                // },
-                {
-                  accessor: 'totalAmount',
-                  title: 'Total Amount',
-                  sortable: true,
-                },
-                {
-                  accessor: 'status',
-                  title: 'Status',
-                  sortable: true,
-                  render: (row: any) => (
-                    <span
-                      className={`w-24 inline-block text-center px-3 py-1 rounded-full text-xs font-semibold
-      ${row.status === 'Paid'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
-                        }`}
-                    >
-                      {row.status}
-                    </span>
-                  )
-
-                },
                 {
                   accessor: 'action',
                   title: 'Actions',
-                  render: ({ id }) => (
+                  render: ({ _id }: Invoice) => (
                     <div className="flex gap-4 items-center w-max mx-auto">
-                      <NavLink to="/admin/invoice/viewInvoice" className="flex hover:text-primary">
+                      <NavLink
+                        to={`/admin/invoice/viewInvoice/${_id}`}
+                        className="flex hover:text-primary"
+                      >
                         <IconFile />
                       </NavLink>
-                      {/* <NavLink to={`/admin/invoice/view/${id}`} className="flex hover:text-primary">
-                        <IconEye />
-                      </NavLink> */}
-                      {/* <NavLink to={`/admin/invoice/edit/${id}`} className="flex hover:text-info">
-                        <IconEdit />
-                      </NavLink> */}
-                      <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
+                      <button
+                        type="button"
+                        className="flex hover:text-danger"
+                        onClick={() => deleteRow(_id)}
+                      >
                         <IconTrashLines />
                       </button>
                     </div>
@@ -199,7 +197,9 @@ const Invoices = () => {
               onSortStatusChange={setSortStatus}
               selectedRecords={selectedRecords}
               onSelectedRecordsChange={setSelectedRecords}
-              paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
+              paginationText={({ from, to, totalRecords }) =>
+                `Showing ${from} to ${to} of ${totalRecords} entries`
+              }
             />
           </div>
         </div>

@@ -578,7 +578,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/enquiry/edit',
+        path: '/admin/enquiry/edit/:id',
         element: (
             <AdminProtected>
                 <EditEnquiry />
@@ -773,7 +773,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/invoice/viewInvoice',
+        path: '/admin/invoice/viewInvoice/:id',
         element: (
             <AdminProtected>
                 <InvoiceDealer />
@@ -789,7 +789,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/invoice/view/:id',
+        path: '/admin/invoice/view',
         element: (
             <AdminProtected>
                 <ViewInvoice />

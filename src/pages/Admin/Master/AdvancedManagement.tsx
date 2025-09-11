@@ -43,14 +43,15 @@ const AdvancedManagement = () => {
                 setLoading(true);
                 setError(null);
 
-                const data = await getAllTechnicians();
-                console.log("🚀 ~ fetchEmployees ~ data:", data)
+                const res = await getAllTechnicians();
+                console.log("🚀 ~ fetchEmployees ~ res:", res);
 
-                // Assuming API returns an array of employees
-                const formatted = data?.map((item: any, index: number) => ({
+                // ✅ Use res.data because actual array is inside `data`
+                const formatted = res?.data?.map((item: any, index: number) => ({
                     ...item,
                     clientId: `EMP${String(index + 1).padStart(3, '0')}`, // unique ID for display
                 }));
+
                 setItems(formatted);
                 setInitialRecords(sortBy(formatted, 'name'));
                 setLoading(false);
@@ -59,6 +60,7 @@ const AdvancedManagement = () => {
                 setLoading(false);
             }
         };
+
         fetchEmployees();
     }, []);
 

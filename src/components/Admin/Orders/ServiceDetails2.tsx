@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import {
     Wrench,
@@ -161,11 +159,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
     const fetchExistingAssignments = async (machineDataArray: MachineData[]) => {
         if (!orderId) return
-
         try {
             const assignmentPromises: Promise<any>[] = []
             const workTypeMapping: Array<{ workTypeId: string; serviceId: string; workTypeName: string }> = []
-
             // Collect all work types that need to be checked for assignments
             machineDataArray.forEach((service) => {
                 service.workTypes.forEach((workType) => {
@@ -173,13 +169,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                         // Only check QA Raw for technician assignments
                         const serviceId = workType.id.split("-")[0]
                         const workTypeName = service.workTypeName
-
                         workTypeMapping.push({
                             workTypeId: workType.id,
                             serviceId,
                             workTypeName,
                         })
-
                         // Add promise to check for existing assignment
                         assignmentPromises.push(
                             getAssignedTechnicianName(orderId, serviceId, workTypeName)
@@ -197,18 +191,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     }
                 })
             })
-
             if (assignmentPromises.length === 0) return
-
             const results = await Promise.all(assignmentPromises)
-
             // Process results and update state
             const newAssignments: Record<string, any> = {}
             const updatedMachineData = machineDataArray.map((service) => ({
                 ...service,
                 workTypes: service.workTypes.map((workType) => {
                     const result = results.find((r) => r.workTypeId === workType.id)
-
                     if (result && result.success && result.data.technicianName) {
                         // Found existing assignment
                         newAssignments[workType.id] = {
@@ -216,7 +206,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             technicianName: result.data.technicianName,
                             assignmentStatus: result.data.status,
                         }
-
                         return {
                             ...workType,
                             assignedTechnicianName: result.data.technicianName,
@@ -237,20 +226,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             console.error("[v0] Error fetching existing assignments:", error)
         }
     }
-
     const fetchMachineData = async () => {
         if (!orderId) {
             setError("Order ID is required")
             setLoading(false)
             return
         }
-
         try {
             setLoading(true)
             setError(null)
             const response = await getMachineDetails(orderId)
             console.log("🚀 ~ fetchMachineData ~ response:", response)
-
             // API returns an array, so take the first element
             const machineData = Array.isArray(response) ? response[0] : response
 
@@ -289,7 +275,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                         urlNumber: "N/A", // Will be populated from backend later
                         serviceId: "default-service-id", // You may need to adjust this
                     })
-
                     // Always create Elora for each card
                     workTypes.push({
                         id: `${cardId}-elora`,
@@ -360,7 +345,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 return <Settings className="h-4 w-4" />
         }
     }
-
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
             case "pending":
@@ -1076,7 +1060,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         </select>
                                                                     </div>
                                                                 </div>
-
                                                                 {selectedStatuses[workType.id] === "completed" && (
                                                                     <div className="space-y-3 p-3 bg-blue-50 rounded-md border border-blue-200">
                                                                         <label className="block text-sm font-medium text-blue-700">Upload File</label>
@@ -1101,7 +1084,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         </div>
                                                                     </div>
                                                                 )}
-
                                                                 {uploadedFiles[workType.id] && (
                                                                     <div className="p-3 bg-green-50 rounded-md border border-green-200">
                                                                         <div className="flex items-center gap-2 text-green-700">

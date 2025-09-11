@@ -87,7 +87,7 @@ const View = () => {
 
         fetchBasicDetails();
     }, [orderId]);
-
+    
     if (!details) return <div className="text-gray-600 p-6">Loading...</div>;
     const fields = [
         { label: 'Hospital Name', value: details.hospitalName },

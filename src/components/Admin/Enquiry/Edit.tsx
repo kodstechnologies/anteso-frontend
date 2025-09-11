@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import * as Yup from 'yup';
 import { FieldArray, Field, Form, Formik, ErrorMessage, FieldProps } from 'formik';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Select from 'react-select';
 import { showMessage } from '../../common/ShowMessage';
+import { getEnquiryDetailsById } from '../../../api';
 
 // Define interfaces
 interface OptionType {
@@ -36,6 +37,7 @@ interface FormValues {
     services: Service[];
     additionalServices: Record<string, string | undefined>;
     enquiryID?: string; // Optional for generating ENQ ID
+    specialInstructions: string
 }
 
 // Custom component for multi-select field
@@ -117,12 +119,14 @@ const machineOptions: OptionType[] = [
 
 const urgencyOptions: string[] = ['Immediantely (within 1-2 days)', 'Urgent (Within a week)', 'Soon (Within 2-3 weeks)', 'Not urgent (just exploring)'];
 
+// At the top of Edit.tsx
 const workTypeOptions: OptionType[] = [
     { value: 'Quality Assurance Test', label: 'Quality Assurance Test' },
-    { value: ' License for Operation', label: ' License for Operation' },
+    { value: 'License for Operation', label: 'License for Operation' },
     { value: 'Decommissioning', label: 'Decommissioning' },
     { value: 'Decommissioning and Recommissioning', label: 'Decommissioning and Recommissioning' },
 ];
+;
 
 const EditEnquiry: React.FC = () => {
     const navigate = useNavigate();
@@ -156,6 +160,67 @@ const EditEnquiry: React.FC = () => {
         ),
         enquiryID: Yup.string().nullable(),
     });
+    const { id } = useParams<{ id: string }>(); // ✅ get enquiry id from URL
+    // const navigate = useNavigate();
+
+    const [initialValues, setInitialValues] = useState<FormValues | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    // ✅ fetch enquiry details on mount
+    // ✅ fetch enquiry details on mount
+    useEffect(() => {
+        const fetchEnquiry = async () => {
+            try {
+                if (!id) return;
+                const res = await getEnquiryDetailsById(id);
+                console.log("🚀 ~ fetchEnquiry ~ res:", res);
+
+                setInitialValues({
+                    hospitalName: res.hospitalName || '',
+                    fullAddress: res.fullAddress || '',
+                    city: res.city || '',
+                    state: res.state || '',
+                    pinCode: res.pinCode || '',
+                    contactPerson: res.customer?.name || '',
+                    emailAddress: res.customer?.email || '',
+                    contactNumber: res.customer?.phone || '',
+                    designation: res.designation || '',
+                    urgency: res.urgency || '',
+
+                    // ✅ Normalize services array
+                    services: res.services?.map((s: any) => ({
+                        machineType: s.machineType || '',
+                        equipmentNo: s.equipmentNo || 1,
+                        workType: Array.isArray(s.workType)
+                            ? s.workType // already array of strings
+                            : Array.isArray(s.workTypeDetails)
+                                ? s.workTypeDetails.map((w: any) => w.name) // map objects to string
+                                : [], // fallback
+                    })) || [{ machineType: '', equipmentNo: 1, workType: [] }],
+
+                    // ✅ Normalize additional services into object
+                    additionalServices: serviceOptions.reduce((acc, service) => {
+                        const found = res.additionalServices?.find(
+                            (s: any) => s.name === service
+                        );
+                        acc[service] = found ? found.totalAmount?.toString() || '' : undefined;
+                        return acc;
+                    }, {} as Record<string, string | undefined>),
+
+                    specialInstructions: res.specialInstructions || '',
+                    enquiryID: res.enquiryId || '',
+                });
+
+                setLoading(false);
+            } catch (err) {
+                console.error('Failed to fetch enquiry details:', err);
+                showMessage('Failed to fetch enquiry details', 'error');
+                setLoading(false);
+            }
+        };
+
+        fetchEnquiry();
+    }, [id]);
 
     // Form submission handler
     const submitForm = (values: FormValues) => {
@@ -185,7 +250,7 @@ const EditEnquiry: React.FC = () => {
                 </li>
                 <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
                     <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
-                        Add Enquiry
+                        Edit Enquiry
                     </Link>
                 </li>
             </ol>
@@ -193,7 +258,7 @@ const EditEnquiry: React.FC = () => {
             <h5 className="font-semibold text-lg mb-4">Enquiry Form</h5>
 
             <Formik
-                initialValues={{
+                initialValues={initialValues || {
                     hospitalName: '',
                     fullAddress: '',
                     city: '',
@@ -211,12 +276,13 @@ const EditEnquiry: React.FC = () => {
                     }, {} as Record<string, string | undefined>),
                     enquiryID: '',
                     attachment: '',
-                    
-
+                    specialInstructions: ''
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
+                enableReinitialize
             >
+
                 {({ errors, submitCount, values, setFieldValue }) => (
                     <Form className="space-y-5">
                         {/* Basic Details */}
@@ -298,7 +364,12 @@ const EditEnquiry: React.FC = () => {
                                                 {/* equipment/document No. */}
                                                 <div className="md:col-span-2">
                                                     <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
-                                                    <Field type="text" name="equipmentNo" placeholder="Equipment ID/Serial No" className="form-input w-full" />
+                                                    <Field
+                                                        type="text"
+                                                        name={`services.${index}.equipmentNo`}
+                                                        placeholder="Equipment ID/Serial No"
+                                                        className="form-input w-full"
+                                                    />
                                                     <div className="h-4">
                                                         <ErrorMessage name={`services.${index}.equipmentNo`} component="div" className="text-red-500 text-sm" />
                                                     </div>
@@ -369,12 +440,13 @@ const EditEnquiry: React.FC = () => {
                                 <div className={submitCount && errors.urgency ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="urgency" className="block mb-1 font-medium">Special Instructions</label>
                                     <Field
-                                        name="urgency"
-                                        type="text"
-                                        id="urgency"
-                                        placeholder="Enter special instruction"
+                                        name="specialInstructions"
+                                        as="textarea"
+                                        id="specialInstructions"
+                                        placeholder="Enter special instructions"
                                         className="form-input"
                                     />
+
                                     {submitCount > 0 && errors.urgency && (
                                         <p className="text-red-500 text-sm mt-1">{errors.urgency}</p>
                                     )}

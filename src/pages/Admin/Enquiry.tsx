@@ -42,6 +42,7 @@ const Enquiry = () => {
         direction: 'asc',
     });
     const [copied, setCopied] = useState(false);
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -96,19 +97,18 @@ const Enquiry = () => {
         setRowToDelete(id); // Store row or null (for bulk)
         setShowConfirmModal(true); // Open confirm modal
     };
-
     const handleConfirmDelete = async () => {
         try {
             if (rowToDelete !== null) {
                 await deleteEnquiryById(rowToDelete);
-                const filtered = items.filter((item) => item.id !== rowToDelete);
+                const filtered = items.filter((item) => item._id !== rowToDelete);
                 setItems(filtered);
                 setInitialRecords(filtered);
                 setRecords(filtered.slice(0, pageSize));
             } else {
-                const ids = selectedRecords.map((d: any) => d.id);
-                await Promise.all(ids.map((id: number) => deleteEnquiryById(id)));
-                const filtered = items.filter((d) => !ids.includes(d.id));
+                const ids = selectedRecords.map((d: any) => d._id); // ✅ use _id
+                await Promise.all(ids.map((id: string) => deleteEnquiryById(id)));
+                const filtered = items.filter((d) => !ids.includes(d._id)); // ✅ filter with _id
                 setItems(filtered);
                 setInitialRecords(filtered);
                 setRecords(filtered.slice(0, pageSize));
@@ -329,7 +329,7 @@ const Enquiry = () => {
                                                 <NavLink to={`/admin/enquiry/view/${id}`} className="flex hover:text-primary">
                                                     <IconEye />
                                                 </NavLink>
-                                                <NavLink to="/admin/enquiry/edit" className="flex hover:text-info">
+                                                <NavLink to={`/admin/enquiry/edit/${id}`} className="flex hover:text-info">
                                                     <IconEdit className="w-4.5 h-4.5" />
                                                 </NavLink>
                                                 <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>

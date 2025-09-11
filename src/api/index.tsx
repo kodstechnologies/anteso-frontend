@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { log } from 'console';
 import Cookies from 'js-cookie';
 
 const VITE_BACKEND_LOCALHOST_API_URL = import.meta.env.VITE_BACKEND_API_URL;
@@ -434,7 +435,6 @@ export const addEnquiry = async (payload: any) => {
         );
     }
 }
-
 export const addEnquiryCreateDirectOrder = async (payload: any) => {
     try {
         const token = Cookies.get('accessToken')
@@ -529,7 +529,7 @@ export const getQuotationByCustomerAndEnquiryId = async (customerId: any, enquir
 export const allEmployees = async () => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.get('/technician/get-all', {
+        const res = await api.get('/technician/all-officeStaff', {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -644,6 +644,7 @@ export const getEmployeeById = async (id: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ getEmployeeById ~ res:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ get employee by id ~ error:", error);
@@ -1097,6 +1098,7 @@ export const getAllOfficeStaff = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ getAllOfficeStaff ~ res:", res)
         return res.data.data
     } catch (error: any) {
         console.error("🚀 ~ all  machines ~ error:", error);
@@ -1182,6 +1184,11 @@ export const completedOrderStatus = async () => {
     }
 }
 export const assignToOfficeStaff = async (orderId: string, serviceId: string, officeStaffId: string, workType: string, status: any) => {
+    console.log("🚀 ~ assignToOfficeStaff ~ status:", status)
+    console.log("🚀 ~ assignToOfficeStaff ~ workType:", workType)
+    console.log("🚀 ~ assignToOfficeStaff ~ officeStaffId:", officeStaffId)
+    console.log("🚀 ~ assignToOfficeStaff ~ serviceId:", serviceId)
+    console.log("🚀 ~ assignToOfficeStaff ~ orderId:", orderId)
     try {
         const token = Cookies.get('accessToken')
         const res = await api.put(`/orders/assign-to-office-staff/${orderId}/${serviceId}/${officeStaffId}/${workType}/${status}`, {
@@ -1416,12 +1423,17 @@ export const getAllDealers = async () => {
 }
 
 export const createPayment = async (payload: any) => {
+    console.log("🚀 ~ createPayment ~ payload:", payload)
+    console.log("🚀 ~ createPayment payload entries:");
+    for (const [key, val] of payload.entries()) {
+        console.log(key, val);
+    }
+
     try {
         const token = Cookies.get('accessToken')
         const res = await api.post(`/payment/add-payment`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json"
             }
         })
         return res
@@ -1441,6 +1453,7 @@ export const allOrdersWithClient = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ allOrdersWithClient ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ allOrdersWithClient ~ error:", error);
@@ -1450,17 +1463,31 @@ export const allOrdersWithClient = async () => {
     }
 }
 
-export const getTotalAmount = async (orderId: string) => {
+export const getTotalAmount = async (srfNumber: string) => {
     try {
         const token = Cookies.get('accessToken');
         const res = await api.get(`/payment/get-total-amount`, {
             headers: { Authorization: `Bearer ${token}` },
-            params: { orderId }, // send orderId as query
+            params: { srfNumber }, // ✅ send srfNumber instead of orderId
         });
         return res;
     } catch (error: any) {
         console.error("Failed to get total amount", error);
         throw new Error(error?.response?.data?.message || "Failed to get total amount");
+    }
+};
+
+export const getPaymentsBySrf = async (srfNumber: string) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.get(
+            `/payment/get-payment-type-by-srf/${encodeURIComponent(srfNumber)}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res;
+    } catch (error: any) {
+        console.error("Failed to get payments", error);
+        throw new Error(error?.response?.data?.message || "Failed to get payments");
     }
 };
 
@@ -1512,6 +1539,245 @@ export const geAllAdvances = async (technicianId: string) => {
         console.error("🚀 ~ geAllAdvances ~ error:", error)
         throw new Error(
             error?.response?.data?.message || "Failed to fetch raw data"
+        )
+    }
+}
+
+export const updateAdditionalService = async (id: string, payload: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.put(
+            `/orders/update-additional-service/${id}`,
+            payload, // send status + remark here
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ updateAdditionalService ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to update service"
+        );
+    }
+};
+
+export const getPaymentById = async (id: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/payment/get-payment-by-id/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getPaymentById ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch getPaymentById"
+        )
+    }
+}
+
+export const searchBySRFNumber = async (srfNumber: string) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/payment/search-by-srf`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            params: {
+                srfNumber, // pass SRF number as query parameter
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ searchBySRFNumber ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch searchBySRFNumberd"
+        )
+    }
+}
+
+export const deletePaymentById = async (id: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.delete(`/payment/delete-payment-by-id/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ deletePaymentById ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to deletePaymentById"
+        )
+    }
+}
+
+export const downloadQuotationPdf = async (
+    quotationId: string,
+    hospitalId: string,
+    file: File
+) => {
+    console.log("🚀 ~ downloadQuotationPdf ~ hospitalId:", hospitalId)
+    console.log("🚀 ~ downloadQuotationPdf ~ quotationId:", quotationId)
+    try {
+        const token = Cookies.get("accessToken")
+
+        const formData = new FormData();
+        formData.append("file", file); // must match `upload.single("file")` in backend
+
+        const res = await api.post(
+            `/quotation/save-quotation-pdf/${hospitalId}/${quotationId}`,
+            formData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "multipart/form-data"
+                },
+            }
+        );
+
+        return res.data;
+    } catch (error: any) {
+        console.error("Error uploading quotation PDF:", error);
+        throw error.response?.data || { message: "Failed to upload PDF" };
+    }
+};
+
+export const sendQuotation = async (hospitalId: string, enquiryId: string, quotationId: string) => {
+    console.log("🚀 ~ sendQuotation ~ quotationId:", quotationId)
+    console.log("🚀 ~ sendQuotation ~ enquiryId:", enquiryId)
+    console.log("🚀 ~ sendQuotation ~ hospitalId:", hospitalId)
+    try {
+        const token = Cookies.get("accessToken"); // get the JWT token
+
+        if (!token) {
+            throw new Error("User not authenticated");
+        }
+        const response = await api.post(
+            `/quotation/share-quotation/${hospitalId}/${enquiryId}/${quotationId}`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        if (response.data.success) {
+            return response.data.data.pdfUrl; // return the PDF URL
+        } else {
+            throw new Error(response.data.message || "Failed to share quotation");
+        }
+    } catch (error: any) {
+        console.error("Error sending quotation:", error);
+        throw new Error(error.message || "Something went wrong");
+    }
+};
+
+
+//Invoice APIS
+export const getAllDetails = async (orderId: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/invoice/all-details-by-orderId/${orderId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAllDetails ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ getAllDetails ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAllDetails"
+        )
+    }
+}
+
+export const getAllSrfNumber = async () => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/invoice/all-orders-with-type`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAllSrfNumber ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllSrfNumber ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAllSrfNumber"
+        )
+    }
+}
+
+export const createInvoice = async (invoiceData: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        if (!token) {
+            throw new Error("User is not authenticated");
+        }
+        const res = await api.post(
+            `/invoice/create-invoice`,
+            invoiceData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ createInvoice API error:", error.response || error.message);
+        throw new Error(error.response?.data?.message || error.message || "Failed to create invoice");
+    }
+};
+
+export const getAllInvoices = async () => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/invoice/get-all-invoices`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAllInvoices ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllInvoices ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAllInvoices"
+        )
+    }
+}
+
+export const getInvoiceById = async (invoiceId: any) => {
+    console.log("hi---");
+    
+    console.log("🚀 ~ getInvoiceById ~ invoiceId:", invoiceId)
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/invoice/get-invoice-by-id/${invoiceId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getInvoiceById ~ res:", res)
+        console.log("🚀 ~ getAllSrfNumber ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllSrfNumber ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAllSrfNumber"
         )
     }
 }
