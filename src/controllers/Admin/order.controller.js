@@ -1065,16 +1065,16 @@ const getUpdatedOrderServices2 = asyncHandler(async (req, res) => {
 
 //check
 const getAllOrdersForTechnician = asyncHandler(async (req, res) => {
-    const { engineerId } = req.params;
-    if (!engineerId) {
-        return res.status(400).json({ message: 'Engineer ID is required' });
+    const { technicianId } = req.params;
+    if (!technicianId) {
+        return res.status(400).json({ message: 'technicianId is required' });
     }
 
     // Step 1: Find all services where this engineer is assigned
     const servicesWithEngineer = await Services.find({
         workTypeDetails: {
             $elemMatch: {
-                engineer: new mongoose.Types.ObjectId(engineerId),
+                engineer: new mongoose.Types.ObjectId(technicianId),
             },
         },
     });
@@ -1812,6 +1812,124 @@ const assignStaffByElora = asyncHandler(async (req, res) => {
 });
 
 
+const getAllOrdersByHospitalId = asyncHandler(async (req, res) => {
+    try {
+        const { hospitalId } = req.params;
+
+        if (!hospitalId) {
+            return res.status(400).json({
+                success: false,
+                message: "Hospital ID is required",
+            });
+        }
+
+        // Validate hospital exists
+        const hospital = await Hospital.findById(hospitalId);
+        if (!hospital) {
+            return res.status(404).json({
+                success: false,
+                message: "Hospital not found",
+            });
+        }
+
+        const orders = await orderModel.find({ hospitalName: hospital.name })
+            .populate("services", "machineType equipmentNo machineModel serialNumber remark workTypeDetails")
+            .populate("additionalServices", "name description totalAmount")
+            .populate("customer", "name email role")
+            .populate("quotation", "quotationNumber status")
+            .populate("payment")
+            .populate("courierDetails");
+        console.log("🚀 ~ orders:", orders)
+
+        if (!orders || orders.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No orders found for this hospital",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            hospital: {
+                id: hospital._id,
+                name: hospital.name,
+                branch: hospital.branch,
+                phone: hospital.phone,
+                email: hospital.email,
+            },
+            totalOrders: orders.length,
+            orders,
+        });
+    } catch (error) {
+        console.error("Error fetching orders by hospitalId:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error fetching orders",
+            error: error.message,
+        });
+    }
+});
 
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments, assignStaffByElora }
+const getOrderByHospitalIdOrderId = asyncHandler(async (req, res) => {
+    try {
+        const { hospitalId, orderId } = req.params;
+
+        if (!hospitalId || !orderId) {
+            return res.status(400).json({
+                success: false,
+                message: "Hospital ID and Order ID are required",
+            });
+        }
+
+        // 1️⃣ Validate hospital exists
+        const hospital = await Hospital.findById(hospitalId);
+        if (!hospital) {
+            return res.status(404).json({
+                success: false,
+                message: "Hospital not found",
+            });
+        }
+
+        // 2️⃣ Find order by _id AND hospitalName match
+        const order = await orderModel.findOne({
+            _id: orderId,
+            hospitalName: hospital.name,
+        })
+            .populate("services", "machineType equipmentNo machineModel serialNumber remark workTypeDetails")
+            .populate("additionalServices", "name description totalAmount")
+            .populate("customer", "name email role")
+            .populate("quotation", "quotationNumber status")
+            .populate("payment")
+            .populate("courierDetails");
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Order not found for this hospital",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            hospital: {
+                id: hospital._id,
+                name: hospital.name,
+                branch: hospital.branch,
+                phone: hospital.phone,
+                email: hospital.email,
+            },
+            order,
+        });
+    } catch (error) {
+        console.error("Error fetching order by hospitalId + orderId:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error fetching order",
+            error: error.message,
+        });
+    }
+});
+
+
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments, assignStaffByElora, getAllOrdersByHospitalId, getOrderByHospitalIdOrderId }
