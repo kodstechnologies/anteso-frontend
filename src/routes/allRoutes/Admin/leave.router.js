@@ -10,5 +10,7 @@ router.delete('/delete/:id', leaveController.deleteLeaveById)
 // technician
 router.post('/apply-for-leave/:technicianId', leaveController.applyForLeave)
 router.get('/get-all-leaves/:technicianId', leaveController.getAllLeavesByCustomerId)
+router.post('/approve-leave/:employeeId/:leaveId',leaveController.approveLeave)
+router.post('/reject-leave/:employeeId/:leaveId',leaveController.rejectLeave)
 
 export default router

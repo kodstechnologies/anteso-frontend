@@ -1811,7 +1811,7 @@ const addByHospitalId = asyncHandler(async (req, res) => {
         newEnquiry = await Enquiry.findById(newEnquiry._id)
             .populate("services")
             .populate("additionalServices")
-            .populate("hospital")   
+            .populate("hospital")
 
         return res
             .status(201)
@@ -2344,6 +2344,65 @@ const getEnquiryDetailsById = async (req, res) => {
 // };
 
 
+
+
+// const getByHospitalIdEnquiryId = async (req, res) => {
+//     try {
+//         const { enquiryId, hospitalId } = req.params;
+
+//         if (!enquiryId || !hospitalId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Enquiry ID and Hospital ID are required"
+//             });
+//         }
+
+//         const enquiry = await Enquiry.findOne({
+//             _id: enquiryId,
+//             hospital: hospitalId
+//         })
+//             .populate({
+//                 path: "hospital",
+//                 model: "Hospital",
+//                 select: "name email address phone gstNo branch"
+//             })
+//             .populate({
+//                 path: "services",
+//                 model: "Service",
+//                 select: "machineType equipmentNo machineModel serialNumber remark workTypeDetails"
+//             })
+//             .populate({
+//                 path: "additionalServices",
+//                 model: "AdditionalService",
+//                 select: "name description totalAmount"
+//             });
+
+//         if (!enquiry) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "Enquiry not found for this hospital"
+//             });
+//         }
+
+//         return res.status(200).json({
+//             success: true,
+//             enquiryId: enquiry.enquiryId,
+//             hospitalName: enquiry.hospitalName,
+//             hospital: enquiry.hospital,
+//             services: enquiry.services, // now populated with full details
+//             additionalServices: enquiry.additionalServices,
+//             specialInstructions: enquiry.specialInstructions,
+//             enquiryStatus: enquiry.enquiryStatus,
+//             enquiryStatusDates: enquiry.enquiryStatusDates,
+//         });
+//     } catch (err) {
+//         console.error("Error fetching enquiry details:", err);
+//         return res.status(500).json({
+//             success: false,
+//             message: err?.message || "Server error"
+//         });
+//     }
+// };
 const getByHospitalIdEnquiryId = async (req, res) => {
     try {
         const { enquiryId, hospitalId } = req.params;
@@ -2351,56 +2410,82 @@ const getByHospitalIdEnquiryId = async (req, res) => {
         if (!enquiryId || !hospitalId) {
             return res.status(400).json({
                 success: false,
-                message: "Enquiry ID and Hospital ID are required"
+                message: "Enquiry ID and Hospital ID are required",
             });
         }
 
         const enquiry = await Enquiry.findOne({
             _id: enquiryId,
-            hospital: hospitalId
+            hospital: hospitalId,
         })
             .populate({
                 path: "hospital",
                 model: "Hospital",
-                select: "name email address phone gstNo branch"
+                select: "name email address phone gstNo branch",
             })
             .populate({
                 path: "services",
                 model: "Service",
-                select: "machineType equipmentNo machineModel serialNumber remark workTypeDetails"
+                select:
+                    "machineType equipmentNo machineModel serialNumber remark workTypeDetails",
             })
             .populate({
                 path: "additionalServices",
                 model: "AdditionalService",
-                select: "name description totalAmount"
+                select: "name description totalAmount",
             });
 
         if (!enquiry) {
             return res.status(404).json({
                 success: false,
-                message: "Enquiry not found for this hospital"
+                message: "Enquiry not found for this hospital",
             });
         }
 
         return res.status(200).json({
             success: true,
             enquiryId: enquiry.enquiryId,
+
+            // 🔹 Hospital info (from enquiry itself)
             hospitalName: enquiry.hospitalName,
+            fullAddress: enquiry.fullAddress,
+            city: enquiry.city,
+            district: enquiry.district,
+            state: enquiry.state,
+            pinCode: enquiry.pinCode,
+            branch: enquiry.branch,
+            contactPerson: enquiry.contactPerson,
+            emailAddress: enquiry.emailAddress,
+            contactNumber: enquiry.contactNumber,
+            designation: enquiry.designation,
+
+            // 🔹 Hospital reference (populated)
             hospital: enquiry.hospital,
-            services: enquiry.services, // now populated with full details
+
+            // 🔹 Linked services & additional services
+            services: enquiry.services,
             additionalServices: enquiry.additionalServices,
+
+            // 🔹 Extra details
             specialInstructions: enquiry.specialInstructions,
             enquiryStatus: enquiry.enquiryStatus,
             enquiryStatusDates: enquiry.enquiryStatusDates,
+            quotationStatus: enquiry.quotationStatus,
+            subtotalAmount: enquiry.subtotalAmount,
+            discount: enquiry.discount,
+            grandTotal: enquiry.grandTotal,
         });
     } catch (err) {
         console.error("Error fetching enquiry details:", err);
         return res.status(500).json({
             success: false,
-            message: err?.message || "Server error"
+            message: err?.message || "Server error",
         });
     }
 };
+
+
+
 
 const getAllEnquiriesByHospitalId = asyncHandler(async (req, res) => {
     try {

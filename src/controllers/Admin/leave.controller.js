@@ -143,5 +143,107 @@ const getAllLeavesByCustomerId = asyncHandler(async (req, res) => {
 });
 
 
-export default { add, getLeaveById, getAllLeaves, updateLeaveById, deleteLeaveById, applyForLeave, getAllLeavesByCustomerId }
+const approveLeave = asyncHandler(async (req, res) => {
+    try {
+        const { employeeId, leaveId } = req.params;
+
+        const leave = await Leave.findOne({ _id: leaveId, employee: employeeId });
+        if (!leave) {
+            return res.status(404).json({
+                success: false,
+                message: "Leave request not found for this employee",
+            });
+        }
+
+        // Update status to Approved
+        leave.status = "Approved";
+        await leave.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Leave approved successfully",
+            data: leave.status,
+        });
+    } catch (error) {
+        console.error("Approve Leave Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error approving leave",
+            error: error.message,
+        });
+    }
+});
+
+// const rejectLeave = asyncHandler(async (req, res) => {
+//     try {
+//         const { employeeId, leaveId } = req.params;
+
+//         const leave = await Leave.findOne({ _id: leaveId, employee: employeeId });
+//         if (!leave) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "Leave request not found for this employee",
+//             });
+//         }
+
+//         // Update status to Rejected
+//         leave.status = "Rejected";
+//         await leave.save();
+
+//         res.status(200).json({
+//             success: true,
+//             message: "Leave rejected successfully",
+//             data: leave,
+//         });
+//     } catch (error) {
+//         console.error("Reject Leave Error:", error);
+//         res.status(500).json({
+//             success: false,
+//             message: "Error rejecting leave",
+//             error: error.message,
+//         });
+//     }
+// });
+
+const rejectLeave = asyncHandler(async (req, res) => {
+    try {
+        const { employeeId, leaveId } = req.params;
+
+        const leave = await Leave.findOne({ _id: leaveId, employee: employeeId });
+        if (!leave) {
+            return res.status(404).json({
+                success: false,
+                message: "Leave request not found for this employee",
+            });
+        }
+
+        // ❌ If already Approved, don't allow rejection
+        if (leave.status === "Approved") {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot reject an already approved leave",
+            });
+        }
+
+        // ✅ Update status to Rejected (only if Pending or already Rejected)
+        leave.status = "Rejected";
+        await leave.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Leave rejected successfully",
+            data: leave,
+        });
+    } catch (error) {
+        console.error("Reject Leave Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error rejecting leave",
+            error: error.message,
+        });
+    }
+});
+
+
+export default { add, getLeaveById, getAllLeaves, updateLeaveById, deleteLeaveById, applyForLeave, getAllLeavesByCustomerId, approveLeave, rejectLeave }
 // export default {createLeave,getLeavesByEmployeeId,updateLeaveByEmployee,deleteLeaveByEmployee}

@@ -3,7 +3,6 @@ import EnquiryController from '../../../controllers/Admin/enquiry.controller.js'
 import upload from '../../../middlewares/upload.js'
 const router = Router();
 
-
 //enquiry creation by open form
 router.post('/add', EnquiryController.add) //--1--done
 router.get('/get-all', EnquiryController.getAll)
