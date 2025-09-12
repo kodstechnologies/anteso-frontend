@@ -682,10 +682,16 @@ const startOrder = asyncHandler(async (req, res) => {
     const order = await orderModel.findOne({
         _id: orderId,
         // status: 'assigned' // uncomment if needed
-    }).populate({
-        path: 'services',
-        model: 'Service'
-    });
+    })
+        .populate({
+            path: 'services',
+            model: 'Service'
+        })
+        .populate({
+            path: 'customer',
+            model: 'User',
+            select: 'name email phone role' // only required fields
+        });
 
     if (!order) {
         return res.status(404).json({ message: 'Order not found' });
@@ -705,7 +711,6 @@ const startOrder = asyncHandler(async (req, res) => {
     // Step 3: Return order
     res.status(200).json(order);
 });
-
 //mobile api--previously created api -not using this one
 const updateOrderDetails = asyncHandler(async (req, res) => {
     const { orderId, technicianId } = req.params;
@@ -1815,6 +1820,7 @@ const assignStaffByElora = asyncHandler(async (req, res) => {
 const getAllOrdersByHospitalId = asyncHandler(async (req, res) => {
     try {
         const { hospitalId } = req.params;
+        console.log("🚀 ~ hospitalId:", hospitalId)
 
         if (!hospitalId) {
             return res.status(400).json({
@@ -1832,14 +1838,15 @@ const getAllOrdersByHospitalId = asyncHandler(async (req, res) => {
             });
         }
 
-        const orders = await orderModel.find({ hospitalName: hospital.name })
+        // ✅ Use hospital ObjectId instead of hospitalName
+        const orders = await orderModel.find({ hospital: hospitalId })
             .populate("services", "machineType equipmentNo machineModel serialNumber remark workTypeDetails")
             .populate("additionalServices", "name description totalAmount")
             .populate("customer", "name email role")
             .populate("quotation", "quotationNumber status")
             .populate("payment")
             .populate("courierDetails");
-        console.log("🚀 ~ orders:", orders)
+
 
         if (!orders || orders.length === 0) {
             return res.status(404).json({
@@ -1874,6 +1881,8 @@ const getAllOrdersByHospitalId = asyncHandler(async (req, res) => {
 const getOrderByHospitalIdOrderId = asyncHandler(async (req, res) => {
     try {
         const { hospitalId, orderId } = req.params;
+        console.log("🚀 ~ orderId:", orderId);
+        console.log("🚀 ~ hospitalId:", hospitalId);
 
         if (!hospitalId || !orderId) {
             return res.status(400).json({
@@ -1891,17 +1900,18 @@ const getOrderByHospitalIdOrderId = asyncHandler(async (req, res) => {
             });
         }
 
-        // 2️⃣ Find order by _id AND hospitalName match
+        // Find order by _id AND hospital (ObjectId reference)
         const order = await orderModel.findOne({
             _id: orderId,
-            hospitalName: hospital.name,
+            hospital: hospitalId,   // ✅ FIXED
         })
             .populate("services", "machineType equipmentNo machineModel serialNumber remark workTypeDetails")
             .populate("additionalServices", "name description totalAmount")
             .populate("customer", "name email role")
             .populate("quotation", "quotationNumber status")
             .populate("payment")
-            .populate("courierDetails");
+            .populate("courierDetails")
+            .populate("hospital", "name branch phone email"); // 👉 optional: populate hospital
 
         if (!order) {
             return res.status(404).json({
@@ -1912,13 +1922,6 @@ const getOrderByHospitalIdOrderId = asyncHandler(async (req, res) => {
 
         res.status(200).json({
             success: true,
-            hospital: {
-                id: hospital._id,
-                name: hospital.name,
-                branch: hospital.branch,
-                phone: hospital.phone,
-                email: hospital.email,
-            },
             order,
         });
     } catch (error) {
@@ -1930,6 +1933,5 @@ const getOrderByHospitalIdOrderId = asyncHandler(async (req, res) => {
         });
     }
 });
-
 
 export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments, assignStaffByElora, getAllOrdersByHospitalId, getOrderByHospitalIdOrderId }

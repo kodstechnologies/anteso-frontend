@@ -825,19 +825,16 @@ const rejectQuotation = asyncHandler(async (req, res) => {
         quotation.quotationStatus = "Rejected";
         quotation.rejectionRemark = rejectionRemark;
         await quotation.save();
-
         // 4️⃣ Find and update the corresponding enquiry
         const enquiry = await Enquiry.findOne({
             _id: enquiryId,
             hospital: hospitalId   // changed from "customer: customerId"
         });
-
         if (!enquiry) {
             return res.status(404).json({
                 message: "Related enquiry not found for the hospital"
             });
         }
-
         enquiry.enquiryStatus = "Rejected";
         enquiry.quotationStatus = "Rejected";
         await enquiry.save();
@@ -846,7 +843,6 @@ const rejectQuotation = asyncHandler(async (req, res) => {
             message: "Quotation rejected successfully",
             quotation
         });
-
     } catch (error) {
         console.error("Error in rejectQuotation:", error);
         res.status(500).json({
@@ -1030,7 +1026,6 @@ const getQuotationPdfUrl = asyncHandler(async (req, res) => {
                 message: "Quotation PDF not found for the given hospital and enquiry",
             });
         }
-
         res.status(200).json({
             success: true,
             pdfUrl: quotation.pdfUrl,

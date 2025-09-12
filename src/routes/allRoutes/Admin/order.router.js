@@ -86,6 +86,8 @@ router.patch(
 
 router.get('/get-orders-by-hospitalId/:hospitalId',orderController.getAllOrdersByHospitalId)
 // router.get('/get-by-id/:hospitalId/:orderId',orderController.get)
+router.get('/get-order-by-hospitalId-orderId/:hospitalId/:orderId',orderController.getOrderByHospitalIdOrderId)
+
 
 router.put('/assign-staff-by-elora/:orderId/:serviceId/:officeStaffId/:workType/:status',orderController.assignStaffByElora)
 

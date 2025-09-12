@@ -59,7 +59,7 @@ const employeeSchema = new Schema({
         unique: true,
         index: true,
     },
-    status: {   
+    status: {
         type: String,
         enum: ['active', 'inactive'],
         default: 'active',
@@ -69,7 +69,7 @@ const employeeSchema = new Schema({
         enum: ['office-staff', 'engineer'],
         required: true,
     },
-    designation: {  
+    designation: {
         type: String,
         required: true,
         trim: true,
@@ -87,6 +87,9 @@ const employeeSchema = new Schema({
         type: Number,
         required: true,
         min: 0,
+    },
+    password: {
+        type: String
     },
     tools: [toolSubSchema], // Embedded tool subdocuments
     // tools: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tool" }]

@@ -83,10 +83,93 @@ import { uploadToS3 } from "../../utils/s3Upload.js";
 //     }
 // });
 
+
+
+// const add = asyncHandler(async (req, res) => {
+//     try {
+//         console.log("Employee req.body:", req.body);
+//         const {
+//             name,
+//             phone,
+//             email,
+//             technicianType,
+//             status,
+//             tools,
+//             designation,
+//             department,
+//             dateOfJoining,
+//             workingDays
+//         } = req.body;
+//         console.log("🚀 ~ technicianType:", technicianType)
+
+//         // Basic validation
+//         if (!name || !phone || !email || !technicianType ||
+//             !designation || !department || !dateOfJoining || workingDays === undefined) {
+//             throw new ApiError(400, "All required fields must be provided");
+//         }
+
+//         // Engineer-specific tool validation
+//         if (technicianType === "engineer") {
+//             if (!tools || !Array.isArray(tools) || tools.length === 0) {
+//                 throw new ApiError(400, "Engineer must be assigned at least one tool.");
+//             }
+
+//             // 🔹 Check each tool's status before assigning
+//             for (const t of tools) {
+//                 const toolDoc = await Tool.findById(t.toolId);
+
+//                 if (!toolDoc) {
+//                     throw new ApiError(404, `Tool with ID ${t.toolId} not found`);
+//                 }
+
+//                 if (toolDoc.toolStatus === "assigned") {
+//                     throw new ApiError(400, `Tool ${toolDoc.nomenclature} (Serial: ${toolDoc.SrNo}) is already assigned to another employee`);
+//                 }
+//             }
+//         }
+
+//         // Create new employee
+//         const employee = new Employee({
+//             name,
+//             phone,
+//             email,
+//             technicianType,
+//             status,
+//             designation,
+//             department,
+//             dateOfJoining,
+//             workingDays,
+//             tools: technicianType === "engineer" ? tools : [],
+//         });
+
+//         await employee.save();
+
+//         // 🔹 Update tool status if assigned to engineer
+//         if (technicianType === "engineer") {
+//             for (const t of tools) {
+//                 await Tool.findByIdAndUpdate(
+//                     t.toolId,
+//                     {
+//                         toolStatus: "assigned",
+//                         technician: employee._id
+//                     },
+//                     { new: true }
+//                 );
+//             }
+//         }
+
+//         console.log("🚀 ~ employee:", employee);
+
+//         return res.status(201).json(
+//             new ApiResponse(201, employee, "Employee created successfully")
+//         );
+//     } catch (error) {
+//         throw new ApiError(500, error.message || "Failed to create employee");
+//     }
+// });
+
 const add = asyncHandler(async (req, res) => {
     try {
-        console.log("Employee req.body:", req.body);
-
         const {
             name,
             phone,
@@ -97,14 +180,19 @@ const add = asyncHandler(async (req, res) => {
             designation,
             department,
             dateOfJoining,
-            workingDays
+            workingDays,
+            password,
         } = req.body;
-        console.log("🚀 ~ technicianType:", technicianType)
 
         // Basic validation
         if (!name || !phone || !email || !technicianType ||
             !designation || !department || !dateOfJoining || workingDays === undefined) {
             throw new ApiError(400, "All required fields must be provided");
+        }
+
+        // 🔹 Password required only for office-staff
+        if (technicianType === "office-staff" && !password) {
+            throw new ApiError(400, "Password is required for office staff");
         }
 
         // Engineer-specific tool validation
@@ -113,22 +201,19 @@ const add = asyncHandler(async (req, res) => {
                 throw new ApiError(400, "Engineer must be assigned at least one tool.");
             }
 
-            // 🔹 Check each tool's status before assigning
             for (const t of tools) {
                 const toolDoc = await Tool.findById(t.toolId);
-
                 if (!toolDoc) {
                     throw new ApiError(404, `Tool with ID ${t.toolId} not found`);
                 }
-
                 if (toolDoc.toolStatus === "assigned") {
-                    throw new ApiError(400, `Tool ${toolDoc.nomenclature} (Serial: ${toolDoc.SrNo}) is already assigned to another employee`);
+                    throw new ApiError(400, `Tool ${toolDoc.nomenclature} (Serial: ${toolDoc.SrNo}) is already assigned`);
                 }
             }
         }
 
-        // Create new employee
-        const employee = new Employee({
+        // 🔹 Only office-staff password is saved (no hashing)
+        const employeeData = {
             name,
             phone,
             email,
@@ -139,33 +224,31 @@ const add = asyncHandler(async (req, res) => {
             dateOfJoining,
             workingDays,
             tools: technicianType === "engineer" ? tools : [],
-        });
+        };
+        if (technicianType === "office-staff") {
+            employeeData.password = password;
+        }
 
+        // Create new employee
+        const employee = new Employee(employeeData);
         await employee.save();
 
-        // 🔹 Update tool status if assigned to engineer
+        // Update tool status if assigned
         if (technicianType === "engineer") {
             for (const t of tools) {
-                await Tool.findByIdAndUpdate(
-                    t.toolId,
-                    {
-                        toolStatus: "assigned",
-                        technician: employee._id
-                    },
-                    { new: true }
-                );
+                await Tool.findByIdAndUpdate(t.toolId, {
+                    toolStatus: "assigned",
+                    technician: employee._id
+                }, { new: true });
             }
         }
 
-        console.log("🚀 ~ employee:", employee);
-
-        return res.status(201).json(
-            new ApiResponse(201, employee, "Employee created successfully")
-        );
+        return res.status(201).json(new ApiResponse(201, employee, "Employee created successfully"));
     } catch (error) {
         throw new ApiError(500, error.message || "Failed to create employee");
     }
 });
+
 
 //not updated
 const getById = asyncHandler(async (req, res) => {

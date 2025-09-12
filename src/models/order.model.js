@@ -30,7 +30,7 @@ const orderSchema = new mongoose.Schema({
     customer: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        // required: true,
     },
     urgency: { type: String, enum: ['normal', 'tatkal'] },
     //  Reference to the  Service model
@@ -60,6 +60,10 @@ const orderSchema = new mongoose.Schema({
         type: Schema.Types.ObjectId,
         ref: 'Quotation',
         // required: true,
+    },
+    hospital: {
+        type: Schema.Types.ObjectId,
+        ref: "Hospital",
     },
     payment:
     {
