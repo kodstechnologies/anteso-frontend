@@ -1636,6 +1636,101 @@ const createDirectOrder = asyncHandler(async (req, res) => {
 //     }
 // });
 
+
+const addByHospitalId = asyncHandler(async (req, res) => {
+    try {
+        const { hospitalId } = req.params;
+        if (!hospitalId) throw new ApiError(400, "Hospital ID is required");
+
+        // 🔍 Check if hospital exists
+        const existingHospital = await Hospital.findById(hospitalId);
+        if (!existingHospital) throw new ApiError(404, "Hospital not found");
+
+        let value = { ...req.body };
+
+        // Parse JSON fields safely
+        if (value.services && typeof value.services === "string") {
+            try { value.services = JSON.parse(value.services); } catch { value.services = []; }
+        }
+        if (value.additionalServices && typeof value.additionalServices === "string") {
+            try { value.additionalServices = JSON.parse(value.additionalServices); } catch { value.additionalServices = {}; }
+        }
+
+        // ✅ Attach hospital
+        value.hospital = hospitalId;
+
+        // ✅ Attach customer if passed (optional)
+        if (req.body.customerId) {
+            value.customer = req.body.customerId;
+        }
+
+        // ✅ Single file upload
+        if (req.file) {
+            const { url } = await uploadToS3(req.file);
+            value.attachment = url;
+        }
+
+        // Create services
+        let serviceIds = [];
+        if (Array.isArray(value.services) && value.services.length > 0) {
+            const transformedServices = value.services.map((s) => ({
+                machineType: s.machineType,
+                equipmentNo: s.equipmentNo,
+                machineModel: s.machineModel,
+                serialNumber: s.serialNumber || "",
+                remark: s.remark || "",
+                workTypeDetails: (s.workType || []).map((wt) => ({
+                    workType: wt,
+                    status: "pending",
+                })),
+            }));
+            const createdServices = await Service.insertMany(transformedServices);
+            serviceIds = createdServices.map((s) => s._id);
+        }
+
+        // Create additional services
+        let additionalServiceIds = [];
+        if (value.additionalServices && typeof value.additionalServices === "object" && Object.keys(value.additionalServices).length > 0) {
+            const createdAdditionalServices = await AdditionalService.insertMany(
+                Object.entries(value.additionalServices).map(([name, data]) => ({
+                    name,
+                    description: data.description || "",
+                    totalAmount: data.totalAmount || 0,
+                }))
+            );
+            additionalServiceIds = createdAdditionalServices.map((a) => a._id);
+        }
+
+        // Final enquiry creation
+        let newEnquiry = await Enquiry.create({
+            ...value,
+            services: serviceIds,
+            additionalServices: additionalServiceIds,
+            enquiryStatusDates: { enquiredOn: new Date() },
+        });
+
+        await Hospital.findByIdAndUpdate(
+            hospitalId,
+            { $push: { enquiries: newEnquiry._id } },
+            { new: true }
+        );
+
+        // ✅ Populate services & additionalServices before sending response
+        newEnquiry = await Enquiry.findById(newEnquiry._id)
+            .populate("services")
+            .populate("additionalServices");
+
+        return res
+            .status(201)
+            .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
+    } catch (error) {
+        console.error("Create Enquiry Error:", error);
+        throw new ApiError(500, "Failed to create enquiry", [error.message]);
+    }
+});
+
+
+
 // const addByCustomerId = asyncHandler(async (req, res) => {
 //     try {
 //         const { customerId } = req.params;
@@ -1818,93 +1913,93 @@ const createDirectOrder = asyncHandler(async (req, res) => {
 // });
 
 
-const addByHospitalId = asyncHandler(async (req, res) => {
-    try {
-        const { hospitalId } = req.params;
-        if (!hospitalId) throw new ApiError(400, "Hospital ID is required");
+// const addByHospitalId = asyncHandler(async (req, res) => {
+//     try {
+//         const { hospitalId } = req.params;
+//         if (!hospitalId) throw new ApiError(400, "Hospital ID is required");
 
-        // 🔍 Check if hospital exists
-        const existingHospital = await Hospital.findById(hospitalId);
-        if (!existingHospital) throw new ApiError(404, "Hospital not found");
+//         // 🔍 Check if hospital exists
+//         const existingHospital = await Hospital.findById(hospitalId);
+//         if (!existingHospital) throw new ApiError(404, "Hospital not found");
 
-        let value = { ...req.body };
+//         let value = { ...req.body };
 
-        // Parse JSON fields safely
-        if (value.services && typeof value.services === "string") {
-            try { value.services = JSON.parse(value.services); } catch { value.services = []; }
-        }
-        if (value.additionalServices && typeof value.additionalServices === "string") {
-            try { value.additionalServices = JSON.parse(value.additionalServices); } catch { value.additionalServices = {}; }
-        }
+//         // Parse JSON fields safely
+//         if (value.services && typeof value.services === "string") {
+//             try { value.services = JSON.parse(value.services); } catch { value.services = []; }
+//         }
+//         if (value.additionalServices && typeof value.additionalServices === "string") {
+//             try { value.additionalServices = JSON.parse(value.additionalServices); } catch { value.additionalServices = {}; }
+//         }
 
-        // ✅ Attach hospital
-        value.hospital = hospitalId;
+//         // ✅ Attach hospital
+//         value.hospital = hospitalId;
 
-        // ✅ Attach customer if passed (optional)
-        if (req.body.customerId) {
-            value.customer = req.body.customerId;
-        }
+//         // ✅ Attach customer if passed (optional)
+//         if (req.body.customerId) {
+//             value.customer = req.body.customerId;
+//         }
 
-        // ✅ Single file upload
-        if (req.file) {
-            const { url } = await uploadToS3(req.file);
-            value.attachment = url;
-        }
+//         // ✅ Single file upload
+//         if (req.file) {
+//             const { url } = await uploadToS3(req.file);
+//             value.attachment = url;
+//         }
 
-        // Create services
-        let serviceIds = [];
-        if (Array.isArray(value.services) && value.services.length > 0) {
-            const transformedServices = value.services.map((s) => ({
-                machineType: s.machineType,
-                equipmentNo: s.equipmentNo,
-                machineModel: s.machineModel,
-                serialNumber: s.serialNumber || "",
-                remark: s.remark || "",
-                workTypeDetails: (s.workType || []).map((wt) => ({
-                    workType: wt,
-                    status: "pending",
-                })),
-            }));
-            const createdServices = await Service.insertMany(transformedServices);
-            serviceIds = createdServices.map((s) => s._id);
-        }
+//         // Create services
+//         let serviceIds = [];
+//         if (Array.isArray(value.services) && value.services.length > 0) {
+//             const transformedServices = value.services.map((s) => ({
+//                 machineType: s.machineType,
+//                 equipmentNo: s.equipmentNo,
+//                 machineModel: s.machineModel,
+//                 serialNumber: s.serialNumber || "",
+//                 remark: s.remark || "",
+//                 workTypeDetails: (s.workType || []).map((wt) => ({
+//                     workType: wt,
+//                     status: "pending",
+//                 })),
+//             }));
+//             const createdServices = await Service.insertMany(transformedServices);
+//             serviceIds = createdServices.map((s) => s._id);
+//         }
 
-        // Create additional services
-        let additionalServiceIds = [];
-        if (value.additionalServices && typeof value.additionalServices === "object" && Object.keys(value.additionalServices).length > 0) {
-            const createdAdditionalServices = await AdditionalService.insertMany(
-                Object.entries(value.additionalServices).map(([name, data]) => ({
-                    name,
-                    description: data.description || "",
-                    totalAmount: data.totalAmount || 0,
-                }))
-            );
-            additionalServiceIds = createdAdditionalServices.map((a) => a._id);
-        }
+//         // Create additional services
+//         let additionalServiceIds = [];
+//         if (value.additionalServices && typeof value.additionalServices === "object" && Object.keys(value.additionalServices).length > 0) {
+//             const createdAdditionalServices = await AdditionalService.insertMany(
+//                 Object.entries(value.additionalServices).map(([name, data]) => ({
+//                     name,
+//                     description: data.description || "",
+//                     totalAmount: data.totalAmount || 0,
+//                 }))
+//             );
+//             additionalServiceIds = createdAdditionalServices.map((a) => a._id);
+//         }
 
-        // Final enquiry creation
-        const newEnquiry = await Enquiry.create({
-            ...value,
-            services: serviceIds,
-            additionalServices: additionalServiceIds,
-            enquiryStatusDates: { enquiredOn: new Date() },
-        });
+//         // Final enquiry creation
+//         const newEnquiry = await Enquiry.create({
+//             ...value,
+//             services: serviceIds,
+//             additionalServices: additionalServiceIds,
+//             enquiryStatusDates: { enquiredOn: new Date() },
+//         });
 
-        // 🔗 Link enquiry to hospital
-        await Hospital.findByIdAndUpdate(
-            hospitalId,
-            { $push: { enquiries: newEnquiry._id } },
-            { new: true }
-        );
+//         // 🔗 Link enquiry to hospital
+//         await Hospital.findByIdAndUpdate(
+//             hospitalId,
+//             { $push: { enquiries: newEnquiry._id } },
+//             { new: true }
+//         );
 
-        return res
-            .status(201)
-            .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
-    } catch (error) {
-        console.error("Create Enquiry Error:", error);
-        throw new ApiError(500, "Failed to create enquiry", [error.message]);
-    }
-});
+//         return res
+//             .status(201)
+//             .json(new ApiResponse(201, newEnquiry, "Enquiry created successfully"));
+//     } catch (error) {
+//         console.error("Create Enquiry Error:", error);
+//         throw new ApiError(500, "Failed to create enquiry", [error.message]);
+//     }
+// });
 
 const getAll = asyncHandler(async (req, res) => {
     try {
@@ -2217,6 +2312,7 @@ const getByHospitalIdEnquiryId = async (req, res) => {
 const getAllEnquiriesByHospitalId = asyncHandler(async (req, res) => {
     try {
         const { hospitalId } = req.params;
+        console.log("🚀 ~ hospitalId:", hospitalId)
 
         if (!hospitalId) {
             throw new ApiError(400, "Hospital ID is required");
@@ -2226,6 +2322,7 @@ const getAllEnquiriesByHospitalId = asyncHandler(async (req, res) => {
             .populate("hospital", "name email address")
             .populate("services", "machineType equipmentNo machineModel serialNumber totalAmount status")
             .populate("additionalServices", "name");
+        console.log("🚀 ~ enquiries:", enquiries)
 
         if (!enquiries || enquiries.length === 0) {
             throw new ApiError(404, "No enquiries found for this hospital");
