@@ -101,18 +101,37 @@ const allOrdersWithClientName = asyncHandler(async (req, res) => {
         }
 
         // 2️⃣ Get unique non-empty leadOwner IDs
-        const leadOwnerIds = [...new Set(orders.map(o => o.leadOwner).filter(Boolean))];
+        // const leadOwnerIds = [...new Set(orders.map(o => o.leadOwner).filter(Boolean))];
 
-        // 3️⃣ Fetch users for these leadOwners
-        const users = await User.find({ _id: { $in: leadOwnerIds } })
+        // // 3️⃣ Fetch users for these leadOwners
+        // const users = await User.find({ _id: { $in: leadOwnerIds } })
+        //     .select("_id name role email")
+        //     .lean();
+
+        // // Build lookup map
+        // const userMap = {};
+        // users.forEach(u => {
+        //     userMap[u._id.toString()] = u;
+        // });
+        // unique names
+        const leadOwnerNames = [...new Set(orders.map(o => o.leadOwner).filter(Boolean))];
+
+        // query by name instead of _id
+        const users = await User.find({ name: { $in: leadOwnerNames } })
             .select("_id name role email")
             .lean();
 
-        // Build lookup map
         const userMap = {};
         users.forEach(u => {
-            userMap[u._id.toString()] = u;
+            userMap[u.name] = u; // map by name
         });
+
+        orders = orders.filter(order => {
+            if (!order.leadOwner) return true;
+            const owner = userMap[order.leadOwner];
+            return owner && owner.role !== "Dealer";
+        });
+
 
         // 4️⃣ Filter orders
         orders = orders.filter(order => {
@@ -492,4 +511,46 @@ const editPaymentById = asyncHandler(async (req, res) => {
 });
 
 
-export default { addPayment, allOrdersWithClientName, getTotalAmount, getAllPayments, getPaymentsBySrf, getPaymentById, searchBySRF, deletePayment, editPaymentById };
+
+const getPaymentDetailsByOrderId = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+
+        // ✅ Validate ObjectId
+        if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+            return res.status(400).json({ message: "Invalid orderId" });
+        }
+
+        // ✅ Check if order exists
+        const order = await Order.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        // ✅ Get payments for this order
+        const payments = await Payment.find({ orderId })
+            .populate("orderId", "srfNumber hospitalName contactPersonName totalAmount") // populate useful fields
+            .sort({ createdAt: -1 }); // latest first
+
+        if (!payments || payments.length === 0) {
+            return res.status(404).json({ message: "No payments found for this order" });
+        }
+
+        return res.status(200).json({
+            success: true,
+            orderId,
+            totalPayments: payments.length,
+            payments,
+        });
+
+    } catch (error) {
+        console.error("❌ Error in getPaymentDetailsByOrderId:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching payment details",
+            error: error.message,
+        });
+    }
+};
+
+export default { addPayment, allOrdersWithClientName, getTotalAmount, getAllPayments, getPaymentsBySrf, getPaymentById, searchBySRF, deletePayment, editPaymentById, getPaymentDetailsByOrderId };

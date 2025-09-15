@@ -40,6 +40,12 @@ router.patch(
     orderController.updateServiceWorkType
 );
 
+router.get(
+    "/get-report-numbers/:orderId/:serviceId/:technicianId/:workType",
+    orderController.getReportNumbers
+);
+
+
 //for mobile--prev created
 // router.patch('/update-services/:technicianId/:orderId', orderController.updateOrderServicesByTechnician)
 //web
@@ -56,7 +62,7 @@ router.put('/assign-to-office-staff/:orderId/:serviceId/:officeStaffId/:workType
 
 // params: technicianId, orderId, serviceId, status, optional remark
 router.post(
-    "/completed-status-report/:technicianId/:orderId/:serviceId/:workType/:status",
+    "/completed-status-report/:staffId/:orderId/:serviceId/:workType/:status/:reportType",
     upload.single("file"), // "file" must match your input namer
     orderController.completedStatusAndReport
 );
@@ -84,11 +90,18 @@ router.patch(
 );
 
 
-router.get('/get-orders-by-hospitalId/:hospitalId',orderController.getAllOrdersByHospitalId)
+// router.
+router.get('/get-orders-by-hospitalId/:hospitalId', orderController.getAllOrdersByHospitalId)
 // router.get('/get-by-id/:hospitalId/:orderId',orderController.get)
-router.get('/get-order-by-hospitalId-orderId/:hospitalId/:orderId',orderController.getOrderByHospitalIdOrderId)
+router.get('/get-order-by-hospitalId-orderId/:hospitalId/:orderId', orderController.getOrderByHospitalIdOrderId)
 
 
-router.put('/assign-staff-by-elora/:orderId/:serviceId/:officeStaffId/:workType/:status',orderController.assignStaffByElora)
+router.put('/assign-staff-by-elora/:orderId/:serviceId/:officeStaffId/:workType/:status', orderController.assignStaffByElora)
+
+//mobile APIs
+router.get('/get-qa-report/:technicianId', orderController.getQaReportsByTechnician)
+router.get('/get-report-by-id/:orderId/:serviceId/:qaReportId', orderController.getReportById)
+router.patch('/accept-report/:orderId/:serviceId/:qaReportId', orderController.acceptQAReport)
+router.patch('/reject-report/:orderId/:serviceId/:qaReportId', orderController.rejectQAReport)
 
 export default router

@@ -9,6 +9,13 @@ const eloraSchema = new Schema({
         ref: "Employee",  // Always points to Employee collection
         required: true
     },
+    reportULRNumber: {
+        type: String
+    },
+    qaTestReportNumber: {
+        type: String
+    },
+    report: { type: String }
 }, { timestamps: true });
 
 const Elora = mongoose.model("Elora", eloraSchema);

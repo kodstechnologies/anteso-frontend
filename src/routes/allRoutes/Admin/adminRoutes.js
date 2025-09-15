@@ -1,4 +1,3 @@
-import express from 'express'
 import { Router } from 'express';
 import AuthRouter from '../../allRoutes/authRouter.router.js'
 import ToolRoutes from '../Admin/tools.router.js'
@@ -24,7 +23,7 @@ import { verifyAccessToken } from '../../../middlewares/adminAuthMiddleware.js';
 import { authorizeRoles } from '../../../middlewares/authorizeRoles.js';
 const router = Router();
 router.use('/auth', AuthRouter)
-router.use(authenticate, authorizeRoles("admin", "Customer", "Technician","Employee"))
+router.use(authenticate, authorizeRoles("admin", "Customer", "Technician", "Employee", "office-staff"))
 
 router.use('/clients', ClientRoutes)
 router.use('/hospital', HospitalRoutes)
@@ -35,16 +34,13 @@ router.get('/pdf', PDFRouter)
 router.use('/tools', ToolRoutes)
 router.use('/leaves', LeaveRoutes)
 router.use('/enquiry', EnquiryRoutes)
-router.use('/technician', TechnicianRoutes)
+router.use('/technician', TechnicianRoutes) 
 router.use('/quotation', QuotationRoutes)
 router.use('/courier', CourierRoutes)
 router.use('/orders', OrderRoutes)
 
-
 router.use('/advance', AdvanceRouter)
-
 router.use('/dealers', DealerRouter)
 router.use('/payment', PaymentRouter)
-
-router.use('/invoice',InvoiceRouter)
+router.use('/invoice', InvoiceRouter)
 export default router

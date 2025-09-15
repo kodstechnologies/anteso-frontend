@@ -5,11 +5,12 @@ import { loginSchema } from "../../validators/adminValidators.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/AsyncHandler.js";
+import Employee from "../../models/technician.model.js";
 const JWT_SECRET = process.env.JWT_SECRET;
 console.log("🚀 ~ JWT_SECRET:", JWT_SECRET)
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 console.log("🚀 ~ JWT_REFRESH_SECRET:", JWT_REFRESH_SECRET)
-export const adminLogin = asyncHandler(async (req, res) => {
+const adminLogin = asyncHandler(async (req, res) => {
     // 1. Validate input
     const { error, value } = loginSchema.validate(req.body);
     if (error) {
@@ -43,7 +44,54 @@ export const adminLogin = asyncHandler(async (req, res) => {
     );
 });
 
-export const staffLogin = asyncHandler((req, res) => {
+const staffLogin = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+    console.log("🚀 ~ password:", password)
+    console.log("🚀 ~ email:", email)
+
+    if (!email || !password) {
+        throw new ApiError(400, "Email and password are required");
+    }
+
+    // 1️⃣ Find employee by email
+    const staff = await Employee.findOne({ email });
+    if (!staff) {
+        throw new ApiError(404, "Staff not found");
+    }
+
+    // 2️⃣ Check status (must be active)
+    if (staff.status !== "active") {
+        throw new ApiError(403, "Staff account is inactive. Contact admin.");
+    }
+
+    // 3️⃣ Compare password (direct compare)
+    if (staff.password !== password) {
+        throw new ApiError(401, "Invalid email or password");
+    }
+
+    // 4️⃣ Generate tokens
+    const accessToken = jwt.sign(
+        { id: staff._id, email: staff.email, role: "office-staff" },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+    );
+
+    const refreshToken = jwt.sign(
+        { id: staff._id },
+        process.env.JWT_REFRESH_SECRET,
+        { expiresIn: "7d" }
+    );
+
+    res.status(200).json(
+        new ApiResponse(
+            200,
+            { accessToken, refreshToken, staffId: staff._id, empId: staff.empId },
+            "Staff login successful"
+        )
+    );
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
     try {
 
     } catch (error) {
@@ -51,7 +99,8 @@ export const staffLogin = asyncHandler((req, res) => {
     }
 })
 
-export const signOut = asyncHandler(async (req, res) => {
+
+const signOut = asyncHandler(async (req, res) => {
     try {
         // If you were storing tokens as HTTP-only cookies from backend, clear them here:
         res.clearCookie('accessToken', { httpOnly: true, secure: true, sameSite: 'strict' });
@@ -65,3 +114,5 @@ export const signOut = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Error during signout");
     }
 });
+
+export default { adminLogin, staffLogin }

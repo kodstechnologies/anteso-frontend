@@ -11,5 +11,6 @@ router.get('/get-payment-type-by-srf/:srfNumber', PaymentController.getPaymentsB
 router.get('/get-payment-by-id/:id',PaymentController.getPaymentById)
 router.get('/search-by-srf',PaymentController.searchBySRF)
 router.delete('/delete-payment-by-id/:paymentId',PaymentController.deletePayment)
+router.get('/payment-details-by-orderId/:orderId',PaymentController.getPaymentDetailsByOrderId)
 
 export default router

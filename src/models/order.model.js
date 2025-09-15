@@ -8,7 +8,7 @@ const orderSchema = new mongoose.Schema({
     },
     leadOwner: {
         type: String,
-        // required: true
+        // required: true    
     },
     hospitalName: { type: String, required: true },
     fullAddress: { type: String, required: true },

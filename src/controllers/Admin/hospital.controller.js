@@ -5,6 +5,8 @@ import { asyncHandler } from '../../utils/AsyncHandler.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
 import { hospitalSchema } from '../../validators/hospitalValidators.js';
+import RSO from '../../models/rso.model.js'
+import Institute from '../../models/institute.model.js'
 import mongoose from 'mongoose';
 import Client from '../../models/client.model.js';
 
@@ -161,6 +163,7 @@ const deleteHospitalByClientId = asyncHandler(async (req, res) => {
 
         // Find client and hospital
         const client = await Client.findById(clientId);
+        console.log("🚀 ~ client:", client)
         if (!client || !client.hospitals.includes(hospitalId)) {
             throw new ApiError(404, 'Hospital not associated with this client');
         }

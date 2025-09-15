@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-const workTypeStatusEnum = ['pending', 'in progress', 'completed', 'generated', 'paid'];
+const workTypeStatusEnum = ['pending', 'in progress', 'complete', 'generated', 'paid'];
 const serviceNameEnum = ['QA Test', 'Elora', 'QA Raw'];
 const workTypeDetailSchema = new mongoose.Schema({
     workType: {
@@ -29,18 +29,18 @@ const workTypeDetailSchema = new mongoose.Schema({
     },
     elora: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "elora"
+        ref: "Elora"
     },
     status: { type: String, enum: workTypeStatusEnum, default: 'pending' },
     uploadFile: { type: String },
     viewFile: { type: [String], default: [] }, // array of strings    remark: { type: String }
-    report: { type: String },
-    reportULRNumber: {
-        type: String
-    },
-    qaTestReportNumber: {
-        type: String
-    }
+    // report: { type: String },
+    // reportULRNumber: {
+    //     type: String
+    // },
+    // qaTestReportNumber: {
+    //     type: String
+    // }
 }, { _id: false });
 const serviceSchema = new mongoose.Schema({
     machineType: {
