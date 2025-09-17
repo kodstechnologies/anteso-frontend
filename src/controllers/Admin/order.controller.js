@@ -2115,7 +2115,7 @@ const deleteDocument = asyncHandler(async (req, res) => {
 const assignStaffByElora = asyncHandler(async (req, res) => {
     try {
         const { orderId, serviceId, officeStaffId, workType, status } = req.params;
-
+        console.log("hi from assignStaffByElora ");
         console.log("🚀 officeStaffId:", officeStaffId);
         console.log("🚀 serviceId:", serviceId);
         console.log("🚀 orderId:", orderId);
@@ -2181,6 +2181,7 @@ const assignStaffByElora = asyncHandler(async (req, res) => {
             .json({ message: "Internal server error", error: error.message });
     }
 });
+
 
 const getAllOrdersByHospitalId = asyncHandler(async (req, res) => {
     try {
@@ -2484,4 +2485,12 @@ const rejectQAReport = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, message: "QA Report rejected", report: wt.QAtest });
 });
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments, assignStaffByElora, getAllOrdersByHospitalId, getOrderByHospitalIdOrderId, getReportNumbers, getQaReportsByTechnician, getReportById, acceptQAReport, rejectQAReport }
+const completeStatusReportForElora = asyncHandler(async (req, res) => {
+    try {
+
+    } catch (error) {
+
+    }
+})
+
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments, assignStaffByElora, getAllOrdersByHospitalId, getOrderByHospitalIdOrderId, getReportNumbers, getQaReportsByTechnician, getReportById, acceptQAReport, rejectQAReport, completeStatusReportForElora }

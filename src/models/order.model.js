@@ -45,7 +45,7 @@ const orderSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'AdditionalService'
         }
-    ],
+    ],  
     specialInstructions: { type: String },
     courierDetails: {
         type: mongoose.Schema.Types.ObjectId,
@@ -72,6 +72,9 @@ const orderSchema = new mongoose.Schema({
     },
     rawFile: { type: String },
     rawPhoto: { type: String },
+    customersPDF:{
+        type:String
+    }
 }, { timestamps: true });
 
 orderSchema.pre('save', async function (next) {

@@ -114,54 +114,91 @@ const createToolByTechnician = asyncHandler(async (req, res) => {
     }
 })
 
+// const getEngineerByTool = asyncHandler(async (req, res) => {
+//     const { id } = req.params;
+
+//     // Step 1: Get tool by ID
+//     const tool = await Tool.findById(id);
+//     if (!tool) {
+//         return res.status(404).json({ message: 'Tool not found' });
+//     }
+
+//     // Step 2: Find engineer by embedded toolId
+//     const engineer = await Employee.findOne({
+//         'tools.toolId': tool._id
+//     });
+
+//     if (!engineer) {
+//         return res.status(404).json({ message: 'Engineer not assigned to this tool' });
+//     }
+
+//     // Step 3: Find assignment info (issueDate)
+//     const assignedToolData = engineer.tools.find(
+//         t => t.toolId.toString() === tool._id.toString()
+//     );
+
+//     if (!assignedToolData) {
+//         return res.status(404).json({ message: 'Tool assignment not found in engineer data' });
+//     }
+
+//     return res.status(200).json({
+//         engineer: {
+//             _id: engineer._id,
+//             name: engineer.name,
+//             email: engineer.email,
+//             technicianType: engineer.technicianType,
+//             designation: engineer.designation,
+//             department: engineer.department,
+//         },
+//         tool: {
+//             toolId: tool._id,
+//             toolName: tool.nomenclature,
+//             serialNumber: tool.SrNo,
+//             issueDate: assignedToolData.issueDate,
+//             submitDate: tool.createdAt,
+//         },
+//     });
+// });
 
 const getEngineerByTool = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    // Step 1: Get tool by ID
-    const tool = await Tool.findById(id);
+    // Step 1: Find tool and populate engineer
+    const tool = await Tools.findById(id).populate("technician");
+
     if (!tool) {
-        return res.status(404).json({ message: 'Tool not found' });
+        return res.status(404).json({ message: "Tool not found" });
     }
 
-    // Step 2: Find engineer by embedded toolId
-    const engineer = await Employee.findOne({
-        'tools.toolId': tool._id
-    });
-
-    if (!engineer) {
-        return res.status(404).json({ message: 'Engineer not assigned to this tool' });
-    }
-
-    // Step 3: Find assignment info (issueDate)
-    const assignedToolData = engineer.tools.find(
-        t => t.toolId.toString() === tool._id.toString()
-    );
-
-    if (!assignedToolData) {
-        return res.status(404).json({ message: 'Tool assignment not found in engineer data' });
+    if (!tool.technician) {
+        return res.status(404).json({ message: "Engineer not assigned to this tool" });
     }
 
     return res.status(200).json({
         engineer: {
-            _id: engineer._id,
-            name: engineer.name,
-            email: engineer.email,
-            technicianType: engineer.technicianType,
-            designation: engineer.designation,
-            department: engineer.department,
+            _id: tool.technician._id,
+            name: tool.technician.name,
+            email: tool.technician.email,
+            technicianType: tool.technician.technicianType,
+            designation: tool.technician.designation,
+            department: tool.technician.department,
         },
         tool: {
-            toolId: tool._id,
+            toolId: tool.toolId,
             toolName: tool.nomenclature,
             serialNumber: tool.SrNo,
-            issueDate: assignedToolData.issueDate,
-            submitDate: tool.createdAt,
+            issueDate: tool.createdAt, // or keep from employee if needed
+            submitDate: tool.updatedAt,
         },
     });
 });
+const getAllTechnicians = asyncHandler(async (req, res) => {
+    try {
 
+    } catch (error) {
 
+    }
+})
 
 const getAllToolsByTechnicianId = asyncHandler(async (req, res) => {
     try {
@@ -270,5 +307,11 @@ const getToolByTechnicianAndTool = asyncHandler(async (req, res) => {
         });
     }
 });
+
+
+
+
+
+
 
 export default { create, allTools, updateById, deleteById, getById, getEngineerByTool, getAllToolsByTechnicianId, getToolByTechnicianAndTool };

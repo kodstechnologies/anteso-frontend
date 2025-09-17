@@ -1,0 +1,35 @@
+{
+  "info": {
+    "name": "Application API",
+    "_postman_id": "a1b2c3d4-e5f6-7890-1234-56789abcdef0",
+    "description": "Postman collection for Application APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Delete Application",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8000/applications/:applicationId",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "applications",
+            ":applicationId"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

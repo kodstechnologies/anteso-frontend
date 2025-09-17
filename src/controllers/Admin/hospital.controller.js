@@ -205,6 +205,7 @@ const deleteHospitalByClientId = asyncHandler(async (req, res) => {
 const getAllHospitalsByClientId = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
+        console.log("🚀 ~ id:", id)
 
         const client = await Client.findById(id).populate({
             path: 'hospitals',
@@ -213,6 +214,7 @@ const getAllHospitalsByClientId = asyncHandler(async (req, res) => {
                 { path: 'institutes' }   // Assuming field name is 'institutes' in Hospital schema
             ]
         });
+        console.log("🚀 ~ client:", client)
 
         if (!client) {
             throw new ApiError(404, 'Client not found');

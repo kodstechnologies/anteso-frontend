@@ -89,7 +89,6 @@ router.patch(
     orderController.editDocuments
 );
 
-
 // router.
 router.get('/get-orders-by-hospitalId/:hospitalId', orderController.getAllOrdersByHospitalId)
 // router.get('/get-by-id/:hospitalId/:orderId',orderController.get)

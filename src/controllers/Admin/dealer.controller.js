@@ -98,11 +98,68 @@ const getAll = asyncHandler(async (req, res) => {
         });
     }
 });
-const deleteById = asyncHandler(async () => {
+
+
+// ✅ Delete dealer by ID
+const deleteById = asyncHandler(async (req, res) => {
     try {
+        const { id } = req.params;
 
+        const dealer = await Dealer.findById(id);
+        if (!dealer) {
+            throw new ApiError(404, "Dealer not found");
+        }
+
+        await Dealer.findByIdAndDelete(id);
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, null, "Dealer deleted successfully"));
     } catch (error) {
-
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    error.statusCode || 500,
+                    null,
+                    error.message || "Something went wrong while deleting dealer"
+                )
+            );
     }
-})
+});
+
+// ✅ Edit dealer by ID
+const editById = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+
+        const dealer = await Dealer.findById(id);
+        if (!dealer) {
+            throw new ApiError(404, "Dealer not found");
+        }
+
+        const updatedDealer = await Dealer.findByIdAndUpdate(id, updateData, {
+            new: true,
+            runValidators: true,
+        });
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, updatedDealer, "Dealer updated successfully"));
+    } catch (error) {
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    error.statusCode || 500,
+                    null,
+                    error.message || "Something went wrong while updating dealer"
+                )
+            );
+    }
+});
+
+
+
 export default { createDealer, getAll }

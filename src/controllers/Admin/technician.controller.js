@@ -255,11 +255,13 @@ const getById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
 
-        const technician = await Technician.findById(id)
+        const technician = await Employee.findById(id)
             .populate({
-                path: "tools.toolId", // populate inside tools array
-                select: "nomenclature manufacturer model SrNo calibrationCertificateNo" // pick only needed fields
-            });
+                path: "tools.toolId", // path inside the array
+                select: "toolId nomenclature manufacturer model SrNo calibrationCertificateNo"
+            })
+            .lean(); // optional for plain JS object
+
         if (!technician) {
             throw new ApiError(404, "Technician not found");
         }
@@ -287,6 +289,7 @@ const getAllEmployees = asyncHandler(async (req, res) => {
     }
 });
 
+
 const getAll = asyncHandler(async (req, res) => {
     try {
         const technicians = await Technician.find({ technicianType: "engineer" })
@@ -299,6 +302,7 @@ const getAll = asyncHandler(async (req, res) => {
         throw new ApiError(500, error.message || "Failed to fetch technicians");
     }
 });
+
 const updateById = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
