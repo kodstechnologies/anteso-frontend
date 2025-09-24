@@ -2185,9 +2185,71 @@ const updateById = asyncHandler(async (req, res) => {
 });
 
 //changed
+// const getEnquiryDetailsById = async (req, res) => {
+//     try {
+//         const enquiryId = req.params.id;
+//         const enquiry = await Enquiry.findById(enquiryId)
+//             .populate({
+//                 path: "customer",
+//                 model: "User",
+//                 select: "name email phone address role",
+//             })
+//             .populate({
+//                 path: "services",
+//                 model: "Service",
+//                 populate: [
+//                     {
+//                         path: "workTypeDetails.engineer",
+//                         model: "Employee",
+//                         select: "name email phone technicianType",
+//                     },
+//                     {
+//                         path: "workTypeDetails.officeStaff",
+//                         model: "Employee",
+//                         select: "name email phone technicianType",
+//                     },
+//                 ],
+//             })
+//             // ✅ Populate additional services
+//             .populate({
+//                 path: "additionalServices",
+//                 model: "AdditionalService",
+//                 select: "additionalServices name description createdAt updatedAt",
+//             });
+//         console.log("🚀 ~ getEnquiryDetailsById ~ enquiry:", enquiry)
+
+//         if (!enquiry) {
+//             return res.status(404).json({ message: "Enquiry not found" });
+//         }
+
+//         return res.status(200).json({
+//             enquiryId: enquiry.enquiryId,
+//             hospitalName: enquiry.hospitalName,
+//             fullAddress: enquiry.fullAddress,
+//             city: enquiry.city,
+//             state: enquiry.state,
+//             pinCode: enquiry.pinCode,
+//             designation: enquiry.designation,
+//             customer: enquiry.customer,
+//             services: enquiry.services,
+//             additionalServices: enquiry.additionalServices, // ✅ populated data
+//             specialInstructions: enquiry.specialInstructions,
+//             attachment: enquiry.attachment,
+//             enquiryStatus: enquiry.enquiryStatus,
+//             enquiryStatusDates: enquiry.enquiryStatusDates,
+//             quotationStatus: enquiry.quotationStatus,
+//             createdAt: enquiry.createdAt,
+//             specialInstructions: enquiry.specialInstructions
+//         });
+//     } catch (err) {
+//         console.error("Error fetching enquiry details:", err);
+//         return res.status(500).json({ message: "Server error" });
+//     }
+// };
 const getEnquiryDetailsById = async (req, res) => {
     try {
         const enquiryId = req.params.id;
+
         const enquiry = await Enquiry.findById(enquiryId)
             .populate({
                 path: "customer",
@@ -2204,19 +2266,30 @@ const getEnquiryDetailsById = async (req, res) => {
                         select: "name email phone technicianType",
                     },
                     {
-                        path: "workTypeDetails.officeStaff",
-                        model: "Employee",
-                        select: "name email phone technicianType",
+                        path: "workTypeDetails.QAtest",
+                        model: "QATest",
+                        populate: {
+                            path: "officeStaff",
+                            model: "Employee",
+                            select: "name email phone technicianType",
+                        },
+                    },
+                    {
+                        path: "workTypeDetails.elora",
+                        model: "Elora",
+                        populate: {
+                            path: "officeStaff",
+                            model: "Employee",
+                            select: "name email phone technicianType",
+                        },
                     },
                 ],
             })
-            // ✅ Populate additional services
             .populate({
                 path: "additionalServices",
                 model: "AdditionalService",
                 select: "additionalServices name description createdAt updatedAt",
             });
-        console.log("🚀 ~ getEnquiryDetailsById ~ enquiry:", enquiry)
 
         if (!enquiry) {
             return res.status(404).json({ message: "Enquiry not found" });
@@ -2231,15 +2304,14 @@ const getEnquiryDetailsById = async (req, res) => {
             pinCode: enquiry.pinCode,
             designation: enquiry.designation,
             customer: enquiry.customer,
-            services: enquiry.services,
-            additionalServices: enquiry.additionalServices, // ✅ populated data
+            services: enquiry.services, // now includes populated QATest.officeStaff & Elora.officeStaff
+            additionalServices: enquiry.additionalServices,
             specialInstructions: enquiry.specialInstructions,
             attachment: enquiry.attachment,
             enquiryStatus: enquiry.enquiryStatus,
             enquiryStatusDates: enquiry.enquiryStatusDates,
             quotationStatus: enquiry.quotationStatus,
             createdAt: enquiry.createdAt,
-            specialInstructions: enquiry.specialInstructions
         });
     } catch (err) {
         console.error("Error fetching enquiry details:", err);
