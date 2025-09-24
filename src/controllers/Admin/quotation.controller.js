@@ -1125,6 +1125,7 @@ const getQuotationPdfUrl = asyncHandler(async (req, res) => {
         res.status(200).json({
             success: true,
             pdfUrl: quotation.pdfUrl,
+            id:quotation._id
         });
     } catch (error) {
         console.error("Error fetching quotation PDF URL:", error);

@@ -1577,16 +1577,26 @@ const assignOfficeStaffByQATest = asyncHandler(async (req, res) => {
 
 const completedStatusAndReport = asyncHandler(async (req, res) => {
     const { staffId, orderId, serviceId, workType, status, reportType } = req.params;
+    console.log("🚀 ~ reportType:", reportType)
+    console.log("🚀 ~ status:", status)
+    console.log("🚀 ~ workType:", workType)
+    console.log("🚀 ~ serviceId:", serviceId)
+    console.log("🚀 ~ orderId:", orderId)
+    console.log("🚀 ~ staffId:", staffId)
+
+    console.log("HELLO ");
 
     if (!req.file && (status === "completed" || status === "generated")) {
         return res.status(400).json({ message: "File is required for completed status" });
     }
 
     let fileUrl = null;
+    console.log("🚀 ~ fileUrl:", fileUrl)
     if (req.file) {
         try {
             const uploaded = await uploadToS3(req.file); // { key, url }
             fileUrl = uploaded.url; // Only the URL string
+            console.log("🚀 ~ fileUrl:", fileUrl)
         } catch (err) {
             return res.status(500).json({ message: "Failed to upload file" });
         }
@@ -1691,7 +1701,6 @@ const completedStatusAndReport = asyncHandler(async (req, res) => {
         orderStatus: order?.status,
     });
 });
-
 
 
 // export const
