@@ -2097,8 +2097,8 @@ const addByHospitalId = asyncHandler(async (req, res) => {
 const getAll = asyncHandler(async (req, res) => {
     try {
         const enquiries = await Enquiry.find()
-            .populate("customer")            // populates the customer info
-
+            .populate("customer")
+            .sort({ createdAt: -1 });           // populates the customer info
 
         const createdQuotations = await Quotation.find({ quotationStatus: "Created" })
             .populate("enquiry")

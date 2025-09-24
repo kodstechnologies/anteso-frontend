@@ -1693,11 +1693,19 @@ const completedStatusAndReport = asyncHandler(async (req, res) => {
         await order.save();
     }
 
+    let linkedReport = null;
+    if (reportType === "qatest" && newReportDoc?._id) {
+        linkedReport = await QATest.findById(newReportDoc._id);
+        console.log("🚀 ~ linkedReport:", linkedReport)
+    } else if (reportType === "elora" && newReportDoc?._id) {
+        linkedReport = await Elora.findById(newReportDoc._id);
+    }
+
     res.status(200).json({
         message: `Status for workType '${workType}' updated successfully`,
         fileUrl,
         service,
-        linkedReport: newReportDoc, // now contains the QATest/Elora document
+        linkedReport,
         orderStatus: order?.status,
     });
 });
