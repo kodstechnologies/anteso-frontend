@@ -15,7 +15,8 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { getAllEmployees } from '../../../api';
+import { deleteEmployeeById, getAllEmployees } from '../../../api';
+import ConfirmModal from '../../../components/common/ConfirmModal';
 
 const Employee = () => {
     const dispatch = useDispatch();
@@ -25,28 +26,32 @@ const Employee = () => {
 
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
-    const deleteRow = (id: any = null) => {
-        if (window.confirm('Are you sure want to delete selected row ?')) {
-            if (id) {
-                setRecords(items.filter((user) => user.id !== id));
-                setInitialRecords(items.filter((user) => user.id !== id));
-                setItems(items.filter((user) => user.id !== id));
-                setSearch('');
-                setSelectedRecords([]);
-            } else {
-                let selectedRows = selectedRecords || [];
-                const ids = selectedRows.map((d: any) => {
-                    return d.id;
-                });
-                const result = items.filter((d) => !ids.includes(d.id as never));
-                setRecords(result);
-                setInitialRecords(result);
-                setItems(result);
-                setSearch('');
-                setSelectedRecords([]);
-                setPage(1);
-            }
+    const deleteRow = (id: string) => {
+        setSelectedEmployeeId(id);
+        setDeleteModalOpen(true);
+    };
+    const handleConfirmDelete = async () => {
+        if (!selectedEmployeeId) return;
+        try {
+            await deleteEmployeeById(selectedEmployeeId);
+
+            // Remove the deleted employee from the table
+            const updatedItems = items.filter(item => item.id !== selectedEmployeeId);
+            setItems(updatedItems);
+            setInitialRecords(updatedItems);
+            setRecords(updatedItems);
+            setSelectedRecords([]);
+            setSearch('');
+
+            setDeleteModalOpen(false);
+            setSelectedEmployeeId(null);
+        } catch (error: any) {
+            console.error("Failed to delete employee", error);
+            setDeleteModalOpen(false);
+            setSelectedEmployeeId(null);
         }
     };
 
@@ -207,9 +212,14 @@ const Employee = () => {
                                             <NavLink to={`/admin/employee/edit/${id}`} className="flex hover:text-info">
                                                 <IconEdit className="w-4.5 h-4.5" />
                                             </NavLink>
-                                            <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
+                                            <button
+                                                type="button"
+                                                className="flex hover:text-danger"
+                                                onClick={() => deleteRow(id)} // open modal
+                                            >
                                                 <IconTrashLines />
                                             </button>
+
                                         </div>
                                     )
 
@@ -229,6 +239,13 @@ const Employee = () => {
                             paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
                         />
                     </div>
+                    <ConfirmModal
+                        open={deleteModalOpen}
+                        onClose={() => setDeleteModalOpen(false)}
+                        onConfirm={handleConfirmDelete}
+                        title="Confirm Delete"
+                        message="Are you sure you want to delete this employee?"
+                    />
                 </div>
             </div>
         </>

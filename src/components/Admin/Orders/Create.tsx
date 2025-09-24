@@ -227,22 +227,22 @@ const CreateOrder: React.FC = () => {
             .of(
                 Yup.object().shape({
                     machineType: Yup.string().required("Required"),
-                    equipmentNo: Yup.string().required("Required"),
+                    equipmentNo: Yup.string(),
                     workType: Yup.array().min(1, "At least one work type is required"),
-                    machineModel: Yup.string().required("Required"),
+                    machineModel: Yup.string(),
                 })
             )
-            .min(1, "At least one service is required")
-            .test(
-                "unique-machineType",
-                "Each Machine Type must be unique",
-                (services) => {
-                    if (!services) return true;
-                    const machineTypes = services.map(s => s.machineType);
-                    const uniqueTypes = new Set(machineTypes);
-                    return uniqueTypes.size === machineTypes.length;
-                }
-            ),
+            .min(1, "At least one service is required"),
+            // .test(
+            //     "unique-machineType",
+            //     "Each Machine Type must be unique",
+            //     (services) => {
+            //         if (!services) return true;
+            //         const machineTypes = services.map(s => s.machineType);
+            //         const uniqueTypes = new Set(machineTypes);
+            //         return uniqueTypes.size === machineTypes.length;
+            //     }
+            // ),
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
                 return { ...schema, [service]: Yup.string().nullable() }

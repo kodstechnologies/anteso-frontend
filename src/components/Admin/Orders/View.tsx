@@ -151,7 +151,7 @@ const View = () => {
                             className="w-full rounded-lg shadow-md object-contain h-80"
                         />
                     </FadeInModal>
-                    <ExpenseAndAccountDetails />
+                    <ExpenseAndAccountDetails orderId={orderId} />
                 </div>
             </div>
         </div>

@@ -122,6 +122,16 @@ const CourierCompanies = () => {
                                     sortable: true,
                                 },
                                 {
+                                    accessor: 'trackingId',
+                                    title: ' Tracking ID',
+                                    sortable: true,
+                                },
+                                {
+                                    accessor: 'trackingUrl',
+                                    title: 'Tracking URL',
+                                    sortable: true,
+                                },
+                                {
                                     accessor: 'status',
                                     sortable: true,
                                     render: ({ status }) => (

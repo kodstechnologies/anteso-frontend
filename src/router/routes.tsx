@@ -690,7 +690,6 @@ const routes = [
             </AdminProtected>
         ),
     },
-
     {
         path: '/admin/hrms/leave-management',
         element: (

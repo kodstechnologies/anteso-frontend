@@ -9,14 +9,14 @@ import { getEmployeeById, editEmployee } from '../../../../api';
 type RoleValue = 'office staff' | 'engineer';
 type StatusValue = 'active' | 'inactive';
 
-type ToolOption = { id: string; name: string };
+type ToolOption = { id: string; name: string, code: string };
 
 // TODO: replace with tools from your backend if needed
-const toolsList: ToolOption[] = [
-  { id: 'TL001', name: 'Caliper' },
-  { id: 'TL002', name: 'Micrometer' },
-  { id: 'TL003', name: 'Vernier Scale' },
-];
+// const toolsList: ToolOption[] = [
+//   { id: 'TL001', name: 'Caliper' },
+//   { id: 'TL002', name: 'Micrometer' },
+//   { id: 'TL003', name: 'Vernier Scale' },
+// ];
 
 type ApiTool = {
   toolId: string;        // readable id e.g. TL001 OR ObjectId (depending on your backend)
@@ -88,18 +88,40 @@ const EditEngineer = () => {
 
   const [initialValues, setInitialValues] = useState<FormValues | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [toolsList, setToolsList] = useState<ToolOption[]>([]);
 
   // Load employee by id
   useEffect(() => {
-    const fetchEmployee = async () => {
+    const fetchData = async () => {
       if (!id) return;
       try {
-        const res = await getEmployeeById(id);
-        const emp = (res?.data || res) as EmployeeApi;
+        // 1️⃣ Get employee data (already includes tools)
+        const empRes = await getEmployeeById(id);
+        const emp = empRes.data as EmployeeApi;
 
-        const tools = (emp.tools || []).map((t) => t.toolId);
-        const issueDates = (emp.tools || []).reduce<Record<string, string>>((acc, t) => {
-          if (t.toolId) acc[t.toolId] = t.issueDate ? t.issueDate.split('T')[0] : '';
+        // 2️⃣ Build tools list from populated toolId
+        // Build tools list from populated toolId
+        // const toolsListData: ToolOption[] =
+        //   (emp.tools || []).map((t: any) => ({
+        //     id: t.toolId?._id,
+        //     name: t.toolId?.nomenclature,
+        //   })).filter((t) => t.id); // remove undefined
+        // setToolsList(toolsListData);
+
+        const toolsListData: ToolOption[] = (emp.tools || []).map((t: any) => ({
+          id: t.toolId?._id, // keep this for checkbox value
+          code: t.toolId?.toolId, // readable ID (TL045)
+          name: t.toolId?.nomenclature,
+        }));
+        setToolsList(toolsListData);
+
+
+        // 3️⃣ Extract selected tools + issueDates
+        const tools = (emp.tools || []).map((t: any) => t.toolId._id);
+        const issueDates = (emp.tools || []).reduce<Record<string, string>>((acc, t: any) => {
+          if (t.toolId?._id) {
+            acc[t.toolId._id] = t.issueDate ? t.issueDate.split('T')[0] : '';
+          }
           return acc;
         }, {});
 
@@ -122,8 +144,9 @@ const EditEngineer = () => {
       }
     };
 
-    fetchEmployee();
+    fetchData();
   }, [id, navigate]);
+
 
   const handleSubmit = async (values: FormValues, _helpers: FormikHelpers<FormValues>) => {
     try {
@@ -142,9 +165,9 @@ const EditEngineer = () => {
         tools:
           technicianType === 'engineer'
             ? values.tools.map((toolId) => ({
-                toolId,
-                issueDate: values.issueDates?.[toolId] || null,
-              }))
+              toolId,
+              issueDate: values.issueDates?.[toolId] || null,
+            }))
             : [],
       };
 
@@ -287,44 +310,48 @@ const EditEngineer = () => {
             </div>
 
             {/* Tools (only for Engineer) */}
+            {/* Tools (only for Engineer) */}
             {(values.role || '').toLowerCase() === 'engineer' && (
               <div className="panel">
                 <h5 className="font-semibold text-lg mb-4">Assigned Tools</h5>
                 <div className="space-y-4 max-h-60 overflow-y-auto p-2 border border-gray-300 rounded">
-                  {toolsList.map((tool) => {
-                    const isSelected = values.tools.includes(tool.id);
-                    // TS-safe way to read nested error
-                    const issueDatesError =
-                      (errors.issueDates as unknown as Record<string, string> | undefined)?.[tool.id];
+                  {toolsList.length > 0 ? (
+                    toolsList.map((tool) => {
+                      const isSelected = values.tools.includes(tool.id);
+                      const issueDatesError =
+                        (errors.issueDates as unknown as Record<string, string> | undefined)?.[tool.id];
 
-                    return (
-                      <div key={tool.id} className="border-b pb-2">
-                        <label className="flex items-center space-x-2">
-                          <Field
-                            type="checkbox"
-                            name="tools"
-                            value={tool.id}
-                            className="form-checkbox h-5 w-5 text-primary"
-                          />
-                          <span>
-                            {tool.name} ({tool.id})
-                          </span>
-                        </label>
+                      return (
+                        <div key={tool.id} className="border-b pb-2">
+                          <label className="flex items-center space-x-2">
+                            <Field
+                              type="checkbox"
+                              name="tools"
+                              value={tool.id} // store ObjectId in backend
+                              className="form-checkbox h-5 w-5 text-primary"
+                            />
+                            <span>
+                              {tool.name} ({tool.code})
+                            </span>
+                          </label>
 
-                        {isSelected && (
-                          <div className="mt-2 ml-6">
-                            <label htmlFor={`issueDates.${tool.id}`} className="block text-sm">
-                              Issue Date for {tool.id}
-                            </label>
-                            <Field name={`issueDates.${tool.id}`} type="date" className="form-input" />
-                            {submitCount > 0 && issueDatesError && (
-                              <div className="text-danger text-sm mt-1">{String(issueDatesError)}</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {isSelected && (
+                            <div className="mt-2 ml-6">
+                              <label htmlFor={`issueDates.${tool.id}`} className="block text-sm">
+                                Issue Date for {tool.code}
+                              </label>
+                              <Field name={`issueDates.${tool.id}`} type="date" className="form-input" />
+                              {submitCount > 0 && issueDatesError && (
+                                <div className="text-danger text-sm mt-1">{String(issueDatesError)}</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-gray-500 italic">No tools assigned</div>
+                  )}
                 </div>
               </div>
             )}

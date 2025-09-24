@@ -329,9 +329,9 @@ const Enquiry = () => {
                                                 <NavLink to={`/admin/enquiry/view/${id}`} className="flex hover:text-primary">
                                                     <IconEye />
                                                 </NavLink>
-                                                <NavLink to={`/admin/enquiry/edit/${id}`} className="flex hover:text-info">
+                                                {/* <NavLink to={`/admin/enquiry/edit/${id}`} className="flex hover:text-info">
                                                     <IconEdit className="w-4.5 h-4.5" />
-                                                </NavLink>
+                                                </NavLink> */}
                                                 <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
                                                     <IconTrashLines />
                                                 </button>

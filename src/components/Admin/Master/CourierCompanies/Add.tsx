@@ -52,7 +52,7 @@ const AddCourierCompany = () => {
                     />
                 </div>
 
-                {/* <div>
+                <div>
                     <label htmlFor="trackingId" className="block mb-1 font-medium">
                         Tracking ID (optional)
                     </label>
@@ -94,7 +94,7 @@ const AddCourierCompany = () => {
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                     </select>
-                </div> */}
+                </div>
 
                 <button type="submit" className="btn btn-primary mt-4">
                     Submit

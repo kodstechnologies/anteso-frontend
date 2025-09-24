@@ -211,7 +211,6 @@ export default function EmployeeDetailsLeaveManagement() {
           }
         `}
             </style>
-
             {/* Employee Details and Calendar Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 {/* Employee Details */}
@@ -264,7 +263,7 @@ export default function EmployeeDetailsLeaveManagement() {
                             className="border-none"
                         />
                     </div>
-                    {/* Legend */}
+                    
                     <div className="mt-6 grid grid-cols-2 gap-2 text-sm">
                         <div className="flex items-center">
                             <div className="w-4 h-4 bg-green-200 rounded mr-2"></div>

@@ -1,3 +1,7 @@
+// SERVICE DETAILS--AFTER, OODIFYING THE QA RAW CORRECTLUY
+// =============
+// "use client"
+
 import { useState, useEffect } from "react"
 import {
     Wrench,
@@ -11,6 +15,9 @@ import {
     Loader2,
     AlertCircle,
     Edit,
+    RefreshCw,
+    ImageIcon,
+    FileText,
 } from "lucide-react"
 import { getMachineDetails } from "../../../api" // Adjust path as needed
 import {
@@ -21,9 +28,10 @@ import {
     getMachineUpdates,
     assignToOfficeStaff,
     completeStatusAndReport,
+    editDocuments,
 } from "../../../api"
 
-const statusOptions = ["pending", "inprogress", "completed", "generated", "paid"]
+const statusOptions = ["pending", "in progress", "completed", "generated", "paid"]
 
 interface Technician {
     _id: string
@@ -59,6 +67,8 @@ interface MachineData {
             remark: string
             fileUrl: string
             imageUrl: string
+            uploadFile?: string
+            viewFile?: string[]
         }
         reportNumber?: string
         urlNumber?: string
@@ -66,6 +76,7 @@ interface MachineData {
         assignmentStatus?: string
         serviceId?: string
     }>
+    rawPhoto?: string[]
 }
 
 interface ServicesCardProps {
@@ -94,6 +105,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 uploadedFile?: File | null
                 technicianName?: string
                 assignmentStatus?: string
+                technicianId?: string // Added technicianId field
             }
         >
     >({})
@@ -114,6 +126,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [editingWorkType, setEditingWorkType] = useState<Record<string, boolean>>({})
     const [assigningStaff, setAssigningStaff] = useState<Record<string, boolean>>({})
 
+    const [techniciansData, setTechniciansData] = useState<Array<{ _id: string; name: string; role: string }>>([])
+    const [staffData, setStaffData] = useState<Array<{ _id: string; name: string; role: string }>>([])
+
     const saveToLocalStorage = (key: string, data: any) => {
         try {
             localStorage.setItem(key, JSON.stringify(data))
@@ -131,27 +146,42 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             return defaultValue
         }
     }
-    useEffect(() => {
-        fetchDropdownData();
-    }, []);
-    const fetchDropdownData = async () => {
+
+    const fetchStaffData = async () => {
         try {
-            console.log("hi---");
-            
             setLoadingDropdowns(true)
-            const [techniciansData, staffData] = await Promise.all([getAllTechnicians(), getAllOfficeStaff()])
-            console.log('-------------------------------------------------------------------------');
+            const [technicians, staff] = await Promise.all([getAllTechnicians(), getAllOfficeStaff()])
 
-            console.log("🚀 ~ fetchDropdownData ~ technicians:", techniciansData)
-            console.log("🚀 ~ fetchDropdownData ~ office staff:", staffData)
+            console.log("🚀 ~ fetchStaffData ~ technicians:", technicians)
+            console.log("🚀 ~ fetchStaffData ~ office staff:", staff)
 
-            setTechnicians(techniciansData.data|| [])
-            setOfficeStaff(staffData || [])
+            setTechniciansData(Array.isArray(technicians) ? technicians : technicians?.data || [])
+            setStaffData(Array.isArray(staff) ? staff : [])
         } catch (error) {
-            console.error("Error fetching dropdown data:", error)
-            // Set empty arrays as fallback
-            setTechnicians([])
-            setOfficeStaff([])
+            console.error("Error fetching staff data:", error)
+
+            console.warn("[v0] API unavailable, using mock data for development")
+
+            // Mock technicians data
+            const mockTechnicians = [
+                { _id: "mock-tech-1", name: "John Doe", role: "Technician" },
+                { _id: "mock-tech-2", name: "Jane Smith", role: "Senior Technician" },
+                { _id: "mock-tech-3", name: "Mike Johnson", role: "Lead Technician" },
+            ]
+
+            // Mock office staff data
+            const mockStaff = [
+                { _id: "mock-staff-1", name: "Alice Brown", role: "QA Manager" },
+                { _id: "mock-staff-2", name: "Bob Wilson", role: "Office Coordinator" },
+            ]
+
+            setTechniciansData(mockTechnicians)
+            setStaffData(mockStaff)
+
+            // Show user-friendly message
+            alert(
+                "⚠️ API Server Connection Failed\n\nUsing mock data for development. Please:\n1. Start your backend API server\n2. Check CORS configuration\n3. Verify API URL in Project Settings",
+            )
         } finally {
             setLoadingDropdowns(false)
         }
@@ -159,9 +189,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
     const fetchExistingAssignments = async (machineDataArray: MachineData[]) => {
         if (!orderId) return
+
         try {
             const assignmentPromises: Promise<any>[] = []
             const workTypeMapping: Array<{ workTypeId: string; serviceId: string; workTypeName: string }> = []
+
             // Collect all work types that need to be checked for assignments
             machineDataArray.forEach((service) => {
                 service.workTypes.forEach((workType) => {
@@ -169,11 +201,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                         // Only check QA Raw for technician assignments
                         const serviceId = workType.id.split("-")[0]
                         const workTypeName = service.workTypeName
+
                         workTypeMapping.push({
                             workTypeId: workType.id,
                             serviceId,
                             workTypeName,
                         })
+
                         // Add promise to check for existing assignment
                         assignmentPromises.push(
                             getAssignedTechnicianName(orderId, serviceId, workTypeName)
@@ -191,21 +225,27 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     }
                 })
             })
+
             if (assignmentPromises.length === 0) return
+
             const results = await Promise.all(assignmentPromises)
+
             // Process results and update state
             const newAssignments: Record<string, any> = {}
             const updatedMachineData = machineDataArray.map((service) => ({
                 ...service,
                 workTypes: service.workTypes.map((workType) => {
                     const result = results.find((r) => r.workTypeId === workType.id)
+
                     if (result && result.success && result.data.technicianName) {
                         // Found existing assignment
                         newAssignments[workType.id] = {
                             isAssigned: true,
                             technicianName: result.data.technicianName,
                             assignmentStatus: result.data.status,
+                            technicianId: result.data.technicianId, // Store technicianId from API
                         }
+
                         return {
                             ...workType,
                             assignedTechnicianName: result.data.technicianName,
@@ -226,86 +266,140 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             console.error("[v0] Error fetching existing assignments:", error)
         }
     }
+
     const fetchMachineData = async () => {
         if (!orderId) {
             setError("Order ID is required")
             setLoading(false)
             return
         }
+
         try {
             setLoading(true)
             setError(null)
             const response = await getMachineDetails(orderId)
             console.log("🚀 ~ fetchMachineData ~ response:", response)
-            // API returns an array, so take the first element
-            const machineData = Array.isArray(response) ? response[0] : response
 
-            if (!machineData) {
+            const machinesArray = Array.isArray(response) ? response : [response]
+
+            if (!machinesArray || machinesArray.length === 0) {
                 throw new Error("No machine data found")
             }
 
-            const workTypeDetails = machineData.workTypeDetails || []
+            const allTransformedData: MachineData[] = []
 
-            const transformedData: MachineData[] = workTypeDetails.map((workTypeDetail: any, index: number) => {
-                const createWorkTypes = () => {
-                    const workTypes = []
-                    const cardId = `${machineData._id}-${index}`
+            machinesArray.forEach((machineData: any) => {
+                const workTypeDetails = machineData.workTypeDetails || []
 
-                    // Always create QA Raw for each card
-                    workTypes.push({
-                        id: `${cardId}-qa-raw`,
-                        name: "QA Raw",
-                        description: "Quality assurance for raw materials",
-                        backendFields: {
-                            serialNo: machineData.equipmentNo || "N/A",
-                            modelName: machineData.machineModel || "N/A",
-                            remark: workTypeDetail.remark || "N/A",
-                            fileUrl: workTypeDetail.viewFile?.[0] || "",
-                            imageUrl: workTypeDetail.viewFile?.[1] || "",
-                        },
-                        serviceId: "default-service-id", // You may need to adjust this
-                    })
+                const transformedData: MachineData[] = workTypeDetails.map((workTypeDetail: any, index: number) => {
+                    const createWorkTypes = () => {
+                        const workTypes = []
+                        const cardId = `${machineData._id}-${index}`
 
-                    // Always create QA Test for each card
-                    workTypes.push({
-                        id: `${cardId}-qa-test`,
-                        name: "QA Test",
-                        description: "Quality testing procedures",
-                        reportNumber: "N/A", // Will be populated from backend later
-                        urlNumber: "N/A", // Will be populated from backend later
-                        serviceId: "default-service-id", // You may need to adjust this
-                    })
-                    // Always create Elora for each card
-                    workTypes.push({
-                        id: `${cardId}-elora`,
-                        name: "Elora",
-                        description: "Advanced processing operations",
-                        reportNumber: "N/A", // Will be populated from backend later
-                        urlNumber: "N/A", // Will be populated from backend later
-                        serviceId: "default-service-id", // You may need to adjust this
-                    })
+                        // Always create QA Raw for each card
+                        workTypes.push({
+                            id: `${cardId}-qa-raw`,
+                            name: "QA Raw",
+                            description: "Quality assurance for raw materials",
+                            backendFields: {
+                                serialNo: machineData.equipmentNo || "N/A",
+                                modelName: machineData.machineModel || "N/A",
+                                remark: machineData.remark || "N/A",
+                                fileUrl: workTypeDetail.viewFile?.[0] || "",
+                                imageUrl: workTypeDetail.viewFile?.[1] || "",
+                                uploadFile: workTypeDetail.uploadFile || "",
+                                viewFile: workTypeDetail.viewFile || [],
+                            },
+                            serviceId: "default-service-id", // You may need to adjust this
+                        })
 
-                    return workTypes
-                }
+                        // Always create QA Test for each card
+                        workTypes.push({
+                            id: `${cardId}-qa-test`,
+                            name: "QA Test",
+                            description: "Quality testing procedures",
+                            reportNumber: "N/A", // Will be populated from backend later
+                            urlNumber: "N/A", // Will be populated from backend later
+                            serviceId: "default-service-id", // You may need to adjust this
+                        })
 
-                return {
-                    id: `${machineData._id}-${index}`,
-                    machineType: machineData.machineType || "Unknown Machine",
-                    equipmentId: machineData.equipmentNo || "N/A",
-                    workTypeName: workTypeDetail.workType || "General Work", // Show specific work type name
-                    status: workTypeDetail.status || "pending", // Use status from workTypeDetail
-                    workTypes: createWorkTypes(),
-                }
+                        // Always create Elora for each card
+                        workTypes.push({
+                            id: `${cardId}-elora`,
+                            name: "Elora",
+                            description: "Advanced processing operations",
+                            reportNumber: "N/A", // Will be populated from backend later
+                            urlNumber: "N/A", // Will be populated from backend later
+                            serviceId: "default-service-id", // You may need to adjust this
+                        })
+
+                        return workTypes
+                    }
+
+                    return {
+                        id: `${machineData._id}-${index}`,
+                        machineType: machineData.machineType || "Unknown Machine",
+                        equipmentId: machineData.equipmentNo || "N/A",
+                        workTypeName: workTypeDetail.workType || "General Work", // Show specific work type name
+                        status: workTypeDetail.status || "pending", // Use status from workTypeDetail
+                        workTypes: createWorkTypes(),
+                        rawPhoto: machineData.rawPhoto || [],
+                    }
+                })
+
+                allTransformedData.push(...transformedData)
             })
 
-            setMachineData(transformedData)
+            setMachineData(allTransformedData)
 
-            await fetchExistingAssignments(transformedData)
+            await fetchExistingAssignments(allTransformedData)
         } catch (err: any) {
             console.error("Error fetching machine data:", err)
             setError(err.message || "Failed to fetch machine data")
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleViewFile = (fileUrl: string) => {
+        if (fileUrl && fileUrl !== "") {
+            window.open(fileUrl, "_blank")
+        } else {
+            alert("No file available to view")
+        }
+    }
+
+    const handleViewImage = (workTypeId: string) => {
+        const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
+
+        const imageUrl = workType?.backendFields?.imageUrl
+        if (imageUrl && imageUrl !== "") {
+            window.open(imageUrl, "_blank")
+        } else {
+            // Check if there are images in rawPhoto array
+            const service = machineData.find((s) => s.workTypes.some((wt) => wt.id === workTypeId))
+            if (service && service.rawPhoto && service.rawPhoto.length > 0) {
+                window.open(service.rawPhoto[0], "_blank")
+            } else {
+                alert("No image available to view")
+            }
+        }
+    }
+
+    const handleDownload = (workTypeId: string) => {
+        const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
+
+        const fileUrl = workType?.backendFields?.fileUrl
+        if (fileUrl && fileUrl !== "") {
+            // Create a temporary anchor element to trigger download
+            const link = document.createElement("a")
+            link.href = fileUrl
+            link.download = `file-${workTypeId}`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+        } else {
+            alert("No file available to download")
         }
     }
 
@@ -330,7 +424,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         setUploadedFiles(mockFiles)
 
         fetchMachineData()
-        fetchDropdownData()
+        fetchStaffData() 
     }, [orderId])
 
     const getWorkTypeIcon = (workType: string) => {
@@ -345,11 +439,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 return <Settings className="h-4 w-4" />
         }
     }
+
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
             case "pending":
                 return "bg-yellow-100 text-yellow-800 border-yellow-200"
-            case "inprogress":
+            case "in progress":
                 return "bg-blue-100 text-blue-800 border-blue-200"
             case "completed":
                 return "bg-green-100 text-green-800 border-green-200"
@@ -402,6 +497,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const { technicianName, status } = assignedTechResponse.data
 
             const machineUpdatesResponse = await getMachineUpdates(employeeId, orderId, serviceId, workTypeName)
+            console.log("🚀 ~ handleEmployeeAssign ~ machineUpdatesResponse:", machineUpdatesResponse)
             const { updatedService } = machineUpdatesResponse.data
 
             setAssignments((prev) => ({
@@ -412,6 +508,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     isAssigned: true,
                     technicianName,
                     assignmentStatus: status,
+                    technicianId: assignedTechResponse.data.technicianId, // Store technicianId from API response
                 },
             }))
 
@@ -466,7 +563,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const workTypeName = parentService.workTypeName
 
             // Use different API calls based on status
-            if (status === "completed" || status === "paid") {
+            if (status === "completed" || status === "paid" || status === "generated") {
                 // Use completeStatusAndReport API
                 await completeStatusAndReport(
                     staffId, // technicianId (using staffId here)
@@ -644,6 +741,153 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         })
     }
 
+    const getFileTypeAndIcon = (url: string) => {
+        const extension = url.split(".").pop()?.toLowerCase()
+        switch (extension) {
+            case "pdf":
+                return { type: "PDF", icon: "📄", color: "text-red-600 bg-red-50 border-red-200" }
+            case "jpg":
+            case "jpeg":
+            case "png":
+            case "gif":
+            case "webp":
+                return { type: "Image", icon: "🖼️", color: "text-green-600 bg-green-50 border-green-200" }
+            case "doc":
+            case "docx":
+                return { type: "Word", icon: "📝", color: "text-blue-600 bg-blue-50 border-blue-200" }
+            case "xls":
+            case "xlsx":
+                return { type: "Excel", icon: "📊", color: "text-emerald-600 bg-emerald-50 border-emerald-200" }
+            default:
+                return { type: "File", icon: "📁", color: "text-gray-600 bg-gray-50 border-gray-200" }
+        }
+    }
+
+    const getFilenameFromUrl = (url: string) => {
+        try {
+            const urlParts = url.split("/")
+            const filename = urlParts[urlParts.length - 1]
+            // Remove timestamp prefix if present (e.g., "1757787332999-logo-sm.png" -> "logo-sm.png")
+            return filename.replace(/^\d+-/, "")
+        } catch {
+            return "Unknown File"
+        }
+    }
+
+    const handleReassign = async (workTypeId: string) => {
+        try {
+            const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
+
+            if (!workType) {
+                alert("Work type not found")
+                return
+            }
+
+            setAssigningStaff((prev) => ({ ...prev, [workTypeId]: true }))
+
+            setAssignments((prev) => ({
+                ...prev,
+                [workTypeId]: {
+                    ...prev[workTypeId],
+                    isAssigned: false,
+                    employeeId: undefined,
+                    staffId: undefined,
+                    technicianName: undefined,
+                    assignmentStatus: undefined,
+                },
+            }))
+
+            setMachineData((prevData) =>
+                prevData.map((service) => ({
+                    ...service,
+                    workTypes: service.workTypes.map((wt) =>
+                        wt.id === workTypeId ? { ...wt, assignedTechnicianName: undefined, assignmentStatus: undefined } : wt,
+                    ),
+                })),
+            )
+
+            alert("Work type is now available for reassignment!")
+        } catch (error) {
+            console.error("Error reassigning work type:", error)
+            alert("Failed to reassign work type")
+        } finally {
+            setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
+        }
+    }
+
+    const handleFileEdit = async (workTypeId: string, fileType: "upload" | "view", fileIndex?: number) => {
+        const input = document.createElement("input")
+        input.type = "file"
+        input.accept = "*/*"
+
+        input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0]
+            if (!file) return
+
+            try {
+                const workTypeData = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
+
+                if (!workTypeData) {
+                    alert("Work type not found")
+                    return
+                }
+
+                const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
+
+                if (!parentService) {
+                    alert("Parent service not found")
+                    return
+                }
+
+                const uploadFile = fileType === "upload" ? file : null
+                const viewFiles = fileType === "view" ? [file] : []
+
+                const technicianId = assignments[workTypeId]?.technicianId
+                if (!technicianId) {
+                    alert("Please assign a technician first before editing documents")
+                    return
+                }
+
+                const actualWorkType = parentService.workTypeName || "General Work"
+                const workTypeServiceId = workTypeData?.id.split("-")[0] || ""
+
+                console.log("[v0] editDocuments params:", {
+                    orderId: orderId || "",
+                    serviceId: workTypeServiceId,
+                    technicianId,
+                    workTypeName: actualWorkType,
+                    uploadFile: uploadFile?.name,
+                    viewFiles: viewFiles.map((f) => f.name),
+                })
+
+                await editDocuments(orderId || "", workTypeServiceId || "", technicianId, actualWorkType, uploadFile, viewFiles)
+
+                alert("File updated successfully!")
+                fetchMachineData()
+            } catch (error) {
+                console.error("Error updating file:", error)
+                alert("Failed to update file")
+            }
+        }
+
+        input.click()
+    }
+
+    const handleDownloadFile = (fileUrl: string, fileName: string) => {
+        if (fileUrl && fileUrl !== "") {
+            const link = document.createElement("a")
+            link.href = fileUrl
+            link.download = fileName
+            link.target = "_blank"
+            link.rel = "noopener noreferrer"
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+        } else {
+            alert("No file available to download")
+        }
+    }
+
     if (loading) {
         return (
             <div className="space-y-6 p-6">
@@ -740,6 +984,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                             <div className="space-y-3">
                                                                 <label className="block text-sm font-medium text-gray-700">Assign Engineer</label>
                                                                 <div className="flex gap-2">
+                                                                    {/* Update dropdown options to use real API data */}
                                                                     <select
                                                                         value={selectedEmployees[workType.id] || ""}
                                                                         onChange={(e) => {
@@ -752,14 +997,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                                         disabled={loadingDropdowns || assigningTechnician[workType.id]}
                                                                     >
-                                                                        <option value="">
-                                                                            {loadingDropdowns ? "Loading engineers..." : "Select Engineer"}
-                                                                        </option>
-                                                                        {technicians.map((tech) => (
-                                                                            <option key={tech._id} value={tech._id}>
-                                                                                {tech.name}
-                                                                            </option>
-                                                                        ))}
+                                                                        <option value="">Select Technician</option>
+                                                                        {Array.isArray(techniciansData) &&
+                                                                            techniciansData.map((technician) => (
+                                                                                <option key={technician._id} value={technician._id}>
+                                                                                    {technician.name}
+                                                                                </option>
+                                                                            ))}
                                                                     </select>
                                                                     <button
                                                                         onClick={() => handleEmployeeAssign(workType.id)}
@@ -779,11 +1023,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                             <div className="space-y-4">
                                                                 <div className="flex items-center gap-2 text-green-600">
                                                                     <Check className="h-4 w-4" />
+                                                                    {/* Update assigned employee display to use real data */}
                                                                     <span className="font-medium">
                                                                         Assigned to:{" "}
-                                                                        {workType.assignedTechnicianName ||
-                                                                            technicians.find((tech) => tech._id === assignments[workType.id]?.employeeId)
-                                                                                ?.name ||
+                                                                        {(Array.isArray(techniciansData) &&
+                                                                            techniciansData.find((tech) => tech._id === assignments[workType.id]?.employeeId)
+                                                                                ?.name) ||
                                                                             "Unknown"}
                                                                     </span>
                                                                     {workType.assignmentStatus && (
@@ -811,18 +1056,135 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 </div>
 
                                                                 <div className="flex gap-2">
-                                                                    <button className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors">
+                                                                    <button
+                                                                        onClick={() => handleViewFile(workType.backendFields?.fileUrl || "")}
+                                                                        className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                                                                    >
                                                                         <Eye className="h-4 w-4" />
                                                                         View File
                                                                     </button>
-                                                                    <button className="flex items-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors">
-                                                                        <Eye className="h-4 w-4" />
-                                                                        View Image
+                                                                    <button
+                                                                        onClick={() => handleReassign(workType.id)}
+                                                                        className="flex items-center gap-2 px-3 py-2 bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                                                    >
+                                                                        <RefreshCw className="h-4 w-4" />
+                                                                        Reassign
                                                                     </button>
-                                                                    <button className="flex items-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors">
-                                                                        <Download className="h-4 w-4" />
-                                                                        Download
-                                                                    </button>
+                                                                </div>
+
+                                                                <div className="mt-4 space-y-3">
+                                                                    <h4 className="text-sm font-medium text-gray-700">Available Files</h4>
+
+                                                                    {workType.backendFields?.viewFile && workType.backendFields.viewFile.length > 0 && (
+                                                                        <div className="space-y-2">
+                                                                            <h4 className="text-sm font-medium text-gray-700">View Files:</h4>
+                                                                            <div className="grid gap-2">
+                                                                                {workType.backendFields.viewFile.map((fileUrl, index) => {
+                                                                                    const fileName =
+                                                                                        fileUrl.split("/").pop()?.split("?")[0] || `File ${index + 1}`
+                                                                                    const fileExtension = fileName.split(".").pop()?.toLowerCase()
+                                                                                    const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(
+                                                                                        fileExtension || "",
+                                                                                    )
+
+                                                                                    return (
+                                                                                        <div
+                                                                                            key={index}
+                                                                                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                                                                                        >
+                                                                                            <div className="flex items-center gap-3">
+                                                                                                {isImage ? (
+                                                                                                    <ImageIcon className="h-5 w-5 text-blue-600" />
+                                                                                                ) : (
+                                                                                                    <FileText className="h-5 w-5 text-red-600" />
+                                                                                                )}
+                                                                                                <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
+                                                                                                    {fileName}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div className="flex gap-2">
+                                                                                                {/* Fix file view and download buttons to open in new tab */}
+                                                                                                <button
+                                                                                                    onClick={() => handleViewFile(fileUrl)}
+                                                                                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                                                                                                >
+                                                                                                    <Eye className="h-3 w-3" />
+                                                                                                    View
+                                                                                                </button>
+                                                                                                <button
+                                                                                                    onClick={() => handleDownloadFile(fileUrl, fileName)}
+                                                                                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                                                                                                >
+                                                                                                    <Download className="h-3 w-3" />
+                                                                                                    Download
+                                                                                                </button>
+                                                                                                <button
+                                                                                                    onClick={() => handleFileEdit(workType.id, "view", index)}
+                                                                                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                                                                                >
+                                                                                                    <Edit className="h-3 w-3" />
+                                                                                                    Edit
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )
+                                                                                })}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {workType.backendFields?.uploadFile && (
+                                                                        <div className="space-y-2">
+                                                                            <h4 className="text-sm font-medium text-gray-700">Upload File:</h4>
+                                                                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <FileText className="h-5 w-5 text-red-600" />
+                                                                                    <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
+                                                                                        {workType.backendFields.uploadFile.split("/").pop()?.split("?")[0] ||
+                                                                                            "Upload File"}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <div className="flex gap-2">
+                                                                                    <button
+                                                                                        onClick={() => handleViewFile(workType.backendFields.uploadFile)}
+                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                                                                                    >
+                                                                                        <Eye className="h-3 w-3" />
+                                                                                        View
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() =>
+                                                                                            handleDownloadFile(
+                                                                                                workType.backendFields.uploadFile,
+                                                                                                workType.backendFields.uploadFile.split("/").pop()?.split("?")[0] ||
+                                                                                                "upload-file",
+                                                                                            )
+                                                                                        }
+                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                                                                                    >
+                                                                                        <Download className="h-3 w-3" />
+                                                                                        Download
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleFileEdit(workType.id, "upload")}
+                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                                                                    >
+                                                                                        <Edit className="h-3 w-3" />
+                                                                                        Edit
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Show message when no files are available */}
+                                                                    {(!workType.backendFields?.viewFile ||
+                                                                        workType.backendFields.viewFile.length === 0) &&
+                                                                        !workType.backendFields?.uploadFile && (
+                                                                            <div className="p-3 bg-gray-50 rounded-md border border-gray-200 text-center">
+                                                                                <p className="text-sm text-gray-500">No files available</p>
+                                                                            </div>
+                                                                        )}
                                                                 </div>
                                                             </div>
                                                         )}
@@ -835,6 +1197,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                             <div className="space-y-3">
                                                                 <label className="block text-sm font-medium text-gray-700">Assign Staff & Status</label>
                                                                 <div className="flex gap-2">
+                                                                    {/* Update staff dropdown to use real API data */}
                                                                     <select
                                                                         value={selectedStaff[workType.id] || ""}
                                                                         onChange={(e) => {
@@ -847,8 +1210,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                                         disabled={loadingDropdowns || assigningStaff[workType.id]}
                                                                     >
-                                                                        <option value="">{loadingDropdowns ? "Loading staff..." : "Select Staff"}</option>
-                                                                        {officeStaff.map((staff) => (
+                                                                        <option value="">Select Staff</option>
+                                                                        {staffData.map((staff) => (
                                                                             <option key={staff._id} value={staff._id}>
                                                                                 {staff.name}
                                                                             </option>
@@ -889,9 +1252,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex items-center gap-2 text-green-600">
                                                                         <Check className="h-4 w-4" />
+                                                                        {/* Update assigned staff display to use real data */}
                                                                         <span className="font-medium">
                                                                             Assigned to:{" "}
-                                                                            {officeStaff.find((staff) => staff._id === assignments[workType.id]?.staffId)
+                                                                            {staffData.find((staff) => staff._id === assignments[workType.id]?.staffId)
                                                                                 ?.name || "Unknown"}
                                                                         </span>
                                                                         <span
@@ -900,13 +1264,22 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             {selectedStatuses[workType.id] || "pending"}
                                                                         </span>
                                                                     </div>
-                                                                    <button
-                                                                        onClick={() => handleEditToggle(workType.id)}
-                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                                                                    >
-                                                                        <Edit className="h-3 w-3" />
-                                                                        Edit
-                                                                    </button>
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={() => handleEditToggle(workType.id)}
+                                                                            className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                                                                        >
+                                                                            <Edit className="h-3 w-3" />
+                                                                            Edit
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleReassign(workType.id)}
+                                                                            className="flex items-center gap-2 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                                                        >
+                                                                            <RefreshCw className="h-3 w-3" />
+                                                                            Reassign
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
 
                                                                 {editingWorkType[workType.id] && (
@@ -948,32 +1321,34 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
                                                                 )}
 
-                                                                {(selectedStatuses[workType.id] === "completed") && (
-                                                                    <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
-                                                                        <label className="block text-sm font-medium text-green-700">
-                                                                            Upload File (Optional)
-                                                                        </label>
-                                                                        <input
-                                                                            type="file"
-                                                                            onChange={(e) => {
-                                                                                const file = e.target.files?.[0]
-                                                                                if (file) handleFileUpload(workType.id, file)
-                                                                            }}
-                                                                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
-                                                                        />
+                                                                {(selectedStatuses[workType.id] === "completed" ||
+                                                                    selectedStatuses[workType.id] === "paid") && (
+                                                                        <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
+                                                                            <label className="block text-sm font-medium text-green-700">
+                                                                                Upload File
+                                                                            </label>
+                                                                            <input
+                                                                                type="file"
+                                                                                required
+                                                                                onChange={(e) => {
+                                                                                    const file = e.target.files?.[0]
+                                                                                    if (file) handleFileUpload(workType.id, file)
+                                                                                }}
+                                                                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
+                                                                            />
 
-                                                                        <div className="grid grid-cols-2 gap-3 mt-3">
-                                                                            <div className="p-2 bg-white rounded border">
-                                                                                <label className="text-xs text-gray-500">Report Number</label>
-                                                                                <p className="font-medium text-sm">{workType.reportNumber}</p>
-                                                                            </div>
-                                                                            <div className="p-2 bg-white rounded border">
-                                                                                <label className="text-xs text-gray-500">URL Number</label>
-                                                                                <p className="font-medium text-sm">{workType.urlNumber}</p>
+                                                                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                                                                <div className="p-2 bg-white rounded border">
+                                                                                    <label className="text-xs text-gray-500">Report Number</label>
+                                                                                    <p className="font-medium text-sm">{workType.reportNumber}</p>
+                                                                                </div>
+                                                                                <div className="p-2 bg-white rounded border">
+                                                                                    <label className="text-xs text-gray-500">URL Number</label>
+                                                                                    <p className="font-medium text-sm">{workType.urlNumber}</p>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
-                                                                    </div>
-                                                                )}
+                                                                    )}
 
                                                                 {uploadedFiles[workType.id] && (
                                                                     <div className="p-3 bg-green-50 rounded-md border border-green-200">
@@ -1009,7 +1384,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         disabled={loadingDropdowns}
                                                                     >
                                                                         <option value="">{loadingDropdowns ? "Loading staff..." : "Select Staff"}</option>
-                                                                        {officeStaff.map((staff) => (
+                                                                        {staffData.map((staff) => (
                                                                             <option key={staff._id} value={staff._id}>
                                                                                 {staff.name}
                                                                             </option>
@@ -1033,6 +1408,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         {officeStaff.find((staff) => staff._id === assignments[workType.id]?.staffId)
                                                                             ?.name || "Unknown"}
                                                                     </span>
+                                                                    <button
+                                                                        onClick={() => handleReassign(workType.id)}
+                                                                        className="flex items-center gap-2 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors ml-4"
+                                                                    >
+                                                                        <RefreshCw className="h-3 w-3" />
+                                                                        Reassign
+                                                                    </button>
                                                                 </div>
 
                                                                 <div className="flex items-center gap-4">
@@ -1060,6 +1442,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         </select>
                                                                     </div>
                                                                 </div>
+
                                                                 {selectedStatuses[workType.id] === "completed" && (
                                                                     <div className="space-y-3 p-3 bg-blue-50 rounded-md border border-blue-200">
                                                                         <label className="block text-sm font-medium text-blue-700">Upload File</label>
@@ -1084,6 +1467,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         </div>
                                                                     </div>
                                                                 )}
+
                                                                 {uploadedFiles[workType.id] && (
                                                                     <div className="p-3 bg-green-50 rounded-md border border-green-200">
                                                                         <div className="flex items-center gap-2 text-green-700">

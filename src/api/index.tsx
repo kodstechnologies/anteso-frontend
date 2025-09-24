@@ -13,6 +13,8 @@ export const adminLogin = async (payload: any) => {
         const res = await api.post('/auth/login', payload)
         return res;
     } catch (error) {
+        console.error("🚀 ~ adminLogin ~ error:", error);
+        throw error;
     }
 }
 export const addclient = async (clientData: any) => {
@@ -671,6 +673,7 @@ export const deleteEmployeeById = async (id: any) => {
     }
 }
 
+
 export const getEnquiryDetailsById = async (id: any) => {
     try {
         const token = Cookies.get('accessToken')
@@ -724,6 +727,7 @@ export const addCourier = async (payload: any) => {
         );
     }
 }
+
 export const editCourier = async (id: any, payload: any) => {
     try {
         const token = Cookies.get('accessToken')
@@ -765,6 +769,7 @@ export const getCourierById = async (id: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ getCourierById ~ res:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ get courier by id ~ error:", error);
@@ -949,6 +954,25 @@ export const getUnAssignedTools = async () => {
     }
 }
 
+
+export const getEngineerByToolId = async (id: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/tools/get-engineer-by-tool/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~getEngineerByToolId~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed getEngineerByToolId"
+        );
+    }
+}
+
+
 //orders
 export const getAllOrders = async () => {
     try {
@@ -1023,6 +1047,8 @@ export const getServices = async (orderId: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log('+++++++++++++++++++++++++++++++++++++++++');
+
         console.log("🚀 ~ getAAllServices ~ res:", res.data)
         return res.data;
     } catch (error: any) {
@@ -1175,6 +1201,31 @@ export const getQARaw = async (orderId: any) => {
         );
     }
 }
+
+
+export const getReportNumbers = async (orderId: string, serviceId: string, technicianId: string, workType: string) => {
+    console.log("🚀 ~ getReportNumbers ~ workType:", workType)
+    console.log("🚀 ~ getReportNumbers ~ technicianId:", technicianId)
+    console.log("🚀 ~ getReportNumbers ~ serviceId:", serviceId)
+    console.log("🚀 ~ getReportNumbers ~ orderId:", orderId)
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/orders/get-report-numbers/${orderId}/${serviceId}/${technicianId}/${workType}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getReportNumbers ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~getReportNumbers ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getReportNumbers"
+        );
+    }
+}
+
+
 export const completedOrderStatus = async () => {
     try {
         const token = Cookies.get('accessToken')
@@ -1183,12 +1234,16 @@ export const completedOrderStatus = async () => {
 
     }
 }
+
+
 export const assignToOfficeStaff = async (orderId: string, serviceId: string, officeStaffId: string, workType: string, status: any) => {
     console.log("🚀 ~ assignToOfficeStaff ~ status:", status)
     console.log("🚀 ~ assignToOfficeStaff ~ workType:", workType)
     console.log("🚀 ~ assignToOfficeStaff ~ officeStaffId:", officeStaffId)
     console.log("🚀 ~ assignToOfficeStaff ~ serviceId:", serviceId)
     console.log("🚀 ~ assignToOfficeStaff ~ orderId:", orderId)
+    console.log("==assignToOfficeStaff==");
+
     try {
         const token = Cookies.get('accessToken')
         const res = await api.put(`/orders/assign-to-office-staff/${orderId}/${serviceId}/${officeStaffId}/${workType}/${status}`, {
@@ -1209,6 +1264,15 @@ export const assignToOfficeStaff = async (orderId: string, serviceId: string, of
         throw new Error(
             error?.response?.data?.message || "Failed to fetch "
         );
+    }
+}
+
+
+export const assignToOfficeStaffElora = async () => {
+    try {
+
+    } catch (error) {
+
     }
 }
 //dummy
@@ -1310,8 +1374,10 @@ export const getMachineUpdates = async (technicianId: any, orderId: any, service
                 Authorization: `Bearer ${token}`,
             },
         })
-
+        console.log('----before res log');
         console.log("🚀 ~ getMachineUpdates ~ res:", res)
+        console.log('----after res log');
+
         return res
     } catch (error: any) {
         console.error("🚀 ~ getMachineUpdates ~ error:", error);
@@ -1356,54 +1422,113 @@ export const createOrder = async (payload: any) => {
     }
 }
 
+// export const completeStatusAndReport = async (
+//     technicianId: any,
+//     orderId: any,
+//     serviceId: any,
+//     status: any,
+//     payload: any,
+//     workType: any,
+//     file?: File[]
+// ) => {
+//     console.log('completeStatusAndReport api called');
+
+//     console.log("🚀 ~ completeStatusAndReport ~ file:", file)
+//     console.log("🚀 ~ completeStatusAndReport ~ status:", status)
+//     console.log("🚀 ~ completeStatusAndReport ~ serviceId:", serviceId)
+//     console.log("🚀 ~ completeStatusAndReport ~ orderId:", orderId)
+//     console.log("🚀 ~ completeStatusAndReport ~ technicianId:", technicianId)
+//     try {
+//         const token = Cookies.get('accessToken')
+//         let dataToSend: any
+//         let headers: any = {
+//             Authorization: `Bearer ${token}`,
+//         }
+//         console.log("HI FROM completeStatusAndReport");
+
+//         if (file && file.length > 0) {
+//             // send files + payload as FormData
+//             const formData = new FormData()
+//             formData.append("status", status)
+//             formData.append("payload", JSON.stringify(payload))
+//             file.forEach((file, idx) => {
+//                 formData.append("file", file) // backend should accept 'files'
+//             })
+//             dataToSend = formData
+//             headers["Content-Type"] = "multipart/form-data"
+//         } else {
+//             // fallback to JSON payload
+//             dataToSend = { status, ...payload }
+//             headers["Content-Type"] = "application/json"
+//         }
+//         const res = await api.post(
+//             `/orders/completed-status-report/${technicianId}/${orderId}/${serviceId}/${workType}/${status}`,
+//             dataToSend,
+//             { headers }
+//         )
+//         return res
+//     } catch (error: any) {
+//         console.error("🚀 ~ completeStatusAndReport ~ error:", error);
+//         throw new Error(
+//             error?.response?.data?.message || "Failed to completeStatusAndReport"
+//         );
+//     }
+// }
+
 export const completeStatusAndReport = async (
-    technicianId: any,
-    orderId: any,
-    serviceId: any,
-    status: any,
+    technicianId: string,
+    orderId: string,
+    serviceId: string,
+    workType: string,
+    status: string,
     payload: any,
-    workType: any,
-    file?: File[]
+    file?: File,
+    reportType?: "qatest" | "elora"
 ) => {
-    console.log("🚀 ~ completeStatusAndReport ~ file:", file)
-    console.log("🚀 ~ completeStatusAndReport ~ status:", status)
-    console.log("🚀 ~ completeStatusAndReport ~ serviceId:", serviceId)
-    console.log("🚀 ~ completeStatusAndReport ~ orderId:", orderId)
-    console.log("🚀 ~ completeStatusAndReport ~ technicianId:", technicianId)
+    console.log("🚀 completeStatusAndReport called");
+    console.log("file:", file);
+    console.log("status:", status);
+    console.log("serviceId:", serviceId);
+    console.log("orderId:", orderId);
+    console.log("technicianId:", technicianId);
+    console.log("workType:", workType);
+    console.log("reportType:", reportType);
+
     try {
-        const token = Cookies.get('accessToken')
-        let dataToSend: any
-        let headers: any = {
-            Authorization: `Bearer ${token}`,
-        }
-        if (file && file.length > 0) {
-            // send files + payload as FormData
-            const formData = new FormData()
-            formData.append("status", status)
-            formData.append("payload", JSON.stringify(payload))
-            file.forEach((file, idx) => {
-                formData.append("file", file) // backend should accept 'files'
-            })
-            dataToSend = formData
-            headers["Content-Type"] = "multipart/form-data"
+        const token = Cookies.get("accessToken");
+        let dataToSend: any;
+        let headers: any = { Authorization: `Bearer ${token}` };
+
+        if (file) {
+            // Send single file + payload as FormData
+            const formData = new FormData();
+            formData.append("file", file); // backend expects 'file'
+            formData.append("payload", JSON.stringify(payload)); // optional extra data
+            dataToSend = formData;
+            headers["Content-Type"] = "multipart/form-data";
         } else {
-            // fallback to JSON payload
-            dataToSend = { status, ...payload }
-            headers["Content-Type"] = "application/json"
+            dataToSend = { ...payload };
+            headers["Content-Type"] = "application/json";
         }
+
+        // Make sure to include reportType in the URL
         const res = await api.post(
-            `/orders/completed-status-report/${technicianId}/${orderId}/${serviceId}/${workType}/${status}`,
+            `/orders/completed-status-report/${technicianId}/${orderId}/${serviceId}/${workType}/${status}/${reportType}`,
             dataToSend,
             { headers }
-        )
-        return res
+        );
+
+        return res;
     } catch (error: any) {
-        console.error("🚀 ~ completeStatusAndReport ~ error:", error);
+        console.error("🚀 completeStatusAndReport error:", error);
         throw new Error(
             error?.response?.data?.message || "Failed to completeStatusAndReport"
         );
     }
-}
+};
+
+
+
 
 export const getAllDealers = async () => {
     try {
@@ -1762,7 +1887,7 @@ export const getAllInvoices = async () => {
 
 export const getInvoiceById = async (invoiceId: any) => {
     console.log("hi---");
-    
+
     console.log("🚀 ~ getInvoiceById ~ invoiceId:", invoiceId)
     try {
         const token = Cookies.get("accessToken")
@@ -1779,5 +1904,108 @@ export const getInvoiceById = async (invoiceId: any) => {
         throw new Error(
             error?.response?.data?.message || "Failed to getAllSrfNumber"
         )
+    }
+}
+
+export const editDocuments = async (
+    orderId: string,
+    serviceId: string,
+    technicianId: string,
+    workType: string,
+    uploadFile: File | null,
+    viewFiles: File[]
+) => {
+    try {
+        const token = Cookies.get("accessToken"); // if using JWT
+
+        const formData = new FormData();
+
+        // Append single file (optional)
+        if (uploadFile) {
+            formData.append("uploadFile", uploadFile);
+        }
+
+        // Append multiple files
+        if (viewFiles && viewFiles.length > 0) {
+            viewFiles.forEach((file) => {
+                formData.append("viewFile", file);
+            });
+        }
+
+        const response = await api.patch(
+            `/orders/edit-documents/${orderId}/${serviceId}/${technicianId}/${workType}`,
+            formData,
+            {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                    Authorization: `Bearer ${token}`, // if protected route
+                },
+            }
+        );
+
+        return response.data;
+    } catch (error: any) {
+        console.error("🚀 ~ editDocuments error:", error);
+        throw new Error(error?.response?.data?.message || "File upload failed");
+    }
+};
+
+export const getPaymentDeyailsByOrderId = async (orderId: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/payment/payment-details-by-orderId/${orderId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+
+        console.log("🚀 ~ getPaymentDeyailsByOrderId ~ res.data:", res.data)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ getPaymentDeyailsByOrderId ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAlgetPaymentDeyailsByOrderIdlSrfNumber"
+        )
+    }
+}
+
+export const staffLogin = async (payload: any) => {
+    try {
+        const res = await api.post('/auth/staff-login', payload)
+        return res;
+    } catch (error) {
+        console.error("🚀 ~ adminLogin ~ error:", error);
+        throw error;
+    }
+}
+
+export const assignStaffByElora = async (orderId: string, serviceId: string, officeStaffId: string, workType: string, status: any) => {
+    console.log("🚀 ~ assignToOfficeStaff ~ status:", status)
+    console.log("🚀 ~ assignToOfficeStaff ~ workType:", workType)
+    console.log("🚀 ~ assignToOfficeStaff ~ officeStaffId:", officeStaffId)
+    console.log("🚀 ~ assignToOfficeStaff ~ serviceId:", serviceId)
+    console.log("🚀 ~ assignToOfficeStaff ~ orderId:", orderId)
+    console.log("==assignStaffByElora==");
+
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.put(`/orders/assign-staff-by-elora/${orderId}/${serviceId}/${officeStaffId}/${workType}/${status}`, {
+            orderId,
+            serviceId,
+            officeStaffId,
+            workType,
+            status
+
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res.data
+    } catch (error: any) {
+        console.error("🚀  ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to assign by elora "
+        );
     }
 }

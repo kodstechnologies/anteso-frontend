@@ -8,7 +8,7 @@ import { addEmployee, getUnAssignedTools } from '../../../../api';
 
 // Define the interface for the tool data
 interface Tool {
-    _id:string,
+    _id: string,
     toolId: string;
     nomenclature: string;
     manufacturer: string;
@@ -32,7 +32,7 @@ interface FormValues {
     department: string,
     dateOfJoining: string,
     workingDays: string,
-
+    password?: string;
 }
 
 const AddEngineer = () => {
@@ -58,7 +58,23 @@ const AddEngineer = () => {
         fetchTools();
     }, []);
 
-    // Validation schema
+    // Add 'password' to FormValues
+    interface FormValues {
+        name: string;
+        email: string;
+        phone: string;
+        technicianType: string;
+        activeStatus: 'Active';
+        toolIDs: string[];
+        tools: { [toolID: string]: string };
+        designation: string;
+        department: string;
+        dateOfJoining: string;
+        workingDays: string;
+        password?: string; // 🔹 added
+    }
+
+    // Updated validation schema
     const SubmittedForm = Yup.object().shape({
         name: Yup.string().required('Please fill the Field'),
         email: Yup.string().email('Invalid email').required('Please fill the Email'),
@@ -74,11 +90,15 @@ const AddEngineer = () => {
             .required('Please fill the Field'),
         technicianType: Yup.string().required('Please fill the Field'),
         activeStatus: Yup.string().required('Please select status'),
+        password: Yup.string().when('technicianType', {
+            is: 'office-staff', // 🔹 required only for office staff
+            then: (schema) => schema.required('Password is required for office staff'),
+            otherwise: (schema) => schema.notRequired(),
+        }),
         toolIDs: Yup.array().of(Yup.string()).when('technicianType', {
             is: 'Engineer',
             then: (schema) => schema.min(1, 'Please select at least one tool'),
             otherwise: (schema) => schema.notRequired(),
-
         }),
         tools: Yup.object().when('technicianType', {
             is: 'Engineer',
@@ -89,7 +109,6 @@ const AddEngineer = () => {
                     function (value: any) {
                         const { toolIDs } = this.parent;
                         if (!toolIDs || toolIDs.length === 0) return true;
-
                         return toolIDs.every((toolID: string) => !!value?.[toolID]);
                     }
                 ),
@@ -97,6 +116,8 @@ const AddEngineer = () => {
         }),
     });
 
+
+    // Handle form submission
     // Handle form submission
     const submitForm = async (
         values: FormValues,
@@ -105,25 +126,29 @@ const AddEngineer = () => {
         try {
             console.log('Submitting values:', values);
 
-            const formattedPayload = {
+            const formattedPayload: any = {
                 name: values.name,
                 phone: values.phone,
                 email: values.email,
-                address: "", // Add address field if used elsewhere
-                technicianType: values.technicianType.toLowerCase(), // 'Engineer' => 'engineer'
-                status: values.activeStatus.toLowerCase(), // 'Active' => 'active'
+                address: "",
+                technicianType: values.technicianType.toLowerCase(),
+                status: values.activeStatus.toLowerCase(),
                 designation: values.designation,
                 department: values.department,
                 dateOfJoining: new Date(values.dateOfJoining),
                 workingDays: Number(values.workingDays),
                 tools: values.technicianType === "Engineer"
                     ? values.toolIDs.map(toolId => ({
-                        toolId, // this is now the Mongo `_id`
+                        toolId,
                         issueDate: values.tools?.[toolId] || null
                     }))
                     : []
-
             };
+
+            // 🔹 Add this block: include password if office staff
+            if (values.technicianType === 'office-staff' && values.password) {
+                formattedPayload.password = values.password;
+            }
 
             await addEmployee(formattedPayload);
 
@@ -214,7 +239,6 @@ const AddEngineer = () => {
                                         <div className="text-danger mt-1">{errors.phone}</div>
                                     )}
                                 </div>
-
                                 <div className={submitCount && errors.designation ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="designation">Designation</label>
                                     <Field name="designation" type="text" id="designation" className="form-input" placeholder="Enter Designation" />
@@ -317,6 +341,23 @@ const AddEngineer = () => {
                                     )}
 
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Password - Only for Office Staff */}
+                        {values.technicianType === 'office-staff' && (
+                            <div className={submitCount && errors.password ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                <label htmlFor="password">Password</label>
+                                <Field
+                                    name="password"
+                                    type="password"
+                                    id="password"
+                                    className="form-input"
+                                    placeholder="Enter Password"
+                                />
+                                {submitCount > 0 && errors.password && (
+                                    <div className="text-danger mt-1">{errors.password}</div>
+                                )}
                             </div>
                         )}
 
