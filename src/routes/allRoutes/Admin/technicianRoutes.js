@@ -4,7 +4,7 @@ import upload from "../../../middlewares/upload.js";
 const router = Router();
 router.post('/add', technicianController.add)
 router.get('/get-by-id/:id', technicianController.getById)
-router.get('/get-all', technicianController.getAll)
+router.get('/get-all', technicianController.getAll) 
 router.get('/all-employees', technicianController.getAllEmployees)
 router.put('/update-by-id/:id', technicianController.updateById)
 router.delete('/delete-by-id/:id', technicianController.deleteById)

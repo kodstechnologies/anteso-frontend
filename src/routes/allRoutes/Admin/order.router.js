@@ -102,5 +102,6 @@ router.get('/get-qa-report/:technicianId', orderController.getQaReportsByTechnic
 router.get('/get-report-by-id/:orderId/:serviceId/:qaReportId', orderController.getReportById)
 router.patch('/accept-report/:orderId/:serviceId/:qaReportId', orderController.acceptQAReport)
 router.patch('/reject-report/:orderId/:serviceId/:qaReportId', orderController.rejectQAReport)
+router.get('/get-elora-report/:orderId/:serviceId/:eloraId',orderController.getEloraReport)
 
 export default router

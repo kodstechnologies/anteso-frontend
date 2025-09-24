@@ -1014,11 +1014,12 @@ const downloadQuotationPdf = asyncHandler(async (req, res) => {
             {
                 $set: {
                     pdfUrl: url,
-                    hospital: hospitalId, // ensures hospital is linked
+                    from: hospitalId, // ensures hospital is linked
                 },
             },
             { new: true }
         );
+        console.log("🚀 ~ quotation:", quotation)
 
         if (!quotation) {
             return res.status(404).json({

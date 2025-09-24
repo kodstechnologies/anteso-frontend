@@ -2502,12 +2502,60 @@ const rejectQAReport = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, message: "QA Report rejected", report: wt.QAtest });
 });
 
-const completeStatusReportForElora = asyncHandler(async (req, res) => {
+const getEloraReport = asyncHandler(async (req, res) => {
     try {
+        const { orderId, serviceId, eloraId } = req.params;
 
+        // Validate IDs
+        if (!orderId || !serviceId || !eloraId) {
+            throw new ApiError(400, "orderId, serviceId and eloraId are required");
+        }
+
+        // Find the Elora report
+        const eloraReport = await Elora.findById(eloraId)
+            .populate("officeStaff", "name empId role") // populate office staff info
+            .lean();
+
+        if (!eloraReport) {
+            throw new ApiError(404, "Elora report not found");
+        }
+
+        // Optional: check if the report belongs to the given order & service
+        const order = await orderModel.findById(orderId)
+            .populate("services")
+            .lean();
+
+        if (!order) {
+            throw new ApiError(404, "Order not found");
+        }
+
+        const serviceExists = order.services.some(
+            (service) => service._id.toString() === serviceId
+        );
+
+        if (!serviceExists) {
+            throw new ApiError(400, "Service does not belong to this order");
+        }
+
+        // Return the Elora report
+        return res.status(200).json(
+            new ApiResponse(200, eloraReport, "Elora report fetched successfully")
+        );
     } catch (error) {
-
+        console.error("Get Elora Report Error:", error);
+        if (error instanceof ApiError) {
+            return res.status(error.statusCode).json({
+                statusCode: error.statusCode,
+                message: error.message,
+                errors: error.errors || [],
+            });
+        }
+        return res.status(500).json({
+            statusCode: 500,
+            message: "Failed to fetch Elora report",
+            errors: [error.message],
+        });
     }
-})
+});
 
-export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments, assignStaffByElora, getAllOrdersByHospitalId, getOrderByHospitalIdOrderId, getReportNumbers, getQaReportsByTechnician, getReportById, acceptQAReport, rejectQAReport, completeStatusReportForElora }
+export default { getAllOrders, getBasicDetailsByOrderId, getAdditionalServicesByOrderId, getAllServicesByOrderId, getMachineDetailsByOrderId, updateOrderDetails, updateEmployeeStatus, getQARawByOrderId, getAllOrdersForTechnician, startOrder, getSRFDetails, assignTechnicianByQARaw, assignOfficeStaffByQATest, getQaDetails, getAllOfficeStaff, getAssignedTechnicianName, getAssignedOfficeStaffName, getUpdatedOrderServices, getUpdatedOrderServices2, createOrder, completedStatusAndReport, getMachineDetails, updateServiceWorkType, updateAdditionalService, editDocuments, assignStaffByElora, getAllOrdersByHospitalId, getOrderByHospitalIdOrderId, getReportNumbers, getQaReportsByTechnician, getReportById, acceptQAReport, rejectQAReport, getEloraReport }
