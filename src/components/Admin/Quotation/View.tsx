@@ -315,7 +315,7 @@ const ViewQuotation: React.FC = () => {
         },
     ]
 
-    const discount: number = quotationData.discount
+    const discount = quotationData.discount; // 600
     console.log("🚀 ~ discount:", discount)
     const travelCost: number = 0
 
@@ -329,9 +329,9 @@ const ViewQuotation: React.FC = () => {
         return sum + amount
     }, 0)
 
-    const subtotal: number = aitemsTotal + bitemsTotal
+    const subtotal = quotationData.subtotalAmount; // 6000
     const discountAmount: number = (subtotal * discount) / 100
-    const totalAmount: number = subtotal - discountAmount + travelCost
+    const totalAmount = quotationData.total; // 5400
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString)
@@ -516,8 +516,8 @@ const ViewQuotation: React.FC = () => {
                     <div className="flex flex-row-reverse px-4 mt-6">
                         <div className="w-52 space-y-2">
                             <div className="flex items-center gap-4">
-                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">DISCOUNT%</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">{discount}%</div>
+                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">DISCOUNT</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">{discount}</div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
