@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Dealer from "../../models/dealer.model.js";
 import { asyncHandler } from "../../utils/AsyncHandler.js";
 
@@ -75,13 +76,31 @@ export const createDealer = asyncHandler(async (req, res) => {
 });
 
 
-const getById = asyncHandler(async (req, res) => {
+ const getById = asyncHandler(async (req, res) => {
     try {
+        const { id } = req.params;
 
+        // validate ObjectId
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid dealer ID" });
+        }
+
+        // find dealer by id
+        const dealer = await Dealer.findById(id);
+
+        if (!dealer) {
+            return res.status(404).json({ message: "Dealer not found" });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: dealer,
+        });
     } catch (error) {
-
+        console.error("Error fetching dealer:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
-})
+});
 const getAll = asyncHandler(async (req, res) => {
     try {
         const dealers = await Dealer.find(); // fetch all dealers
@@ -162,4 +181,4 @@ const editById = asyncHandler(async (req, res) => {
 
 
 
-export default { createDealer, getAll }
+export default { createDealer, getAll,getById,editById,deleteById }
