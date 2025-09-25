@@ -156,7 +156,7 @@ const Sidebar = () => {
                                                             <li><NavLink to="/admin/hrms/leave-management">{t('Leave Management')}</NavLink></li>
                                                             <li><NavLink to="/admin/hrms/trip-management">{t('Trip Management')}</NavLink></li>
                                                             <li><NavLink to="/admin/hrms/salary-management">{t('Salary Management')}</NavLink></li>
-                                                            <li><NavLink to="/admin/hrms/attendance-summary">{t('Attendance Summary')}</NavLink></li>
+                                                            {/* <li><NavLink to="/admin/hrms/attendance-summary">{t('Attendance Summary')}</NavLink></li> */}
                                                             {/* <li><NavLink to="/admin/hrms/trip-management">{t('Trip Management')}</NavLink></li> */}
                                                         </>
                                                     )}

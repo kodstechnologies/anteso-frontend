@@ -87,7 +87,7 @@ const View = () => {
 
         fetchBasicDetails();
     }, [orderId]);
-    
+
     if (!details) return <div className="text-gray-600 p-6">Loading...</div>;
     const fields = [
         { label: 'Hospital Name', value: details.hospitalName },
@@ -119,16 +119,14 @@ const View = () => {
                         </div>
                     ))}
                 </div>
-
             </div>
             {/* Service details */}
-            {/* <ServiceDetails orderId={orderId} /> */}
-            <ServiceDetails2 orderId={orderId}/>
+            <ServiceDetails2 orderId={orderId} />
             <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
                 <div className="space-y-4">
                     <AdditionalServices />
                     <div className="bg-white p-6 rounded-lg shadow-lg mt-6">
-                        <CourierDetails />
+                        <CourierDetails orderId={orderId} />
                     </div>
                     <FadeInModal open={openModal} onClose={() => setOpenModal(false)} title="Payment Screenshot">
                         <img

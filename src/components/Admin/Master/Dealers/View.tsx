@@ -1,21 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  FaUserTie,
-  FaMapMarkerAlt,
-  FaCity,
-  FaFlag,
-  FaHashtag,
-  FaMap,
-  FaRegCalendarCheck,
-  FaVials,
-  FaRupeeSign,
-  FaCogs,
+  FaUserTie, FaMapMarkerAlt, FaCity, FaFlag, FaHashtag,
+  FaMap, FaRegCalendarCheck, FaVials, FaCogs
 } from 'react-icons/fa';
+import { getDealerById } from '../../../../api'; // ✅ import api function
 
 interface QATest {
-  label: string;
-  value: string;
+  testName: string;
   price: number;
 }
 
@@ -29,9 +21,6 @@ interface DealerType {
   mouValidity: string;
   qaTests: QATest[];
   services: string[];
-  travel: number;
-  actual: number;
-  fixed: number;
 }
 
 const serviceLabelMap: Record<string, string> = {
@@ -43,38 +32,39 @@ const serviceLabelMap: Record<string, string> = {
 const View: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [dealer, setDealer] = useState<DealerType | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Dummy data – replace this with API later
-    const dummyDealer: DealerType = {
-      dealersName: 'Radiant Diagnostics',
-      address: '123, Main Street, MG Road',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      pinCode: '400001',
-      region: 'West',
-      mouValidity: '2025-12-31',
-      qaTests: [
-        { label: 'FIXED X RAY', value: 'FIXED_X_RAY', price: 3500 },
-        { label: 'C ARM', value: 'C_ARM', price: 3000 },
-      ],
-      services: ['INSTITUTE_REGISTRATION', 'LICENSE'],
-      travel: 1000,
-      actual: 2000,
-      fixed: 1500,
+    if (!id) return;
+
+    const fetchDealer = async () => {
+      try {
+        const res = await getDealerById(id);
+        const d = res.data.data; // actual dealer object
+        setDealer({
+          dealersName: d.name,         // API 'name' → UI 'dealersName'
+          address: d.address,
+          city: d.city,
+          state: d.state,
+          pinCode: d.pincode,          // API 'pincode' → UI 'pinCode'
+          region: d.branch,            // API 'branch' → UI 'region'
+          mouValidity: d.mouValidity,
+          qaTests: d.qaTests || [],    // ensure default array
+          services: d.services || [],  // optional, if backend returns it
+        });
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setDealer(dummyDealer);
-
-    // Future API call:
-    /*
-    axios.get(`/api/dealers/${id}`)
-      .then(res => setDealer(res.data))
-      .catch(err => console.error(err));
-    */
+    fetchDealer();
   }, [id]);
 
-  if (!dealer) return <div className="p-6 text-gray-600">Loading...</div>;
+
+  if (loading) return <div className="p-6 text-gray-600">Loading...</div>;
+  if (!dealer) return <div className="p-6 text-red-600">Dealer not found</div>;
 
   return (
     <div className="p-6">
@@ -91,9 +81,7 @@ const View: React.FC = () => {
           </Link>
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-          <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
-            View Dealer
-          </Link>
+          <span>View Dealer</span>
         </li>
       </ol>
 
@@ -109,39 +97,20 @@ const View: React.FC = () => {
           <Detail label="State" value={dealer.state} icon={<FaFlag />} />
           <Detail label="Pin Code" value={dealer.pinCode} icon={<FaHashtag />} />
           <Detail label="Region" value={dealer.region} icon={<FaMap />} />
-          <Detail label="MOU Validity" value={dealer.mouValidity} icon={<FaRegCalendarCheck />} />
+          <Detail label="MOU Validity" value={new Date(dealer.mouValidity).toLocaleDateString()} icon={<FaRegCalendarCheck />} />
         </div>
 
         {/* QA Tests */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
-            <FaVials className="text-primary" /> QA Tests
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
-            {dealer.qaTests.map((test) => (
-              <Detail key={test.value} label={test.label} value={`₹ ${test.price}`} icon={<FaVials />} />
-            ))}
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+          {dealer.qaTests.map((test, idx) => (
+            <Detail
+              key={idx}
+              label={test.testName}
+              value={`₹ ${test.price}`}
+              icon={<FaVials />}
+            />
+          ))}
         </div>
-
-        {/* Services */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
-            <FaCogs className="text-primary" /> Services
-          </h2>
-          <ul className="list-disc list-inside text-gray-600">
-            {dealer.services.map((service) => (
-              <li key={service}>{serviceLabelMap[service] || service}</li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Costs */}
-        {/* <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
-          <Detail label="Travel Cost" value={`₹ ${dealer.travel}`} icon={<FaRupeeSign />} />
-          <Detail label="Actual Cost" value={`₹ ${dealer.actual}`} icon={<FaRupeeSign />} />
-          <Detail label="Fixed Cost" value={`₹ ${dealer.fixed}`} icon={<FaRupeeSign />} />
-        </div> */}
       </div>
     </div>
   );

@@ -1,7 +1,37 @@
-import React, { useState } from 'react'
+import React, { useState } from "react";
+import { addCourierByOrderId } from "../../../api";
 
-const CourierDetails = () => {
+interface Courier {
+  _id?: string;
+  courierCompanyName: string;
+  trackingId: string;
+  trackingUrl: string;
+}
+
+const CourierDetails = ({ orderId }: { orderId: string }) => {
   const [isAddingCourier, setIsAddingCourier] = useState(false);
+  const [courierForm, setCourierForm] = useState<Courier>({
+    courierCompanyName: "",
+    trackingId: "",
+    trackingUrl: "",
+  });
+  const [couriers, setCouriers] = useState<Courier[]>([]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCourierForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const data = await addCourierByOrderId(orderId, courierForm);
+      setCouriers((prev) => [...prev, data.data]); // add new courier to state
+      setIsAddingCourier(false);
+      setCourierForm({ courierCompanyName: "", trackingId: "", trackingUrl: "" });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <div>
@@ -23,6 +53,9 @@ const CourierDetails = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
               <input
                 type="text"
+                name="courierCompanyName"
+                value={courierForm.courierCompanyName}
+                onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g. DTDC"
               />
@@ -31,6 +64,9 @@ const CourierDetails = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Tracking ID</label>
               <input
                 type="text"
+                name="trackingId"
+                value={courierForm.trackingId}
+                onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g. rr3rd3ed2thyt"
               />
@@ -39,6 +75,9 @@ const CourierDetails = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Tracking URL</label>
               <input
                 type="text"
+                name="trackingUrl"
+                value={courierForm.trackingUrl}
+                onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g. https://courier.com/track"
               />
@@ -52,7 +91,7 @@ const CourierDetails = () => {
               Cancel
             </button>
             <button
-              onClick={() => setIsAddingCourier(false)}
+              onClick={handleSubmit}
               className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
             >
               Submit
@@ -61,27 +100,27 @@ const CourierDetails = () => {
         </div>
       )}
 
-      {/* Courier Display Styled like Basic Details */}
+      {/* Display Couriers */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm text-gray-700">
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
-          <div className="text-xs uppercase text-gray-500 font-semibold mb-1">Company Name</div>
-          <div className="text-gray-800 font-medium">DTDC</div>
-        </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
-          <div className="text-xs uppercase text-gray-500 font-semibold mb-1">Tracking ID</div>
-          <div className="text-gray-800 font-medium">rr3rd3ed2thyt</div>
-        </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
-          <div className="text-xs uppercase text-gray-500 font-semibold mb-1">Tracking URL</div>
-          <div className="text-blue-600 font-medium">
-            <a href="http://" target="_blank" rel="noopener noreferrer" className="hover:underline">
-              View
-            </a>
+        {couriers.map((c) => (
+          <div key={c._id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div className="text-xs uppercase text-gray-500 font-semibold mb-1">Company Name</div>
+            <div className="text-gray-800 font-medium">{c.courierCompanyName}</div>
+
+            <div className="text-xs uppercase text-gray-500 font-semibold mt-2 mb-1">Tracking ID</div>
+            <div className="text-gray-800 font-medium">{c.trackingId}</div>
+
+            <div className="text-xs uppercase text-gray-500 font-semibold mt-2 mb-1">Tracking URL</div>
+            <div className="text-blue-600 font-medium">
+              <a href={c.trackingUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                View
+              </a>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default CourierDetails
+export default CourierDetails;

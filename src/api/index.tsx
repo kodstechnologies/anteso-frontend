@@ -1527,9 +1527,6 @@ export const completeStatusAndReport = async (
     }
 };
 
-
-
-
 export const getAllDealers = async () => {
     try {
         const token = Cookies.get('accessToken')
@@ -1538,6 +1535,7 @@ export const getAllDealers = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ getAllDealers ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getEngineerByTools ~ error:", error);
@@ -2009,3 +2007,176 @@ export const assignStaffByElora = async (orderId: string, serviceId: string, off
         );
     }
 }
+
+export const approveLeave = async (employeeId: any, leaveId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.post(`/leaves/approve-leave`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ createPayment ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to createPayment"
+        );
+    }
+}
+export const rejectLeave = async (employeeId: any, leaveId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.post(`/leaves/reject-leave`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ createPayment ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to createPayment"
+        );
+    }
+}
+
+export const deleteLeave = async (leaveId: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.delete(`/leaves/delete-payment-by-id/${leaveId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ deletePaymentById ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to deletePaymentById"
+        )
+    }
+}
+
+export const getAllLeaves = async (id: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/leaves/get-all-leaves/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ deletePaymentById ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to deletePaymentById"
+        )
+    }
+}
+
+export const createDealer = async (data: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.post("/dealers/create-dealer", data, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
+        console.log("🚀 ~ createDealer ~ res:", res)
+        return res
+
+    } catch (error: any) {
+        console.error("🚀 ~ deletePaymentById ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to deletePaymentById"
+        )
+    }
+};
+
+export const getDealerById = async (id: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/dealers/get-by-id/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAllDealers ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getEngineerByTools ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const editDealerById = async (id: any, payload: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.put(`/leaves/update/${id}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ edit courier ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch client data"
+        );
+    }
+}
+
+export const assignToOfficeStaffByElora = async (orderId: string, serviceId: string, officeStaffId: string, workType: string, status: any) => {
+    console.log("🚀 ~ assignToOfficeStaff ~ status:", status)
+    console.log("🚀 ~ assignToOfficeStaff ~ workType:", workType)
+    console.log("🚀 ~ assignToOfficeStaff ~ officeStaffId:", officeStaffId)
+    console.log("🚀 ~ assignToOfficeStaff ~ serviceId:", serviceId)
+    console.log("🚀 ~ assignToOfficeStaff ~ orderId:", orderId)
+    console.log("==assignToOfficeStaffByElora==");
+
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.put(`/orders/assign-staff-by-elora/${orderId}/${serviceId}/${officeStaffId}/${workType}/${status}`, {
+            orderId,
+            serviceId,
+            officeStaffId,
+            workType,
+            status
+
+        }, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res.data
+    } catch (error: any) {
+        console.error("🚀  ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch "
+        );
+    }
+}
+
+export const addCourierByOrderId = async (orderId: string, payload: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.post(`/courier/add-by-orderId/${orderId}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
+        console.log("🚀 ~ addCourierByOrderId ~ res:", res);
+        return res.data; // return data directly
+    } catch (error: any) {
+        console.error("🚀 ~ addCourierByOrderId ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to add courier"
+        );
+    }
+};
+

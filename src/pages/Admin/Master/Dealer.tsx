@@ -2,18 +2,17 @@ import { Link, NavLink } from 'react-router-dom';
 import { DataTable, DataTableSortStatus } from 'mantine-datatable';
 import { useState, useEffect } from 'react';
 import sortBy from 'lodash/sortBy';
-import { useDispatch, useSelector } from 'react-redux';
-// import { IRootState } from '../../../store';
+import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../../store/themeConfigSlice';
 import IconTrashLines from '../../../components/Icon/IconTrashLines';
 import IconPlus from '../../../components/Icon/IconPlus';
 import IconEdit from '../../../components/Icon/IconEdit';
-// import IconEye from '../../../components/Icon/IconEye';
-import { dealers } from '../../../data';
 import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
+
+import { getAllDealers } from '../../../api'; // ✅ your api function
 
 const Dealers = () => {
     const dispatch = useDispatch();
@@ -21,27 +20,47 @@ const Dealers = () => {
         dispatch(setPageTitle('Dealers'));
     }, []);
 
-    const [items, setItems] = useState(
-        dealers.map((item, index) => ({
-            ...item,
-            dealersID: `DEL${String(index + 1).padStart(3, '0')}`, // Generates C001, C002, etc.
-        }))
-    );
+    const [items, setItems] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // ✅ Fetch dealers from API
+    useEffect(() => {
+        const fetchDealers = async () => {
+            try {
+                const res = await getAllDealers();
+                // assuming your API response is { data: [...] }
+                const dealersData = res?.data?.dealers || [];
+
+                // Generate dealersID like DEL001, DEL002, ...
+                const mappedDealers = dealersData.map((item: any, index: number) => ({
+                    ...item,
+                    dealersID: `DEL${String(index + 1).padStart(3, '0')}`,
+                }));
+
+                setItems(mappedDealers);
+                setInitialRecords(sortBy(mappedDealers, 'dealersName'));
+                setLoading(false);
+            } catch (error) {
+                console.error("Failed to fetch dealers:", error);
+                setLoading(false);
+            }
+        };
+
+        fetchDealers();
+    }, []);
 
     const deleteRow = (id: any = null) => {
         if (window.confirm('Are you sure want to delete selected row ?')) {
             if (id) {
-                setRecords(items.filter((user) => user.id !== id));
-                setInitialRecords(items.filter((user) => user.id !== id));
-                setItems(items.filter((user) => user.id !== id));
+                setRecords(items.filter((user) => user._id !== id));
+                setInitialRecords(items.filter((user) => user._id !== id));
+                setItems(items.filter((user) => user._id !== id));
                 setSearch('');
                 setSelectedRecords([]);
             } else {
                 let selectedRows = selectedRecords || [];
-                const ids = selectedRows.map((d: any) => {
-                    return d.id;
-                });
-                const result = items.filter((d) => !ids.includes(d.id as never));
+                const ids = selectedRows.map((d: any) => d._id);
+                const result = items.filter((d) => !ids.includes(d._id));
                 setRecords(result);
                 setInitialRecords(result);
                 setItems(result);
@@ -55,19 +74,18 @@ const Dealers = () => {
     const [page, setPage] = useState(1);
     const PAGE_SIZES = [10, 20, 30, 50, 100];
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-    const [initialRecords, setInitialRecords] = useState(sortBy(items, 'customerName'));
-    const [records, setRecords] = useState(initialRecords);
+    const [initialRecords, setInitialRecords] = useState<any[]>([]);
+    const [records, setRecords] = useState<any[]>([]);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
 
     const [search, setSearch] = useState('');
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'firstName',
+        columnAccessor: 'dealersName',
         direction: 'asc',
     });
 
     useEffect(() => {
         setPage(1);
-        /* eslint-disable react-hooks/exhaustive-deps */
     }, [pageSize]);
 
     useEffect(() => {
@@ -80,7 +98,7 @@ const Dealers = () => {
         setInitialRecords(() => {
             return items.filter((item) => {
                 return (
-                    item.dealersID.toLocaleLowerCase().includes(search.toLocaleLowerCase()) ||
+                    item.dealersID.toLowerCase().includes(search.toLowerCase()) ||
                     item.dealersName.toLowerCase().includes(search.toLowerCase()) ||
                     item.address.toLowerCase().includes(search.toLowerCase()) ||
                     item.contactPersonName.toLowerCase().includes(search.toLowerCase()) ||
@@ -89,17 +107,19 @@ const Dealers = () => {
                 );
             });
         });
-    }, [search]);
+    }, [search, items]);
 
     useEffect(() => {
         const data2 = sortBy(initialRecords, sortStatus.columnAccessor);
         setRecords(sortStatus.direction === 'desc' ? data2.reverse() : data2);
         setPage(1);
-    }, [sortStatus]);
+    }, [sortStatus, initialRecords]);
+
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
         { label: 'Dealers', icon: <IconBox /> },
     ];
+
     return (
         <>
             <Breadcrumb items={breadcrumbItems} />
@@ -114,74 +134,66 @@ const Dealers = () => {
                             </Link>
                         </div>
                         <div className="ltr:ml-auto rtl:mr-auto">
-                            <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                            <input
+                                type="text"
+                                className="form-input w-auto"
+                                placeholder="Search..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
                         </div>
                     </div>
 
                     <div className="datatables pagination-padding">
-                        <DataTable
-                            className="whitespace-nowrap table-hover invoice-table"
-                            records={records}
-                            columns={[
-                                {
-                                    accessor: 'dealersID',
-                                    title: 'DEl ID',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'dealersName',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'address',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'contactPersonName',
-                                    sortable: true,
-                                },
-
-                                {
-                                    accessor: 'pinCode',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'region',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'action',
-                                    title: 'Actions',
-                                    sortable: false,
-                                    textAlignment: 'center',
-                                    render: ({ id }) => (
-                                        <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to="/admin/dealer/view" className="flex hover:text-primary">
-                                                <IconEye />
-                                            </NavLink>
-                                            <NavLink to="/admin/dealer/edit" className="flex hover:text-info">
-                                                <IconEdit className="w-4.5 h-4.5" />
-                                            </NavLink>
-                                            <button type="button" className="flex hover:text-danger" onClick={(e) => deleteRow(id)}>
-                                                <IconTrashLines />
-                                            </button>
-                                        </div>
-                                    ),
-                                },
-                            ]}
-                            highlightOnHover
-                            totalRecords={initialRecords.length}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            recordsPerPageOptions={PAGE_SIZES}
-                            onRecordsPerPageChange={setPageSize}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
-                        />
+                        {loading ? (
+                            <p className="text-center p-4">Loading dealers...</p>
+                        ) : (
+                            <DataTable
+                                className="whitespace-nowrap table-hover invoice-table"
+                                records={records}
+                                columns={[
+                                    { accessor: 'dealersID', title: 'DEL ID', sortable: true },
+                                    { accessor: 'name', title: 'Dealer Name', sortable: true },
+                                    { accessor: 'address', sortable: true },
+                                    // { accessor: 'contactPersonName', title: 'Contact Person', sortable: true },
+                                    { accessor: 'pincode', sortable: true },
+                                    { accessor: 'branch', sortable: true },
+                                    {
+                                        accessor: 'action',
+                                        title: 'Actions',
+                                        sortable: false,
+                                        textAlignment: 'center',
+                                        render: ({ _id }) => (
+                                            <div className="flex gap-4 items-center w-max mx-auto">
+                                                <NavLink to={`/admin/dealer/view/${_id}`} className="flex hover:text-primary">
+                                                    <IconEye />
+                                                </NavLink>
+                                                <NavLink to={`/admin/dealer/edit/${_id}`} className="flex hover:text-info">
+                                                    <IconEdit className="w-4.5 h-4.5" />
+                                                </NavLink>
+                                                <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(_id)}>
+                                                    <IconTrashLines />
+                                                </button>
+                                            </div>
+                                        ),
+                                    },
+                                ]}
+                                highlightOnHover
+                                totalRecords={initialRecords.length}
+                                recordsPerPage={pageSize}
+                                page={page}
+                                onPageChange={setPage}
+                                recordsPerPageOptions={PAGE_SIZES}
+                                onRecordsPerPageChange={setPageSize}
+                                sortStatus={sortStatus}
+                                onSortStatusChange={setSortStatus}
+                                selectedRecords={selectedRecords}
+                                onSelectedRecordsChange={setSelectedRecords}
+                                paginationText={({ from, to, totalRecords }) =>
+                                    `Showing  ${from} to ${to} of ${totalRecords} entries`
+                                }
+                            />
+                        )}
                     </div>
                 </div>
             </div>

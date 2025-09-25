@@ -426,7 +426,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/dealer/view',
+        path: '/admin/dealer/view/:id',
         element: (
             <AdminProtected>
                 <ViewDealer />
@@ -442,7 +442,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/dealer/edit',
+        path: '/admin/dealer/edit/:id',
         element: (
             <AdminProtected>
                 <EditDealer />
@@ -699,7 +699,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/hrms/leave-management-view',
+        path: '/admin/hrms/leave-management-view/:id',
         element: (
             <AdminProtected>
                 <ViewEmployeeDetailsLeaveManagement />

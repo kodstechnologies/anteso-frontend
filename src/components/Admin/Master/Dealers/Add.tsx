@@ -3,7 +3,7 @@ import { Field, Form, Formik } from 'formik';
 import { Link, useNavigate } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
 import { useEffect, useState } from 'react';
-import { getAllStates } from '../../../../api';
+import { createDealer, getAllStates } from '../../../../api';
 
 
 type StateType = {
@@ -35,21 +35,6 @@ const AddDealer = () => {
     const [states, setStates] = useState<StateType[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const SubmittedForm = Yup.object().shape({
-        dealersName: Yup.string().required('Please fill the Field'),
-        address: Yup.string().required('Please fill the Field'),
-        city: Yup.string().required('Please fill the Field'),
-        state: Yup.string().required('Please fill the Field'),
-        pinCode: Yup.string().required('Please fill the Field'),
-        region: Yup.string().required('Please fill the Field'),
-        branch: Yup.string().required('Please fill the Field'),
-        mouValidity: Yup.string().required('Please fill the Field'),
-        qaTests: Yup.array().min(1, 'Please select at least one QA Test'),
-        services: Yup.array().min(1, 'Please select at least one service'),
-        // travel: Yup.number().required('Please fill the Field').min(0, 'Travel cost cannot be negative'),
-        // actual: Yup.number().required('Please fill the Field').min(0, 'Actual cost cannot be negative'),
-        // fixed: Yup.number().required('Please fill the Field').min(0, 'Fixed cost cannot be negative'),
-    });
     useEffect(() => {
         const fetchStates = async () => {
             try {
@@ -66,18 +51,61 @@ const AddDealer = () => {
         fetchStates();
     }, []);
 
-    const submitForm = (values: any) => {
-        const updatedValues = {
-            ...values,
-            qaTests: values.qaTests.map((test: string) => {
-                const option = editableOptions.find((opt) => opt.value === test);
-                return { value: test, price: option?.price || 0 };
+    const validationSchema = Yup.object({
+        dealersName: Yup.string().required("Please enter Dealer Name"),
+        address: Yup.string().required("Please enter Address"),
+        city: Yup.string().required("Please enter City"),
+        phone: Yup.string().required("Please enter Phone"),
+        email: Yup.string().email("Invalid Email").required("Please enter Email"),
+        state: Yup.string().required("Please select State"),
+        pinCode: Yup.string().required("Please enter Pin Code"),
+        branch: Yup.string().required("Please enter Branch"),
+        mouValidity: Yup.date().required("Please enter MOU validity"),
+    });
+
+    // inside AddDealer component
+    const submitForm = async (values: any) => {
+        // ✅ map frontend values to backend schema
+        const payload = {
+            name: values.dealersName,
+            phone: values.phone,        // add a phone field in form
+            email: values.email,        // add email field in form
+            address: values.address,
+            city: values.city,
+            state: values.state,
+            pincode: values.pinCode,
+            branch: values.branch,
+            mouValidity: values.mouValidity,
+            qaTests: values.qaTests.map((value: string) => {
+                const option = editableOptions.find((opt) => opt.value === value);
+                return {
+                    testName: option?.label || value,
+                    price: option?.price || 0,
+                };
             }),
         };
-        console.log('Form Values:', updatedValues);
-        showMessage('Form submitted successfully', 'success');
-        navigate('/admin/dealer');
+
+        try {
+            const res = await createDealer(payload);
+            showMessage(res.data.message || "Dealer created successfully", "success");
+            navigate("/admin/dealer");
+        } catch (err: any) {
+            showMessage(err.response?.data?.message || "Failed to create dealer", "error");
+        }
     };
+
+    // const submitForm = (values: any) => {
+    //     const updatedValues = {
+    //         ...values,
+    //         qaTests: values.qaTests.map((test: string) => {
+    //             const option = editableOptions.find((opt) => opt.value === test);
+    //             return { value: test, price: option?.price || 0 };
+    //         }),
+    //     };
+    //     console.log('Form Values:', updatedValues);
+    //     showMessage('Form submitted successfully', 'success');
+    //     navigate('/admin/dealer');
+    // };
 
     return (
         <>
@@ -104,12 +132,11 @@ const AddDealer = () => {
                     mouValidity: '',
                     qaTests: [],
                     services: [],
-                    // travel: '',
-                    // actual: '',
-                    // fixed: '',
+                    phone: '',
+                    email: '',
                 }}
-                validationSchema={SubmittedForm}
-                onSubmit={submitForm}
+                validationSchema={validationSchema}   // ✅ correct schema
+                onSubmit={submitForm}                 // ✅ your function
             >
                 {({ errors, submitCount, setFieldValue, values }) => (
                     <Form className="space-y-5">
@@ -135,6 +162,18 @@ const AddDealer = () => {
                                     <Field name="city" type="text" id="city" placeholder="Enter City" className="form-input" />
                                     {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
                                 </div>
+                                <div className={submitCount && errors.phone ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="phone">Phone</label>
+                                    <Field name="phone" type="text" id="phone" placeholder="Enter Phone" className="form-input" />
+                                    {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : null}
+                                </div>
+
+                                <div className={submitCount && errors.email ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="email">Email</label>
+                                    <Field name="email" type="email" id="email" placeholder="Enter Email" className="form-input" />
+                                    {submitCount && errors.email ? <div className="text-danger mt-1">{errors.email}</div> : null}
+                                </div>
+
                                 <div
                                     className={
                                         submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""

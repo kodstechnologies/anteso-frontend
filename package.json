@@ -104,38 +104,3 @@
         "vite": "^5.4.1"
     }
 }
-{
-  "name": "anteso-backend",
-  "version": "1.0.0",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "seed-admins": "node seeders/adminSeeder.js"
-  },
-  "author": "prajwalanagekar",
-  "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.864.0",
-    "@aws-sdk/lib-storage": "^3.864.0",
-    "@aws-sdk/s3-request-presigner": "^3.864.0",
-    "aws-sdk": "^2.1692.0",
-    "axios": "^1.10.0",
-    "bcrypt": "^6.0.0",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
-    "dotenv": "^17.1.0",
-    "express": "^5.1.0",
-    "joi": "^17.13.3",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.16.2",
-    "multer": "^2.0.2",
-    "pdf-lib": "^1.17.1",
-    "qrcode": "^1.5.4"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
-  }
-}
