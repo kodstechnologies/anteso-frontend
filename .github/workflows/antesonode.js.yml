@@ -32,7 +32,10 @@ jobs:
         cache: 'npm'
 
     - run: npm ci
-
+    - name: Clean install dependencies
+      run: |
+        rm -rf node_modules package-lock.json
+        npm install
     - run: |
         touch .env
         echo "${{ secrets.ANTESOFE}}" > .env
