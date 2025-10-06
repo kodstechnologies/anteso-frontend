@@ -1,4 +1,4 @@
-name: Node.js CI
+name: Frontend Node.js CI
 
 on:
   push:
@@ -14,17 +14,35 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: |
-        touch .env
-        echo "${{ secrets.BACKENDENV}}" > .env
-    - run: pm2 restart BackendServer
+      # Checkout the repository
+      - uses: actions/checkout@v4
+
+      # Setup Node.js
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      # Install frontend dependencies
+      - name: Install frontend dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
+
+      # Create .env file from secret
+      - name: Setup environment
+        run: |
+          touch .env
+          echo "${{ secrets.ANTESOFE }}" > .env
+
+      # Build frontend
+      - name: Build frontend
+        run: npm run build
+
+      # Restart frontend server
+      - name: Restart frontend server
+        run: |
+          pm2 restart FrontendServer || pm2 start FrontendServer
