@@ -79,7 +79,7 @@ interface MachineData {
 }
 
 interface ServicesCardProps {
-    orderId?: string
+    orderId?: any
 }
 
 export default function ServicesCard({ orderId }: ServicesCardProps) {
@@ -416,7 +416,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         setAssignments(loadedAssignments)
         setVerificationResponses(savedVerificationResponses)
 
-        const mockFiles: Record<string, File | null> = {}
+        // const mockFiles: Record<string, File | null> = {}
+        const mockFiles: Record<string, File | undefined> = {}
+
         Object.entries(loadedFileNames).forEach(([key, fileName]) => {
             if (fileName) {
                 mockFiles[key] = new File([""], fileName as string, { type: "application/octet-stream" })
@@ -1443,13 +1445,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             <div className="p-2 bg-white rounded border">
                                                                                 <label className="text-xs text-gray-500">QA Test Report Number</label>
                                                                                 <p className="font-medium text-sm">
-                                                                                    {reportNumbers[service.id]?.qaTest?.qaTestReportNumber || "N/A"}
+                                                                                    {reportNumbers[service.id]?.qatest?.qaTestReportNumber || "N/A"}
                                                                                 </p>
                                                                             </div>
                                                                             <div className="p-2 bg-white rounded border">
                                                                                 <label className="text-xs text-gray-500">Report ULR Number</label>
                                                                                 <p className="font-medium text-sm">
-                                                                                    {reportNumbers[service.id]?.qaTest?.reportULRNumber || "N/A"}
+                                                                                    {reportNumbers[service.id]?.qatest?.reportULRNumber || "N/A"}
                                                                                 </p>
                                                                             </div>
                                                                         </div>

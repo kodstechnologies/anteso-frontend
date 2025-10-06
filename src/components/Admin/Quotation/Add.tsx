@@ -69,9 +69,13 @@ type QuotationData = {
         name: string
         phone: number
     }
+    // items: {
+    //     categoryA: Item[]
+    //     categoryB: Item[]
+    // }
     items: {
-        categoryA: Item[]
-        categoryB: Item[]
+        services: ServiceItem[]
+        additionalServices: AdditionalServiceItem[]
     }
     calculations: {
         subtotal: number
@@ -325,7 +329,7 @@ const AddQuotation: React.FC = () => {
             } catch (error) {
                 console.error("Error fetching employees or dealers:", error);
             } finally {
-                setLoading(false);
+                // setLoading(false);
             }
         };
 
@@ -557,33 +561,73 @@ const AddQuotation: React.FC = () => {
         setIsSubmitting(true);
         try {
             // Create snapshots of your services and additional services
-            const serviceSnapshots = aitems.map((s) => {
+            // const serviceSnapshots = aitems.map((s) => {
+            //     const qty = Number.parseFloat(s.quantity || "1");
+            //     const price = Number.parseFloat(s.price || "0");
+            //     const total = qty * price;
+            //     return {
+            //         id: typeof s.id === "string" ? s.id : s.id?.toString(),
+            //         machineType: s.title,
+            //         equipmentNo: (s as any).equipmentNo,
+            //         machineModel: (s as any).machineModel,
+            //         serialNumber: (s as any).serialNumber,
+            //         remark: (s as any).remark,
+            //         totalAmount: total,  // 👈 computed directly here
+            //     };
+            // });
+            const serviceSnapshots: ServiceItem[] = aitems.map((s) => {
                 const qty = Number.parseFloat(s.quantity || "1");
                 const price = Number.parseFloat(s.price || "0");
                 const total = qty * price;
+
                 return {
-                    id: typeof s.id === "string" ? s.id : s.id?.toString(),
+                    id: typeof s.id === "number" ? s.id : Number(s.id),
+                    type: s.type || "A",
+                    title: s.title,
+                    description: s.description || "",
+                    quantity: s.quantity || "1",
+                    price: s.price || "0",
+                    amount: total.toString(),   // match string type
                     machineType: s.title,
                     equipmentNo: (s as any).equipmentNo,
                     machineModel: (s as any).machineModel,
                     serialNumber: (s as any).serialNumber,
                     remark: (s as any).remark,
-                    totalAmount: total,  // 👈 computed directly here
+                    totalAmount: total,
                 };
             });
 
-            const additionalServiceSnapshots = bitems.map((s) => {
+            // const additionalServiceSnapshots = bitems.map((s) => {
+            //     const qty = Number.parseFloat(s.quantity || "1");
+            //     const price = Number.parseFloat(s.price || "0");
+            //     const total = qty * price;
+
+            //     return {
+            //         id: typeof s.id === "string" ? s.id : undefined,
+            //         name: s.title,
+            //         description: s.description,
+            //         totalAmount: total,   // 👈 compute here instead of relying on amount
+            //     };
+            // });
+            const additionalServiceSnapshots: AdditionalServiceItem[] = bitems.map((s) => {
                 const qty = Number.parseFloat(s.quantity || "1");
                 const price = Number.parseFloat(s.price || "0");
                 const total = qty * price;
 
                 return {
-                    id: typeof s.id === "string" ? s.id : undefined,
+                    // id: s.id?.toString() || "",
+                    id: typeof s.id === "number" ? s.id : Number(s.id),
+                    type: s.type || "B",
+                    title: s.title,
+                    description: s.description || "",
+                    quantity: s.quantity || "1",
+                    price: s.price || "0",
+                    amount: total.toString(),
                     name: s.title,
-                    description: s.description,
-                    totalAmount: total,   // 👈 compute here instead of relying on amount
+                    totalAmount: total,
                 };
             });
+
 
             const quotationData: QuotationData = {
                 date: new Date().toLocaleDateString("en-GB", {
@@ -614,7 +658,9 @@ const AddQuotation: React.FC = () => {
                     discountAmount: calculations.discountAmount,
                     totalAmount: calculations.totalAmount,
                 },
-                termsAndConditions: terms.map(t => t.text),
+                // termsAndConditions: terms.map(t => t.text),
+                termsAndConditions: terms.map(t => ({ id: t.id, text: t.text })),
+
                 bankDetails: {
                     hdfc: {
                         accountNumber: "50200007211263",

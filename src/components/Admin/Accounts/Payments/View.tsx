@@ -68,10 +68,10 @@ const View = () => {
           <Detail label="Payment Amount" value={`₹ ${payment.paymentAmount}`} />
           <Detail label="Payment Type" value={payment.paymentType} />
           <Detail label="UTR Number" value={payment.utrNumber || "N/A"} />
-          <Detail
+          {/* <Detail
             label="Invoice Generated"
             value={payment.paymentType === "complete" ? "Yes" : "No"}
-          />
+          /> */}
         </div>
 
         {/* Screenshot Section */}

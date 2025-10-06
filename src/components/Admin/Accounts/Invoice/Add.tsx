@@ -119,6 +119,7 @@ const Add = () => {
     const fetchSrfNumbers = async () => {
       try {
         const res = await getAllSrfNumber();
+        console.log("🚀 ~ fetchSrfNumbers ~ res:", res)
         if (res?.data?.success) {
           const options = res.data.data.map((item: any) => ({
             label: item.srfNumber + ' - ' + item.name,
