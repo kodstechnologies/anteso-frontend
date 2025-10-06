@@ -26,27 +26,23 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
-      # Install dependencies (frontend) with legacy-peer-deps to avoid conflicts
+      # Install frontend dependencies
       - name: Install frontend dependencies
         run: |
-          cd _work/anteso-frontend/anteso-frontend
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
 
       # Create .env file from secret
       - name: Setup environment
         run: |
-          cd _work/anteso-frontend/anteso-frontend
           touch .env
           echo "${{ secrets.ANTESOFE }}" > .env
 
-      # Optional: Build the frontend
+      # Build frontend
       - name: Build frontend
-        run: |
-          cd _work/anteso-frontend/anteso-frontend
-          npm run build
+        run: npm run build
 
-      # Optional: Restart frontend server if applicable
+      # Restart frontend server
       - name: Restart frontend server
         run: |
           pm2 restart FrontendServer || pm2 start FrontendServer
