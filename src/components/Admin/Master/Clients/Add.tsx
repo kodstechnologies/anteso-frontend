@@ -113,20 +113,29 @@ const AddClient = () => {
                                 <div className={submitCount ? (errors.phone ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="phone">Phone </label>
                                     <Field name="phone">
-                                        {({ field, form }) => (
-                                            <input
-                                                {...field}
-                                                type="text"
-                                                id="phone"
-                                                placeholder="Enter Phone Number"
-                                                className="form-input"
-                                                maxLength={10} // ensures max length is 10
-                                                onChange={(e) => {
-                                                    const onlyNums = e.target.value.replace(/[^0-9]/g, ''); // remove non-numeric
-                                                    form.setFieldValue(field.name, onlyNums);
-                                                }}
-                                            />
-                                        )}
+                                        <Field name="phone">
+                                            {({
+                                                field,
+                                                form,
+                                            }: {
+                                                field: { name: string; value: string; onChange: (e: any) => void; onBlur: (e: any) => void }
+                                                form: { setFieldValue: (field: string, value: any, shouldValidate?: boolean) => void }
+                                            }) => (
+                                                <input
+                                                    {...field}
+                                                    type="text"
+                                                    id="phone"
+                                                    placeholder="Enter Phone Number"
+                                                    className="form-input"
+                                                    maxLength={10}
+                                                    onChange={(e) => {
+                                                        const onlyNums = e.target.value.replace(/[^0-9]/g, "")
+                                                        form.setFieldValue(field.name, onlyNums)
+                                                    }}
+                                                />
+                                            )}
+                                        </Field>
+
                                     </Field>
                                     {submitCount && errors.phone ? (
                                         <div className="text-danger mt-1">{errors.phone}</div>

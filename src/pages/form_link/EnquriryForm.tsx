@@ -53,6 +53,8 @@ interface FormValues {
         string,
         { description: string } | undefined
     >
+    attachment: File | null
+
 }
 
 // Custom component for multi-select field
@@ -237,29 +239,27 @@ const AddEnquiry: React.FC = () => {
         try {
             setIsSubmitting(true);
 
-            // 🔹 Transform services
-            const transformedServices = values.services.map((s) => ({
-                machineType: s.machineType,
-                equipmentNo: s.equipmentNo,
-                machineModel: s.machineModel,
-                workType: s.workType || [],
-            }));
+            const formData = new FormData();
 
-            // 🔹 Just use additionalServices directly
-            const submissionValues = {
-                ...values,
-                services: transformedServices,
-                additionalServices: Object.fromEntries(
-                    Object.entries(values.additionalServices)
-                        .filter(([_, val]) => val !== undefined)
-                        .map(([name, val]) => [name, { description: val?.description || "" }])
-                ),
+            // 🔹 Append all normal fields
+            Object.keys(values).forEach((key) => {
+                if (key !== "attachment" && key !== "services" && key !== "additionalServices") {
+                    formData.append(key, (values as any)[key]);
+                }
+            });
+
+            // 🔹 Append services (stringify JSON)
+            formData.append("services", JSON.stringify(values.services));
+
+            // 🔹 Append additional services (stringify JSON)
+            formData.append("additionalServices", JSON.stringify(values.additionalServices));
+
+            // 🔹 Append file if present
+            if (values.attachment) {
+                formData.append("attachment", values.attachment, values.attachment.name);
             }
 
-            console.log("🚀 Final Submission Payload:", submissionValues);
-
-            const response = await addEnquiry(submissionValues);
-
+            const response = await addEnquiry(formData);
 
             const data = response?.data;
             if (data?.existingCustomer) {
@@ -277,6 +277,7 @@ const AddEnquiry: React.FC = () => {
             setSubmitting(false);
         }
     };
+
 
 
 
@@ -324,9 +325,9 @@ const AddEnquiry: React.FC = () => {
                             acc[service] = undefined
                             return acc
                         },
-                        {} as Record<string, string | undefined>,
+                        {} as Record<string, { description: string } | undefined>, // ✅ correct type
                     ),
-                    attachment: "",
+                    attachment: null,
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
@@ -673,7 +674,14 @@ const AddEnquiry: React.FC = () => {
                                     <label htmlFor="attachment" className="block mb-1 font-medium">
                                         Attach QA Requirement List
                                     </label>
-                                    <Field name="attachment" type="file" id="attachment" className="form-input" />
+                                    <input
+                                        type="file"
+                                        name="attachment"
+                                        onChange={(event) => {
+                                            setFieldValue("attachment", event.currentTarget.files?.[0] || null);
+                                        }}
+                                        className="form-input"
+                                    />
                                     {submitCount > 0 && errors.attachment && <div className="text-danger mt-1">{errors.attachment}</div>}
                                 </div>
                             </div>

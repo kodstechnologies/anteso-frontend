@@ -731,14 +731,14 @@ const routes = [
             </AdminProtected>
         ),
     },
-    {
-        path: '/admin/hrms/salary-management-view',
-        element: (
-            <AdminProtected>
-                <ViewSalaryManagement />
-            </AdminProtected>
-        ),
-    },
+        {
+            path: '/admin/hrms/salary-management-view/:id',
+            element: (
+                <AdminProtected>
+                    <ViewSalaryManagement />
+                </AdminProtected>
+            ),
+        },
     {
         path: '/admin/hrms/attendance-summary',
         element: (
@@ -812,7 +812,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/hrms/payslip',
+        path: '/admin/hrms/payslip/:salaryId',
         element: (
             <AdminProtected>
                 <Payslip />

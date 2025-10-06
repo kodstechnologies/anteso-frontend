@@ -1,67 +1,105 @@
-
-import type React from 'react';
-
-import * as Yup from 'yup';
-import { Field, Form, Formik } from 'formik';
-import { Link } from 'react-router-dom';
-import { showMessage } from '../../../common/ShowMessage';
-import Select from 'react-select';
-import { useState } from 'react';
+import type React from "react";
+import * as Yup from "yup";
+import { Field, Form, Formik } from "formik";
+import { Link, useNavigate } from "react-router-dom";
+import { showMessage } from "../../../common/ShowMessage";
+import Select from "react-select";
+import { useEffect, useState } from "react";
+import { createManufacturer, getAllStates } from "../../../../api"; // ✅ Import your API
 
 // Define the options for QA Test checkboxes with their respective prices
 const qaTestOptions = [
-    { label: 'FIXED X RAY', value: 'FIXED_X_RAY', price: 3500, system: true },
-    { label: 'MOBILE X RAY', value: 'MOBILE_X_RAY', price: 2500, system: true },
-    { label: 'C ARM', value: 'C_ARM', price: 3000, system: true },
-    { label: 'MAMMOGRAP', value: 'MAMMOGRAP', price: 4000, system: true },
-    { label: 'CATH LAB', value: 'CATH_LAB', price: 5000, system: true },
-    { label: 'CT SCAN', value: 'CT_SCAN', price: 6000, system: true },
-    { label: 'TATKAL QA', value: 'TATKAL_QA', price: 5000, system: true },
+    { label: "FIXED X RAY", value: "FIXED_X_RAY", price: 3500, system: true },
+    { label: "MOBILE X RAY", value: "MOBILE_X_RAY", price: 2500, system: true },
+    { label: "C ARM", value: "C_ARM", price: 3000, system: true },
+    { label: "MAMMOGRAP", value: "MAMMOGRAP", price: 4000, system: true },
+    { label: "CATH LAB", value: "CATH_LAB", price: 5000, system: true },
+    { label: "CT SCAN", value: "CT_SCAN", price: 6000, system: true },
+    { label: "TATKAL QA", value: "TATKAL_QA", price: 5000, system: true },
 ];
 
 // Define the options for the Services multi-select dropdown
 const serviceOptions = [
-    { label: 'Institute Registration', value: 'INSTITUTE_REGISTRATION' },
-    { label: 'Procurement', value: 'PROCUREMENT' },
-    { label: 'License', value: 'LICENSE' },
+    { label: "Institute Registration", value: "INSTITUTE_REGISTRATION" },
+    { label: "Procurement", value: "PROCUREMENT" },
+    { label: "License", value: "LICENSE" },
 ];
 
-
-
 const AddManufacture = () => {
-    // Initialize state for editable QA test options
     const [editableOptions, setEditableOptions] = useState(qaTestOptions);
-    const [newQaTestPrice, setNewQaTestPrice] = useState("")
-    const [newQaTestName, setNewQaTestName] = useState("")
+    const [newQaTestPrice, setNewQaTestPrice] = useState("");
+    const [newQaTestName, setNewQaTestName] = useState("");
+    const [stateOptions, setStateOptions] = useState<string[]>([]); // For states dropdown
+
+    const navigate = useNavigate();
 
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
-        manufactureName: Yup.string().required('Please fill the Field'),
-        address: Yup.string().required('Please fill the Field'),
-        city: Yup.string().required('Please fill the Field'),
-        state: Yup.string().required('Please fill the Field'),
-        pinCode: Yup.string().required('Please fill the Field'),
-        branch: Yup.string().required('Please fill the Field'),
-        mouValidity: Yup.string().required('Please fill the Field'),
-        qaTests: Yup.array().min(1, 'Please select at least one QA Test'),
-        services: Yup.array().min(1, 'Please select at least one service'),
-        travel: Yup.number().required('Please fill the Field').min(0, 'Travel cost cannot be negative'),
-        actual: Yup.number().required('Please fill the Field').min(0, 'Actual cost cannot be negative'),
-        fixed: Yup.number().required('Please fill the Field').min(0, 'Fixed cost cannot be negative'),
-    });
+        manufactureName: Yup.string().required("Please fill the Field"),
+        address: Yup.string().required("Please fill the Field"),
+        city: Yup.string().required("Please fill the Field"),
+        state: Yup.string().required("Please fill the Field"),
+        pinCode: Yup.string().required("Please fill the Field"),
+        branch: Yup.string().required("Please fill the Field"),
+        mouValidity: Yup.string().required("Please fill the Field"),
+        qaTests: Yup.array().min(1, "Please select at least one QA Test"),
+        services: Yup.array().min(1, "Please select at least one service"),
+        travel: Yup.string().required("Please select travel type"),
+        email: Yup.string().email("Invalid email").required("Please enter email"),
+        phone: Yup.string().required("Please enter phone number"),
+        contactPersonName: Yup.string().required("Please enter contact person name"),
 
-    // Form submission handler
-    const submitForm = (values: any) => {
-        // Include the updated prices in the submitted values
-        const updatedValues = {
-            ...values,
-            qaTests: values.qaTests.map((test: string) => {
-                const option = editableOptions.find((opt) => opt.value === test);
-                return { value: test, price: option?.price || 0 };
-            }),
+
+    });
+    useEffect(() => {
+        const fetchStates = async () => {
+            try {
+                const res = await getAllStates();
+                // Assuming res.data.data is the array of state names
+                setStateOptions(res.data.data || []);
+            } catch (error) {
+                console.error("Failed to fetch states:", error);
+            }
         };
-        console.log('Form Values:', updatedValues);
-        showMessage('Form submitted successfully', 'success');
+        fetchStates();
+    }, []);
+    // Form submission handler
+    // Form submission handler
+    const submitForm = async (values: any, { resetForm }: any) => {
+        try {
+            // Prepare payload for backend
+            const payload = {
+                name: values.manufactureName,
+                email: values.email || "", // add email if you have input for it
+                phone: values.phone || "", // add phone if you have input for it
+                password: values.password || "", // if storing password, hash in backend
+                city: values.city,
+                state: values.state,
+                pincode: values.pinCode,
+                branch: values.branch,
+                mouValidity: values.mouValidity,
+                contactPersonName: values.contactPersonName,
+
+                qaTests: values.qaTests.map((test: string) => {
+                    const option = editableOptions.find((opt) => opt.value === test);
+                    return {
+                        testName: option?.label || test,
+                        price: option?.price || 0,
+                    };
+                }),
+                services: values.services,
+                travelCost: values.travel === "actual" ? "Actual Cost" : "Fixed Cost",
+            };
+
+            const res = await createManufacturer(payload);
+
+            showMessage("Manufacturer created successfully ", "success");
+            resetForm();
+            navigate("/admin/manufacture"); // redirect back to list page
+        } catch (error: any) {
+            console.error("🚀 ~ submitForm error:", error);
+            showMessage(error.message || "Failed to create manufacturer", "error");
+        }
     };
 
     return (
@@ -87,19 +125,19 @@ const AddManufacture = () => {
             <h5 className="font-semibold text-lg mb-4">Manufacturer</h5>
             <Formik
                 initialValues={{
-                    manufactureName: '',
-                    address: '',
-                    city: '',
-                    state: '',
-
-                    pinCode: '',
-                    branch: '',
-                    mouValidity: '',
+                    manufactureName: "",
+                    address: "",
+                    email:"",
+                    phone:"",
+                    city: "",
+                    state: "",
+                    pinCode: "",
+                    branch: "",
+                    mouValidity: "",
+                    contactPersonName: "",
                     qaTests: [] as string[],
                     services: [] as string[],
-                    travel: '',
-                    actual: '',
-                    fixed: '',
+                    travel: "",
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
@@ -125,10 +163,38 @@ const AddManufacture = () => {
                                     <Field name="city" type="text" id="city" placeholder="Enter City" className="form-input" />
                                     {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
                                 </div>
+                                <div className={submitCount && errors.contactPersonName ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="contactPersonName">Contact Person Name</label>
+                                    <Field
+                                        name="contactPersonName"
+                                        type="text"
+                                        id="contactPersonName"
+                                        placeholder="Enter Contact Person Name"
+                                        className="form-input"
+                                    />
+                                    {submitCount && errors.contactPersonName ? (
+                                        <div className="text-danger mt-1">{errors.contactPersonName}</div>
+                                    ) : null}
+                                </div>
+
                                 <div className={submitCount && errors.state ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="state">State</label>
-                                    <Field name="state" type="text" id="state" placeholder="Enter State" className="form-input" />
-                                    {submitCount && errors.state ? <div className="text-danger mt-1">{errors.state}</div> : null}
+                                    <Field
+                                        as="select"
+                                        name="state"
+                                        id="state"
+                                        className="form-input"
+                                    >
+                                        <option value="">Select State</option>
+                                        {stateOptions.map((state) => (
+                                            <option key={state} value={state}>
+                                                {state}
+                                            </option>
+                                        ))}
+                                    </Field>
+                                    {submitCount && errors.state ? (
+                                        <div className="text-danger mt-1">{errors.state}</div>
+                                    ) : null}
                                 </div>
                                 <div className={submitCount && errors.pinCode ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="pinCode">Pin Code</label>
@@ -140,10 +206,29 @@ const AddManufacture = () => {
                                     <Field name="branch" type="text" id="branch" className="form-input" placeholder="Enter Branch" />
                                     {submitCount && errors.branch ? <div className="text-danger mt-1">{errors.branch}</div> : null}
                                 </div>
+                                <div className={submitCount && errors.email ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="email">Email</label>
+                                    <Field name="email" type="email" id="email" placeholder="Enter Email" className="form-input" />
+                                    {submitCount && errors.email ? <div className="text-danger mt-1">{errors.email}</div> : null}
+                                </div>
+
+                                <div className={submitCount && errors.phone ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="phone">Phone</label>
+                                    <Field name="phone" type="text" id="phone" placeholder="Enter Phone Number" className="form-input" />
+                                    {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : null}
+                                </div>
+
                                 <div className={submitCount && errors.mouValidity ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="mouValidity">Mou Validity</label>
-                                    <Field name="mouValidity" type="text" id="mouValidity" className="form-input" placeholder="Enter Mou Validity" />
-                                    {submitCount && errors.mouValidity ? <div className="text-danger mt-1">{errors.mouValidity}</div> : null}
+                                    <Field
+                                        name="mouValidity"
+                                        type="date"
+                                        id="mouValidity"
+                                        className="form-input"
+                                    />
+                                    {submitCount && errors.mouValidity ? (
+                                        <div className="text-danger mt-1">{errors.mouValidity}</div>
+                                    ) : null}
                                 </div>
                             </div>
                         </div>

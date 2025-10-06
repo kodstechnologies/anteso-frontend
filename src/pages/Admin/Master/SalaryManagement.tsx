@@ -11,7 +11,7 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { salaryManagement } from '../../../data'; // Now includes title, amount, month, total
+import { getAllEmployees } from '../../../api'; // ✅ import API function
 
 const SalaryManagement = () => {
     const dispatch = useDispatch();
@@ -20,24 +20,37 @@ const SalaryManagement = () => {
         dispatch(setPageTitle('Salary Management'));
     }, []);
 
-    const [items, setItems] = useState(
-        salaryManagement.map((item, index) => ({
-            ...item,
-            clientId: `EMP${String(index + 1).padStart(3, '0')}`,
-        }))
-    );
-
+    const [items, setItems] = useState<any[]>([]);
     const [page, setPage] = useState(1);
     const PAGE_SIZES = [10, 20, 30, 50, 100];
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-    const [initialRecords, setInitialRecords] = useState(sortBy(items, 'name'));
-    const [records, setRecords] = useState(initialRecords);
-    const [selectedRecords, setSelectedRecords] = useState<any>([]);
+    const [initialRecords, setInitialRecords] = useState<any[]>([]);
+    const [records, setRecords] = useState<any[]>([]);
+    const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
     const [search, setSearch] = useState('');
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
         columnAccessor: 'name',
         direction: 'asc',
     });
+
+    // ✅ Fetch Employees from API
+    useEffect(() => {
+        const fetchEmployees = async () => {
+            try {
+                const data = await getAllEmployees();
+                // map with clientId like before
+                const formatted = data.data.map((item: any, index: number) => ({
+                    ...item,
+                    clientId: `EMP${String(index + 1).padStart(3, '0')}`,
+                }));
+                setItems(formatted);
+                setInitialRecords(sortBy(formatted, 'name'));
+            } catch (error) {
+                console.error("Error fetching employees:", error);
+            }
+        };
+        fetchEmployees();
+    }, []);
 
     useEffect(() => setPage(1), [pageSize]);
 
@@ -75,7 +88,7 @@ const SalaryManagement = () => {
         const sorted = sortBy(initialRecords, sortStatus.columnAccessor);
         setRecords(sortStatus.direction === 'desc' ? sorted.reverse() : sorted);
         setPage(1);
-    }, [sortStatus]);
+    }, [sortStatus, initialRecords]);
 
     const deleteRow = (id: any = null) => {
         if (window.confirm('Are you sure you want to delete selected row(s)?')) {
@@ -120,23 +133,20 @@ const SalaryManagement = () => {
                                 { accessor: 'clientId', title: 'EMP ID', sortable: true },
                                 { accessor: 'name', sortable: true },
                                 { accessor: 'email', sortable: true },
-                                // { accessor: 'designation', sortable: true },
-                                // { accessor: 'title', title: 'Salary Title', sortable: true },
-                                // { accessor: 'amount', title: 'Basic Amount', sortable: true },
-                                { accessor: 'month', title: 'Month', sortable: true },
-                                { accessor: 'total', title: 'Total Payable', sortable: true },
+                                // { accessor: 'month', title: 'Month', sortable: true },
+                                // { accessor: 'total', title: 'Total Payable', sortable: true },
                                 {
                                     accessor: 'action',
                                     title: 'Actions',
                                     sortable: false,
                                     textAlignment: 'center',
-                                    render: ({ id }) => (
+                                    render: (row) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to={`/admin/hrms/salary-management-view`} className="flex hover:text-primary">
+                                            <NavLink to={`/admin/hrms/salary-management-view/${row._id}`} className="flex hover:text-primary">
                                                 <IconEye />
                                             </NavLink>
                                             <IconEdit className="w-4.5 h-4.5 hover:text-info" />
-                                            <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
+                                            <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(row._id)}>
                                                 <IconTrashLines />
                                             </button>
                                         </div>

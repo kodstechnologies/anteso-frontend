@@ -105,12 +105,12 @@ const Employee = () => {
                 const response = await getAllEmployees();
                 console.log("🚀 ~ fetchEmployees ~ response:", response)
 
-                const transformed = response?.data?.map((employee, index) => ({
+                const transformed = response?.data?.map((employee:any, index:any) => ({
                     ...employee,
                     id: employee._id, // 👈 keep id for routing
                     employeeId: `EMP${String(index + 1).padStart(3, '0')}`,
                     role: employee.technicianType,
-                    tools: (employee.tools || []).map((tool) =>
+                    tools: (employee.tools || []).map((tool:any) =>
                         tool.toolId?.nomenclature || 'N/A'
                     ),
                     status: {

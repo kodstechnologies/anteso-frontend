@@ -204,6 +204,7 @@ const ViewClients: React.FC = () => {
                 phone: "",
                 gstNo: "",
                 branch: "",
+                email: "",
               }}
               validationSchema={SubmittedForm}
               onSubmit={async (values, { setSubmitting, setFieldError, resetForm }) => {

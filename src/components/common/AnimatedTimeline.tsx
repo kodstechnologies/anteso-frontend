@@ -19,7 +19,7 @@ interface HospitalDetails {
         remark?: string
         workTypeDetails: { workType: string; status: string }[]
     }[]
-    additionalServices: Record<string, string>
+    additionalServices: AdditionalService[]  
     specialInstructions?: string
     attachment?: string
     enquiryStatusDates: {
@@ -29,6 +29,12 @@ interface HospitalDetails {
     }
 }
 
+interface AdditionalService {
+    _id: string
+    name: string
+    description?: string
+    totalAmount?: number
+}
 const Timeline = ({ details }: { details: HospitalDetails }) => {
     const timelineItems = [
         {

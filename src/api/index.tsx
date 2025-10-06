@@ -192,7 +192,7 @@ export const getAllHospitalsByClientId = async (clientId: any) => {
 }
 
 
-export const createRsoByHospitalId = async (hospitalId: string, payload: any) => {
+export const createRsoByHospitalId = async (hospitalId: any, payload: any) => {
     try {
         const token = Cookies.get('accessToken');
 
@@ -422,21 +422,20 @@ export const deleteRsoByHospitalIdAndRsoId = async (hospitalId: any, rsoId: any,
 
 export const addEnquiry = async (payload: any) => {
     try {
-        const token = Cookies.get('accessToken')
-        const res = await api.post('/enquiry/add', payload, {
+        const token = Cookies.get("accessToken");
+        const res = await api.post("/enquiry/add", payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
-        })
-        return res.data
+        });
+        console.log("🚀 ~ addEnquiry ~ res:", res)
+        return res.data;
     } catch (error: any) {
-        console.error("🚀 ~ getClientById ~ error:", error);
-
-        throw new Error(
-            error?.response?.data?.message || "Failed to fetch client data"
-        );
+        console.error("🚀 ~ addEnquiry ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to submit enquiry");
     }
-}
+};
+
 export const addEnquiryCreateDirectOrder = async (payload: any) => {
     try {
         const token = Cookies.get('accessToken')
@@ -1348,7 +1347,7 @@ export const getAssignedStaffName = async (orderId: any, serviceId: any, worktyp
     }
 }
 
-export const getEngineerByTool = async () => {
+export const getEngineerByTool = async (orderId: any, serviceId: any, worktype: any) => {
     try {
         const token = Cookies.get('accessToken')
         const res = await api.get(`/orders/get-assigned-staff/${orderId}/${serviceId}/${worktype}`, {
@@ -1483,7 +1482,7 @@ export const completeStatusAndReport = async (
     status: string,
     payload: any,
     file?: File,
-    reportType?: "qatest" | "elora"
+    reportType?: "qatest" | "elora" | string
 ) => {
     console.log("🚀 completeStatusAndReport called");
     console.log("file:", file);
@@ -2011,11 +2010,13 @@ export const assignStaffByElora = async (orderId: string, serviceId: string, off
 export const approveLeave = async (employeeId: any, leaveId: any) => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.post(`/leaves/approve-leave`, {
+        console.log("🚀 ~ approveLeave ~ token:", token)
+        const res = await api.post(`/leaves/approve-leave/${employeeId}/${leaveId}`, {}, {
             headers: {
                 Authorization: `Bearer ${token}`,
             }
         })
+        console.log("🚀 ~ approveLeave ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ createPayment ~ error:", error);
@@ -2027,7 +2028,7 @@ export const approveLeave = async (employeeId: any, leaveId: any) => {
 export const rejectLeave = async (employeeId: any, leaveId: any) => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.post(`/leaves/reject-leave`, {
+        const res = await api.post(`/leaves/reject-leave/${employeeId}/${leaveId}`, {}, {
             headers: {
                 Authorization: `Bearer ${token}`,
             }
@@ -2044,7 +2045,7 @@ export const rejectLeave = async (employeeId: any, leaveId: any) => {
 export const deleteLeave = async (leaveId: any) => {
     try {
         const token = Cookies.get("accessToken")
-        const res = await api.delete(`/leaves/delete-payment-by-id/${leaveId}`, {
+        const res = await api.delete(`/leaves/delete/${leaveId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -2066,6 +2067,7 @@ export const getAllLeaves = async (id: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ getAllLeaves ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ deletePaymentById ~ error:", error)
@@ -2103,7 +2105,7 @@ export const getDealerById = async (id: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllDealers ~ res:", res)
+        console.log("🚀 ~ getDealerById ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getEngineerByTools ~ error:", error);
@@ -2116,11 +2118,12 @@ export const getDealerById = async (id: any) => {
 export const editDealerById = async (id: any, payload: any) => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.put(`/leaves/update/${id}`, payload, {
+        const res = await api.put(`/dealers/edit-by-id/${id}`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ editDealerById ~ res:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ edit courier ~ error:", error);
@@ -2180,3 +2183,161 @@ export const addCourierByOrderId = async (orderId: string, payload: any) => {
     }
 };
 
+export const createManufacturer = async (data: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        console.log("🚀 ~ createManufacturer ~ token:", token)
+        const res = await api.post("/manufacturers/add", data, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
+        console.log("🚀 ~ createDealer ~ res:", res)
+        return res
+
+    } catch (error: any) {
+        console.error("🚀 ~ createManufacturer ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to deletePaymentById"
+        )
+    }
+};
+
+export const getAllManufacturer = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/manufacturers/get-all`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAllManufacturer ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllManufacturer ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const getManufacturerById = async (id: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/manufacturers/get-by-id/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getDealerById ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getManufacturerById ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const editManufacturerById = async (id: any, payload: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.put(`/manufacturers/update-manufacturer/${id}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ editManufacturerById ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ edit courier ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch client data"
+        );
+    }
+}
+
+export const addSalary = async (employeeId: any, payload: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.post(`/salary/generate/${employeeId}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
+        return res.data; // return data directly
+    } catch (error: any) {
+        console.error("🚀 ~ addCourierByOrderId ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to add courier"
+        );
+    }
+}
+export const getSalaries = async (employeeId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/salary/get-salaries/${employeeId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAllManufacturer ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllManufacturer ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+export const updateSalary = async (id: any, payload: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.put(`/salary/${id}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ edit courier ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch client data"
+        );
+    }
+}
+export const deleteSalary = async (id: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.delete(`/salary/delete/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 deleteSalary error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to delete salary");
+    }
+};
+
+export const getDetailsById = async (salaryId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/salary/details/${salaryId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getDetailsById ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllManufacturer ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}

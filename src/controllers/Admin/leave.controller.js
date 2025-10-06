@@ -80,7 +80,7 @@ const applyForLeave = asyncHandler(async (req, res) => {
         }
 
         // Validate leave type
-        const validLeaveTypes = ['Sick Leave', 'Vacation', 'Personal Leave', 'Maternity/Paternity', 'Bereavement Leave'];
+        const validLeaveTypes = ['Sick Leave', 'casual leave', 'Maternity/Paternity', 'Leave without pay'];
         if (!validLeaveTypes.includes(leaveType)) {
             throw new ApiError(400, "Invalid leave type");
         }
@@ -107,8 +107,7 @@ const applyForLeave = asyncHandler(async (req, res) => {
         throw new ApiError(500, error.message || "Failed to apply for leave");
     }
 });
-
-
+    
 // const getLeaveByType=asyncHandler(async(req,res)=>{
 //     try {
 

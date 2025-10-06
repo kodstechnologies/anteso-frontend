@@ -69,6 +69,9 @@ const View = () => {
     console.log("🚀 ~ View ~ orderId:", orderId)
     const [details, setDetails] = useState<HospitalDetails | null>(null);
 
+    if (!orderId) {
+        return <div className="text-gray-600 p-6">Order ID not found.</div>;
+    }
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
         { label: 'Orders', to: '/admin/orders', icon: <IconBox /> },

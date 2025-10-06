@@ -38,6 +38,7 @@ interface FormValues {
     additionalServices: Record<string, string | undefined>;
     enquiryID?: string; // Optional for generating ENQ ID
     specialInstructions: string
+    attachment: File | null;
 }
 
 // Custom component for multi-select field
@@ -209,6 +210,8 @@ const EditEnquiry: React.FC = () => {
 
                     specialInstructions: res.specialInstructions || '',
                     enquiryID: res.enquiryId || '',
+                    attachment: null,
+
                 });
 
                 setLoading(false);
@@ -275,8 +278,8 @@ const EditEnquiry: React.FC = () => {
                         return acc;
                     }, {} as Record<string, string | undefined>),
                     enquiryID: '',
-                    attachment: '',
-                    specialInstructions: ''
+                    attachment: null,
+                    specialInstructions: '',
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}

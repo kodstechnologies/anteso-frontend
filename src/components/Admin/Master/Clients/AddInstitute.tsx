@@ -135,7 +135,7 @@ const AddInstitute = () => {
                     className="form-input"
                     pattern="\d{10}" // exactly 10 digits
                     maxLength={10}
-                    onInput={(e) => {
+                    onInput={(e:any) => {
                       e.target.value = e.target.value.replace(/\D/g, ""); // only digits
                     }}
                   />

@@ -8,9 +8,9 @@ const AddCourierCompany = () => {
 
     const [formData, setFormData] = useState({
         courierCompanyName: '',
-        // trackingId: '',
-        // trackingUrl: '',
-        // status: 'active',
+        trackingId: '',
+        trackingUrl: '',
+        status: 'active',
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

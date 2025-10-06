@@ -7,8 +7,9 @@ import { Formik, Form, Field, ErrorMessage } from "formik"
 import * as Yup from "yup"
 import { toast } from "react-toastify"
 import { useParams } from "react-router-dom" // or next/navigation if Next.js
-import { getAllLeaves, approveLeave, rejectLeave, deleteLeave } from "../../../api" // ✅ include APIs
+import { getAllLeaves, approveLeave, rejectLeave, deleteLeave, getEmployeeById } from "../../../api" // ✅ include APIs
 import type { AttendanceEntry, Employee, LeaveRequest } from "../../../types/hrms-types"
+import { ChevronDown, ChevronUp } from "lucide-react"
 
 // Mock attendance data (same as before)
 const attendanceData: AttendanceEntry[] = [
@@ -51,7 +52,21 @@ export default function EmployeeDetailsLeaveManagement() {
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
     const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
     const [loading, setLoading] = useState(true)
+    const [employeeDetails, setEmployeeDetails] = useState<any>(null)
+    const [showTools, setShowTools] = useState(false);
 
+    useEffect(() => {
+        const fetchEmployee = async () => {
+            try {
+                if (!id) return
+                const res = await getEmployeeById(id)
+                setEmployeeDetails(res?.data)
+            } catch (err: any) {
+                toast.error(err.message || "Failed to fetch employee details")
+            }
+        }
+        fetchEmployee()
+    }, [id])
     // Fetch leaves from backend
     useEffect(() => {
         const fetchLeaves = async () => {
@@ -184,28 +199,122 @@ export default function EmployeeDetailsLeaveManagement() {
             </style>
 
             {/* Employee Details */}
-            <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Employee Details</h2>
-                <Formik initialValues={employee} validationSchema={validationSchema} onSubmit={() => toast.success("Details saved!")}>
-                    <Form className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {["empId", "name", "email", "phone", "designation", "department", "joinDate", "workingDay"].map((field) => (
-                                <div key={field}>
-                                    <label className="font-medium text-gray-700">{field}</label>
-                                    <Field name={field} type="text" className="w-full mt-1 p-2 border rounded-md" />
-                                    <ErrorMessage name={field} component="div" className="text-red-500 text-xs mt-1" />
-                                </div>
-                            ))}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl shadow-md border border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <span className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm">
+                        Employee Details
+                    </span>
+                </h2>
+
+                {employeeDetails ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {/* Left side */}
+                        <div className="space-y-3">
+                            <p className="text-gray-700">
+                                <span className="font-semibold text-gray-900">👤 Employee ID:</span>{" "}
+                                {employeeDetails.empId}
+                            </p>
+                            <p className="text-gray-700">
+                                <span className="font-semibold text-gray-900">📛 Name:</span>{" "}
+                                {employeeDetails.name}
+                            </p>
+                            <p className="text-gray-700">
+                                <span className="font-semibold text-gray-900">📧 Email:</span>{" "}
+                                {employeeDetails.email}
+                            </p>
+                            <p className="text-gray-700">
+                                <span className="font-semibold text-gray-900">📞 Phone:</span>{" "}
+                                {employeeDetails.phone}
+                            </p>
                         </div>
-                        <div>
-                            <label className="font-medium text-gray-700">Address</label>
-                            <Field as="textarea" name="address" className="w-full mt-1 p-2 border rounded-md" />
-                            <ErrorMessage name="address" component="div" className="text-red-500 text-xs mt-1" />
+
+                        {/* Right side */}
+                        <div className="space-y-3">
+                            <p className="text-gray-700">
+                                <span className="font-semibold text-gray-900">💼 Designation:</span>{" "}
+                                {employeeDetails.designation}
+                            </p>
+                            <p className="text-gray-700">
+                                <span className="font-semibold text-gray-900">🏢 Department:</span>{" "}
+                                {employeeDetails.department}
+                            </p>
+                            <p className="text-gray-700">
+                                <span className="font-semibold text-gray-900">📅 Join Date:</span>{" "}
+                                {new Date(employeeDetails.dateOfJoining).toLocaleDateString()}
+                            </p>
+                            <p className="text-gray-700">
+                                <span className="font-semibold text-gray-900">📊 Working Days:</span>{" "}
+                                {employeeDetails.workingDays}
+                            </p>
                         </div>
-                        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md">Save</button>
-                    </Form>
-                </Formik>
+
+                        {/* Address */}
+                        {employeeDetails.address && (
+                            <div className="col-span-2 mt-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                                <p className="text-gray-700">
+                                    <span className="font-semibold text-gray-900">📍 Address:</span>{" "}
+                                    {employeeDetails.address}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Collapsible Tools Section */}
+                        {employeeDetails.tools && employeeDetails.tools.length > 0 && (
+                            <div className="col-span-2 mt-6">
+                                <button
+                                    onClick={() => setShowTools(!showTools)}
+                                    className="flex items-center justify-between w-full bg-blue-100 px-4 py-2 rounded-lg text-left font-semibold text-gray-800 hover:bg-blue-200 transition"
+                                >
+                                    <span>🛠️ Issued Tools ({employeeDetails.tools.length})</span>
+                                    {showTools ? (
+                                        <ChevronUp className="h-5 w-5" />
+                                    ) : (
+                                        <ChevronDown className="h-5 w-5" />
+                                    )}
+                                </button>
+
+                                {showTools && (
+                                    <div className="mt-4 overflow-x-auto">
+                                        <table className="w-full border border-gray-200 rounded-lg shadow-sm bg-white">
+                                            <thead className="bg-gray-100 text-left">
+                                                <tr>
+                                                    <th className="px-4 py-2 border-b">Tool ID</th>
+                                                    <th className="px-4 py-2 border-b">Serial No</th>
+                                                    <th className="px-4 py-2 border-b">Nomenclature</th>
+                                                    <th className="px-4 py-2 border-b">Manufacturer</th>
+                                                    <th className="px-4 py-2 border-b">Model</th>
+                                                    <th className="px-4 py-2 border-b">Certificate No</th>
+                                                    <th className="px-4 py-2 border-b">Issue Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {employeeDetails.tools.map((tool: any, idx: number) => (
+                                                    <tr key={idx} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-2 border-b">{tool.toolId?.toolId}</td>
+                                                        <td className="px-4 py-2 border-b">{tool.toolId?.SrNo}</td>
+                                                        <td className="px-4 py-2 border-b">{tool.toolId?.nomenclature}</td>
+                                                        <td className="px-4 py-2 border-b">{tool.toolId?.manufacturer}</td>
+                                                        <td className="px-4 py-2 border-b">{tool.toolId?.model}</td>
+                                                        <td className="px-4 py-2 border-b">{tool.toolId?.calibrationCertificateNo}</td>
+                                                        <td className="px-4 py-2 border-b">
+                                                            {tool.issueDate
+                                                                ? new Date(tool.issueDate).toLocaleDateString()
+                                                                : "-"}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <p className="text-gray-500 italic">Loading employee details...</p>
+                )}
             </div>
+
 
             {/* Attendance Calendar */}
             <div className="bg-white p-6 rounded-lg shadow-lg">

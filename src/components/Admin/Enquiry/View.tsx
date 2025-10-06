@@ -23,6 +23,9 @@ interface OptionType {
 interface HospitalDetails {
     enquiryId: string
     hospitalName: string
+    contactPerson: string
+    emailAddress: string
+    contactNumber: string
     customer: {
         _id: string
         name: string
@@ -38,13 +41,15 @@ interface HospitalDetails {
         remark?: string
         workTypeDetails: { workType: string; status: string }[]
     }[]
-    additionalServices: AdditionalService[]   // ✅ Change here    specialInstructions?: string
+    additionalServices: AdditionalService[]
     attachment?: string
     enquiryStatusDates: {
         enquiredOn?: string
         quotationSentOn?: string
         approvedOn?: string
     }
+    specialInstructions: string
+
 }
 
 
@@ -81,9 +86,9 @@ const View = () => {
     const fields = [
         { label: "Enquiry ID", value: details.enquiryId },
         { label: "Hospital Name", value: details.hospitalName },
-        { label: "Contact Person Name", value: details.customer?.name },
-        { label: "Email Address", value: details.customer?.email },
-        { label: "Contact Number", value: details.customer?.phone },
+        { label: "Contact Person Name", value: details.contactPerson },
+        { label: "Email Address", value: details.emailAddress },
+        { label: "Contact Number", value: details.contactNumber },
     ]
 
     // Get keys from the additionalServices object to display them dynamically
@@ -160,7 +165,6 @@ const View = () => {
             </div>
 
             {/* Additional Services */}
-            {/* Additional Services */}
             <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
                 <h5 className="text-lg font-bold text-gray-800 mb-6">Additional Services</h5>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm text-gray-700">
@@ -168,6 +172,8 @@ const View = () => {
                         details.additionalServices.map((service, idx) => (
                             <div key={service._id || idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
                                 <div className="text-gray-800 font-medium">{service.name}</div>
+                                <div className="text-gray-800 font-medium">{service.description}</div>
+
                             </div>
                         ))
                     ) : (
@@ -176,27 +182,35 @@ const View = () => {
                 </div>
             </div>
             {/* Special Instruction */}
-            <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
-                <h5 className="text-lg font-bold text-gray-800 mb-6"> Special Instruction</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm text-gray-700">
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
-                        <div className="text-gray-800 font-medium">Special Instruction</div>
-                    </div>
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
-                        <div className="flex items-center gap-2">
-                            <span className="font-semibold">View File:</span>
-                            <a
-                                href="https://www.aerb.gov.in/images/PDF/RSO-eLORA-guidelines.pdf"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:text-primary"
-                            >
-                                <IconEye className="w-4.5 h-4.5" />
-                            </a>
-                        </div>
+            {/* Special Instruction & Attachment */}
+            {(details.specialInstructions || details.attachment) && (
+                <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
+                    <h5 className="text-lg font-bold text-gray-800 mb-6"> Special Instruction</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm text-gray-700">
+                        {details.specialInstructions && (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
+                                <div className="text-gray-800 font-medium">{details.specialInstructions}</div>
+                            </div>
+                        )}
+                        {details.attachment && (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold">View File:</span>
+                                    <a
+                                        href={details.attachment}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-primary"
+                                    >
+                                        <IconEye className="w-4.5 h-4.5" />
+                                    </a>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-            </div>
+            )}
+
         </div>
     )
 }

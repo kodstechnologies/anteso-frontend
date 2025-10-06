@@ -310,11 +310,9 @@ export default function MachinesAccordion({ orderId }: { orderId: string }) {
             const staffId = selectedEmployeeMap[serviceId]
             const status = statusMap[serviceId]
 
-            const payload = {
-                staffId,
-                serviceId,
-                note: "QA Test Completed", // you can expand
-            }
+            const payload = 
+             "QA Test Completed" // you can expand
+            
             const cleanServiceId = serviceId.includes("-")
                 ? serviceId.split("-")[0]
                 : serviceId;

@@ -208,10 +208,13 @@ const Add = () => {
               subtotal = values.dealerHospitals.reduce((sum, d) => sum + Number(d.amount || 0), 0);
             }
 
-            const gstAmount = ['cgst', 'sgst', 'igst'].reduce((total, tax) => {
-              const percent = parseFloat(values.taxes[tax].amount) || 0;
+            type TaxType = 'cgst' | 'sgst' | 'igst';
+
+            const gstAmount = (['cgst', 'sgst', 'igst'] as TaxType[]).reduce((total, tax) => {
+              const percent = parseFloat(String(values.taxes[tax].amount)) || 0;
               return total + (values.taxes[tax].checked ? (subtotal * percent) / 100 : 0);
             }, 0);
+
 
             const discountAmount = parseFloat(String(values.discountPercent)) || 0;
             const grandTotal = subtotal + gstAmount - discountAmount;
@@ -308,7 +311,7 @@ const Add = () => {
                         {opt.label}
                       </option>
                     ))}
-                  </Field>  
+                  </Field>
                 ) : (
                   <Field
                     name="srfNumber"

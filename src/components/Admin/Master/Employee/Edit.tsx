@@ -45,14 +45,14 @@ type FormValues = {
   status: StatusValue | 'Active' | 'Inactive';
 };
 
-const schema: Yup.Schema<FormValues> = Yup.object({
+const schema = Yup.object({
   name: Yup.string().required('Please fill the Field'),
   email: Yup.string().email('Invalid email').required('Please fill the Email'),
   phone: Yup.string()
     .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits')
     .required('Please fill the Field'),
   empId: Yup.string().required('Please fill the Field'),
-  role: Yup.string().required('Please fill the Field'),
+  role: Yup.string().required('Please fill the Field'), // okay to keep as string
   tools: Yup.array().of(Yup.string()).when('role', {
     is: (val: string) => (val || '').toLowerCase() === 'engineer',
     then: (s) => s.min(1, 'Please select at least one tool'),
@@ -75,6 +75,7 @@ const schema: Yup.Schema<FormValues> = Yup.object({
   }),
   status: Yup.string().required('Please fill the Field'),
 });
+
 
 const normalizeRole = (r: string): RoleValue =>
   (r || '').toLowerCase() === 'engineer' ? 'engineer' : 'office staff';

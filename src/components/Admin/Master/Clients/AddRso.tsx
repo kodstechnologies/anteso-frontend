@@ -80,7 +80,7 @@ const AddRso = () => {
 
             // Append file (only if selected)
             if (values.attachFile) {
-              formData.append("attachment", values.attachFile) // ✅ backend expects `attachment`
+              formData.append("attachment", values.attachFile)
             }
 
             const response = await createRsoByHospitalId(hospitalId, formData)

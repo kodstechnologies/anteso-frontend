@@ -1590,6 +1590,9 @@ const completedStatusAndReport = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "File is required for completed status" });
     }
 
+    let normalizedReportType = reportType?.toLowerCase().trim();
+
+
     let fileUrl = null;
     console.log("🚀 ~ fileUrl:", fileUrl)
     if (req.file) {
@@ -1632,10 +1635,15 @@ const completedStatusAndReport = asyncHandler(async (req, res) => {
 
             // Update status only in workTypeDetails
             work.status = status === "completed" ? "generated" : status;
-
+            // Handle aliases
+            if (["qa test", "qatest", "quality assurance test"].includes(normalizedReportType)) {
+                normalizedReportType = "qatest";
+            } else if (["elora"].includes(normalizedReportType)) {
+                normalizedReportType = "elora";
+            }
             // Only update linked QATest or Elora report
             if (fileUrl) {
-                if (reportType === "qatest") {
+                if (normalizedReportType === "qatest") {
                     if (work.QAtest) {
                         newReportDoc = await QATest.findById(work.QAtest);
                         if (newReportDoc) {
@@ -1649,7 +1657,7 @@ const completedStatusAndReport = asyncHandler(async (req, res) => {
                         newReportDoc = await QATest.create({ officeStaff: staffId, report: fileUrl });
                         work.QAtest = newReportDoc._id;
                     }
-                } else if (reportType === "elora") {
+                } else if (normalizedReportType === "elora") {
                     if (work.elora) {
                         newReportDoc = await Elora.findById(work.elora);
                         if (newReportDoc) {

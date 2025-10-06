@@ -9,7 +9,7 @@ const paymentTypes = ['advance', 'balance', 'complete'];
 
 const Add = () => {
   const navigate = useNavigate();
-  const [srfClientOptions, setSrfClientOptions] = useState<{ value: string, label: string }[]>([]);
+  const [srfClientOptions, setSrfClientOptions] = useState<{ value: string, label: string ,_id:any}[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Fetch orders with client name

@@ -16,7 +16,9 @@ interface QuotationData {
     quotationId: string
     quotationStatus?: string;
     date: string
+    subtotalAmount:any
     enquiry: {
+        _id: string
         enquiryId: string
         hospitalName: string
         fullAddress: string
@@ -35,14 +37,15 @@ interface QuotationData {
             _id: string
             totalAmount?: number
         }>
-
         // additionalServices: Record<string, string>
         additionalServices: AdditionalServiceData[];
         specialInstructions: string
+
     }
     from: {
         name: string
         email: string
+        _id: any
     }
     discount: number
     total: number
@@ -54,6 +57,15 @@ interface AdditionalServiceData {
     name: string;
     description?: string;
     totalAmount?: number;
+}
+
+interface Service {
+    machineType: string
+    equipmentNo: string
+    workTypeDetails: { workType: string; status: string; viewFile: string[] }[]
+    machineModel: string
+    _id: string
+    totalAmount?: number
 }
 
 const ViewQuotation: React.FC = () => {
@@ -205,7 +217,7 @@ const ViewQuotation: React.FC = () => {
             type: "A",
             id: index + 1,
             title: service.machineType,
-            description: service.workTypeDetails?.map((w) => w.workType).join(" + ") || "",
+            description: service.workTypeDetails?.map((w: any) => w.workType).join(" + ") || "",
             quantity: "1",
             price: (service.totalAmount ?? 0).toString(),
             amount: (service.totalAmount ?? 0).toString(),
@@ -351,7 +363,9 @@ const ViewQuotation: React.FC = () => {
                     />
                 )}
 
-                <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[50rem]">
+                {/* <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[50rem]"> */}
+                <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[42rem]">
+
                     {/* Header */}
                     <div className="flex justify-between items-start ">
 
@@ -658,7 +672,7 @@ const ViewQuotation: React.FC = () => {
 
                         {/* Show Send only after PDF is uploaded successfully */}
                         {/* Show Send only if quotation has a PDF and status is Created */}
-                        {quotationData.quotationStatus === "Created" && quotationData.pdfUrl && (
+                        {/* {quotationData.quotationStatus === "Created" && quotationData.pdfUrl && (
                             <button
                                 onClick={handleSendQuotation}
                                 disabled={isSending}
@@ -673,7 +687,7 @@ const ViewQuotation: React.FC = () => {
                                     "Send Quotation"
                                 )}
                             </button>
-                        )}
+                        )} */}
 
                         {/* Show Reshare only if status is Rejected */}
                         {quotationData.quotationStatus === "Rejected" && (

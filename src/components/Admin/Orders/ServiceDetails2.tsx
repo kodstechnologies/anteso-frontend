@@ -1,4 +1,3 @@
-"use client"
 
 import { useState, useEffect } from "react"
 import {
@@ -114,7 +113,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [selectedEmployees, setSelectedEmployees] = useState<Record<string, string>>({})
     const [selectedStaff, setSelectedStaff] = useState<Record<string, string>>({})
     const [selectedStatuses, setSelectedStatuses] = useState<Record<string, string>>({})
-    const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>({})
+    // const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>({})
+    const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | undefined>>({})
+
     const [verificationResponses, setVerificationResponses] = useState<
         Record<string, { field1: string; field2: string }>
     >({})
@@ -131,12 +132,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [editingWorkType, setEditingWorkType] = useState<Record<string, boolean>>({})
     const [assigningStaff, setAssigningStaff] = useState<Record<string, boolean>>({})
 
-    const [reportNumbers, setReportNumbers] = useState<{
-        [key: string]: {
-            qaTest?: { reportULRNumber: string; qaTestReportNumber: string }
-            elora?: { reportULRNumber: string; qaTestReportNumber: string }
-        }
-    }>({})
+    const [reportNumbers, setReportNumbers] = useState<Record<
+        string,
+        { qatest?: { qaTestReportNumber: string; reportULRNumber: string }; elora?: { qaTestReportNumber: string; reportULRNumber: string } }
+    >>({});
+
 
     const saveToLocalStorage = (key: string, data: any) => {
         try {
@@ -592,7 +592,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     workTypeName, // mapped work type name
                     status,
                     {}, // payload - can be extended as needed
-                    uploadedFiles[workTypeId] || null, // file
+                    uploadedFiles[workTypeId], // file
                     workTypeName, // reportType
                 )
             } else {
@@ -719,8 +719,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setAssigningStaff((prev) => ({ ...prev, [workTypeId]: true }))
 
             const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
+            // console.log("🚀 ~ handleStatusSave ~ workType:", workType.name)
             if (!workType) throw new Error("Work type not found")
-
+            // const repor
             const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
             if (!parentService) throw new Error("Parent service not found")
 
@@ -735,8 +736,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     workTypeName, // mapped work type name
                     newStatus,
                     {}, // payload
-                    uploadedFiles[workTypeId] || null, // file
-                    workTypeName, // reportType
+                    uploadedFiles[workTypeId], // file
+                    workType.name, // reportType
                 )
 
                 if (newStatus === "complete" && (workTypeName === "qatest" || workTypeName === "elora")) {
@@ -922,6 +923,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                 // Use the work type name instead of parent service work type name
                 const workTypeName = workType.name || ""
+                console.log("🚀 ~ handleStaffAssign ~ workTypeName:", workTypeName)
+                console.log("🚀 ~ handleStaffAssign ~ workTypeName:", workTypeName)
 
                 console.log("[v0] editDocuments params:", {
                     orderId: orderId || "",
@@ -1045,7 +1048,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                         <div className="divide-y">
                             {service.workTypes.map((workType) => (
+
                                 <div key={workType.id} className="border-b last:border-b-0">
+
                                     <button
                                         onClick={() => toggleAccordion(workType.id)}
                                         className="w-full px-6 py-4 hover:bg-gray-50 transition-colors flex items-center justify-between"
@@ -1069,7 +1074,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     >
                                         <div className="px-6 pb-4">
                                             <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                                                {workType.name === "QA Raw" && (
+                                                {workType.name === "QA Raw" && service.workTypeName === "Quality Assurance Test" && (
                                                     <div className="space-y-4">
                                                         {!assignments[workType.id]?.isAssigned ? (
                                                             <div className="space-y-3">
@@ -1146,13 +1151,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 </div>
 
                                                                 <div className="flex gap-2">
-                                                                    <button
+                                                                    {/* <button
                                                                         onClick={() => handleViewFile(workType.id)}
                                                                         className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
                                                                     >
                                                                         <Eye className="h-4 w-4" />
                                                                         View File
-                                                                    </button>
+                                                                    </button> */}
                                                                     <button
                                                                         onClick={() => handleReassign(workType.id)}
                                                                         className="flex items-center gap-2 px-3 py-2 bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
@@ -1234,14 +1239,21 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                     </span>
                                                                                 </div>
                                                                                 <div className="flex gap-2">
-                                                                                    <button
+                                                                                    {/* <button
                                                                                         onClick={() => handleViewFile(workType.backendFields.uploadFile)}
+                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                                                                                    > */}
+                                                                                    <button
+                                                                                        onClick={() =>
+                                                                                            workType.backendFields?.uploadFile &&
+                                                                                            handleViewFile(workType.backendFields.uploadFile)
+                                                                                        }
                                                                                         className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
                                                                                     >
                                                                                         <Eye className="h-3 w-3" />
                                                                                         View
                                                                                     </button>
-                                                                                    <button
+                                                                                    {/* <button
                                                                                         onClick={() =>
                                                                                             handleDownloadFile(
                                                                                                 workType.backendFields.uploadFile,
@@ -1250,6 +1262,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                             )
                                                                                         }
                                                                                         className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                                                                                    > */}
+                                                                                    <button
+                                                                                        onClick={() => handleFileEdit(workType.id, "upload")}
+                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
                                                                                     >
                                                                                         <Download className="h-3 w-3" />
                                                                                         Download
@@ -1280,7 +1296,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                     </div>
                                                 )}
 
-                                                {workType.name === "QA Test" && (
+                                                {workType.name === "QA Test" && service.workTypeName === "Quality Assurance Test" && (
                                                     <div className="space-y-4">
                                                         {!assignments[workType.id]?.isAssigned ? (
                                                             <div className="space-y-3">
@@ -1408,38 +1424,37 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
                                                                 )}
 
-                                                                {(selectedStatuses[workType.id] === "complete" ||
-                                                                    selectedStatuses[workType.id] === "paid") && (
-                                                                        <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
-                                                                            <label className="block text-sm font-medium text-green-700">
-                                                                                Upload File 
-                                                                            </label>
-                                                                            <input
-                                                                                type="file"
-                                                                                required
-                                                                                onChange={(e) => {
-                                                                                    const file = e.target.files?.[0]
-                                                                                    if (file) handleFileUpload(workType.id, file)
-                                                                                }}
-                                                                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
-                                                                            />
+                                                                {(selectedStatuses[workType.id] === "complete") && (
+                                                                    <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
+                                                                        <label className="block text-sm font-medium text-green-700">
+                                                                            Upload File
+                                                                        </label>
+                                                                        <input
+                                                                            type="file"
+                                                                            required
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files?.[0]
+                                                                                if (file) handleFileUpload(workType.id, file)
+                                                                            }}
+                                                                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
+                                                                        />
 
-                                                                            <div className="grid grid-cols-2 gap-3 mt-3">
-                                                                                <div className="p-2 bg-white rounded border">
-                                                                                    <label className="text-xs text-gray-500">QA Test Report Number</label>
-                                                                                    <p className="font-medium text-sm">
-                                                                                        {reportNumbers[service.id]?.qaTest?.qaTestReportNumber || "N/A"}
-                                                                                    </p>
-                                                                                </div>
-                                                                                <div className="p-2 bg-white rounded border">
-                                                                                    <label className="text-xs text-gray-500">Report ULR Number</label>
-                                                                                    <p className="font-medium text-sm">
-                                                                                        {reportNumbers[service.id]?.qaTest?.reportULRNumber || "N/A"}
-                                                                                    </p>
-                                                                                </div>
+                                                                        <div className="grid grid-cols-2 gap-3 mt-3">
+                                                                            <div className="p-2 bg-white rounded border">
+                                                                                <label className="text-xs text-gray-500">QA Test Report Number</label>
+                                                                                <p className="font-medium text-sm">
+                                                                                    {reportNumbers[service.id]?.qaTest?.qaTestReportNumber || "N/A"}
+                                                                                </p>
+                                                                            </div>
+                                                                            <div className="p-2 bg-white rounded border">
+                                                                                <label className="text-xs text-gray-500">Report ULR Number</label>
+                                                                                <p className="font-medium text-sm">
+                                                                                    {reportNumbers[service.id]?.qaTest?.reportULRNumber || "N/A"}
+                                                                                </p>
                                                                             </div>
                                                                         </div>
-                                                                    )}
+                                                                    </div>
+                                                                )}
 
                                                                 {uploadedFiles[workType.id] && assignments[workType.id]?.status === "complete" && (
                                                                     <div className="mt-4 space-y-3">
@@ -1483,7 +1498,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
                                                                 )}
 
-                                                                {reportNumbers[workType.id]?.qatest && (
+                                                                {/* {reportNumbers[workType.id]?.qatest && (
                                                                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
                                                                         <h4 className="font-medium text-green-800 mb-2">Report Numbers</h4>
                                                                         <div className="space-y-1 text-sm text-green-700">
@@ -1491,7 +1506,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             <p>URL Number: {reportNumbers[workType.id].qatest.urlNumber}</p>
                                                                         </div>
                                                                     </div>
-                                                                )}
+                                                                )} */}
 
                                                                 {uploadedFiles[workType.id] && (
                                                                     <div className="p-3 bg-green-50 rounded-md border border-green-200">
@@ -1637,8 +1652,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 )}
 
                                                                 {(selectedStatuses[workType.id] === "complete" ||
-                                                                    selectedStatuses[workType.id] === "generated" ||
-                                                                    selectedStatuses[workType.id] === "paid") && (
+                                                                    selectedStatuses[workType.id] === "generated"
+                                                                ) && (
                                                                         <div className="space-y-3 p-3 bg-blue-50 rounded-md border border-blue-200">
                                                                             <label className="block text-sm font-medium text-blue-700">
                                                                                 Upload File
@@ -1653,7 +1668,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700"
                                                                             />
 
-                                                                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                                                            {/* <div className="grid grid-cols-2 gap-3 mt-3">
                                                                                 <div className="p-2 bg-white rounded border">
                                                                                     <label className="text-xs text-gray-500">Elora Report Number</label>
                                                                                     <p className="font-medium text-sm">
@@ -1666,7 +1681,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                         {reportNumbers[service.id]?.elora?.reportULRNumber || "N/A"}
                                                                                     </p>
                                                                                 </div>
-                                                                            </div>
+                                                                            </div> */}
                                                                         </div>
                                                                     )}
 
@@ -1712,7 +1727,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
                                                                 )}
 
-                                                                {reportNumbers[workType.id]?.elora && (
+                                                                {/* {reportNumbers[workType.id]?.elora && (
                                                                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
                                                                         <h4 className="font-medium text-green-800 mb-2">Report Numbers</h4>
                                                                         <div className="space-y-1 text-sm text-green-700">
@@ -1720,7 +1735,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             <p>URL Number: {reportNumbers[workType.id].elora.reportULRNumber}</p>
                                                                         </div>
                                                                     </div>
-                                                                )}
+                                                                )} */}
 
                                                                 {uploadedFiles[workType.id] && (
                                                                     <div className="p-3 bg-green-50 rounded-md border border-green-200">

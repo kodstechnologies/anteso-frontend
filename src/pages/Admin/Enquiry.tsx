@@ -52,6 +52,7 @@ const Enquiry = () => {
                 // You may need to map/enrich data depending on your backend format
                 const enriched = response.data.map((item: any, index: number) => ({
                     ...item,
+                    id:item._id,
                     enquiryID: item.enquiryId,
                     hName: item.hospitalName,
                     fullAddress: item.fullAddress,
@@ -63,8 +64,9 @@ const Enquiry = () => {
                     email: item.emailAddress,
                     phone: item.contactNumber,
                     designation: item.designation,
-                    quotation: item.quotationStatus?.toLowerCase(), // fallback
-                    id: item._id,
+
+                    quotation: item.quotationStatus?.toLowerCase(), // keep status here
+                    remark: item.quotation?.[0]?.rejectionRemark || null, // 👈 pick rejectionRemark if exists                    id: item._id,
                 }));
                 console.log("🚀 ~ fetchData ~ enriched:", enriched)
                 console.log("🚀 ~ fetchData ~ enriched.quotation:", enriched.data)
@@ -299,7 +301,6 @@ const Enquiry = () => {
                                     title: 'Remark',
                                     sortable: false,
                                     render: ({ quotation, remark }) => {
-
                                         if (quotation === 'rejected') {
                                             return (
                                                 <span className="text-danger font-medium">

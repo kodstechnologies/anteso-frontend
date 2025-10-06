@@ -4,7 +4,7 @@ import {
   FaUserTie, FaMapMarkerAlt, FaCity, FaFlag, FaHashtag,
   FaMap, FaRegCalendarCheck, FaVials, FaCogs
 } from 'react-icons/fa';
-import { getDealerById } from '../../../../api'; // ✅ import api function
+import { getDealerById } from '../../../../api'; 
 
 interface QATest {
   testName: string;

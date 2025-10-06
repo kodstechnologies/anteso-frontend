@@ -1,5 +1,5 @@
 import * as Yup from 'yup';
-import { Field, Form, Formik } from 'formik';
+import { Field, Form, Formik, FieldProps } from 'formik';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
 import { useEffect, useState } from 'react';
@@ -87,11 +87,11 @@ const EditClient = () => {
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Client Details</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                {['name', 'email', 'address', 'phone', 'gstNo'].map((field) => (
+                                {(['name', 'email', 'address', 'phone', 'gstNo'] as (keyof typeof initialValues)[]).map((field) => (
                                     <div key={field} className={touched[field] && errors[field] ? 'has-error' : ''}>
                                         <label htmlFor={field} className="capitalize">{field}</label>
                                         <Field name={field}>
-                                            {({ field: f }) => (
+                                            {({ field: f }: FieldProps) => (
                                                 <input
                                                     {...f}
                                                     id={field}
@@ -101,7 +101,7 @@ const EditClient = () => {
                                                     maxLength={field === 'phone' ? 10 : field === 'gstNo' ? 15 : undefined}
                                                     onInput={(e) => {
                                                         if (field === 'phone' || field === 'gstNo') {
-                                                            e.target.value = e.target.value.replace(/\D/g, ''); // only digits
+                                                            e.currentTarget.value = e.currentTarget.value.replace(/\D/g, ''); // only digits
                                                         }
                                                     }}
                                                 />
