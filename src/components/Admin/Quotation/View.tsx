@@ -16,7 +16,7 @@ interface QuotationData {
     quotationId: string
     quotationStatus?: string;
     date: string
-    subtotalAmount:any
+    subtotalAmount: any
     enquiry: {
         _id: string
         enquiryId: string
@@ -112,7 +112,7 @@ const ViewQuotation: React.FC = () => {
             const opt = {
                 margin: 0.2,
                 filename: `Quotation_${quotationData.quotationId}.pdf`,
-                image: { type: "jpeg", quality: 0.98 },
+                image: { type: "jpeg" as const, quality: 0.98 },
                 html2canvas: { scale: 2 },
                 jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
             };
