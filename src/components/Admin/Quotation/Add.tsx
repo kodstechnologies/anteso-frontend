@@ -22,6 +22,7 @@ type Item = {
     amount: string
 }
 interface ServiceItem extends Item {
+    id:any
     machineType: string;
     equipmentNo?: string;
     machineModel?: string;
@@ -31,6 +32,7 @@ interface ServiceItem extends Item {
 }
 
 interface AdditionalServiceItem extends Item {
+    id:any
     name: string;
     description?: string;
     totalAmount?: number;
@@ -181,12 +183,14 @@ const ItemsTable: React.FC<{
                                 value={item[field as keyof Item] as string}
                                 onChange={(e) => onItemChange(i, field as StringItemKeys, e.target.value)}
                                 type="number"
+                                required
                                 readOnly={field === "quantity"}
                                 className={`border rounded p-1 text-right text-[.7rem] ${field === "quantity" ? "w-16 bg-gray-100 cursor-not-allowed" : field === "price" ? "w-20" : "w-24"
                                     }`}
                             />
                         </td>
                     ))}
+                    
                 </tr>
             ))}
         </tbody>
@@ -576,12 +580,13 @@ const AddQuotation: React.FC = () => {
             //     };
             // });
             const serviceSnapshots: ServiceItem[] = aitems.map((s) => {
-                const qty = Number.parseFloat(s.quantity || "1");
+                const qty =1;
                 const price = Number.parseFloat(s.price || "0");
                 const total = qty * price;
 
                 return {
-                    id: typeof s.id === "number" ? s.id : Number(s.id),
+                    // id: typeof s.id === "number" ? s.id : Number(s.id),
+                    id: String(s.id),
                     type: s.type || "A",
                     title: s.title,
                     description: s.description || "",
@@ -613,10 +618,13 @@ const AddQuotation: React.FC = () => {
                 const qty = Number.parseFloat(s.quantity || "1");
                 const price = Number.parseFloat(s.price || "0");
                 const total = qty * price;
+                console.log("🚀 ~ handleSubmitQuotation ~ total:", total)
+                console.log("🚀 ~ handleSubmitQuotation ~ total:", total)
 
                 return {
                     // id: s.id?.toString() || "",
-                    id: typeof s.id === "number" ? s.id : Number(s.id),
+                    // id: typeof s.id === "number" ? s.id : Number(s.id),
+                    id: String(s.id),
                     type: s.type || "B",
                     title: s.title,
                     description: s.description || "",

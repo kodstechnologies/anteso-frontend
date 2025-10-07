@@ -110,7 +110,7 @@ const AddClient = () => {
                                     <Field name="address" type="text" id="address" placeholder="Enter Address" className="form-input" />
                                     {submitCount && errors.address ? <div className="text-danger mt-1">{errors.address}</div> : ''}
                                 </div>
-                                <div className={submitCount ? (errors.phone ? 'has-error' : 'has-success') : ''}>
+                                {/* <div className={submitCount ? (errors.phone ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="phone">Phone </label>
                                     <Field name="phone">
                                         <Field name="phone">
@@ -140,8 +140,31 @@ const AddClient = () => {
                                     {submitCount && errors.phone ? (
                                         <div className="text-danger mt-1">{errors.phone}</div>
                                     ) : null}
-                                </div>
+                                </div> */}
 
+                                <div className={submitCount ? (errors.phone ? 'has-error' : 'has-success') : ''}>
+                                    <label htmlFor="phone">Phone </label>
+                                    <Field name="phone">
+                                        {({ field, form }: any) => (
+                                            <input
+                                                {...field}
+                                                type="text"
+                                                id="phone"
+                                                placeholder="Enter Phone Number"
+                                                className="form-input"
+                                                maxLength={10}
+                                                onChange={(e) => {
+                                                    const onlyNums = e.target.value.replace(/[^0-9]/g, "");
+                                                    form.setFieldValue(field.name, onlyNums);
+                                                }}
+                                            />
+                                        )}
+                                    </Field>
+
+                                    {submitCount && errors.phone ? (
+                                        <div className="text-danger mt-1">{errors.phone}</div>
+                                    ) : null}
+                                </div>
 
                                 <div className={submitCount ? (errors.gstNo ? 'has-error' : 'has-success') : ''}>
                                     <label htmlFor="gstNo">GST Number </label>

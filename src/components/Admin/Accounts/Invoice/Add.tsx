@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Field, Form, Formik, ErrorMessage, FieldArray, useFormikContext } from 'formik';
 import * as Yup from 'yup';
 import { Link } from 'react-router-dom';
-import { getAllSrfNumber, getAllDetails, createInvoice } from '../../../../api'; // ✅ make sure getAllDetails is imported
+import { getAllSrfNumber, getAllDetails, createInvoice } from '../../../../api'; 
 
 interface OptionType {
   value: string;
@@ -89,7 +89,6 @@ const GrandTotalDisplay: React.FC = () => {
 
   // ✅ Use backend grand total (already discounted)
   const grandTotal = values.amount || subtotal + gstAmount;
-
   return (
     <div className="text-right font-bold text-lg mt-4">
       <div>Subtotal: ₹{subtotal.toFixed(2)}</div>
@@ -113,6 +112,7 @@ const GrandTotalDisplay: React.FC = () => {
 const Add = () => {
   const [srfOptions, setSrfOptions] = useState<OptionType[]>([]);
   const [orderMap, setOrderMap] = useState<Record<string, string>>({}); // map srfNumber -> orderId
+  const [orderId, setOrderId] = useState<string>('');
 
   // Fetch SRF numbers
   useEffect(() => {
@@ -220,7 +220,8 @@ const Add = () => {
             const discountAmount = parseFloat(String(values.discountPercent)) || 0;
             const grandTotal = subtotal + gstAmount - discountAmount;
 
-            const payload = { ...values, amount: grandTotal, grandTotal };
+            // const payload = { ...values, amount: grandTotal, grandTotal };
+            const payload = { ...values, amount: grandTotal, grandTotal, orderId };
 
             const res = await createInvoice(payload);
             console.log("Invoice created:", res);
@@ -258,36 +259,84 @@ const Add = () => {
               <div>
                 <label htmlFor="srfNumber" className="block mb-1 font-medium">SRF Number</label>
                 {values.type === 'Customer' ? (
+                  // <Field
+                  //   as="select"
+                  //   name="srfNumber"
+                  //   className="form-select"
+                  //   onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
+                  //     // ✅ find orderId from selected option
+                  //     const selectedValue = e.target.value;
+                  //     setFieldValue('srfNumber', selectedValue);
+
+                  //     // ✅ get orderId from orderMap
+                  //     const orderId = orderMap[selectedValue];
+
+                  //     if (orderId) {
+                  //       try {
+                  //         const res = await getAllDetails(orderId); // 👈 correct call
+                  //         if (res?.success && res.data) {
+                  //           const details = res.data;
+                  //           console.log("🚀 ~ details:", details);
+
+                  //           // ✅ set top-level fields
+                  //           setFieldValue('buyerName', details.hospitalName || '');
+                  //           setFieldValue('address', details.fullAddress || '');
+                  //           setFieldValue('state', details.state || '');
+
+                  //           // ✅ amounts
+                  //           setFieldValue('amount', details.grandTotal || details.quotation?.total || 0);
+                  //           setFieldValue('discountPercent', details.quotation?.discount || 0);
+                  //           // setFieldValue('grandTotal', details.grandTotal || 0);
+
+                  //           // ✅ services mapping
+                  //           if (details.services?.length) {
+                  //             const mappedServices = details.services.map((s: any) => ({
+                  //               machineType: s.machineType || '',
+                  //               description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', '),
+                  //               quantity: 1,
+                  //               rate: details.grandTotal || details.quotation?.total || 0,
+                  //               hsnno: s.machineModel || '',
+                  //             }));
+                  //             setFieldValue('services', mappedServices);
+                  //           }
+                  //         }
+                  //       } catch (error) {
+                  //         console.error('Error fetching details:', error);
+                  //       }
+                  //     }
+                  //   }}
+
+                  // >
+                  //   <option value="">Select SRF Number</option>
+                  //   {srfOptions.map((opt) => (
+                  //     <option key={opt.value} value={opt.value}>
+                  //       {opt.label}
+                  //     </option>
+                  //   ))}
+                  // </Field>
                   <Field
                     as="select"
                     name="srfNumber"
                     className="form-select"
                     onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
-                      // ✅ find orderId from selected option
                       const selectedValue = e.target.value;
                       setFieldValue('srfNumber', selectedValue);
 
-                      // ✅ get orderId from orderMap
-                      const orderId = orderMap[selectedValue];
+                      // Get orderId from orderMap
+                      const selectedOrderId = orderMap[selectedValue];
+                      setOrderId(selectedOrderId || ''); // ✅ store orderId in local state
 
-                      if (orderId) {
+                      if (selectedOrderId) {
                         try {
-                          const res = await getAllDetails(orderId); // 👈 correct call
+                          const res = await getAllDetails(selectedOrderId);
                           if (res?.success && res.data) {
                             const details = res.data;
-                            console.log("🚀 ~ details:", details);
-
-                            // ✅ set top-level fields
                             setFieldValue('buyerName', details.hospitalName || '');
                             setFieldValue('address', details.fullAddress || '');
                             setFieldValue('state', details.state || '');
-
-                            // ✅ amounts
                             setFieldValue('amount', details.grandTotal || details.quotation?.total || 0);
                             setFieldValue('discountPercent', details.quotation?.discount || 0);
-                            // setFieldValue('grandTotal', details.grandTotal || 0);
 
-                            // ✅ services mapping
                             if (details.services?.length) {
                               const mappedServices = details.services.map((s: any) => ({
                                 machineType: s.machineType || '',
@@ -304,7 +353,6 @@ const Add = () => {
                         }
                       }
                     }}
-
                   >
                     <option value="">Select SRF Number</option>
                     {srfOptions.map((opt) => (
@@ -313,6 +361,7 @@ const Add = () => {
                       </option>
                     ))}
                   </Field>
+
                 ) : (
                   <Field
                     name="srfNumber"

@@ -11,6 +11,9 @@ import AntesoQRCode from '../../../assets/quotationImg/qrcode.png'
 import Signature from '../../../assets/quotationImg/signature.png'
 import SuccessAlert from "../../common/ShowSuccess";
 
+interface Term {
+    text: string;
+}
 interface QuotationData {
     _id: string
     quotationId: string
@@ -49,7 +52,8 @@ interface QuotationData {
     }
     discount: number
     total: number
-    termsAndConditions: string[]
+    // termsAndConditions: string[]
+    termsAndConditions: Array<string | Term>
 }
 
 interface AdditionalServiceData {
@@ -121,7 +125,7 @@ const ViewQuotation: React.FC = () => {
                 filename: `Quotation_${quotationData.quotationId}.pdf`,
                 image: { type: "jpeg" as const, quality: 0.98 },
                 html2canvas: { scale: 2 },
-                jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const }, 
+                jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
             };
 
             const blob = await html2pdf().set(opt).from(pdfRef.current).outputPdf("blob");
@@ -542,7 +546,7 @@ const ViewQuotation: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount.toLocaleString("en-IN")}</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount}</div>
                             </div>
                         </div>
                     </div>
@@ -557,11 +561,37 @@ const ViewQuotation: React.FC = () => {
                                 lineHeight: "10px",
                             }}
                         >
-                            {quotationData.termsAndConditions.map((term, index) => (
+                            {/* {quotationData.termsAndConditions.map((term, index) => (
                                 <li key={index} className={term.includes("GST") ? "text-green-600" : ""}>
                                     {term}
                                 </li>
-                            ))}
+                            ))} */}
+                            {/* {quotationData.termsAndConditions.map((term, index) => (
+                                <li
+                                    key={index}
+                                    className={typeof term === "string" && term.includes("GST") ? "text-green-600" : ""}
+                                >
+                                    {term}
+                                </li>
+                            ))} */}
+                            {/* {quotationData.termsAndConditions.map((term, index) => (
+                                <li key={index} className={term.text.includes("GST") ? "text-green-600" : ""}>
+                                    {term.text}
+                                </li>
+                            ))} */}
+                            {/* {quotationData.termsAndConditions.map((term, index) => (
+                                <li key={index} className={term.includes("GST") ? "text-green-600" : ""}>
+                                    {term}
+                                </li>
+                            ))} */}
+                            {quotationData.termsAndConditions.map((term, index) => {
+                                const text = typeof term === "string" ? term : term?.text ?? "";
+                                return (
+                                    <li key={index} className={text.includes("GST") ? "text-green-600" : ""}>
+                                        {text}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
 

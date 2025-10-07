@@ -554,12 +554,15 @@ export const editEnquiry = async () => {
 export const createQuotationByEnquiryId = async (payload: any, id: any) => {
     try {
         const token = Cookies.get('accessToken');
+        console.log("INSIDE 🚀 ~ createQuotationByEnquiryId ~ createQuotationByEnquiryId:")
+        console.log("🚀 ~ createQuotationByEnquiryId ~ payload:", payload)
         const res = await api.post(`/quotation/create/${id}`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
 
         });
+
         return res.data;
     } catch (error: any) {
         console.error("🚀 ~ addclient ~ error:", error?.response?.data || error.message);
@@ -2341,3 +2344,31 @@ export const getDetailsById = async (salaryId: any) => {
         );
     }
 }
+
+export const uploadInvoice = async (orderId: string, file: File) => {
+    try {
+        const token = Cookies.get("accessToken");
+        if (!token) throw new Error("User not authenticated");
+
+        // Prepare FormData
+        const formData = new FormData();
+        formData.append("invoicePdf", file);
+
+        // Make API call
+        const response = await axios.post(
+            `/invoice/upload-pdf/${orderId}`, // orderId in URL
+            formData,
+            {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        return response.data;
+    } catch (error: any) {
+        console.error("Error uploading invoice:", error.response?.data || error.message);
+        throw error.response?.data || error;
+    }
+};
