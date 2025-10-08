@@ -1520,6 +1520,7 @@ export const completeStatusAndReport = async (
             { headers }
         );
 
+        console.log("🚀 ~ completeStatusAndReport ~ res:", res)
         return res;
     } catch (error: any) {
         console.error("🚀 completeStatusAndReport error:", error);

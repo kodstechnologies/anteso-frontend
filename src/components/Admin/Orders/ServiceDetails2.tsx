@@ -587,7 +587,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 await assignToOfficeStaffByElora(orderId, serviceId, staffId, workTypeName, status)
             } else if (status === "complete" || status === "generated" || status === "paid") {
                 // Use completeStatusAndReport API with correct parameter order
-                await completeStatusAndReport(
+                const res = await completeStatusAndReport(
                     staffId, // technicianId
                     orderId,
                     serviceId,
@@ -597,6 +597,27 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     uploadedFiles[workTypeId], // file
                     workTypeName, // reportType
                 )
+
+                console.log("🚀 ~ handleStaffAssign ~ res?.data?.qaTestReportNumber:", res?.data?.qaTestReportNumber)
+                console.log("🚀 ~ handleStaffAssign ~ res?.data?.reportULRNumber:", res?.data?.reportULRNumber)
+
+                if (res?.data?.qaTestReportNumber && res?.data?.reportULRNumber) {
+                    const identifier = res.data.reportFor;
+                    setReportNumbers((prev) => {
+                        const newReportNumbers = {
+                            ...prev,
+                            [parentService.id]: {
+                                ...prev[parentService.id],
+                                [identifier]: {
+                                    qaTestReportNumber: res.data.qaTestReportNumber,
+                                    reportULRNumber: res.data.reportULRNumber,
+                                },
+                            },
+                        };
+                        saveToLocalStorage(STORAGE_KEYS.reportNumbers, newReportNumbers);
+                        return newReportNumbers;
+                    });
+                }
             } else {
                 // Use assignToOfficeStaff API for other statuses
                 await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, status)
@@ -646,8 +667,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
     const getWorkTypeIdentifier = (workTypeName: string): string => {
         const workTypeMap: { [key: string]: string } = {
-            "Quality Assurance Test": "qaTest",
-            "QA Test": "qaTest",
+            "Quality Assurance Test": "qatest",
+            "QA Test": "qatest",
             "License for Operation": "elora",
             Elora: "elora",
         }
@@ -658,7 +679,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         try {
             const workTypeIdentifier = getWorkTypeIdentifier(parentService.workTypeName)
 
-            if (workTypeIdentifier !== "qaTest" && workTypeIdentifier !== "elora") {
+            if (workTypeIdentifier !== "qatest" && workTypeIdentifier !== "elora") {
                 console.log(
                     `[v0] Skipping report numbers for work type: ${parentService.workTypeName} (mapped to: ${workTypeIdentifier})`,
                 )
@@ -731,7 +752,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const workTypeName = parentService.workTypeName || "Unknown Work Type";
 
             if (newStatus === "complete" || newStatus === "generated" || newStatus === "paid") {
-                await completeStatusAndReport(
+                const res = await completeStatusAndReport(
                     staffId, // technicianId
                     orderId,
                     serviceId,
@@ -742,8 +763,25 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     workType.name, // reportType
                 )
 
-                if (newStatus === "complete" && (workTypeName === "qatest" || workTypeName === "elora")) {
-                    await fetchReportNumbers(parentService, workType)
+                console.log("🚀 ~ handleStatusSave ~ res?.data?.qaTestReportNumber:", res?.data?.qaTestReportNumber)
+                console.log("🚀 ~ handleStatusSave ~ res?.data?.reportULRNumber:", res?.data?.reportULRNumber)
+
+                if (res?.data?.qaTestReportNumber && res?.data?.reportULRNumber) {
+                    const identifier = res.data.reportFor;
+                    setReportNumbers((prev) => {
+                        const newReportNumbers = {
+                            ...prev,
+                            [parentService.id]: {
+                                ...prev[parentService.id],
+                                [identifier]: {
+                                    qaTestReportNumber: res.data.qaTestReportNumber,
+                                    reportULRNumber: res.data.reportULRNumber,
+                                },
+                            },
+                        };
+                        saveToLocalStorage(STORAGE_KEYS.reportNumbers, newReportNumbers);
+                        return newReportNumbers;
+                    });
                 }
             } else {
                 if (assignments[workTypeId]?.isAssigned && workType.name !== "Elora") {
@@ -970,30 +1008,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                     <span className="ml-2 text-gray-600">Fetching machine details...</span>
-                </div>
-            </div>
-        )
-    }
-
-    if (error) {
-        return (
-            <div className="space-y-6 p-6">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Services Management</h1>
-                    <p className="text-gray-600">Error loading machine data</p>
-                </div>
-                <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load machine data</h3>
-                        <p className="text-gray-600 mb-4">{error}</p>
-                        <button
-                            onClick={fetchMachineData}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                        >
-                            Retry
-                        </button>
-                    </div>
                 </div>
             </div>
         )
@@ -1426,7 +1440,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
                                                                 )}
 
-                                                                {(selectedStatuses[workType.id] === "complete") && (
+                                                                {(selectedStatuses[workType.id] === "complete" || selectedStatuses[workType.id] === "generated") && (
                                                                     <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
                                                                         <label className="block text-sm font-medium text-green-700">
                                                                             Upload File
@@ -1499,16 +1513,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         </div>
                                                                     </div>
                                                                 )}
-
-                                                                {/* {reportNumbers[workType.id]?.qatest && (
-                                                                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                                                                        <h4 className="font-medium text-green-800 mb-2">Report Numbers</h4>
-                                                                        <div className="space-y-1 text-sm text-green-700">
-                                                                            <p>Report Number: {reportNumbers[workType.id].qatest.reportNumber}</p>
-                                                                            <p>URL Number: {reportNumbers[workType.id].qatest.urlNumber}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                )} */}
 
                                                                 {uploadedFiles[workType.id] && (
                                                                     <div className="p-3 bg-green-50 rounded-md border border-green-200">
@@ -1670,7 +1674,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700"
                                                                             />
 
-                                                                            {/* <div className="grid grid-cols-2 gap-3 mt-3">
+                                                                            <div className="grid grid-cols-2 gap-3 mt-3">
                                                                                 <div className="p-2 bg-white rounded border">
                                                                                     <label className="text-xs text-gray-500">Elora Report Number</label>
                                                                                     <p className="font-medium text-sm">
@@ -1683,7 +1687,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                         {reportNumbers[service.id]?.elora?.reportULRNumber || "N/A"}
                                                                                     </p>
                                                                                 </div>
-                                                                            </div> */}
+                                                                            </div>
                                                                         </div>
                                                                     )}
 
@@ -1728,16 +1732,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         </div>
                                                                     </div>
                                                                 )}
-
-                                                                {/* {reportNumbers[workType.id]?.elora && (
-                                                                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                                                                        <h4 className="font-medium text-green-800 mb-2">Report Numbers</h4>
-                                                                        <div className="space-y-1 text-sm text-green-700">
-                                                                            <p>Report Number: {reportNumbers[workType.id].elora.qaTestReportNumber}</p>
-                                                                            <p>URL Number: {reportNumbers[workType.id].elora.reportULRNumber}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                )} */}
 
                                                                 {uploadedFiles[workType.id] && (
                                                                     <div className="p-3 bg-green-50 rounded-md border border-green-200">
