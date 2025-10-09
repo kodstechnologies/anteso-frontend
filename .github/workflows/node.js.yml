@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: self-hosted
 
     strategy:
@@ -16,33 +15,37 @@ jobs:
         node-version: [18.x]
 
     steps:
-      # Checkout the repository
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      # Setup Node.js
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
 
-      # Install frontend dependencies
-      - name: Install frontend dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
+    # Install frontend dependencies
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
 
-      # Create .env file from secret
-      - name: Setup environment
-        run: |
-          touch .env
-          echo "${{ secrets.ANTESOFE }}" > .env
+    # Create .env file from secret
+    - name: Setup environment
+      run: |
+        touch .env
+        echo "${{ secrets.ANTESOFE }}" > .env
 
-      # Build frontend
-      - name: Build frontend
-        run: npm run build
+    # Fix permissions (important if self-hosted runner writes as root sometimes)
+    - name: Fix permissions before build
+      run: |
+        sudo chown -R $USER:$USER .
+        sudo chmod -R u+rwX,go+rX .
 
-      # Restart frontend server
-      - name: Restart frontend server
-        run: |
-          pm2 restart FrontendServer || pm2 start FrontendServer
+    # Build React frontend
+    - name: Build frontend
+      run: NODE_OPTIONS="--max-old-space-size=3072" npm run build
+
+    # Serve with PM2
+    - name: Serve React build with PM2
+      run: |
+        pm2 delete FrontendServer || true
+        pm2 serve dist 8080 --name FrontendServer --spa
+        pm2 save
