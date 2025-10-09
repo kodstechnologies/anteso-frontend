@@ -120,13 +120,21 @@ const ViewQuotation: React.FC = () => {
             //     html2canvas: { scale: 2 },
             //     jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
             // };
+            // const opt = {
+            //     margin: 0.2,
+            //     filename: `Quotation_${quotationData.quotationId}.pdf`,
+            //     image: { type: "jpeg" as const, quality: 0.98 },
+            //     html2canvas: { scale: 2 },
+            //     jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
+            // };
             const opt = {
-                margin: 0.2,
+                margin: 0.1,
                 filename: `Quotation_${quotationData.quotationId}.pdf`,
-                image: { type: "jpeg" as const, quality: 0.98 },
-                html2canvas: { scale: 2 },
+                image: { type: "jpeg" as const, quality: 0.95 },
+                html2canvas: { scale: 1.5 }, // shrink content
                 jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
             };
+
 
             const blob = await html2pdf().set(opt).from(pdfRef.current).outputPdf("blob");
 
@@ -375,7 +383,11 @@ const ViewQuotation: React.FC = () => {
                 )}
 
                 {/* <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[50rem]"> */}
-                <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[42rem]">
+                <div
+                    className="mx-auto rounded-lg px-4 bg-white"
+                    style={{ width: "793px", maxWidth: "100%" }} // ~A4 portrait width at 96 DPI
+                    ref={pdfRef}
+                >
 
                     {/* Header */}
                     <div className="flex justify-between items-start ">
