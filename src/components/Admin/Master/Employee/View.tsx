@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import { isSameDay, startOfMonth, endOfMonth, getDaysInMonth, isSunday } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { isSameDay, startOfMonth, endOfMonth, getDaysInMonth, isSunday, format } from 'date-fns';
+import { Link, useParams } from 'react-router-dom';
+import { getEmployeeById } from '../../../../api';
 
 
 // Mock attendance data (replace with actual API data)
@@ -25,23 +26,39 @@ const paymentData = {
     otherAllowances: 3000,
 };
 
-// Employee details
-const employee = {
-    empId: 'EMP001',
-    name: 'Rabi Prasad',
-    email: 'client1@gmail.com',
-    address: 'HSR Layout, Bangalore, Karnataka',
-    phone: '9876576876',
-    business: 'Tech Solutions Pvt. Ltd.',
-    gstNo: 'AX123',
-    designation: 'Manager',
-    department: 'dpt_A',
-    joinDate: '04/1/2023',
-    workingDay: '6',
-};
-
 function ViewEmployee() {
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+    const { id } = useParams(); // get employee ID from URL
+    const [employee, setEmployee] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchEmployee = async () => {
+            try {
+                if (!id) {
+                    setLoading(false);
+                    return;
+                }
+                setLoading(true);
+                const res = await getEmployeeById(id);
+                // Backend response structure: res.data.data
+                setEmployee(res.data);
+            } catch (error) {
+                console.error('Error fetching employee:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchEmployee();
+    }, [id]);
+
+    if (loading || !employee) {
+        return (
+            <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+                <div className="text-lg text-gray-600">Loading Employee Details...</div>
+            </div>
+        );
+    }
 
     // Calculate attendance summary for the current month
     const getAttendanceSummary = () => {
@@ -149,23 +166,6 @@ function ViewEmployee() {
 
             {/* Breadcrumb Navigation */}
             <nav className="flex text-gray-500 font-semibold my-4" aria-label="Breadcrumb">
-                {/* <ol className="flex items-center space-x-2">
-                    <li>
-                        <a href="/" className="hover:text-gray-700 transition-colors">
-                            Dashboard
-                        </a>
-                    </li>
-                    <li className="flex items-center">
-                        <span className="mx-2 text-gray-400">{'/'}</span>
-                        <a href="/admin/hrms" className="text-blue-600 hover:text-blue-800 transition-colors">
-                            Employee
-                        </a>
-                    </li>
-                    <li className="flex items-center">
-                        <span className="mx-2 text-gray-400">{'/'}</span>
-                        <span className="text-gray-600">View</span>
-                    </li>
-                </ol> */}
                 <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
                     <li>
                         <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
@@ -218,16 +218,16 @@ function ViewEmployee() {
                                 </div>
                                 <div>
                                     <span className="font-semibold text-gray-700">Date of Joining:</span>
-                                    <p className="text-gray-600 mt-1">{employee.joinDate}</p>
+                                    <p className="text-gray-600 mt-1">{employee.dateOfJoining ? format(new Date(employee.dateOfJoining), 'MM/dd/yyyy') : ''}</p>
                                 </div>
                                 <div>
                                     <span className="font-semibold text-gray-700">Working Days:</span>
-                                    <p className="text-gray-600 mt-1">{employee.workingDay} days/week</p>
+                                    <p className="text-gray-600 mt-1">{employee.workingDays} days</p>
                                 </div>
                             </div>
                             <div className="pt-4">
                                 <span className="font-semibold text-gray-700">Address:</span>
-                                <p className="text-gray-600 mt-1">{employee.address}</p>
+                                <p className="text-gray-600 mt-1">{employee.address || ''}</p>
                             </div>
                         </div>
                     </div>

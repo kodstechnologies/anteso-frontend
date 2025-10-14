@@ -1,16 +1,19 @@
-import React, { useEffect, useState } from "react";
-import { getInvoiceById } from "../../../../api"; // adjust path
+import React, { useEffect, useState, useRef } from "react";
+import { getInvoiceById, uploadInvoice } from "../../../../api"; // added uploadInvoice API
 import antesoLogo from "../../../../assets/logo/logo-sm.png";
 import signature from "../../../../assets/quotationImg/signature.png";
 import qrcode from "../../../../assets/quotationImg/qrcode.png";
 import { useParams } from "react-router-dom";
+import html2pdf from "html2pdf.js";
 
 const InvoiceDealer = () => {
-    // const InvoiceDealer = ({ invoiceId }: { invoiceId: string }) => {
-
     const { id } = useParams<{ id: string }>();
     const [invoice, setInvoice] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false); // new state for upload
+    const [uploaded, setUploaded] = useState(false); // new state to track upload status
+
+    const invoiceRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchInvoice = async () => {
@@ -27,19 +30,69 @@ const InvoiceDealer = () => {
         fetchInvoice();
     }, [id]);
 
+    const handleDownloadPdf = () => {
+        if (!invoiceRef.current) return;
+        const element = invoiceRef.current;
+        const opt = {
+            margin: 0.2,
+            filename: `Invoice_${invoice.invoiceId}.pdf`,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+        };
+        html2pdf().set(opt).from(element).save();
+    };
+
+    // New function to generate PDF blob and upload
+    const handleUploadInvoice = async () => {
+        if (!invoiceRef.current || !invoice) return;
+
+        setUploading(true);
+        try {
+            const element = invoiceRef.current;
+            const opt = {
+                margin: 0.2,
+                filename: `Invoice_${invoice.invoiceId}.pdf`,
+                image: { type: "jpeg", quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+            };
+
+            // Generate PDF blob
+            const pdfBlob = await new Promise<Blob>((resolve, reject) => {
+                html2pdf()
+                    .set(opt)
+                    .from(element)
+                    .outputPdf("blob")
+                    .then((blob) => resolve(blob))
+                    .catch((err) => reject(err));
+            });
+
+            // Convert to file
+            const file = new File([pdfBlob], `Invoice_${invoice.invoiceId}.pdf`, { type: "application/pdf" });
+
+            // Call API
+            await uploadInvoice(invoice.orderId, file); // your API method
+            alert("Invoice uploaded successfully!");
+        } catch (err) {
+            console.error(err);
+            alert("Failed to upload invoice.");
+        } finally {
+            setUploading(false);
+        }
+    };
 
     if (loading) return <p>Loading...</p>;
     if (!invoice) return <p>No invoice found.</p>;
 
-    // Dynamic values from API
     const invoiceDetails = {
         invoiceDate: new Date(invoice.createdAt).toLocaleDateString("en-IN"),
         invoiceNo: invoice.invoiceId,
         billTo: invoice.buyerName,
         addressLine: invoice.address,
         gstin: invoice.gst || "-",
-        email: "-", // not present in API response
-        phone: "-", // not present in API response
+        email: "-",
+        phone: "-",
     };
 
     const items = invoice.dealerHospitals?.map((d: any, index: number) => ({
@@ -49,24 +102,15 @@ const InvoiceDealer = () => {
         location: d.location,
         state: d.dealerState,
         model: d.modelNo,
-        srNo: d.srNo || "-", // if srNo missing in API
+        srNo: d.srNo || "-",
         expense: d.amount,
     })) || [];
 
     const subTotal = invoice.subtotal || 0;
     const gst = invoice.igst || invoice.cgst + invoice.sgst || 0;
     const total = invoice.grandtotal || subTotal + gst;
-    // 👇 Inside your InvoiceDealer component, after invoiceDetails & items:
-    const isCustomer = invoice.type === "Customer"; // ✅ assuming API sends customerType
+    const isCustomer = invoice.type === "Customer";
 
-    // Customer Items (map from API structure)
-    // const customerItems = invoice.services?.map((s: any, index: number) => ({
-    //     id: index + 1,
-    //     description: s.description,
-    //     hsn: s.hsnSac || "-",
-    //     qty: s.quantity || 0,
-    //     amount: (s.rate ?? 0)
-    // })) || [];
     const customerItems = invoice.services?.map((s: any, index: number) => ({
         id: index + 1,
         description: s.description,
@@ -77,12 +121,9 @@ const InvoiceDealer = () => {
     })) || [];
 
     return (
-        // <div className="w-full min-h-screen bg-gray-50 px-8 absolute top-0 left-0 z-50 lg:px-[15%]">
-        //     <div className="w-full bg-white px-4 sm:px-6 md:px-8 py-4 text-[11px] sm:text-xs">
-        //         <div className="max-w-[794px] mx-auto border border-black p-4">
         <div className="w-full min-h-screen bg-gray-50 px-8 absolute top-0 left-0 z-50 lg:px-[15%]">
             <div className="w-full bg-white px-4 sm:px-6 md:px-8 py-4 text-[11px] sm:text-xs min-h-screen flex flex-col">
-                <div className="max-w-[794px] mx-auto border border-black p-4 flex flex-col flex-grow">
+                <div className="max-w-[794px] mx-auto border border-black p-4 flex flex-col flex-grow" ref={invoiceRef}>
                     {/* Header */}
                     <div className="flex justify-between items-start border-b border-black pb-2">
                         <img src={antesoLogo} alt="Logo" className="h-10 sm:h-12" />
@@ -91,9 +132,7 @@ const InvoiceDealer = () => {
                     {/* Top Info */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-[11px]">
                         <div className="border border-black p-2">
-                            <p>
-                                <strong>INVOICE DATE:</strong> {invoiceDetails.invoiceDate}
-                            </p>
+                            <p><strong>INVOICE DATE:</strong> {invoiceDetails.invoiceDate}</p>
                             <h2 className="text-sm sm:text-base font-bold">ANTESO Biomedical</h2>
                             <p>ANTESO Biomedical OPC Pvt. Ltd.</p>
                             <p>Flat No 290, 2nd Floor, Block D, Pocket 7, Sec 6, Rohini, New Delhi-110085</p>
@@ -102,25 +141,18 @@ const InvoiceDealer = () => {
                         </div>
 
                         <div className="border border-black p-2">
-                            <p>
-                                <strong>INVOICE NO.:</strong> {invoiceDetails.invoiceNo}
-                            </p>
-                            <p>
-                                <strong>Bill To:</strong> {invoiceDetails.billTo}
-                            </p>
+                            <p><strong>INVOICE NO.:</strong> {invoiceDetails.invoiceNo}</p>
+                            <p><strong>Bill To:</strong> {invoiceDetails.billTo}</p>
                             <p>{invoiceDetails.addressLine}</p>
                             <p>Phone: {invoiceDetails.phone}</p>
                             <p>Email: {invoiceDetails.email}</p>
-                            <p>
-                                <strong>GST:</strong> {invoiceDetails.gstin}
-                            </p>
+                            <p><strong>GST:</strong> {invoiceDetails.gstin}</p>
                         </div>
                     </div>
 
                     {/* Table */}
                     <div className="mt-2 w-full overflow-hidden">
                         {isCustomer ? (
-                            // ✅ Customer Table
                             <table className="w-full table-fixed border border-black border-collapse text-[4px] sm:text-xs">
                                 <thead className="bg-gray-100">
                                     <tr>
@@ -129,7 +161,6 @@ const InvoiceDealer = () => {
                                         <th className="border border-black px-1 py-1 text-xs">HSN/SAC Number</th>
                                         <th className="border border-black px-1 py-1 text-xs">Quantity</th>
                                         <th className="border border-black px-1 py-1 text-xs">Amount</th>
-
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -139,9 +170,7 @@ const InvoiceDealer = () => {
                                             <td className="border border-black px-1 py-1 text-xs">{item.description}</td>
                                             <td className="border border-black px-1 py-1 text-xs">{item.hsn}</td>
                                             <td className="border border-black px-1 py-1 text-xs">{item.qty}</td>
-                                            <td className="border border-black px-1 py-1 text-xs">
-                                                ₹{(item.rate ?? 0).toLocaleString("en-IN")}
-                                            </td>
+                                            <td className="border border-black px-1 py-1 text-xs">₹{(item.rate ?? 0).toLocaleString("en-IN")}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -170,9 +199,7 @@ const InvoiceDealer = () => {
                                             <td className="border border-black px-1 py-1 text-xs">{item.state}</td>
                                             <td className="border border-black px-1 py-1 text-xs">{item.model}</td>
                                             <td className="border border-black px-1 py-1 text-xs">{item.srNo}</td>
-                                            <td className="border border-black px-1 py-1 text-xs">
-                                                ₹{(item.expense ?? 0).toLocaleString("en-IN")}
-                                            </td>
+                                            <td className="border border-black px-1 py-1 text-xs">₹{(item.expense ?? 0).toLocaleString("en-IN")}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -182,15 +209,9 @@ const InvoiceDealer = () => {
 
                     {/* Totals */}
                     <div className="text-right mt-4 space-y-1">
-                        <p>
-                            <strong>Sub Total:</strong> ₹{(subTotal ?? 0).toLocaleString("en-IN")}
-                        </p>
-                        <p>
-                            <strong>GST:</strong> ₹{(gst ?? 0).toLocaleString("en-IN")}
-                        </p>
-                        <p className="text-sm font-bold">
-                            Total: ₹{(total ?? 0).toLocaleString("en-IN")}
-                        </p>
+                        <p><strong>Sub Total:</strong> ₹{(subTotal ?? 0).toLocaleString("en-IN")}</p>
+                        <p><strong>GST:</strong> ₹{(gst ?? 0).toLocaleString("en-IN")}</p>
+                        <p className="text-sm font-bold">Total: ₹{(total ?? 0).toLocaleString("en-IN")}</p>
                     </div>
 
                     {/* Footer */}
@@ -211,16 +232,31 @@ const InvoiceDealer = () => {
                             <p><strong>Authorized Signatory</strong></p>
                         </div>
                     </div>
-
-                    <div className="flex justify-end mt-4 print:hidden">
-                        <button
-                            onClick={() => window.print()}
-                            className="bg-teal-600 hover:bg-teal-700 text-white text-xs px-4 py-2 rounded"
-                        >
-                            Print Invoice
-                        </button>
-                    </div>
                 </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end mt-4 print:hidden gap-2">
+                    <button
+                        onClick={handleDownloadPdf}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2 rounded"
+                    >
+                        Download PDF
+                    </button>
+                    <button
+                        onClick={handleUploadInvoice}
+                        disabled={uploading}
+                        className={`bg-green-600 hover:bg-green-700 text-white text-xs px-4 py-2 rounded ${uploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                        {uploading ? "Uploading..." : "Upload Invoice"}
+                    </button>
+                    <button
+                        onClick={() => window.print()}
+                        className="bg-teal-600 hover:bg-teal-700 text-white text-xs px-4 py-2 rounded"
+                    >
+                        Print Invoice
+                    </button>
+                </div>
+
             </div>
         </div>
     );

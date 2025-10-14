@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react"
 import {
     Wrench,
@@ -68,6 +67,10 @@ interface MachineData {
             imageUrl: string
             uploadFile?: string
             viewFile?: string[]
+            reportStatus?: string
+            qaTestReportNumber: any
+            reportURLNumber: any
+
         }
         reportNumber?: string
         urlNumber?: string
@@ -81,6 +84,37 @@ interface MachineData {
 interface ServicesCardProps {
     orderId?: any
 }
+interface ConfirmModalProps {
+    open: boolean;
+    onClose: () => void;
+    title: string;
+    message: string;
+}
+const ConfirmModal: React.FC<ConfirmModalProps> = ({
+    open,
+    onClose,
+    title,
+    message,
+}) => {
+    if (!open) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <h2 className="text-xl font-semibold mb-2">{title}</h2>
+                <p className="text-gray-700 mb-4">{message}</p>
+                <div className="flex justify-end gap-4">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function ServicesCard({ orderId }: ServicesCardProps) {
     const STORAGE_KEYS = {
@@ -131,10 +165,22 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
     const [editingWorkType, setEditingWorkType] = useState<Record<string, boolean>>({})
     const [assigningStaff, setAssigningStaff] = useState<Record<string, boolean>>({})
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalTitle, setModalTitle] = useState('');
+    const [modalMessage, setModalMessage] = useState('');
 
+    const showModal = (title: string, message: string) => {
+        setModalTitle(title);
+        setModalMessage(message);
+        setModalOpen(true);
+    };
+
+    const hideModal = () => {
+        setModalOpen(false);
+    };
     const [reportNumbers, setReportNumbers] = useState<Record<
         string,
-        { qatest?: { qaTestReportNumber: string; reportULRNumber: string }; elora?: { qaTestReportNumber: string; reportULRNumber: string } }
+        { qatest?: { qaTestReportNumber: string; reportULRNumber: string, reportStatus: any }; elora?: { qaTestReportNumber: string; reportULRNumber: string } }
     >>({});
 
 
@@ -413,13 +459,16 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             name: "QA Raw",
                             description: "Quality assurance for raw materials",
                             backendFields: {
-                                serialNo: machineData.equipmentNo || "N/A",
+                                serialNo: machineData.serialNumber || machineData.equipmentNo || "N/A",
                                 modelName: machineData.machineModel || "N/A",
                                 remark: machineData.remark || "N/A",
                                 fileUrl: workTypeDetail.viewFile?.[0] || "",
                                 imageUrl: workTypeDetail.viewFile?.[1] || "",
                                 uploadFile: workTypeDetail.uploadFile || "",
                                 viewFile: workTypeDetail.viewFile || [],
+                                reportURLNumber: workTypeDetail.QAtest?.reportULRNumber || 'N/A',
+                                qaTestReportNumber: workTypeDetail.QAtest?.qaTestReportNumber || 'N/A',
+                                reportStatus: workTypeDetail.QAtest?.reportStatus || 'pending',
                             },
                             serviceId: "default-service-id", // You may need to adjust this
                         })
@@ -462,6 +511,25 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             })
 
             setMachineData(allTransformedData)
+
+            // Populate initial reportNumbers from machine data
+            const initialReportNumbers: Record<string, any> = {};
+            allTransformedData.forEach((service) => {
+                if (service.workTypeName === "Quality Assurance Test") {
+                    const qaRawWorkType = service.workTypes.find((wt) => wt.name === "QA Raw");
+                    if (qaRawWorkType && qaRawWorkType.backendFields) {
+                        initialReportNumbers[service.id] = {
+                            qatest: {
+                                reportStatus: qaRawWorkType.backendFields.reportStatus,
+                                qaTestReportNumber: qaRawWorkType.backendFields.qaTestReportNumber,
+                                reportULRNumber: qaRawWorkType.backendFields.reportURLNumber,
+                            },
+                        };
+                    }
+                }
+            });
+            setReportNumbers(initialReportNumbers);
+            saveToLocalStorage(STORAGE_KEYS.reportNumbers, initialReportNumbers);
 
             await fetchExistingAssignments()
         } catch (err: any) {
@@ -580,6 +648,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 return "bg-yellow-100 text-yellow-800 border-yellow-200"
             case "inactive":
                 return "bg-red-100 text-red-800 border-red-200"
+            case "accepted":
+                return "bg-green-100 text-green-800 border-green-200"
             default:
                 return "bg-gray-100 text-gray-800 border-gray-200"
         }
@@ -677,6 +747,98 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     //         setAssigningTechnician((prev) => ({ ...prev, [workTypeId]: false }))
     //     }
     // }
+
+
+
+    // const handleEmployeeAssign = async (workTypeId: string) => {
+    //     const employeeId = selectedEmployees[workTypeId]
+    //     if (!employeeId || !orderId) return
+
+    //     try {
+    //         setAssigningTechnician((prev) => ({ ...prev, [workTypeId]: true }))
+
+    //         const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
+
+    //         if (!workType) throw new Error("Work type not found")
+
+    //         const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
+
+    //         if (!parentService) throw new Error("Parent service not found")
+
+    //         const serviceId = workType.id.split("-")[0]
+    //         const workTypeName = parentService.workTypeName || "Unknown Work Type";
+
+    //         console.log("🚀 ~ handleEmployeeAssign ~ workTypeName from service:", workTypeName)
+    //         console.log("🚀 ~ handleEmployeeAssign ~ employeeId:", employeeId)
+    //         console.log("🚀 ~ handleEmployeeAssign ~ serviceId:", serviceId)
+    //         console.log("🚀 ~ handleEmployeeAssign ~ orderId:", orderId)
+
+    //         await assignToTechnicianByQA(orderId, serviceId, employeeId, workTypeName)
+
+    //         const assignedTechResponse = await getAssignedTechnicianName(orderId, serviceId, workTypeName)
+    //         const { technicianName, status } = assignedTechResponse.data
+
+    //         const machineUpdatesResponse = await getMachineUpdates(employeeId, orderId, serviceId, workTypeName)
+    //         console.log("🚀 ~ handleEmployeeAssign ~ machineUpdatesResponse:", machineUpdatesResponse)
+    //         const { updatedService } = machineUpdatesResponse.data
+
+    //         const newAssignments = {
+    //             ...assignments,
+    //             [workTypeId]: {
+    //                 employeeId,
+    //                 isAssigned: true,
+    //                 technicianName,
+    //                 assignmentStatus: status,
+    //                 isReassigned: false,
+    //             },
+    //         }
+
+    //         setAssignments((prev) => ({
+    //             ...prev,
+    //             [workTypeId]: {
+    //                 ...prev[workTypeId],
+    //                 employeeId,
+    //                 isAssigned: true,
+    //                 technicianName,
+    //                 assignmentStatus: status,
+    //                 isReassigned: false,
+    //             },
+    //         }))
+
+    //         saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
+
+    //         setMachineData((prevData) =>
+    //             prevData.map((service) => ({
+    //                 ...service,
+    //                 workTypes: service.workTypes.map((wt) =>
+    //                     wt.id === workTypeId
+    //                         ? {
+    //                             ...wt,
+    //                             assignedTechnicianName: technicianName,
+    //                             assignmentStatus: status,
+    //                             backendFields: {
+    //                                 ...wt.backendFields,
+    //                                 serialNo: updatedService.machineModel || wt.backendFields?.serialNo || "N/A",
+    //                                 modelName: updatedService.machineModel || wt.backendFields?.modelName || "N/A",
+    //                                 remark: updatedService.remark || wt.backendFields?.remark || "N/A",
+    //                                 fileUrl: updatedService.rawFile || wt.backendFields?.fileUrl || "",
+    //                                 imageUrl: wt.backendFields?.imageUrl || "",
+    //                             },
+    //                         }
+    //                         : wt,
+    //                 ),
+    //             })),
+    //         )
+
+    //         console.log("[v0] Assignment successful:", { technicianName, status, updatedService })
+    //     } catch (error: any) {
+    //         console.error("[v0] Assignment failed:", error)
+    //         alert(`Failed to assign technician: ${error.message}`)
+    //     } finally {
+    //         setAssigningTechnician((prev) => ({ ...prev, [workTypeId]: false }))
+    //     }
+    // }
+
     const handleEmployeeAssign = async (workTypeId: string) => {
         const employeeId = selectedEmployees[workTypeId]
         if (!employeeId || !orderId) return
@@ -708,6 +870,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const machineUpdatesResponse = await getMachineUpdates(employeeId, orderId, serviceId, workTypeName)
             console.log("🚀 ~ handleEmployeeAssign ~ machineUpdatesResponse:", machineUpdatesResponse)
             const { updatedService } = machineUpdatesResponse.data
+
+            // Extract QA Test report numbers
+            const qaWorkTypeDetail = updatedService.workTypeDetails?.find((wtd: any) => wtd.workType === workTypeName)
+            const reportURLNumber = qaWorkTypeDetail?.QAtest?.reportULRNumber || 'N/A'
+            console.log("🚀 ~ handleEmployeeAssign ~ reportURLNumber:", reportURLNumber)
+            const qaTestReportNumber = qaWorkTypeDetail?.QAtest?.qaTestReportNumber || 'N/A'
+            console.log("🚀 ~ handleEmployeeAssign ~ qaTestReportNumber:", qaTestReportNumber)
+            const reportStatus = qaWorkTypeDetail?.QAtest?.reportStatus || 'pending'
 
             const newAssignments = {
                 ...assignments,
@@ -750,12 +920,34 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     remark: updatedService.remark || wt.backendFields?.remark || "N/A",
                                     fileUrl: updatedService.rawFile || wt.backendFields?.fileUrl || "",
                                     imageUrl: wt.backendFields?.imageUrl || "",
+                                    reportURLNumber,
+                                    qaTestReportNumber,
+                                    reportStatus,
                                 },
                             }
                             : wt,
                     ),
                 })),
             )
+
+            // Update reportNumbers
+            setReportNumbers((prev) => {
+                const updated = {
+                    ...prev,
+                    [parentService.id]: {
+                        ...prev[parentService.id],
+                        qatest: {
+                            qaTestReportNumber: qaTestReportNumber,
+                            reportULRNumber: reportURLNumber,
+                            reportStatus,
+                        },
+                    },
+                };
+                saveToLocalStorage(STORAGE_KEYS.reportNumbers, updated);
+                return updated;
+            });
+
+            // Removed the immediate refetch to avoid race condition where backend might not be updated yet
 
             console.log("[v0] Assignment successful:", { technicianName, status, updatedService })
         } catch (error: any) {
@@ -924,6 +1116,256 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         }
     }
 
+    // const handleStatusSave = async (workTypeId: string) => {
+    //     const staffId = assignments[workTypeId]?.staffId
+    //     const newStatus = selectedStatuses[workTypeId]
+    //     const currentStatus = assignments[workTypeId]?.status || "pending"
+
+    //     if (!staffId || !orderId || !newStatus) return
+
+    //     const currentIndex = statusOptions.indexOf(currentStatus)
+    //     const newIndex = statusOptions.indexOf(newStatus)
+    //     const isReassigned = assignments[workTypeId]?.isReassigned
+
+    //     if (!isReassigned && newIndex < currentIndex) {
+    //         alert("Cannot go back to previous status!")
+    //         return
+    //     }
+
+    //     if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId]) {
+    //         alert("File upload is mandatory for complete status!")
+    //         return
+    //     }
+
+    //     try {
+    //         setAssigningStaff((prev) => ({ ...prev, [workTypeId]: true }))
+
+    //         const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
+    //         // console.log("🚀 ~ handleStatusSave ~ workType:", workType.name)
+    //         if (!workType) throw new Error("Work type not found")
+    //         // const repor
+    //         const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
+    //         if (!parentService) throw new Error("Parent service not found")
+
+    //         const serviceId = workType.id.split("-")[0]
+    //         const workTypeName = parentService.workTypeName || "Unknown Work Type";
+
+    //         if (newStatus === "complete" || newStatus === "generated" || newStatus === "paid") {
+    //             const res = await completeStatusAndReport(
+    //                 staffId, // technicianId
+    //                 orderId,
+    //                 serviceId,
+    //                 workTypeName, // mapped work type name
+    //                 newStatus,
+    //                 {}, // payload
+    //                 uploadedFiles[workTypeId], // file
+    //                 workType.name, // reportType
+    //             )
+
+    //             console.log("🚀 ~ handleStatusSave ~ res?.data?.qaTestReportNumber:", res)
+    //             // console.log("🚀 ~ handleStatusSave ~ res?.data?.reportULRNumber:", res?.data?.reportULRNumber)
+
+    //             if (res?.data?.qaTestReportNumber && res?.data?.reportULRNumber) {
+    //                 const identifier = res.data.reportFor;
+    //                 setReportNumbers((prev) => {
+    //                     const newReportNumbers = {
+    //                         ...prev,
+    //                         [parentService.id]: {
+    //                             ...prev[parentService.id],
+    //                             [identifier]: {
+    //                                 qaTestReportNumber: res.data.qaTestReportNumber,
+    //                                 reportULRNumber: res.data.reportULRNumber,
+    //                             },
+    //                         },
+    //                     };
+    //                     saveToLocalStorage(STORAGE_KEYS.reportNumbers, newReportNumbers);
+    //                     return newReportNumbers;
+    //                 });
+    //             }
+    //         } else {
+    //             if (assignments[workTypeId]?.isAssigned && workType.name !== "Elora") {
+    //                 await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, newStatus)
+    //             } else if (workType.name === "Elora") {
+    //                 await assignToOfficeStaffByElora(orderId, serviceId, staffId, workTypeName, newStatus)
+    //             } else {
+    //                 // This case should ideally not be hit if isAssigned is true, but as a fallback
+    //                 await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, newStatus)
+    //             }
+    //         }
+
+    //         const newAssignments = {
+    //             ...assignments,
+    //             [workTypeId]: {
+    //                 ...assignments[workTypeId],
+    //                 status: newStatus,
+    //                 isReassigned: false, // Clear reassign flag after status change
+    //             },
+    //         }
+
+    //         setAssignments(newAssignments)
+    //         setSelectedStatuses((prev) => ({ ...prev, [workTypeId]: newStatus }))
+
+    //         // Save to localStorage
+    //         saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
+    //         saveToLocalStorage(STORAGE_KEYS.selectedStatuses, { ...selectedStatuses, [workTypeId]: newStatus })
+
+    //         console.log("[v0] Status update successful:", { newStatus, workTypeName })
+    //     } catch (error: any) {
+    //         console.error("[v0] Status update failed:", error)
+    //         alert(`Failed to update status: ${error.message}`)
+    //     } finally {
+    //         setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
+    //     }
+    // }
+
+
+
+
+    // const handleStatusSave = async (workTypeId: string) => {
+    //     const staffId = assignments[workTypeId]?.staffId
+    //     const newStatus = selectedStatuses[workTypeId]
+    //     const currentStatus = assignments[workTypeId]?.status || "pending"
+
+    //     if (!staffId || !orderId || !newStatus) return
+
+    //     const currentIndex = statusOptions.indexOf(currentStatus)
+    //     const newIndex = statusOptions.indexOf(newStatus)
+    //     const isReassigned = assignments[workTypeId]?.isReassigned
+
+    //     if (!isReassigned && newIndex < currentIndex) {
+    //         alert("Cannot go back to previous status!")
+    //         return
+    //     }
+
+    //     if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId]) {
+    //         alert("File upload is mandatory for complete status!")
+    //         return
+    //     }
+
+    //     try {
+    //         setAssigningStaff((prev) => ({ ...prev, [workTypeId]: true }))
+
+    //         const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
+    //         if (!workType) throw new Error("Work type not found")
+
+    //         const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
+    //         if (!parentService) throw new Error("Parent service not found")
+
+    //         const serviceId = workType.id.split("-")[0]
+    //         const workTypeName = parentService.workTypeName || "Unknown Work Type";
+
+    //         // For complete/generated/paid statuses, backend may return updated reportStatus
+    //         if (newStatus === "complete" || newStatus === "generated" || newStatus === "paid") {
+    //             const res = await completeStatusAndReport(
+    //                 staffId, // technicianId
+    //                 orderId,
+    //                 serviceId,
+    //                 workTypeName, // mapped work type name
+    //                 newStatus,
+    //                 {}, // payload
+    //                 uploadedFiles[workTypeId], // file
+    //                 workType.name, // reportType
+    //             )
+
+    //             if (res?.data?.reportStatus) {
+    //                 // Save reportStatus instead of report numbers
+    //                 const identifier = res.data.reportFor; // e.g., 'qatest'
+    //                 setReportNumbers((prev) => {
+    //                     const newReportStatus = {
+    //                         ...prev,
+    //                         [parentService.id]: {
+    //                             ...prev[parentService.id],
+    //                             [identifier]: {
+    //                                 reportStatus: res.data.reportStatus
+    //                             },
+    //                         },
+    //                     }
+    //                     saveToLocalStorage(STORAGE_KEYS.reportNumbers, newReportStatus)
+    //                     return newReportStatus
+    //                 })
+    //             }
+    //         } else {
+    //             if (assignments[workTypeId]?.isAssigned && workType.name !== "Elora") {
+    //                 await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, newStatus)
+    //             } else if (workType.name === "Elora") {
+    //                 await assignToOfficeStaffByElora(orderId, serviceId, staffId, workTypeName, newStatus)
+    //             } else {
+    //                 await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, newStatus)
+    //             }
+    //         }
+
+    //         const newAssignments = {
+    //             ...assignments,
+    //             [workTypeId]: {
+    //                 ...assignments[workTypeId],
+    //                 status: newStatus,
+    //                 isReassigned: false,
+    //             },
+    //         }
+
+    //         setAssignments(newAssignments)
+    //         setSelectedStatuses((prev) => ({ ...prev, [workTypeId]: newStatus }))
+
+    //         saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
+    //         saveToLocalStorage(STORAGE_KEYS.selectedStatuses, { ...selectedStatuses, [workTypeId]: newStatus })
+
+    //         console.log("[v0] Status update successful:", { newStatus, workTypeName })
+    //     } catch (error: any) {
+    //         console.error("[v0] Status update failed:", error)
+    //         alert(`Failed to update status: ${error.message}`)
+    //     } finally {
+    //         setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
+    //     }
+    // }
+    // const handleStatusUpdate = (workTypeId: string, newStatus: string) => {
+    //     if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId]) {
+    //         alert("File upload is mandatory for complete status!")
+    //         return
+    //     }
+
+    //     setSelectedStatuses((prev) => {
+    //         const newStatuses = { ...prev, [workTypeId]: newStatus }
+    //         saveToLocalStorage(STORAGE_KEYS.selectedStatuses, newStatuses)
+    //         return newStatuses
+    //     })
+    //     setAssignments((prev) => {
+    //         const newAssignments = {
+    //             ...prev,
+    //             [workTypeId]: { ...prev[workTypeId], status: newStatus },
+    //         }
+    //         saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
+    //         return newAssignments
+    //     })
+    // }
+    // const handleFileUpload = (workTypeId: string, file: File) => {
+    //     setUploadedFiles((prev) => {
+    //         const newFiles = { ...prev, [workTypeId]: file }
+    //         const fileNames = Object.entries(newFiles).reduce(
+    //             (acc, [key, fileObj]) => {
+    //                 acc[key] = fileObj?.name || null
+    //                 return acc
+    //             },
+    //             {} as Record<string, string | null>,
+    //         )
+    //         saveToLocalStorage(STORAGE_KEYS.uploadedFileNames, fileNames)
+    //         return newFiles
+    //     })
+    //     setAssignments((prev) => {
+    //         const newAssignments = {
+    //             ...prev,
+    //             [workTypeId]: { ...prev[workTypeId], uploadedFile: file },
+    //         }
+    //         saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
+    //         return newAssignments
+    //     })
+    //     setTimeout(() => {
+    //         handleStatusUpdate(workTypeId, "generated")
+    //     }, 1000)
+    // }
+
+
+
+
     const handleStatusSave = async (workTypeId: string) => {
         const staffId = assignments[workTypeId]?.staffId
         const newStatus = selectedStatuses[workTypeId]
@@ -936,12 +1378,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         const isReassigned = assignments[workTypeId]?.isReassigned
 
         if (!isReassigned && newIndex < currentIndex) {
-            alert("Cannot go back to previous status!")
+            showModal('Warning', "Cannot go back to previous status!");
             return
         }
 
         if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId]) {
-            alert("File upload is mandatory for complete status!")
+            showModal('Warning', "File upload is mandatory for complete status!");
             return
         }
 
@@ -949,15 +1391,15 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setAssigningStaff((prev) => ({ ...prev, [workTypeId]: true }))
 
             const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
-            // console.log("🚀 ~ handleStatusSave ~ workType:", workType.name)
             if (!workType) throw new Error("Work type not found")
-            // const repor
+
             const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
             if (!parentService) throw new Error("Parent service not found")
 
             const serviceId = workType.id.split("-")[0]
             const workTypeName = parentService.workTypeName || "Unknown Work Type";
 
+            // For complete/generated/paid statuses, backend may return updated reportStatus
             if (newStatus === "complete" || newStatus === "generated" || newStatus === "paid") {
                 const res = await completeStatusAndReport(
                     staffId, // technicianId
@@ -970,25 +1412,22 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     workType.name, // reportType
                 )
 
-                console.log("🚀 ~ handleStatusSave ~ res?.data?.qaTestReportNumber:", res?.data?.qaTestReportNumber)
-                console.log("🚀 ~ handleStatusSave ~ res?.data?.reportULRNumber:", res?.data?.reportULRNumber)
-
-                if (res?.data?.qaTestReportNumber && res?.data?.reportULRNumber) {
-                    const identifier = res.data.reportFor;
+                if (res?.data?.reportStatus) {
+                    // Save reportStatus instead of report numbers
+                    const identifier = res.data.reportFor; // e.g., 'qatest'
                     setReportNumbers((prev) => {
-                        const newReportNumbers = {
+                        const newReportStatus = {
                             ...prev,
                             [parentService.id]: {
                                 ...prev[parentService.id],
                                 [identifier]: {
-                                    qaTestReportNumber: res.data.qaTestReportNumber,
-                                    reportULRNumber: res.data.reportULRNumber,
+                                    reportStatus: res.data.reportStatus
                                 },
                             },
-                        };
-                        saveToLocalStorage(STORAGE_KEYS.reportNumbers, newReportNumbers);
-                        return newReportNumbers;
-                    });
+                        }
+                        saveToLocalStorage(STORAGE_KEYS.reportNumbers, newReportStatus)
+                        return newReportStatus
+                    })
                 }
             } else {
                 if (assignments[workTypeId]?.isAssigned && workType.name !== "Elora") {
@@ -996,7 +1435,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 } else if (workType.name === "Elora") {
                     await assignToOfficeStaffByElora(orderId, serviceId, staffId, workTypeName, newStatus)
                 } else {
-                    // This case should ideally not be hit if isAssigned is true, but as a fallback
                     await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, newStatus)
                 }
             }
@@ -1006,29 +1444,29 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 [workTypeId]: {
                     ...assignments[workTypeId],
                     status: newStatus,
-                    isReassigned: false, // Clear reassign flag after status change
+                    isReassigned: false,
                 },
             }
 
             setAssignments(newAssignments)
             setSelectedStatuses((prev) => ({ ...prev, [workTypeId]: newStatus }))
 
-            // Save to localStorage
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
             saveToLocalStorage(STORAGE_KEYS.selectedStatuses, { ...selectedStatuses, [workTypeId]: newStatus })
 
             console.log("[v0] Status update successful:", { newStatus, workTypeName })
         } catch (error: any) {
             console.error("[v0] Status update failed:", error)
-            alert(`Failed to update status: ${error.message}`)
+            showModal('Error', `Failed to update status: ${error.message}`);
         } finally {
             setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
         }
     }
 
+
     const handleStatusUpdate = (workTypeId: string, newStatus: string) => {
         if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId]) {
-            alert("File upload is mandatory for complete status!")
+            showModal('Warning', "File upload is mandatory for complete status!");
             return
         }
 
@@ -1072,7 +1510,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             handleStatusUpdate(workTypeId, "generated")
         }, 1000)
     }
-
     const toggleAccordion = (itemId: string) => {
         setExpandedItems((prev) => {
             const newItems = prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
@@ -1182,6 +1619,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 }
 
                 const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
+                console.log("🚀 ~ handleFileEdit ~ parentService:", parentService)
 
                 if (!parentService) {
                     alert("Parent service not found")
@@ -1195,20 +1633,20 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 const technicianId = assignments[workTypeId]?.employeeId || ""
 
                 // Use the work type name instead of parent service work type name
-                const workTypeName = workType.name || ""
+                const workTypeName = parentService.workTypeName || ""
                 console.log("🚀 ~ handleStaffAssign ~ workTypeName:", workTypeName)
                 console.log("🚀 ~ handleStaffAssign ~ workTypeName:", workTypeName)
-
+                const serviceId = workType.id.split("-")[0]
                 console.log("[v0] editDocuments params:", {
                     orderId: orderId || "",
-                    serviceId: workType.serviceId || "",
+                    serviceId: serviceId || "",
                     technicianId,
                     workTypeName,
                     uploadFile: uploadFile?.name,
                     viewFiles: viewFiles.map((f) => f.name),
                 })
 
-                await editDocuments(orderId || "", workType.serviceId || "", technicianId, workTypeName, uploadFile, viewFiles)
+                await editDocuments(orderId || "", serviceId || "", technicianId, workTypeName, uploadFile, viewFiles)
 
                 alert("File updated successfully!")
                 // Refresh data to show updated files
@@ -1218,7 +1656,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 alert("Failed to update file")
             }
         }
-
         input.click()
     }
 
@@ -1407,6 +1844,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
                                                                 </div>
 
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    <div className="p-3 bg-white rounded-md border">
+                                                                        <label className="text-xs text-gray-500">Report URL Number</label>
+                                                                        <p className="font-medium">{workType.backendFields?.reportURLNumber || 'N/A'}</p>
+                                                                    </div>
+                                                                    <div className="p-3 bg-white rounded-md border">
+                                                                        <label className="text-xs text-gray-500">QA Test Report Number</label>
+                                                                        <p className="font-medium">{workType.backendFields?.qaTestReportNumber || 'N/A'}</p>
+                                                                    </div>
+                                                                </div>
+
                                                                 <div className="flex gap-2">
                                                                     <button
                                                                         onClick={() => handleReassign(workType.id)}
@@ -1422,7 +1870,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                                                                     {workType.backendFields?.viewFile && workType.backendFields.viewFile.length > 0 && (
                                                                         <div className="space-y-2">
-                                                                            <h4 className="text-sm font-medium text-gray-700">View Files:</h4>
+                                                                            <h4 className="text-sm font-medium text-gray-700">Raw Files:</h4>
                                                                             <div className="grid gap-2">
                                                                                 {workType.backendFields.viewFile.map((fileUrl, index) => {
                                                                                     const fileName =
@@ -1448,7 +1896,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                 </span>
                                                                                             </div>
                                                                                             <div className="flex gap-2">
-                                                                                                <button
+                                                                                                {/* <button
                                                                                                     // onClick={() => handleViewFile(fileUrl)}
                                                                                                     onClick={() => handleDownloadFile(fileUrl, fileName)}
 
@@ -1456,7 +1904,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                 >
                                                                                                     <Eye className="h-3 w-3" />
                                                                                                     View
-                                                                                                </button>
+                                                                                                </button> */}
                                                                                                 <button
                                                                                                     onClick={() => handleDownloadFile(fileUrl, fileName)}
                                                                                                     className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
@@ -1480,48 +1928,48 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     )}
 
                                                                     {/* {workType.backendFields?.uploadFile && (
-                                                                        <div className="space-y-2">
-                                                                            <h4 className="text-sm font-medium text-gray-700">Upload File:</h4>
-                                                                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                                                                                <div className="flex items-center gap-3">
-                                                                                    <FileText className="h-5 w-5 text-red-600" />
-                                                                                    <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
-                                                                                        {workType.backendFields.uploadFile.split("/").pop()?.split("?")[0] ||
-                                                                                            "Upload File"}
-                                                                                    </span>
-                                                                                </div>
-                                                                                <div className="flex gap-2">
-                                                                                    <button
-                                                                                        onClick={() =>
-                                                                                            workType.backendFields?.uploadFile &&
-                                                                                            handleViewFile(workType.backendFields.uploadFile)
-                                                                                        }
-                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
-                                                                                    >
-                                                                                        <Eye className="h-3 w-3" />
-                                                                                        View
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={() => handleFileEdit(workType.id, "upload")}
-                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
-                                                                                    >
-                                                                                        <Download className="h-3 w-3" />
-                                                                                        Download
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={() => handleFileEdit(workType.id, "upload")}
-                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
-                                                                                    >
-                                                                                        <Edit className="h-3 w-3" />
-                                                                                        Edit
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    )} */}
+                        <div className="space-y-2">
+                            <h4 className="text-sm font-medium text-gray-700">Upload File:</h4>
+                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                                <div className="flex items-center gap-3">
+                                    <FileText className="h-5 w-5 text-red-600" />
+                                    <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
+                                        {workType.backendFields.uploadFile.split("/").pop()?.split("?")[0] ||
+                                            "Upload File"}
+                                    </span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() =>
+                                            workType.backendFields?.uploadFile &&
+                                            handleViewFile(workType.backendFields.uploadFile)
+                                        }
+                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                                    >
+                                        <Eye className="h-3 w-3" />
+                                        View
+                                    </button>
+                                    <button
+                                        onClick={() => handleFileEdit(workType.id, "upload")}
+                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                    >
+                                        <Download className="h-3 w-3" />
+                                        Download
+                                    </button>
+                                    <button
+                                        onClick={() => handleFileEdit(workType.id, "upload")}
+                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                    >
+                                        <Edit className="h-3 w-3" />
+                                        Edit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )} */}
                                                                     {workType.backendFields?.uploadFile && (
                                                                         <div className="space-y-2">
-                                                                            {/* <h4 className="text-sm font-medium text-gray-700">Upload File:</h4> */}
+                                                                            <h4 className="text-sm font-medium text-gray-700">Photos:</h4>
                                                                             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                                                                                 <div className="flex items-center gap-3">
                                                                                     <FileText className="h-5 w-5 text-red-600" />
@@ -1735,22 +2183,26 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                                                                         <div className="grid grid-cols-2 gap-3 mt-3">
                                                                             <div className="p-2 bg-white rounded border">
-                                                                                <label className="text-xs text-gray-500">QA Test Report Number</label>
-                                                                                <p className="font-medium text-sm">
-                                                                                    {reportNumbers[service.id]?.qatest?.qaTestReportNumber || "N/A"}
-                                                                                </p>
+                                                                                <label className="text-xs text-gray-500">QA Test Report Status</label>
+
+                                                                                <span
+                                                                                    className={`ml-2 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(reportNumbers[service.id]?.qatest?.reportStatus || "pending")
+                                                                                        }`}
+                                                                                >
+                                                                                    {reportNumbers[service.id]?.qatest?.reportStatus || "pending"}
+                                                                                </span>
                                                                             </div>
-                                                                            <div className="p-2 bg-white rounded border">
+                                                                            {/* <div className="p-2 bg-white rounded border">
                                                                                 <label className="text-xs text-gray-500">Report ULR Number</label>
                                                                                 <p className="font-medium text-sm">
                                                                                     {reportNumbers[service.id]?.qatest?.reportULRNumber || "N/A"}
                                                                                 </p>
-                                                                            </div>
+                                                                            </div> */}
                                                                         </div>
                                                                     </div>
                                                                 )}
 
-                                                                {uploadedFiles[workType.id] && assignments[workType.id]?.status === "complete" && (
+                                                                {/* {uploadedFiles[workType.id] && assignments[workType.id]?.status === "complete" && (
                                                                     <div className="mt-4 space-y-3">
                                                                         <h4 className="font-medium text-gray-900">Verification Response from Technician</h4>
                                                                         <div className="space-y-2">
@@ -1790,7 +2242,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             />
                                                                         </div>
                                                                     </div>
-                                                                )}
+                                                                )} */}
 
                                                                 {uploadedFiles[workType.id] && (
                                                                     <div className="p-3 bg-green-50 rounded-md border border-green-200">
@@ -1952,7 +2404,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700"
                                                                             />
 
-                                                                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                                                            {/* <div className="grid grid-cols-2 gap-3 mt-3">
                                                                                 <div className="p-2 bg-white rounded border">
                                                                                     <label className="text-xs text-gray-500">Elora Report Number</label>
                                                                                     <p className="font-medium text-sm">
@@ -1965,11 +2417,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                         {reportNumbers[service.id]?.elora?.reportULRNumber || "N/A"}
                                                                                     </p>
                                                                                 </div>
-                                                                            </div>
+                                                                            </div> */}
                                                                         </div>
                                                                     )}
 
-                                                                {/* {uploadedFiles[workType.id] && assignments[workType.id]?.status === "complete" && (
+                                                                {/* {uploadedFiles[workType.id] && assignments[workType.id]?.status === "complete" &s& (
                                                                     <div className="mt-4 space-y-3">
                                                                         <h4 className="font-medium text-gray-900">Verification Response from Technician</h4>
                                                                         <div className="space-y-2">
@@ -2034,6 +2486,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     </div>
                 ))}
             </div>
+            <ConfirmModal
+                open={modalOpen}
+                onClose={hideModal}
+                title={modalTitle}
+                message={modalMessage}
+            />
         </div>
     )
 }

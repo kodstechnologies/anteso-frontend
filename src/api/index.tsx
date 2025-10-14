@@ -50,6 +50,7 @@ export const getAllClients = async () => {
         throw error;
     }
 }
+
 export const deleteClientById = async (clientId: any) => {
     try {
         const token = Cookies.get('accessToken');
@@ -641,7 +642,10 @@ export const getAllEmployees = async () => {
 }
 
 export const getEmployeeById = async (id: any) => {
+    console.log("🚀 ~ getEmployeeById ~ id:", id)
     try {
+        console.log("inside getEmployeeById");
+
         const token = Cookies.get('accessToken')
         const res = await api.get(`/technician/get-by-id/${id}`, {
             headers: {
@@ -971,6 +975,23 @@ export const getEngineerByToolId = async (id: any) => {
         throw new Error(
             error?.response?.data?.message || "Failed getEngineerByToolId"
         );
+    }
+}
+
+export const deleteToolById = async (id: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.delete(`/tools/delete/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ deletePaymentById ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to deletePaymentById"
+        )
     }
 }
 
@@ -1626,6 +1647,7 @@ export const getAllPayments = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ getAllPayments ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getEngineerByTools ~ error:", error);
@@ -1807,6 +1829,26 @@ export const sendQuotation = async (hospitalId: string, enquiryId: string, quota
     }
 };
 
+
+
+export const updateQuotationById = async (id: any, data: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        console.log("🚀 ~ updateQuotationById ~ data:", data);
+        const res = await api.put(`/quotation/edit-quotation/${id}`, data, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        console.log("🚀 ~ updateQuotationById ~ res:", res);
+        return res.data;
+    } catch (error: any) {
+        console.error("Error updating quotation:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to update quotation"
+        );
+    }
+};
 
 //Invoice APIS
 export const getAllDetails = async (orderId: any) => {
@@ -2187,6 +2229,24 @@ export const addCourierByOrderId = async (orderId: string, payload: any) => {
     }
 };
 
+export const getAllCourierDetails = async (orderId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/courier/get-all-courier`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAllManufacturer ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllManufacturer ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
 export const createManufacturer = async (data: any) => {
     try {
         const token = Cookies.get("accessToken")
@@ -2356,7 +2416,7 @@ export const uploadInvoice = async (orderId: string, file: File) => {
         formData.append("invoicePdf", file);
 
         // Make API call
-        const response = await axios.post(
+        const response = await api.post(
             `/invoice/upload-pdf/${orderId}`, // orderId in URL
             formData,
             {
@@ -2366,10 +2426,108 @@ export const uploadInvoice = async (orderId: string, file: File) => {
                 },
             }
         );
+        console.log("🚀 ~ uploadInvoice ~ response:", response)
 
         return response.data;
     } catch (error: any) {
         console.error("Error uploading invoice:", error.response?.data || error.message);
         throw error.response?.data || error;
+    }
+};
+
+export const updateTool = async (id: string, payload: any) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.put(`/tools/update/${id}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ updateTool ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to update tool");
+    }
+};
+
+export const toolHistory = async (toolId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/tools/history/${toolId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ toolHistory ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllManufacturer ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch getAllManufacturerF"
+        );
+    }
+}
+
+export const attendanceSummary = async (empId: string, month: number, year: number) => {
+    try {
+        const token = Cookies.get("accessToken");
+
+        // ✅ Pass month & year as query params
+        const res = await api.get(`/technician/attendance-summary/${empId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            params: {
+                month,
+                year,
+            },
+        });
+
+        console.log("🚀 ~ attendanceSummary ~ res:", res.data);
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ attendanceSummary ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch attendance summary"
+        );
+    }
+};
+
+
+export const getPdfForAcceptQuotation = async (orderId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/orders/get-pdf/${orderId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getPdfForAcceptQuotation ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getPdfForAcceptQuotation ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+
+// export cons
+
+export const editPayment = async (id: any, payload: any) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.put(`/payment/edit-payment/${id}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ editPayment ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to update payment"
+        );
     }
 };

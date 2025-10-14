@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 // import { useParams } from "next/navigation"
 import { FaAngleRight } from "react-icons/fa6"
 import { downloadQuotationPdf, getQuotationByEEnquiryId, sendQuotation } from "../../../api"
-import { useParams } from "react-router-dom"
+import { Navigate, useNavigate, useParams } from "react-router-dom"
 import logo from "../../../assets/logo/logo-sm.png"
 import logoA from "../../../assets/quotationImg/NABLlogo.png"
 import AntesoQRCode from '../../../assets/quotationImg/qrcode.png'
@@ -52,6 +52,8 @@ interface QuotationData {
     }
     discount: number
     total: number
+    gstAmount: any
+    gstRate: any
     // termsAndConditions: string[]
     termsAndConditions: Array<string | Term>
 }
@@ -72,11 +74,13 @@ interface Service {
     totalAmount?: number
 }
 
+
 const ViewQuotation: React.FC = () => {
     const params = useParams()
     const id = params.id as string
     console.log("🚀 ~ ViewQuotation ~ id:", id)
     const pdfRef = useRef<HTMLDivElement>(null); // 👈 ref to capture PDF
+    const navigate = useNavigate();
 
     const [quotationData, setQuotationData] = useState<QuotationData | null>(null)
     const [loading, setLoading] = useState(true)
@@ -106,7 +110,10 @@ const ViewQuotation: React.FC = () => {
             fetchQuotationData()
         }
     }, [id])
-
+    const handleEditQuotation = () => {
+        // Redirect to edit page with the same ID
+        navigate(`/quotation/edit/${id}`);
+    };
     const handleSaveAsPdf = async () => {
         if (!quotationData || !pdfRef.current) return;
 
@@ -151,6 +158,7 @@ const ViewQuotation: React.FC = () => {
                 hospitalId,
                 file
             );
+            console.log("🚀 ~ handleSaveAsPdf ~ res:", res)
 
             // alert("✅ PDF uploaded successfully! URL: " + res.pdfUrl);
             setSuccessMessage(`PDF uploaded successfully! URL: ${res.pdfUrl}`);
@@ -347,6 +355,10 @@ const ViewQuotation: React.FC = () => {
     ]
 
     const discount = quotationData.discount; // 600
+    const gstAmount = quotationData.gstAmount; // 600
+
+    const gstRate = quotationData.gstRate; // 600
+
     console.log("🚀 ~ discount:", discount)
     const travelCost: number = 0
 
@@ -557,6 +569,14 @@ const ViewQuotation: React.FC = () => {
                                 <div className="w-[37%] text-[.7rem] font-bold text-right">{discount}</div>
                             </div>
                             <div className="flex items-center gap-4">
+                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Rate</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">{gstRate}%</div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Amount</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹{gstAmount}</div>
+                            </div>
+                            <div className="flex items-center gap-4">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
                                 <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount}</div>
                             </div>
@@ -739,7 +759,7 @@ const ViewQuotation: React.FC = () => {
                         )} */}
 
                         {/* Show Reshare only if status is Rejected */}
-                        {quotationData.quotationStatus === "Rejected" && (
+                        {/* {quotationData.quotationStatus === "Rejected" && (
                             <button
                                 onClick={handleSendQuotation}
                                 disabled={isSending}
@@ -753,6 +773,14 @@ const ViewQuotation: React.FC = () => {
                                 ) : (
                                     "Reshare Quotation"
                                 )}
+                            </button>
+                        )} */}
+                        {quotationData.quotationStatus === "Rejected" && (
+                            <button
+                                onClick={handleEditQuotation}
+                                className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 flex items-center justify-center"
+                            >
+                                Edit Quotation
                             </button>
                         )}
                     </div>

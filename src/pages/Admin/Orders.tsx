@@ -129,16 +129,16 @@ const Orders = () => {
                                     )
                                 },
                                 { accessor: 'procNoOrPoNo', title: 'PROC NO/PO NO', sortable: true },
-                                {
-                                    accessor: 'type',
-                                    title: 'Type',
-                                    sortable: true,
-                                    // render: (record) => (
-                                    //     <div className="flex items-center justify-center w-1/2">
-                                    //         <span className={`badge badge-outline-${record.type === 'Customer' ? 'warning' : 'secondary'} rounded-full`}>{record.type}</span>
-                                    //     </div>
-                                    // ),
-                                },
+                                // {
+                                //     accessor: 'type',
+                                //     title: 'Type',
+                                //     sortable: true,
+                                //     // render: (record) => (
+                                //     //     <div className="flex items-center justify-center w-1/2">
+                                //     //         <span className={`badge badge-outline-${record.type === 'Customer' ? 'warning' : 'secondary'} rounded-full`}>{record.type}</span>
+                                //     //     </div>
+                                //     // ),
+                                // },
                                 { accessor: 'leadOwner', title: 'Lead Owner', sortable: true },
 
                                 { accessor: 'createdOn', title: 'PROC Expiry Date', sortable: true },

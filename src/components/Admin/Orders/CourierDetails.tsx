@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { addCourierByOrderId } from "../../../api";
+import React, { useState, useEffect } from "react";
+import { addCourierByOrderId, getAllCourierDetails } from "../../../api";
 
 interface Courier {
   _id?: string;
@@ -16,6 +16,25 @@ const CourierDetails = ({ orderId }: { orderId: string }) => {
     trackingUrl: "",
   });
   const [couriers, setCouriers] = useState<Courier[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch couriers on mount
+  const fetchCouriers = async () => {
+    try {
+      setLoading(true);
+      const res = await getAllCourierDetails(orderId);
+      // Assuming API returns { success: true, total, couriers }
+      setCouriers(res.data.couriers || []);
+    } catch (err) {
+      console.error("Failed to fetch couriers:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (orderId) fetchCouriers();
+  }, [orderId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -25,13 +44,16 @@ const CourierDetails = ({ orderId }: { orderId: string }) => {
   const handleSubmit = async () => {
     try {
       const data = await addCourierByOrderId(orderId, courierForm);
-      setCouriers((prev) => [...prev, data.data]); // add new courier to state
+      // Add the newly created courier to state
+      setCouriers((prev) => [...prev, data.data]);
       setIsAddingCourier(false);
       setCourierForm({ courierCompanyName: "", trackingId: "", trackingUrl: "" });
     } catch (err) {
       console.error(err);
     }
   };
+
+  if (loading) return <div>Loading couriers...</div>;
 
   return (
     <div>
@@ -101,24 +123,28 @@ const CourierDetails = ({ orderId }: { orderId: string }) => {
       )}
 
       {/* Display Couriers */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm text-gray-700">
-        {couriers.map((c) => (
-          <div key={c._id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
-            <div className="text-xs uppercase text-gray-500 font-semibold mb-1">Company Name</div>
-            <div className="text-gray-800 font-medium">{c.courierCompanyName}</div>
+      {couriers.length === 0 ? (
+        <div className="text-gray-500">No couriers added yet.</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm text-gray-700">
+          {couriers.map((c) => (
+            <div key={c._id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="text-xs uppercase text-gray-500 font-semibold mb-1">Company Name</div>
+              <div className="text-gray-800 font-medium">{c.courierCompanyName}</div>
 
-            <div className="text-xs uppercase text-gray-500 font-semibold mt-2 mb-1">Tracking ID</div>
-            <div className="text-gray-800 font-medium">{c.trackingId}</div>
+              <div className="text-xs uppercase text-gray-500 font-semibold mt-2 mb-1">Tracking ID</div>
+              <div className="text-gray-800 font-medium">{c.trackingId}</div>
 
-            <div className="text-xs uppercase text-gray-500 font-semibold mt-2 mb-1">Tracking URL</div>
-            <div className="text-blue-600 font-medium">
-              <a href={c.trackingUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                View
-              </a>
+              <div className="text-xs uppercase text-gray-500 font-semibold mt-2 mb-1">Tracking URL</div>
+              <div className="text-blue-600 font-medium">
+                <a href={c.trackingUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  View
+                </a>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

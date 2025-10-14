@@ -13,7 +13,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     onClose,
     onConfirm,
     title,
-    message,
+    message,    
 }) => {
     if (!open) return null;
 

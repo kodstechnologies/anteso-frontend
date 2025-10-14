@@ -110,6 +110,7 @@ import EditRso from '../components/Admin/Master/Clients/EditRso';
 
 import Payslip from '../pages/Admin/Payslip';
 
+import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
 const ContactUsCover = lazy(() => import('../pages/Pages/ContactUsCover'));
 const ComingSoonBoxed = lazy(() => import('../pages/Pages/ComingSoonBoxed'));
@@ -618,6 +619,14 @@ const routes = [
         ),
     },
     {
+        path: '/quotation/edit/:id',
+        element: (
+            <AdminProtected>
+                <EditQuitation />
+            </AdminProtected>
+        ),
+    },
+    {
         path: '/admin/orders/view/:orderId',
         element: (
             <AdminProtected>
@@ -731,14 +740,14 @@ const routes = [
             </AdminProtected>
         ),
     },
-        {
-            path: '/admin/hrms/salary-management-view/:id',
-            element: (
-                <AdminProtected>
-                    <ViewSalaryManagement />
-                </AdminProtected>
-            ),
-        },
+    {
+        path: '/admin/hrms/salary-management-view/:id',
+        element: (
+            <AdminProtected>
+                <ViewSalaryManagement />
+            </AdminProtected>
+        ),
+    },
     {
         path: '/admin/hrms/attendance-summary',
         element: (

@@ -1,4 +1,3 @@
-
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
@@ -10,6 +9,7 @@ import logo from "../../../assets/logo/logo-sm.png"
 import IconTrashLines from "../../Icon/IconTrashLines"
 import { allEmployees, getEnquiryById, createQuotationByEnquiryId, getAllDealers } from "../../../api"
 import { showMessage } from "../../common/ShowMessage"
+import ConfirmModal from "../../common/ConfirmModal"
 
 type Item = {
     type: string
@@ -22,7 +22,7 @@ type Item = {
     amount: string
 }
 interface ServiceItem extends Item {
-    id:any
+    id: any
     machineType: string;
     equipmentNo?: string;
     machineModel?: string;
@@ -32,7 +32,7 @@ interface ServiceItem extends Item {
 }
 
 interface AdditionalServiceItem extends Item {
-    id:any
+    id: any
     name: string;
     description?: string;
     totalAmount?: number;
@@ -190,7 +190,7 @@ const ItemsTable: React.FC<{
                             />
                         </td>
                     ))}
-                    
+
                 </tr>
             ))}
         </tbody>
@@ -211,6 +211,9 @@ const AddQuotation: React.FC = () => {
     const [quotationNumber, setQuotationNumber] = useState("QUO001")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [dealers, setDealers] = useState<any[]>([])   // store dealers here
+    const [isDiscountApplied, setIsDiscountApplied] = useState(true);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalMessage, setModalMessage] = useState("");
 
     const [aitems, setAItems] = useState<Item[]>([
         {
@@ -256,7 +259,7 @@ const AddQuotation: React.FC = () => {
                         description: service.workTypeDetails
                             ? service.workTypeDetails.map((w: any) => w.workType).join(", ")
                             : "",
-                        quantity: service.equipmentNo || "1",
+                        quantity: "1",
                         price: service.totalAmount ? service.totalAmount.toString() : "",
                         amount: service.totalAmount ? service.totalAmount.toString() : "",
                     }));
@@ -397,190 +400,37 @@ const AddQuotation: React.FC = () => {
         },
     }
 
-    // Calculations
+    // Calculations including GST
+    const GST_RATE = 18; // 18%
+
     const calculations = {
         aitemsTotal: aitems.reduce((sum, item) => sum + Number.parseFloat(item.amount || "0"), 0),
         bitemsTotal: bitems.reduce((sum, item) => sum + Number.parseFloat(item.amount || "0"), 0),
         get subtotal() {
-            return this.aitemsTotal + this.bitemsTotal
+            return this.aitemsTotal + this.bitemsTotal;
         },
         get discountAmount() {
-            return (this.subtotal * discount) / 100
+            return (this.subtotal * discount) / 100;
         },
         get totalAmount() {
-            return this.subtotal - this.discountAmount
+            return this.subtotal - this.discountAmount;
         },
-    }
+        get gstAmount() {
+            return (this.totalAmount * GST_RATE) / 100;
+        },
+        get totalWithGst() {
+            return this.totalAmount + this.gstAmount;
+        },
+    };
 
-    // Submit Handler
-    // const handleSubmitQuotation = async () => {
-    //     setIsSubmitting(true)
 
-    //     try {
-    //         const quotationData: QuotationData = {
-    //             date: new Date().toLocaleDateString("en-GB", {
-    //                 day: "2-digit",
-    //                 month: "short",
-    //                 year: "numeric",
-    //             }),
-    //             quotationNumber,
-    //             expiryDate: "30 days from above date",
-    //             customer: {
-    //                 name: enquiryData?.customer?.name || "",
-    //                 email: enquiryData?.customer?.email || "",
-    //                 phone: enquiryData?.customer?.phone || "",
-    //                 hospitalName: enquiryData?.hospitalName || "",
-    //             },
-    //             assignedEmployee: {
-    //                 id: employees[selectedIndex]?._id || "",
-    //                 name: employees[selectedIndex]?.name || "",
-    //                 phone: employees[selectedIndex]?.phone || 0,
-    //             },
-    //             items: {
-    //                 categoryA: aitems.map((item) => ({ ...item, type: "A" })),
-    //                 categoryB: bitems.map((item) => ({ ...item, type: "B" })),
-    //             },
-    //             calculations: {
-    //                 subtotal: calculations.subtotal,
-    //                 discount,
-    //                 discountAmount: calculations.discountAmount,
-    //                 totalAmount: calculations.totalAmount,
-    //             },
-    //             //  Save only text array
-    //             termsAndConditions: terms.map((t) => t.text),
 
-    //             bankDetails: {
-    //                 hdfc: {
-    //                     accountNumber: "50200007211263",
-    //                     ifsc: "HDFC0000711",
-    //                     branch: "HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA",
-    //                 },
-    //                 icici: {
-    //                     accountNumber: "344305001088",
-    //                     ifsc: "ICIC0003443",
-    //                     branch: "ICICI BANK ROHINI",
-    //                 },
-    //             },
-    //             companyDetails: {
-    //                 gstNumber: "07AAMCA8142J1ZE",
-    //                 aerbRegistration: "14-AFSXE-2148",
-    //                 nablAccreditation: "TC-9843",
-    //             },
-    //         }
-
-    //         console.log("Submitting quotation data:", quotationData)
-
-    //         const response = await createQuotationByEnquiryId(quotationData, id)
-
-    //         console.log("Quotation created successfully:", response)
-    //         showMessage("Quotation submitted successfully!")
-    //         navigate("/admin/enquiry")
-    //     } catch (error: any) {
-    //         console.error("Failed to submit quotation:", error)
-    //         const errorMessage =
-    //             error?.response?.data?.message || error?.message || "Failed to submit quotation. Please try again."
-    //         alert(errorMessage)
-    //     } finally {
-    //         setIsSubmitting(false)
-    //     }
-    // }
-    //wrking
-    // const handleSubmitQuotation = async () => {
-    //     setIsSubmitting(true)
-
-    //     try {
-    //         const quotationData: QuotationData = {
-    //             date: new Date().toLocaleDateString("en-GB", {
-    //                 day: "2-digit",
-    //                 month: "short",
-    //                 year: "numeric",
-    //             }),
-    //             quotationNumber,
-    //             expiryDate: "30 days from above date",
-    //             customer: {
-    //                 name: enquiryData?.customer?.name || "",
-    //                 email: enquiryData?.customer?.email || "",
-    //                 phone: enquiryData?.customer?.phone || "",
-    //                 hospitalName: enquiryData?.hospitalName || "",
-    //             },
-    //             assignedEmployee: {
-    //                 id: employees[selectedIndex]?._id || "",
-    //                 name: employees[selectedIndex]?.name || "",
-    //                 phone: employees[selectedIndex]?.phone || 0,
-    //             },
-    //             items: {
-    //                 categoryA: aitems.map((item) => ({
-    //                     ...item,
-    //                     type: "A",
-    //                     amount: Number.parseFloat(item.amount || "0"),
-    //                 })),
-    //                 categoryB: bitems.map((item) => ({
-    //                     ...item,
-    //                     type: "B",
-    //                     amount: Number.parseFloat(item.amount || "0"),
-    //                 })),
-    //             },
-    //             calculations: {
-    //                 subtotal: calculations.subtotal,
-    //                 discount,
-    //                 discountAmount: calculations.discountAmount,
-    //                 totalAmount: calculations.totalAmount,
-    //             },
-    //             termsAndConditions: terms.map((t) => t.text),
-    //             bankDetails: {
-    //                 hdfc: {
-    //                     accountNumber: "50200007211263",
-    //                     ifsc: "HDFC0000711",
-    //                     branch: "HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA",
-    //                 },
-    //                 icici: {
-    //                     accountNumber: "344305001088",
-    //                     ifsc: "ICIC0003443",
-    //                     branch: "ICICI BANK ROHINI",
-    //                 },
-    //             },
-    //             companyDetails: {
-    //                 gstNumber: "07AAMCA8142J1ZE",
-    //                 aerbRegistration: "14-AFSXE-2148",
-    //                 nablAccreditation: "TC-9843",
-    //             },
-    //         }
-
-    //         console.log("Submitting quotation data:", quotationData)
-
-    //         const response = await createQuotationByEnquiryId(quotationData, id)
-    //         console.log("Quotation created successfully:", response)
-    //         showMessage("Quotation submitted successfully!")
-    //         navigate("/admin/enquiry")
-    //     } catch (error: any) {
-    //         console.error("Failed to submit quotation:", error)
-    //         const errorMessage =
-    //             error?.response?.data?.message || error?.message || "Failed to submit quotation. Please try again."
-    //         alert(errorMessage)
-    //     } finally {
-    //         setIsSubmitting(false)
-    //     }
-    // }
     const handleSubmitQuotation = async () => {
         setIsSubmitting(true);
         try {
-            // Create snapshots of your services and additional services
-            // const serviceSnapshots = aitems.map((s) => {
-            //     const qty = Number.parseFloat(s.quantity || "1");
-            //     const price = Number.parseFloat(s.price || "0");
-            //     const total = qty * price;
-            //     return {
-            //         id: typeof s.id === "string" ? s.id : s.id?.toString(),
-            //         machineType: s.title,
-            //         equipmentNo: (s as any).equipmentNo,
-            //         machineModel: (s as any).machineModel,
-            //         serialNumber: (s as any).serialNumber,
-            //         remark: (s as any).remark,
-            //         totalAmount: total,  // 👈 computed directly here
-            //     };
-            // });
+          
             const serviceSnapshots: ServiceItem[] = aitems.map((s) => {
-                const qty =1;
+                const qty = 1;
                 const price = Number.parseFloat(s.price || "0");
                 const total = qty * price;
 
@@ -602,18 +452,6 @@ const AddQuotation: React.FC = () => {
                 };
             });
 
-            // const additionalServiceSnapshots = bitems.map((s) => {
-            //     const qty = Number.parseFloat(s.quantity || "1");
-            //     const price = Number.parseFloat(s.price || "0");
-            //     const total = qty * price;
-
-            //     return {
-            //         id: typeof s.id === "string" ? s.id : undefined,
-            //         name: s.title,
-            //         description: s.description,
-            //         totalAmount: total,   // 👈 compute here instead of relying on amount
-            //     };
-            // });
             const additionalServiceSnapshots: AdditionalServiceItem[] = bitems.map((s) => {
                 const qty = Number.parseFloat(s.quantity || "1");
                 const price = Number.parseFloat(s.price || "0");
@@ -699,7 +537,10 @@ const AddQuotation: React.FC = () => {
             console.error("Failed to submit quotation:", error);
             const errorMessage =
                 error?.response?.data?.message || error?.message || "Failed to submit quotation. Please try again.";
-            alert(errorMessage);
+
+            // Instead of alert:
+            setModalMessage(errorMessage);
+            setModalOpen(true);
         } finally {
             setIsSubmitting(false);
         }
@@ -818,32 +659,67 @@ const AddQuotation: React.FC = () => {
                         showEditableDescription
                     />
 
-                    {/* Totals */}
+                  
+
                     <div className="flex justify-end gap-8 text-sm font-medium">
-                        <div className="space-y-1 gap-4 w-60 p-3">
+                        <div className="space-y-1 gap-4 w-60 p-3 border rounded-md bg-gray-50">
+                            {/* Discount Toggle Row */}
                             <div className="flex items-center justify-between gap-2 text-[.8rem]">
-                                <label className="font-semibold">Discount %</label>
-                                <input
-                                    type="number"
-                                    value={discount}
-                                    onChange={(e) => setDiscount(Number.parseFloat(e.target.value) || 0)}
-                                    className="w-16 text-sm text-right border rounded px-2 py-1"
-                                />
+                                <div className="flex items-center gap-2">
+                                   
+                                    <input
+                                        type="checkbox"
+                                        id="discountCheck"
+                                        checked={isDiscountApplied}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            setIsDiscountApplied(checked);
+                                            if (checked) {
+                                                setDiscount(1); // start discount from 1 when checked
+                                            } else {
+                                                setDiscount(0); // reset discount when unchecked
+                                            }
+                                        }}
+                                        className="appearance-none h-4 w-4 border-2 border-gray-400 rounded-full checked:bg-green-500 checked:border-green-500 cursor-pointer transition-all duration-200"
+                                    />
+
+                                    <label htmlFor="discountCheck" className="font-semibold cursor-pointer">
+                                        Apply Discount %
+                                    </label>
+                                </div>
+
+                                {/* Discount input only if checked */}
+                                {isDiscountApplied && (
+                                    <input
+                                        type="number"
+                                        value={discount}
+                                        onChange={(e) => setDiscount(Number.parseFloat(e.target.value) || 0)}
+                                        className="w-16 text-sm text-right border rounded px-2 py-1 focus:outline-none focus:ring focus:ring-green-300"
+                                    />
+                                )}
                             </div>
+
+                            {/* Totals */}
                             {[
                                 ["Subtotal", calculations.subtotal],
-                                [`Discount (${discount}%)`, -calculations.discountAmount],
-                                ["Total", calculations.totalAmount],
+                                ...(isDiscountApplied ? [[`Discount (${discount}%)`, -calculations.discountAmount]] : []),
+                                ["Total (Before GST)", isDiscountApplied ? calculations.totalAmount : calculations.subtotal],
+                                [`GST (${GST_RATE}%)`, calculations.gstAmount],
+                                ["Total (Including GST)", calculations.totalWithGst],
                             ].map(([label, amount], i) => (
-                                <div key={i} className={`flex justify-between text-[.8rem] ${i === 2 ? "text-green-700" : ""}`}>
+                                <div
+                                    key={i}
+                                    className={`flex justify-between text-[.8rem] ${label === "Total (Including GST)" ? "text-green-700 font-semibold" : ""}`}
+                                >
                                     <span>{label}:</span>
                                     <span>
-                                        {i === 1 ? "- " : ""}₹ {Math.abs(amount as number).toLocaleString("en-IN")}
+                                        {label.toString().includes("Discount") ? "- " : ""}₹ {Math.abs(amount as number).toLocaleString("en-IN")}
                                     </span>
                                 </div>
                             ))}
                         </div>
                     </div>
+
 
                     <div className="flex justify-end mt-6">
                         <button
@@ -962,6 +838,35 @@ const AddQuotation: React.FC = () => {
                     <p className="text-[.6rem]">Feel free to call us & Thank you for your enquiry</p>
                 </div>
             </div>
+            {/* Inside AddQuotation.tsx (or wherever you’re using it) */}
+            <div className="quotation-error-modal">
+                <ConfirmModal
+                    open={modalOpen}
+                    onClose={() => setModalOpen(false)}
+                    onConfirm={() => setModalOpen(false)}
+                    title="Quotation Submission Failed"
+                    message={modalMessage}
+                />
+            </div>
+
+
+            {/* Use a little CSS trick to hide the second (Delete) button */}
+            <style>
+                {`
+    /* Hide Delete button only inside this page */
+    .quotation-error-modal button.bg-red-600 {
+        display: none !important;
+    }
+    /* Rename Cancel to Close for clarity */
+    .quotation-error-modal button.bg-gray-200::after {
+       
+    }
+    .quotation-error-modal button.bg-gray-200 {
+        font-weight: 500;
+    }
+`}
+            </style>
+
         </div>
     )
 }

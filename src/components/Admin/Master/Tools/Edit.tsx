@@ -3,12 +3,13 @@ import * as Yup from 'yup';
 import { ErrorMessage, Field, Form, Formik } from 'formik';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
-import { getByToolId } from '../../../../api';
+import { getAllTechnicians, getByToolId, updateTool } from '../../../../api';
 import { getEngineerByToolId } from '../../../../api';
 
 const EditTool = () => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const [technicians, setTechnicians] = useState<any[]>([]);
 
     const [initialValues, setInitialValues] = useState<any>(null);
 
@@ -32,16 +33,105 @@ const EditTool = () => {
     };
 
     // ✅ Fetch tool + engineer
+    // useEffect(() => {
+    //     const fetchData = async () => {
+    //         try {
+    //             const toolRes = await getByToolId(id!); // backend returns { statusCode, data, ... }
+    //             console.log("🚀 ~ fetchData ~ toolRes:", toolRes)
+    //             const engineerRes = await getEngineerByToolId(id!); // backend returns { engineer, tool }
+
+    //             const tool = toolRes.data; // ApiResponse wrapper
+    //             const engineer = engineerRes.engineer;
+
+    //             setInitialValues({
+    //                 nomenclature: tool.nomenclature || '',
+    //                 manufacturer: tool.manufacturer || '',
+    //                 model: tool.model || '',
+    //                 srNo: tool.SrNo || '',
+    //                 calibrationCertificateNo: tool.calibrationCertificateNo || '',
+    //                 calibrationValidTill: tool.calibrationValidTill?.split('T')[0] || '',
+    //                 range: tool.range || '',
+    //                 toolID: tool.toolId || '',
+    //                 engineerName: engineer?.name || '', // ✅ from engineer API
+    //                 issueDate: engineerRes.tool?.issueDate?.split('T')[0] || '',
+    //                 submitDate: engineerRes.tool?.submitDate?.split('T')[0] || '',
+    //             });
+    //         } catch (error) {
+    //             console.error("❌ Error fetching tool/engineer:", error);
+    //         }
+    //     };
+    //     fetchData();
+    // }, [id]);
+
+    // useEffect(() => {
+    //     const fetchData = async () => {
+    //         try {
+    //             // ✅ Step 1: Always fetch tool details
+    //             const toolRes = await getByToolId(id!);
+    //             const tool = toolRes?.data || {};
+    //             console.log("✅ Tool data:", tool);
+
+    //             // ✅ Step 2: Try to fetch engineer (may fail)
+    //             let engineer = null;
+    //             let toolIssueDate = '';
+    //             let toolSubmitDate = '';
+
+    //             try {
+    //                 const engineerRes = await getEngineerByToolId(id!);
+    //                 engineer = engineerRes?.engineer || null;
+    //                 toolIssueDate = engineerRes?.tool?.issueDate?.split('T')[0] || '';
+    //                 toolSubmitDate = engineerRes?.tool?.submitDate?.split('T')[0] || '';
+    //             } catch (err) {
+    //                 console.warn("⚠️ No engineer found for this tool:", err);
+    //             }
+
+    //             // ✅ Step 3: Set all fields safely
+    //             setInitialValues({
+    //                 nomenclature: tool.nomenclature || '',
+    //                 manufacturer: tool.manufacturer || '',
+    //                 model: tool.model || '',
+    //                 srNo: tool.SrNo || '',
+    //                 calibrationCertificateNo: tool.calibrationCertificateNo || '',
+    //                 calibrationValidTill: tool.calibrationValidTill?.split('T')[0] || '',
+    //                 range: tool.range || '',
+    //                 toolID: tool.toolId || '',
+    //                 engineerName: engineer?.name || 'Not Assigned', // fallback label
+    //                 issueDate: toolIssueDate,
+    //                 submitDate: toolSubmitDate,
+    //             });
+    //         } catch (error) {
+    //             console.error("❌ Error fetching tool details:", error);
+    //         }
+    //     };
+
+    //     fetchData();
+    // }, [id]);
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const toolRes = await getByToolId(id!); // backend returns { statusCode, data, ... }
-                console.log("🚀 ~ fetchData ~ toolRes:", toolRes)
-                const engineerRes = await getEngineerByToolId(id!); // backend returns { engineer, tool }
+                // ✅ Step 1: Fetch all technicians for dropdown
+                const allTechRes = await getAllTechnicians();
+                setTechnicians(allTechRes?.technicians || allTechRes?.data || []); // handle both response shapes
 
-                const tool = toolRes.data; // ApiResponse wrapper
-                const engineer = engineerRes.engineer;
+                // ✅ Step 2: Always fetch tool details
+                const toolRes = await getByToolId(id!);
+                const tool = toolRes?.data || {};
 
+                // ✅ Step 3: Try to fetch engineer (may fail)
+                let engineer = null;
+                let toolIssueDate = '';
+                let toolSubmitDate = '';
+
+                try {
+                    const engineerRes = await getEngineerByToolId(id!);
+                    engineer = engineerRes?.engineer || null;
+                    toolIssueDate = engineerRes?.tool?.issueDate?.split('T')[0] || '';
+                    toolSubmitDate = engineerRes?.tool?.submitDate?.split('T')[0] || '';
+                } catch (err) {
+                    console.warn("⚠️ No engineer found for this tool:", err);
+                }
+
+                // ✅ Step 4: Set form initial values
                 setInitialValues({
                     nomenclature: tool.nomenclature || '',
                     manufacturer: tool.manufacturer || '',
@@ -51,16 +141,20 @@ const EditTool = () => {
                     calibrationValidTill: tool.calibrationValidTill?.split('T')[0] || '',
                     range: tool.range || '',
                     toolID: tool.toolId || '',
-                    engineerName: engineer?.name || '', // ✅ from engineer API
-                    issueDate: engineerRes.tool?.issueDate?.split('T')[0] || '',
-                    submitDate: engineerRes.tool?.submitDate?.split('T')[0] || '',
+                    // engineerName: engineer?.name || 'Not Assigned',
+                    engineerName: engineer?._id || '', // store ObjectId here
+
+                    issueDate: toolIssueDate,
+                    submitDate: toolSubmitDate,
                 });
             } catch (error) {
-                console.error("❌ Error fetching tool/engineer:", error);
+                console.error("❌ Error fetching data:", error);
             }
         };
+
         fetchData();
     }, [id]);
+
 
     if (!initialValues) {
         return <p>Loading tool details...</p>;
@@ -90,7 +184,33 @@ const EditTool = () => {
                 enableReinitialize
                 initialValues={initialValues}
                 validationSchema={SubmittedForm}
-                onSubmit={() => { }}
+                onSubmit={async (values, { setSubmitting }) => {
+                    try {
+                        // Prepare payload for backend
+                        const payload = {
+                            SrNo: values.srNo,
+                            nomenclature: values.nomenclature,
+                            manufacturer: values.manufacturer,
+                            model: values.model,
+                            calibrationCertificateNo: values.calibrationCertificateNo,
+                            calibrationValidTill: values.calibrationValidTill,
+                            range: values.range,
+                            certificate: values.certificate,
+                            toolStatus: values.toolStatus,
+                            technician: values.engineerName, // <-- this is now the ObjectId from dropdown
+                        };
+
+
+                        await updateTool(id!, payload);
+
+                        showMessage("Tool updated successfully!", "success");
+                        navigate('/admin/tools');
+                    } catch (error: any) {
+                        showMessage(error.message || "Failed to update tool", "error");
+                    } finally {
+                        setSubmitting(false);
+                    }
+                }}
             >
                 {({ submitCount }) => (
                     <Form className="space-y-5">
@@ -171,13 +291,94 @@ const EditTool = () => {
                                 </div>
 
                                 {/* Engineer Name */}
+                                {/* <Field name="engineerName" type="text" className="form-input" /> */}
+                                {/* <div className={submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="engineerName">Engineer Assigned</label>
+                                    <Field
+                                        name="engineerName"
+                                        type="text"
+                                        disabled={initialValues.engineerName === "Not Assigned"}
+                                        className="form-input disabled:bg-gray-100"
+                                    />
+
+                                    <ErrorMessage name="engineerName">
+                                        {(msg) => <div className="text-danger mt-1">{msg}</div>}
+                                    </ErrorMessage>
+                                </div> */}
+                                {/* Engineer Name (Dropdown or Assigned Name) */}
+                                {/* <div className={submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="engineerName">Engineer Assigned</label>
+
+                                    {initialValues.engineerName === "Not Assigned" ? (
+                                        <Field as="select" name="engineerName" className="form-select">
+                                            <option value="">Select Engineer</option>
+                                            {technicians.length > 0 ? (
+                                                technicians.map((tech) => (
+                                                    <option key={tech._id} value={tech.name}>
+                                                        {tech.name}
+                                                    </option>
+                                                ))
+                                            ) : (
+                                                <option disabled>Loading engineers...</option>
+                                            )}
+                                        </Field>
+                                    ) : (
+                                        <Field
+                                            name="engineerName"
+                                            type="text"
+                                            disabled
+                                            className="form-input disabled:bg-gray-100"
+                                        />
+                                    )}
+
+                                    <ErrorMessage name="engineerName">
+                                        {(msg) => <div className="text-danger mt-1">{msg}</div>}
+                                    </ErrorMessage>
+                                </div> */}
+
+                                {/* <div className={submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="engineerName">Engineer Assigned</label>
+
+                                    {initialValues.engineerName === "Not Assigned" ? (
+                                        <Field as="select" name="engineerName" className="form-select">
+                                            <option value="">Select Engineer</option>
+                                            {technicians.map((tech) => (
+                                                // Send tech._id instead of tech.name
+                                                <option key={tech._id} value={tech._id}>
+                                                    {tech.name}
+                                                </option>
+                                            ))}
+                                        </Field>
+                                    ) : (
+                                        <Field
+                                            name="engineerName"
+                                            type="text"
+                                            disabled
+                                            className="form-input disabled:bg-gray-100"
+                                        />
+                                    )}
+
+                                    <ErrorMessage name="engineerName">
+                                        {(msg) => <div className="text-danger mt-1">{msg}</div>}
+                                    </ErrorMessage>
+                                </div> */}
                                 <div className={submitCount ? 'has-success' : ''}>
                                     <label htmlFor="engineerName">Engineer Assigned</label>
-                                    <Field name="engineerName" type="text" className="form-input" />
+
+                                    <Field as="select" name="engineerName" className="form-select">
+                                        <option value="">Select Engineer</option>
+                                        {technicians.map((tech) => (
+                                            <option key={tech._id} value={tech._id}>
+                                                {tech.name}
+                                            </option>
+                                        ))}
+                                    </Field>
+
                                     <ErrorMessage name="engineerName">
                                         {(msg) => <div className="text-danger mt-1">{msg}</div>}
                                     </ErrorMessage>
                                 </div>
+
 
                                 {/* Issue Date */}
                                 <div className={submitCount ? 'has-success' : ''}>

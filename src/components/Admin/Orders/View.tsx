@@ -19,7 +19,7 @@ import ExpenseAndAccountDetails from './ExpenseAndAccountDetails';
 import CourierDetails from './CourierDetails';
 import AdditionalServices from './AdditionalServices';
 import ServiceDetails from './ServiceDetails';
-import { getBasicDetailsByOrderId } from '../../../api';
+import { getBasicDetailsByOrderId, getPdfForAcceptQuotation } from '../../../api';
 import ServiceDetails2 from './ServiceDetails2'
 
 // Define interfaces
@@ -55,6 +55,7 @@ const View = () => {
     const [active, setActive] = useState<string>('1');
     const [isAddingCourier, setIsAddingCourier] = useState(false);
     // const [details, setDetails] = useState<HospitalDetails | null>(null);
+    const [pdfUrl, setPdfUrl] = useState<string>(''); // ✅ state for PDF URL
 
     const togglePara = (value: string) => {
         setActive((oldValue) => {
@@ -78,18 +79,36 @@ const View = () => {
         { label: 'View', icon: <IconBook /> },
     ];
     useEffect(() => {
-        const fetchBasicDetails = async () => {
+        const fetchData = async () => {
+            if (!orderId) return;
+
             try {
-                if (!orderId) return;
-                const response = await getBasicDetailsByOrderId(orderId);
-                setDetails(response.data); // if your API returns { data: {...} }
+                const resDetails = await getBasicDetailsByOrderId(orderId);
+                setDetails(resDetails.data);
+
+                const resPdf = await getPdfForAcceptQuotation(orderId);
+                setPdfUrl(resPdf.data.pdfUrl || ''); // ✅ set PDF URL
             } catch (error) {
-                console.error("Failed to fetch order basic details:", error);
+                console.error("Failed to fetch data:", error);
             }
         };
-
-        fetchBasicDetails();
+        fetchData();
     }, [orderId]);
+    const handleViewPdf = async () => {
+        if (!orderId) return;
+        try {
+            const res = await getPdfForAcceptQuotation(orderId);
+
+            // Assuming res.data.url contains the PDF URL
+            const pdfUrl = res.data.pdfUrl;
+            window.open(pdfUrl, '_blank');
+        } catch (error) {
+            console.error("Failed to view PDF:", error);
+            alert("Failed to open PDF. Please try again.");
+        }
+    };
+
+
 
     if (!details) return <div className="text-gray-600 p-6">Loading...</div>;
     const fields = [
@@ -123,6 +142,57 @@ const View = () => {
                     ))}
                 </div>
             </div>
+            {/* ✅ Only show if pdfUrl exists and is not empty */}
+            {pdfUrl && pdfUrl.trim() !== '' && (
+                <div className="bg-white p-4 rounded-lg shadow-md mt-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 text-blue-600 flex items-center justify-center rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-gray-800 font-medium text-sm">Customer Uploaded PDF</p>
+                                <p className="text-xs text-gray-500">Click to view PDF</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleViewPdf}
+                            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded shadow hover:bg-blue-700 transition"
+                        >
+                            View
+                        </button>
+                    </div>
+                </div>
+            )}
+
+
+            {/* ✅ Only show if pdfUrl exists and is not empty */}
+            {pdfUrl && pdfUrl.trim() !== '' && (
+                <div className="bg-white p-4 rounded-lg shadow-md mt-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 text-blue-600 flex items-center justify-center rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-gray-800 font-medium text-sm">Customer Uploaded PDF</p>
+                                <p className="text-xs text-gray-500">Click to view PDF</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleViewPdf}
+                            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded shadow hover:bg-blue-700 transition"
+                        >
+                            View
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Service details */}
             <ServiceDetails2 orderId={orderId} />
             <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
@@ -159,4 +229,4 @@ const View = () => {
     );
 };
 
-export default View;
+export default View;    
