@@ -728,7 +728,7 @@ const EditQuotation: React.FC = () => {
                 </div>
 
                 {/* Bank & Company Details */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                {/* <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <h4 className="text-sm font-medium mb-2">Bank Details</h4>
                         <input
@@ -771,15 +771,15 @@ const EditQuotation: React.FC = () => {
                             className="w-full px-2 py-1 border rounded text-sm"
                         />
                     </div>
-                </div>
+                </div> */}
 
                 <div className="flex gap-2">
-                    <button
+                    {/* <button
                         onClick={handleUpdateQuotation}
                         className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 flex items-center justify-center flex-1"
                     >
                         Save Changes
-                    </button>
+                    </button> */}
                     <button
                         onClick={handleSaveAndUploadPdf}
                         disabled={isSavingPdf}
@@ -791,7 +791,7 @@ const EditQuotation: React.FC = () => {
                                 Saving and Uploading...
                             </div>
                         ) : (
-                            "Save and Upload PDF"
+                            "Save Changes"
                         )}
                     </button>
                 </div>
@@ -1067,7 +1067,7 @@ const EditQuotation: React.FC = () => {
             )}
 
             <div className="flex justify-end my-4 space-x-2">
-                {quotationData && !quotationData.pdfUrl && (
+                {/* {quotationData && !quotationData.pdfUrl && (
                     <button
                         onClick={handleSaveAsPdf}
                         disabled={isSavingPdf}
@@ -1082,7 +1082,7 @@ const EditQuotation: React.FC = () => {
                             "Save & Upload Quotation PDF"
                         )}
                     </button>
-                )}
+                )} */}
 
                 {/* {quotationData?.pdfUrl && (
                     <button

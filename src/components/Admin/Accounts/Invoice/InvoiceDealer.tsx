@@ -33,7 +33,7 @@ const InvoiceDealer = () => {
     const handleDownloadPdf = () => {
         if (!invoiceRef.current) return;
         const element = invoiceRef.current;
-        const opt = {
+        const opt:any = {
             margin: 0.2,
             filename: `Invoice_${invoice.invoiceId}.pdf`,
             image: { type: "jpeg", quality: 0.98 },
@@ -50,7 +50,7 @@ const InvoiceDealer = () => {
         setUploading(true);
         try {
             const element = invoiceRef.current;
-            const opt = {
+            const opt :any= {
                 margin: 0.2,
                 filename: `Invoice_${invoice.invoiceId}.pdf`,
                 image: { type: "jpeg", quality: 0.98 },
