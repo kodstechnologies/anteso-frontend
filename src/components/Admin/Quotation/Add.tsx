@@ -428,7 +428,7 @@ const AddQuotation: React.FC = () => {
     const handleSubmitQuotation = async () => {
         setIsSubmitting(true);
         try {
-          
+
             const serviceSnapshots: ServiceItem[] = aitems.map((s) => {
                 const qty = 1;
                 const price = Number.parseFloat(s.price || "0");
@@ -659,13 +659,13 @@ const AddQuotation: React.FC = () => {
                         showEditableDescription
                     />
 
-                  
+
 
                     <div className="flex justify-end gap-8 text-sm font-medium">
                         <div className="space-y-1 gap-4 w-60 p-3 border rounded-md bg-gray-50">
                             {/* Discount Toggle Row */}
                             <div className="flex items-center justify-between gap-2 text-[.8rem]">
-                                <div className="flex items-center gap-2">
+                                {/* <div className="flex items-center gap-2">
                                    
                                     <input
                                         type="checkbox"
@@ -686,7 +686,28 @@ const AddQuotation: React.FC = () => {
                                     <label htmlFor="discountCheck" className="font-semibold cursor-pointer">
                                         Apply Discount %
                                     </label>
+                                </div> */}
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="discountCheck"
+                                        checked={isDiscountApplied}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            setIsDiscountApplied(checked);
+                                            if (checked) {
+                                                setDiscount(1); // start discount from 1 when checked
+                                            } else {
+                                                setDiscount(0); // reset discount when unchecked
+                                            }
+                                        }}
+                                        className="appearance-none h-5 w-5 border-2 border-gray-400 cursor-pointer transition-all duration-200 checked:bg-blue-500 checked:border-blue-500 checked:after:block after:content-['✔'] after:text-white after:text-xs after:text-center after:leading-4"
+                                    />
+                                    <label htmlFor="discountCheck" className="font-semibold cursor-pointer">
+                                        Apply Discount %
+                                    </label>
                                 </div>
+
 
                                 {/* Discount input only if checked */}
                                 {isDiscountApplied && (

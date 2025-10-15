@@ -191,10 +191,10 @@ const AddEnquiry: React.FC = () => {
         hospitalName: Yup.string().required("Please fill the Field"),
         fullAddress: Yup.string().required("Please fill the Field"),
         city: Yup.string().required("Please fill the Field"),
-        district: Yup.string().required("Please fill the Field"),
+        district: Yup.string(),
         state: Yup.string().required("Please fill the Field"),
         pinCode: Yup.string().required("Please fill the Field"),
-        branch: Yup.string().required("Please fill the Field"),
+        branch: Yup.string(),   
         contactPerson: Yup.string().required("Please fill the Field"),
         emailAddress: Yup.string().email("Invalid email").required("Please fill the Email"),
         contactNumber: Yup.string()
