@@ -155,7 +155,7 @@ const AdvancedManagement = () => {
                                             >
                                                 <IconEye />
                                             </NavLink>
-                                            <IconEdit className="w-4.5 h-4.5 hover:text-info" />
+                                            {/* <IconEdit className="w-4.5 h-4.5 hover:text-info" /> */}
                                             <button
                                                 type="button"
                                                 className="flex hover:text-danger"

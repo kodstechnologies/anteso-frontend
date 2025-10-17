@@ -131,7 +131,7 @@ const Hrms = () => {
                                             >
                                                 <IconEye />
                                             </NavLink>
-                                            <IconEdit className="w-4.5 h-4.5 cursor-pointer hover:text-info" />
+                                            {/* <IconEdit className="w-4.5 h-4.5 cursor-pointer hover:text-info" /> */}
                                             <button
                                                 type="button"
                                                 className="flex hover:text-danger"

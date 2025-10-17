@@ -855,7 +855,7 @@ export const getLeaveById = async (id: any) => {
     }
 }
 
-export const editCourierById = async (id: any, payload: any) => {
+export const editLeaveById = async (id: any, payload: any) => {
     try {
         const token = Cookies.get('accessToken')
         const res = await api.put(`/leaves/update/${id}`, payload, {
@@ -1031,6 +1031,7 @@ export const getBasicDetailsByOrderId = async (id: any) => {
         );
     }
 }
+
 //orders view
 export const getAdditionalServicesByOrderId = async (id: any) => {
     try {
@@ -2179,6 +2180,24 @@ export const editDealerById = async (id: any, payload: any) => {
     }
 }
 
+export const deleteDealer = async (id: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.delete(`/dealers/delete-by-id/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ deleteDealer ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ deletePaymentById ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to deletePaymentById"
+        )
+    }
+}
+
 export const assignToOfficeStaffByElora = async (orderId: string, serviceId: string, officeStaffId: string, workType: string, status: any) => {
     console.log("🚀 ~ assignToOfficeStaff ~ status:", status)
     console.log("🚀 ~ assignToOfficeStaff ~ workType:", workType)
@@ -2319,6 +2338,25 @@ export const editManufacturerById = async (id: any, payload: any) => {
         throw new Error(
             error?.response?.data?.message || "Failed to fetch client data"
         );
+    }
+}
+
+
+export const deleteManufacturer = async (id: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.delete(`/manufacturers/delete-manufacturer/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ deleteDealer ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ deletePaymentById ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to deletePaymentById"
+        )
     }
 }
 
@@ -2531,3 +2569,95 @@ export const editPayment = async (id: any, payload: any) => {
         );
     }
 };
+
+export const getNextQuotationNumber = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/quotation/next-number`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getNextQuotationNumber ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getNextQuotationNumber ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch raw data"
+        );
+    }
+}
+
+
+export const allocateLeaves = async (employeeId: any, payload: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.post(`/leaves/allocate-leaves/${employeeId}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
+        console.log("🚀 ~ allocateLeaves ~ res:", res)
+        return res.data; // return data directlyallocateLeaves
+    } catch (error: any) {
+        console.error("🚀 ~ allocateLeaves ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to allocateLeaves"
+        );
+    }
+}
+
+export const getAllocatedLeaves = async (id: any, year?: number) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const queryYear = year || new Date().getFullYear()  // default to current year
+        const res = await api.get(`/leaves/get-allocated-leaves/${id}?year=${queryYear}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllocatedLeaves ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAllocatedLeaves"
+        );
+    }
+}
+
+
+export const attendenceSummary = async (id: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/leaves/attendance-summary/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ attendenceSummary ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ attendenceSummary ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to attendenceSummary"
+        );
+    }
+}
+export const getPaymentSummary = async (id: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/salary/payment-summary/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getPaymentSummary ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getPaymentSummary ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getPaymentSummary"
+        );
+    }
+}

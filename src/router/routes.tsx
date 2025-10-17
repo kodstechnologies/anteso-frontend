@@ -61,6 +61,7 @@ import EditExpenses from '../components/Admin/Master/Expense/Edit'
 import Expenses from '../pages/Admin/Master/expenses'
 import ViewLeave from '../components/Admin/Master/Leave/View'
 import ViewExpenses from '../components/Admin/Master/Expense/View'
+import AttendanceSummary from '../components/Admin/Hrms/AttendanceSummary';
 
 //orders
 import Orders from '../pages/Admin/Orders';
@@ -712,6 +713,14 @@ const routes = [
         element: (
             <AdminProtected>
                 <ViewEmployeeDetailsLeaveManagement />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/hrms/attendance-summary/:id',
+        element: (
+            <AdminProtected>
+                <AttendanceSummary />
             </AdminProtected>
         ),
     },

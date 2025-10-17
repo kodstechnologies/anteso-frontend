@@ -145,7 +145,7 @@ const SalaryManagement = () => {
                                             <NavLink to={`/admin/hrms/salary-management-view/${row._id}`} className="flex hover:text-primary">
                                                 <IconEye />
                                             </NavLink>
-                                            <IconEdit className="w-4.5 h-4.5 hover:text-info" />
+                                            {/* <IconEdit className="w-4.5 h-4.5 hover:text-info" /> */}
                                             <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(row._id)}>
                                                 <IconTrashLines />
                                             </button>

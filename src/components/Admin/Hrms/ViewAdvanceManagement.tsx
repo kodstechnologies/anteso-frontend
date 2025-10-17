@@ -180,10 +180,21 @@ export default function AdvanceManagement() {
                     {exp.endDate ? new Date(exp.endDate).toLocaleDateString("en-GB") : "-"}
                   </td>
                   <td className="p-3 border-b border-gray-200 font-medium">{formatINR(exp.totalExpense)}</td>
-                  <td className="p-3 border-b border-gray-200">
+                  {/* <td className="p-3 border-b border-gray-200">
                     <p className="font-medium">{formatINR(balance)}</p>
                     {advances.length > 0 && <p className="text-slate-500 text-sm">{advances.join(" + ")}</p>}
+                  </td> */}
+                  <td className="p-3 border-b border-gray-200">
+                    <p className="font-medium">{formatINR(balance)}</p>
+                    {advances.length > 0 && (
+                      <p className="text-slate-500 text-sm">
+                        {advances.length > 0 && (
+                          <p className="text-slate-500 text-sm">{formatINR(advances.reduce((sum, val) => sum + val, 0))}</p>
+                        )}
+                      </p>
+                    )}
                   </td>
+
                   <td className="p-3 border-b border-gray-200">
                     {exp.tripstatus ? (
                       <span className={statusBadgeClass(exp.tripstatus)}>{exp.tripstatus}</span>
@@ -294,8 +305,8 @@ export default function AdvanceManagement() {
               key={num}
               onClick={() => setCurrentPage(num)}
               className={`inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-inset ${currentPage === num
-                  ? "bg-blue-600 text-white ring-blue-600"
-                  : "bg-slate-100 text-slate-800 ring-slate-200 hover:bg-slate-200"
+                ? "bg-blue-600 text-white ring-blue-600"
+                : "bg-slate-100 text-slate-800 ring-slate-200 hover:bg-slate-200"
                 }`}
             >
               {num}

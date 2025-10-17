@@ -319,7 +319,7 @@ const AddEnquiry: React.FC = () => {
                     contactNumber: "",
                     designation: "",
                     specialInstructions: "",
-                    services: [{ machineType: "", equipmentNo: "1", workType: [], machineModel: "" }],
+                    services: [{ machineType: "", equipmentNo: "", workType: [], machineModel: "" }],
                     additionalServices: serviceOptions.reduce(
                         (acc, service) => {
                             acc[service] = undefined
@@ -591,7 +591,7 @@ const AddEnquiry: React.FC = () => {
                                         {/* Add Another Machine */}
                                         <button
                                             type="button"
-                                            onClick={() => push({ machineType: "", equipmentNo: "1", workType: [], machineModel: "" })}
+                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "" })}
                                             className="btn btn-primary w-full sm:w-auto"
                                         >
                                             + Add Another Machine

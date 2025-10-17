@@ -7,7 +7,7 @@ import signature from "../../../assets/quotationImg/signature.png"
 import qrcode from "../../../assets/quotationImg/qrcode.png"
 import logo from "../../../assets/logo/logo-sm.png"
 import IconTrashLines from "../../Icon/IconTrashLines"
-import { allEmployees, getEnquiryById, createQuotationByEnquiryId, getAllDealers } from "../../../api"
+import { allEmployees, getEnquiryById, createQuotationByEnquiryId, getAllDealers, getNextQuotationNumber } from "../../../api"
 import { showMessage } from "../../common/ShowMessage"
 import ConfirmModal from "../../common/ConfirmModal"
 
@@ -166,7 +166,7 @@ const ItemsTable: React.FC<{
                     <td className="p-2 text-[.7rem]">{item.type}</td>
                     <td className="text-[.7rem]">{item.id}</td>
                     <td className="text-[.7rem]">{item.title}</td>
-                    <td className="text-[.7rem]">
+                    {/* <td className="text-[.7rem]">
                         {showEditableDescription ? (
                             <input
                                 value={item.description || ""}
@@ -176,7 +176,16 @@ const ItemsTable: React.FC<{
                         ) : (
                             item.description
                         )}
+                    </td> */}
+                    <td className="text-[.7rem]">
+                        <input
+                            value={item.description || ""}
+                            onChange={(e) => onItemChange(i, "description", e.target.value)}
+                            className="w-full border rounded p-1 text-[.7rem] bg-gray-100 cursor-not-allowed"
+                            disabled // ✅ make it read-only
+                        />
                     </td>
+
                     {["quantity", "price"].map((field) => (
                         <td key={field}>
                             <input
@@ -196,6 +205,8 @@ const ItemsTable: React.FC<{
         </tbody>
     </table>
 )
+
+
 
 const AddQuotation: React.FC = () => {
     const navigate = useNavigate()
@@ -305,7 +316,23 @@ const AddQuotation: React.FC = () => {
     }, [id])
 
     const [people, setPeople] = useState<any[]>([])
+    useEffect(() => {
+        const fetchNextQuotationNumber = async () => {
+            try {
+                const res = await getNextQuotationNumber();
+                // Assuming your API returns something like { data: { nextNumber: "QUO001" } }
+                if (res?.data?.nextNumber) {
+                    setQuotationNumber(res.data.nextNumber);
+                }
+            } catch (err) {
+                console.error("Failed to fetch next quotation number", err);
+                // fallback if needed
+                setQuotationNumber("QUO001");
+            }
+        };
 
+        fetchNextQuotationNumber();
+    }, []);
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -426,8 +453,16 @@ const AddQuotation: React.FC = () => {
 
 
     const handleSubmitQuotation = async () => {
-        setIsSubmitting(true);
-        try {
+        const invalidAItems = aitems.filter(item => !item.amount || parseFloat(item.amount) <= 0);
+        const invalidBItems = bitems.filter(item => !item.amount || parseFloat(item.amount) <= 0);
+
+        if (invalidAItems.length > 0 || invalidBItems.length > 0) {
+            setModalMessage("Please ensure all Total fields are filled correctly non-negative and non-zero");
+            setModalOpen(true);
+            return;
+        }
+
+        setIsSubmitting(true); try {
 
             const serviceSnapshots: ServiceItem[] = aitems.map((s) => {
                 const qty = 1;

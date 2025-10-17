@@ -46,7 +46,7 @@ const AddEngineer = () => {
             try {
                 setLoadingTools(true);
                 const res = await getUnAssignedTools();
-                // console.log("🚀 ~ fetchTools ~ res:", res)
+                console.log("🚀 ~ fetchTools ~ res:", res)
                 setToolsData(res.data); // adjust if your API returns a different shape
             } catch (error) {
                 console.error("Failed to load tools", error);
@@ -71,7 +71,7 @@ const AddEngineer = () => {
         department: string;
         dateOfJoining: string;
         workingDays: string;
-        password?: string; // 🔹 added
+        password?: string; //  added
     }
 
     // Updated validation schema
@@ -90,9 +90,17 @@ const AddEngineer = () => {
             .required('Please fill the Field'),
         technicianType: Yup.string().required('Please fill the Field'),
         activeStatus: Yup.string().required('Please select status'),
+        // password: Yup.string().when('technicianType', {
+        //     is: 'office-staff', // 🔹 required only for office staff
+        //     then: (schema) => schema.required('Password is required for office staff'),
+        //     otherwise: (schema) => schema.notRequired(),
+        // }),
         password: Yup.string().when('technicianType', {
-            is: 'office-staff', // 🔹 required only for office staff
-            then: (schema) => schema.required('Password is required for office staff'),
+            is: 'office-staff', // only required for office staff
+            then: (schema) =>
+                schema
+                    .required('Password is required for office staff')
+                    .min(6, 'Password must be at least 6 characters long'),
             otherwise: (schema) => schema.notRequired(),
         }),
         toolIDs: Yup.array().of(Yup.string()).when('technicianType', {
@@ -181,6 +189,20 @@ const AddEngineer = () => {
                     </Link>
                 </li>
             </ol>
+            {/* Show message if no tools are available */}
+            {!loadingTools && toolsData.length === 0 && (
+                <div className="p-4 mb-4 text-yellow-800 bg-yellow-100 border border-yellow-300 rounded-lg">
+                    ⚠️ No tools available. Please{' '}
+                    <Link
+                        to="/admin/tools/add"
+                        className="text-primary underline hover:text-primary/80"
+                    >
+                        add tools
+                    </Link>{' '}
+                    before assigning them to engineers.
+                </div>
+            )}
+
 
             {/* Formik Form */}
             <Formik<FormValues>

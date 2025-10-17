@@ -564,7 +564,7 @@ const AddEnquiry: React.FC = () => {
                                         {/* Add Another Machine */}
                                         <button
                                             type="button"
-                                            onClick={() => push({ machineType: "", equipmentNo: 1, workType: [], machineModel: "" })}
+                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "" })}
                                             className="btn btn-primary w-full sm:w-auto"
                                         >
                                             + Add Another Machine

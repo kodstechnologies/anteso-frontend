@@ -7,9 +7,10 @@ import { Formik, Form, Field, ErrorMessage } from "formik"
 import * as Yup from "yup"
 import { toast } from "react-toastify"
 import { useParams } from "react-router-dom" // or next/navigation if Next.js
-import { getAllLeaves, approveLeave, rejectLeave, deleteLeave, getEmployeeById } from "../../../api" // ✅ include APIs
+import { getAllLeaves, approveLeave, rejectLeave, deleteLeave, getEmployeeById, allocateLeaves, getAllocatedLeaves } from "../../../api" // ✅ include APIs
 import type { AttendanceEntry, Employee, LeaveRequest } from "../../../types/hrms-types"
 import { ChevronDown, ChevronUp } from "lucide-react"
+import AttendenceSummary from "../Hrms/AttendanceSummary"
 
 // Mock attendance data (same as before)
 const attendanceData: AttendanceEntry[] = [
@@ -54,6 +55,34 @@ export default function EmployeeDetailsLeaveManagement() {
     const [loading, setLoading] = useState(true)
     const [employeeDetails, setEmployeeDetails] = useState<any>(null)
     const [showTools, setShowTools] = useState(false);
+    const [allocatedLeaves, setAllocatedLeaves] = useState<any>([]);
+    
+    useEffect(() => {
+        const fetchAllocatedLeaves = async () => {
+            if (!id) return;
+            try {
+                const res = await getAllocatedLeaves(id);
+
+                console.log("🚀 ~ fetchAllocatedLeaves ~ res:", res);
+
+                // Ensure it's always an array for map
+                let leavesArray = [];
+
+                if (Array.isArray(res?.data)) {
+                    leavesArray = res.data;
+                } else if (res?.data) {
+                    // Convert single object into array
+                    leavesArray = [{ ...res.data, year: res.data.year || new Date().getFullYear() }];
+                }
+
+                setAllocatedLeaves(leavesArray);
+            } catch (err: any) {
+                toast.error(err.message || "Failed to fetch allocated leaves");
+            }
+        };
+        fetchAllocatedLeaves();
+    }, [id]);
+
 
     useEffect(() => {
         const fetchEmployee = async () => {
@@ -322,6 +351,134 @@ export default function EmployeeDetailsLeaveManagement() {
                 <Calendar onChange={handleDateChange} value={selectedDate} tileClassName={tileClassName} />
             </div>
 
+            {/* Leave Allocation Section */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl shadow-md border border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <span className="bg-green-600 text-white px-3 py-1 rounded-md text-sm">
+                        Leave Allocation
+                    </span>
+                </h2>
+
+                <Formik
+                    initialValues={{
+                        year: new Date().getFullYear(),
+                        totalLeaves: "",
+                    }}
+                    validationSchema={Yup.object({
+                        year: Yup.number()
+                            .min(2020, "Year must be 2020 or later")
+                            .required("Year is required"),
+                        totalLeaves: Yup.number()
+                            .min(0, "Leave count must be positive")
+                            .required("Total leaves is required"),
+                    })}
+                    onSubmit={async (values, { resetForm }) => {
+                        try {
+                            if (!id) return toast.error("Invalid employee ID");
+
+                            // Allocate leaves for the selected year
+                            await allocateLeaves(id, values);
+
+                            // ✅ Fetch all allocated leaves again (not just selected year)
+                            const res = await getAllocatedLeaves(id);
+                            let leavesArray = [];
+
+                            if (Array.isArray(res?.data)) {
+                                leavesArray = res.data;
+                            } else if (res?.data) {
+                                leavesArray = [{ ...res.data, year: values.year }];
+                            }
+
+                            setAllocatedLeaves(leavesArray); // ✅ update the state
+
+                            toast.success(`Allocated ${values.totalLeaves} leaves for ${values.year}`);
+                            resetForm();
+                        } catch (err: any) {
+                            toast.error(err.message || "Failed to allocate leaves");
+                        }
+                    }}
+
+                >
+
+                    {({ isSubmitting }) => (
+                        <Form className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
+                            {/* Year Selection */}
+                            <div>
+                                <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Select Year
+                                </label>
+                                <Field
+                                    as="select"
+                                    name="year"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none"
+                                >
+                                    {Array.from({ length: 20 }, (_, i) => {
+                                        const y = new Date().getFullYear() + i; // start from current year
+                                        return (
+                                            <option key={y} value={y}>
+                                                {y}
+                                            </option>
+                                        );
+                                    })}
+
+                                </Field>
+                                <ErrorMessage name="year" component="div" className="text-red-500 text-sm mt-1" />
+                            </div>
+
+                            {/* Total Leaves Input */}
+                            <div>
+                                <label htmlFor="totalLeaves" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Total Leaves
+                                </label>
+                                <Field
+                                    type="number"
+                                    name="totalLeaves"
+                                    placeholder="Enter no. of leaves"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none"
+                                />
+                                <ErrorMessage name="totalLeaves" component="div" className="text-red-500 text-sm mt-1" />
+                            </div>
+
+                            {/* Submit Button */}
+                            <div>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition"
+                                >
+                                    {isSubmitting ? "Saving..." : "Save Allocation"}
+                                </button>
+                            </div>
+                        </Form>
+                    )}
+                </Formik>
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <h2 className="text-xl font-semibold mb-4">Allocated Leaves History</h2>
+                    {Array.isArray(allocatedLeaves) && allocatedLeaves.length > 0 ? (
+                        <table className="w-full border">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="px-4 py-2">Year</th>
+                                    <th className="px-4 py-2">Total Leaves</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {allocatedLeaves.map((leave) => (
+                                    <tr key={leave.year}>
+                                        <td className="px-4 py-2">{leave.year}</td>
+                                        <td className="px-4 py-2">{leave.totalLeaves}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p>No leaves allocated yet.</p>
+                    )}
+
+                </div>
+
+            </div>
+            {/* <AttendenceSummary id={id}/> */}
             {/* Leave Management */}
             <div className="bg-white p-6 rounded-lg shadow-lg">
                 <h2 className="text-xl font-semibold mb-4">Leave Management</h2>

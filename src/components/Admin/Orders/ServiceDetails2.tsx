@@ -1066,8 +1066,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         if (workType.name === "QA Raw") {
             const qaTestId = workTypeId.replace('-qa-raw', '-qa-test')
             const qaTestStatus = assignments[qaTestId]?.status || selectedStatuses[qaTestId] || "pending"
-            if (qaTestStatus === "complete") {
-                alert("Cannot reassign QA Raw because QA Test is already complete!")
+            if (qaTestStatus === "generated") {
+                alert("Cannot reassign QA Raw because QA Test status is generated!");
                 return
             }
         }
@@ -1234,9 +1234,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                         <div className="divide-y">
                             {service.workTypes.map((workType) => (
-
                                 <div key={workType.id} className="border-b last:border-b-0">
-
                                     <button
                                         onClick={() => toggleAccordion(workType.id)}
                                         className="w-full px-6 py-4 hover:bg-gray-50 transition-colors flex items-center justify-between"
@@ -1350,13 +1348,24 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 </div>
 
                                                                 <div className="flex gap-2">
-                                                                    <button
-                                                                        onClick={() => handleReassign(workType.id)}
-                                                                        className="flex items-center gap-2 px-3 py-2 bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
-                                                                    >
-                                                                        <RefreshCw className="h-4 w-4" />
-                                                                        Reassign
-                                                                    </button>
+                                                                    {(() => {
+                                                                        const qaTestId = workType.id.replace('-qa-raw', '-qa-test');
+                                                                        const qaTestStatus = assignments[qaTestId]?.status || selectedStatuses[qaTestId] || "pending";
+                                                                        const canReassignRaw = qaTestStatus !== "generated";
+                                                                        return (
+                                                                            <button
+                                                                                onClick={() => handleReassign(workType.id)}
+                                                                                disabled={!canReassignRaw}
+                                                                                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${canReassignRaw
+                                                                                    ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                                                                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                                                    }`}
+                                                                            >
+                                                                                <RefreshCw className="h-4 w-4" />
+                                                                                Reassign
+                                                                            </button>
+                                                                        );
+                                                                    })()}
                                                                 </div>
 
                                                                 <div className="mt-4 space-y-3">

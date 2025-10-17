@@ -55,13 +55,24 @@ const AddDealer = () => {
         dealersName: Yup.string().required("Please enter Dealer Name"),
         address: Yup.string().required("Please enter Address"),
         city: Yup.string().required("Please enter City"),
-        phone: Yup.string().required("Please enter Phone"),
+
+        // ✅ Phone: only digits, exactly 10
+        phone: Yup.string()
+            .matches(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
+            .required("Please enter Phone"),
+
         email: Yup.string().email("Invalid Email").required("Please enter Email"),
         state: Yup.string().required("Please select State"),
-        pinCode: Yup.string().required("Please enter Pin Code"),
+
+        // ✅ Pin code: only digits, exactly 6
+        pinCode: Yup.string()
+            .matches(/^[0-9]{6}$/, "Pin Code must be exactly 6 digits")
+            .required("Please enter Pin Code"),
+
         branch: Yup.string().required("Please enter Branch"),
         mouValidity: Yup.date().required("Please enter MOU validity"),
     });
+
 
     // inside AddDealer component
     const submitForm = async (values: any) => {
@@ -87,6 +98,7 @@ const AddDealer = () => {
 
         try {
             const res = await createDealer(payload);
+            console.log("🚀 ~ submitForm ~ res:", res)
             showMessage(res.data.message || "Dealer created successfully", "success");
             navigate("/admin/dealer");
         } catch (err: any) {
@@ -164,8 +176,20 @@ const AddDealer = () => {
                                 </div>
                                 <div className={submitCount && errors.phone ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="phone">Phone</label>
-                                    <Field name="phone" type="text" id="phone" placeholder="Enter Phone" className="form-input" />
-                                    {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : null}
+                                    <Field
+                                        name="phone"
+                                        type="text"
+                                        id="phone"
+                                        placeholder="Enter Phone"
+                                        className="form-input"
+                                        maxLength={10}
+                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            e.target.value = e.target.value.replace(/[^0-9]/g, ''); // allow only numbers
+                                        }}
+                                    />
+                                    {submitCount && errors.phone ? (
+                                        <div className="text-danger mt-1">{errors.phone}</div>
+                                    ) : null}
                                 </div>
 
                                 <div className={submitCount && errors.email ? 'has-error' : submitCount ? 'has-success' : ''}>
@@ -200,8 +224,20 @@ const AddDealer = () => {
                                 </div>
                                 <div className={submitCount && errors.pinCode ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="pinCode">Pin Code</label>
-                                    <Field name="pinCode" type="text" id="pinCode" className="form-input" placeholder="Enter Pin Code" />
-                                    {submitCount && errors.pinCode ? <div className="text-danger mt-1">{errors.pinCode}</div> : null}
+                                    <Field
+                                        name="pinCode"
+                                        type="text"
+                                        id="pinCode"
+                                        className="form-input"
+                                        placeholder="Enter Pin Code"
+                                        maxLength={6}
+                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            e.target.value = e.target.value.replace(/[^0-9]/g, ''); // allow only numbers
+                                        }}
+                                    />
+                                    {submitCount && errors.pinCode ? (
+                                        <div className="text-danger mt-1">{errors.pinCode}</div>
+                                    ) : null}
                                 </div>
                                 <div className={submitCount && errors.branch ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="branch">Branch</label>

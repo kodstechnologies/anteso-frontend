@@ -9,7 +9,7 @@ interface AdminProtectedProps {
 const AdminProtected: React.FC<AdminProtectedProps> = ({ children }) => {
     const isAuth = useSelector((state: IRootState) => state.userConfig.auth);
     const userType = useSelector((state: IRootState) => state.userConfig.userType);
-    if (isAuth && userType == 'admin') {
+    if (isAuth && (userType == 'admin' || userType == 'staff')) {
         return children;
     } else {
         return <Navigate to="/login" />;

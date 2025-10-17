@@ -40,6 +40,7 @@ const View: React.FC = () => {
     const fetchDealer = async () => {
       try {
         const res = await getDealerById(id);
+        console.log("🚀 ~ fetchDealer ~ res:", res)
         const d = res.data.data; // actual dealer object
         setDealer({
           dealersName: d.name,         // API 'name' → UI 'dealersName'

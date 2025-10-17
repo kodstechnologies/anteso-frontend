@@ -1,127 +1,208 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
-import { leaveData } from '../../../../data';
-import { isValid, parse } from 'date-fns';
+import { getLeaveById, getAllEmployees, editLeaveById } from '../../../../api/index';
+
+interface Employee {
+    _id: string;
+    name: string;
+    designation: string;
+}
+
+interface LeaveData {
+    startDate: string;
+    endDate: string;
+    leaveType: string;
+    reason: string;
+    status: string;
+    employee: string;
+}
+
 const EditLeave = () => {
     const navigate = useNavigate();
+    const { id } = useParams<{ id: string }>();
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [initialValues, setInitialValues] = useState<LeaveData>({
+        startDate: '',
+        endDate: '',
+        leaveType: '',
+        reason: '',
+        status: '',
+        employee: '',
+    });
+    const [loading, setLoading] = useState(true);
 
     const LeaveSchema = Yup.object().shape({
-        startDate: Yup.date()
-            .transform((value, originalValue) => {
-                const parsedDate = parse(originalValue, 'dd/MM/yyyy', new Date());
-                return isValid(parsedDate) ? parsedDate : new Date('');
-            })
-            .typeError('Invalid start date format')
-            .required('Start date is required'),
-
+        employee: Yup.string().required('Employee is required'),
+        startDate: Yup.date().required('Start date is required'),
         endDate: Yup.date()
-            .transform((value, originalValue) => {
-                const parsedDate = parse(originalValue, 'dd/MM/yyyy', new Date());
-                return isValid(parsedDate) ? parsedDate : new Date('');
-            })
-            .typeError('Invalid end date format')
-            .min(
-                Yup.ref('startDate'),
-                'End date can’t be before start date'
-            )
+            .min(Yup.ref('startDate'), 'End date can’t be before start date')
             .required('End date is required'),
-
         leaveType: Yup.string().required('Leave type is required'),
         reason: Yup.string().required('Reason is required'),
-        status: Yup.object({
-            tooltip: Yup.string().required('Status tooltip is required'),
-            color: Yup.string().required('Status color is required'),
-        }).required('Status is required'),
+        status: Yup.string().required('Status is required'),
     });
 
-    const handleSubmit = () => {
-        showMessage('Leave updated successfully', 'success');
-        navigate('/admin/leave');
+    // 🔹 Fetch employees & leave data
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [empRes, leaveRes] = await Promise.all([
+                    getAllEmployees(),
+                    getLeaveById(id!),
+                ]);
+                setEmployees(empRes?.data || empRes || []);
+                const leave = leaveRes?.data || leaveRes;
+                setInitialValues({
+                    employee: leave.employee?._id || '',
+                    startDate: leave.startDate ? leave.startDate.slice(0, 10) : '',
+                    endDate: leave.endDate ? leave.endDate.slice(0, 10) : '',
+                    leaveType: leave.leaveType || '',
+                    reason: leave.reason || '',
+                    status: leave.status || '',
+                });
+            } catch (err: any) {
+                showMessage(err.message || 'Failed to fetch data', 'error');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [id]);
+
+    const handleSubmit = async (values: LeaveData) => {
+        try {
+            await editLeaveById(id!, values);
+            showMessage('Leave updated successfully', 'success');
+            navigate('/admin/leave');
+        } catch (error: any) {
+            showMessage(error.message || 'Failed to update leave', 'error');
+        }
     };
+
+    if (loading) return <div className="text-gray-600 p-6">Loading...</div>;
 
     return (
         <>
+            {/* Breadcrumb */}
             <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
                 <li>
-                    <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">Dashboard</Link>
+                    <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+                        Dashboard
+                    </Link>
                 </li>
                 <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-                    <Link to="/admin/leaves" className="text-primary">Leaves</Link>
+                    <Link to="/admin/leave" className="text-primary">
+                        Leave
+                    </Link>
                 </li>
                 <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-                    <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">Edit Leave</Link>
+                    <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+                        Edit Leave
+                    </Link>
                 </li>
             </ol>
 
+            {/* Form */}
             <Formik
-                initialValues={{
-                    leaveType: leaveData[0].leaveType,
-                    startDate: leaveData[0].startDate,
-                    endDate: leaveData[0].endDate,
-                    reason: leaveData[0].reason,
-                    status: leaveData[0].status,
-                }}
+                enableReinitialize
+                initialValues={initialValues}
                 validationSchema={LeaveSchema}
                 onSubmit={handleSubmit}
             >
-                {({ errors, submitCount }) => (
+                {({ errors, touched, submitCount }) => (
                     <Form className="space-y-5">
                         <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Leave Details</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                <div className={submitCount ? (errors.leaveType ? 'has-error' : 'has-success') : ''}>
+                            <h5 className="font-semibold text-lg mb-4">Edit Leave Details</h5>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {/* Employee */}
+                                <div className={submitCount && errors.employee ? 'has-error' : ''}>
+                                    <label htmlFor="employee">Employee</label>
+                                    <Field as="select" name="employee" className="form-select">
+                                        <option value="">Select Employee</option>
+                                        {employees.map((emp) => (
+                                            <option key={emp._id} value={emp._id}>
+                                                {emp.name} ({emp.designation})
+                                            </option>
+                                        ))}
+                                    </Field>
+                                    {errors.employee && (
+                                        <div className="text-danger mt-1">{errors.employee}</div>
+                                    )}
+                                </div>
+
+                                {/* Leave Type */}
+                                <div className={submitCount && errors.leaveType ? 'has-error' : ''}>
                                     <label htmlFor="leaveType">Leave Type</label>
                                     <Field as="select" name="leaveType" className="form-select">
-                                        <option value="" disabled>Select leave type</option>
+                                        <option value="">Select leave type</option>
                                         <option value="Sick Leave">Sick Leave</option>
-                                        <option value="Casual Leave">Vacation</option>
-                                        <option value="Earned Leave">Personal Leave</option>
-                                        <option value="Earned Leave">Maternity/Paternity</option>
-                                        <option value="Earned Leave">Bereavement Leave</option>
+                                        <option value="Casual Leave">Casual Leave</option>
+                                        <option value="Maternity/Paternity">Maternity/Paternity</option>
+                                        <option value="Leave without pay">Leave without pay</option>
+                                        <option value="Leave with pay">Leave with pay</option>
                                     </Field>
-                                    {errors.leaveType && <div className="text-danger mt-1">{errors.leaveType}</div>}
+                                    {errors.leaveType && (
+                                        <div className="text-danger mt-1">{errors.leaveType}</div>
+                                    )}
                                 </div>
 
-                                <div className={submitCount ? (errors.startDate ? 'has-error' : 'has-success') : ''}>
+                                {/* Start Date */}
+                                <div className={submitCount && errors.startDate ? 'has-error' : ''}>
                                     <label htmlFor="startDate">Start Date</label>
                                     <Field type="date" name="startDate" className="form-input" />
-                                    {errors.startDate && <div className="text-danger mt-1">{errors.startDate}</div>}
+                                    {errors.startDate && (
+                                        <div className="text-danger mt-1">{errors.startDate}</div>
+                                    )}
                                 </div>
 
-                                <div className={submitCount ? (errors.endDate ? 'has-error' : 'has-success') : ''}>
+                                {/* End Date */}
+                                <div className={submitCount && errors.endDate ? 'has-error' : ''}>
                                     <label htmlFor="endDate">End Date</label>
                                     <Field type="date" name="endDate" className="form-input" />
-                                    {errors.endDate && <div className="text-danger mt-1">{errors.endDate}</div>}
+                                    {errors.endDate && (
+                                        <div className="text-danger mt-1">{errors.endDate}</div>
+                                    )}
                                 </div>
 
-                                <div className={submitCount ? (errors.reason ? 'has-error' : 'has-success') : ''}>
+                                {/* Reason */}
+                                <div className={submitCount && errors.reason ? 'has-error' : ''}>
                                     <label htmlFor="reason">Reason</label>
-                                    <Field as="textarea" name="reason" className="form-input" placeholder="Enter reason for leave" />
-                                    {errors.reason && <div className="text-danger mt-1">{errors.reason}</div>}
+                                    <Field
+                                        as="textarea"
+                                        name="reason"
+                                        className="form-input"
+                                        rows={3}
+                                        placeholder="Enter reason for leave"
+                                    />
+                                    {errors.reason && (
+                                        <div className="text-danger mt-1">{errors.reason}</div>
+                                    )}
                                 </div>
 
-                                <div className={submitCount ? (errors.status ? 'has-error' : 'has-success') : ''}>
+                                {/* Status */}
+                                <div className={submitCount && errors.status ? 'has-error' : ''}>
                                     <label htmlFor="status">Status</label>
                                     <Field as="select" name="status" className="form-select">
-                                        <option value="" disabled>Select status</option>
+                                        <option value="">Select status</option>
                                         <option value="Pending">Pending</option>
                                         <option value="Approved">Approved</option>
                                         <option value="Rejected">Rejected</option>
                                     </Field>
-                                    {(errors.status?.tooltip || errors.status?.color) && (
-                                        <div className="text-danger mt-1">
-                                            {errors.status.tooltip || errors.status.color}
-                                        </div>
+                                    {errors.status && (
+                                        <div className="text-danger mt-1">{errors.status}</div>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="w-full mb-6 flex justify-end">
-                            <button type="submit" className="btn btn-success !mt-6">Submit Form</button>
+                        <div className="flex justify-end">
+                            <button type="submit" className="btn btn-success mt-4">
+                                Update Leave
+                            </button>
                         </div>
                     </Form>
                 )}

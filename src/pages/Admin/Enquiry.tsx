@@ -52,7 +52,7 @@ const Enquiry = () => {
                 // You may need to map/enrich data depending on your backend format
                 const enriched = response.data.map((item: any, index: number) => ({
                     ...item,
-                    id:item._id,
+                    id: item._id,
                     enquiryID: item.enquiryId,
                     hName: item.hospitalName,
                     fullAddress: item.fullAddress,
@@ -72,8 +72,9 @@ const Enquiry = () => {
                 console.log("🚀 ~ fetchData ~ enriched.quotation:", enriched.data)
 
                 setItems(enriched);
-                setInitialRecords(sortBy(enriched, 'hName'));
-                setRecords(sortBy(enriched, 'hName').slice(0, pageSize));
+                setInitialRecords(enriched); // keep backend sort (latest first)
+                setRecords(enriched.slice(0, pageSize));
+
                 setLoading(false);
             } catch (err: any) {
                 setError(err.message);
@@ -180,7 +181,6 @@ const Enquiry = () => {
     ];
     return (
         <>
-
             <Breadcrumb items={breadcrumbItems} />
             {loading && <p className="text-center my-4">Loading enquiries...</p>}
             {error && <p className="text-center text-red-500 my-4">{error}</p>}

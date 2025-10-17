@@ -1,6 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
 import { DataTable, DataTableSortStatus } from 'mantine-datatable';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import sortBy from 'lodash/sortBy';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../../store/themeConfigSlice';
@@ -8,7 +8,6 @@ import IconTrashLines from '../../../components/Icon/IconTrashLines';
 import IconPlus from '../../../components/Icon/IconPlus';
 import IconEdit from '../../../components/Icon/IconEdit';
 import IconEye from '../../../components/Icon/IconEye';
-import { clientsData } from '../../../data';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
@@ -18,38 +17,74 @@ import ConfirmModal from '../../../components/common/ConfirmModal';
 
 const Clients = () => {
     const dispatch = useDispatch();
+
+    // Page title
     useEffect(() => {
         dispatch(setPageTitle('Clients'));
     }, []);
 
-    // Initialize items with clientId if not already present
     const [items, setItems] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true); // Optional loading state
+    const [loading, setLoading] = useState(true);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
+
+    const [page, setPage] = useState(1);
+    const PAGE_SIZES = [10, 20, 30, 50, 100];
+    const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
+    const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
+    const [search, setSearch] = useState('');
+    const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
+        columnAccessor: 'firstName',
+        direction: 'asc',
+    });
+
+    // Fetch clients
     useEffect(() => {
         const fetchClients = async () => {
             try {
                 const response = await getAllClients();
-                console.log("🚀 ~ fetchClients ~ response:", response);
-
                 const clientsFromBackend = response.data.clients.map((item: any) => ({
                     ...item,
-                    id: item._id, // Required by the DataTable
+                    id: item._id,
                 }));
-
                 setItems(clientsFromBackend);
-                setInitialRecords(sortBy(clientsFromBackend, 'name'));
                 setLoading(false);
             } catch (error) {
                 console.error('Error fetching clients:', error);
                 setLoading(false);
             }
         };
-
         fetchClients();
     }, []);
 
+    // Filtered + sorted records
+    const filteredRecords = useMemo(() => {
+        const query = search.toLowerCase();
+        return items.filter((item) =>
+            [
+                item.clientId,
+                item.name,
+                item.email,
+                item.address,
+                item.phone,
+                item.business,
+                item.gstNo,
+            ].some((field) => String(field || '').toLowerCase().includes(query))
+        );
+    }, [search, items]);
+
+    const sortedRecords = useMemo(() => {
+        if (!sortStatus.columnAccessor) return filteredRecords;
+        const data = sortBy(filteredRecords, sortStatus.columnAccessor);
+        return sortStatus.direction === 'desc' ? data.reverse() : data;
+    }, [filteredRecords, sortStatus]);
+
+    // Pagination
+    const records = useMemo(() => {
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize;
+        return sortedRecords.slice(from, to);
+    }, [sortedRecords, page, pageSize]);
 
     const openDeleteModal = (id: string | null = null) => {
         setDeleteId(id);
@@ -63,10 +98,8 @@ const Clients = () => {
                 await deleteClientById(deleteId);
                 const updated = items.filter((user) => user.id !== deleteId);
                 setItems(updated);
-                setInitialRecords(updated);
-                setRecords(updated);
-                setSearch('');
                 setSelectedRecords([]);
+                setPage(1);
                 showMessage('Client deleted successfully', 'success');
             } else {
                 const ids = selectedRecords.map((d: any) => d.id);
@@ -75,9 +108,6 @@ const Clients = () => {
                 }
                 const updated = items.filter((d) => !ids.includes(d.id));
                 setItems(updated);
-                setInitialRecords(updated);
-                setRecords(updated);
-                setSearch('');
                 setSelectedRecords([]);
                 setPage(1);
                 showMessage('Selected clients deleted successfully', 'success');
@@ -88,54 +118,11 @@ const Clients = () => {
         }
     };
 
-    const [page, setPage] = useState(1);
-    const PAGE_SIZES = [10, 20, 30, 50, 100];
-    const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-    const [initialRecords, setInitialRecords] = useState(sortBy(items, 'name'));
-    const [records, setRecords] = useState(initialRecords);
-    const [selectedRecords, setSelectedRecords] = useState<any>([]);
-
-    const [search, setSearch] = useState('');
-    const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'firstName',
-        direction: 'asc',
-    });
-
-    useEffect(() => {
-        setPage(1);
-    }, [pageSize]);
-
-    useEffect(() => {
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize;
-        setRecords([...initialRecords.slice(from, to)]);
-    }, [page, pageSize, initialRecords]);
-
-    useEffect(() => {
-        setInitialRecords(() => {
-            return items.filter((item) => {
-                return (
-                    item.clientId.toLowerCase().includes(search.toLowerCase()) || // Add clientId to search
-                    item.name.toLowerCase().includes(search.toLowerCase()) ||
-                    item.email.toLowerCase().includes(search.toLowerCase()) ||
-                    item.address.toLowerCase().includes(search.toLowerCase()) ||
-                    item.phone.toLowerCase().includes(search.toLowerCase()) ||
-                    item.business.toLowerCase().includes(search.toLowerCase()) ||
-                    item.gstNo.toLowerCase().includes(search.toLowerCase())
-                );
-            });
-        });
-    }, [search, items]);
-
-    useEffect(() => {
-        const data2 = sortBy(initialRecords, sortStatus.columnAccessor);
-        setRecords(sortStatus.direction === 'desc' ? data2.reverse() : data2);
-        setPage(1);
-    }, [sortStatus]);
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
         { label: 'Clients', icon: <IconBox /> },
     ];
+
     return (
         <>
             <Breadcrumb items={breadcrumbItems} />
@@ -150,7 +137,13 @@ const Clients = () => {
                             </Link>
                         </div>
                         <div className="ltr:ml-auto rtl:mr-auto">
-                            <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                            <input
+                                type="text"
+                                className="form-input w-auto"
+                                placeholder="Search..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
                         </div>
                     </div>
 
@@ -159,32 +152,12 @@ const Clients = () => {
                             className="whitespace-nowrap table-hover invoice-table"
                             records={records}
                             columns={[
-                                {
-                                    accessor: 'clientId', // New Client ID column
-                                    title: 'CL ID',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'name',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'email',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'address',
-                                    sortable: true,
-                                },
-                                {
-                                    accessor: 'phone',
-                                    sortable: true,
-                                },
-
-                                {
-                                    accessor: 'gstNo',
-                                    sortable: true,
-                                },
+                                { accessor: 'clientId', title: 'CL ID', sortable: true },
+                                { accessor: 'name', sortable: true },
+                                { accessor: 'email', sortable: true },
+                                { accessor: 'address', sortable: true },
+                                { accessor: 'phone', sortable: true },
+                                { accessor: 'gstNo', sortable: true },
                                 {
                                     accessor: 'action',
                                     title: 'Actions',
@@ -192,43 +165,46 @@ const Clients = () => {
                                     textAlignment: 'center',
                                     render: ({ _id }) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to={`/admin/clients/preview/${_id}`} className="flex hover:text-primary">
+                                            <NavLink
+                                                to={`/admin/clients/preview/${_id}`}
+                                                className="flex hover:text-primary"
+                                            >
                                                 <IconEye />
                                             </NavLink>
-                                            <NavLink to={`/admin/clients/edit/${_id}`} className="flex hover:text-info">
+                                            <NavLink
+                                                to={`/admin/clients/edit/${_id}`}
+                                                className="flex hover:text-info"
+                                            >
                                                 <IconEdit className="w-4.5 h-4.5" />
                                             </NavLink>
-                                            {/* <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(_id)}>
-                                                <IconTrashLines />
-                                            </button> */}
                                             <button
                                                 className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
                                                 onClick={() => openDeleteModal(_id)}
-                                            // for bulk delete
                                             >
-                                               <IconTrashLines />
+                                                <IconTrashLines />
                                             </button>
                                         </div>
-                                    )
-
+                                    ),
                                 },
                             ]}
                             highlightOnHover
-                            totalRecords={initialRecords.length}
+                            totalRecords={filteredRecords.length}
                             recordsPerPage={pageSize}
                             page={page}
-                            onPageChange={(p) => setPage(p)}
+                            onPageChange={setPage}
                             recordsPerPageOptions={PAGE_SIZES}
                             onRecordsPerPageChange={setPageSize}
                             sortStatus={sortStatus}
                             onSortStatusChange={setSortStatus}
                             selectedRecords={selectedRecords}
                             onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            paginationText={({ from, to, totalRecords }) =>
+                                `Showing ${from} to ${to} of ${totalRecords} entries`
+                            }
                         />
                     </div>
-
                 </div>
+
                 <ConfirmModal
                     open={confirmOpen}
                     onClose={() => setConfirmOpen(false)}

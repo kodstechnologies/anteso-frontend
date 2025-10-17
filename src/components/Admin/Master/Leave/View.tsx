@@ -5,9 +5,16 @@ import {
     FaClipboardCheck,
     FaFileAlt,
     FaRegStickyNote,
-    FaCheckCircle
+    FaCheckCircle,
+    FaUserTie,
+    FaIdBadge
 } from 'react-icons/fa';
 import { getLeaveById } from '../../../../api/index'; // adjust path as needed
+
+interface EmployeeType {
+    name: string;
+    designation: string;
+}
 
 interface LeaveType {
     startDate: string;
@@ -15,6 +22,7 @@ interface LeaveType {
     leaveType: string;
     reason: string;
     status: string;
+    employee?: EmployeeType;
 }
 
 const LeaveView: React.FC = () => {
@@ -27,8 +35,9 @@ const LeaveView: React.FC = () => {
         const fetchLeave = async () => {
             try {
                 if (id) {
-                    const data = await getLeaveById(id);
-                    console.log("🚀 ~ fetchLeave ~ data:", data)
+                    const res = await getLeaveById(id);
+                    // Assuming API response shape: { data: { leave }, message: "..." }
+                    const data = res?.data || res;
                     setLeave(data);
                 }
             } catch (err: any) {
@@ -42,18 +51,21 @@ const LeaveView: React.FC = () => {
     }, [id]);
 
     const formatDate = (isoDate: string) => {
+        if (!isoDate) return "-";
         const date = new Date(isoDate);
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
         return `${day}-${month}-${year}`;
     };
+
     if (loading) return <div className="p-6 text-gray-600">Loading...</div>;
     if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
     if (!leave) return <div className="p-6 text-gray-600">No leave data found.</div>;
 
     return (
         <div className="p-6">
+            {/* Breadcrumb */}
             <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
                 <li>
                     <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
@@ -72,17 +84,51 @@ const LeaveView: React.FC = () => {
                 </li>
             </ol>
 
+            {/* Leave Details Card */}
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                     <FaClipboardCheck className="text-primary" /> Leave Details
                 </h1>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
-                    <Detail label="Start Date" value={formatDate(leave.startDate)} icon={<FaCalendarAlt />} />
-                    <Detail label="End Date" value={formatDate(leave.endDate)} icon={<FaCalendarAlt />} />
-                    <Detail label="Leave Type" value={leave.leaveType} icon={<FaFileAlt />} />
-                    <Detail label="Reason" value={leave.reason} icon={<FaRegStickyNote />} />
-                    <Detail label="Status" value={leave.status} icon={<FaCheckCircle />} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
+                    {/* Employee Info */}
+                    <Detail
+                        label="Employee Name"
+                        value={leave.employee?.name || "-"}
+                        icon={<FaUserTie />}
+                    />
+                    <Detail
+                        label="Designation"
+                        value={leave.employee?.designation || "-"}
+                        icon={<FaIdBadge />}
+                    />
+
+                    {/* Leave Info */}
+                    <Detail
+                        label="Start Date"
+                        value={formatDate(leave.startDate)}
+                        icon={<FaCalendarAlt />}
+                    />
+                    <Detail
+                        label="End Date"
+                        value={formatDate(leave.endDate)}
+                        icon={<FaCalendarAlt />}
+                    />
+                    <Detail
+                        label="Leave Type"
+                        value={leave.leaveType}
+                        icon={<FaFileAlt />}
+                    />
+                    <Detail
+                        label="Reason"
+                        value={leave.reason}
+                        icon={<FaRegStickyNote />}
+                    />
+                    <Detail
+                        label="Status"
+                        value={leave.status}
+                        icon={<FaCheckCircle />}
+                    />
                 </div>
             </div>
         </div>

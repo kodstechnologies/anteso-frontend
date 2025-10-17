@@ -4,7 +4,7 @@ import 'react-calendar/dist/Calendar.css';
 import { isSameDay, startOfMonth, endOfMonth, getDaysInMonth, isSunday, format } from 'date-fns';
 import { Link, useParams } from 'react-router-dom';
 import { getEmployeeById } from '../../../../api';
-
+import AttendenceSummary from '../../Hrms/AttendanceSummary';
 
 // Mock attendance data (replace with actual API data)
 const attendanceData = [
@@ -28,7 +28,8 @@ const paymentData = {
 
 function ViewEmployee() {
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-    const { id } = useParams(); // get employee ID from URL
+    const { id } = useParams<{ id: string }>();
+    // get employee ID from URL
     const [employee, setEmployee] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -225,10 +226,10 @@ function ViewEmployee() {
                                     <p className="text-gray-600 mt-1">{employee.workingDays} days</p>
                                 </div>
                             </div>
-                            <div className="pt-4">
+                            {/* <div className="pt-4">
                                 <span className="font-semibold text-gray-700">Address:</span>
                                 <p className="text-gray-600 mt-1">{employee.address || ''}</p>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
 
@@ -263,7 +264,7 @@ function ViewEmployee() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Attendance Summary */}
-                    <div className="bg-white p-6 rounded-lg shadow-lg">
+                    {/* <div className="bg-white p-6 rounded-lg shadow-lg">
                         <h2 className="text-2xl font-bold text-gray-800 mb-6">Attendance Summary</h2>
                         <div className="overflow-x-auto">
                             <table className="w-full border-collapse border border-gray-300">
@@ -295,8 +296,8 @@ function ViewEmployee() {
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-
+                    </div> */}
+                    <AttendenceSummary id={id} />
                     {/* Payment Details */}
                     <div className="bg-white p-6 rounded-lg shadow-lg">
                         <h2 className="text-2xl font-bold text-gray-800 mb-6">Payment Details</h2>

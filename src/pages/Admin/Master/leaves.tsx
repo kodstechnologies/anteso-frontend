@@ -14,7 +14,9 @@ import IconEdit from '../../../components/Icon/IconEdit';
 import IconTrashLines from '../../../components/Icon/IconTrashLines';
 import IconPlus from '../../../components/Icon/IconPlus';
 
-import { getAllLeave } from '../../../api/index';
+import { getAllLeave, deleteLeaveById } from '../../../api/index';
+import ConfirmModal from '../../../components/common/ConfirmModal';
+import { showMessage } from '../../../components/common/ShowMessage';
 
 interface LeaveItem {
     _id: string;
@@ -22,19 +24,11 @@ interface LeaveItem {
     endDate: string;
     leaveType: string;
     reason: string;
-    status: {
-        tooltip: string;
-        color: string;
-    };
+    status: any;
 }
 
 const Leaves: React.FC = () => {
     const dispatch = useDispatch();
-
-    useEffect(() => {
-        dispatch(setPageTitle('Leave'));
-        fetchLeaves();
-    }, []);
 
     const [items, setItems] = useState<LeaveItem[]>([]);
     const [initialRecords, setInitialRecords] = useState<LeaveItem[]>([]);
@@ -47,12 +41,22 @@ const Leaves: React.FC = () => {
         direction: 'asc',
     });
 
+    // Modal States
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const PAGE_SIZES = [10, 20, 30, 50, 100];
+
+    useEffect(() => {
+        dispatch(setPageTitle('Leave'));
+        fetchLeaves();
+    }, []);
 
     const fetchLeaves = async () => {
         try {
             const data = await getAllLeave();
-            const formatted = data.map((item: LeaveItem, index: number) => ({
+            const formatted = data.map((item: LeaveItem) => ({
                 ...item,
             }));
             setItems(formatted);
@@ -63,19 +67,33 @@ const Leaves: React.FC = () => {
         }
     };
 
-    const deleteRow = async (id: string | null = null) => {
-        if (window.confirm('Are you sure want to delete selected row(s)?')) {
-            let updated;
-            if (id) {
-                updated = items.filter((item) => item._id !== id);
-            } else {
-                const ids = selectedRecords.map((d) => d._id);
-                updated = items.filter((item) => !ids.includes(item._id));
-            }
+    const handleDeleteClick = (id: string) => {
+        setSelectedId(id);
+        setModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setModalOpen(false);
+        setSelectedId(null);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!selectedId) return;
+        setIsDeleting(true);
+        try {
+            await deleteLeaveById(selectedId);
+            showMessage('Leave deleted successfully', 'success');
+
+            const updated = items.filter((item) => item._id !== selectedId);
             setItems(updated);
             setInitialRecords(updated);
             setRecords(updated);
-            setSelectedRecords([]);
+        } catch (error) {
+            console.error('Delete failed:', error);
+            showMessage('Failed to delete leave', 'error');
+        } finally {
+            setIsDeleting(false);
+            handleModalClose();
         }
     };
 
@@ -144,9 +162,17 @@ const Leaves: React.FC = () => {
                             accessor: 'status',
                             title: 'Status',
                             sortable: true,
-                            render: ({ status }) => (
-                                <span className={`text-${status.color}`}>{status.tooltip}</span>
-                            ),
+                            render: ({ status }) => {
+                                if (typeof status === 'object' && status !== null) {
+                                    return <span className={`text-${status.color}`}>{status.tooltip}</span>;
+                                }
+                                const statusColor =
+                                    status === 'Approved' ? 'success' :
+                                        status === 'Rejected' ? 'danger' :
+                                            status === 'Pending' ? 'warning' :
+                                                'secondary';
+                                return <span className={`text-${statusColor}`}>{status}</span>;
+                            },
                         },
                         {
                             accessor: 'actions',
@@ -163,7 +189,7 @@ const Leaves: React.FC = () => {
                                     <button
                                         type="button"
                                         className="hover:text-danger"
-                                        onClick={() => deleteRow(_id)}
+                                        onClick={() => handleDeleteClick(_id)}
                                     >
                                         <IconTrashLines />
                                     </button>
@@ -175,7 +201,7 @@ const Leaves: React.FC = () => {
                     recordsPerPage={pageSize}
                     page={page}
                     onPageChange={setPage}
-                    recordsPerPageOptions={PAGE_SIZES}
+                    recordsPerPageOptions={[10, 20, 30, 50, 100]}
                     onRecordsPerPageChange={setPageSize}
                     sortStatus={sortStatus}
                     onSortStatusChange={setSortStatus}
@@ -187,6 +213,19 @@ const Leaves: React.FC = () => {
                     }
                 />
             </div>
+
+            {/* Confirm Delete Modal */}
+            <ConfirmModal
+                open={modalOpen}
+                onClose={handleModalClose}
+                onConfirm={handleConfirmDelete}
+                title="Confirm Deletion"
+                message={
+                    isDeleting
+                        ? 'Deleting leave, please wait...'
+                        : 'Are you sure you want to delete this leave?'
+                }
+            />
         </div>
     );
 };

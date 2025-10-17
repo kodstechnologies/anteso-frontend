@@ -26,7 +26,7 @@ interface MultiSelectFieldProps {
 
 interface Service {
     machineType: string
-    equipmentNo: number
+    equipmentNo: string
     workType: string[]
     machineModel: string
 }
@@ -321,7 +321,7 @@ const CreateOrder: React.FC = () => {
                     designation: "",
                     workOrderCopy: null,
                     urgency: "",
-                    services: [{ machineType: "", equipmentNo: 1, workType: [], machineModel: "" }],
+                    services: [{ machineType: "", equipmentNo: "", workType: [], machineModel: "" }],
                     additionalServices: serviceOptions.reduce(
                         (acc, service) => {
                             acc[service] = undefined
@@ -639,7 +639,7 @@ const CreateOrder: React.FC = () => {
                                         )}
                                         <button
                                             type="button"
-                                            onClick={() => push({ machineType: "", equipmentNo: 1, workType: [], machineModel: "" })}
+                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "" })}
                                             className="btn btn-primary w-full sm:w-auto"
                                         >
                                             + Add Another Machine

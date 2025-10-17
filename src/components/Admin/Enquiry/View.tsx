@@ -183,7 +183,7 @@ const View = () => {
             </div>
             {/* Special Instruction */}
             {/* Special Instruction & Attachment */}
-            {(details.specialInstructions || details.attachment) && (
+            {/* {(details.specialInstructions || details.attachment) && (
                 <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
                     <h5 className="text-lg font-bold text-gray-800 mb-6"> Special Instruction</h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm text-gray-700">
@@ -209,7 +209,37 @@ const View = () => {
                         )}
                     </div>
                 </div>
+            )} */}
+            {(details.specialInstructions || details.attachment) && (
+                <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
+                    <h5 className="text-lg font-bold text-gray-800 mb-6">Special Instruction</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm text-gray-700">
+                        {details.specialInstructions !== undefined && (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
+                                <div className="text-gray-800 font-medium">
+                                    {details.specialInstructions.trim() !== "" ? details.specialInstructions : "NA"}
+                                </div>
+                            </div>
+                        )}
+                        {details.attachment && (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold">View File:</span>
+                                    <a
+                                        href={details.attachment}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-primary"
+                                    >
+                                        <IconEye className="w-4.5 h-4.5" />
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
+
 
         </div>
     )
