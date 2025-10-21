@@ -2,6 +2,7 @@ import { lazy } from 'react';
 import AdminDashboard from '../pages/Admin/Dashboard';
 import AdminProtected from '../components/Protected/AdminProtected';
 import Login from '../pages/Login';
+import ForgotPassword from '../pages/ForgotPassword';
 import State from '../pages/Admin/Master/State';
 import City from '../pages/Admin/Master/City';
 import Item from '../pages/Admin/Master/Item';
@@ -54,6 +55,7 @@ import ViewHrms from '../components/Admin/Hrms/View';
 import ViewEmployee from '../components/Admin/Master/Employee/View';
 import Employee from '../pages/Admin/Master/Employee';
 import Leaves from '../pages/Admin/Master/leaves';
+// import StaffLeave from "../components/Admin/Master/Leave/AddStaffLeave"
 import AddLeave from '../components/Admin/Master/Leave/Add';
 import EditLeave from '../components/Admin/Master/Leave/Edit'
 import AddExpenses from '../components/Admin/Master/Expense/Add'
@@ -68,7 +70,7 @@ import Orders from '../pages/Admin/Orders';
 import EditOrder from '../components/Admin/Orders/Edit'
 import ViewOrder from '../components/Admin/Orders/View'
 import CreateOrder from '../components/Admin/Orders/Create'
-
+import StaffOrders from '../pages/Admin/Master/StaffOrders'
 //payments
 import Payments from '../pages/Admin/Master/Payments';
 import AddPayment from '../components/Admin/Accounts/Payments/Add'
@@ -347,6 +349,14 @@ const routes = [
             </AdminProtected>
         ),
     },
+    // {
+    //     path: '/admin/staff-leave/add',
+    //     element: (
+    //         <AdminProtected>
+    //             <StaffLeave />
+    //         </AdminProtected>
+    //     ),
+    // },
     {
         path: '/admin/leave/edit/:id',
         element: (
@@ -460,7 +470,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/manufacture/view',
+        path: '/admin/manufacture/view/:id',
         element: (
             <AdminProtected>
                 <ViewManufacture />
@@ -476,7 +486,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/manufacture/edit',
+        path: '/admin/manufacture/edit/:id',
         element: (
             <AdminProtected>
                 <EditManufacture />
@@ -646,9 +656,17 @@ const routes = [
     {
         path: '/admin/orders',
         element: (
-            // <AdminProtected>
-            <Orders />
-            // </AdminProtected>
+            <AdminProtected>
+                <Orders />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/staff-orders',
+        element: (
+            <AdminProtected>
+                <StaffOrders />
+            </AdminProtected>
         ),
     },
     {
@@ -947,6 +965,11 @@ const routes = [
     {
         path: '/login',
         element: <Login />,
+        layout: 'blank',
+    },
+    {
+        path: '/forgot-password',
+        element: <ForgotPassword />,
         layout: 'blank',
     },
     {

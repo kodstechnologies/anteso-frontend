@@ -3,28 +3,9 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { isSameDay, startOfMonth, endOfMonth, getDaysInMonth, isSunday, format } from 'date-fns';
 import { Link, useParams } from 'react-router-dom';
-import { getEmployeeById } from '../../../../api';
+import { getEmployeeById, getAttendanceStatus } from '../../../../api';
 import AttendenceSummary from '../../Hrms/AttendanceSummary';
-
-// Mock attendance data (replace with actual API data)
-const attendanceData = [
-    { date: new Date(2025, 4, 1), status: 'Present' }, // Tuesday
-    { date: new Date(2025, 4, 2), status: 'Present' }, // Wednesday
-    { date: new Date(2025, 4, 3), status: 'Sick Leave' }, // Thursday
-    { date: new Date(2025, 4, 4), status: 'Absent' }, // Friday
-    { date: new Date(2025, 4, 5), status: 'Present' }, // Saturday
-    { date: new Date(2025, 4, 6), status: 'Present' }, // Sunday (attended)
-    { date: new Date(2025, 4, 7), status: 'Present' }, // Monday
-    { date: new Date(2025, 4, 8), status: 'Absent' }, // Tuesday
-    { date: new Date(2025, 4, 9), status: 'Present' }, // Wednesday
-];
-
-// Mock payment data (replace with actual API data)
-const paymentData = {
-    basicPay: 50000,
-    travelAllowance: 5000,
-    otherAllowances: 3000,
-};
+import PaymentDetails from '../../Hrms/PaymentDetails';
 
 function ViewEmployee() {
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -32,6 +13,7 @@ function ViewEmployee() {
     // get employee ID from URL
     const [employee, setEmployee] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [attendanceMap, setAttendanceMap] = useState<Record<string, string>>({});
 
     useEffect(() => {
         const fetchEmployee = async () => {
@@ -53,6 +35,39 @@ function ViewEmployee() {
         fetchEmployee();
     }, [id]);
 
+    // Fetch attendance for the current month
+    useEffect(() => {
+        const fetchMonthlyAttendance = async () => {
+            if (!id) return;
+            try {
+                const today = new Date();
+                const start = startOfMonth(today);
+                const end = endOfMonth(today);
+
+                const allDays: string[] = [];
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    allDays.push(new Date(d).toISOString().split("T")[0]); // YYYY-MM-DD
+                }
+
+                const attendanceData: Record<string, string> = {};
+
+                // Fetch status day by day
+                for (const date of allDays) {
+                    const res = await getAttendanceStatus(id, date);
+                    attendanceData[date] = res?.data?.status || "Unknown";
+                }
+
+                setAttendanceMap(attendanceData);
+                console.log("✅ Attendance Map:", attendanceData);
+            } catch (err: any) {
+                console.error("Failed to fetch attendance status:", err);
+                // Optionally show a message here
+            }
+        };
+
+        fetchMonthlyAttendance();
+    }, [id]);
+
     if (loading || !employee) {
         return (
             <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
@@ -63,7 +78,7 @@ function ViewEmployee() {
 
     // Calculate attendance summary for the current month
     const getAttendanceSummary = () => {
-        const currentMonth = new Date(2025, 4); // May 2025
+        const currentMonth = new Date();
         const start = startOfMonth(currentMonth);
         const end = endOfMonth(currentMonth);
         const totalDays = getDaysInMonth(currentMonth);
@@ -75,14 +90,19 @@ function ViewEmployee() {
 
         // Calculate working days (exclude Sundays unless present)
         for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
-            if (!isSunday(day) || attendanceData.some((entry) => isSameDay(entry.date, day) && entry.status === 'Present')) {
+            if (!isSunday(day) || Object.keys(attendanceMap).some(dateStr => {
+                const date = new Date(dateStr);
+                return isSameDay(date, day) && attendanceMap[dateStr] === 'Present';
+            })) {
                 workingDays += 1;
             }
         }
 
-        attendanceData.forEach((entry) => {
-            if (entry.date >= start && entry.date <= end) {
-                switch (entry.status) {
+        // Count from attendanceMap
+        Object.entries(attendanceMap).forEach(([dateStr, status]) => {
+            const date = new Date(dateStr);
+            if (date >= start && date <= end) {
+                switch (status) {
                     case 'Present':
                         summary.present += 1;
                         break;
@@ -100,8 +120,12 @@ function ViewEmployee() {
 
     // Get status for a specific date
     const getStatusForDate = (date: Date) => {
-        const entry = attendanceData.find((entry) => isSameDay(entry.date, date));
-        return entry ? entry.status : isSunday(date) ? 'Holiday' : 'Unknown';
+        const formattedDate = date.toISOString().split("T")[0];
+        const status = attendanceMap[formattedDate];
+
+        if (status) return status;
+        if (isSunday(date)) return 'Holiday';
+        return 'Unknown';
     };
 
     // Customize calendar tile based on attendance status
@@ -264,42 +288,11 @@ function ViewEmployee() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Attendance Summary */}
-                    {/* <div className="bg-white p-6 rounded-lg shadow-lg">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6">Attendance Summary</h2>
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse border border-gray-300">
-                                <thead>
-                                    <tr className="bg-gray-50">
-                                        <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Metric</th>
-                                        <th className="px-4 py-3 text-left text-gray-700 font-semibold border border-gray-300">Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td className="px-4 py-3 border border-gray-300 text-gray-700">Total Working Days</td>
-                                        <td className="px-4 py-3 border border-gray-300 text-gray-700 font-medium">{summary.totalDays}</td>
-                                    </tr>
-                                    <tr className="bg-gray-50">
-                                        <td className="px-4 py-3 border border-gray-300 text-gray-700">Days Present</td>
-                                        <td className="px-4 py-3 border border-gray-300 text-green-600 font-medium">{summary.present}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="px-4 py-3 border border-gray-300 text-gray-700">Sick Leave Days</td>
-                                        <td className="px-4 py-3 border border-gray-300 text-yellow-600 font-medium">{summary.sickLeave}</td>
-                                    </tr>
-                                    <tr className="bg-gray-50">
-                                        <td className="px-4 py-3 border border-gray-300 text-gray-700">Attendance Rate</td>
-                                        <td className="px-4 py-3 border border-gray-300 text-blue-600 font-medium">
-                                            {summary.totalDays > 0 ? Math.round((summary.present / summary.totalDays) * 100) : 0}%
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div> */}
-                    <AttendenceSummary id={id} />
+                    {/* <AttendenceSummary id={id} /> */}
+                    <AttendenceSummary id={id || ''} />
+
                     {/* Payment Details */}
-                    <div className="bg-white p-6 rounded-lg shadow-lg">
+                    {/* <div className="bg-white p-6 rounded-lg shadow-lg">
                         <h2 className="text-2xl font-bold text-gray-800 mb-6">Payment Details</h2>
                         <div className="overflow-x-auto">
                             <table className="w-full border-collapse border border-gray-300">
@@ -312,26 +305,28 @@ function ViewEmployee() {
                                 <tbody>
                                     <tr>
                                         <td className="px-4 py-3 border border-gray-300 text-gray-700">Basic Pay</td>
-                                        <td className="px-4 py-3 border border-gray-300 text-gray-700 font-medium">₹{paymentData.basicPay.toLocaleString()}</td>
+                                        <td className="px-4 py-3 border border-gray-300 text-gray-700 font-medium">₹50,000</td>
                                     </tr>
                                     <tr className="bg-gray-50">
                                         <td className="px-4 py-3 border border-gray-300 text-gray-700">Travel Allowance</td>
-                                        <td className="px-4 py-3 border border-gray-300 text-gray-700 font-medium">₹{paymentData.travelAllowance.toLocaleString()}</td>
+                                        <td className="px-4 py-3 border border-gray-300 text-gray-700 font-medium">₹5,000</td>
                                     </tr>
                                     <tr>
                                         <td className="px-4 py-3 border border-gray-300 text-gray-700">Other Allowances</td>
-                                        <td className="px-4 py-3 border border-gray-300 text-gray-700 font-medium">₹{paymentData.otherAllowances.toLocaleString()}</td>
+                                        <td className="px-4 py-3 border border-gray-300 text-gray-700 font-medium">₹3,000</td>
                                     </tr>
                                     <tr className="bg-blue-50 font-bold">
                                         <td className="px-4 py-3 border border-gray-300 text-gray-800">Total Pay</td>
                                         <td className="px-4 py-3 border border-gray-300 text-blue-600 font-bold">
-                                            ₹{(paymentData.basicPay + paymentData.travelAllowance + paymentData.otherAllowances).toLocaleString()}
+                                            ₹58,000
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </div> */}
+                    <PaymentDetails id={employee._id} date={selectedDate ? selectedDate.toISOString().split("T")[0] : ""} />
+
                 </div>
             </div>
         </div>

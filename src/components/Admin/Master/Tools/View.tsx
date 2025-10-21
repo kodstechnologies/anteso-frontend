@@ -6,7 +6,7 @@ import {
 import {
     FaIdCard, FaToolbox, FaFileContract, FaHashtag, FaRegCalendarCheck,
     FaCalendarAlt,
-    FaUserTie, FaHistory
+    FaUserTie, FaHistory, FaFilePdf
 } from 'react-icons/fa';
 import { HiCpuChip } from 'react-icons/hi2';
 import dayjs from 'dayjs';
@@ -21,6 +21,7 @@ interface ToolType {
     calibrationValidTill: string;
     range: string;
     toolId: string;
+    certificate: string;
     engineerName?: string;
     issueDate?: string;
     submitDate?: string;
@@ -102,6 +103,16 @@ const View: React.FC = () => {
                     <Detail label="Model" value={tool.model} icon={<HiCpuChip />} />
                     <Detail label="Serial No" value={tool.SrNo} icon={<FaHashtag />} />
                     <Detail label="Calibration Certificate No" value={tool.calibrationCertificateNo} icon={<FaFileContract />} />
+                    <Detail label="Certificate" value={
+                        <a
+                            href={tool.certificate}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline break-all"
+                        >
+                            View Certificate (PDF)
+                        </a>
+                    } icon={<FaFilePdf />} />
                     <Detail label="Calibration Valid Till" value={dayjs(tool.calibrationValidTill).format('DD-MM-YYYY')} icon={<FaRegCalendarCheck />} />
                     <Detail label="Manufacture Date" value={dayjs(tool.manufacture_date).format('DD-MM-YYYY')} icon={<FiCalendar />} />
                     <Detail label="Range" value={tool.range} icon={<FiTool />} />
@@ -126,7 +137,7 @@ const View: React.FC = () => {
 
 interface DetailProps {
     label: string;
-    value: string;
+    value: React.ReactNode;
     icon?: React.ReactNode;
 }
 

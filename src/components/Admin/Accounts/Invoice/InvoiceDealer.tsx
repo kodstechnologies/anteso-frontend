@@ -5,6 +5,7 @@ import signature from "../../../../assets/quotationImg/signature.png";
 import qrcode from "../../../../assets/quotationImg/qrcode.png";
 import { useParams } from "react-router-dom";
 import html2pdf from "html2pdf.js";
+import { showMessage } from "../../../../components/common/ShowMessage"; // Adjust the import path as needed
 
 const InvoiceDealer = () => {
     const { id } = useParams<{ id: string }>();
@@ -20,7 +21,9 @@ const InvoiceDealer = () => {
             try {
                 if (!id) return;
                 const res = await getInvoiceById(id);
+                console.log("🚀 ~ fetchInvoice ~ res:", res)
                 setInvoice(res.data.data);
+                setUploaded(res.data.data.invoiceuploaded || false);
             } catch (err) {
                 console.error("Error fetching invoice:", err);
             } finally {
@@ -33,7 +36,7 @@ const InvoiceDealer = () => {
     const handleDownloadPdf = () => {
         if (!invoiceRef.current) return;
         const element = invoiceRef.current;
-        const opt:any = {
+        const opt: any = {
             margin: 0.2,
             filename: `Invoice_${invoice.invoiceId}.pdf`,
             image: { type: "jpeg", quality: 0.98 },
@@ -50,7 +53,7 @@ const InvoiceDealer = () => {
         setUploading(true);
         try {
             const element = invoiceRef.current;
-            const opt :any= {
+            const opt: any = {
                 margin: 0.2,
                 filename: `Invoice_${invoice.invoiceId}.pdf`,
                 image: { type: "jpeg", quality: 0.98 },
@@ -73,10 +76,11 @@ const InvoiceDealer = () => {
 
             // Call API
             await uploadInvoice(invoice.orderId, file); // your API method
-            alert("Invoice uploaded successfully!");
+            showMessage("Invoice uploaded successfully!", "success");
+            setUploaded(true);
         } catch (err) {
             console.error(err);
-            alert("Failed to upload invoice.");
+            showMessage("Failed to upload invoice.", "error");
         } finally {
             setUploading(false);
         }
@@ -91,8 +95,8 @@ const InvoiceDealer = () => {
         billTo: invoice.buyerName,
         addressLine: invoice.address,
         gstin: invoice.gst || "-",
-        email: "-",
-        phone: "-",
+        email: invoice.order?.emailAddress || "-",
+        phone: invoice.order?.contactNumber || "-",
     };
 
     const items = invoice.dealerHospitals?.map((d: any, index: number) => ({
@@ -107,17 +111,29 @@ const InvoiceDealer = () => {
     })) || [];
 
     const subTotal = invoice.subtotal || 0;
-    const gst = invoice.igst || invoice.cgst + invoice.sgst || 0;
-    const total = invoice.grandtotal || subTotal + gst;
+    const cgst = invoice.cgst || 0;
+    const sgst = invoice.sgst || 0;
+    const igst = invoice.igst || 0;
+    const gst = cgst + sgst + igst;
+    const discount = invoice.discount || 0;
+    const total = invoice.grandtotal || subTotal + gst - discount;
     const isCustomer = invoice.type === "Customer";
 
     const customerItems = invoice.services?.map((s: any, index: number) => ({
         id: index + 1,
+        machineType: s.machineType || "",
         description: s.description,
         hsn: s.hsnno || "-",
         qty: s.quantity || 0,
         rate: s.rate || 0,
         amount: (s.rate ?? 0) * (s.quantity ?? 0),
+    })) || [];
+
+    const additionalServicesItems = invoice.order?.additionalServices?.map((as: any, index: number) => ({
+        id: index + 1,
+        name: as.name,
+        description: as.description,
+        amount: as.totalAmount || 0,
     })) || [];
 
     return (
@@ -153,28 +169,60 @@ const InvoiceDealer = () => {
                     {/* Table */}
                     <div className="mt-2 w-full overflow-hidden">
                         {isCustomer ? (
-                            <table className="w-full table-fixed border border-black border-collapse text-[4px] sm:text-xs">
-                                <thead className="bg-gray-100">
-                                    <tr>
-                                        <th className="border border-black px-1 py-1 text-xs">S No</th>
-                                        <th className="border border-black px-1 py-1 text-xs">Description of Services</th>
-                                        <th className="border border-black px-1 py-1 text-xs">HSN/SAC Number</th>
-                                        <th className="border border-black px-1 py-1 text-xs">Quantity</th>
-                                        <th className="border border-black px-1 py-1 text-xs">Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {customerItems.map((item: any) => (
-                                        <tr key={item.id}>
-                                            <td className="border border-black px-1 py-1 text-xs">{item.id}</td>
-                                            <td className="border border-black px-1 py-1 text-xs">{item.description}</td>
-                                            <td className="border border-black px-1 py-1 text-xs">{item.hsn}</td>
-                                            <td className="border border-black px-1 py-1 text-xs">{item.qty}</td>
-                                            <td className="border border-black px-1 py-1 text-xs">₹{(item.rate ?? 0).toLocaleString("en-IN")}</td>
+                            <>
+                                {/* Services Table */}
+                                <table className="w-full table-fixed border border-black border-collapse text-[4px] sm:text-xs">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="border border-black px-1 py-1 text-xs">S No</th>
+                                            <th className="border border-black px-1 py-1 text-xs">Machine Type</th>
+                                            <th className="border border-black px-1 py-1 text-xs">Description of Services</th>
+                                            <th className="border border-black px-1 py-1 text-xs">HSN/SAC Number</th>
+                                            <th className="border border-black px-1 py-1 text-xs">Quantity</th>
+                                            <th className="border border-black px-1 py-1 text-xs">Amount</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {customerItems.map((item: any) => (
+                                            <tr key={item.id}>
+                                                <td className="border border-black px-1 py-1 text-xs">{item.id}</td>
+                                                <td className="border border-black px-1 py-1 text-xs">{item.machineType}</td>
+                                                <td className="border border-black px-1 py-1 text-xs">{item.description}</td>
+                                                <td className="border border-black px-1 py-1 text-xs">{item.hsn}</td>
+                                                <td className="border border-black px-1 py-1 text-xs">{item.qty}</td>
+                                                <td className="border border-black px-1 py-1 text-xs">₹{item.amount.toLocaleString("en-IN")}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
+                                {/* Additional Services Table */}
+                                {additionalServicesItems.length > 0 && (
+                                    <div className="mt-2">
+                                        <h3 className="text-sm font-bold mb-2">Additional Services</h3>
+                                        <table className="w-full table-fixed border border-black border-collapse text-[4px] sm:text-xs">
+                                            <thead className="bg-gray-100">
+                                                <tr>
+                                                    <th className="border border-black px-1 py-1 text-xs">S No</th>
+                                                    <th className="border border-black px-1 py-1 text-xs">Name</th>
+                                                    <th className="border border-black px-1 py-1 text-xs">Description</th>
+                                                    <th className="border border-black px-1 py-1 text-xs">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {additionalServicesItems.map((item: any) => (
+                                                    <tr key={item.id}>
+                                                        <td className="border border-black px-1 py-1 text-xs">{item.id}</td>
+                                                        <td className="border border-black px-1 py-1 text-xs">{item.name}</td>
+                                                        <td className="border border-black px-1 py-1 text-xs">{item.description}</td>
+                                                        <td className="border border-black px-1 py-1 text-xs">₹{item.amount.toLocaleString("en-IN")}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             <table className="w-full table-fixed border border-black border-collapse text-[4px] sm:text-xs">
                                 <thead className="bg-gray-100">
@@ -210,7 +258,10 @@ const InvoiceDealer = () => {
                     {/* Totals */}
                     <div className="text-right mt-4 space-y-1">
                         <p><strong>Sub Total:</strong> ₹{(subTotal ?? 0).toLocaleString("en-IN")}</p>
-                        <p><strong>GST:</strong> ₹{(gst ?? 0).toLocaleString("en-IN")}</p>
+                        {discount > 0 && <p><strong>Discount:</strong> -₹{discount.toLocaleString("en-IN")}</p>}
+                        {cgst > 0 && <p><strong>CGST:</strong> ₹{cgst.toLocaleString("en-IN")}</p>}
+                        {sgst > 0 && <p><strong>SGST:</strong> ₹{sgst.toLocaleString("en-IN")}</p>}
+                        {igst > 0 && <p><strong>IGST:</strong> ₹{igst.toLocaleString("en-IN")}</p>}
                         <p className="text-sm font-bold">Total: ₹{(total ?? 0).toLocaleString("en-IN")}</p>
                     </div>
 
@@ -242,13 +293,15 @@ const InvoiceDealer = () => {
                     >
                         Download PDF
                     </button>
-                    <button
-                        onClick={handleUploadInvoice}
-                        disabled={uploading}
-                        className={`bg-green-600 hover:bg-green-700 text-white text-xs px-4 py-2 rounded ${uploading ? "opacity-50 cursor-not-allowed" : ""}`}
-                    >
-                        {uploading ? "Uploading..." : "Upload Invoice"}
-                    </button>
+                    {!uploaded && (
+                        <button
+                            onClick={handleUploadInvoice}
+                            disabled={uploading}
+                            className={`bg-green-600 hover:bg-green-700 text-white text-xs px-4 py-2 rounded ${uploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                            {uploading ? "Uploading..." : "Upload Invoice"}
+                        </button>
+                    )}
                     <button
                         onClick={() => window.print()}
                         className="bg-teal-600 hover:bg-teal-700 text-white text-xs px-4 py-2 rounded"

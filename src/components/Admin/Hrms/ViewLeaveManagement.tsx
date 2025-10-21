@@ -7,7 +7,7 @@ import { Formik, Form, Field, ErrorMessage } from "formik"
 import * as Yup from "yup"
 import { toast } from "react-toastify"
 import { useParams } from "react-router-dom" // or next/navigation if Next.js
-import { getAllLeaves, approveLeave, rejectLeave, deleteLeave, getEmployeeById, allocateLeaves, getAllocatedLeaves } from "../../../api" // ✅ include APIs
+import { getAllLeaves, approveLeave, rejectLeave, deleteLeave, getEmployeeById, allocateLeaves, getAllocatedLeaves, getAttendanceStatus } from "../../../api" // ✅ include APIs
 import type { AttendanceEntry, Employee, LeaveRequest } from "../../../types/hrms-types"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import AttendenceSummary from "../Hrms/AttendanceSummary"
@@ -56,7 +56,8 @@ export default function EmployeeDetailsLeaveManagement() {
     const [employeeDetails, setEmployeeDetails] = useState<any>(null)
     const [showTools, setShowTools] = useState(false);
     const [allocatedLeaves, setAllocatedLeaves] = useState<any>([]);
-    
+    const [attendanceMap, setAttendanceMap] = useState<Record<string, string>>({});
+
     useEffect(() => {
         const fetchAllocatedLeaves = async () => {
             if (!id) return;
@@ -83,6 +84,37 @@ export default function EmployeeDetailsLeaveManagement() {
         fetchAllocatedLeaves();
     }, [id]);
 
+    useEffect(() => {
+        if (!id) return;
+
+        const fetchMonthlyAttendance = async () => {
+            try {
+                const today = new Date();
+                const start = startOfMonth(today);
+                const end = endOfMonth(today);
+
+                const allDays: string[] = [];
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    allDays.push(new Date(d).toISOString().split("T")[0]); // YYYY-MM-DD
+                }
+
+                const attendanceData: Record<string, string> = {};
+
+                // Fetch status day by day
+                for (const date of allDays) {
+                    const res = await getAttendanceStatus(id, date);
+                    attendanceData[date] = res?.data?.status || "Unknown";
+                }
+
+                setAttendanceMap(attendanceData);
+                console.log("✅ Attendance Map:", attendanceData);
+            } catch (err: any) {
+                toast.error(err.message || "Failed to fetch attendance status");
+            }
+        };
+
+        fetchMonthlyAttendance();
+    }, [id]);
 
     useEffect(() => {
         const fetchEmployee = async () => {
@@ -182,28 +214,35 @@ export default function EmployeeDetailsLeaveManagement() {
     }
 
     const getStatusForDate = (date: Date) => {
-        const entry = attendanceData.find((entry) => isSameDay(entry.date, date))
-        return entry ? entry.status : isSunday(date) ? "Holiday" : "Unknown"
-    }
+        const formattedDate = date.toISOString().split("T")[0];
+        const status = attendanceMap[formattedDate];
+
+        if (status) return status;
+        if (isSunday(date)) return "Holiday";
+        return "Unknown";
+    };
+
 
     const tileClassName = ({ date, view }: { date: Date; view: string }) => {
         if (view === "month") {
-            const status = getStatusForDate(date)
+            const status = getStatusForDate(date);
             switch (status) {
                 case "Present":
-                    return "present"
+                    return "present";
                 case "Absent":
-                    return "absent"
+                    return "absent";
+                case "On Leave":
                 case "Sick Leave":
-                    return "sick-leave"
+                    return "sick-leave";
                 case "Holiday":
-                    return "holiday"
+                    return "holiday";
                 default:
-                    return ""
+                    return "";
             }
         }
-        return ""
-    }
+        return "";
+    };
+
 
     const handleDateChange = (value: any) => {
         if (value instanceof Date) {
@@ -219,13 +258,14 @@ export default function EmployeeDetailsLeaveManagement() {
         <div className="space-y-8">
             <style>
                 {`
-          .react-calendar__tile.present { background: rgba(40, 167, 69, 0.5) !important; color: black; }
-          .react-calendar__tile.absent { background: #dc3545 !important; color: white; }
-          .react-calendar__tile.sick-leave { background: #ffc107 !important; color: black; }
-          .react-calendar__tile.holiday { background: #f8f9fa !important; color: black; }
-          .react-calendar__tile--active { background: #007bff !important; color: white !important; }
-        `}
+.react-calendar__tile.present { background: rgba(40, 167, 69, 0.5) !important; color: black; }
+.react-calendar__tile.absent { background: #dc3545 !important; color: white; }
+.react-calendar__tile.sick-leave { background: #ffc107 !important; color: black; }
+.react-calendar__tile.holiday { background: #e9ecef !important; color: black; }
+.react-calendar__tile--active { background: #007bff !important; color: white !important; }
+`}
             </style>
+
 
             {/* Employee Details */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl shadow-md border border-gray-200">
@@ -350,6 +390,12 @@ export default function EmployeeDetailsLeaveManagement() {
                 <h2 className="text-xl font-semibold mb-4">Attendance Calendar</h2>
                 <Calendar onChange={handleDateChange} value={selectedDate} tileClassName={tileClassName} />
             </div>
+            {selectedDate && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg text-gray-800">
+                    <strong>Status for {selectedDate.toLocaleDateString()}:</strong>{" "}
+                    {getStatusForDate(selectedDate)}
+                </div>
+            )}
 
             {/* Leave Allocation Section */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl shadow-md border border-gray-200">

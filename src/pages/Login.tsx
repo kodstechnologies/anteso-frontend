@@ -67,7 +67,9 @@ const Login = () => {
                     dispatch(
                         setUser({
                             auth: true,
-                            userType,
+                            userType: decoded.role,
+                            // name: decoded.name,   // make sure your token contains "name"
+                            email: decoded.email, // your token already has email
                         })
                     );
 
@@ -153,6 +155,16 @@ const Login = () => {
                                 >
                                     Sign in
                                 </button>
+
+                                <div className="mt-4 text-center">
+                                    <a
+                                        href="/forgot-password"
+                                        className="text-primary font-medium hover:underline hover:text-primary/80 transition"
+                                    >
+                                        Forgot Password?
+                                    </a>
+                                </div>
+
                             </form>
                         </div>
                     </div>

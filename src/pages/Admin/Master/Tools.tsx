@@ -143,7 +143,7 @@ const Tools = () => {
                             columns={[
                                 { accessor: 'SrNo', sortable: true },
                                 { accessor: 'nomenclature', sortable: true },
-                                { accessor: 'engineerName', sortable: true },
+                                // { accessor: 'engineerName', sortable: true },                                                            
                                 {
                                     accessor: 'issueDate',
                                     sortable: true,
@@ -164,6 +164,29 @@ const Tools = () => {
                                 },
                                 { accessor: 'range', sortable: true },
                                 { accessor: 'toolId', sortable: true },
+
+                                // ✅ New Created By column
+                                {
+                                    accessor: 'createdBy',
+                                    title: 'Created By',
+                                    render: (record) => {
+                                        const creator = record.createdBy;
+                                        if (!creator) return '—';
+
+                                        let label = '';
+                                        if (record.createdByModel === 'Admin' || creator.role === 'admin') {
+                                            label = `Admin (${creator.email})`;
+                                        } else if (creator.role === 'Employee') {
+                                            const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
+                                            label = `${techType ? `${techType} - ` : ''}(${creator.email})`;
+                                        } else {
+                                            label = creator.name || creator.email || 'Unknown';
+                                        }
+
+                                        return <span className="text-green-600 font-medium">{label}</span>;
+                                    },
+                                },
+
                                 {
                                     accessor: 'action',
                                     title: 'Actions',
@@ -201,6 +224,7 @@ const Tools = () => {
                             onSelectedRecordsChange={setSelectedRecords}
                             paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
                         />
+
                     </div>
                 </div>
             </div>

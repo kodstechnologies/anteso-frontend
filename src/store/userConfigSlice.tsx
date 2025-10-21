@@ -3,6 +3,8 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
     userType: '',
     auth: false,
+    name: '',   
+    email: '',
 };
 
 export const userConfigSlice = createSlice({
@@ -13,6 +15,7 @@ export const userConfigSlice = createSlice({
             const { userType, auth } = action.payload;
             state.userType = userType;
             state.auth = auth;
+
         },
         resetUser: () => initialState,
     },

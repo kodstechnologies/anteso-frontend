@@ -112,15 +112,16 @@ const Sidebar = () => {
                                         <AnimateHeight duration={300} height={currentMenu === 'masters' ? 'auto' : 0}>
                                             <ul className="sub-menu text-gray-500">
                                                 <li><NavLink to="/admin/clients">{t('Clients')}</NavLink></li>
-
+                                                <li><NavLink to="/admin/tools">{t('Tools')}</NavLink></li>
                                                 {userType === 'admin' && (
                                                     <>
-                                                        <li><NavLink to="/admin/tools">{t('Tools')}</NavLink></li>
+                                                        {/* <li><NavLink to="/admin/tools">{t('Tools')}</NavLink></li> */}
                                                         <li><NavLink to="/admin/employee">{t('Employee')}</NavLink></li>
+                                                        <li><NavLink to="/admin/leave">{t('Leave')}</NavLink></li>
+
                                                     </>
                                                 )}
-
-                                                <li><NavLink to="/admin/leave">{t('Leave')}</NavLink></li>
+                                                {/* <li><NavLink to="/admin/leave">{t('Leave')}</NavLink></li> */}
                                                 <li><NavLink to="/admin/dealer">{t('Dealer')}</NavLink></li>
                                                 <li><NavLink to="/admin/manufacture">{t('Manufacture')}</NavLink></li>
                                                 <li><NavLink to="/admin/courier-companies">{t('Courier Companies')}</NavLink></li>
@@ -176,13 +177,33 @@ const Sidebar = () => {
                                     </li>
 
                                     <li className="nav-item">
+
+                                        {userType === 'admin' ? (
+                                            <NavLink to="/admin/orders" className="group">
+                                                <div className="flex items-center gap-2">
+                                                    <IconBook className="group-hover:!text-primary shrink-0" />
+                                                    <span>{t('Orders')}</span>
+                                                </div>
+                                            </NavLink>
+                                        ) : (
+                                            <NavLink to="/admin/staff-orders" className="group">
+                                                <div className="flex items-center gap-2">
+                                                    <IconBook className="group-hover:!text-primary shrink-0" />
+                                                    <span>{t('Orders')}</span>
+                                                </div>
+                                            </NavLink>
+                                        )}
+                                    </li>
+
+
+                                    {/* <li className="nav-item">
                                         <NavLink to="/admin/orders" className="group">
                                             <div className="flex items-center gap-2">
                                                 <IconBook className="group-hover:!text-primary shrink-0" />
                                                 <span>{t('Orders')}</span>
                                             </div>
                                         </NavLink>
-                                    </li>
+                                    </li> */}
 
                                     {/* Admin only: Accounts */}
                                     {userType === 'admin' && (

@@ -3,10 +3,40 @@ import { log } from 'console';
 import Cookies from 'js-cookie';
 
 const VITE_BACKEND_LOCALHOST_API_URL = import.meta.env.VITE_BACKEND_API_URL;
+const VITE_BACKEND_API_URL_OTP = import.meta.env.VITE_BACKEND_API_URL_OTP;
 
 const api = axios.create({
     baseURL: VITE_BACKEND_LOCALHOST_API_URL,
 });
+const otpApi = axios.create({
+    baseURL: VITE_BACKEND_API_URL_OTP,
+});
+
+api.interceptors.request.use(
+    (config) => {
+        const token = Cookies.get('accessToken');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// Response interceptor to handle 401 errors
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            // Token is invalid or expired
+            Cookies.remove('accessToken');
+            Cookies.remove('refreshToken');
+            // Redirect to login page
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
 
 export const adminLogin = async (payload: any) => {
     try {
@@ -17,6 +47,72 @@ export const adminLogin = async (payload: any) => {
         throw error;
     }
 }
+
+export const sendOTp = async (mobileNumber: string) => {
+    try {
+        const res = await otpApi.post('/send-otp', { mobileNumber });
+        return res;
+    } catch (error) {
+        console.error("🚀 ~ sendOTp ~ error:", error);
+        throw error;
+    }
+}
+
+export const verifyOtp = async (mobileNumber: string, otp: string) => {
+    try {
+        const res = await otpApi.post('/verify-otp', { mobileNumber, otp });
+        return res;
+    } catch (error) {
+        console.error("🚀 ~ verifyOtp ~ error:", error);
+        throw error;
+    }
+}
+
+export const resetPassword = async (phone: string, password: string) => {
+    try {
+        const res = await otpApi.post('/reset-password', { phone, password });
+        return res;
+    } catch (error) {
+        console.error("🚀 ~ resetPassword ~ error:", error);
+        throw error;
+    }
+};
+
+export const logoutUser = async () => {
+    try {
+        // Call backend logout API
+        await otpApi.post('/logout'); // adjust endpoint if needed
+
+        // Clear accessToken and refreshToken from cookies
+        Cookies.remove('accessToken');
+        Cookies.remove('refreshToken');
+
+        // Redirect to login page
+        window.location.href = '/login';
+    } catch (error) {
+        console.error("Logout failed:", error);
+        // Optional: show a message to the user
+    }
+};
+
+export const getAllMachinesByHospitalId = async (id: any) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await otpApi.get(`/machines/get-machine-by-hospital/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+
+        })
+        console.log("🚀 ~ getAllMachinesByHospitalId ~ res:", res)
+        return res.data;
+
+    } catch (error) {
+        console.error("🚀 ~ getAllMachinesByHospitalId ~ error:", error);
+        throw error;
+    }
+}
+
 export const addclient = async (clientData: any) => {
     try {
         const token = Cookies.get('accessToken');
@@ -439,21 +535,34 @@ export const addEnquiry = async (payload: any) => {
 
 export const addEnquiryCreateDirectOrder = async (payload: any) => {
     try {
-        const token = Cookies.get('accessToken')
-        const res = await api.post('/enquiry/create-direct-order-from-enquiry', payload, {
+        const token = Cookies.get('accessToken');
+
+        // Convert payload to FormData
+        const formData = new FormData();
+        Object.keys(payload).forEach((key) => {
+            if (key === "services" || key === "additionalServices") {
+                formData.append(key, JSON.stringify(payload[key])); // Convert arrays/objects to JSON string
+            } else if (key === "attachment" && payload[key]) {
+                formData.append(key, payload[key]);
+            } else if (key !== "attachment") {
+                formData.append(key, payload[key]);
+            }
+        });
+
+        const res = await api.post('/enquiry/create-direct-order-from-enquiry', formData, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
-        })
-        return res.data
+        });
+        return res.data;
     } catch (error: any) {
-        console.error("🚀 ~ getClientById ~ error:", error);
-
+        console.error("🚀 ~ addEnquiryCreateDirectOrder ~ error:", error);
         throw new Error(
-            error?.response?.data?.message || "Failed to fetch client data"
+            error?.response?.data?.message || "Failed to submit enquiry"
         );
     }
-}
+};
+
 //used in add quotation
 export const getEnquiryById = async (enquiryId: any) => {
     console.log("🚀 ~ getEnquiryById ~ enquiryId:", enquiryId)
@@ -1713,6 +1822,23 @@ export const updateAdditionalService = async (id: string, payload: any) => {
     }
 };
 
+export const getAdditionalServiceReport = async (orderId: any, additionalServiceId: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.get(`/orders/additional-service-report/${orderId}/${additionalServiceId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAdditionalServiceReport ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch getAdditionalServiceReport"
+        )
+    }
+}
+
 export const getPaymentById = async (id: any) => {
     try {
         const token = Cookies.get("accessToken")
@@ -2661,3 +2787,56 @@ export const getPaymentSummary = async (id: any) => {
         );
     }
 }
+
+export const getAllStaffOrders = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/orders/assigned-orders-for-staff`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAllStaffOrders ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllStaffOrders ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAllStaffOrders"
+        );
+    }
+}
+
+export const getAttendanceStatus = async (employeeId: string, date: string) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/technician/attendence-status/${employeeId}?date=${date}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAttendanceStatus ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAttendanceStatus ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAttendanceStatus"
+        );
+    }
+};
+export const getPaymentDetails = async (employeeId: string, date: string) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/technician/get-payment-details/${employeeId}?date=${date}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getPaymentDetails ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getPaymentDetails ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getPaymentDetails"
+        );
+    }
+};

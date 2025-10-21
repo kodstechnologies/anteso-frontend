@@ -4,7 +4,7 @@ import {
   FaUserTie, FaMapMarkerAlt, FaCity, FaFlag, FaHashtag,
   FaMap, FaRegCalendarCheck, FaVials, FaCogs
 } from 'react-icons/fa';
-import { getDealerById } from '../../../../api'; 
+import { getDealerById } from '../../../../api';
 
 interface QATest {
   testName: string;
@@ -21,6 +21,8 @@ interface DealerType {
   mouValidity: string;
   qaTests: QATest[];
   services: string[];
+  phone: any
+  email: any
 }
 
 const serviceLabelMap: Record<string, string> = {
@@ -45,6 +47,8 @@ const View: React.FC = () => {
         setDealer({
           dealersName: d.name,         // API 'name' → UI 'dealersName'
           address: d.address,
+          phone: d.phone,
+          email: d.email,
           city: d.city,
           state: d.state,
           pinCode: d.pincode,          // API 'pincode' → UI 'pinCode'
@@ -98,6 +102,10 @@ const View: React.FC = () => {
           <Detail label="State" value={dealer.state} icon={<FaFlag />} />
           <Detail label="Pin Code" value={dealer.pinCode} icon={<FaHashtag />} />
           <Detail label="Region" value={dealer.region} icon={<FaMap />} />
+          <Detail label="Phone Number" value={dealer.phone} icon={<FaMap />} />
+          <Detail label="Email Address" value={dealer.email} icon={<FaMap />} />
+
+
           <Detail label="MOU Validity" value={new Date(dealer.mouValidity).toLocaleDateString()} icon={<FaRegCalendarCheck />} />
         </div>
 

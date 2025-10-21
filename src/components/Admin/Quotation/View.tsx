@@ -387,18 +387,10 @@ const ViewQuotation: React.FC = () => {
     return (
         <div className="w-full min-h-screen bg-gray-50 px-8 absolute top-0 left-0 z-50 lg:px-[15%]">
             <div ref={pdfRef}>
-                {successMessage && (
-                    <SuccessAlert
-                        message={successMessage}
-                        onClose={() => setSuccessMessage(null)}
-                    />
-                )}
-
                 {/* <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[50rem]"> */}
                 <div
                     className="mx-auto rounded-lg px-4 bg-white"
                     style={{ width: "793px", maxWidth: "100%" }} // ~A4 portrait width at 96 DPI
-                    ref={pdfRef}
                 >
 
                     {/* Header */}
@@ -720,71 +712,79 @@ const ViewQuotation: React.FC = () => {
                         </p>
                         <p className="text-[.6rem]">Feel free to call us & Thank you for your enquiry</p>
                     </div>
-                    <div className="flex justify-end my-4 space-x-2">
-                        {/* Show Save & Upload only if status is "Created" */}
-                        {quotationData.quotationStatus === "Created" && (
-                            <button
-                                onClick={handleSaveAsPdf}
-                                disabled={isSavingPdf}
-                                className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center justify-center ${isSavingPdf ? "opacity-70 cursor-not-allowed" : ""}`}
-                            >
-                                {isSavingPdf ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                        Saving PDF...
-                                    </div>
-                                ) : (
-                                    "Save & Upload Quotation PDF"
-                                )}
-                            </button>
-                        )}
-
-                        {/* Show Send only after PDF is uploaded successfully */}
-                        {/* Show Send only if quotation has a PDF and status is Created */}
-                        {/* {quotationData.quotationStatus === "Created" && quotationData.pdfUrl && (
-                            <button
-                                onClick={handleSendQuotation}
-                                disabled={isSending}
-                                className={`bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center justify-center ${isSending ? "opacity-70 cursor-not-allowed" : ""}`}
-                            >
-                                {isSending ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                        Sending...
-                                    </div>
-                                ) : (
-                                    "Send Quotation"
-                                )}
-                            </button>
-                        )} */}
-
-                        {/* Show Reshare only if status is Rejected */}
-                        {/* {quotationData.quotationStatus === "Rejected" && (
-                            <button
-                                onClick={handleSendQuotation}
-                                disabled={isSending}
-                                className={`bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 flex items-center justify-center ${isSending ? "opacity-70 cursor-not-allowed" : ""}`}
-                            >
-                                {isSending ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                        Resharing...
-                                    </div>
-                                ) : (
-                                    "Reshare Quotation"
-                                )}
-                            </button>
-                        )} */}
-                        {quotationData.quotationStatus === "Rejected" && (
-                            <button
-                                onClick={handleEditQuotation}
-                                className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 flex items-center justify-center"
-                            >
-                                Edit Quotation
-                            </button>
-                        )}
-                    </div>
                 </div>
+            </div>
+
+            {successMessage && (
+                <SuccessAlert
+                    message={successMessage}
+                    onClose={() => setSuccessMessage(null)}
+                />
+            )}
+
+            <div className="flex justify-end my-4 space-x-2">
+                {/* Show Save & Upload only if status is "Created" */}
+                {quotationData.quotationStatus === "Created" && (
+                    <button
+                        onClick={handleSaveAsPdf}
+                        disabled={isSavingPdf}
+                        className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center justify-center ${isSavingPdf ? "opacity-70 cursor-not-allowed" : ""}`}
+                    >
+                        {isSavingPdf ? (
+                            <div className="flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Saving PDF...
+                            </div>
+                        ) : (
+                            "Save & Upload Quotation PDF"
+                        )}
+                    </button>
+                )}
+
+                {/* Show Send only after PDF is uploaded successfully */}
+                {/* Show Send only if quotation has a PDF and status is Created */}
+                {/* {quotationData.quotationStatus === "Created" && quotationData.pdfUrl && (
+                    <button
+                        onClick={handleSendQuotation}
+                        disabled={isSending}
+                        className={`bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center justify-center ${isSending ? "opacity-70 cursor-not-allowed" : ""}`}
+                    >
+                        {isSending ? (
+                            <div className="flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Sending...
+                            </div>
+                        ) : (
+                            "Send Quotation"
+                        )}
+                    </button>
+                )} */}
+
+                {/* Show Reshare only if status is Rejected */}
+                {/* {quotationData.quotationStatus === "Rejected" && (
+                    <button
+                        onClick={handleSendQuotation}
+                        disabled={isSending}
+                        className={`bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 flex items-center justify-center ${isSending ? "opacity-70 cursor-not-allowed" : ""}`}
+                    >
+                        {isSending ? (
+                            <div className="flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Resharing...
+                            </div>
+                        ) : (
+                            "Reshare Quotation"
+                        )}
+                    </button>
+                )} */}
+                {quotationData.quotationStatus === "Rejected" && (
+                    <button
+                        onClick={handleEditQuotation}
+                        className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 flex items-center justify-center"
+                    >
+                        Edit Quotation
+                    </button>
+                )}
             </div>
         </div>
     )

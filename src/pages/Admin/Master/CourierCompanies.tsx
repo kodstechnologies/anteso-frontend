@@ -120,25 +120,49 @@ const CourierCompanies = () => {
                                     accessor: 'courierCompanyName',
                                     title: 'Company Name',
                                     sortable: true,
+                                    render: (record) => record.courierCompanyName || '—',
                                 },
                                 {
                                     accessor: 'trackingId',
-                                    title: ' Tracking ID',
+                                    title: 'Tracking ID',
                                     sortable: true,
+                                    render: (record) => record.trackingId || '—',
                                 },
                                 {
                                     accessor: 'trackingUrl',
                                     title: 'Tracking URL',
                                     sortable: true,
+                                    render: (record) => record.trackingUrl || '—',
                                 },
                                 {
                                     accessor: 'status',
+                                    title: 'Status',
                                     sortable: true,
-                                    render: ({ status }) => (
-                                        <span className={`text-${status === 'Active' ? 'success' : 'danger'}`}>
-                                            {status}
+                                    render: (record) => (
+                                        <span className={`text-${record.status?.toLowerCase() === 'active' ? 'success' : 'danger'}`}>
+                                            {record.status || '—'}
                                         </span>
                                     ),
+                                },
+                                {
+                                    accessor: 'createdBy',
+                                    title: 'Created By',
+                                    render: (record) => {
+                                        const creator = record.createdBy;
+                                        if (!creator) return '—';
+
+                                        let label = '';
+                                        if (record.createdByModel === 'Admin' || creator.role === 'admin') {
+                                            label = `Admin (${creator.email || '—'})`;
+                                        } else if (creator.role === 'Employee') {
+                                            const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
+                                            label = `${techType ? `${techType} - ` : ''}(${creator.email || '—'})`;
+                                        } else {
+                                            label = creator.name || creator.email || '—';
+                                        }
+
+                                        return <span className="text-green-600 font-medium">{label}</span>;
+                                    },
                                 },
                                 {
                                     accessor: 'action',
@@ -173,6 +197,7 @@ const CourierCompanies = () => {
                             onSelectedRecordsChange={setSelectedRecords}
                             paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
                         />
+
                     </div>
                 </div>
             </div>

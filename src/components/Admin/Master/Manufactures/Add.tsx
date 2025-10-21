@@ -42,15 +42,14 @@ const AddManufacture = () => {
         pinCode: Yup.string().required("Please fill the Field"),
         branch: Yup.string().required("Please fill the Field"),
         mouValidity: Yup.string().required("Please fill the Field"),
-        qaTests: Yup.array().min(1, "Please select at least one QA Test"),
+        qaTests: Yup.array(), // ✅ No longer required
         services: Yup.array().min(1, "Please select at least one service"),
         travel: Yup.string().required("Please select travel type"),
         email: Yup.string().email("Invalid email").required("Please enter email"),
         phone: Yup.string().required("Please enter phone number"),
         contactPersonName: Yup.string().required("Please enter contact person name"),
-
-
     });
+
     useEffect(() => {
         const fetchStates = async () => {
             try {
@@ -67,19 +66,18 @@ const AddManufacture = () => {
     // Form submission handler
     const submitForm = async (values: any, { resetForm }: any) => {
         try {
-            // Prepare payload for backend
-            const payload = {
+            const payload: any = {
                 name: values.manufactureName,
-                email: values.email || "", // add email if you have input for it
-                phone: values.phone || "", // add phone if you have input for it
-                password: values.password || "", // if storing password, hash in backend
+                email: values.email || "",
+                phone: values.phone || "",
+                password: values.password || "",
+                address: values.address,
                 city: values.city,
                 state: values.state,
                 pincode: values.pinCode,
                 branch: values.branch,
                 mouValidity: values.mouValidity,
                 contactPersonName: values.contactPersonName,
-
                 qaTests: values.qaTests.map((test: string) => {
                     const option = editableOptions.find((opt) => opt.value === test);
                     return {
@@ -91,16 +89,34 @@ const AddManufacture = () => {
                 travelCost: values.travel === "actual" ? "Actual Cost" : "Fixed Cost",
             };
 
-            const res = await createManufacturer(payload);
+            // ✅ Add cost only if "Fixed Cost" is selected
+            if (values.travel === "fixed") {
+                payload.cost = values.fixedCost;
+            }
 
-            showMessage("Manufacturer created successfully ", "success");
-            resetForm();
-            navigate("/admin/manufacture"); // redirect back to list page
+            const res = await createManufacturer(payload);
+            const { statusCode, message } = res.data;
+
+            // ✅ Handle based on backend statusCode
+            if (statusCode === 201) {
+                showMessage(message || "Manufacturer created successfully", "success");
+                resetForm();
+                navigate("/admin/manufacture");
+            } else if (statusCode === 400) {
+                showMessage(message || "Validation error — check phone/email", "warning");
+            } else if (statusCode === 401) {
+                showMessage("Unauthorized: Please login again.", "error");
+            } else {
+                showMessage(message || "Something went wrong", "error");
+            }
+
+            console.log("🚀 ~ submitForm response:", res.data);
         } catch (error: any) {
-            console.error("🚀 ~ submitForm error:", error);
-            showMessage(error.message || "Failed to create manufacturer", "error");
+            console.error("❌ submitForm error:", error);
+            showMessage("Server error: Failed to create manufacturer", "error");
         }
     };
+
 
     return (
         <>
@@ -127,8 +143,8 @@ const AddManufacture = () => {
                 initialValues={{
                     manufactureName: "",
                     address: "",
-                    email:"",
-                    phone:"",
+                    email: "",
+                    phone: "",
                     city: "",
                     state: "",
                     pinCode: "",
@@ -138,6 +154,7 @@ const AddManufacture = () => {
                     qaTests: [] as string[],
                     services: [] as string[],
                     travel: "",
+                    fixedCost: "",
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
@@ -196,9 +213,24 @@ const AddManufacture = () => {
                                         <div className="text-danger mt-1">{errors.state}</div>
                                     ) : null}
                                 </div>
-                                <div className={submitCount && errors.pinCode ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                {/* <div className={submitCount && errors.pinCode ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="pinCode">Pin Code</label>
                                     <Field name="pinCode" type="text" id="pinCode" className="form-input" placeholder="Enter Pin Code" />
+                                    {submitCount && errors.pinCode ? <div className="text-danger mt-1">{errors.pinCode}</div> : null}
+                                </div> */}
+                                <div className={submitCount && errors.pinCode ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="pinCode">Pin Code</label>
+                                    <Field
+                                        name="pinCode"
+                                        type="text"
+                                        id="pinCode"
+                                        placeholder="Enter Pin Code"
+                                        className="form-input"
+                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); // Only digits, max 6
+                                            setFieldValue("pinCode", e.target.value);
+                                        }}
+                                    />
                                     {submitCount && errors.pinCode ? <div className="text-danger mt-1">{errors.pinCode}</div> : null}
                                 </div>
                                 <div className={submitCount && errors.branch ? 'has-error' : submitCount ? 'has-success' : ''}>
@@ -212,9 +244,25 @@ const AddManufacture = () => {
                                     {submitCount && errors.email ? <div className="text-danger mt-1">{errors.email}</div> : null}
                                 </div>
 
-                                <div className={submitCount && errors.phone ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                {/* <div className={submitCount && errors.phone ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="phone">Phone</label>
                                     <Field name="phone" type="text" id="phone" placeholder="Enter Phone Number" className="form-input" />
+                                    {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : null}
+                                </div> */}
+
+                                <div className={submitCount && errors.phone ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="phone">Phone</label>
+                                    <Field
+                                        name="phone"
+                                        type="text"
+                                        id="phone"
+                                        placeholder="Enter Phone Number"
+                                        className="form-input"
+                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); // Only digits, max 10
+                                            setFieldValue("phone", e.target.value);
+                                        }}
+                                    />
                                     {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : null}
                                 </div>
 
@@ -301,7 +349,9 @@ const AddManufacture = () => {
                                                             values.qaTests.filter((test: string) => test !== option.value)
                                                         );
                                                     }}
-                                                    className="text-red-600 text-xs"
+                                                    // className="text-red-600 text-xs"
+                                                    className="btn btn-danger"
+
                                                 >
                                                     Delete
                                                 </button>
@@ -426,7 +476,7 @@ const AddManufacture = () => {
                                 </div>
                             </div>
                         </div> */}
-
+                        {/* 
                         <div className="panel">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className={submitCount && errors.travel ? 'has-error' : submitCount ? 'has-success' : ''}>
@@ -439,7 +489,40 @@ const AddManufacture = () => {
                                     {submitCount && errors.travel ? <div className="text-danger mt-1">{errors.travel}</div> : null}
                                 </div>
                             </div>
+                        </div> */}
+                        <div className="panel">
+                            <h5 className="font-semibold text-lg mb-4">Travel Cost</h5>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                {/* Travel Type Dropdown */}
+                                <div className={submitCount && errors.travel ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="travel">Travel Cost Type</label>
+                                    <Field as="select" name="travel" id="travel" className="form-input">
+                                        <option value="">Select Travel Cost Type</option>
+                                        <option value="actual">Actual Cost</option>
+                                        <option value="fixed">Fixed Cost</option>
+                                    </Field>
+                                    {submitCount && errors.travel ? <div className="text-danger mt-1">{errors.travel}</div> : null}
+                                </div>
+
+                                {/* Conditional Fixed Cost Field */}
+                                {values.travel === "fixed" && (
+                                    <div className={submitCount && errors.fixedCost ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                        <label htmlFor="fixedCost">Enter Fixed Cost (₹)</label>
+                                        <Field
+                                            name="fixedCost"
+                                            type="number"
+                                            id="fixedCost"
+                                            placeholder="Enter Fixed Cost"
+                                            className="form-input"
+                                        />
+                                        {submitCount && errors.fixedCost ? (
+                                            <div className="text-danger mt-1">{errors.fixedCost}</div>
+                                        ) : null}
+                                    </div>
+                                )}
+                            </div>
                         </div>
+
 
                         {/* Submit Button */}
                         <div className="flex justify-end mt-5">

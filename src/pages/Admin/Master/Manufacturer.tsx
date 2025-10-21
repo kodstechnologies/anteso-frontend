@@ -11,7 +11,7 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { getAllManufacturer } from '../../../api'; 
+import { getAllManufacturer } from '../../../api';
 
 const Manufacturers = () => {
     const dispatch = useDispatch();
@@ -147,16 +147,36 @@ const Manufacturers = () => {
                                 { accessor: 'branch', sortable: true },
                                 { accessor: 'mouValidity', sortable: true, render: ({ mouValidity }) => mouValidity ? new Date(mouValidity).toLocaleDateString() : '' },
                                 {
+                                    accessor: 'createdBy',
+                                    title: 'Created By',
+                                    render: (record) => {
+                                        const creator = record.createdBy;
+                                        if (!creator) return '—';
+
+                                        let label = '';
+                                        if (record.createdByModel === 'Admin' || creator.role === 'admin') {
+                                            label = `Admin (${creator.email})`;
+                                        } else if (creator.role === 'Employee') {
+                                            const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
+                                            label = `${techType ? `${techType} - ` : ''}(${creator.email})`;
+                                        } else {
+                                            label = creator.name || creator.email || 'Unknown';
+                                        }
+
+                                        return <span className="text-green-600 font-medium">{label}</span>;
+                                    },
+                                },
+                                {
                                     accessor: 'action',
                                     title: 'Actions',
                                     sortable: false,
                                     textAlignment: 'center',
                                     render: ({ _id }) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to="/admin/manufacture/view" className="flex hover:text-primary">
+                                            <NavLink to={`/admin/manufacture/view/${_id}`} className="flex hover:text-primary">
                                                 <IconEye />
                                             </NavLink>
-                                            <NavLink to="/admin/manufacture/edit" className="flex hover:text-info">
+                                            <NavLink to={`/admin/manufacture/edit/${_id}`} className="flex hover:text-info">
                                                 <IconEdit className="w-4.5 h-4.5" />
                                             </NavLink>
                                             <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(_id)}>

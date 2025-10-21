@@ -55,11 +55,10 @@ const AddClient = () => {
                     address: '',
                     phone: '',
                     gstNo: '',
-
-
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={async (values, { setSubmitting, setFieldError }) => {
+                    console.log("🚀 ~ AddClient ~ values:", values)
                     setLoading(true);
                     try {
                         const response = await addclient(values);

@@ -1,17 +1,17 @@
-
 import * as Yup from "yup"
 import { Field, Form, Formik } from "formik"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { showMessage } from "../../../common/ShowMessage"
 import { useState, useEffect } from "react"
 import FullScreenLoader from "../../../common/FullScreenLoader"
-import { Plus, Edit, Trash2, GraduationCap, Shield } from "lucide-react"
+import { Plus, Edit, Trash2, GraduationCap, Shield, Settings } from "lucide-react"
 import {
   createHospitalByClientId,
   getAllIstitutesByhospitalId,
   getAllRsosByhospitalId,
   deleteInstituteByHospitalIdAndInstituteId,
   deleteRsoByHospitalIdAndRsoId,
+  getAllMachinesByHospitalId,
 } from "../../../../api"
 
 // Define interfaces
@@ -39,6 +39,17 @@ interface RSO {
   attachFile?: string
 }
 
+interface Machine {
+  _id: string
+  name: string
+  serialNumber: string
+  model: string
+  type: string
+  status: string
+  installationDate?: string
+  // Add more fields as needed
+}
+
 const AddHospital = () => {
   const navigate = useNavigate()
   const { clientId, hospitalId } = useParams()
@@ -50,7 +61,8 @@ const AddHospital = () => {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [institutes, setInstitutes] = useState<Institute[]>([])
   const [rsos, setRsos] = useState<RSO[]>([])
-  const [activeTab, setActiveTab] = useState<"institutes" | "rsos">("institutes")
+  const [machines, setMachines] = useState<Machine[]>([])
+  const [activeTab, setActiveTab] = useState<"institutes" | "rsos" | "machines">("institutes")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteItem, setDeleteItem] = useState<{ type: string; id: number | string; name: string } | null>(null)
 
@@ -64,33 +76,37 @@ const AddHospital = () => {
     branch: Yup.string().required("Please fill the Field"),
   })
 
-  // Fetch institutes and RSOs on component mount
+  // Fetch institutes, RSOs, and machines on component mount
   useEffect(() => {
     const fetchData = async () => {
       if (hospitalId) {
         try {
-          const [instituteData, rsoData] = await Promise.all([
+          const [instituteData, rsoData, machineData] = await Promise.all([
             getAllIstitutesByhospitalId(hospitalId),
             getAllRsosByhospitalId(hospitalId),
+            getAllMachinesByHospitalId(hospitalId),
           ])
+          console.log("🚀 ~ fetchData ~ machineData:", machineData)
 
           setInstitutes(instituteData.data || [])
           setRsos(rsoData.data || [])
+          setMachines(machineData.data || [])
         } catch (error) {
           console.error("Error fetching data:", error)
           setInstitutes([])
           setRsos([])
+          setMachines([])
         }
       }
     }
     fetchData()
   }, [hospitalId])
 
-  const handleAddEntity = (entityType: "institute" | "rso") => {
+  const handleAddEntity = (entityType: "institute" | "rso" | "machine") => {
     navigate(`/admin/clients/preview/${clientId}/${hospitalId}/add-${entityType}`)
   }
 
-  const handleEditEntity = (entityId: number | string, entityType: "institute" | "rso") => {
+  const handleEditEntity = (entityId: number | string, entityType: "institute" | "rso" | "machine") => {
     console.log("Navigating to edit with ID:", entityId, "Entity Type:", entityType)
     navigate(`/admin/clients/preview/${hospitalId}/edit-${entityType}/${entityId}`)
   }
@@ -159,11 +175,8 @@ const AddHospital = () => {
         </li>
       </ol>
 
-      {/* Hospital Form */}
-
-
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 mt-8">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center">
             <GraduationCap className="h-8 w-8 text-green-500" />
@@ -182,9 +195,18 @@ const AddHospital = () => {
             </div>
           </div>
         </div>
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center">
+            <Settings className="h-8 w-8 text-blue-500" />
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">Machines</h3>
+              <p className="text-2xl font-bold text-blue-600">{machines.length}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs for Institutes and RSOs */}
+      {/* Tabs for Institutes, RSOs, and Machines */}
       <div className="bg-white rounded-lg shadow-md">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
@@ -205,6 +227,15 @@ const AddHospital = () => {
                 }`}
             >
               RSOs ({rsos.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("machines")}
+              className={`py-4 px-6 text-sm font-medium border-b-2 ${activeTab === "machines"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+            >
+              Machines ({machines.length})
             </button>
           </nav>
         </div>
@@ -362,6 +393,90 @@ const AddHospital = () => {
                       <tr>
                         <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                           No RSOs found. Click "Add RSO" to get started.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* Machines Tab */}
+          {activeTab === "machines" && (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Machines</h3>
+                <button
+                  onClick={() => handleAddEntity("machine")}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Machine
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Serial Number
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Model
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Installation Date
+                      </th>
+                      {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th> */}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {machines.map((machine) => (
+                      <tr key={machine._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{machine.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{machine.serialNumber}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{machine.model}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{machine.type}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${machine.status === "Active"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                              }`}
+                          >
+                            {machine.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {machine.installationDate ? new Date(machine.installationDate).toLocaleDateString() : "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {/* <button
+                            onClick={() => handleEditEntity(machine._id, "machine")}
+                            className="text-indigo-600 hover:text-indigo-900 mr-3"
+                            title="Edit Machine"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button> */}
+                        </td>
+                      </tr>
+                    ))}
+                    {machines.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                          No machines found. Click "Add Machine" to get started.
                         </td>
                       </tr>
                     )}

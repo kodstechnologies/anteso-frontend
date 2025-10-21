@@ -76,11 +76,10 @@ const AddDealer = () => {
 
     // inside AddDealer component
     const submitForm = async (values: any) => {
-        // ✅ map frontend values to backend schema
         const payload = {
             name: values.dealersName,
-            phone: values.phone,        // add a phone field in form
-            email: values.email,        // add email field in form
+            phone: values.phone,
+            email: values.email,
             address: values.address,
             city: values.city,
             state: values.state,
@@ -98,13 +97,27 @@ const AddDealer = () => {
 
         try {
             const res = await createDealer(payload);
-            console.log("🚀 ~ submitForm ~ res:", res)
-            showMessage(res.data.message || "Dealer created successfully", "success");
-            navigate("/admin/dealer");
+            const { statusCode, message } = res.data;
+
+            if (statusCode === 201) {
+                showMessage(message || "Dealer created successfully", "success");
+                navigate("/admin/dealer");
+            } else if (statusCode === 400) {
+                // 🟡 For duplicate phone/email or validation issue
+                showMessage(message || "Validation error", "warning");
+            } else if (statusCode === 401) {
+                showMessage("Unauthorized: Please login again.", "error");
+            } else {
+                showMessage(message || "Something went wrong", "error");
+            }
+
+            console.log("🚀 ~ submitForm response:", res.data);
         } catch (err: any) {
-            showMessage(err.response?.data?.message || "Failed to create dealer", "error");
+            console.error("❌ createDealer error:", err);
+            showMessage("Server error: Failed to create dealer", "error");
         }
     };
+
 
     // const submitForm = (values: any) => {
     //     const updatedValues = {
@@ -311,7 +324,9 @@ const AddDealer = () => {
                                             {!option.system && (
                                                 <button
                                                     type="button"
-                                                    className="text-red-600 text-xs"
+                                                    // className="text-red-600 text-xs"
+                                                    className="btn btn-danger"
+
                                                     onClick={() => {
                                                         setEditableOptions(editableOptions.filter((_, i) => i !== index));
                                                         setFieldValue(

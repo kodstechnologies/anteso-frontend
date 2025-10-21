@@ -470,6 +470,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         }
     }
 
+    
+
     const handleViewImage = (workTypeId: string) => {
         const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
 
@@ -1435,7 +1437,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 </div>
                                                                                 <div className="flex gap-2">
                                                                                     {/* View button */}
-                                                                                    <button
+                                                                                    {/* <button
                                                                                         onClick={() =>
                                                                                             workType.backendFields?.uploadFile &&
                                                                                             handleDownloadFile(
@@ -1448,7 +1450,19 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                     >
                                                                                         <Eye className="h-3 w-3" />
                                                                                         View
-                                                                                    </button>
+                                                                                    </button> */}
+                                                                                    {/* <button
+                                                                                        onClick={() => {
+                                                                                            const fileUrl = workType.backendFields?.uploadFile;
+                                                                                            if (fileUrl) {
+                                                                                                window.open(fileUrl, "_blank"); // Opens file in a new tab
+                                                                                            }
+                                                                                        }}
+                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                                                                                    >
+                                                                                        <Eye className="h-3 w-3" />
+                                                                                        View
+                                                                                    </button> */}
 
                                                                                     {/* ✅ Fixed Download button */}
                                                                                     <button

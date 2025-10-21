@@ -43,6 +43,7 @@ const Clients = () => {
         const fetchClients = async () => {
             try {
                 const response = await getAllClients();
+                console.log("🚀 ~ fetchClients ~ response:", response)
                 const clientsFromBackend = response.data.clients.map((item: any) => ({
                     ...item,
                     id: item._id,
@@ -158,6 +159,27 @@ const Clients = () => {
                                 { accessor: 'address', sortable: true },
                                 { accessor: 'phone', sortable: true },
                                 { accessor: 'gstNo', sortable: true },
+                                {
+                                    accessor: 'createdBy',
+                                    title: 'Created By',
+                                    render: (record) => {
+                                        const creator = record.createdBy;
+                                        if (!creator) return '—';
+
+                                        // Determine label based on role/type
+                                        let label = '';
+                                        if (record.createdByModel === 'Admin' || creator.role === 'admin') {
+                                            label = `Admin (${creator.email})`;
+                                        } else if (creator.role === 'Employee') {
+                                            const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
+                                            label = `${techType ? `${techType} - (${creator.email})` : ''}`;
+                                        } else {
+                                            label = creator.name || creator.email || 'Unknown';
+                                        }
+
+                                        return <span className="text-green-600 font-medium">{label}</span>;
+                                    },
+                                },
                                 {
                                     accessor: 'action',
                                     title: 'Actions',

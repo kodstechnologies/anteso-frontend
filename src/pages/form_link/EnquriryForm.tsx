@@ -1,5 +1,3 @@
-
-
 import type React from "react"
 import { useEffect, useState } from "react"
 import * as Yup from "yup"
@@ -271,7 +269,18 @@ const AddEnquiry: React.FC = () => {
             }
         } catch (error: any) {
             console.error("Error submitting enquiry:", error);
-            showMessage(error?.message || "Failed to submit enquiry. Please try again.", "error");
+            // ✅ Enhanced error handling for duplicate key errors
+            const isDuplicateEmailError = error?.response?.data?.errors?.some((errMsg: string) => 
+                errMsg.includes('duplicate key error') && errMsg.includes('email')
+            );
+            if (isDuplicateEmailError) {
+                showMessage(
+                    "A customer with this email address already exists. Please use a different email or contact support for assistance.",
+                    "error"
+                );
+            } else {
+                showMessage(error?.response?.data?.message || error?.message || "Failed to submit enquiry. Please try again.", "error");
+            }
         } finally {
             setIsSubmitting(false);
             setSubmitting(false);

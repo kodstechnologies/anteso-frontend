@@ -12,6 +12,7 @@ import {
     FaCogs,
     FaRupeeSign,
 } from 'react-icons/fa';
+import { getManufacturerById } from '../../../../api'; // import your API function
 
 interface QATest {
     label: string;
@@ -32,6 +33,7 @@ interface ManufactureType {
     qaTests: QATest[];
     services: ServiceKey[];
     travel: 'actual' | 'fixed';
+    fixedCost?: number; // optional if fixed travel cost
 }
 
 const serviceLabelMap: Record<ServiceKey, string> = {
@@ -43,31 +45,55 @@ const serviceLabelMap: Record<ServiceKey, string> = {
 const ManufacturerView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [manufacture, setManufacture] = useState<ManufactureType | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const dummy: ManufactureType = {
-            manufactureName: 'XRay Corp Ltd',
-            address: '45 Industrial Estate, Sector 12',
-            city: 'Bangalore',
-            state: 'Karnataka',
-            pinCode: '560001',
-            branch: 'South Zone',
-            mouValidity: '2026-01-01',
-            qaTests: [
-                { label: 'FIXED X RAY', value: 'FIXED_X_RAY', price: 3500 },
-                { label: 'C ARM', value: 'C_ARM', price: 3000 },
-                { label: 'TATKAL QA', value: 'TATKAL_QA', price: 5000 },
-            ],
-            services: ['INSTITUTE_REGISTRATION', 'LICENSE'],
-            travel: 'fixed',
+        const fetchManufacturer = async () => {
+            if (!id) return;
+            try {
+                setLoading(true);
+                const res = await getManufacturerById(id);
+                console.log("🚀 ~ fetchManufacturer ~ res:", res)
+
+                // Assuming the API returns data inside res.data
+                const data = res.data.data;
+
+                // Map API response to your ManufactureType if necessary
+                const mappedData: ManufactureType = {
+                    manufactureName: data.name,
+                    address: data.address,
+                    city: data.city,
+                    state: data.state,
+                    pinCode: data.pincode,
+                    branch: data.branch,
+                    mouValidity: data.mouValidity,
+                    qaTests: data.qaTests?.map((test: any) => ({
+                        label: test.testName,
+                        value: test.testName.toUpperCase().replace(/\s+/g, '_'),
+                        price: test.price,
+                    })) || [],
+                    services: data.services || [],
+                    travel: data.travelCost === 'Actual Cost' ? 'actual' : 'fixed',
+                    fixedCost: data.travelCost === 'Fixed Cost' ? data.cost : undefined,
+                };
+
+                setManufacture(mappedData);
+                setError(null);
+            } catch (err: any) {
+                console.error("Failed to fetch manufacturer:", err);
+                setError(err.message || "Failed to fetch manufacturer");
+            } finally {
+                setLoading(false);
+            }
         };
 
-        setManufacture(dummy);
-
-        // Replace with axios.get(`/api/manufacturers/${id}`) when backend is ready
+        fetchManufacturer();
     }, [id]);
 
-    if (!manufacture) return <div className="p-6 text-gray-600">Loading...</div>;
+    if (loading) return <div className="p-6 text-gray-600">Loading...</div>;
+    if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
+    if (!manufacture) return <div className="p-6 text-gray-600">No Manufacturer Found</div>;
 
     return (
         <div className="p-6">
@@ -90,7 +116,6 @@ const ManufacturerView: React.FC = () => {
                 </li>
             </ol>
 
-
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <h1 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                     <FaIndustry className="text-primary" /> Manufacturer Details
@@ -103,7 +128,11 @@ const ManufacturerView: React.FC = () => {
                     <Detail label="State" value={manufacture.state} icon={<FaFlag />} />
                     <Detail label="Pin Code" value={manufacture.pinCode} icon={<FaHashtag />} />
                     <Detail label="Branch" value={manufacture.branch} icon={<FaNetworkWired />} />
-                    <Detail label="MOU Validity" value={manufacture.mouValidity} icon={<FaRegCalendarCheck />} />
+                    <Detail
+                        label="MOU Validity"
+                        value={manufacture.mouValidity?.split('T')[0] || 'N/A'}
+                        icon={<FaRegCalendarCheck />}
+                    />
                 </div>
 
                 {/* QA Tests */}
@@ -135,7 +164,9 @@ const ManufacturerView: React.FC = () => {
                     <h2 className="text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
                         <FaRupeeSign className="text-primary" /> Travel Cost Type
                     </h2>
-                    <p className="text-gray-600">{manufacture.travel === 'actual' ? 'Actual Cost' : 'Fixed Cost'}</p>
+                    <p className="text-gray-600">
+                        {manufacture.travel === 'actual' ? 'Actual Cost' : `Fixed Cost ₹ ${manufacture.fixedCost || 0}`}
+                    </p>
                 </div>
             </div>
         </div>
