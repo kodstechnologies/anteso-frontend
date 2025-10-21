@@ -208,7 +208,7 @@ const Add = () => {
           discountPercent: 0,
           gstPercent: 0, // ✅ Add this
           services: [{ machineType: '', description: '', quantity: 1, rate: 0, hsnno: '' }],
-          additionalServices: [],
+          additionalServices: [] as AdditionalService[], // 👈 Force the type
           dealerHospitals: [{ partyCode: '', hospitalName: '', location: '', dealerState: '', modelNo: '', amount: '' }],
         }}
 

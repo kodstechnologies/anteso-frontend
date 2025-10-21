@@ -6,10 +6,11 @@ import { Link, useParams } from 'react-router-dom';
 import { getEmployeeById, getAttendanceStatus } from '../../../../api';
 import AttendenceSummary from '../../Hrms/AttendanceSummary';
 import PaymentDetails from '../../Hrms/PaymentDetails';
+import AttendanceSummary from '../../Hrms/AttendanceSummary';
 
 function ViewEmployee() {
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-    const { id } = useParams<{ id: string }>();
+    const { id } = useParams<{ id: any }>();
     // get employee ID from URL
     const [employee, setEmployee] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -289,7 +290,11 @@ function ViewEmployee() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Attendance Summary */}
                     {/* <AttendenceSummary id={id} /> */}
-                    <AttendenceSummary id={id || ''} />
+                    {/* <AttendenceSummary id={id || ''} /> */}
+                    {/* <AttendanceSummary id={id!} />; */}
+                    <AttendanceSummary />
+
+
 
                     {/* Payment Details */}
                     {/* <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -325,7 +330,7 @@ function ViewEmployee() {
                             </table>
                         </div>
                     </div> */}
-                    <PaymentDetails id={employee._id} date={selectedDate ? selectedDate.toISOString().split("T")[0] : ""} />
+                    {/* <PaymentDetails id={employee._id} date={selectedDate ? selectedDate.toISOString().split("T")[0] : ""} /> */}
 
                 </div>
             </div>
