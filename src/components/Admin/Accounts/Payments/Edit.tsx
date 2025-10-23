@@ -36,7 +36,8 @@ const validationSchema = Yup.object().shape({
     .positive("Must be positive"),
   paymentAmount: Yup.number()
     .required("Payment amount is required")
-    .positive("Must be positive"),
+    .positive("Must be positive")
+    .max(Yup.ref('totalAmount'), 'Payment cannot exceed total amount'),
   paymentType: Yup.string().required("Please select payment type"),
   utrNumber: Yup.string(),
   screenshot: Yup.mixed().nullable(),
@@ -60,12 +61,12 @@ const Edit: React.FC = () => {
         setSrfOptions([{ value: payment.srfNumber, label: `${payment.srfNumber} - ${payment.hospitalName}` }]);
 
         // Map API value "advance" to "advanced" if needed
-        const mappedPaymentType = payment.paymentType === "advance" ? "advanced" : payment.paymentType;
+        const mappedPaymentType = payment.paymentType;
 
         setInitialValues({
           srfClient: payment.srfNumber || "",
-          totalAmount: payment.totalAmount || "",
-          paymentAmount: payment.paymentAmount || "",
+          totalAmount: payment.totalAmount || 0,
+          paymentAmount: payment.paymentAmount || 0,
           paymentType: mappedPaymentType || "",
           utrNumber: payment.utrNumber || "",
           screenshot: null,
@@ -132,109 +133,129 @@ const Edit: React.FC = () => {
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ setFieldValue, errors, submitCount, isSubmitting }) => (
-          <Form className="space-y-5">
-            <div className="panel">
-              <h5 className="font-semibold text-lg mb-4">Payment Details</h5>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
+        {({ setFieldValue, values, errors, submitCount, isSubmitting }) => {
+          // Auto-update paymentType if amount equals total
+          useEffect(() => {
+            if (Number(values.paymentAmount) === Number(values.totalAmount)) {
+              setFieldValue("paymentType", "complete");
+            }
+          }, [values.paymentAmount, values.totalAmount, setFieldValue]);
 
-                {/* SRF No */}
-                {/* <div className={submitCount && errors.srfClient ? "has-error" : submitCount ? "has-success" : ""}>
-                  <label htmlFor="srfClient">SRF No.</label>
-                  <Field as="select" name="srfClient" className="form-select w-full">
-                    <option value="" disabled>Select SRF No.</option>
-                    {srfOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </Field>
-                  <ErrorMessage name="srfClient" component="div" className="text-red-500 text-sm mt-1" />
-                </div> */}
-                {/* SRF No */}
-                <div className={submitCount && errors.srfClient ? "has-error" : submitCount ? "has-success" : ""}>
-                  <label htmlFor="srfClient">SRF No.</label>
-                  <Field
-                    as="select"
-                    name="srfClient"
-                    className="form-select w-full"
-                    disabled={true} // ✅ Disable SRF No field after fetching
-                  >
-                    <option value="" disabled>Select SRF No.</option>
-                    {srfOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Field>
-                  <ErrorMessage name="srfClient" component="div" className="text-red-500 text-sm mt-1" />
+          return (
+            <Form className="space-y-5">
+              <div className="panel">
+                <h5 className="font-semibold text-lg mb-4">Payment Details</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
+
+                  {/* SRF No */}
+                  <div className={submitCount && errors.srfClient ? "has-error" : submitCount ? "has-success" : ""}>
+                    <label htmlFor="srfClient">SRF No.</label>
+                    <Field
+                      as="select"
+                      name="srfClient"
+                      className="form-select w-full"
+                      disabled={true} // ✅ Disable SRF No field after fetching
+                    >
+                      <option value="" disabled>Select SRF No.</option>
+                      {srfOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Field>
+                    <ErrorMessage name="srfClient" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+
+                  {/* Total Amount */}
+                  <div className={submitCount && errors.totalAmount ? "has-error" : submitCount ? "has-success" : ""}>
+                    <label htmlFor="totalAmount">Total Amount</label>
+                    <Field type="number" name="totalAmount" className="form-input w-full" placeholder="Total Amount" />
+                    <ErrorMessage name="totalAmount" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+
+                  {/* Payment Amount */}
+                  <div className={submitCount && errors.paymentAmount ? "has-error" : submitCount ? "has-success" : ""}>
+                    <label htmlFor="paymentAmount">Payment Amount</label>
+                    <Field
+                      type="number"
+                      name="paymentAmount"
+                      className="form-input w-full"
+                      placeholder="Payment Amount"
+                      onChange={(e: any) => {
+                        const value = Number(e.target.value);
+                        if (value > values.totalAmount) {
+                          setFieldValue("paymentAmount", values.totalAmount); // prevent typing more
+                          showMessage("Payment cannot exceed total amount", "warning");
+                        } else {
+                          setFieldValue("paymentAmount", value);
+                        }
+                      }}
+                    />
+                    <ErrorMessage name="paymentAmount" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+
+                  {/* Payment Type */}
+                  <div className={submitCount && errors.paymentType ? "has-error" : submitCount ? "has-success" : ""}>
+                    <label htmlFor="paymentType">Payment Type</label>
+                    <Field as="select" name="paymentType" className="form-select w-full">
+                      <option value="">Select type</option>
+                      {paymentTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </option>
+                      ))}
+                    </Field>
+                    <ErrorMessage name="paymentType" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+
+                  {/* UTR Number */}
+                  <div>
+                    <label htmlFor="utrNumber">UTR Number (Optional)</label>
+                    <Field
+                      type="text"
+                      name="utrNumber"
+                      className="form-input w-full"
+                      placeholder="UTR Number"
+                      onInput={(e: any) => {
+                        e.target.value = e.target.value.toUpperCase();
+                      }}
+                    />
+                    <ErrorMessage name="utrNumber" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+
+                  {/* Screenshot */}
+                  <div className="md:col-span-2">
+                    <label htmlFor="screenshot">Attach Screenshot</label>
+                    <input
+                      type="file"
+                      name="screenshot"
+                      accept="image/*"
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0];
+                        setFieldValue("screenshot", file);
+                        if (file) setImagePreview(URL.createObjectURL(file));
+                      }}
+                      className="form-input w-full"
+                    />
+                    <ErrorMessage name="screenshot" component="div" className="text-red-500 text-sm mt-1" />
+                    {imagePreview && (
+                      <div className="mt-4">
+                        <p className="text-sm text-gray-600 mb-1">Preview:</p>
+                        <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover border rounded shadow" />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Total Amount */}
-                <div className={submitCount && errors.totalAmount ? "has-error" : submitCount ? "has-success" : ""}>
-                  <label htmlFor="totalAmount">Total Amount</label>
-                  <Field type="number" name="totalAmount" className="form-input w-full" placeholder="Total Amount" />
-                  <ErrorMessage name="totalAmount" component="div" className="text-red-500 text-sm mt-1" />
-                </div>
-
-                {/* Payment Amount */}
-                <div className={submitCount && errors.paymentAmount ? "has-error" : submitCount ? "has-success" : ""}>
-                  <label htmlFor="paymentAmount">Payment Amount</label>
-                  <Field type="number" name="paymentAmount" className="form-input w-full" placeholder="Payment Amount" />
-                  <ErrorMessage name="paymentAmount" component="div" className="text-red-500 text-sm mt-1" />
-                </div>
-
-                {/* Payment Type */}
-                <div className={submitCount && errors.paymentType ? "has-error" : submitCount ? "has-success" : ""}>
-                  <label htmlFor="paymentType">Payment Type</label>
-                  <Field as="select" name="paymentType" className="form-select w-full">
-                    <option value="">Select type</option>
-                    {paymentTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </option>
-                    ))}
-                  </Field>
-                  <ErrorMessage name="paymentType" component="div" className="text-red-500 text-sm mt-1" />
-                </div>
-
-                {/* UTR Number */}
-                <div>
-                  <label htmlFor="utrNumber">UTR Number (Optional)</label>
-                  <Field type="text" name="utrNumber" className="form-input w-full" placeholder="UTR Number" />
-                  <ErrorMessage name="utrNumber" component="div" className="text-red-500 text-sm mt-1" />
-                </div>
-
-                {/* Screenshot */}
-                <div className="md:col-span-2">
-                  <label htmlFor="screenshot">Attach Screenshot</label>
-                  <input
-                    type="file"
-                    name="screenshot"
-                    accept="image/*"
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      setFieldValue("screenshot", file);
-                      if (file) setImagePreview(URL.createObjectURL(file));
-                    }}
-                    className="form-input w-full"
-                  />
-                  <ErrorMessage name="screenshot" component="div" className="text-red-500 text-sm mt-1" />
-                  {imagePreview && (
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-600 mb-1">Preview:</p>
-                      <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover border rounded shadow" />
-                    </div>
-                  )}
+                <div className="flex justify-end">
+                  <button type="submit" disabled={isSubmitting} className="btn btn-success mt-4 disabled:opacity-50">
+                    {isSubmitting ? "Updating..." : "Update Payment"}
+                  </button>
                 </div>
               </div>
-
-              <div className="flex justify-end">
-                <button type="submit" disabled={isSubmitting} className="btn btn-success mt-4 disabled:opacity-50">
-                  {isSubmitting ? "Updating..." : "Update Payment"}
-                </button>
-              </div>
-            </div>
-          </Form>
-        )}
+            </Form>
+          );
+        }}
       </Formik>
     </>
   );
