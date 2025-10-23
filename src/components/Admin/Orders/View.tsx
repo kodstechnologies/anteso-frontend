@@ -19,7 +19,7 @@ import ExpenseAndAccountDetails from './ExpenseAndAccountDetails';
 import CourierDetails from './CourierDetails';
 import AdditionalServices from './AdditionalServices';
 import ServiceDetails from './ServiceDetails';
-import { getBasicDetailsByOrderId, getPdfForAcceptQuotation } from '../../../api';
+import { getBasicDetailsByOrderId, getPdfForAcceptQuotation, getWorkOrderCopy } from '../../../api';
 import ServiceDetails2 from './ServiceDetails2'
 
 // Define interfaces
@@ -56,6 +56,7 @@ const View = () => {
     const [isAddingCourier, setIsAddingCourier] = useState(false);
     // const [details, setDetails] = useState<HospitalDetails | null>(null);
     const [pdfUrl, setPdfUrl] = useState<string>(''); // ✅ state for PDF URL
+    const [workOrderCopyUrl, setWorkOrderCopyUrl] = useState<string>('');
 
     const togglePara = (value: string) => {
         setActive((oldValue) => {
@@ -88,6 +89,26 @@ const View = () => {
 
                 const resPdf = await getPdfForAcceptQuotation(orderId);
                 setPdfUrl(resPdf.data.pdfUrl || ''); // ✅ set PDF URL
+            } catch (error) {
+                console.error("Failed to fetch data:", error);
+            }
+        };
+        fetchData();
+    }, [orderId]);
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!orderId) return;
+
+            try {
+                const resDetails = await getBasicDetailsByOrderId(orderId);
+                setDetails(resDetails.data);
+
+                const resPdf = await getPdfForAcceptQuotation(orderId);
+                setPdfUrl(resPdf.data.pdfUrl || '');
+
+                const resWorkOrder = await getWorkOrderCopy(orderId);
+                console.log("🚀 ~ fetchData ~ resWorkOrder:", resWorkOrder)
+                setWorkOrderCopyUrl(resWorkOrder || '');
             } catch (error) {
                 console.error("Failed to fetch data:", error);
             }
@@ -166,10 +187,34 @@ const View = () => {
                     </div>
                 </div>
             )}
+            {/* ✅ Show Work Order Copy only if available */}
+            {workOrderCopyUrl && workOrderCopyUrl.trim() !== '' && (
+                <div className="bg-white p-4 rounded-lg shadow-md mt-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-green-100 text-green-600 flex items-center justify-center rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-gray-800 font-medium text-sm">Work Order Copy</p>
+                                <p className="text-xs text-gray-500">Click to view uploaded file</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => window.open(workOrderCopyUrl, '_blank')}
+                            className="px-3 py-1.5 bg-green-600 text-white text-sm rounded shadow hover:bg-green-700 transition"
+                        >
+                            View
+                        </button>
+                    </div>
+                </div>
+            )}
 
 
             {/* ✅ Only show if pdfUrl exists and is not empty */}
-          
+
 
             {/* Service details */}
             <ServiceDetails2 orderId={orderId} />

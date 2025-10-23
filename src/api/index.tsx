@@ -1537,23 +1537,21 @@ export const getEngineerByTools = async (toolId: any) => {
     }
 }
 
-export const createOrder = async (payload: any) => {
+export const createOrder = async (payload: FormData) => {
     try {
-        const token = Cookies.get('accessToken')
+        const token = Cookies.get("accessToken");
         const res = await api.post(`/orders/create-order`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        })
-        return res
+                "Content-Type": "multipart/form-data",
+            },
+        });
+        return res;
     } catch (error: any) {
         console.error("🚀 ~ createOrder ~ error:", error);
-        throw new Error(
-            error?.response?.data?.message || "Failed to createOrder"
-        );
+        throw new Error(error?.response?.data?.message || "Failed to create order");
     }
-}
+};
 
 // export const completeStatusAndReport = async (
 //     technicianId: any,
@@ -2986,3 +2984,17 @@ export const deleteOrder = async (id: any) => {
         throw error;
     }
 }
+export const getWorkOrderCopy = async (orderId: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.get(`/orders/get-work-order-copy/${orderId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data.data.workOrderCopy; // returns URL string
+    } catch (error: any) {
+        console.error("🚀 ~ getWorkOrderCopy error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to getWorkOrderCopy");
+    }
+};

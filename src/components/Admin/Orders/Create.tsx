@@ -233,16 +233,16 @@ const CreateOrder: React.FC = () => {
                 })
             )
             .min(1, "At least one service is required"),
-            // .test(
-            //     "unique-machineType",
-            //     "Each Machine Type must be unique",
-            //     (services) => {
-            //         if (!services) return true;
-            //         const machineTypes = services.map(s => s.machineType);
-            //         const uniqueTypes = new Set(machineTypes);
-            //         return uniqueTypes.size === machineTypes.length;
-            //     }
-            // ),
+        // .test(
+        //     "unique-machineType",
+        //     "Each Machine Type must be unique",
+        //     (services) => {
+        //         if (!services) return true;
+        //         const machineTypes = services.map(s => s.machineType);
+        //         const uniqueTypes = new Set(machineTypes);
+        //         return uniqueTypes.size === machineTypes.length;
+        //     }
+        // ),
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
                 return { ...schema, [service]: Yup.string().nullable() }
@@ -258,24 +258,78 @@ const CreateOrder: React.FC = () => {
             .required('Urgency is required')
     })
 
+    // const submitForm = async (values: FormValues) => {
+    //     setIsSubmitting(true)
+    //     try {
+    //         const enquiryCount = 1
+    //         const newEnquiryID = `ENQ${String(enquiryCount).padStart(3, "0")}`
+    //         const submissionValues = { ...values, enquiryID: newEnquiryID }
+    //         console.log("Form submitted with values:", submissionValues)
+    //         const response = await createOrder(submissionValues)
+    //         console.log("Order created successfully:", response)
+    //         showMessage("Order created successfully", "success")
+    //         navigate("/admin/orders")
+    //     } catch (error: any) {
+    //         console.error("Error creating order:", error)
+    //         showMessage(error.message || "Failed to create order", "error")
+    //     } finally {
+    //         setIsSubmitting(false)
+    //     }
+    // }
+
     const submitForm = async (values: FormValues) => {
-        setIsSubmitting(true)
+        setIsSubmitting(true);
         try {
-            const enquiryCount = 1
-            const newEnquiryID = `ENQ${String(enquiryCount).padStart(3, "0")}`
-            const submissionValues = { ...values, enquiryID: newEnquiryID }
-            console.log("Form submitted with values:", submissionValues)
-            const response = await createOrder(submissionValues)
-            console.log("Order created successfully:", response)
-            showMessage("Order created successfully", "success")
-            navigate("/admin/orders")
+            const enquiryCount = 1;
+            const newEnquiryID = `ENQ${String(enquiryCount).padStart(3, "0")}`;
+
+            // Construct FormData for multipart/form-data
+            const formData = new FormData();
+
+            // Append all basic text fields
+            formData.append("leadOwner", values.leadOwner);
+            formData.append("hospitalName", values.hospitalName);
+            formData.append("fullAddress", values.fullAddress);
+            formData.append("city", values.city);
+            formData.append("district", values.district || "");
+            formData.append("state", values.state);
+            formData.append("pinCode", values.pinCode);
+            formData.append("branchName", values.branchName || "");
+            formData.append("contactPersonName", values.contactPersonName);
+            formData.append("emailAddress", values.emailAddress);
+            formData.append("contactNumber", values.contactNumber);
+            formData.append("designation", values.designation);
+            formData.append("urgency", values.urgency);
+            formData.append("partyCodeOrSysId", values.partyCodeOrSysId);
+            formData.append("procNoOrPoNo", values.procNoOrPoNo);
+            formData.append("procExpiryDate", values.procExpiryDate);
+            formData.append("instruction", values.instruction || "");
+            formData.append("enquiryID", newEnquiryID);
+
+            // Append file if uploaded
+            const fileInput = document.getElementById("workOrderCopy") as HTMLInputElement;
+            if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                formData.append("workOrderCopy", fileInput.files[0]);
+            }
+
+            // Append services (convert array to JSON)
+            formData.append("services", JSON.stringify(values.services));
+
+            // Append additional services
+            formData.append("additionalServices", JSON.stringify(values.additionalServices));
+
+            // ✅ Call API
+            const response = await createOrder(formData);
+            console.log("Order created successfully:", response);
+            showMessage("Order created successfully", "success");
+            navigate("/admin/orders");
         } catch (error: any) {
-            console.error("Error creating order:", error)
-            showMessage(error.message || "Failed to create order", "error")
+            console.error("Error creating order:", error);
+            showMessage(error.message || "Failed to create order", "error");
         } finally {
-            setIsSubmitting(false)
+            setIsSubmitting(false);
         }
-    }
+    };
 
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: "Dashboard", to: "/", icon: <IconHome /> },
@@ -512,7 +566,7 @@ const CreateOrder: React.FC = () => {
                                         <div className="text-danger mt-1">{errors.designation}</div>
                                     ) : null}
                                 </div>
-                                <div className={submitCount && errors.workOrderCopy ? "has-error" : submitCount ? "has-success" : ""}>
+                                {/* <div className={submitCount && errors.workOrderCopy ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="workOrderCopy">Work Order Copy</label>
                                     <Field
                                         name="workOrderCopy"
@@ -522,7 +576,21 @@ const CreateOrder: React.FC = () => {
                                         className="form-input"
                                     />
                                     {submitCount && errors.workOrderCopy ? <div className="text-danger mt-1">{errors.workOrderCopy}</div> : null}
+                                </div> */}
+                                <div className={submitCount && errors.workOrderCopy ? "has-error" : submitCount ? "has-success" : ""}>
+                                    <label htmlFor="workOrderCopy">Work Order Copy</label>
+                                    <input
+                                        name="workOrderCopy"
+                                        type="file"
+                                        id="workOrderCopy"
+                                        className="form-input"
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            setFieldValue("workOrderCopy", e.currentTarget.files?.[0] || null);
+                                        }}
+                                    />
+                                    <ErrorMessage name="workOrderCopy" component="div" className="text-danger mt-1" />
                                 </div>
+
                                 <div className={submitCount && errors.partyCodeOrSysId ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="partyCodeOrSysId">Party Code/Sys ID</label>
                                     <Field
