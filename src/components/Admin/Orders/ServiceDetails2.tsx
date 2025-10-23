@@ -1614,56 +1614,58 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 Add Photo
                                                                             </button> */}
 
-                                                                            <div className="grid gap-2">
-                                                                                {workType.backendFields.viewFile.map((fileUrl, index) => {
-                                                                                    const fileName =
-                                                                                        fileUrl.split("/").pop()?.split("?")[0] || `File ${index + 1}`
-                                                                                    const fileExtension = fileName.split(".").pop()?.toLowerCase()
-                                                                                    const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(
-                                                                                        fileExtension || "",
-                                                                                    )
+                                                                            <div className="max-h-48 overflow-y-auto">
+                                                                                <div className="grid gap-2">
+                                                                                    {workType.backendFields.viewFile.map((fileUrl, index) => {
+                                                                                        const fileName =
+                                                                                            fileUrl.split("/").pop()?.split("?")[0] || `File ${index + 1}`
+                                                                                        const fileExtension = fileName.split(".").pop()?.toLowerCase()
+                                                                                        const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(
+                                                                                            fileExtension || "",
+                                                                                        )
 
-                                                                                    return (
-                                                                                        <div
-                                                                                            key={index}
-                                                                                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
-                                                                                        >
-                                                                                            <div className="flex items-center gap-3">
-                                                                                                {isImage ? (
-                                                                                                    <ImageIcon className="h-5 w-5 text-blue-600" />
-                                                                                                ) : (
-                                                                                                    <FileText className="h-5 w-5 text-red-600" />
-                                                                                                )}
-                                                                                                <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
-                                                                                                    {fileName}
-                                                                                                </span>
+                                                                                        return (
+                                                                                            <div
+                                                                                                key={index}
+                                                                                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                                                                                            >
+                                                                                                <div className="flex items-center gap-3">
+                                                                                                    {isImage ? (
+                                                                                                        <ImageIcon className="h-5 w-5 text-blue-600" />
+                                                                                                    ) : (
+                                                                                                        <FileText className="h-5 w-5 text-red-600" />
+                                                                                                    )}
+                                                                                                    <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
+                                                                                                        {fileName}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                                <div className="flex gap-2">
+                                                                                                    <button
+                                                                                                        onClick={() => handleDownloadFile(fileUrl, fileName)}
+                                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                                                                                                    >
+                                                                                                        <Download className="h-3 w-3" />
+                                                                                                        Download
+                                                                                                    </button>
+                                                                                                    <button
+                                                                                                        onClick={() => handleFileEdit(workType.id, "view", index)}
+                                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                                                                                    >
+                                                                                                        <Edit className="h-3 w-3" />
+                                                                                                        Edit
+                                                                                                    </button>
+                                                                                                    {/* <button
+                                                                                                        onClick={() => handleDeleteFile(workType.id, index)}
+                                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                                                                                                    >
+                                                                                                        <Trash2 className="h-3 w-3" />
+                                                                                                        Delete
+                                                                                                    </button> */}
+                                                                                                </div>
                                                                                             </div>
-                                                                                            <div className="flex gap-2">
-                                                                                                <button
-                                                                                                    onClick={() => handleDownloadFile(fileUrl, fileName)}
-                                                                                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
-                                                                                                >
-                                                                                                    <Download className="h-3 w-3" />
-                                                                                                    Download
-                                                                                                </button>
-                                                                                                <button
-                                                                                                    onClick={() => handleFileEdit(workType.id, "view", index)}
-                                                                                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
-                                                                                                >
-                                                                                                    <Edit className="h-3 w-3" />
-                                                                                                    Edit
-                                                                                                </button>
-                                                                                                {/* <button
-                                                                                                    onClick={() => handleDeleteFile(workType.id, index)}
-                                                                                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
-                                                                                                >
-                                                                                                    <Trash2 className="h-3 w-3" />
-                                                                                                    Delete
-                                                                                                </button> */}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    )
-                                                                                })}
+                                                                                        )
+                                                                                    })}
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     )}
