@@ -95,7 +95,7 @@ const serviceOptions: string[] = [
     "LEAD SHEET",
     "LEAD GLASS",
     "LEAD APRON",
-    "THYROID SHIELD",                                                                                                                                                                                                                                                                                                                                                                                                   
+    "THYROID SHIELD",
     "GONAD SHIELD",
     "OTHERS",
 ]
@@ -218,16 +218,16 @@ const AddEnquiry: React.FC = () => {
                 })
             )
             .min(1, "At least one service is required"),
-            // .test(
-            //     "unique-machineType",
-            //     "Each Machine Type must be unique",
-            //     (services) => {
-            //         if (!services) return true;
-            //         const machineTypes = services.map(s => s.machineType);
-            //         const uniqueTypes = new Set(machineTypes);
-            //         return uniqueTypes.size === machineTypes.length;
-            //     }
-            // ),
+        // .test(
+        //     "unique-machineType",
+        //     "Each Machine Type must be unique",
+        //     (services) => {
+        //         if (!services) return true;
+        //         const machineTypes = services.map(s => s.machineType);
+        //         const uniqueTypes = new Set(machineTypes);
+        //         return uniqueTypes.size === machineTypes.length;
+        //     }
+        // ),
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
                 return { ...schema, [service]: Yup.string().nullable() };
@@ -636,7 +636,19 @@ const AddEnquiry: React.FC = () => {
                                     <label htmlFor="attachment" className="block mb-1 font-medium">
                                         Attach QA Requirement List
                                     </label>
-                                    <Field name="attachment" type="file" id="attachment" className="form-input" />
+                                    {/* <Field name="attachment" type="file" id="attachment" className="form-input" /> */}
+                                    <input
+                                        id="attachment"
+                                        name="attachment"
+                                        type="file"
+                                        className="form-input"
+                                        onChange={(event) => {
+                                            if (event.currentTarget.files) {
+                                                setFieldValue("attachment", event.currentTarget.files[0]);
+                                            }
+                                        }}
+                                    />
+
                                     {submitCount > 0 && errors.attachment && <div className="text-danger mt-1">{errors.attachment}</div>}
                                 </div>
                             </div>

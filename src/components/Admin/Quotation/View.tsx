@@ -54,8 +54,10 @@ interface QuotationData {
     total: number
     gstAmount: any
     gstRate: any
+    subtotal: any
     // termsAndConditions: string[]
     termsAndConditions: Array<string | Term>
+    isUploaded: any
 }
 
 interface AdditionalServiceData {
@@ -161,7 +163,7 @@ const ViewQuotation: React.FC = () => {
             console.log("🚀 ~ handleSaveAsPdf ~ res:", res)
 
             // alert("✅ PDF uploaded successfully! URL: " + res.pdfUrl);
-            setSuccessMessage(`PDF uploaded successfully! URL: ${res.pdfUrl}`);
+            setSuccessMessage(`PDF uploaded successfully!`);
 
         } catch (err: any) {
             console.error("PDF generation/upload error:", err);
@@ -335,7 +337,7 @@ const ViewQuotation: React.FC = () => {
         },
         {
             key: "description", // Changed from services
-            label: "SERVICES",
+            label: "Description",
         },
         // {
         //     // key: "quantity",
@@ -372,7 +374,8 @@ const ViewQuotation: React.FC = () => {
         return sum + amount
     }, 0)
 
-    const subtotal = quotationData.subtotalAmount; // 6000
+    // const subtotal = quotationData.subtotalAmount; // 6000
+    const subtotal = quotationData.subtotal;
     const discountAmount: number = (subtotal * discount) / 100
     const totalAmount = quotationData.total; // 5400
 
@@ -554,11 +557,67 @@ const ViewQuotation: React.FC = () => {
                         )}
                     </div>
 
-                    <div className="flex flex-row-reverse px-4 mt-6">
-                        <div className="w-52 space-y-2">
+                    {/* Adjusted Layout: Discount Box and QR/Bank Details Side by Side */}
+                    <div className="flex justify-between items-start gap-6 mt-4 px-4">
+
+                        {/* Right: QR Code and Bank Details */}
+                        <div className="w-64 text-right space-y-1 text-xs">
+                            <img src={AntesoQRCode} alt="QR Code" className="h-20 mx-auto mb-2" />
+                            <table className="h-4">
+                                <tbody>
+                                    {[
+                                        ["Merchant Name:", "ANTESO BIOMEDICAL PRIVATE LIMITED"],
+                                        ["Mobile Number:", "8470909720"],
+                                    ].map(([label, value]) => (
+                                        <tr key={label} style={{ fontSize: ".4rem" }}>
+                                            <td className={label.includes("Merchant") ? "pb-3 text-end" : "text-end"}>{label}</td>
+                                            <td className={`text-start pl-2 ${label.includes("Merchant") ? "w-[7rem] leading-none" : ""}`}>
+                                                {value}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <div className="text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
+                                <p>Steps to PAy UPI QR Code</p>
+                                <p className="flex justify-center items-center flex-wrap w-[10rem]">
+                                    Oppen UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
+                                    Amount
+                                </p>
+                            </div>
+                            <hr className="bg-gray-700 h-[1.5px]" />
+                            <div
+                                className="text-center"
+                                style={{
+                                    lineHeight: "5px",
+                                }}
+                            >
+                                <p className="font-bold text-[.6rem]">OUR ACCOUNT DETAILS</p>
+                                <p className="pb-10 mt-2 font-bold text-[.6rem]">
+                                    <span>GST NO:</span> 07AAMCA8142J1ZE
+                                </p>
+                            </div>
+                            <div className="w-[7rem] m-auto">
+                                {[
+                                    ["A/C No:", "344305001088"],
+                                    ["IFSC Code:", "ICIC0003443"],
+                                ].map(([label, value]) => (
+                                    <p key={label} className="text-left text-[.6rem]">
+                                        <span className="font-medium text-[.6rem]">{label}</span> {value}
+                                    </p>
+                                ))}
+                                <p className="text-[.6rem] text-left">ICICI BANK ROHINI</p>
+                            </div>
+                        </div>
+                        {/* Left: Discount/Totals Box */}
+                        <div className="space-y-2 w-52 p-3  rounded-md bg-gray-50">
                             <div className="flex items-center gap-4">
-                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">DISCOUNT</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">{discount}</div>
+                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Subtotal</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">{subtotal}</div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Discount</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">{discount}%</div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Rate</div>
@@ -573,6 +632,7 @@ const ViewQuotation: React.FC = () => {
                                 <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount}</div>
                             </div>
                         </div>
+
                     </div>
                     <br />
                     <hr />
@@ -619,6 +679,7 @@ const ViewQuotation: React.FC = () => {
                         </ul>
                     </div>
 
+                    {/* Footer - Adjusted to only include left and middle */}
                     <div className="mt-4 flex justify-between items-end text-xs">
                         <div>
                             <img src={Signature} alt="Signature" className="mb-2 h-24" />
@@ -638,7 +699,7 @@ const ViewQuotation: React.FC = () => {
                             </div>
                         </div>
 
-                        <div
+                        {/* <div
                             className="text-center"
                             style={{
                                 lineHeight: "5px",
@@ -648,54 +709,7 @@ const ViewQuotation: React.FC = () => {
                             <p className="pb-10 mt-2 font-bold text-[.6rem]">
                                 <span>GST NO:</span> 07AAMCA8142J1ZE
                             </p>
-                        </div>
-
-                        <div className="text-right space-y-1">
-                            <img src={AntesoQRCode} alt="QR Code" className="h-20 mx-auto mb-2" />
-                            <table className="h-4">
-                                <tr
-                                    style={{
-                                        fontSize: ".4rem",
-                                    }}
-                                >
-                                    <td className="pb-3 text-end">Merchant Name:</td>
-                                    <td className="w-[7rem] leading-none text-start pl-2">ANTESO BIOMEDICAL PRIVATE LIMITED</td>
-                                </tr>
-                                <tr
-                                    style={{
-                                        fontSize: ".4rem",
-                                    }}
-                                >
-                                    <td className="text-end">Mobile Number:</td>
-                                    <td className="text-start pl-2">8470909720</td>
-                                </tr>
-                            </table>
-                            <div
-                                className="text-center text-[.4rem]"
-                                style={{
-                                    lineHeight: "8px",
-                                }}
-                            >
-                                <p>Steps to Pay UPI QR Code</p>
-                                <p className="flex justify-center items-center flex-wrap w-[10rem]">
-                                    Open UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
-                                    Amount
-                                </p>
-                            </div>
-
-                            <hr className="bg-gray-700 h-[1.5px]" />
-                            <div>
-                                <div className="w-[7rem] m-auto">
-                                    <p className="text-left text-[.6rem]">
-                                        <span className="font-medium text-[.6rem]">A/C No:</span> 344305001088
-                                    </p>
-                                    <p className="text-left text-[.6rem]">
-                                        <span className="font-medium text-[.6rem]">IFSC Code:</span> ICIC0003443
-                                    </p>
-                                    <p className="text-[.6rem] text-left">ICICI BANK ROHINI</p>
-                                </div>
-                            </div>
-                        </div>
+                        </div> */}
                     </div>
 
                     <div
@@ -724,7 +738,23 @@ const ViewQuotation: React.FC = () => {
 
             <div className="flex justify-end my-4 space-x-2">
                 {/* Show Save & Upload only if status is "Created" */}
-                {quotationData.quotationStatus === "Created" && (
+                {/* {quotationData.quotationStatus === "Created" && (
+                    <button
+                        onClick={handleSaveAsPdf}
+                        disabled={isSavingPdf}
+                        className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center justify-center ${isSavingPdf ? "opacity-70 cursor-not-allowed" : ""}`}
+                    >
+                        {isSavingPdf ? (
+                            <div className="flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Saving PDF...
+                            </div>
+                        ) : (
+                            "Save & Upload Quotation PDF"
+                        )}
+                    </button>
+                )} */}
+                {quotationData.quotationStatus === "Created" && !quotationData?.isUploaded && (
                     <button
                         onClick={handleSaveAsPdf}
                         disabled={isSavingPdf}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getAdditionalServicesByOrderId, updateAdditionalService } from "../../../api/index";
 import { useParams } from "react-router-dom";
 import { Loader2, FileText, Upload, Edit3, CheckCircle } from "lucide-react"; // Assuming lucide-react for icons
+import { showMessage } from "../../../components/common/ShowMessage"; // Adjust path as needed for the showMessage utility
 
 const AdditionalServices = () => {
     const [additionalServices, setAdditionalServices] = useState<any[]>([]);
@@ -40,6 +41,16 @@ const AdditionalServices = () => {
     }, [orderId]);
 
     const handleChange = (id: string, field: string, value: any) => {
+        const currentService = additionalServices.find(s => s._id === id);
+        if (currentService && currentService.status === "Completed") {
+            if (field === "status" && value !== "Completed") {
+                showMessage("Status cannot be changed after marking as Completed", "error");
+            } else if (field === "remark") {
+                showMessage("Remarks cannot be changed after marking as Completed", "error");
+            }
+            return;
+        }
+
         setAdditionalServices((prev) =>
             prev.map((service) =>
                 service._id === id ? { ...service, [field]: value } : service
@@ -51,7 +62,7 @@ const AdditionalServices = () => {
         setUpdatingIds((prev) => new Set([...prev, service._id]));
         try {
             if (service.status === "Completed" && !service.file && !service.report) {
-                alert("Please upload a file before marking as Completed");
+                showMessage("Please upload a file before marking as Completed", "error");
                 return;
             }
 
@@ -61,7 +72,7 @@ const AdditionalServices = () => {
             if (service.file) formData.append("file", service.file);
 
             const res = await updateAdditionalService(service._id, formData);
-            alert(res.message || "Service updated successfully ✅");
+            showMessage(res.message || "Service updated successfully ✅", "success");
 
             setAdditionalServices((prev) =>
                 prev.map((s) =>
@@ -69,7 +80,7 @@ const AdditionalServices = () => {
                 )
             );
         } catch (err: any) {
-            alert(err.message || "Update failed ❌");
+            showMessage(err.message || "Update failed ❌", "error");
         } finally {
             setUpdatingIds((prev) => {
                 const newSet = new Set(prev);
@@ -163,7 +174,8 @@ const AdditionalServices = () => {
                                             onChange={(e) =>
                                                 handleChange(service._id, "status", e.target.value)
                                             }
-                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                            disabled={service.status === "Completed"}
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             <option value="Pending">Pending</option>
                                             <option value="In Progress">In Progress</option>
@@ -183,7 +195,8 @@ const AdditionalServices = () => {
                                                 handleChange(service._id, "remark", e.target.value)
                                             }
                                             placeholder="Enter any remarks or notes..."
-                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                            disabled={service.status === "Completed"}
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         />
                                     </div>
 

@@ -132,13 +132,13 @@ const Hrms = () => {
                                                 <IconEye />
                                             </NavLink>
                                             {/* <IconEdit className="w-4.5 h-4.5 cursor-pointer hover:text-info" /> */}
-                                            <button
+                                            {/* <button
                                                 type="button"
                                                 className="flex hover:text-danger"
                                                 onClick={() => console.log("delete employee", _id)}
                                             >
                                                 <IconTrashLines />
-                                            </button>
+                                            </button> */}
                                         </div>
                                     ),
                                 },

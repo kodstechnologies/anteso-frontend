@@ -169,29 +169,7 @@ const View = () => {
 
 
             {/* ✅ Only show if pdfUrl exists and is not empty */}
-            {pdfUrl && pdfUrl.trim() !== '' && (
-                <div className="bg-white p-4 rounded-lg shadow-md mt-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 text-blue-600 flex items-center justify-center rounded-lg">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-gray-800 font-medium text-sm">Customer Uploaded PDF</p>
-                                <p className="text-xs text-gray-500">Click to view PDF</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={handleViewPdf}
-                            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded shadow hover:bg-blue-700 transition"
-                        >
-                            View
-                        </button>
-                    </div>
-                </div>
-            )}
+          
 
             {/* Service details */}
             <ServiceDetails2 orderId={orderId} />

@@ -249,7 +249,8 @@ const EditQuotation: React.FC = () => {
         if (!quotationData) return;
         const subtotal = editableServices.reduce((sum, service) => sum + (service.totalAmount || 0), 0) +
             editableAdditionalServices.reduce((sum, service) => sum + (service.totalAmount || 0), 0);
-        const discountAmount = editableDiscount;
+        const discountPercentage = editableDiscount;
+        const discountAmount = subtotal * (discountPercentage / 100);
         const taxableAmount = subtotal - discountAmount;
         const gstRate = quotationData.gstRate || 0;
         const gstAmount = taxableAmount * (gstRate / 100);
@@ -258,7 +259,7 @@ const EditQuotation: React.FC = () => {
             ...prev,
             subtotalAmount: subtotal,
             subtotal: subtotal,
-            discount: discountAmount,
+            discount: discountPercentage,
             gstAmount,
             total
         } : null);
@@ -270,6 +271,14 @@ const EditQuotation: React.FC = () => {
 
     const performUpdate = async () => {
         if (!quotationData) throw new Error("No quotation data");
+        const subtotal = editableServices.reduce((sum, service) => sum + (service.totalAmount || 0), 0) +
+            editableAdditionalServices.reduce((sum, service) => sum + (service.totalAmount || 0), 0);
+        const discountPercentage = editableDiscount;
+        const discountAmount = subtotal * (discountPercentage / 100);
+        const taxableAmount = subtotal - discountAmount;
+        const gstRate = quotationData.gstRate || 0;
+        const gstAmount = taxableAmount * (gstRate / 100);
+        const total = taxableAmount + gstAmount;
         const updateData = {
             date: editableDate,
             quotationNumber: quotationData.quotationId, // Keep existing or make editable if needed
@@ -296,16 +305,16 @@ const EditQuotation: React.FC = () => {
             },
 
             calculations: {
-                subtotal: quotationData.subtotalAmount,
-                discountAmount: editableDiscount,
-                totalAmount: quotationData.total,
+                subtotal: subtotal,
+                discountAmount: discountAmount,
+                totalAmount: total,
             },
 
             termsAndConditions: editableTerms,
             bankDetails: editableBankDetails,
             companyDetails: editableCompanyDetails,
-            discount: editableDiscount,
-            total: quotationData.total,
+            discount: discountPercentage,
+            total: total,
         };
 
         const response = await updateQuotationById(id, updateData);
@@ -357,7 +366,7 @@ const EditQuotation: React.FC = () => {
             // Then perform the update
             await performUpdate();
 
-            setSuccessMessage(`Quotation saved and PDF uploaded successfully! URL: ${res.pdfUrl}`);
+            setSuccessMessage(`Quotation saved and PDF uploaded successfully!`);
             setTimeout(() => {
                 navigate(-1);
             }, 2000);
@@ -372,6 +381,14 @@ const EditQuotation: React.FC = () => {
     const handleServiceAmountChange = (serviceId: string, amount: number) => {
         setEditableServices((prev) =>
             prev.map((service) => (service._id === serviceId ? { ...service, totalAmount: amount } : service))
+        );
+    };
+
+    const handleAdditionalServiceChange = (serviceId: string, field: keyof AdditionalServiceData, value: string | number) => {
+        setEditableAdditionalServices((prev) =>
+            prev.map((service) =>
+                service._id === serviceId ? { ...service, [field]: value } : service
+            )
         );
     };
 
@@ -457,42 +474,6 @@ const EditQuotation: React.FC = () => {
     //         setIsUpdating(false);
     //     }
     // };
-
-
-    // const handleSaveAsPdf = async () => {
-    //     if (!quotationData || !pdfRef.current) return;
-
-    //     try {
-    //         setIsSavingPdf(true);
-
-    //         const opt = {
-    //             margin: 0.1,
-    //             filename: `Quotation_${quotationData.quotationId}.pdf`,
-    //             image: { type: "jpeg" as const, quality: 0.95 },
-    //             html2canvas: { scale: 1.5 },
-    //             jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
-    //         };
-
-    //         const blob = await html2pdf().set(opt).from(pdfRef.current).outputPdf("blob");
-
-    //         const file = new File([blob], `Quotation_${quotationData.quotationId}.pdf`, {
-    //             type: "application/pdf",
-    //         });
-
-    //         const hospitalId = quotationData.from._id;
-    //         const quotationId = quotationData._id;
-
-    //         const res = await downloadQuotationPdf(quotationId, hospitalId, file);
-
-    //         setSuccessMessage(`PDF uploaded successfully! URL: ${res.pdfUrl}`);
-    //     } catch (err: any) {
-    //         console.error("PDF generation/upload error:", err);
-    //         setEditError("Failed to generate or upload PDF");
-    //     } finally {
-    //         setIsSavingPdf(false);
-    //     }
-    // };
-
     const handleSendQuotation = async () => {
         if (!quotationData) return;
         try {
@@ -563,11 +544,15 @@ const EditQuotation: React.FC = () => {
         price: (service.totalAmount ?? 0).toString(),
         amount: (service.totalAmount ?? 0).toString(),
     })) || [];
-    const subtotal = quotationData?.subtotal || 0;      // from backend
-    const discountAmount = quotationData?.discount || 0; // from backend
-    const totalAmount = quotationData?.total || 0;       // from backend
-    const gstAmount = quotationData?.gstAmount || 0;     // from backend
-    const gstRate = quotationData?.gstRate || 0;         // from backend
+
+    // Calculations for PDF (using editable/quotation data)
+    const subtotal = quotationData?.subtotal || 0;
+    const discountPercentage = quotationData?.discount || 0;
+    const discountAmount = Math.round(subtotal * (discountPercentage / 100) * 100) / 100;
+    const gstRate = quotationData?.gstRate || 0;
+    const taxableAmount = subtotal - discountAmount;
+    const gstAmount = Math.round(taxableAmount * (gstRate / 100) * 100) / 100;
+    const totalAmount = taxableAmount + gstAmount;
 
 
 
@@ -579,6 +564,45 @@ const EditQuotation: React.FC = () => {
             year: "numeric",
         });
     };
+
+    // QR and Bank Details component (moved beside calculations)
+    const QrAndBankDetails = () => (
+        <div className="text-left space-y-1 w-48 flex-shrink-0">
+            <img src={AntesoQRCode} alt="QR Code" className="h-20 mx-auto mb-2" />
+            <table className="h-4 w-full">
+                <tr style={{ fontSize: ".4rem" }}>
+                    <td className="pb-3 text-start">Merchant Name:</td>
+                    <td className="leading-none text-end pr-2">
+                        {editableCompanyDetails.name || "ANTESO BIOMEDICAL PRIVATE LIMITED"}
+                    </td>
+                </tr>
+                <tr style={{ fontSize: ".4rem" }}>
+                    <td className="text-start">Mobile Number:</td>
+                    <td className="text-end pr-2">8470909720</td>
+                </tr>
+            </table>
+            <div className="text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
+                <p>Steps to Pay UPI QR Code</p>
+                <p className="flex justify-center items-center flex-wrap w-[10rem]">
+                    Open UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
+                    Amount
+                </p>
+            </div>
+
+            <hr className="bg-gray-700 h-[1.5px]" />
+            <div>
+                <div className="w-full m-auto">
+                    <p className="text-right text-[.6rem]">
+                        <span className="font-medium text-[.6rem]">A/C No:</span> {editableBankDetails.accountNumber || "344305001088"}
+                    </p>
+                    <p className="text-right text-[.6rem]">
+                        <span className="font-medium text-[.6rem]">IFSC Code:</span> {editableBankDetails.ifsc || "ICIC0003443"}
+                    </p>
+                    <p className="text-[.6rem] text-right">{editableBankDetails.bankName || "ICICI BANK ROHINI"}</p>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="w-full min-h-screen bg-gray-50 px-8 absolute top-0 left-0 z-50 lg:px-[15%]">
@@ -626,7 +650,7 @@ const EditQuotation: React.FC = () => {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">Discount</label>
+                        <label className="block text-sm font-medium mb-1">Discount (%)</label>
                         <input
                             type="number"
                             value={editableDiscount}
@@ -634,6 +658,7 @@ const EditQuotation: React.FC = () => {
                             className="w-full px-3 py-2 border rounded-md"
                             min="0"
                             max="100"
+                            step="0.01"
                         />
                     </div>
                 </div>
@@ -673,25 +698,25 @@ const EditQuotation: React.FC = () => {
                     <h3 className="text-lg font-semibold mb-2">Additional Services</h3>
                     {editableAdditionalServices.map((service) => (
                         <div key={service._id} className="border p-3 rounded-md mb-2">
-                            <div className="grid grid-cols-3 gap-2 mb-2">
+                            <div className="grid grid-cols-4 gap-2 mb-2">
                                 <input
                                     value={service.name}
                                     placeholder="Service Name"
-                                    className="px-2 py-1 border rounded text-sm"
-                                    readOnly // Or make editable if needed
-                                />
-                                <input
-                                    value={service.description}
-                                    placeholder="Description"
-                                    className="px-2 py-1 border rounded text-sm col-span-2"
-                                    readOnly
+                                    onChange={(e) => handleAdditionalServiceChange(service._id, 'name', e.target.value)}
+                                    className="px-2 py-1 border rounded text-sm col-span-1"
                                 />
                                 <input
                                     type="number"
                                     value={service.totalAmount}
                                     onChange={(e) => handleAdditionalServiceAmountChange(service._id, Number(e.target.value))}
                                     placeholder="Total Amount"
-                                    className="px-2 py-1 border rounded text-sm"
+                                    className="px-2 py-1 border rounded text-sm col-span-1"
+                                />
+                                <input
+                                    value={service.description || ''}
+                                    placeholder="Description"
+                                    onChange={(e) => handleAdditionalServiceChange(service._id, 'description', e.target.value)}
+                                    className="px-2 py-1 border rounded text-sm col-span-2"
                                 />
                             </div>
                         </div>
@@ -954,25 +979,28 @@ const EditQuotation: React.FC = () => {
                             )}
                         </div>
 
-                        <div className="flex flex-row-reverse px-4 mt-6">
+                        {/* Calculations and QR/Bank beside */}
+                        <div className="flex justify-between items-start gap-4 px-4 mt-6">
+                            <QrAndBankDetails />
                             <div className="w-52 space-y-2">
                                 <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">DISCOUNT</div>
+                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">SUBTOTAL</div>
+                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {subtotal}</div>
+                                </div>
+                                <div className="flex items-center gap-4">
+
+                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">DISCOUNT ({discountPercentage}%)</div>
                                     <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {discountAmount}</div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST ({gstRate}%)</div>
                                     <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {gstAmount}</div>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">SUBTOTAL</div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {subtotal}</div>
-                                </div>
+
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
                                     <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount}</div>
                                 </div>
-
                             </div>
                         </div>
                         <br />
@@ -995,6 +1023,17 @@ const EditQuotation: React.FC = () => {
                             </ul>
                         </div>
 
+                        <div className="overflow-x-auto mt-8 text-center" style={{ lineHeight: "1rem" }}>
+                            <p className="text-[.6rem]">
+                                For any enquiry contact us{" "}
+                                <a href="#" className="text-blue-800">
+                                    info@antesobiomedicalopc.com or antesobiomedical@gmail.com
+                                </a>
+                            </p>
+                            <p className="text-[.6rem]">Feel free to call us & Thank you for your enquiry</p>
+                        </div>
+
+                        {/* Footer - now without QR right part */}
                         <div className="mt-4 flex justify-between items-end text-xs">
                             <div>
                                 <img src={Signature} alt="Signature" className="mb-2 h-24" />
@@ -1015,52 +1054,6 @@ const EditQuotation: React.FC = () => {
                                     <span>GST NO:</span> {editableCompanyDetails.gstin || "07AAMCA8142J1ZE"}
                                 </p>
                             </div>
-
-                            <div className="text-right space-y-1">
-                                <img src={AntesoQRCode} alt="QR Code" className="h-20 mx-auto mb-2" />
-                                <table className="h-4">
-                                    <tr style={{ fontSize: ".4rem" }}>
-                                        <td className="pb-3 text-end">Merchant Name:</td>
-                                        <td className="w-[7rem] leading-none text-start pl-2">
-                                            {editableCompanyDetails.name || "ANTESO BIOMEDICAL PRIVATE LIMITED"}
-                                        </td>
-                                    </tr>
-                                    <tr style={{ fontSize: ".4rem" }}>
-                                        <td className="text-end">Mobile Number:</td>
-                                        <td className="text-start pl-2">8470909720</td>
-                                    </tr>
-                                </table>
-                                <div className="text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
-                                    <p>Steps to Pay UPI QR Code</p>
-                                    <p className="flex justify-center items-center flex-wrap w-[10rem]">
-                                        Open UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
-                                        Amount
-                                    </p>
-                                </div>
-
-                                <hr className="bg-gray-700 h-[1.5px]" />
-                                <div>
-                                    <div className="w-[7rem] m-auto">
-                                        <p className="text-left text-[.6rem]">
-                                            <span className="font-medium text-[.6rem]">A/C No:</span> {editableBankDetails.accountNumber || "344305001088"}
-                                        </p>
-                                        <p className="text-left text-[.6rem]">
-                                            <span className="font-medium text-[.6rem]">IFSC Code:</span> {editableBankDetails.ifsc || "ICIC0003443"}
-                                        </p>
-                                        <p className="text-[.6rem] text-left">{editableBankDetails.bankName || "ICICI BANK ROHINI"}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="overflow-x-auto mt-8 text-center" style={{ lineHeight: "1rem" }}>
-                            <p className="text-[.6rem]">
-                                For any enquiry contact us{" "}
-                                <a href="#" className="text-blue-800">
-                                    info@antesobiomedicalopc.com or antesobiomedical@gmail.com
-                                </a>
-                            </p>
-                            <p className="text-[.6rem]">Feel free to call us & Thank you for your enquiry</p>
                         </div>
                     </div>
                 </div>

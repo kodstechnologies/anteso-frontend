@@ -141,6 +141,72 @@ const InfoRow: React.FC<{ label: string; value: string; isEmail?: boolean }> = (
     </tr>
 )
 
+// const ItemsTable: React.FC<{
+//     title: string
+//     headerBg: string
+//     items: Item[]
+//     onItemChange: (index: number, key: StringItemKeys, value: string) => void
+//     showEditableDescription?: boolean
+// }> = ({ title, headerBg, items, onItemChange, showEditableDescription = false }) => (
+//     <table className="w-full text-xs mb-6">
+//         <thead className={headerBg}>
+//             <tr>
+//                 <th className="p-2 text-[.7rem]">{title}</th>
+//                 <th className="text-[.7rem]">S.NO</th>
+//                 <th className="text-[.7rem] w-36">{title === "A" ? "TYPE OF MACHINE" : "ADDITIONAL SERVICE"}</th>
+//                 <th className="text-[.7rem]">DESCRIPTION</th>
+//                 <th className="text-[.7rem]">QTY</th>
+//                 {/* <th className="text-[.7rem]">RATE</th> */}
+//                 <th className="text-[.7rem]">TOTAL</th>
+//             </tr>
+//         </thead>
+//         <tbody>
+//             {items.map((item, i) => (
+//                 <tr key={item.id} className="border-b">
+//                     <td className="p-2 text-[.7rem]">{item.type}</td>
+//                     <td className="text-[.7rem]">{item.id}</td>
+//                     <td className="text-[.7rem]">{item.title}</td>
+//                     {/* <td className="text-[.7rem]">
+//                         {showEditableDescription ? (
+//                             <input
+//                                 value={item.description || ""}
+//                                 onChange={(e) => onItemChange(i, "description", e.target.value)}
+//                                 className="w-full border rounded p-1 text-[.7rem]"
+//                             />
+//                         ) : (
+//                             item.description
+//                         )}
+//                     </td> */}
+//                     <td className="text-[.7rem]">
+//                         <input
+//                             value={item.description || ""}
+//                             onChange={(e) => onItemChange(i, "description", e.target.value)}
+//                             className="w-full border rounded p-1 text-[.7rem] bg-gray-100 cursor-not-allowed"
+//                             disabled // ✅ make it read-only
+//                         />
+//                     </td>
+
+//                     {["quantity", "price"].map((field) => (
+//                         <td key={field}>
+//                             <input
+//                                 value={item[field as keyof Item] as string}
+//                                 onChange={(e) => onItemChange(i, field as StringItemKeys, e.target.value)}
+//                                 type="number"
+//                                 required
+//                                 readOnly={field === "quantity"}
+//                                 className={`border rounded p-1 text-right text-[.7rem] ${field === "quantity" ? "w-16 bg-gray-100 cursor-not-allowed" : field === "price" ? "w-20" : "w-24"
+//                                     }`}
+//                             />
+//                         </td>
+//                     ))}
+
+//                 </tr>
+//             ))}
+//         </tbody>
+//     </table>
+// )
+
+
 const ItemsTable: React.FC<{
     title: string
     headerBg: string
@@ -156,7 +222,6 @@ const ItemsTable: React.FC<{
                 <th className="text-[.7rem] w-36">{title === "A" ? "TYPE OF MACHINE" : "ADDITIONAL SERVICE"}</th>
                 <th className="text-[.7rem]">DESCRIPTION</th>
                 <th className="text-[.7rem]">QTY</th>
-                {/* <th className="text-[.7rem]">RATE</th> */}
                 <th className="text-[.7rem]">TOTAL</th>
             </tr>
         </thead>
@@ -166,47 +231,48 @@ const ItemsTable: React.FC<{
                     <td className="p-2 text-[.7rem]">{item.type}</td>
                     <td className="text-[.7rem]">{item.id}</td>
                     <td className="text-[.7rem]">{item.title}</td>
-                    {/* <td className="text-[.7rem]">
+                    {/* ✅ Conditional for description: Editable only for B (additional services) */}
+                    <td className="text-[.7rem]">
                         {showEditableDescription ? (
                             <input
                                 value={item.description || ""}
                                 onChange={(e) => onItemChange(i, "description", e.target.value)}
-                                className="w-full border rounded p-1 text-[.7rem]"
+                                className="w-full border rounded p-1 text-[.7rem]" // Editable for B, no disabled
                             />
                         ) : (
-                            item.description
+                            <input
+                                value={item.description || ""}
+                                onChange={() => { }} // No-op for A
+                                className="w-full border rounded p-1 text-[.7rem] bg-gray-100 cursor-not-allowed"
+                                disabled // Read-only for A (services)
+                            />
                         )}
-                    </td> */}
-                    <td className="text-[.7rem]">
+                    </td>
+                    {/* ✅ Quantity input (read-only for both) */}
+                    <td>
                         <input
-                            value={item.description || ""}
-                            onChange={(e) => onItemChange(i, "description", e.target.value)}
-                            className="w-full border rounded p-1 text-[.7rem] bg-gray-100 cursor-not-allowed"
-                            disabled // ✅ make it read-only
+                            value={item.quantity}
+                            onChange={() => { }} // No-op
+                            type="number"
+                            readOnly
+                            className="border rounded p-1 text-right text-[.7rem] w-16 bg-gray-100 cursor-not-allowed"
                         />
                     </td>
-
-                    {["quantity", "price"].map((field) => (
-                        <td key={field}>
-                            <input
-                                value={item[field as keyof Item] as string}
-                                onChange={(e) => onItemChange(i, field as StringItemKeys, e.target.value)}
-                                type="number"
-                                required
-                                readOnly={field === "quantity"}
-                                className={`border rounded p-1 text-right text-[.7rem] ${field === "quantity" ? "w-16 bg-gray-100 cursor-not-allowed" : field === "price" ? "w-20" : "w-24"
-                                    }`}
-                            />
-                        </td>
-                    ))}
-
+                    {/* ✅ TOTAL field: Editable for both A and B (services now allow adding/editing total) */}
+                    <td className="text-[.7rem] text-right">
+                        <input
+                            value={item.amount || item.price || ""} // Use amount if available, fallback to price
+                            onChange={(e) => onItemChange(i, "price", e.target.value)} // Trigger price change for calculation (syncs amount)
+                            type="number"
+                            readOnly={false} // ✅ Editable for both A and B
+                            className="border rounded p-1 text-right text-[.7rem] w-24 font-semibold" // Editable style for both
+                        />
+                    </td>
                 </tr>
             ))}
         </tbody>
     </table>
 )
-
-
 
 const AddQuotation: React.FC = () => {
     const navigate = useNavigate()
@@ -694,34 +760,56 @@ const AddQuotation: React.FC = () => {
                         showEditableDescription
                     />
 
-
-
-                    <div className="flex justify-end gap-8 text-sm font-medium">
-                        <div className="space-y-1 gap-4 w-60 p-3 border rounded-md bg-gray-50">
+                    {/* Adjusted Layout: Discount Box and QR/Bank Details Side by Side */}
+                    <div className="flex justify-between items-start gap-6 mt-4">
+                        <div className="w-64 text-right space-y-1 text-xs">
+                            <img src={qrcode || "/placeholder.svg"} alt="QR Code" className="h-20 mx-auto mb-2" />
+                            <table className="h-4">
+                                <tbody>
+                                    {[
+                                        ["Merchant Name:", "ANTESO BIOMEDICAL PRIVATE LIMITED"],
+                                        ["Mobile Number:", "8470909720"],
+                                    ].map(([label, value]) => (
+                                        <tr key={label} style={{ fontSize: ".4rem" }}>
+                                            <td className={label.includes("Merchant") ? "pb-3 text-end" : "text-end"}>{label}</td>
+                                            <td className={`text-start pl-2 ${label.includes("Merchant") ? "w-[7rem] leading-none" : ""}`}>
+                                                {value}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <div className="text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
+                                <p>Steps to PAy UPI QR Code</p>
+                                <p className="flex justify-center items-center flex-wrap w-[10rem]">
+                                    Oppen UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
+                                    Amount
+                                </p>
+                            </div>
+                            <hr className="bg-gray-700 h-[1.5px]" />
+                            <div className="text-center" style={{ lineHeight: "5px" }}>
+                                <br />
+                                <p className="font-bold text-[.6rem]">OUR ACCOUNT DETAILS</p>
+                                <p className="pb-10 mt-2 font-bold text-[.6rem]">
+                                    <span>GST NO:</span> 07AAMCA8142J1ZE
+                                </p>
+                            </div>
+                            <div className="w-[7rem] m-auto">
+                                {[
+                                    ["A/C No:", "344305001088"],
+                                    ["IFSC Code:", "ICIC0003443"],
+                                ].map(([label, value]) => (
+                                    <p key={label} className="text-left text-[.6rem]">
+                                        <span className="font-medium text-[.6rem]">{label}</span> {value}
+                                    </p>
+                                ))}
+                                <p className="text-[.6rem] text-left">ICICI BANK ROHINI</p>
+                            </div>
+                        </div>
+                        {/* Left: Discount/Totals Box */}
+                        <div className="space-y-1 w-60 p-3 border rounded-md bg-gray-50">
                             {/* Discount Toggle Row */}
                             <div className="flex items-center justify-between gap-2 text-[.8rem]">
-                                {/* <div className="flex items-center gap-2">
-                                   
-                                    <input
-                                        type="checkbox"
-                                        id="discountCheck"
-                                        checked={isDiscountApplied}
-                                        onChange={(e) => {
-                                            const checked = e.target.checked;
-                                            setIsDiscountApplied(checked);
-                                            if (checked) {
-                                                setDiscount(1); // start discount from 1 when checked
-                                            } else {
-                                                setDiscount(0); // reset discount when unchecked
-                                            }
-                                        }}
-                                        className="appearance-none h-4 w-4 border-2 border-gray-400 rounded-full checked:bg-green-500 checked:border-green-500 cursor-pointer transition-all duration-200"
-                                    />
-
-                                    <label htmlFor="discountCheck" className="font-semibold cursor-pointer">
-                                        Apply Discount %
-                                    </label>
-                                </div> */}
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="checkbox"
@@ -742,7 +830,6 @@ const AddQuotation: React.FC = () => {
                                         Apply Discount %
                                     </label>
                                 </div>
-
 
                                 {/* Discount input only if checked */}
                                 {isDiscountApplied && (
@@ -774,8 +861,10 @@ const AddQuotation: React.FC = () => {
                                 </div>
                             ))}
                         </div>
-                    </div>
 
+                        {/* Right: QR Code and Bank Details */}
+
+                    </div>
 
                     <div className="flex justify-end mt-6">
                         <button
@@ -823,7 +912,7 @@ const AddQuotation: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Footer */}
+                {/* Footer - Adjusted to only include left and middle */}
                 <div className="mt-4 flex justify-between items-end text-xs">
                     <div>
                         <img src={signature || "/placeholder.svg"} alt="Signature" className="mb-2 h-24" />
@@ -839,49 +928,12 @@ const AddQuotation: React.FC = () => {
                             <p className="text-[.6rem]">HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA</p>
                         </div>
                     </div>
-                    <div className="text-center" style={{ lineHeight: "5px" }}>
+                    {/* <div className="text-center" style={{ lineHeight: "5px" }}>
                         <p className="font-bold text-[.6rem]">OUR ACCOUNT DETAILS</p>
                         <p className="pb-10 mt-2 font-bold text-[.6rem]">
                             <span>GST NO:</span> 07AAMCA8142J1ZE
                         </p>
-                    </div>
-                    <div className="text-right space-y-1">
-                        <img src={qrcode || "/placeholder.svg"} alt="QR Code" className="h-20 mx-auto mb-2" />
-                        <table className="h-4">
-                            <tbody>
-                                {[
-                                    ["Merchant Name:", "ANTESO BIOMEDICAL PRIVATE LIMITED"],
-                                    ["Mobile Number:", "8470909720"],
-                                ].map(([label, value]) => (
-                                    <tr key={label} style={{ fontSize: ".4rem" }}>
-                                        <td className={label.includes("Merchant") ? "pb-3 text-end" : "text-end"}>{label}</td>
-                                        <td className={`text-start pl-2 ${label.includes("Merchant") ? "w-[7rem] leading-none" : ""}`}>
-                                            {value}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        <div className="text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
-                            <p>Steps to PAy UPI QR Code</p>
-                            <p className="flex justify-center items-center flex-wrap w-[10rem]">
-                                Oppen UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
-                                Amount
-                            </p>
-                        </div>
-                        <hr className="bg-gray-700 h-[1.5px]" />
-                        <div className="w-[7rem] m-auto">
-                            {[
-                                ["A/C No:", "344305001088"],
-                                ["IFSC Code:", "ICIC0003443"],
-                            ].map(([label, value]) => (
-                                <p key={label} className="text-left text-[.6rem]">
-                                    <span className="font-medium text-[.6rem]">{label}</span> {value}
-                                </p>
-                            ))}
-                            <p className="text-[.6rem] text-left">ICICI BANK ROHINI</p>
-                        </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 <div className="overflow-x-auto mt-8 text-center" style={{ lineHeight: "1rem" }}>

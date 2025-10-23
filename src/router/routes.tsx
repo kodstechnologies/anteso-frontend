@@ -64,7 +64,9 @@ import Expenses from '../pages/Admin/Master/expenses'
 import ViewLeave from '../components/Admin/Master/Leave/View'
 import ViewExpenses from '../components/Admin/Master/Expense/View'
 import AttendanceSummary from '../components/Admin/Hrms/AttendanceSummary';
-
+import AddStaffLeave from "../components/Admin/Master/Leave/AddStaffLeave"
+import AllLeavesForStaff from '../components/Admin/Master/Leave/AllLeavesForStaff';
+import EditLeaveForStaff from '../components/Admin/Master/Leave/EditLeaveForStaff';
 //orders
 import Orders from '../pages/Admin/Orders';
 import EditOrder from '../components/Admin/Orders/Edit'
@@ -349,14 +351,7 @@ const routes = [
             </AdminProtected>
         ),
     },
-    // {
-    //     path: '/admin/staff-leave/add',
-    //     element: (
-    //         <AdminProtected>
-    //             <StaffLeave />
-    //         </AdminProtected>
-    //     ),
-    // },
+
     {
         path: '/admin/leave/edit/:id',
         element: (
@@ -365,6 +360,31 @@ const routes = [
             </AdminProtected>
         ),
     },
+    {
+        path: '/admin/staff-leave/all',
+        element: (
+            <AdminProtected>
+                <AllLeavesForStaff />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/staff-leave/add',
+        element: (
+            <AdminProtected>
+                <AddStaffLeave />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/staff-leave/edit/:id',
+        element: (
+            <AdminProtected>
+                <EditLeaveForStaff />
+            </AdminProtected>
+        ),
+    },
+  
     {
         path: '/admin/expenses',
         element: (

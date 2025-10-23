@@ -29,7 +29,8 @@ import IconMenuMore from '../Icon/Menu/IconMenuMore';
 import Logo from '../../assets/logo/logo.png';
 import { resetUser } from '../../store/userConfigSlice';
 import { logoutUser } from '../../api';
-
+import Cookies from 'js-cookie';
+import { jwtDecode } from 'jwt-decode';
 const Header = () => {
     const location = useLocation();
     useEffect(() => {
@@ -52,7 +53,22 @@ const Header = () => {
             }
         }
     }, [location]);
+    const [user, setUser] = useState<{ name?: string; email?: string, role?:string }>({});
 
+    useEffect(() => {
+        const token = Cookies.get('accessToken'); // or whatever your token key is
+        if (token) {
+            try {
+                const decoded: any = jwtDecode(token);
+                setUser({
+                    role: decoded.role || '',   // use name from token if available
+                    email: decoded.email || '', // use email from token
+                });
+            } catch (err) {
+                console.error('Invalid token', err);
+            }
+        }
+    }, []);
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
 
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
@@ -120,11 +136,13 @@ const Header = () => {
                                             <img className="rounded-md w-10 h-10 object-cover" src="/assets/images/user-profile.jpg" alt="userProfile" />
                                             <div className="ltr:pl-4 rtl:pr-4 truncate">
                                                 <h4 className="text-base">
-                                                    John Doe
-                                                    {/* <span className="text-xs bg-success-light rounded text-success px-1 ltr:ml-2 rtl:ml-2">Pro</span> */}
+                                                    {user.role}
                                                 </h4>
-                                                <button type="button" className="text-black/60 hover:text-primary dark:text-dark-light/60 dark:hover:text-white">
-                                                    johndoe@gmail.com
+                                                <button
+                                                    type="button"
+                                                    className="text-black/60 hover:text-primary dark:text-dark-light/60 dark:hover:text-white"
+                                                >
+                                                    {user.email || 'user@example.com'}
                                                 </button>
                                             </div>
                                         </div>

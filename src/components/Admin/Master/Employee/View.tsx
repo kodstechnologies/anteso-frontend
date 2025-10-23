@@ -47,7 +47,9 @@ function ViewEmployee() {
 
                 const allDays: string[] = [];
                 for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    allDays.push(new Date(d).toISOString().split("T")[0]); // YYYY-MM-DD
+                    // allDays.push(new Date(d).toISOString().split("T")[0]); // YYYY-MM-DD
+                    allDays.push(format(new Date(d), "yyyy-MM-dd"));
+
                 }
 
                 const attendanceData: Record<string, string> = {};
@@ -121,7 +123,9 @@ function ViewEmployee() {
 
     // Get status for a specific date
     const getStatusForDate = (date: Date) => {
-        const formattedDate = date.toISOString().split("T")[0];
+        // const formattedDate = date.toISOString().split("T")[0];
+        const formattedDate = format(date, "yyyy-MM-dd");
+
         const status = attendanceMap[formattedDate];
 
         if (status) return status;
@@ -330,7 +334,7 @@ function ViewEmployee() {
                             </table>
                         </div>
                     </div> */}
-                    {/* <PaymentDetails id={employee._id} date={selectedDate ? selectedDate.toISOString().split("T")[0] : ""} /> */}
+                    <PaymentDetails id={employee._id} date={selectedDate ? selectedDate.toISOString().split("T")[0] : ""} />
 
                 </div>
             </div>

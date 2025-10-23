@@ -3,11 +3,12 @@ import { Formik, Form, Field, ErrorMessage, FormikHelpers } from "formik";
 import * as Yup from "yup";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { showMessage } from "../../../common/ShowMessage";
-import { getPaymentById, editPayment } from "../../../../api"; // ✅ your API functions
+import { getPaymentById, editPayment } from "../../../../api";
 
-// 🧩 Interfaces
+// Interfaces
 interface PaymentData {
   srfNumber: string;
+  hospitalName: string;
   totalAmount: number;
   paymentAmount: number;
   paymentType: string;
@@ -24,24 +25,10 @@ interface EditPaymentValues {
   screenshot: File | null;
 }
 
-interface ApiResponse {
-  data: {
-    data: PaymentData;
-    message: string;
-    statusCode: number;
-  };
-}
+// Payment type options
+const paymentTypes = ["advance", "balance", "complete"];
 
-// 🧩 Options
-const srfClientOptions = [
-  { value: "ABSRF/2025/05/001", label: "ABSRF/2025/05/001 - Apollo Hospital" },
-  { value: "ABSRF/2025/08/002", label: "ABSRF/2025/05/002 - MedTech Supplies" },
-  { value: "ABSRF/2025/02/003", label: "ABSRF/2025/05/003 - BioGenix Pvt Ltd" },
-];
-
-const paymentTypes = ["advanced", "balance", "complete"];
-
-// 🧩 Validation Schema
+// Validation Schema
 const validationSchema = Yup.object().shape({
   srfClient: Yup.string().required("Please select SRF and Client"),
   totalAmount: Yup.number()
@@ -56,25 +43,30 @@ const validationSchema = Yup.object().shape({
 });
 
 const Edit: React.FC = () => {
-  const { id } = useParams<{ id: string }>(); // ✅ get payment ID from URL
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [initialValues, setInitialValues] = useState<EditPaymentValues | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [srfOptions, setSrfOptions] = useState<{ value: string; label: string }[]>([]);
 
-  // 🔹 Fetch payment data by ID
+  // Fetch payment data
   useEffect(() => {
     const fetchPayment = async () => {
       try {
-        const res: ApiResponse = await getPaymentById(id!);
-        console.log("🚀 ~ fetchPayment ~ res:", res);
+        const res = await getPaymentById(id!);
+        const payment: PaymentData = res?.data?.data;
 
-        const payment = res?.data?.data;
+        // Set SRF dropdown dynamically from the API response
+        setSrfOptions([{ value: payment.srfNumber, label: `${payment.srfNumber} - ${payment.hospitalName}` }]);
+
+        // Map API value "advance" to "advanced" if needed
+        const mappedPaymentType = payment.paymentType === "advance" ? "advanced" : payment.paymentType;
 
         setInitialValues({
           srfClient: payment.srfNumber || "",
           totalAmount: payment.totalAmount || "",
           paymentAmount: payment.paymentAmount || "",
-          paymentType: payment.paymentType || "",
+          paymentType: mappedPaymentType || "",
           utrNumber: payment.utrNumber || "",
           screenshot: null,
         });
@@ -87,12 +79,9 @@ const Edit: React.FC = () => {
         showMessage("Failed to load payment details", "error");
       }
     };
-
     fetchPayment();
   }, [id]);
 
-
-  // 🔹 Handle form submission
   const handleSubmit = async (
     values: EditPaymentValues,
     { setSubmitting }: FormikHelpers<EditPaymentValues>
@@ -109,7 +98,6 @@ const Edit: React.FC = () => {
       }
 
       await editPayment(id!, formData);
-      console.log("🚀 ~ handleSubmit ~ formData:", formData)
       showMessage("Payment updated successfully!", "success");
       navigate("/admin/payments");
     } catch (error: any) {
@@ -120,23 +108,16 @@ const Edit: React.FC = () => {
     }
   };
 
-  if (!initialValues) {
-    return <p>Loading payment details...</p>;
-  }
+  if (!initialValues) return <p>Loading payment details...</p>;
 
   return (
     <>
-      {/* Breadcrumbs */}
       <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
         <li>
-          <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
-            Dashboard
-          </Link>
+          <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">Dashboard</Link>
         </li>
         <li className="before:w-1 before:h-1 before:bg-primary before:rounded-full before:mx-4">
-          <Link to="/admin/payments" className="text-primary">
-            Payments
-          </Link>
+          <Link to="/admin/payments" className="text-primary">Payments</Link>
         </li>
         <li className="before:w-1 before:h-1 before:bg-primary before:rounded-full before:mx-4">
           <span className="text-gray-500">Edit Payment</span>
@@ -156,14 +137,29 @@ const Edit: React.FC = () => {
             <div className="panel">
               <h5 className="font-semibold text-lg mb-4">Payment Details</h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
+
+                {/* SRF No */}
+                {/* <div className={submitCount && errors.srfClient ? "has-error" : submitCount ? "has-success" : ""}>
+                  <label htmlFor="srfClient">SRF No.</label>
+                  <Field as="select" name="srfClient" className="form-select w-full">
+                    <option value="" disabled>Select SRF No.</option>
+                    {srfOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </Field>
+                  <ErrorMessage name="srfClient" component="div" className="text-red-500 text-sm mt-1" />
+                </div> */}
                 {/* SRF No */}
                 <div className={submitCount && errors.srfClient ? "has-error" : submitCount ? "has-success" : ""}>
                   <label htmlFor="srfClient">SRF No.</label>
-                  <Field as="select" name="srfClient" className="form-select w-full">
-                    <option value="" disabled>
-                      Select SRF No.
-                    </option>
-                    {srfClientOptions.map((option) => (
+                  <Field
+                    as="select"
+                    name="srfClient"
+                    className="form-select w-full"
+                    disabled={true} // ✅ Disable SRF No field after fetching
+                  >
+                    <option value="" disabled>Select SRF No.</option>
+                    {srfOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -175,24 +171,14 @@ const Edit: React.FC = () => {
                 {/* Total Amount */}
                 <div className={submitCount && errors.totalAmount ? "has-error" : submitCount ? "has-success" : ""}>
                   <label htmlFor="totalAmount">Total Amount</label>
-                  <Field
-                    type="number"
-                    name="totalAmount"
-                    className="form-input w-full"
-                    placeholder="Total Amount"
-                  />
+                  <Field type="number" name="totalAmount" className="form-input w-full" placeholder="Total Amount" />
                   <ErrorMessage name="totalAmount" component="div" className="text-red-500 text-sm mt-1" />
                 </div>
 
                 {/* Payment Amount */}
                 <div className={submitCount && errors.paymentAmount ? "has-error" : submitCount ? "has-success" : ""}>
                   <label htmlFor="paymentAmount">Payment Amount</label>
-                  <Field
-                    type="number"
-                    name="paymentAmount"
-                    className="form-input w-full"
-                    placeholder="Payment Amount"
-                  />
+                  <Field type="number" name="paymentAmount" className="form-input w-full" placeholder="Payment Amount" />
                   <ErrorMessage name="paymentAmount" component="div" className="text-red-500 text-sm mt-1" />
                 </div>
 
@@ -203,11 +189,10 @@ const Edit: React.FC = () => {
                     <option value="">Select type</option>
                     {paymentTypes.map((type) => (
                       <option key={type} value={type}>
-                        {type}
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
                       </option>
                     ))}
                   </Field>
-
                   <ErrorMessage name="paymentType" component="div" className="text-red-500 text-sm mt-1" />
                 </div>
 
@@ -228,9 +213,7 @@ const Edit: React.FC = () => {
                     onChange={(event) => {
                       const file = event.currentTarget.files?.[0];
                       setFieldValue("screenshot", file);
-                      if (file) {
-                        setImagePreview(URL.createObjectURL(file));
-                      }
+                      if (file) setImagePreview(URL.createObjectURL(file));
                     }}
                     className="form-input w-full"
                   />
@@ -238,22 +221,14 @@ const Edit: React.FC = () => {
                   {imagePreview && (
                     <div className="mt-4">
                       <p className="text-sm text-gray-600 mb-1">Preview:</p>
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-32 h-32 object-cover border rounded shadow"
-                      />
+                      <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover border rounded shadow" />
                     </div>
                   )}
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="btn btn-success mt-4 disabled:opacity-50"
-                >
+                <button type="submit" disabled={isSubmitting} className="btn btn-success mt-4 disabled:opacity-50">
                   {isSubmitting ? "Updating..." : "Update Payment"}
                 </button>
               </div>

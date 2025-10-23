@@ -146,9 +146,9 @@ const SalaryManagement = () => {
                                                 <IconEye />
                                             </NavLink>
                                             {/* <IconEdit className="w-4.5 h-4.5 hover:text-info" /> */}
-                                            <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(row._id)}>
+                                            {/* <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(row._id)}>
                                                 <IconTrashLines />
-                                            </button>
+                                            </button> */}
                                         </div>
                                     ),
                                 },

@@ -6,6 +6,12 @@ import { addAdvance, getAlltripsByTechnicianId } from "../../../api"
 import WarningAlert from "./WarningAlert"
 import FadeInModal from "../../common/FadeInModal"
 
+interface AdvanceLog {
+  amount: number
+  _id: string
+  date: string
+}
+
 interface ExpenseItem {
   _id: string
   typeOfExpense: string
@@ -43,8 +49,9 @@ export default function AdvanceManagement() {
   const [expenses, setExpenses] = useState<ExpenseRow[]>([])
   const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const [alertType, setAlertType] = useState<"success" | "warning" | null>(null)
-  const [advances, setAdvances] = useState<number[]>([])
   const [balance, setBalance] = useState<number>(0)
+  const [totalAdvanced, setTotalAdvanced] = useState<number>(0)
+  const [advanceLogs, setAdvanceLogs] = useState<AdvanceLog[]>([])
   const [openTripIds, setOpenTripIds] = useState<Set<string>>(new Set())
 
   // Screenshot modal state
@@ -63,7 +70,8 @@ export default function AdvanceManagement() {
         const advanceAcc = res.data?.data?.advanceAccount || {}
 
         setBalance(advanceAcc.balance || 0)
-        setAdvances(advanceAcc.logs?.map((log: any) => log.amount) || [])
+        setTotalAdvanced(advanceAcc.advancedAmount || 0)
+        setAdvanceLogs(advanceAcc.logs || [])
 
         const mapped: ExpenseRow[] = tripsData.map((trip: any) => ({
           id: trip._id,
@@ -92,8 +100,14 @@ export default function AdvanceManagement() {
       const payload = { advancedAmount: addAmountValue }
       await addAdvance(id!, payload)
 
-      setAdvances((prev) => [...prev, addAmountValue])
+      setTotalAdvanced((prev) => prev + addAmountValue)
       setBalance((prev) => prev + addAmountValue)
+      const newLog: AdvanceLog = {
+        amount: addAmountValue,
+        _id: Date.now().toString(),
+        date: new Date().toISOString()
+      }
+      setAdvanceLogs((prev) => [...prev, newLog])
       setAddAmountValue("")
       setAlertMessage(null)
     } catch (error) {
@@ -151,6 +165,42 @@ export default function AdvanceManagement() {
         </div>
       </div>
 
+      {/* Advance Account Section */}
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-100 px-4 py-3">
+          <h3 className="text-lg font-semibold">Advance Account</h3>
+        </div>
+        <div className="px-4 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="text-center">
+              <p className="text-sm text-slate-500">Balance</p>
+              <p className="text-2xl font-bold text-emerald-600">{formatINR(balance)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-500">Total Advanced</p>
+              <p className="text-2xl font-bold text-blue-600">{formatINR(totalAdvanced)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-500">Total Expenses</p>
+              <p className="text-2xl font-bold text-red-600">{formatINR(totalAdvanced - balance)}</p>
+            </div>
+          </div>
+          {advanceLogs.length > 0 && (
+            <div>
+              <h4 className="font-medium mb-2">Advance Logs</h4>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {advanceLogs.slice().reverse().map((log, index) => (
+                  <p key={log._id || index} className="text-sm text-slate-600 flex justify-between">
+                    <span>{formatINR(log.amount)}</span>
+                    <span className="text-slate-500">{new Date(log.date).toLocaleDateString("en-GB")}</span>
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Trip Table */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
         <table className="w-full border-collapse">
@@ -180,21 +230,10 @@ export default function AdvanceManagement() {
                     {exp.endDate ? new Date(exp.endDate).toLocaleDateString("en-GB") : "-"}
                   </td>
                   <td className="p-3 border-b border-gray-200 font-medium">{formatINR(exp.totalExpense)}</td>
-                  {/* <td className="p-3 border-b border-gray-200">
-                    <p className="font-medium">{formatINR(balance)}</p>
-                    {advances.length > 0 && <p className="text-slate-500 text-sm">{advances.join(" + ")}</p>}
-                  </td> */}
                   <td className="p-3 border-b border-gray-200">
                     <p className="font-medium">{formatINR(balance)}</p>
-                    {advances.length > 0 && (
-                      <p className="text-slate-500 text-sm">
-                        {advances.length > 0 && (
-                          <p className="text-slate-500 text-sm">{formatINR(advances.reduce((sum, val) => sum + val, 0))}</p>
-                        )}
-                      </p>
-                    )}
+                    {totalAdvanced > 0 && <p className="text-slate-500 text-sm">{formatINR(totalAdvanced)}</p>}
                   </td>
-
                   <td className="p-3 border-b border-gray-200">
                     {exp.tripstatus ? (
                       <span className={statusBadgeClass(exp.tripstatus)}>{exp.tripstatus}</span>

@@ -115,9 +115,15 @@ const Sidebar = () => {
                                                 <li><NavLink to="/admin/tools">{t('Tools')}</NavLink></li>
                                                 {userType === 'admin' && (
                                                     <>
-                                                        {/* <li><NavLink to="/admin/tools">{t('Tools')}</NavLink></li> */}
                                                         <li><NavLink to="/admin/employee">{t('Employee')}</NavLink></li>
                                                         <li><NavLink to="/admin/leave">{t('Leave')}</NavLink></li>
+                                                    </>
+                                                )}
+
+                                                {/* 👤 Staff-only link */}
+                                                {userType === 'staff' && (
+                                                    <>
+                                                        <li><NavLink to="/admin/staff-leave/all">{t(' Leave')}</NavLink></li>
 
                                                     </>
                                                 )}

@@ -156,13 +156,13 @@ const AdvancedManagement = () => {
                                                 <IconEye />
                                             </NavLink>
                                             {/* <IconEdit className="w-4.5 h-4.5 hover:text-info" /> */}
-                                            <button
+                                            {/* <button
                                                 type="button"
                                                 className="flex hover:text-danger"
                                                 onClick={() => deleteRow(record._id)}
                                             >
                                                 <IconTrashLines />
-                                            </button>
+                                            </button> */}
                                         </div>
                                     ),
                                 }

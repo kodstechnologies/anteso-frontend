@@ -9,7 +9,7 @@ const paymentTypes = ['advance', 'balance', 'complete'];
 
 const Add = () => {
   const navigate = useNavigate();
-  const [srfClientOptions, setSrfClientOptions] = useState<{ value: string, label: string ,_id:any}[]>([]);
+  const [srfClientOptions, setSrfClientOptions] = useState<{ value: string, label: string, _id: any }[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Fetch orders with client name
@@ -47,14 +47,7 @@ const Add = () => {
       .max(Yup.ref('totalAmount'), 'Payment cannot exceed total amount'),
     paymentType: Yup.string().required('Please select payment type'),
     screenshot: Yup.mixed().required('Please attach a screenshot'),
-    utrNumber: Yup.string()
-      .matches(
-        /^[A-Z0-9]{22}$/,
-        "UTR must be exactly 22 characters (A–Z, 0–9). Example: PUNB012345678912345678"
-      )
-      .nullable(),
-
-
+    utrNumber: Yup.string().nullable(),
   });
 
   return (
@@ -210,12 +203,24 @@ const Add = () => {
                   </div>
 
                   {/* Payment Type Dropdown */}
-                  <div className={submitCount ? (errors.paymentType ? 'has-error' : 'has-success') : ''}>
+                  {/* <div className={submitCount ? (errors.paymentType ? 'has-error' : 'has-success') : ''}>
                     <label htmlFor="paymentType" className="text-sm font-semibold text-gray-700">Payment Type</label>
                     <Field as="select" name="paymentType" className="form-select w-full">
                       <option value="" disabled>Select type</option>
                       {paymentTypes.map((type) => (
                         <option key={type} value={type}>{type}</option>
+                      ))}
+                    </Field>
+                    <ErrorMessage name="paymentType" component="div" className="text-red-500 text-sm mt-1" />
+                  </div> */}
+                  <div className={submitCount ? (errors.paymentType ? 'has-error' : 'has-success') : ''}>
+                    <label htmlFor="paymentType" className="text-sm font-semibold text-gray-700">Payment Type</label>
+                    <Field as="select" name="paymentType" className="form-select w-full">
+                      <option value="" disabled>Select type</option>
+                      {paymentTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type.charAt(0).toUpperCase() + type.slice(1)} {/* First letter capital */}
+                        </option>
                       ))}
                     </Field>
                     <ErrorMessage name="paymentType" component="div" className="text-red-500 text-sm mt-1" />

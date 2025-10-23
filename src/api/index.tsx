@@ -2077,30 +2077,85 @@ export const getInvoiceById = async (invoiceId: any) => {
     }
 }
 
+// export const editDocuments = async (
+//     orderId: string,
+//     serviceId: string,
+//     technicianId: string,
+//     workType: string,
+//     uploadFile: File | null,
+//     viewFiles: File[]
+// ) => {
+//     try {
+//         const token = Cookies.get("accessToken"); // if using JWT
+
+//         const formData = new FormData();
+
+//         // Append single file (optional)
+//         if (uploadFile) {
+//             formData.append("uploadFile", uploadFile);
+//         }
+
+//         // Append multiple files
+//         if (viewFiles && viewFiles.length > 0) {
+//             viewFiles.forEach((file) => {
+//                 formData.append("viewFile", file);
+//             });
+//         }
+
+//         const response = await api.patch(
+//             `/orders/edit-documents/${orderId}/${serviceId}/${technicianId}/${workType}`,
+//             formData,
+//             {
+//                 headers: {
+//                     "Content-Type": "multipart/form-data",
+//                     Authorization: `Bearer ${token}`, // if protected route
+//                 },
+//             }
+//         );
+
+//         return response.data;
+//     } catch (error: any) {
+//         console.error("🚀 ~ editDocuments error:", error);
+//         throw new Error(error?.response?.data?.message || "File upload failed");
+//     }
+// };
+
+
 export const editDocuments = async (
     orderId: string,
     serviceId: string,
     technicianId: string,
     workType: string,
     uploadFile: File | null,
-    viewFiles: File[]
+    viewFiles: File[],
+    action?: 'add' | 'replace_all' | 'replace' | 'delete', // Optional, default 'add' for backward compat
+    targetIndex?: number // Optional, for 'replace' or 'delete'
 ) => {
     try {
-        const token = Cookies.get("accessToken"); // if using JWT
+        const token = Cookies.get("accessToken");
 
         const formData = new FormData();
 
-        // Append single file (optional)
+        // Append action and targetIndex if provided
+        if (action) {
+            formData.append("action", action);
+        }
+        if (targetIndex !== undefined) {
+            formData.append("targetIndex", targetIndex.toString());
+        }
+
+        // Append single file (optional, always replaces if provided)
         if (uploadFile) {
             formData.append("uploadFile", uploadFile);
         }
 
-        // Append multiple files
+        // Append multiple files (for 'add', 'replace_all', or 'replace' with single file)
         if (viewFiles && viewFiles.length > 0) {
             viewFiles.forEach((file) => {
                 formData.append("viewFile", file);
             });
         }
+        // For 'delete', no files appended
 
         const response = await api.patch(
             `/orders/edit-documents/${orderId}/${serviceId}/${technicianId}/${workType}`,
@@ -2108,7 +2163,7 @@ export const editDocuments = async (
             {
                 headers: {
                     "Content-Type": "multipart/form-data",
-                    Authorization: `Bearer ${token}`, // if protected route
+                    Authorization: `Bearer ${token}`,
                 },
             }
         );
@@ -2116,9 +2171,10 @@ export const editDocuments = async (
         return response.data;
     } catch (error: any) {
         console.error("🚀 ~ editDocuments error:", error);
-        throw new Error(error?.response?.data?.message || "File upload failed");
+        throw new Error(error?.response?.data?.message || "File update failed");
     }
 };
+
 
 export const getPaymentDeyailsByOrderId = async (orderId: any) => {
     try {
@@ -2364,6 +2420,8 @@ export const addCourierByOrderId = async (orderId: string, payload: any) => {
                 "Content-Type": "application/json",
             },
         });
+        console.log("🚀 ~ addCourierByOrderId ~ payload:", payload)
+
         console.log("🚀 ~ addCourierByOrderId ~ res:", res);
         return res.data; // return data directly
     } catch (error: any) {
@@ -2814,6 +2872,7 @@ export const getAttendanceStatus = async (employeeId: string, date: string) => {
                 Authorization: `Bearer ${token}`,
             },
         })
+        console.log("🚀 ~ getAttendanceStatus ~ date:", date)
         console.log("🚀 ~ getAttendanceStatus ~ res:", res)
         return res
     } catch (error: any) {
@@ -2832,7 +2891,7 @@ export const getPaymentDetails = async (employeeId: string, date: string) => {
             },
         })
         console.log("🚀 ~ getPaymentDetails ~ res:", res)
-        return res
+        return res.data
     } catch (error: any) {
         console.error("🚀 ~ getPaymentDetails ~ error:", error);
         throw new Error(
@@ -2840,3 +2899,90 @@ export const getPaymentDetails = async (employeeId: string, date: string) => {
         );
     }
 };
+
+
+export const getAllLeavesByStaff = async (id: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/leaves/get-all-leaves/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAllLeavesByStaff ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getAllLeavesByStaff ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAllLeavesByStaff"
+        );
+    }
+}
+
+export const getStaffLeaveById = async (staffId: any, leaveId: any) => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/leaves/get-by-id/${staffId}/${leaveId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getStaffLeaveById ~ res:", res)
+        console.log("🚀 ~ getStaffLeaveById ~ res:", res)
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ getStaffLeaveById ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getStaffLeaveById"
+        );
+    }
+}
+// api/index.ts
+export const editStaffLeaveById = async (staffId: string, leaveId: string, data: any) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.put(`/leaves/edit-leave/${staffId}/${leaveId}`, data, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error?.response?.data?.message || 'Failed to edit staff leave');
+    }
+};
+
+
+export const getAdvancedAmount = async (id: any) => {
+    console.log("🚀 ~ getAdvancedAmount ~ id:", id)
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/technician/get-advanced-amount/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getAdvancedAmount ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ getAdvancedAmount ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getAdvancedAmount"
+        );
+    }
+}
+
+export const deleteOrder = async (id: any) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.delete(`/orders/delete-order/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ deleteOrder ~ error:", error);
+        throw error;
+    }
+}

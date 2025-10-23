@@ -131,19 +131,16 @@ const AddTool = () => {
                                 {[
                                     { name: 'nomenclature', label: 'Name' },
                                     { name: 'manufacturer', label: 'Manufacture Name' },
-                                    { name: 'manufacture_date', label: 'Manufacture Date', type: 'date' },
                                     { name: 'model', label: 'Model' },
                                     { name: 'SrNo', label: 'Sr No' },
                                     { name: 'calibrationCertificateNo', label: 'Calibration Certificate Number' },
-                                    { name: 'calibrationValidTill', label: 'Calibration Valid Till', type: 'date' },
                                     { name: 'range', label: 'Range' },
-                                    // { name: 'toolID', label: 'Tool ID' },
-                                ].map(({ name, label, type = 'text' }) => (
+                                ].map(({ name, label }) => (
                                     <div key={name} className={touched[name as keyof ToolFormValues] && errors[name as keyof ToolFormValues] ? 'has-error' : ''}>
                                         <label htmlFor={name}>{label}</label>
                                         <Field
                                             name={name}
-                                            type={type}
+                                            type="text"
                                             id={name}
                                             placeholder={`Enter ${label}`}
                                             className="form-input"
@@ -153,6 +150,29 @@ const AddTool = () => {
                                         )}
                                     </div>
                                 ))}
+
+                                {/* Date Fields with min/max */}
+                                {[
+                                    { name: 'manufacture_date', label: 'Manufacture Date', type: 'date', maxDate: new Date() },
+                                    { name: 'calibrationValidTill', label: 'Calibration Valid Till', type: 'date', minDate: new Date() },
+                                ].map(({ name, label, type, minDate, maxDate }) => (
+                                    <div key={name} className={touched[name as keyof ToolFormValues] && errors[name as keyof ToolFormValues] ? 'has-error' : ''}>
+                                        <label htmlFor={name}>{label}</label>
+                                        <Field
+                                            name={name}
+                                            type={type}
+                                            id={name}
+                                            placeholder={`Enter ${label}`}
+                                            className="form-input"
+                                            {...(maxDate ? { max: maxDate.toISOString().split('T')[0] } : {})}
+                                            {...(minDate ? { min: minDate.toISOString().split('T')[0] } : {})}
+                                        />
+                                        {touched[name as keyof ToolFormValues] && errors[name as keyof ToolFormValues] && (
+                                            <div className="text-danger mt-1">{errors[name as keyof ToolFormValues]}</div>
+                                        )}
+                                    </div>
+                                ))}
+
 
                                 {/* File Upload */}
                                 <div className={touched.certificate && errors.certificate ? 'has-error' : ''}>

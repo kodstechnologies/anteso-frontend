@@ -446,29 +446,27 @@ export default function EmployeeDetailsLeaveManagement() {
 
                 >
 
-                    {({ isSubmitting }) => (
-                        <Form className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
-                            {/* Year Selection */}
+                    {({ isSubmitting, values, setFieldValue }) => (
+                        <Form className="space-y-6">
+                            {/* Year Selection - Calendar in decade view (shows years only, no months) */}
                             <div>
-                                <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Select Year
                                 </label>
-                                <Field
-                                    as="select"
-                                    name="year"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400 focus:outline-none"
-                                >
-                                    {Array.from({ length: 20 }, (_, i) => {
-                                        const y = new Date().getFullYear() + i; // start from current year
-                                        return (
-                                            <option key={y} value={y}>
-                                                {y}
-                                            </option>
-                                        );
-                                    })}
-
-                                </Field>
+                                <Calendar
+                                    onChange={(value: Date) => setFieldValue("year", value.getFullYear())}
+                                    value={new Date(values.year || new Date().getFullYear(), 0, 1)}
+                                    view="decade"
+                                    maxDetail="decade"
+                                    minDate={new Date(2020, 0, 1)}
+                                    maxDate={new Date(2050, 11, 31)}
+                                    className="border border-gray-300 rounded-lg shadow-sm"
+                                    calendarType="US"
+                                />
                                 <ErrorMessage name="year" component="div" className="text-red-500 text-sm mt-1" />
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Selected Year: <strong>{values.year}</strong>
+                                </p>
                             </div>
 
                             {/* Total Leaves Input */}
@@ -498,7 +496,7 @@ export default function EmployeeDetailsLeaveManagement() {
                         </Form>
                     )}
                 </Formik>
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-6">
                     <h2 className="text-xl font-semibold mb-4">Allocated Leaves History</h2>
                     {Array.isArray(allocatedLeaves) && allocatedLeaves.length > 0 ? (
                         <table className="w-full border">

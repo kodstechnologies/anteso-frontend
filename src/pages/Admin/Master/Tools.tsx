@@ -11,7 +11,7 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { AllTools, deleteToolById } from '../../../api';
+import { AllTools, deleteToolById, getEngineerByToolId } from '../../../api';
 import dayjs from 'dayjs';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 
@@ -59,15 +59,51 @@ const Tools = () => {
         }
     };
 
+    // useEffect(() => {
+    //     const fetchTools = async () => {
+    //         setLoading(true);
+    //         try {
+    //             const response = await AllTools();
+    //             const tools = response.data?.tools || [];
+    //             setItems(tools);
+    //             setInitialRecords(tools);
+    //             setRecords(tools.slice(0, pageSize));
+    //         } catch (error) {
+    //             console.error('Failed to fetch tools:', error);
+    //         } finally {
+    //             setLoading(false);
+    //         }
+    //     };
+    //     fetchTools();
+    // }, []);
+
+
+
+
     useEffect(() => {
         const fetchTools = async () => {
             setLoading(true);
             try {
                 const response = await AllTools();
                 const tools = response.data?.tools || [];
-                setItems(tools);
-                setInitialRecords(tools);
-                setRecords(tools.slice(0, pageSize));
+
+                // Fetch engineer names for all tools
+                const toolsWithEngineers = await Promise.all(
+                    tools.map(async (tool:any) => {
+                        try {
+                            const engineerData = await getEngineerByToolId(tool._id);
+                            // Assuming the API returns { name: 'Engineer Name', email: '...' }
+                            return { ...tool, engineerName: engineerData?.name || '—' };
+                        } catch (err) {
+                            console.error('Failed to fetch engineer for tool:', tool._id, err);
+                            return { ...tool, engineerName: '—' };
+                        }
+                    })
+                );
+
+                setItems(toolsWithEngineers);
+                setInitialRecords(toolsWithEngineers);
+                setRecords(toolsWithEngineers.slice(0, pageSize));
             } catch (error) {
                 console.error('Failed to fetch tools:', error);
             } finally {
@@ -143,7 +179,7 @@ const Tools = () => {
                             columns={[
                                 { accessor: 'SrNo', sortable: true },
                                 { accessor: 'nomenclature', sortable: true },
-                                // { accessor: 'engineerName', sortable: true },                                                            
+                                { accessor: 'engineerName', sortable: true },
                                 {
                                     accessor: 'issueDate',
                                     sortable: true,
