@@ -24,6 +24,7 @@ const EditInstitute = () => {
   const [loading, setLoading] = useState(false)
   const [initialData, setInitialData] = useState<InstituteData | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
+  const [showPassword, setShowPassword] = useState(false)
 
   const SubmittedForm = Yup.object().shape({
     eloraId: Yup.string().required("Please fill the Field"),
@@ -51,7 +52,7 @@ const EditInstitute = () => {
       } catch (error) {
         console.error("Error fetching institute data:", error)
         showMessage("Failed to load institute data", "error")
-        navigate(`/admin/clients/preview/${clientId}`)
+        // navigate(`/admin/clients/preview/${clientId}`)
       } finally {
         setDataLoading(false)
       }
@@ -105,7 +106,7 @@ const EditInstitute = () => {
             const response = await editInstituteByHospitalIdandInstituteId(clientId, instituteId, values)
             console.log("🚀 ~ onSubmit={ ~ response:", response)
             showMessage("Institute updated successfully!", "success")
-            navigate(`/admin/clients/preview/${clientId}`)
+            // navigate(`/admin/clients/preview/${clientId}`)
           } catch (error: any) {
             const message = error?.response?.data?.message
             console.log("🚀 ~ onSubmit ~ message:", message)
@@ -136,13 +137,31 @@ const EditInstitute = () => {
                 </div>
                 <div className={submitCount ? (errors.password ? "has-error" : "has-success") : ""}>
                   <label htmlFor="password">Password </label>
-                  <Field
-                    name="password"
-                    type="password"
-                    id="password"
-                    placeholder="Enter Password"
-                    className="form-input"
-                  />
+                  <div className="relative">
+                    <Field
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      placeholder="Enter Password"
+                      className="form-input pr-10"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                   {submitCount && errors.password ? <div className="text-danger mt-1">{errors.password}</div> : ""}
                 </div>
                 <div className={submitCount ? (errors.email ? "has-error" : "has-success") : ""}>
@@ -171,13 +190,7 @@ const EditInstitute = () => {
               </div>
             </div>
             <div className="w-full mb-6 flex justify-end gap-4">
-              <button
-                type="button"
-                onClick={() => navigate(`/admin/clients/preview/${clientId}`)}
-                className="btn btn-outline-danger !mt-6"
-              >
-                Cancel
-              </button>
+
               <button type="submit" className="btn btn-success !mt-6">
                 Update Institute
               </button>

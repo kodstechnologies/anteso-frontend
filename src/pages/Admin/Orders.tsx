@@ -213,8 +213,19 @@ const Orders = () => {
                                 },
                                 { accessor: 'procNoOrPoNo', title: 'PROC NO/PO NO', sortable: true, render: (r) => r.procNoOrPoNo || '-' },
                                 { accessor: 'leadOwner', title: 'Lead Owner', sortable: true, render: (r) => r.leadOwner || '-' },
-                                { accessor: 'procExpiryDate', title: 'PROC Expiry Date', sortable: true, render: (r) => r.procExpiryDate || '-' },
-                                { accessor: 'partyCodeOrSysId', title: 'Party Code/ Sys ID', sortable: true, render: (r) => r.partyCodeOrSysId || '-' },
+                                {
+                                    accessor: 'procExpiryDate',
+                                    title: 'PROC Expiry Date',
+                                    sortable: true,
+                                    render: (r) =>
+                                        r.procExpiryDate
+                                            ? new Date(r.procExpiryDate).toLocaleDateString('en-GB', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                year: 'numeric',
+                                            })
+                                            : '-',
+                                }, { accessor: 'partyCodeOrSysId', title: 'Party Code/ Sys ID', sortable: true, render: (r) => r.partyCodeOrSysId || '-' },
                                 { accessor: 'hospitalName', title: 'Institute Name', sortable: true, render: (r) => r.hospitalName || '-' },
                                 { accessor: 'fullAddress', title: 'Address', sortable: true, render: (r) => r.fullAddress || '-' },
                                 { accessor: 'city', title: 'City', sortable: true, render: (r) => r.city || '-' },

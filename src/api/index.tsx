@@ -396,7 +396,7 @@ export const getRsoByHospitalIdAndRsoId = async (hospitalId: any, rsoId: any) =>
     console.log("🚀 ~ getRsoByClientIdAndRsoId ~ clientId:", hospitalId)
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.get(`/rso/get-rso-by-clienId-and-rsoId/${hospitalId}/${rsoId}`, {
+        const res = await api.get(`/rso/get-rso-by-hospitalId-rsoId/${hospitalId}/${rsoId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -446,9 +446,10 @@ export const editRsohospitalIdandRsoId = async (hospitalId: any, rsoId: any, pay
     console.log("🚀 ~ editRsoByClientIDandRsoId ~ clientId:", hospitalId)
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.put(`/rso/update-rso-by-hospitalId-rsoId/${hospitalId}/${rsoId}`, payload, {
+        const res = await api.put(`/rso/edit/${hospitalId}/${rsoId}`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
+                "Content-Type": "multipart/form-data", // 👈 add this
             },
         })
         return res.data
