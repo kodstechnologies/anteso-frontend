@@ -25,6 +25,7 @@ const AdditionalServices = () => {
                     ...s,
                     status: s.status ?? "Pending",
                     remark: s.remark ?? "",
+                    locked: s.status === "Completed",
                     file: null, // local upload state
                 }));
 
@@ -42,8 +43,8 @@ const AdditionalServices = () => {
 
     const handleChange = (id: string, field: string, value: any) => {
         const currentService = additionalServices.find(s => s._id === id);
-        if (currentService && currentService.status === "Completed") {
-            if (field === "status" && value !== "Completed") {
+        if (currentService && currentService.locked) {
+            if (field === "status") {
                 showMessage("Status cannot be changed after marking as Completed", "error");
             } else if (field === "remark") {
                 showMessage("Remarks cannot be changed after marking as Completed", "error");
@@ -76,7 +77,7 @@ const AdditionalServices = () => {
 
             setAdditionalServices((prev) =>
                 prev.map((s) =>
-                    s._id === service._id ? { ...s, ...res.service, file: null } : s // Reset local file
+                    s._id === service._id ? { ...s, ...res.service, file: null, locked: res.service.status === "Completed" } : s // Reset local file
                 )
             );
         } catch (err: any) {
@@ -195,7 +196,7 @@ const AdditionalServices = () => {
                                                 handleChange(service._id, "remark", e.target.value)
                                             }
                                             placeholder="Enter any remarks or notes..."
-                                            disabled={service.status === "Completed"}
+                                            disabled={service.locked}
                                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         />
                                     </div>

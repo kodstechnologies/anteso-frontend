@@ -32,6 +32,7 @@ interface Service {
 }
 
 interface FormValues {
+    leadOwner: any
     hospitalName: string
     fullAddress: string
     city: string
@@ -277,6 +278,61 @@ const CreateOrder: React.FC = () => {
     //     }
     // }
 
+    // const submitForm = async (values: FormValues) => {
+    //     setIsSubmitting(true);
+    //     try {
+    //         const enquiryCount = 1;
+    //         const newEnquiryID = `ENQ${String(enquiryCount).padStart(3, "0")}`;
+
+    //         // Construct FormData for multipart/form-data
+    //         const formData = new FormData();
+
+    //         // Append all basic text fields
+    //         formData.append("leadOwner", values.leadOwner);
+    //         formData.append("hospitalName", values.hospitalName);
+    //         formData.append("fullAddress", values.fullAddress);
+    //         formData.append("city", values.city);
+    //         formData.append("district", values.district || "");
+    //         formData.append("state", values.state);
+    //         formData.append("pinCode", values.pinCode);
+    //         formData.append("branchName", values.branchName || "");
+    //         formData.append("contactPersonName", values.contactPersonName);
+    //         formData.append("emailAddress", values.emailAddress);
+    //         formData.append("contactNumber", values.contactNumber);
+    //         formData.append("designation", values.designation);
+    //         formData.append("urgency", values.urgency);
+    //         formData.append("partyCodeOrSysId", values.partyCodeOrSysId);
+    //         formData.append("procNoOrPoNo", values.procNoOrPoNo);
+    //         formData.append("procExpiryDate", values.procExpiryDate);
+    //         formData.append("instruction", values.instruction || "");
+    //         formData.append("enquiryID", newEnquiryID);
+
+    //         // Append file if uploaded
+    //         const fileInput = document.getElementById("workOrderCopy") as HTMLInputElement;
+    //         if (fileInput && fileInput.files && fileInput.files.length > 0) {
+    //             formData.append("workOrderCopy", fileInput.files[0]);
+    //         }
+
+    //         // Append services (convert array to JSON)
+    //         formData.append("services", JSON.stringify(values.services));
+
+    //         // Append additional services
+    //         formData.append("additionalServices", JSON.stringify(values.additionalServices));
+
+    //         // ✅ Call API
+    //         const response = await createOrder(formData);
+    //         console.log("Order created successfully:", response);
+    //         showMessage("Order created successfully", "success");
+    //         navigate("/admin/orders");
+    //     } catch (error: any) {
+    //         console.error("Error creating order:", error);
+    //         showMessage(error.message || "Failed to create order", "error");
+    //     } finally {
+    //         setIsSubmitting(false);
+    //     }
+    // };
+
+
     const submitForm = async (values: FormValues) => {
         setIsSubmitting(true);
         try {
@@ -315,8 +371,18 @@ const CreateOrder: React.FC = () => {
             // Append services (convert array to JSON)
             formData.append("services", JSON.stringify(values.services));
 
-            // Append additional services
-            formData.append("additionalServices", JSON.stringify(values.additionalServices));
+            // Transform additionalServices object to array of objects for backend
+            let parsedAdditional = [];
+            for (const [name, description] of Object.entries(values.additionalServices || {})) {
+                if (description && description.trim() !== '') {
+                    parsedAdditional.push({
+                        name,
+                        description,
+                        totalAmount: 0, // Default to 0, or calculate if needed
+                    });
+                }
+            }
+            formData.append("additionalServices", JSON.stringify(parsedAdditional));
 
             // ✅ Call API
             const response = await createOrder(formData);
@@ -330,7 +396,6 @@ const CreateOrder: React.FC = () => {
             setIsSubmitting(false);
         }
     };
-
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: "Dashboard", to: "/", icon: <IconHome /> },
         { label: "Orders", to: "/admin/orders", icon: <IconBox /> },

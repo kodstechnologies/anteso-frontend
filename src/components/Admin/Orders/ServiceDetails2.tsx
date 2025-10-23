@@ -407,7 +407,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             workTypes.push({
                                 id: `${cardId}-qa-raw`,
                                 name: "QA Raw",
-                                description: "Quality assurance for raw materials",
+                                description: "",
                                 backendFields: {
                                     serialNo: machineData.serialNumber || machineData.equipmentNo || "N/A",
                                     modelName: machineData.machineModel || "N/A",
@@ -427,7 +427,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             workTypes.push({
                                 id: `${cardId}-qa-test`,
                                 name: "QA Test",
-                                description: "Quality testing procedures",
+                                description: "",
                                 reportNumber: "N/A", // Will be populated from backend later
                                 urlNumber: "N/A", // Will be populated from backend later
                                 serviceId: machineData._id,
@@ -438,7 +438,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             workTypes.push({
                                 id: `${cardId}-${customId}`,
                                 name: workTypeDetail.workType,
-                                description: `${workTypeDetail.workType} operations`,
+                                description: "",
                                 reportNumber: "N/A",
                                 urlNumber: "N/A",
                                 serviceId: machineData._id,
