@@ -139,7 +139,7 @@ const Orders = () => {
 
                     {/* Data Table */}
                     <div className="bg-white/60 dark:bg-white/10 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl shadow-md overflow-auto">
-                        <DataTable
+                        {/* <DataTable
                             className="whitespace-nowrap table-hover"
                             records={filteredRecords}
                             columns={[
@@ -200,7 +200,68 @@ const Orders = () => {
                             paginationText={({ from, to, totalRecords }) =>
                                 `Showing ${from} to ${to} of ${totalRecords} entries`
                             }
+                        /> */}
+                        <DataTable
+                            className="whitespace-nowrap table-hover"
+                            records={filteredRecords}
+                            columns={[
+                                {
+                                    accessor: 'srfNumber',
+                                    title: 'SRF NO',
+                                    sortable: true,
+                                    render: (record) => <h4 className="font-semibold">{record.srfNumber || '-'}</h4>,
+                                },
+                                { accessor: 'procNoOrPoNo', title: 'PROC NO/PO NO', sortable: true, render: (r) => r.procNoOrPoNo || '-' },
+                                { accessor: 'leadOwner', title: 'Lead Owner', sortable: true, render: (r) => r.leadOwner || '-' },
+                                { accessor: 'createdOn', title: 'PROC Expiry Date', sortable: true, render: (r) => r.createdOn || '-' },
+                                { accessor: 'partyCode', title: 'Party Code/ Sys ID', sortable: true, render: (r) => r.partyCode || '-' },
+                                { accessor: 'hospitalName', title: 'Institute Name', sortable: true, render: (r) => r.hospitalName || '-' },
+                                { accessor: 'fullAddress', title: 'Address', sortable: true, render: (r) => r.fullAddress || '-' },
+                                { accessor: 'city', title: 'City', sortable: true, render: (r) => r.city || '-' },
+                                { accessor: 'district', title: 'District', sortable: true, render: (r) => r.district || '-' },
+                                { accessor: 'state', title: 'State', sortable: true, render: (r) => r.state || '-' },
+                                { accessor: 'pinCode', title: 'Pin', sortable: true, render: (r) => r.pinCode || '-' },
+                                { accessor: 'branchName', title: 'Branch Name', sortable: true, render: (r) => r.branchName || '-' },
+                                { accessor: 'emailAddress', title: 'Customer Email', sortable: true, render: (r) => r.emailAddress || '-' },
+                                { accessor: 'contactNumber', title: 'Customer Mobile', sortable: true, render: (r) => r.contactNumber || '-' },
+                                { accessor: 'status', title: 'Status', sortable: true, render: (r) => r.status || '-' },
+                                {
+                                    accessor: 'action',
+                                    title: 'Actions',
+                                    sortable: false,
+                                    textAlignment: 'center',
+                                    render: (record: Order) => (
+                                        <div className="flex gap-4 items-center w-max mx-auto">
+                                            <Link
+                                                to={`/admin/orders/view/${record._id}`}
+                                                className="flex hover:text-info"
+                                            >
+                                                <IconEye className="w-4.5 h-4.5" />
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                className="flex hover:text-danger"
+                                                onClick={() => handleDeleteClick(record._id)}
+                                            >
+                                                <IconTrashLines />
+                                            </button>
+                                        </div>
+                                    ),
+                                },
+                            ]}
+                            highlightOnHover
+                            totalRecords={filteredRecords.length}
+                            recordsPerPage={pageSize}
+                            page={page}
+                            onPageChange={setPage}
+                            recordsPerPageOptions={[5, 10, 25]}
+                            onRecordsPerPageChange={setPageSize}
+                            sortStatus={sortStatus}
+                            paginationText={({ from, to, totalRecords }) =>
+                                `Showing ${from} to ${to} of ${totalRecords} entries`
+                            }
                         />
+
                     </div>
                 </div>
             </div>
