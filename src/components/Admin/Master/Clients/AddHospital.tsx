@@ -72,6 +72,10 @@ const AddHospital = () => {
   const [activeTab, setActiveTab] = useState<"institutes" | "rsos" | "machines">("institutes")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteItem, setDeleteItem] = useState<{ type: string; id: number | string; name: string } | null>(null)
+  const [currentPageInstitutes, setCurrentPageInstitutes] = useState(1)
+  const [currentPageRsos, setCurrentPageRsos] = useState(1)
+  const [currentPageMachines, setCurrentPageMachines] = useState(1)
+  const itemsPerPage = 5
 
   const SubmittedForm = Yup.object().shape({
     name: Yup.string().required("Please fill the Field"),
@@ -109,6 +113,18 @@ const AddHospital = () => {
     }
     fetchData()
   }, [hospitalId])
+
+  useEffect(() => {
+    setCurrentPageInstitutes(1)
+  }, [institutes])
+
+  useEffect(() => {
+    setCurrentPageRsos(1)
+  }, [rsos])
+
+  useEffect(() => {
+    setCurrentPageMachines(1)
+  }, [machines])
 
   const handleAddEntity = (entityType: "institute" | "rso" | "machine") => {
     navigate(`/admin/clients/preview/${clientId}/${hospitalId}/add-${entityType}`)
@@ -152,6 +168,24 @@ const AddHospital = () => {
       setDeleteLoading(false)
     }
   }
+
+  // Institutes pagination
+  const indexOfLastInstitute = currentPageInstitutes * itemsPerPage
+  const indexOfFirstInstitute = indexOfLastInstitute - itemsPerPage
+  const currentInstitutes = institutes.slice(indexOfFirstInstitute, indexOfLastInstitute)
+  const totalPagesInstitutes = Math.ceil(institutes.length / itemsPerPage)
+
+  // RSOs pagination
+  const indexOfLastRso = currentPageRsos * itemsPerPage
+  const indexOfFirstRso = indexOfLastRso - itemsPerPage
+  const currentRsos = rsos.slice(indexOfFirstRso, indexOfLastRso)
+  const totalPagesRsos = Math.ceil(rsos.length / itemsPerPage)
+
+  // Machines pagination
+  const indexOfLastMachine = currentPageMachines * itemsPerPage
+  const indexOfFirstMachine = indexOfLastMachine - itemsPerPage
+  const currentMachines = machines.slice(indexOfFirstMachine, indexOfLastMachine)
+  const totalPagesMachines = Math.ceil(machines.length / itemsPerPage)
 
   return (
     <>
@@ -285,7 +319,7 @@ const AddHospital = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {institutes.map((institute) => (
+                    {currentInstitutes.map((institute) => (
                       <tr key={institute._id || institute.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{institute.eloraId}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{institute.email}</td>
@@ -315,7 +349,7 @@ const AddHospital = () => {
                         </td>
                       </tr>
                     ))}
-                    {institutes.length === 0 && (
+                    {currentInstitutes.length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                           No institutes found. Click "Add Institute" to get started.
@@ -325,6 +359,53 @@ const AddHospital = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Institutes Pagination */}
+              {totalPagesInstitutes > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-700">
+                    Showing{' '}
+                    <span className="font-medium">
+                      {indexOfFirstInstitute + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="font-medium">
+                      {Math.min(indexOfLastInstitute, institutes.length)}
+                    </span>{' '}
+                    of{' '}
+                    <span className="font-medium">{institutes.length}</span>{' '}
+                    institutes
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setCurrentPageInstitutes((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPageInstitutes === 1}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    {Array.from({ length: totalPagesInstitutes }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPageInstitutes(page)}
+                        className={`px-3 py-2 border border-gray-300 rounded-md text-sm font-medium ${currentPageInstitutes === page
+                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                            : 'bg-white text-gray-500 hover:bg-gray-50'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCurrentPageInstitutes((prev) => Math.min(prev + 1, totalPagesInstitutes))}
+                      disabled={currentPageInstitutes === totalPagesInstitutes}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -372,7 +453,7 @@ const AddHospital = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {rsos.map((rso) => {
+                    {currentRsos.map((rso) => {
                       const attachments = rso.attachment ? [{ url: rso.attachment, label: "Attachment" }] : [];
 
                       return (
@@ -430,7 +511,7 @@ const AddHospital = () => {
                         </tr>
                       );
                     })}
-                    {rsos.length === 0 && (
+                    {currentRsos.length === 0 && (
                       <tr>
                         <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                           No RSOs found. Click "Add RSO" to get started.
@@ -440,6 +521,53 @@ const AddHospital = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* RSOs Pagination */}
+              {totalPagesRsos > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-700">
+                    Showing{' '}
+                    <span className="font-medium">
+                      {indexOfFirstRso + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="font-medium">
+                      {Math.min(indexOfLastRso, rsos.length)}
+                    </span>{' '}
+                    of{' '}
+                    <span className="font-medium">{rsos.length}</span>{' '}
+                    RSOs
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setCurrentPageRsos((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPageRsos === 1}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    {Array.from({ length: totalPagesRsos }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPageRsos(page)}
+                        className={`px-3 py-2 border border-gray-300 rounded-md text-sm font-medium ${currentPageRsos === page
+                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                            : 'bg-white text-gray-500 hover:bg-gray-50'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCurrentPageRsos((prev) => Math.min(prev + 1, totalPagesRsos))}
+                      disabled={currentPageRsos === totalPagesRsos}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -484,7 +612,7 @@ const AddHospital = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {machines.map((machine) => {
+                    {currentMachines.map((machine) => {
                       const attachments = [];
                       if (machine.rawDataAttachment) {
                         attachments.push({ url: machine.rawDataAttachment, label: "Raw Data" });
@@ -542,7 +670,7 @@ const AddHospital = () => {
                         </tr>
                       );
                     })}
-                    {machines.length === 0 && (
+                    {currentMachines.length === 0 && (
                       <tr>
                         <td colSpan={9} className="px-6 py-4 text-center text-gray-500">
                           No machines found. Click "Add Machine" to get started.
@@ -552,6 +680,53 @@ const AddHospital = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Machines Pagination */}
+              {totalPagesMachines > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-700">
+                    Showing{' '}
+                    <span className="font-medium">
+                      {indexOfFirstMachine + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="font-medium">
+                      {Math.min(indexOfLastMachine, machines.length)}
+                    </span>{' '}
+                    of{' '}
+                    <span className="font-medium">{machines.length}</span>{' '}
+                    machines
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setCurrentPageMachines((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPageMachines === 1}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    {Array.from({ length: totalPagesMachines }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPageMachines(page)}
+                        className={`px-3 py-2 border border-gray-300 rounded-md text-sm font-medium ${currentPageMachines === page
+                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                            : 'bg-white text-gray-500 hover:bg-gray-50'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCurrentPageMachines((prev) => Math.min(prev + 1, totalPagesMachines))}
+                      disabled={currentPageMachines === totalPagesMachines}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

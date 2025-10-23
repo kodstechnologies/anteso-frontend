@@ -67,6 +67,8 @@ const ViewClients: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteItem, setDeleteItem] = useState<{ type: string; id: number | string; name: string } | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
 
   const SubmittedForm = Yup.object().shape({
     name: Yup.string().required("Please fill the Field"),
@@ -104,6 +106,10 @@ const ViewClients: React.FC = () => {
     }
     fetchData()
   }, [clientId])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [hospitals])
 
   const fetchClientData = async (id: string) => {
     try {
@@ -161,6 +167,10 @@ const ViewClients: React.FC = () => {
     }
   };
 
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentHospitals = hospitals.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(hospitals.length / itemsPerPage);
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>
@@ -394,7 +404,7 @@ const ViewClients: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {hospitals.map((hospital) => (
+                  {currentHospitals.map((hospital) => (
                     <tr key={hospital._id || hospital.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{hospital.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{hospital.address}</td>
@@ -432,7 +442,7 @@ const ViewClients: React.FC = () => {
                       </td>
                     </tr>
                   ))}
-                  {hospitals.length === 0 && (
+                  {currentHospitals.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                         No hospitals found. Use the form above to add a hospital.
@@ -440,21 +450,69 @@ const ViewClients: React.FC = () => {
                     </tr>
                   )}
                 </tbody>
-                <ConfirmModal
-                  open={showDeleteModal}
-                  onClose={() => setShowDeleteModal(false)}
-                  onConfirm={handleDeleteConfirm}
-                  title="Confirm Deletion"
-                  message={
-                    deleteItem
-                      ? `Are you sure you want to delete hospital "${deleteItem.name}"? This action cannot be undone.`
-                      : "Are you sure you want to delete this hospital?"
-                  }
-                />
               </table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <div className="text-sm text-gray-700">
+                  Showing{' '}
+                  <span className="font-medium">
+                    {indexOfFirst + 1}
+                  </span>{' '}
+                  to{' '}
+                  <span className="font-medium">
+                    {Math.min(indexOfLast, hospitals.length)}
+                  </span>{' '}
+                  of{' '}
+                  <span className="font-medium">{hospitals.length}</span>{' '}
+                  hospitals
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-2 border border-gray-300 rounded-md text-sm font-medium ${currentPage === page
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white text-gray-500 hover:bg-gray-50'
+                        }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        <ConfirmModal
+          open={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteConfirm}
+          title="Confirm Deletion"
+          message={
+            deleteItem
+              ? `Are you sure you want to delete hospital "${deleteItem.name}"? This action cannot be undone.`
+              : "Are you sure you want to delete this hospital?"
+          }
+        />
       </div>
     </>
   )
