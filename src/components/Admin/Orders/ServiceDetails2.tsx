@@ -2040,17 +2040,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                     const identifier = getWorkTypeIdentifier(service.workTypeName);
                                                                                     const reportStatus = reportNumbers[service.id]?.[identifier]?.reportStatus || "pending";
                                                                                     const reportUrl = reportNumbers[service.id]?.[identifier]?.reportUrl;
-                                                                                    const labelText = identifier === 'qatest' ? 'QA Test Report Status' : 'Report Status';
+                                                                                    const labelText = identifier === 'qatest' ? 'QA Test Report Status' : '';
                                                                                     return (
                                                                                         <>
-                                                                                            <div className="p-2 bg-white rounded border">
+                                                                                            {/* <div className="p-2 bg-white rounded border">
                                                                                                 <label className="text-xs text-gray-500">{labelText}</label>
                                                                                                 <span
                                                                                                     className={`ml-2 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(reportStatus)}`}
                                                                                                 >
                                                                                                     {reportStatus}
                                                                                                 </span>
-                                                                                            </div>
+                                                                                            </div> */}
                                                                                             {reportUrl && (
                                                                                                 <div className="p-2 bg-white rounded border">
                                                                                                     <label className="text-xs text-gray-500">Report URL</label>
