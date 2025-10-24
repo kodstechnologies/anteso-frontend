@@ -2789,42 +2789,39 @@ export const getNextQuotationNumber = async () => {
 }
 
 
-export const allocateLeaves = async (employeeId: any, payload: any) => {
+export const allocateLeavesForAll = async (payload: { year: number; totalLeaves: number }) => {
     try {
         const token = Cookies.get("accessToken");
-        const res = await api.post(`/leaves/allocate-leaves/${employeeId}`, payload, {
+        const res = await api.post(`/leaves/allocate-leaves-all`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
             },
         });
-        console.log("🚀 ~ allocateLeaves ~ res:", res)
-        return res.data; // return data directlyallocateLeaves
+        console.log("🚀 ~ allocateLeavesForAll ~ res:", res);
+        return res.data;
     } catch (error: any) {
-        console.error("🚀 ~ allocateLeaves ~ error:", error);
-        throw new Error(
-            error?.response?.data?.message || "Failed to allocateLeaves"
-        );
+        console.error("🚀 ~ allocateLeavesForAll ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to allocate leaves for all employees");
     }
-}
+};
 
-export const getAllocatedLeaves = async (id: any, year?: number) => {
+// ✅ Get leave allocations for ALL employees (optionally by year)
+export const getAllAllocatedLeaves = async (year?: number) => {
     try {
-        const token = Cookies.get('accessToken')
-        const queryYear = year || new Date().getFullYear()  // default to current year
-        const res = await api.get(`/leaves/get-allocated-leaves/${id}?year=${queryYear}`, {
+        const token = Cookies.get("accessToken");
+        const query = year ? `?year=${year}` : "";
+        const res = await api.get(`/leaves/leave-allocations${query}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
-        })
-        return res
+        });
+        return res.data;
     } catch (error: any) {
-        console.error("🚀 ~ getAllocatedLeaves ~ error:", error);
-        throw new Error(
-            error?.response?.data?.message || "Failed to getAllocatedLeaves"
-        );
+        console.error("🚀 ~ getAllAllocatedLeaves ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to fetch allocated leaves for all employees");
     }
-}
+};
 
 
 export const attendenceSummary = async (id: any) => {

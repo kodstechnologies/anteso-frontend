@@ -28,22 +28,34 @@ type EmployeeApi = {
   name: string;
   email: string;
   phone: string | number;
-  empId: string;
-  technicianType: RoleValue | string; // backend may send lowercase
+  technicianType: RoleValue | string;
   status: StatusValue | string;
   tools?: ApiTool[];
+
+  // New fields from backend
+  designation?: string;
+  workingDays?: number;
+  dateOfJoining?: string; // ISO string
+  department?: string;
 };
+
 
 type FormValues = {
   name: string;
   email: string;
-  phone: string; // keep as string for inputs
-  empId: string;
-  role: RoleValue | 'Engineer' | 'Office Staff'; // UI may use capitalized option; we normalize
-  tools: string[]; // list of selected tool ids (TL001, ...)
-  issueDates: Record<string, string>; // map toolId -> yyyy-mm-dd
+  phone: string;
+  role: RoleValue | 'Engineer' | 'Office Staff';
+  tools: string[];
+  issueDates: Record<string, string>;
   status: StatusValue | 'Active' | 'Inactive';
+
+  // New fields
+  designation: string;
+  workingDays: number | '';
+  dateOfJoining: string;
+  department: string;
 };
+
 
 const schema = Yup.object({
   name: Yup.string().required('Please fill the Field'),
@@ -51,12 +63,10 @@ const schema = Yup.object({
   phone: Yup.string()
     .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits')
     .required('Please fill the Field'),
-  empId: Yup.string().required('Please fill the Field'),
-  role: Yup.string().required('Please fill the Field'), // okay to keep as string
+  role: Yup.string().required('Please fill the Field'),
   tools: Yup.array().of(Yup.string()).when('role', {
     is: (val: string) => (val || '').toLowerCase() === 'engineer',
     then: (s) => s.min(1, 'Please select at least one tool'),
-    otherwise: (s) => s.notRequired(),
   }),
   issueDates: Yup.object().when('role', {
     is: (val: string) => (val || '').toLowerCase() === 'engineer',
@@ -71,10 +81,16 @@ const schema = Yup.object({
           return selected.every((toolId) => v?.[toolId]);
         }
       ),
-    otherwise: (s) => s.notRequired(),
   }),
   status: Yup.string().required('Please fill the Field'),
+
+  // New validations
+  designation: Yup.string().required('Please fill the Designation'),
+  workingDays: Yup.number().required('Please fill Working Days').min(0),
+  dateOfJoining: Yup.string().required('Please fill Date of Joining'),
+  department: Yup.string().required('Please fill the Department'),
 });
+
 
 
 const normalizeRole = (r: string): RoleValue =>
@@ -130,12 +146,18 @@ const EditEngineer = () => {
           name: emp.name || '',
           email: emp.email || '',
           phone: String(emp.phone ?? ''),
-          empId: emp.empId || '',
           role: normalizeRole(emp.technicianType),
           tools,
           issueDates,
           status: normalizeStatus(emp.status),
+
+          // New fields
+          designation: emp.designation || '',
+          workingDays: emp.workingDays ?? '',
+          dateOfJoining: emp.dateOfJoining ? emp.dateOfJoining.split('T')[0] : '',
+          department: emp.department || '',
         });
+
       } catch (err) {
         console.error(err);
         showMessage('Failed to load employee data', 'error');
@@ -159,18 +181,20 @@ const EditEngineer = () => {
         name: values.name,
         email: values.email,
         phone: values.phone,
-        empId: values.empId, // if backend allows editing, else remove
-        technicianType,      // 'engineer' | 'office staff'
-        status,              // 'active' | 'inactive'
-        // Convert tools + issueDates to the array the backend expects
-        tools:
-          technicianType === 'engineer'
-            ? values.tools.map((toolId) => ({
-              toolId,
-              issueDate: values.issueDates?.[toolId] || null,
-            }))
-            : [],
+        technicianType,
+        status,
+        tools: technicianType === 'engineer'
+          ? values.tools.map((toolId) => ({
+            toolId,
+            issueDate: values.issueDates?.[toolId] || null,
+          }))
+          : [],
+        designation: values.designation,
+        workingDays: Number(values.workingDays),
+        dateOfJoining: values.dateOfJoining,
+        department: values.department,
       };
+
 
       await editEmployee(id as string, payload);
       showMessage('Employee updated successfully', 'success');
@@ -272,13 +296,7 @@ const EditEngineer = () => {
                 </div>
 
                 {/* Emp ID */}
-                <div className={submitCount > 0 ? (errors.empId ? 'has-error' : 'has-success') : ''}>
-                  <label htmlFor="empId">Employee ID</label>
-                  <Field name="empId" type="text" className="form-input" placeholder="Enter Emp ID" />
-                  {submitCount > 0 && errors.empId && (
-                    <div className="text-danger mt-1">{String(errors.empId)}</div>
-                  )}
-                </div>
+                
 
                 {/* Role */}
                 <div className={submitCount > 0 ? (errors.role ? 'has-error' : 'has-success') : ''}>
@@ -305,6 +323,40 @@ const EditEngineer = () => {
                   </Field>
                   {submitCount > 0 && errors.role && (
                     <div className="text-danger mt-1">{String(errors.role)}</div>
+                  )}
+                </div>
+                <div className={submitCount > 0 ? (errors.designation ? 'has-error' : 'has-success') : ''}>
+                  <label htmlFor="designation">Designation</label>
+                  <Field name="designation" type="text" className="form-input" placeholder="Enter Designation" />
+                  {submitCount > 0 && errors.designation && (
+                    <div className="text-danger mt-1">{String(errors.designation)}</div>
+                  )}
+                </div>
+
+                {/* Working Days */}
+                <div className={submitCount > 0 ? (errors.workingDays ? 'has-error' : 'has-success') : ''}>
+                  <label htmlFor="workingDays">Working Days</label>
+                  <Field name="workingDays" type="number" className="form-input" placeholder="Enter Working Days" min={0} />
+                  {submitCount > 0 && errors.workingDays && (
+                    <div className="text-danger mt-1">{String(errors.workingDays)}</div>
+                  )}
+                </div>
+
+                {/* Date of Joining */}
+                <div className={submitCount > 0 ? (errors.dateOfJoining ? 'has-error' : 'has-success') : ''}>
+                  <label htmlFor="dateOfJoining">Date of Joining</label>
+                  <Field name="dateOfJoining" type="date" className="form-input" />
+                  {submitCount > 0 && errors.dateOfJoining && (
+                    <div className="text-danger mt-1">{String(errors.dateOfJoining)}</div>
+                  )}
+                </div>
+
+                {/* Department */}
+                <div className={submitCount > 0 ? (errors.department ? 'has-error' : 'has-success') : ''}>
+                  <label htmlFor="department">Department</label>
+                  <Field name="department" type="text" className="form-input" placeholder="Enter Department" />
+                  {submitCount > 0 && errors.department && (
+                    <div className="text-danger mt-1">{String(errors.department)}</div>
                   )}
                 </div>
               </div>

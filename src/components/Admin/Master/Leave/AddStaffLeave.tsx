@@ -65,7 +65,7 @@ const Add = () => {
       await addLeave(payload);
       showMessage('Leave Submitted Successfully', 'success');
       resetForm();
-      navigate('/admin/leave');
+      navigate('/admin/staff-leave/all');
     } catch (error: any) {
       showMessage(error.message || 'Failed to submit leave', 'error');
     }
@@ -91,9 +91,15 @@ const Add = () => {
                 {/* Start Date */}
                 <div className={submitCount && errors.startDate ? 'has-error' : ''}>
                   <label htmlFor="startDate">Start Date</label>
-                  <Field name="startDate" type="date" className="form-input" />
+                  <Field
+                    name="startDate"
+                    type="date"
+                    className="form-input"
+                    min={new Date().toISOString().split('T')[0]} // disables past dates
+                  />
                   {errors.startDate && <div className="text-danger">{errors.startDate}</div>}
                 </div>
+
 
                 {/* End Date */}
                 <div className={submitCount && errors.endDate ? 'has-error' : ''}>

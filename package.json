@@ -53,6 +53,7 @@
         "react-click-away-listener": "^2.2.2",
         "react-copy-to-clipboard": "^5.1.0",
         "react-countup": "^6.3.2",
+        "react-datepicker": "^8.8.0",
         "react-dom": "^18.3.1",
         "react-export-table-to-excel": "^1.0.6",
         "react-flatpickr": "^3.10.13",

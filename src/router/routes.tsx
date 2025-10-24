@@ -215,66 +215,66 @@ const routes = [
     {
         path: '/admin/clients',
         element: (
-            // <AdminProtected>
-            <Clients />
-            // </AdminProtected>
+            <AdminProtected>
+                <Clients />
+            </AdminProtected>
         ),
     },
     {
         path: '/admin/clients/preview/:clientId',
         element: (
-            // <AdminProtected>
-            <ViewClient />
-            // </AdminProtected>
+            <AdminProtected>
+                <ViewClient />
+            </AdminProtected>
         ),
     },
     {
         path: '/admin/clients/preview/:clientId/:hospitalId',
         element: (
-            // <AdminProtected>
-            <AddHospital />
-            // </AdminProtected>
+            <AdminProtected>
+                <AddHospital />
+            </AdminProtected>
         ),
     },
     {
         path: '/admin/clients/preview/:clientId/:hospitalId/add-rso',
         element: (
-            // <AdminProtected>
-            <AddRso />
-            // </AdminProtected>
+            <AdminProtected>
+                <AddRso />
+            </AdminProtected>
         ),
     },
     {
         path: '/admin/clients/preview/:clientId/:hospitalId/add-institute',
         element: (
-            // <AdminProtected>
-            <AddInstitute />
-            // </AdminProtected>
+            <AdminProtected>
+                <AddInstitute />
+            </AdminProtected>
         ),
     },
     {
         path: '/admin/clients/preview/:clientId/edit-hospital/:hospitalId',
         element: (
-            // <AdminProtected>
-            <EditHospital />
-            // </AdminProtected>
+            <AdminProtected>
+                <EditHospital />
+            </AdminProtected>
         ),
     },
 
     {
         path: '/admin/clients/preview/:clientId/edit-institute/:instituteId',
         element: (
-            // <AdminProtected>
+             <AdminProtected>
             <EditInstitute />
-            // </AdminProtected>
+             </AdminProtected>
         ),
     },
     {
         path: '/admin/clients/preview/:clientId/edit-rso/:rsoId',
         element: (
-            // <AdminProtected>
+             <AdminProtected>
             <EditRso />
-            // </AdminProtected>
+             </AdminProtected>
         ),
     },
     //dummy msg
@@ -330,9 +330,9 @@ const routes = [
     {
         path: '/admin/leave',
         element: (
-            // <AdminProtected>
+            <AdminProtected>
             <Leaves />
-            // </AdminProtected>
+             </AdminProtected>
         ),
     },
     {
@@ -384,7 +384,7 @@ const routes = [
             </AdminProtected>
         ),
     },
-  
+
     {
         path: '/admin/expenses',
         element: (
@@ -452,9 +452,9 @@ const routes = [
     {
         path: '/admin/dealer',
         element: (
-            // <AdminProtected>
+             <AdminProtected>
             <Dealers />
-            // </AdminProtected>
+            </AdminProtected>
         ),
     },
     {
@@ -484,9 +484,9 @@ const routes = [
     {
         path: '/admin/manufacture',
         element: (
-            // <AdminProtected>
+             <AdminProtected>
             <Manufacturers />
-            // </AdminProtected>
+             </AdminProtected>
         ),
     },
     {
@@ -564,9 +564,9 @@ const routes = [
     {
         path: '/admin/courier-companies',
         element: (
-            // <AdminProtected>
+             <AdminProtected>
             <CourierCompanies />
-            // </AdminProtected>
+             </AdminProtected>
         ),
     },
     {
@@ -596,9 +596,9 @@ const routes = [
     {
         path: '/admin/enquiry',
         element: (
-            // <AdminProtected>
+             <AdminProtected>
             <Enquiry />
-            // </AdminProtected>
+            </AdminProtected>
         ),
     },
     {
