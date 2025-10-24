@@ -10,10 +10,10 @@ import IconFile from '../../../components/Icon/IconFile';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconCreditCard from '../../../components/Icon/IconCreditCard';
-import { getAllInvoices } from '../../../api';
-import Cookies from 'js-cookie';
+import { getAllInvoices, deleteInvoice } from '../../../api';
+import ConfirmModal from '../../../components/common/ConfirmModal';
+import { showMessage } from '../../../components/common/ShowMessage';
 
-// Define types for invoice and payment
 interface Payment {
   paymentType: 'advance' | 'balance' | 'complete';
   paymentAmount: number;
@@ -49,11 +49,15 @@ const Invoices: React.FC = () => {
     direction: 'asc',
   });
 
+  // 👇 for confirmation modal
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+
   useEffect(() => {
     dispatch(setPageTitle('Invoices'));
   }, [dispatch]);
 
-  // Fetch invoices from API
+  // Fetch invoices
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
@@ -78,7 +82,7 @@ const Invoices: React.FC = () => {
     setRecords([...initialRecords.slice(from, to)]);
   }, [page, pageSize, initialRecords]);
 
-  // Search filter
+  // Search
   useEffect(() => {
     setInitialRecords(() =>
       items.filter((item) =>
@@ -96,14 +100,30 @@ const Invoices: React.FC = () => {
     setPage(1);
   }, [sortStatus]);
 
-  const deleteRow = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this invoice?')) {
-      const updated = items.filter((p) => p._id !== id);
+  // 👇 Handle delete
+  const handleDeleteClick = (id: string) => {
+    setSelectedInvoiceId(id);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedInvoiceId) return;
+    try {
+      await deleteInvoice(selectedInvoiceId);
+      const updated = items.filter((inv) => inv._id !== selectedInvoiceId);
       setItems(updated);
       setInitialRecords(updated);
       setRecords(updated);
-      setSelectedRecords([]);
-      setSearch('');
+      showMessage('Invoice deleted successfully', 'success'); // ✅ Success message
+    } catch (err: any) {
+      console.error('Failed to delete invoice:', err);
+      showMessage(
+        err?.response?.data?.message || 'Failed to delete invoice',
+        'error'
+      ); // ❌ Error message
+    } finally {
+      setConfirmOpen(false);
+      setSelectedInvoiceId(null);
     }
   };
 
@@ -146,24 +166,7 @@ const Invoices: React.FC = () => {
                 { accessor: 'buyerName', title: 'Customer Name', sortable: true },
                 { accessor: 'address', title: 'Address', sortable: true },
                 { accessor: 'state', title: 'State', sortable: true },
-                // { accessor: 'gstin', title: 'GSTIN', sortable: true },
                 { accessor: 'grandtotal', title: 'Total Amount', sortable: true },
-                // {
-                //   accessor: 'status',
-                //   title: 'Status',
-                //   sortable: true,
-                //   render: (row: Invoice) => (
-                //     <span
-                //       className={`w-24 inline-block text-center px-3 py-1 rounded-full text-xs font-semibold ${
-                //         row.status === 'Paid'
-                //           ? 'bg-green-100 text-green-700'
-                //           : 'bg-red-100 text-red-700'
-                //       }`}
-                //     >
-                //       {row.status}
-                //     </span>
-                //   ),
-                // },
                 {
                   accessor: 'action',
                   title: 'Actions',
@@ -178,7 +181,7 @@ const Invoices: React.FC = () => {
                       <button
                         type="button"
                         className="flex hover:text-danger"
-                        onClick={() => deleteRow(_id)}
+                        onClick={() => handleDeleteClick(_id)}
                       >
                         <IconTrashLines />
                       </button>
@@ -204,6 +207,15 @@ const Invoices: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ✅ Delete Confirmation Modal */}
+      <ConfirmModal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Invoice"
+        message="Are you sure you want to delete this invoice? This action cannot be undone."
+      />
     </>
   );
 };
