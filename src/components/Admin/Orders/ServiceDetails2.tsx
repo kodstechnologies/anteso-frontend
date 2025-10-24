@@ -1543,7 +1543,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     {(() => {
                                                                         const qaTestId = workType.id.replace('-qa-raw', '-qa-test');
                                                                         const qaTestStatus = assignments[qaTestId]?.status || selectedStatuses[qaTestId] || "pending";
-                                                                        const canReassignRaw = qaTestStatus !== "generated";
+                                                                        const canReassignRaw = qaTestStatus !== "generated" && qaTestStatus !== "paid";
                                                                         return (
                                                                             <button
                                                                                 onClick={() => handleReassign(workType.id)}
@@ -1814,7 +1814,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
                                                                 )}
 
-                                                                {(selectedStatuses[workType.id] === "complete" || selectedStatuses[workType.id] === "generated") && (
+                                                                {(selectedStatuses[workType.id] === "complete" || selectedStatuses[workType.id] === "generated" || selectedStatuses[workType.id] === "paid") && (
                                                                     <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
                                                                         <label className="block text-sm font-medium text-green-700">
                                                                             Upload File
@@ -2018,7 +2018,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 )}
 
                                                                 {(selectedStatuses[workType.id] === "complete" ||
-                                                                    selectedStatuses[workType.id] === "generated"
+                                                                    selectedStatuses[workType.id] === "generated" ||
+                                                                    selectedStatuses[workType.id] === "paid"
                                                                 ) && (
                                                                         <div className="space-y-3 p-3 bg-blue-50 rounded-md border border-blue-200">
                                                                             <label className="block text-sm font-medium text-blue-700">

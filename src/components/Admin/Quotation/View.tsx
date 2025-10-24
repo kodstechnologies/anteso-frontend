@@ -91,6 +91,10 @@ const ViewQuotation: React.FC = () => {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
 
+    const formatNumber = (num: any): string => {
+        return Number(num).toFixed(2);
+    };
+
     useEffect(() => {
         const fetchQuotationData = async () => {
             try {
@@ -248,8 +252,8 @@ const ViewQuotation: React.FC = () => {
             title: service.machineType,
             description: service.workTypeDetails?.map((w: any) => w.workType).join(" + ") || "",
             quantity: "1",
-            price: (service.totalAmount ?? 0).toString(),
-            amount: (service.totalAmount ?? 0).toString(),
+            price: formatNumber(service.totalAmount ?? 0),
+            amount: formatNumber(service.totalAmount ?? 0),
         })) || []
 
 
@@ -285,8 +289,8 @@ const ViewQuotation: React.FC = () => {
             title: service.name,
             description: service.description || "Additional service",
             quantity: "1",
-            price: (service.totalAmount ?? 0).toString(),
-            amount: (service.totalAmount ?? 0).toString(),
+            price: formatNumber(service.totalAmount ?? 0),
+            amount: formatNumber(service.totalAmount ?? 0),
         })) || []
 
     const acolumns = [
@@ -613,23 +617,23 @@ const ViewQuotation: React.FC = () => {
                         <div className="space-y-2 w-52 p-3  rounded-md bg-gray-50">
                             <div className="flex items-center gap-4">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Subtotal</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">{subtotal}</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹{formatNumber(subtotal)}</div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Discount</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">{discount}%</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">{formatNumber(discount)}%</div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Rate</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">{gstRate}%</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">{formatNumber(gstRate)}%</div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Amount</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹{gstAmount}</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹{formatNumber(gstAmount)}</div>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount}</div>
+                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {formatNumber(totalAmount)}</div>
                             </div>
                         </div>
 

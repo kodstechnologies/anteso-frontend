@@ -678,13 +678,35 @@ const CreateOrder: React.FC = () => {
                                     />
                                     {submitCount && errors.procNoOrPoNo ? <div className="text-danger mt-1">{errors.procNoOrPoNo}</div> : null}
                                 </div>
-                                <div className={submitCount && errors.procExpiryDate ? "has-error" : submitCount ? "has-success" : ""}>
+                                {/* <div className={submitCount && errors.procExpiryDate ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="procExpiryDate">PROC Expiry Date</label>
                                     <Field name="procExpiryDate" type="date" id="procExpiryDate" className="form-input" />
                                     {submitCount && errors.procExpiryDate ? (
                                         <div className="text-danger mt-1">{errors.procExpiryDate}</div>
                                     ) : null}
+                                </div> */}
+                                <div
+                                    className={
+                                        submitCount && errors.procExpiryDate
+                                            ? "has-error"
+                                            : submitCount
+                                                ? "has-success"
+                                                : ""
+                                    }
+                                >
+                                    <label htmlFor="procExpiryDate">PROC Expiry Date</label>
+                                    <Field
+                                        name="procExpiryDate"
+                                        type="date"
+                                        id="procExpiryDate"
+                                        className="form-input"
+                                        min={new Date().toISOString().split("T")[0]} // ✅ disable past dates
+                                    />
+                                    {submitCount && errors.procExpiryDate ? (
+                                        <div className="text-danger mt-1">{errors.procExpiryDate}</div>
+                                    ) : null}
                                 </div>
+
                                 <div className={submitCount && errors.urgency ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="urgency">Urgency</label>
                                     <Field as="select" name="urgency" id="urgency" className="form-select w-full">

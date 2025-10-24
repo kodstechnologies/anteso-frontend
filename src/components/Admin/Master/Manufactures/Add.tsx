@@ -266,7 +266,7 @@ const AddManufacture = () => {
                                     {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : null}
                                 </div>
 
-                                <div className={submitCount && errors.mouValidity ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                {/* <div className={submitCount && errors.mouValidity ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="mouValidity">Mou Validity</label>
                                     <Field
                                         name="mouValidity"
@@ -277,7 +277,21 @@ const AddManufacture = () => {
                                     {submitCount && errors.mouValidity ? (
                                         <div className="text-danger mt-1">{errors.mouValidity}</div>
                                     ) : null}
+                                </div> */}
+                                <div className={submitCount && errors.mouValidity ? 'has-error' : submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="mouValidity">Mou Validity</label>
+                                    <Field
+                                        name="mouValidity"
+                                        type="date"
+                                        id="mouValidity"
+                                        className="form-input"
+                                        min={new Date().toISOString().split("T")[0]} // ✅ disables past dates
+                                    />
+                                    {submitCount && errors.mouValidity ? (
+                                        <div className="text-danger mt-1">{errors.mouValidity}</div>
+                                    ) : null}
                                 </div>
+
                             </div>
                         </div>
 

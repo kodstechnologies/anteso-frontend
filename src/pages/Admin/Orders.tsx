@@ -213,6 +213,7 @@ const Orders = () => {
                                 },
                                 { accessor: 'procNoOrPoNo', title: 'PROC NO/PO NO', sortable: true, render: (r) => r.procNoOrPoNo || '-' },
                                 { accessor: 'leadOwner', title: 'Lead Owner', sortable: true, render: (r) => r.leadOwner || '-' },
+                                { accessor: 'leadOwnerType', title: 'Type', sortable: true, render: (r) => r.leadOwnerType || '-' },
                                 {
                                     accessor: 'procExpiryDate',
                                     title: 'PROC Expiry Date',

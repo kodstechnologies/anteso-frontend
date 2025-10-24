@@ -2999,3 +2999,56 @@ export const getWorkOrderCopy = async (orderId: any) => {
         throw new Error(error?.response?.data?.message || "Failed to getWorkOrderCopy");
     }
 };
+
+export const getSummary = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/dashboard/summary`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getSummary ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ getSummary ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getSummary"
+        );
+    }
+}
+
+export const monthlyStats = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/dashboard/monthly-stats`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getSummary ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ getSummary ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getSummary"
+        );
+    }
+}
+export const employeeTrips = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/dashboard/employee-trips`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        console.log("🚀 ~ getSummary ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ getSummary ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to getSummary"
+        );
+    }
+}

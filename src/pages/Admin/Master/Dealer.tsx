@@ -157,6 +157,27 @@ const Dealers = () => {
                                     { accessor: 'address', sortable: true },
                                     { accessor: 'pincode', sortable: true },
                                     { accessor: 'branch', sortable: true },
+
+                                    {
+                                        accessor: 'createdBy',
+                                        title: 'Created By',
+                                        render: (record) => {
+                                            const creator = record.createdBy;
+                                            if (!creator) return '—';
+
+                                            let label = '';
+                                            if (record.createdByModel === 'Admin' || creator.role === 'admin') {
+                                                label = `Admin (${creator.email})`;
+                                            } else if (creator.role === 'Employee') {
+                                                const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
+                                                label = `${techType ? `${techType} - ` : ''}(${creator.email})`;
+                                            } else {
+                                                label = creator.name || creator.email || 'Unknown';
+                                            }
+
+                                            return <span className="text-green-600 font-medium">{label}</span>;
+                                        },
+                                    },
                                     {
                                         accessor: 'action',
                                         title: 'Actions',
@@ -179,26 +200,6 @@ const Dealers = () => {
                                                 </button>
                                             </div>
                                         ),
-                                    },
-                                    {
-                                        accessor: 'createdBy',
-                                        title: 'Created By',
-                                        render: (record) => {
-                                            const creator = record.createdBy;
-                                            if (!creator) return '—';
-
-                                            let label = '';
-                                            if (record.createdByModel === 'Admin' || creator.role === 'admin') {
-                                                label = `Admin (${creator.email})`;
-                                            } else if (creator.role === 'Employee') {
-                                                const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
-                                                label = `${techType ? `${techType} - ` : ''}(${creator.email})`;
-                                            } else {
-                                                label = creator.name || creator.email || 'Unknown';
-                                            }
-
-                                            return <span className="text-green-600 font-medium">{label}</span>;
-                                        },
                                     },
 
                                 ]}
