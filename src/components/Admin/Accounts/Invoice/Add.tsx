@@ -73,8 +73,9 @@ const GrandTotalDisplay: React.FC = () => {
   );
   const subtotal = servicesSubtotal + additionalSubtotal;
 
-  // Discount
-  const discountAmount = parseFloat(String(values.discountPercent)) || 0;
+  // Discount as percentage
+  const discountPercent = parseFloat(String(values.discountPercent)) || 0;
+  const discountAmount = (subtotal * discountPercent) / 100;
   const discountedSubtotal = subtotal - discountAmount;
 
   // GST based on percentage, applied to discounted subtotal
@@ -94,7 +95,7 @@ const GrandTotalDisplay: React.FC = () => {
       <div>Services Subtotal: ₹{servicesSubtotal.toFixed(2)}</div>
       <div>Additional Subtotal: ₹{additionalSubtotal.toFixed(2)}</div>
       <div>Subtotal: ₹{subtotal.toFixed(2)}</div>
-      <div>Discount: -₹{discountAmount.toFixed(2)}</div>
+      <div>Discount ({discountPercent}%): -₹{discountAmount.toFixed(2)}</div>
       <div>Discounted Subtotal: ₹{discountedSubtotal.toFixed(2)}</div>
 
       {gstDetails.map(
@@ -124,7 +125,9 @@ const AutoCalculateTotals: React.FC = () => {
       subtotal = values.dealerHospitals.reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
     }
 
-    const discountAmount = parseFloat(String(values.discountPercent)) || 0;
+    // Discount as percentage
+    const discountPercent = parseFloat(String(values.discountPercent)) || 0;
+    const discountAmount = (subtotal * discountPercent) / 100;
     const discountedSubtotal = subtotal - discountAmount;
 
     const gstAmount = (['cgst', 'sgst', 'igst'] as const).reduce((total, tax) => {
@@ -228,7 +231,9 @@ const Add = () => {
 
             type TaxType = 'cgst' | 'sgst' | 'igst';
 
-            const discountAmount = parseFloat(String(values.discountPercent)) || 0;
+            // Discount as percentage
+            const discountPercent = parseFloat(String(values.discountPercent)) || 0;
+            const discountAmount = (subtotal * discountPercent) / 100;
             const discountedSubtotal = subtotal - discountAmount;
 
             const gstAmount = (['cgst', 'sgst', 'igst'] as TaxType[]).reduce((total, tax) => {
@@ -731,8 +736,8 @@ const Add = () => {
             {/* Total Amount and Remarks */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 panel mt-2">
               <div>
-                <label htmlFor="discountPercent" className="block mb-1 font-medium">Discount </label>
-                <Field name="discountPercent" type="number" className="form-input" />
+                <label htmlFor="discountPercent" className="block mb-1 font-medium">Discount %</label>
+                <Field name="discountPercent" type="number" className="form-input" placeholder="0" />
                 <ErrorMessage name="discountPercent" component="div" className="text-red-500 text-sm mt-1" />
               </div>
               <div>
@@ -750,12 +755,12 @@ const Add = () => {
                   <div key={taxType}>
                     <label className="flex items-center gap-2 font-medium">
                       <Field type="checkbox" name={`taxes.${taxType}.checked`} />
-                      {taxType.toUpperCase()}
+                      {taxType.toUpperCase()} %
                     </label>
                     <Field name={`taxes.${taxType}.amount`}>
                       {({ field, form }: any) =>
                         form.values.taxes[taxType].checked && (
-                          <input {...field} type="number" placeholder={`Enter ${taxType.toUpperCase()} amount`} className="form-input mt-1" />
+                          <input {...field} type="number" placeholder={`Enter ${taxType.toUpperCase()} %`} className="form-input mt-1" />
                         )
                       }
                     </Field>

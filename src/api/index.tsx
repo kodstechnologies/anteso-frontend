@@ -2076,6 +2076,23 @@ export const getInvoiceById = async (invoiceId: any) => {
     }
 }
 
+
+export const deleteInvoice = async (id: any) => {
+    try {
+        const token = Cookies.get("accessToken")
+        const res = await api.delete(`/invoice/delete-invoice/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res
+    } catch (error: any) {
+        console.error("🚀 ~ deletePaymentById ~ error:", error)
+        throw new Error(
+            error?.response?.data?.message || "Failed to deletePaymentById"
+        )
+    }
+}
 // export const editDocuments = async (
 //     orderId: string,
 //     serviceId: string,
