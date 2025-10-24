@@ -18,7 +18,7 @@ interface PaymentData {
 
 interface EditPaymentValues {
   srfClient: string;
-  totalAmount: number | string;
+  totalAmount: number ;
   paymentAmount: number | string;
   paymentType: string;
   utrNumber: string;

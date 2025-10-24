@@ -454,15 +454,22 @@ export default function EmployeeDetailsLeaveManagement() {
                                     Select Year
                                 </label>
                                 <Calendar
-                                    onChange={(value: Date) => setFieldValue("year", value.getFullYear())}
+                                    onChange={(value) => {
+                                        if (value instanceof Date) {
+                                            setFieldValue("year", value.getFullYear());
+                                        } else if (Array.isArray(value) && value[0] instanceof Date) {
+                                            setFieldValue("year", value[0].getFullYear());
+                                        }
+                                    }}
                                     value={new Date(values.year || new Date().getFullYear(), 0, 1)}
                                     view="decade"
                                     maxDetail="decade"
                                     minDate={new Date(2020, 0, 1)}
                                     maxDate={new Date(2050, 11, 31)}
                                     className="border border-gray-300 rounded-lg shadow-sm"
-                                    calendarType="US"
+                                    calendarType="gregory"
                                 />
+
                                 <ErrorMessage name="year" component="div" className="text-red-500 text-sm mt-1" />
                                 <p className="text-sm text-gray-500 mt-1">
                                     Selected Year: <strong>{values.year}</strong>
