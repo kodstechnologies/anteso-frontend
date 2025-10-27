@@ -3081,3 +3081,18 @@ export const getUnassignedTools = async () => {
         throw error;
     }
 }
+
+export const getDealerOrders = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/invoice/get-dealer-orders`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getDealerOrders ~ error:", error);
+        throw error;
+    }
+}

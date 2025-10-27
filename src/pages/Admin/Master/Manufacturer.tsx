@@ -11,7 +11,8 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { getAllManufacturer } from '../../../api';
+import { getAllManufacturer, deleteManufacturer } from '../../../api'; // ✅ Import deleteManufacturer
+import ConfirmModal from '../../../components//common/ConfirmModal'; // ✅ Import ConfirmModal (adjust path as needed)
 
 const Manufacturers = () => {
     const dispatch = useDispatch();
@@ -28,6 +29,8 @@ const Manufacturers = () => {
         columnAccessor: 'manufactureName',
         direction: 'asc',
     });
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); // ✅ State for modal
+    const [recordToDelete, setRecordToDelete] = useState<any>(null); // ✅ State for record to delete
 
     // Set page title
     useEffect(() => {
@@ -84,25 +87,53 @@ const Manufacturers = () => {
     }, [sortStatus, initialRecords]);
 
     const deleteRow = (id: any = null) => {
-        if (window.confirm('Are you sure want to delete selected row ?')) {
-            if (id) {
-                const filtered = items.filter((user) => user._id !== id);
-                setItems(filtered);
-                setInitialRecords(filtered);
-                setRecords(filtered);
-                setSelectedRecords([]);
-                setSearch('');
-            } else {
-                const ids = selectedRecords.map((d: any) => d._id);
-                const filtered = items.filter((d) => !ids.includes(d._id));
-                setItems(filtered);
-                setInitialRecords(filtered);
-                setRecords(filtered);
-                setSelectedRecords([]);
-                setSearch('');
-                setPage(1);
+        if (id) {
+            // Single record deletion
+            setRecordToDelete(id);
+            setIsDeleteModalOpen(true); // Open confirmation modal
+        } else {
+            // Multiple record deletion
+            if (selectedRecords.length > 0) {
+                setRecordToDelete(null); // No single ID for multiple deletions
+                setIsDeleteModalOpen(true); // Open confirmation modal
             }
         }
+    };
+
+    const handleConfirmDelete = async () => {
+        try {
+            if (recordToDelete) {
+                // Delete single record via API
+                await deleteManufacturer(recordToDelete);
+                const filtered = items.filter((item) => item._id !== recordToDelete);
+                setItems(filtered);
+                setInitialRecords(filtered);
+                setRecords(filtered);
+            } else {
+                // Delete multiple selected records
+                const selectedIds = selectedRecords.map((r: any) => r._id);
+                for (const id of selectedIds) {
+                    await deleteManufacturer(id); // Call API for each selected record
+                }
+                const filtered = items.filter((d) => !selectedIds.includes(d._id));
+                setItems(filtered);
+                setInitialRecords(filtered);
+                setRecords(filtered);
+                setSelectedRecords([]);
+            }
+            setSearch('');
+            setPage(1);
+        } catch (error) {
+            console.error('Failed to delete manufacturer(s):', error);
+        } finally {
+            setIsDeleteModalOpen(false); // Close modal
+            setRecordToDelete(null); // Reset record to delete
+        }
+    };
+
+    const handleCancelDelete = () => {
+        setIsDeleteModalOpen(false); // Close modal
+        setRecordToDelete(null); // Reset record to delete
     };
 
     const breadcrumbItems: BreadcrumbItem[] = [
@@ -140,12 +171,16 @@ const Manufacturers = () => {
                             records={records}
                             columns={[
                                 { accessor: 'manufacturersID', title: 'MANU ID', sortable: true },
-                                { accessor: 'name', sortable: true },
-                                // { accessor: 'address', sortable: true },
-                                { accessor: 'contactPersonName', sortable: true },
-                                { accessor: 'pincode', sortable: true },
-                                { accessor: 'branch', sortable: true },
-                                { accessor: 'mouValidity', sortable: true, render: ({ mouValidity }) => mouValidity ? new Date(mouValidity).toLocaleDateString() : '' },
+                                { accessor: 'manufactureName', title: 'Name', sortable: true }, // Updated accessor to match data
+                                { accessor: 'contactPersonName', title: 'Contact Person', sortable: true },
+                                { accessor: 'pinCode', title: 'Pincode', sortable: true }, // Updated to pinCode
+                                { accessor: 'branch', title: 'Branch', sortable: true },
+                                {
+                                    accessor: 'mouValidity',
+                                    title: 'MOU Validity',
+                                    sortable: true,
+                                    render: ({ mouValidity }) => (mouValidity ? new Date(mouValidity).toLocaleDateString() : ''),
+                                },
                                 {
                                     accessor: 'createdBy',
                                     title: 'Created By',
@@ -155,10 +190,10 @@ const Manufacturers = () => {
 
                                         let label = '';
                                         if (record.createdByModel === 'Admin' || creator.role === 'admin') {
-                                            label = `Admin (${creator.email})`;
+                                            label = `Admin (${creator.email || '—'})`;
                                         } else if (creator.role === 'Employee') {
                                             const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
-                                            label = `${techType ? `${techType} - ` : ''}(${creator.email})`;
+                                            label = `${techType ? `${techType} - ` : ''}(${creator.email || '—'})`;
                                         } else {
                                             label = creator.name || creator.email || 'Unknown';
                                         }
@@ -197,11 +232,20 @@ const Manufacturers = () => {
                             onSortStatusChange={setSortStatus}
                             selectedRecords={selectedRecords}
                             onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
                         />
                     </div>
                 </div>
             </div>
+
+            {/* Confirmation Modal */}
+            <ConfirmModal
+                open={isDeleteModalOpen}
+                onClose={handleCancelDelete}
+                onConfirm={handleConfirmDelete}
+                title="Confirm Deletion"
+                message={`Are you sure you want to delete ${recordToDelete ? 'this manufacturer' : `${selectedRecords.length} selected manufacturer(s)`}?`}
+            />
         </>
     );
 };

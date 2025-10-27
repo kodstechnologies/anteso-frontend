@@ -11,7 +11,8 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { getAllCourier } from '../../../api/index'; // ✅ import your API function
+import { getAllCourier, deleteCourier } from '../../../api/index'; // ✅ Import deleteCourier
+import { Modal, Button } from '@mantine/core'; // ✅ Import Mantine Modal and Button
 
 const CourierCompanies = () => {
     const dispatch = useDispatch();
@@ -28,12 +29,14 @@ const CourierCompanies = () => {
         columnAccessor: 'courierCompanyName',
         direction: 'asc',
     });
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); // ✅ State for modal
+    const [recordToDelete, setRecordToDelete] = useState<any>(null); // ✅ State for record to delete
 
     useEffect(() => {
         dispatch(setPageTitle('Courier Companies'));
     }, []);
 
-    //  Fetch data from API on component mount
+    // Fetch data from API on component mount
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -42,24 +45,58 @@ const CourierCompanies = () => {
                 setItems(courierData);
                 setInitialRecords(sortBy(courierData, 'courierCompanyName'));
             } catch (err) {
-                console.error(" Failed to fetch couriers:", err);
+                console.error("Failed to fetch couriers:", err);
             }
         };
         fetchData();
     }, []);
 
-    const deleteRow = (id: any = null) => {
-        if (window.confirm('Are you sure want to delete selected row?')) {
-            const filtered = id
-                ? items.filter((item) => item._id !== id)
-                : items.filter((item) => !selectedRecords.map((r) => r._id).includes(item._id));
-
-            setItems(filtered);
-            setInitialRecords(filtered);
-            setSearch('');
-            setSelectedRecords([]);
-            setPage(1);
+    const deleteRow = async (id: any = null) => {
+        if (id) {
+            // Single record deletion
+            setRecordToDelete(id);
+            setIsDeleteModalOpen(true); // Open confirmation modal
+        } else {
+            // Multiple record deletion
+            if (selectedRecords.length > 0) {
+                setRecordToDelete(null); // No single ID for multiple deletions
+                setIsDeleteModalOpen(true); // Open confirmation modal
+            }
         }
+    };
+
+    const handleConfirmDelete = async () => {
+        try {
+            if (recordToDelete) {
+                // Delete single record via API
+                await deleteCourier(recordToDelete);
+                const filtered = items.filter((item) => item._id !== recordToDelete);
+                setItems(filtered);
+                setInitialRecords(filtered);
+            } else {
+                // Delete multiple selected records
+                const selectedIds = selectedRecords.map((r) => r._id);
+                for (const id of selectedIds) {
+                    await deleteCourier(id); // Call API for each selected record
+                }
+                const filtered = items.filter((item) => !selectedIds.includes(item._id));
+                setItems(filtered);
+                setInitialRecords(filtered);
+                setSelectedRecords([]);
+            }
+            setSearch('');
+            setPage(1);
+        } catch (err) {
+            console.error("Failed to delete courier(s):", err);
+        } finally {
+            setIsDeleteModalOpen(false); // Close modal
+            setRecordToDelete(null); // Reset record to delete
+        }
+    };
+
+    const handleCancelDelete = () => {
+        setIsDeleteModalOpen(false); // Close modal
+        setRecordToDelete(null); // Reset record to delete
     };
 
     useEffect(() => {
@@ -197,10 +234,31 @@ const CourierCompanies = () => {
                             onSelectedRecordsChange={setSelectedRecords}
                             paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
                         />
-
                     </div>
                 </div>
             </div>
+
+            {/* Confirmation Modal */}
+            <Modal
+                opened={isDeleteModalOpen}
+                onClose={handleCancelDelete}
+                title="Confirm Deletion"
+                centered
+            >
+                <div>
+                    <p>
+                        Are you sure you want to delete {recordToDelete ? 'this courier' : `${selectedRecords.length} selected courier(s)`}?
+                    </p>
+                    <div className="flex justify-end gap-4 mt-4">
+                        <Button variant="outline" onClick={handleCancelDelete}>
+                            Cancel
+                        </Button>
+                        <Button color="red" onClick={handleConfirmDelete}>
+                            Delete
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </>
     );
 };

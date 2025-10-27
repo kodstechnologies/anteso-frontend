@@ -170,6 +170,72 @@ const EditEngineer = () => {
 
   //   fetchData();
   // }, [id, navigate]);
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     if (!id) return;
+  //     try {
+  //       // 1️⃣ Fetch employee (includes assigned tools)
+  //       const empRes = await getEmployeeById(id);
+  //       const emp = empRes.data as EmployeeApi;
+
+  //       // 2️⃣ Build assigned tools list
+  //       const assignedTools: ToolOption[] = (emp.tools || []).map((t: any) => ({
+  //         id: t.toolId?._id,
+  //         code: t.toolId?.toolId,
+  //         name: t.toolId?.nomenclature,
+  //       }));
+
+  //       // 3️⃣ Fetch unassigned tools
+  //       const unassignedRes = await getUnassignedTools();
+  //       const unassignedTools: ToolOption[] = (unassignedRes?.data || []).map((t: any) => ({
+  //         id: t._id,
+  //         code: t.toolId,
+  //         name: t.nomenclature,
+  //       }));
+
+  //       // 4️⃣ Merge both lists (avoid duplicates)
+  //       const mergedTools = [
+  //         ...assignedTools,
+  //         ...unassignedTools.filter((u) => !assignedTools.some((a) => a.id === u.id)),
+  //       ];
+
+  //       setToolsList(mergedTools);
+
+  //       // 5️⃣ Extract selected tool IDs and issue dates
+  //       const tools = (emp.tools || []).map((t: any) => t.toolId._id);
+  //       const issueDates = (emp.tools || []).reduce<Record<string, string>>((acc, t: any) => {
+  //         if (t.toolId?._id) {
+  //           acc[t.toolId._id] = t.issueDate ? t.issueDate.split('T')[0] : '';
+  //         }
+  //         return acc;
+  //       }, {});
+
+  //       // 6️⃣ Set initial values for Formik
+  //       setInitialValues({
+  //         name: emp.name || '',
+  //         email: emp.email || '',
+  //         phone: String(emp.phone ?? ''),
+  //         role: normalizeRole(emp.technicianType),
+  //         tools,
+  //         issueDates,
+  //         status: normalizeStatus(emp.status),
+
+  //         designation: emp.designation || '',
+  //         workingDays: emp.workingDays ?? '',
+  //         dateOfJoining: emp.dateOfJoining ? emp.dateOfJoining.split('T')[0] : '',
+  //         department: emp.department || '',
+  //       });
+  //     } catch (err) {
+  //       console.error(err);
+  //       showMessage('Failed to load employee data', 'error');
+  //       navigate('/admin/employee');
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, [id, navigate]);
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -178,12 +244,14 @@ const EditEngineer = () => {
         const empRes = await getEmployeeById(id);
         const emp = empRes.data as EmployeeApi;
 
-        // 2️⃣ Build assigned tools list
-        const assignedTools: ToolOption[] = (emp.tools || []).map((t: any) => ({
-          id: t.toolId?._id,
-          code: t.toolId?.toolId,
-          name: t.toolId?.nomenclature,
-        }));
+        // 2️⃣ Build assigned tools list safely
+        const assignedTools: ToolOption[] = (emp.tools || [])
+          .filter((t: any) => t?.toolId?._id) // ✅ filter invalid ones
+          .map((t: any) => ({
+            id: t.toolId._id,
+            code: t.toolId.toolId,
+            name: t.toolId.nomenclature,
+          }));
 
         // 3️⃣ Fetch unassigned tools
         const unassignedRes = await getUnassignedTools();
@@ -201,10 +269,13 @@ const EditEngineer = () => {
 
         setToolsList(mergedTools);
 
-        // 5️⃣ Extract selected tool IDs and issue dates
-        const tools = (emp.tools || []).map((t: any) => t.toolId._id);
+        // 5️⃣ Extract selected tool IDs and issue dates safely
+        const tools = (emp.tools || [])
+          .filter((t: any) => t?.toolId?._id)
+          .map((t: any) => t.toolId._id);
+
         const issueDates = (emp.tools || []).reduce<Record<string, string>>((acc, t: any) => {
-          if (t.toolId?._id) {
+          if (t?.toolId?._id) {
             acc[t.toolId._id] = t.issueDate ? t.issueDate.split('T')[0] : '';
           }
           return acc;
@@ -226,7 +297,7 @@ const EditEngineer = () => {
           department: emp.department || '',
         });
       } catch (err) {
-        console.error(err);
+        console.error('❌ fetchData error:', err);
         showMessage('Failed to load employee data', 'error');
         navigate('/admin/employee');
       } finally {
