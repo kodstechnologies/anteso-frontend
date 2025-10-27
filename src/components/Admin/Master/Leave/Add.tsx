@@ -132,9 +132,37 @@ const Add = () => {
                 </div>
 
                 {/* Start Date */}
-                <div className={submitCount && errors.startDate ? 'has-error' : ''}>
+                {/* <div className={submitCount && errors.startDate ? 'has-error' : ''}>
                   <label htmlFor="startDate">Start Date</label>
                   <Field name="startDate" type="date" className="form-input" />
+                  {errors.startDate && (
+                    <div className="text-danger">{errors.startDate}</div>
+                  )}
+                </div> */}
+
+                {/* End Date */}
+                {/* <div className={submitCount && errors.endDate ? 'has-error' : ''}>
+                  <label htmlFor="endDate">End Date</label>
+                  <Field
+                    name="endDate"
+                    type="date"
+                    className="form-input"
+                    min={values.startDate || ""} // restrict calendar
+                  />
+                  {errors.endDate && (
+                    <div className="text-danger">{errors.endDate}</div>
+                  )}
+                </div> */}
+
+                {/* Start Date */}
+                <div className={submitCount && errors.startDate ? 'has-error' : ''}>
+                  <label htmlFor="startDate">Start Date</label>
+                  <Field
+                    name="startDate"
+                    type="date"
+                    className="form-input"
+                    min={new Date().toISOString().split('T')[0]} // ⛔ Disable past dates
+                  />
                   {errors.startDate && (
                     <div className="text-danger">{errors.startDate}</div>
                   )}
@@ -147,12 +175,13 @@ const Add = () => {
                     name="endDate"
                     type="date"
                     className="form-input"
-                    min={values.startDate || ""} // restrict calendar
+                    min={values.startDate || new Date().toISOString().split('T')[0]} // ⛔ Disable past & ensure after startDate
                   />
                   {errors.endDate && (
                     <div className="text-danger">{errors.endDate}</div>
                   )}
                 </div>
+
 
                 {/* Leave Type */}
                 <div className={submitCount && errors.leaveType ? 'has-error' : ''}>

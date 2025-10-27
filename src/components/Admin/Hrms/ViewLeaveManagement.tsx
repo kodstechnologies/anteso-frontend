@@ -95,7 +95,7 @@ export default function EmployeeDetailsLeaveManagement() {
 
                 const allDays: string[] = [];
                 for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    allDays.push(new Date(d).toISOString().split("T")[0]); // YYYY-MM-DD
+                    allDays.push(d.toLocaleDateString("en-CA")); // YYYY-MM-DD in local timezone
                 }
 
                 const attendanceData: Record<string, string> = {};
@@ -214,7 +214,7 @@ export default function EmployeeDetailsLeaveManagement() {
     }
 
     const getStatusForDate = (date: Date) => {
-        const formattedDate = date.toISOString().split("T")[0];
+        const formattedDate = date.toLocaleDateString("en-CA"); // Local date (YYYY-MM-DD)
         const status = attendanceMap[formattedDate];
 
         if (status) return status;
@@ -223,19 +223,39 @@ export default function EmployeeDetailsLeaveManagement() {
     };
 
 
-    const tileClassName = ({ date, view }: { date: Date; view: string }) => {
+    // const tileClassName = ({ date, view }: { date: Date; view: string }) => {
+    //     if (view === "month") {
+    //         const status = getStatusForDate(date);
+    //         switch (status) {
+    //             case "Present":
+    //                 return "present";
+    //             case "Absent":
+    //                 return "absent";
+    //             case "On Leave":
+    //             case "Sick Leave":
+    //                 return "sick-leave";
+    //             case "Holiday":
+    //                 return "holiday";
+    //             default:
+    //                 return "";
+    //         }
+    //     }
+    //     return "";
+    // };
+
+    const tileClassName = ({ date, view }) => {
         if (view === "month") {
             const status = getStatusForDate(date);
+
             switch (status) {
                 case "Present":
-                    return "present";
+                    return "present"; // green
                 case "Absent":
-                    return "absent";
+                    return "absent"; // red
                 case "On Leave":
-                case "Sick Leave":
-                    return "sick-leave";
+                    return "sick-leave"; // yellow
                 case "Holiday":
-                    return "holiday";
+                    return "holiday"; // grey
                 default:
                     return "";
             }
@@ -398,8 +418,8 @@ export default function EmployeeDetailsLeaveManagement() {
             )}
 
             {/* Leave Allocation Section */}
-          
-            
+
+
             {/* <AttendenceSummary id={id}/> */}
             {/* Leave Management */}
             <div className="bg-white p-6 rounded-lg shadow-lg">

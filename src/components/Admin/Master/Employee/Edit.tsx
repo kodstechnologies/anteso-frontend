@@ -4,7 +4,7 @@ import { Field, Form, Formik, FormikHelpers } from 'formik';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { showMessage } from '../../../common/ShowMessage';
-import { getEmployeeById, editEmployee } from '../../../../api';
+import { getEmployeeById, editEmployee, getUnassignedTools } from '../../../../api';
 
 type RoleValue = 'office staff' | 'engineer';
 type StatusValue = 'active' | 'inactive';
@@ -108,32 +108,99 @@ const EditEngineer = () => {
   const [toolsList, setToolsList] = useState<ToolOption[]>([]);
 
   // Load employee by id
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     if (!id) return;
+  //     try {
+  //       // 1️⃣ Get employee data (already includes tools)
+  //       const empRes = await getEmployeeById(id);
+  //       const emp = empRes.data as EmployeeApi;
+
+  //       // 2️⃣ Build tools list from populated toolId
+  //       // Build tools list from populated toolId
+  //       // const toolsListData: ToolOption[] =
+  //       //   (emp.tools || []).map((t: any) => ({
+  //       //     id: t.toolId?._id,
+  //       //     name: t.toolId?.nomenclature,
+  //       //   })).filter((t) => t.id); // remove undefined
+  //       // setToolsList(toolsListData);
+
+  //       const toolsListData: ToolOption[] = (emp.tools || []).map((t: any) => ({
+  //         id: t.toolId?._id, // keep this for checkbox value
+  //         code: t.toolId?.toolId, // readable ID (TL045)
+  //         name: t.toolId?.nomenclature,
+  //       }));
+  //       setToolsList(toolsListData);
+
+
+  //       // 3️⃣ Extract selected tools + issueDates
+  //       const tools = (emp.tools || []).map((t: any) => t.toolId._id);
+  //       const issueDates = (emp.tools || []).reduce<Record<string, string>>((acc, t: any) => {
+  //         if (t.toolId?._id) {
+  //           acc[t.toolId._id] = t.issueDate ? t.issueDate.split('T')[0] : '';
+  //         }
+  //         return acc;
+  //       }, {});
+
+  //       setInitialValues({
+  //         name: emp.name || '',
+  //         email: emp.email || '',
+  //         phone: String(emp.phone ?? ''),
+  //         role: normalizeRole(emp.technicianType),
+  //         tools,
+  //         issueDates,
+  //         status: normalizeStatus(emp.status),
+
+  //         // New fields
+  //         designation: emp.designation || '',
+  //         workingDays: emp.workingDays ?? '',
+  //         dateOfJoining: emp.dateOfJoining ? emp.dateOfJoining.split('T')[0] : '',
+  //         department: emp.department || '',
+  //       });
+
+  //     } catch (err) {
+  //       console.error(err);
+  //       showMessage('Failed to load employee data', 'error');
+  //       navigate('/admin/employee');
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, [id, navigate]);
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
       try {
-        // 1️⃣ Get employee data (already includes tools)
+        // 1️⃣ Fetch employee (includes assigned tools)
         const empRes = await getEmployeeById(id);
         const emp = empRes.data as EmployeeApi;
 
-        // 2️⃣ Build tools list from populated toolId
-        // Build tools list from populated toolId
-        // const toolsListData: ToolOption[] =
-        //   (emp.tools || []).map((t: any) => ({
-        //     id: t.toolId?._id,
-        //     name: t.toolId?.nomenclature,
-        //   })).filter((t) => t.id); // remove undefined
-        // setToolsList(toolsListData);
-
-        const toolsListData: ToolOption[] = (emp.tools || []).map((t: any) => ({
-          id: t.toolId?._id, // keep this for checkbox value
-          code: t.toolId?.toolId, // readable ID (TL045)
+        // 2️⃣ Build assigned tools list
+        const assignedTools: ToolOption[] = (emp.tools || []).map((t: any) => ({
+          id: t.toolId?._id,
+          code: t.toolId?.toolId,
           name: t.toolId?.nomenclature,
         }));
-        setToolsList(toolsListData);
 
+        // 3️⃣ Fetch unassigned tools
+        const unassignedRes = await getUnassignedTools();
+        const unassignedTools: ToolOption[] = (unassignedRes?.data || []).map((t: any) => ({
+          id: t._id,
+          code: t.toolId,
+          name: t.nomenclature,
+        }));
 
-        // 3️⃣ Extract selected tools + issueDates
+        // 4️⃣ Merge both lists (avoid duplicates)
+        const mergedTools = [
+          ...assignedTools,
+          ...unassignedTools.filter((u) => !assignedTools.some((a) => a.id === u.id)),
+        ];
+
+        setToolsList(mergedTools);
+
+        // 5️⃣ Extract selected tool IDs and issue dates
         const tools = (emp.tools || []).map((t: any) => t.toolId._id);
         const issueDates = (emp.tools || []).reduce<Record<string, string>>((acc, t: any) => {
           if (t.toolId?._id) {
@@ -142,6 +209,7 @@ const EditEngineer = () => {
           return acc;
         }, {});
 
+        // 6️⃣ Set initial values for Formik
         setInitialValues({
           name: emp.name || '',
           email: emp.email || '',
@@ -151,13 +219,11 @@ const EditEngineer = () => {
           issueDates,
           status: normalizeStatus(emp.status),
 
-          // New fields
           designation: emp.designation || '',
           workingDays: emp.workingDays ?? '',
           dateOfJoining: emp.dateOfJoining ? emp.dateOfJoining.split('T')[0] : '',
           department: emp.department || '',
         });
-
       } catch (err) {
         console.error(err);
         showMessage('Failed to load employee data', 'error');
@@ -169,7 +235,6 @@ const EditEngineer = () => {
 
     fetchData();
   }, [id, navigate]);
-
 
   const handleSubmit = async (values: FormValues, _helpers: FormikHelpers<FormValues>) => {
     try {
@@ -296,7 +361,7 @@ const EditEngineer = () => {
                 </div>
 
                 {/* Emp ID */}
-                
+
 
                 {/* Role */}
                 <div className={submitCount > 0 ? (errors.role ? 'has-error' : 'has-success') : ''}>
@@ -383,9 +448,16 @@ const EditEngineer = () => {
                               value={tool.id} // store ObjectId in backend
                               className="form-checkbox h-5 w-5 text-primary"
                             />
-                            <span>
+                            {/* <span>
                               {tool.name} ({tool.code})
+                            </span> */}
+                            <span>
+                              {tool.name} ({tool.code}){' '}
+                              {values.tools.includes(tool.id)
+                                ? <span className="text-green-500 text-sm">(Assigned)</span>
+                                : <span className="text-gray-400 text-sm">(Available)</span>}
                             </span>
+
                           </label>
 
                           {isSelected && (

@@ -24,7 +24,7 @@ const EditTool = () => {
         toolID: Yup.string().required('Please fill the Field'),
         engineerName: Yup.string().required('Please fill the Field'),
         issueDate: Yup.string().required('Please fill the Field'),
-        submitDate: Yup.string().required('Please fill the Field'),
+        submitDate: Yup.string(),
     });
 
     const submitForm = () => {
@@ -116,17 +116,18 @@ const EditTool = () => {
                 // ✅ Step 2: Always fetch tool details
                 const toolRes = await getByToolId(id!);
                 const tool = toolRes?.data || {};
+                console.log("🚀 ~ fetchData ~ tool:", tool)
 
                 // ✅ Step 3: Try to fetch engineer (may fail)
                 let engineer = null;
                 let toolIssueDate = '';
-                let toolSubmitDate = '';
+                // let toolSubmitDate = '';
 
                 try {
                     const engineerRes = await getEngineerByToolId(id!);
                     engineer = engineerRes?.engineer || null;
                     toolIssueDate = engineerRes?.tool?.issueDate?.split('T')[0] || '';
-                    toolSubmitDate = engineerRes?.tool?.submitDate?.split('T')[0] || '';
+                    // toolSubmitDate = engineerRes?.tool?.submitDate?.split('T')[0] || '';
                 } catch (err) {
                     console.warn("⚠️ No engineer found for this tool:", err);
                 }
@@ -145,7 +146,7 @@ const EditTool = () => {
                     engineerName: engineer?._id || '', // store ObjectId here
 
                     issueDate: toolIssueDate,
-                    submitDate: toolSubmitDate,
+                    submitDate: tool.submitDate ? tool.submitDate.split('T')[0] : '',
                 });
             } catch (error) {
                 console.error("❌ Error fetching data:", error);
@@ -186,7 +187,7 @@ const EditTool = () => {
                 validationSchema={SubmittedForm}
                 onSubmit={async (values, { setSubmitting }) => {
                     try {
-                        // Prepare payload for backend
+                        // ✅ Prepare payload for backend
                         const payload = {
                             SrNo: values.srNo,
                             nomenclature: values.nomenclature,
@@ -197,9 +198,11 @@ const EditTool = () => {
                             range: values.range,
                             certificate: values.certificate,
                             toolStatus: values.toolStatus,
-                            technician: values.engineerName, // <-- this is now the ObjectId from dropdown
+                            technician: values.engineerName, // ObjectId from dropdown
+                            submitDate: values.submitDate ? new Date(values.submitDate) : null, // ✅ Include submitDate
                         };
 
+                        console.log("🛠️ Payload for update:", payload);
 
                         await updateTool(id!, payload);
 
@@ -211,6 +214,7 @@ const EditTool = () => {
                         setSubmitting(false);
                     }
                 }}
+
             >
                 {({ submitCount }) => (
                     <Form className="space-y-5">

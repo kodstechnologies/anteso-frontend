@@ -262,7 +262,7 @@ const routes = [
     },
 
     {
-        path: '/admin/clients/preview/:clientId/edit-institute/:instituteId',
+        path: '/admin/clients/preview/:clientId/:hospitalId/edit-institute/:instituteId',
         element: (
              <AdminProtected>
             <EditInstitute />
@@ -270,7 +270,7 @@ const routes = [
         ),
     },
     {
-        path: '/admin/clients/preview/:clientId/edit-rso/:rsoId',
+        path: '/admin/clients/preview/:clientId/:hospitalId/edit-rso/:rsoId',
         element: (
              <AdminProtected>
             <EditRso />

@@ -130,9 +130,19 @@ const AddHospital = () => {
     navigate(`/admin/clients/preview/${clientId}/${hospitalId}/add-${entityType}`)
   }
 
+  // const handleEditEntity = (entityId: number | string, entityType: "institute" | "rso" | "machine") => {
+  //   console.log("Navigating to edit with ID:", entityId, "Entity Type:", entityType)
+  //   navigate(`/admin/clients/preview/${hospitalId}/edit-${entityType}/${entityId}`)
+  // }
+  // Updated handleEditEntity in the hospital view component (AddHospital or ViewHospital)
+  // const handleEditEntity = (entityId: number | string, entityType: "institute" | "rso" | "machine") => {
+  //   console.log("Navigating to edit with ID:", entityId, "Entity Type:", entityType)
+  //   navigate(`/admin/clients/preview/${clientId}/${hospitalId}/edit-${entityType}/${entityId}`)
+  // }
+
   const handleEditEntity = (entityId: number | string, entityType: "institute" | "rso" | "machine") => {
     console.log("Navigating to edit with ID:", entityId, "Entity Type:", entityType)
-    navigate(`/admin/clients/preview/${hospitalId}/edit-${entityType}/${entityId}`)
+    navigate(`/admin/clients/preview/${clientId}/${hospitalId}/edit-${entityType}/${entityId}`)
   }
 
   const handleDeleteClick = (type: string, id: number | string, name: string) => {
@@ -389,8 +399,8 @@ const AddHospital = () => {
                         key={page}
                         onClick={() => setCurrentPageInstitutes(page)}
                         className={`px-3 py-2 border border-gray-300 rounded-md text-sm font-medium ${currentPageInstitutes === page
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                            : 'bg-white text-gray-500 hover:bg-gray-50'
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white text-gray-500 hover:bg-gray-50'
                           }`}
                       >
                         {page}
@@ -551,8 +561,8 @@ const AddHospital = () => {
                         key={page}
                         onClick={() => setCurrentPageRsos(page)}
                         className={`px-3 py-2 border border-gray-300 rounded-md text-sm font-medium ${currentPageRsos === page
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                            : 'bg-white text-gray-500 hover:bg-gray-50'
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white text-gray-500 hover:bg-gray-50'
                           }`}
                       >
                         {page}
@@ -710,8 +720,8 @@ const AddHospital = () => {
                         key={page}
                         onClick={() => setCurrentPageMachines(page)}
                         className={`px-3 py-2 border border-gray-300 rounded-md text-sm font-medium ${currentPageMachines === page
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                            : 'bg-white text-gray-500 hover:bg-gray-50'
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white text-gray-500 hover:bg-gray-50'
                           }`}
                       >
                         {page}

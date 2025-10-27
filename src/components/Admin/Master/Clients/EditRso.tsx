@@ -6,7 +6,6 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { showMessage } from "../../../common/ShowMessage"
 import { useState, useEffect } from "react"
 import FullScreenLoader from "../../../common/FullScreenLoader"
-// You'll need to create these API functions
 import { getRsoByHospitalIdAndRsoId, editRsohospitalIdandRsoId } from "../../../../api"
 
 interface RsoData {
@@ -17,40 +16,43 @@ interface RsoData {
   rpId: string
   tldBadge: string
   validity: string
-  attachFile?: File | null
+  attachment?: string
 }
 
-const EditRso = () => {
+const EditRSO = () => {
   const navigate = useNavigate()
-  const { clientId, rsoId } = useParams()
-  console.log("🚀 ~ EditRso ~ rsoId:", rsoId)
-  console.log("🚀 ~ EditRso ~ clientId:", clientId)
+  const { clientId, hospitalId, rsoId } = useParams<{ clientId: string; hospitalId: string; rsoId: string }>()
+  console.log("🚀 ~ EditRSO ~ rsoId:", rsoId)
+  console.log("🚀 ~ EditRSO ~ hospitalId:", hospitalId)
+  console.log("🚀 ~ EditRSO ~ clientId:", clientId)
   const [loading, setLoading] = useState(false)
   const [initialData, setInitialData] = useState<RsoData | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
 
   const SubmittedForm = Yup.object().shape({
-    rsoId: Yup.string().required("Please fill the Field"),
-    password: Yup.string().min(6, "Password must be at least 6 characters").required("Please fill the Field"),
+    rsoId: Yup.string().required("Please fill the RSO ID"),
+    password: Yup.string().min(6, "Password must be at least 6 characters").required("Please fill the Password"),
     email: Yup.string().email("Invalid email").required("Please fill the Email"),
     phone: Yup.string()
       .matches(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
-      .required("Please fill the Field"),
-    rpId: Yup.string().required("Please fill the Field"),
-    tldBadge: Yup.string().required("Please fill the Field"),
-    validity: Yup.date().required("Please fill the Field"),
-    attachFile: Yup.mixed().nullable(), // Optional for edit
+      .required("Please fill the Phone"),
+    rpId: Yup.string().required("Please fill the RP ID"),
+    tldBadge: Yup.string().required("Please fill the TLD Badge"),
+    validity: Yup.string().required("Please fill the Validity Date"),
+    attachment: Yup.string().url("Invalid URL").optional(),
   })
 
   useEffect(() => {
     const fetchRsoData = async () => {
+      if (!hospitalId || !rsoId) {
+        showMessage("Invalid RSO data", "error")
+        navigate(`/admin/clients/preview/${clientId}/${hospitalId}`)
+        return
+      }
       try {
         setDataLoading(true)
-        console.log("🚀 ~ fetchRsoData ~ rsoId:", rsoId)
-        console.log("🚀 ~ fetchRsoData ~ clientId:", clientId)
-        const response = await getRsoByHospitalIdAndRsoId(clientId, rsoId)
-
+        const response = await getRsoByHospitalIdAndRsoId(hospitalId, rsoId)
         console.log("🚀 ~ fetchRsoData ~ response:", response)
 
         const rsoData = response.data || response
@@ -62,21 +64,19 @@ const EditRso = () => {
           rpId: rsoData.rpId || "",
           tldBadge: rsoData.tldBadge || "",
           validity: rsoData.validity || "",
-          attachFile: null,
+          attachment: rsoData.attachment || "",
         })
       } catch (error) {
         console.error("Error fetching RSO data:", error)
         showMessage("Failed to load RSO data", "error")
-        // navigate(`/admin/clients/preview/${clientId}`)
+        navigate(`/admin/clients/preview/${clientId}/${hospitalId}`)
       } finally {
         setDataLoading(false)
       }
     }
 
-    if (rsoId) {
-      fetchRsoData()
-    }
-  }, [rsoId, clientId, navigate])
+    fetchRsoData()
+  }, [rsoId, hospitalId, clientId, navigate])
 
   if (dataLoading) {
     return <div className="flex justify-center items-center h-64">Loading RSO data...</div>
@@ -101,12 +101,17 @@ const EditRso = () => {
           </Link>
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-          <Link to={`/admin/clients/preview/${clientId}`} className="text-primary">
+          <Link to={`/admin/clients/preview/${clientId}`} className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
             Client Details
           </Link>
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-          <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+          <Link to={`/admin/clients/preview/${clientId}/${hospitalId}`} className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+            Hospital Details
+          </Link>
+        </li>
+        <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
+          <Link to="#" className="text-primary">
             Edit RSO
           </Link>
         </li>
@@ -118,21 +123,10 @@ const EditRso = () => {
         onSubmit={async (values, { setSubmitting, setFieldError }) => {
           setLoading(true)
           try {
-            const formData = new FormData()
-            Object.keys(values).forEach((key) => {
-              const typedKey = key as keyof RsoData
-
-              if (typedKey === "attachFile" && values[typedKey]) {
-                formData.append("attachment", values[typedKey] as Blob)
-              } else if (typedKey !== "attachFile") {
-                formData.append(typedKey, values[typedKey] as string)
-              }
-            })
-
-
-            const response = await editRsohospitalIdandRsoId(clientId, rsoId, formData)
+            const response = await editRsohospitalIdandRsoId(hospitalId, rsoId, values)
             console.log("🚀 ~ onSubmit={ ~ response:", response)
             showMessage("RSO updated successfully!", "success")
+            navigate(`/admin/clients/preview/${clientId}/${hospitalId}`)
           } catch (error: any) {
             const message = error?.response?.data?.message
             console.log("🚀 ~ onSubmit ~ message:", message)
@@ -142,6 +136,12 @@ const EditRso = () => {
               setFieldError("phone", message)
             } else if (message?.includes("rsoId")) {
               setFieldError("rsoId", message)
+            } else if (message?.includes("rpId")) {
+              setFieldError("rpId", message)
+            } else if (message?.includes("tldBadge")) {
+              setFieldError("tldBadge", message)
+            } else if (message?.includes("validity")) {
+              setFieldError("validity", message)
             } else {
               showMessage(message || "Failed to update RSO", "error")
             }
@@ -150,20 +150,19 @@ const EditRso = () => {
             setLoading(false)
           }
         }}
-
       >
-        {({ errors, submitCount, touched, setFieldValue }) => (
+        {({ errors, submitCount, touched }) => (
           <Form className="space-y-5">
             <div className="panel">
               <h5 className="font-semibold text-lg mb-4">Edit RSO Details</h5>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className={submitCount ? (errors.rsoId ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="rsoId">RSO ID </label>
+                  <label htmlFor="rsoId">RSO ID</label>
                   <Field name="rsoId" type="text" id="rsoId" placeholder="Enter RSO ID" className="form-input" />
                   {submitCount && errors.rsoId ? <div className="text-danger mt-1">{errors.rsoId}</div> : null}
                 </div>
                 <div className={submitCount ? (errors.password ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="password">Password </label>
+                  <label htmlFor="password">Password</label>
                   <div className="relative">
                     <Field
                       name="password"
@@ -192,66 +191,57 @@ const EditRso = () => {
                   {submitCount && errors.password ? <div className="text-danger mt-1">{errors.password}</div> : ""}
                 </div>
                 <div className={submitCount ? (errors.email ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="email">Email </label>
-                  <Field
-                    name="email"
-                    type="email"
-                    id="email"
-                    placeholder="Enter Email Address"
-                    className="form-input"
-                  />
+                  <label htmlFor="email">Email</label>
+                  <Field name="email" type="email" id="email" placeholder="Enter Email Address" className="form-input" />
                   {submitCount && errors.email ? <div className="text-danger mt-1">{errors.email}</div> : ""}
                 </div>
                 <div className={submitCount ? (errors.phone ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="phone">Phone </label>
+                  <label htmlFor="phone">Phone</label>
                   <Field
                     name="phone"
-                    type="number"
+                    type="text"
                     id="phone"
                     placeholder="Enter Phone Number"
                     className="form-input"
+                    maxLength={10}
                   />
                   {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : ""}
                 </div>
                 <div className={submitCount ? (errors.rpId ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="rpId">RP ID </label>
+                  <label htmlFor="rpId">RP ID</label>
                   <Field name="rpId" type="text" id="rpId" placeholder="Enter RP ID" className="form-input" />
                   {submitCount && errors.rpId ? <div className="text-danger mt-1">{errors.rpId}</div> : ""}
                 </div>
                 <div className={submitCount ? (errors.tldBadge ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="tldBadge">TLD Badge </label>
-                  <Field
-                    name="tldBadge"
-                    type="text"
-                    id="tldBadge"
-                    placeholder="Enter TLD Badge"
-                    className="form-input"
-                  />
+                  <label htmlFor="tldBadge">TLD Badge</label>
+                  <Field name="tldBadge" type="text" id="tldBadge" placeholder="Enter TLD Badge" className="form-input" />
                   {submitCount && errors.tldBadge ? <div className="text-danger mt-1">{errors.tldBadge}</div> : ""}
                 </div>
                 <div className={submitCount ? (errors.validity ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="validity">Validity </label>
-                  <Field name="validity" type="date" id="validity" className="form-input" />
+                  <label htmlFor="validity">Validity</label>
+                  <Field
+                    name="validity"
+                    type="date"
+                    id="validity"
+                    placeholder="Select Validity Date"
+                    className="form-input"
+                  />
                   {submitCount && errors.validity ? <div className="text-danger mt-1">{errors.validity}</div> : ""}
                 </div>
-                <div className={submitCount ? (errors.attachFile ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="attachFile">Attach File (Optional) </label>
-                  <input
-                    name="attachFile"
-                    type="file"
-                    id="attachFile"
+                <div className={submitCount ? (errors.attachment ? "has-error" : "has-success") : ""}>
+                  <label htmlFor="attachment">Attachment URL</label>
+                  <Field
+                    name="attachment"
+                    type="text"
+                    id="attachment"
+                    placeholder="Enter Attachment URL (optional)"
                     className="form-input"
-                    onChange={(event) => {
-                      setFieldValue("attachFile", event.currentTarget.files?.[0] || null)
-                    }}
                   />
-                  {submitCount && errors.attachFile ? <div className="text-danger mt-1">{errors.attachFile}</div> : ""}
-                  <small className="text-gray-500">Leave empty to keep existing file</small>
+                  {submitCount && errors.attachment ? <div className="text-danger mt-1">{errors.attachment}</div> : ""}
                 </div>
               </div>
             </div>
             <div className="w-full mb-6 flex justify-end gap-4">
-
               <button type="submit" className="btn btn-success !mt-6">
                 Update RSO
               </button>
@@ -263,4 +253,4 @@ const EditRso = () => {
   )
 }
 
-export default EditRso
+export default EditRSO

@@ -8,7 +8,7 @@ import { getLeaveById, getAllEmployees, editLeaveById } from '../../../../api/in
 interface Employee {
     _id: string;
     name: string;
-    designation: string;
+    technicianType: string;
 }
 
 interface LeaveData {
@@ -112,7 +112,7 @@ const EditLeave = () => {
                 validationSchema={LeaveSchema}
                 onSubmit={handleSubmit}
             >
-                {({ errors, touched, submitCount }) => (
+                {({ errors, touched, submitCount, values }) => (
                     <Form className="space-y-5">
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Edit Leave Details</h5>
@@ -125,7 +125,7 @@ const EditLeave = () => {
                                         <option value="">Select Employee</option>
                                         {employees.map((emp) => (
                                             <option key={emp._id} value={emp._id}>
-                                                {emp.name} ({emp.designation})
+                                                {emp.name} ({emp.technicianType})
                                             </option>
                                         ))}
                                     </Field>
@@ -151,9 +151,31 @@ const EditLeave = () => {
                                 </div>
 
                                 {/* Start Date */}
-                                <div className={submitCount && errors.startDate ? 'has-error' : ''}>
+                                {/* <div className={submitCount && errors.startDate ? 'has-error' : ''}>
                                     <label htmlFor="startDate">Start Date</label>
                                     <Field type="date" name="startDate" className="form-input" />
+                                    {errors.startDate && (
+                                        <div className="text-danger mt-1">{errors.startDate}</div>
+                                    )}
+                                </div> */}
+
+                                {/* End Date */}
+                                {/* <div className={submitCount && errors.endDate ? 'has-error' : ''}>
+                                    <label htmlFor="endDate">End Date</label>
+                                    <Field type="date" name="endDate" className="form-input" />
+                                    {errors.endDate && (
+                                        <div className="text-danger mt-1">{errors.endDate}</div>
+                                    )}
+                                </div> */}
+                                {/* Start Date */}
+                                <div className={submitCount && errors.startDate ? 'has-error' : ''}>
+                                    <label htmlFor="startDate">Start Date</label>
+                                    <Field
+                                        type="date"
+                                        name="startDate"
+                                        className="form-input"
+                                        min={new Date().toISOString().split('T')[0]} // ⛔ Disable past dates
+                                    />
                                     {errors.startDate && (
                                         <div className="text-danger mt-1">{errors.startDate}</div>
                                     )}
@@ -162,11 +184,21 @@ const EditLeave = () => {
                                 {/* End Date */}
                                 <div className={submitCount && errors.endDate ? 'has-error' : ''}>
                                     <label htmlFor="endDate">End Date</label>
-                                    <Field type="date" name="endDate" className="form-input" />
+                                    <Field
+                                        type="date"
+                                        name="endDate"
+                                        className="form-input"
+                                        min={
+                                            values.startDate
+                                                ? values.startDate // ⛔ cannot be before start date
+                                                : new Date().toISOString().split('T')[0] // ⛔ cannot be past date
+                                        }
+                                    />
                                     {errors.endDate && (
                                         <div className="text-danger mt-1">{errors.endDate}</div>
                                     )}
                                 </div>
+
 
                                 {/* Reason */}
                                 <div className={submitCount && errors.reason ? 'has-error' : ''}>

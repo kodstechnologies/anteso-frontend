@@ -23,7 +23,7 @@ interface QuotationData {
     enquiry: {
         _id: string
         enquiryId: string
-        hospitalName: string
+        hospitalName?: string
         fullAddress: string
         city: string
         district: string
@@ -58,6 +58,7 @@ interface QuotationData {
     // termsAndConditions: string[]
     termsAndConditions: Array<string | Term>
     isUploaded: any
+    pdfUrl?: string;
 }
 
 interface AdditionalServiceData {
@@ -166,8 +167,17 @@ const ViewQuotation: React.FC = () => {
             );
             console.log("🚀 ~ handleSaveAsPdf ~ res:", res)
 
-            // alert("✅ PDF uploaded successfully! URL: " + res.pdfUrl);
-            setSuccessMessage(`PDF uploaded successfully!`);
+            // Update local state to reflect isUploaded: true
+            if (res.success) {
+                if (res.quotation) {
+                    setQuotationData({ ...res.quotation, isUploaded: true, pdfUrl: res.pdfUrl });
+                } else {
+                    setQuotationData({ ...quotationData, isUploaded: true, pdfUrl: res.pdfUrl });
+                }
+                setSuccessMessage(`PDF uploaded successfully!`);
+            } else {
+                setSuccessMessage(`PDF uploaded successfully!`);
+            }
 
         } catch (err: any) {
             console.error("PDF generation/upload error:", err);
@@ -437,7 +447,7 @@ const ViewQuotation: React.FC = () => {
                                             lineHeight: "20px",
                                         }}
                                     >
-                                        <span className="font-bold">{quotationData.enquiry.hospitalName.toUpperCase()}</span>
+                                        <span className="font-bold">{(quotationData.enquiry.hospitalName || '').toUpperCase()}</span>
                                         <br />
                                         {quotationData.enquiry.fullAddress}, {quotationData.enquiry.city}, {quotationData.enquiry.district},{" "}
                                         {quotationData.enquiry.state}-{quotationData.enquiry.pinCode}

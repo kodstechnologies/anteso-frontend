@@ -702,8 +702,8 @@ const EditQuotation: React.FC = () => {
                                 <input
                                     value={service.name}
                                     placeholder="Service Name"
-                                    onChange={(e) => handleAdditionalServiceChange(service._id, 'name', e.target.value)}
                                     className="px-2 py-1 border rounded text-sm col-span-1"
+                                    readOnly
                                 />
                                 <input
                                     type="number"

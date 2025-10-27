@@ -1,3 +1,4 @@
+// Updated EditInstitute component
 "use client"
 
 import * as Yup from "yup"
@@ -18,8 +19,9 @@ interface InstituteData {
 
 const EditInstitute = () => {
   const navigate = useNavigate()
-  const { clientId, instituteId } = useParams()
+  const { clientId, hospitalId, instituteId } = useParams<{ clientId: string; hospitalId: string; instituteId: string }>()
   console.log("🚀 ~ EditInstitute ~ instituteId:", instituteId)
+  console.log("🚀 ~ EditInstitute ~ hospitalId:", hospitalId)
   console.log("🚀 ~ EditInstitute ~ clientId:", clientId)
   const [loading, setLoading] = useState(false)
   const [initialData, setInitialData] = useState<InstituteData | null>(null)
@@ -37,9 +39,14 @@ const EditInstitute = () => {
 
   useEffect(() => {
     const fetchInstituteData = async () => {
+      if (!hospitalId || !instituteId) {
+        showMessage("Invalid institute data", "error")
+        navigate(`/admin/clients/preview/${clientId}/${hospitalId}`)
+        return
+      }
       try {
         setDataLoading(true)
-        const response = await getInstituteByHospitalIdAndInstituteId(clientId, instituteId)
+        const response = await getInstituteByHospitalIdAndInstituteId(hospitalId, instituteId)
         console.log("🚀 ~ fetchInstituteData ~ response:", response)
 
         const instituteData = response.data || response
@@ -52,16 +59,14 @@ const EditInstitute = () => {
       } catch (error) {
         console.error("Error fetching institute data:", error)
         showMessage("Failed to load institute data", "error")
-        // navigate(`/admin/clients/preview/${clientId}`)
+        navigate(`/admin/clients/preview/${clientId}/${hospitalId}`)
       } finally {
         setDataLoading(false)
       }
     }
 
-    if (instituteId) {
-      fetchInstituteData()
-    }
-  }, [instituteId, clientId, navigate])
+    fetchInstituteData()
+  }, [instituteId, hospitalId, clientId, navigate])
 
   if (dataLoading) {
     return <div className="flex justify-center items-center h-64">Loading institute data...</div>
@@ -86,12 +91,17 @@ const EditInstitute = () => {
           </Link>
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-          <Link to={`/admin/clients/preview/${clientId}`} className="text-primary">
+          <Link to={`/admin/clients/preview/${clientId}`} className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
             Client Details
           </Link>
         </li>
         <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-          <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+          <Link to={`/admin/clients/preview/${clientId}/${hospitalId}`} className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+            Hospital Details
+          </Link>
+        </li>
+        <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
+          <Link to="#" className="text-primary">
             Edit Institute
           </Link>
         </li>
@@ -103,10 +113,10 @@ const EditInstitute = () => {
         onSubmit={async (values, { setSubmitting, setFieldError }) => {
           setLoading(true)
           try {
-            const response = await editInstituteByHospitalIdandInstituteId(clientId, instituteId, values)
+            const response = await editInstituteByHospitalIdandInstituteId(hospitalId, instituteId, values)
             console.log("🚀 ~ onSubmit={ ~ response:", response)
             showMessage("Institute updated successfully!", "success")
-            // navigate(`/admin/clients/preview/${clientId}`)
+            navigate(`/admin/clients/preview/${clientId}/${hospitalId}`)
           } catch (error: any) {
             const message = error?.response?.data?.message
             console.log("🚀 ~ onSubmit ~ message:", message)

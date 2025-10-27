@@ -3066,3 +3066,18 @@ export const employeeTrips = async () => {
         );
     }
 }
+
+export const getUnassignedTools = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/tools/unassigned-tools`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getUnassignedTools ~ error:", error);
+        throw error;
+    }
+}

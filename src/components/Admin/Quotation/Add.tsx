@@ -678,9 +678,9 @@ const AddQuotation: React.FC = () => {
                             <tr className="text-[.7rem]">
                                 <td className="font-bold pb-4">To:</td>
                                 <td className="pl-2" style={{ lineHeight: "20px" }}>
-                                    <span className="font-bold">{enquiryData?.customer?.name?.toUpperCase() || "N/A"}</span>
+                                    <span className="font-bold">{enquiryData?.hospitalName.toUpperCase() || "N/A"}</span>
                                     <br />
-                                    {enquiryData?.hospitalName || "N/A"}
+                                    {enquiryData?.fullAddress || "N/A"}
                                 </td>
                             </tr>
                         </tbody>
@@ -705,7 +705,7 @@ const AddQuotation: React.FC = () => {
                 <div className="mb-4 bg-gray-50 p-2">
                     <table className="text-sm w-full max-w-[20rem]">
                         <tbody>
-                            <InfoRow label="Email" value={enquiryData?.customer?.email || "N/A"} isEmail />
+                            <InfoRow label="Email" value={enquiryData?.emailAddress || "N/A"} isEmail />
                             <InfoRow label="Contact" value={enquiryData?.customer?.phone || "N/A"} />
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">From:</td>
