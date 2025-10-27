@@ -421,6 +421,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     reportStatus: workTypeDetail.QAtest?.reportStatus || 'pending',
                                 },
                                 serviceId: machineData._id,
+                                assignedTechnicianId: workTypeDetail.engineer || undefined,
                             })
 
                             // Always create QA Test for QA Test
@@ -561,6 +562,55 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setLoading(false)
         }
     }
+
+    useEffect(() => {
+        if (machineData.length > 0 && technicians.length > 0 && !loadingDropdowns) {
+            const newAssignments = { ...assignments };
+            const newSelectedEmployees = { ...selectedEmployees };
+            let updated = false;
+
+            machineData.forEach((service) => {
+                service.workTypes.forEach((workType) => {
+                    if (
+                        workType.name === "QA Raw" &&
+                        workType.assignedTechnicianId &&
+                        !newAssignments[workType.id]?.employeeId
+                    ) {
+                        const tech = technicians.find((t) => t._id === workType.assignedTechnicianId);
+                        if (tech) {
+                            newAssignments[workType.id] = {
+                                isAssigned: true,
+                                employeeId: workType.assignedTechnicianId,
+                                technicianName: tech.name,
+                            };
+                            newSelectedEmployees[workType.id] = workType.assignedTechnicianId;
+                            updated = true;
+                        }
+                    }
+                });
+            });
+
+            if (updated) {
+                setAssignments(newAssignments);
+                setSelectedEmployees(newSelectedEmployees);
+                saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments);
+                saveToLocalStorage(STORAGE_KEYS.selectedEmployees, newSelectedEmployees);
+
+                setMachineData((prev) =>
+                    prev.map((s) => ({
+                        ...s,
+                        workTypes: s.workTypes.map((wt) => {
+                            if (wt.name === "QA Raw" && wt.assignedTechnicianId) {
+                                const tech = technicians.find((t) => t._id === wt.assignedTechnicianId);
+                                return tech ? { ...wt, assignedTechnicianName: tech.name } : wt;
+                            }
+                            return wt;
+                        }),
+                    }))
+                );
+            }
+        }
+    }, [machineData, technicians, loadingDropdowns, assignments]);
 
     const handleViewFile = (workTypeId: string) => {
         const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
@@ -1364,7 +1414,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         return (
             <div className="space-y-6 p-6">
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Services Management2</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Services Management</h1>
                     <p className="text-gray-600">Loading machine data...</p>
                 </div>
                 <div className="flex items-center justify-center py-12">
@@ -1379,7 +1429,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         return (
             <div className="space-y-6 p-6">
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Services Management 2</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Services Management</h1>
                     <p className="text-gray-600">Error loading machine data</p>
                 </div>
                 <div className="flex items-center justify-center py-12">
@@ -1402,7 +1452,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     return (
         <div className="space-y-6 p-6">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Services Management 2</h1>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Services Management</h1>
                 <p className="text-gray-600">Manage your equipment and work types</p>
             </div>
 
