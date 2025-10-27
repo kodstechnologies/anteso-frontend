@@ -72,12 +72,36 @@ export default function SalaryManagement() {
     setNewSalary(prev => ({ ...prev, totalSalary: total > 0 ? total : 0 }))
   }, [newSalary.basicSalary, newSalary.incentive, newSalary.leaveDeduction])
 
+  // Get month range for validation and input restrictions
+  const getMonthRange = (monthIndex: number) => {
+    const year = new Date().getFullYear()
+    const startDate = new Date(year, monthIndex, 1)
+    startDate.setHours(0, 0, 0, 0) // Normalize to midnight local time
+    const endDate = new Date(year, monthIndex + 1, 0)
+    endDate.setHours(23, 59, 59, 999) // Set to end of the last day
+    return { startDate, endDate }
+  }
+
+  // Format date for input (YYYY-MM-DD) in local timezone
+  const formatDateForInput = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
   // Validation
-  const validateSalary = () => {
+  const validateSalary = (monthIndex: number) => {
     const newErrors: Record<string, string> = {}
+    const { startDate, endDate } = getMonthRange(monthIndex)
 
     if (!newSalary.date || isNaN(newSalary.date.getTime())) {
       newErrors.date = "Required"
+    } else if (
+      newSalary.date.getFullYear() !== startDate.getFullYear() ||
+      newSalary.date.getMonth() !== monthIndex
+    ) {
+      newErrors.date = `Date must be in ${months[monthIndex]} ${startDate.getFullYear()}`
     }
     if (newSalary.basicSalary === null || newSalary.basicSalary <= 0) {
       newErrors.basicSalary = "Required"
@@ -101,12 +125,12 @@ export default function SalaryManagement() {
   }
 
   const handleAddOrEditSalary = async (monthIndex: number) => {
-    if (!validateSalary()) return
+    if (!validateSalary(monthIndex)) return
 
     try {
       setLoading(true)
       const saveData = {
-        date: newSalary.date,
+        date: newSalary.date.toISOString(), // Send ISO string to backend
         basicSalary: newSalary.basicSalary!,
         incentive: newSalary.incentive ?? 0,
         leaveDeduction: newSalary.leaveDeduction ?? 0,
@@ -131,10 +155,12 @@ export default function SalaryManagement() {
   }
 
   const handleEditSalary = (salary: Salary, monthIndex: number) => {
+    const salaryDate = new Date(salary.date)
+    salaryDate.setHours(0, 0, 0, 0) // Normalize to midnight local time
     setAddingMonth(monthIndex)
     setEditingSalaryId(salary._id)
     setNewSalary({
-      date: new Date(salary.date),
+      date: salaryDate,
       basicSalary: salary.basicSalary,
       incentive: salary.incentive,
       leaveDeduction: salary.leaveDeduction || 0,
@@ -182,6 +208,7 @@ export default function SalaryManagement() {
         const totalPages = Math.ceil(monthSalaries.length / recordsPerPage)
         const startIdx = currentPage * recordsPerPage
         const paginatedSalaries = monthSalaries.slice(startIdx, startIdx + recordsPerPage)
+        const { startDate, endDate } = getMonthRange(index)
 
         return (
           <div key={month} className="mb-8 p-6 border border-gray-200 rounded-2xl bg-gray-50 shadow-md">
@@ -196,6 +223,8 @@ export default function SalaryManagement() {
                     setErrors({})
                   } else {
                     const date = new Date(new Date().getFullYear(), index, 1)
+                    date.setHours(0, 0, 0, 0) // Normalize to midnight local time
+                    console.log("Setting date for", month, formatDateForInput(date)) // Debug log
                     setAddingMonth(index)
                     setNewSalary({
                       date,
@@ -210,7 +239,7 @@ export default function SalaryManagement() {
                 }}
                 className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-1 rounded-full shadow-md hover:scale-105 transform transition"
               >
-                + Add Salary
+                {addingMonth === index ? "Cancel" : "+ Add Salary"}
               </button>
             </div>
 
@@ -218,7 +247,7 @@ export default function SalaryManagement() {
               <div className="mb-4 p-4 border border-gray-300 rounded-xl bg-white">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   {[
-                    { label: "Salary Date *", field: "date", type: "date" },
+                    { label: `Salary Date (${month}) *`, field: "date", type: "date" },
                     { label: "Basic Salary (₹) *", field: "basicSalary", type: "number" },
                     { label: "Incentive (₹) *", field: "incentive", type: "number" },
                     { label: "Leave Deduction (₹) *", field: "leaveDeduction", type: "number" },
@@ -231,7 +260,7 @@ export default function SalaryManagement() {
                         readOnly={field === "totalSalary"}
                         value={
                           field === "date"
-                            ? newSalary.date.toISOString().split("T")[0]
+                            ? formatDateForInput(newSalary.date)
                             : field === "totalSalary"
                               ? newSalary.totalSalary
                               : (newSalary as any)[field] ?? ""
@@ -239,12 +268,16 @@ export default function SalaryManagement() {
                         onChange={e => {
                           if (field === "date") {
                             const newDate = new Date(e.target.value)
+                            newDate.setHours(0, 0, 0, 0) // Normalize to midnight local time
+                            console.log("Date changed to:", formatDateForInput(newDate)) // Debug log
                             setNewSalary({ ...newSalary, date: newDate })
                           } else if (field !== "totalSalary") {
                             const val = e.target.value === "" ? null : Number(e.target.value)
                             setNewSalary({ ...newSalary, [field]: val })
                           }
                         }}
+                        min={field === "date" ? formatDateForInput(startDate) : undefined}
+                        max={field === "date" ? formatDateForInput(endDate) : undefined}
                         className={`w-full p-2 border ${errors[field] ? "border-red-400" : "border-gray-300"
                           } rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300`}
                       />
@@ -255,9 +288,9 @@ export default function SalaryManagement() {
                   <div className="flex space-x-2 md:col-span-5 mt-3">
                     <button
                       onClick={() => {
-                        setAddingMonth(null);
-                        setNewSalary(initialNewSalary);
-                        setEditingSalaryId(null);
+                        setAddingMonth(null)
+                        setNewSalary(initialNewSalary)
+                        setEditingSalaryId(null)
                         setErrors({})
                       }}
                       className="px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-100 transition"

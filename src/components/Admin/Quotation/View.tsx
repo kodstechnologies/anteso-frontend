@@ -297,7 +297,7 @@ const ViewQuotation: React.FC = () => {
             type: "B",
             id: index + 1,
             title: service.name,
-            description: service.description || "Additional service",
+            description: service.description,
             quantity: "1",
             price: formatNumber(service.totalAmount ?? 0),
             amount: formatNumber(service.totalAmount ?? 0),

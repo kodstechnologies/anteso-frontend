@@ -102,6 +102,7 @@ const normalizeStatus = (s: string): StatusValue =>
 const EditEngineer = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  console.log("🚀 ~ EditEngineer ~ id:", id)
 
   const [initialValues, setInitialValues] = useState<FormValues | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

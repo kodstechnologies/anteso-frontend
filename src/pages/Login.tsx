@@ -54,6 +54,8 @@ const Login = () => {
 
                 if (response?.status === 200) {
                     const { accessToken, refreshToken } = response.data.data;
+                    console.log("accessToken",accessToken);
+                    
 
                     // Store tokens in cookies
                     Cookies.set('accessToken', accessToken, { expires: 1 });
