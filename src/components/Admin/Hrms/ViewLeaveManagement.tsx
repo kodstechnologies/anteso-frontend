@@ -243,19 +243,25 @@ export default function EmployeeDetailsLeaveManagement() {
     //     return "";
     // };
 
-    const tileClassName = ({ date, view }) => {
+    const tileClassName = ({
+        date,
+        view,
+    }: {
+        date: Date;
+        view: "month" | "year" | "decade" | "century";
+    }) => {
         if (view === "month") {
             const status = getStatusForDate(date);
 
             switch (status) {
                 case "Present":
-                    return "present"; // green
+                    return "present";
                 case "Absent":
-                    return "absent"; // red
+                    return "absent";
                 case "On Leave":
-                    return "sick-leave"; // yellow
+                    return "sick-leave";
                 case "Holiday":
-                    return "holiday"; // grey
+                    return "holiday";
                 default:
                     return "";
             }
