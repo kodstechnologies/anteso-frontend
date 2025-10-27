@@ -30,9 +30,10 @@ const Employee = () => {
     const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
     const [search, setSearch] = useState('');
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'name',
-        direction: 'asc',
+        columnAccessor: 'createdAt',
+        direction: 'desc',
     });
+
 
     // Fetch employees
     useEffect(() => {
@@ -46,6 +47,7 @@ const Employee = () => {
                 const transformed = response?.data?.map((employee: any, index: number) => ({
                     ...employee,
                     id: employee._id,
+                    createdAt: employee.createdAt, // 👈 add this line
                     employeeId: `EMP${String(index + 1).padStart(3, '0')}`,
                     role: employee.technicianType || '',
                     tools: (employee.tools || []).map((tool: any) => tool.toolId?.nomenclature || 'N/A'),
@@ -57,6 +59,7 @@ const Employee = () => {
                     email: employee.email || '',
                     name: employee.name || '',
                 }));
+
 
                 setItems(transformed);
                 setInitialRecords(transformed);
@@ -169,8 +172,11 @@ const Employee = () => {
                                 {
                                     accessor: 'tools',
                                     sortable: true,
-                                    render: ({ tools }) => <span>{tools.join(', ')}</span>,
+                                    render: ({ tools }) => (
+                                        <span>{tools && tools.length > 0 ? tools.join(', ') : '-'}</span>
+                                    ),
                                 },
+
                                 {
                                     accessor: 'status',
                                     sortable: true,

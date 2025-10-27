@@ -1458,38 +1458,56 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     {assignments[workType.id]?.isReassigned ? "Reassign Engineer" : "Assign Engineer"}
                                                                 </label>
                                                                 <div className="flex gap-2">
-                                                                    <select
-                                                                        value={selectedEmployees[workType.id] || ""}
-                                                                        onChange={(e) => {
-                                                                            setSelectedEmployees((prev) => {
-                                                                                const newSelection = { ...prev, [workType.id]: e.target.value }
-                                                                                saveToLocalStorage(STORAGE_KEYS.selectedEmployees, newSelection)
-                                                                                return newSelection
-                                                                            })
-                                                                        }}
-                                                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                        disabled={loadingDropdowns || assigningTechnician[workType.id]}
-                                                                    >
-                                                                        <option value="">
-                                                                            {loadingDropdowns ? "Loading engineers..." : "Select Engineer"}
-                                                                        </option>
-                                                                        {technicians.map((tech) => (
-                                                                            <option key={tech._id} value={tech._id}>
-                                                                                {tech.name}
+                                                                    {technicians.length === 1 ? (
+                                                                        <div className="flex items-center gap-2 flex-1">
+                                                                            <span className="text-sm font-medium text-gray-700">{technicians[0].name}</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <select
+                                                                            value={selectedEmployees[workType.id] || ""}
+                                                                            onChange={(e) => {
+                                                                                setSelectedEmployees((prev) => {
+                                                                                    const newSelection = { ...prev, [workType.id]: e.target.value }
+                                                                                    saveToLocalStorage(STORAGE_KEYS.selectedEmployees, newSelection)
+                                                                                    return newSelection
+                                                                                })
+                                                                            }}
+                                                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            disabled={loadingDropdowns || assigningTechnician[workType.id]}
+                                                                        >
+                                                                            <option value="">
+                                                                                {loadingDropdowns ? "Loading engineers..." : "Select Engineer"}
                                                                             </option>
-                                                                        ))}
-                                                                    </select>
+                                                                            {technicians.map((tech) => (
+                                                                                <option key={tech._id} value={tech._id}>
+                                                                                    {tech.name}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    )}
                                                                     <button
-                                                                        onClick={() => handleEmployeeAssign(workType.id)}
+                                                                        onClick={() => {
+                                                                            if (technicians.length === 1) {
+                                                                                setSelectedEmployees((prev) => ({
+                                                                                    ...prev,
+                                                                                    [workType.id]: technicians[0]._id,
+                                                                                }));
+                                                                            }
+                                                                            handleEmployeeAssign(workType.id);
+                                                                        }}
                                                                         disabled={
-                                                                            !selectedEmployees[workType.id] ||
-                                                                            loadingDropdowns ||
-                                                                            assigningTechnician[workType.id]
+                                                                            technicians.length === 1
+                                                                                ? loadingDropdowns || assigningTechnician[workType.id]
+                                                                                : !selectedEmployees[workType.id] || loadingDropdowns || assigningTechnician[workType.id]
                                                                         }
                                                                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors flex items-center gap-2"
                                                                     >
                                                                         {assigningTechnician[workType.id] && <Loader2 className="h-4 w-4 animate-spin" />}
-                                                                        {assigningTechnician[workType.id] ? "Assigning..." : (assignments[workType.id]?.isReassigned ? "Reassign" : "Assign")}
+                                                                        {assigningTechnician[workType.id] ? "Assigning..." : (
+                                                                            technicians.length === 1
+                                                                                ? `${assignments[workType.id]?.isReassigned ? "Reassign" : "Assign"} ${technicians[0].name}`
+                                                                                : assignments[workType.id]?.isReassigned ? "Reassign" : "Assign"
+                                                                        )}
                                                                     </button>
                                                                 </div>
                                                             </div>
