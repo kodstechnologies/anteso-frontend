@@ -193,12 +193,12 @@ const Hrms = () => {
                         </div>
                     </div>
 
-                    <div className="px-5 mb-4">
+                    {/* <div className="px-5 mb-4">
                         <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
                             <span>Total Employees: {items.length}</span>
                             <span>Allocated Employees: {allocations.length}</span>
                         </div>
-                    </div>
+                    </div> */}
 
                     <div className="datatables pagination-padding">
                         <DataTable
