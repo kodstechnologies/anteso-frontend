@@ -54,8 +54,8 @@ const Login = () => {
 
                 if (response?.status === 200) {
                     const { accessToken, refreshToken } = response.data.data;
-                    console.log("accessToken",accessToken);
-                    
+                    console.log("accessToken", accessToken);
+
 
                     // Store tokens in cookies
                     Cookies.set('accessToken', accessToken, { expires: 1 });
@@ -165,6 +165,26 @@ const Login = () => {
                                     >
                                         Forgot Password?
                                     </a>
+                                </div>
+                                <div className="text-center text-sm text-gray-600 mt-4">
+                                    By logging in you agree to our{" "}
+                                    <a
+                                        href="/terms"
+                                        className="text-blue-600 hover:underline font-medium"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Terms & Conditions
+                                    </a>{" "}
+                                    and{" "}
+                                    <a
+                                        href="/privacy"
+                                        className="text-blue-600 hover:underline font-medium"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Privacy Policy
+                                    </a>.
                                 </div>
 
                             </form>

@@ -79,6 +79,9 @@ import AddPayment from '../components/Admin/Accounts/Payments/Add'
 import EditPayment from '../components/Admin/Accounts/Payments/Edit'
 import ViewPayment from '../components/Admin/Accounts/Payments/View'
 
+import Privacy from '../pages/privacy';
+import Terms from '../pages/terms';
+
 
 //Invoice
 import Invoice from '../pages/Admin/Master/Invoice';
@@ -264,17 +267,17 @@ const routes = [
     {
         path: '/admin/clients/preview/:clientId/:hospitalId/edit-institute/:instituteId',
         element: (
-             <AdminProtected>
-            <EditInstitute />
-             </AdminProtected>
+            <AdminProtected>
+                <EditInstitute />
+            </AdminProtected>
         ),
     },
     {
         path: '/admin/clients/preview/:clientId/:hospitalId/edit-rso/:rsoId',
         element: (
-             <AdminProtected>
-            <EditRso />
-             </AdminProtected>
+            <AdminProtected>
+                <EditRso />
+            </AdminProtected>
         ),
     },
     //dummy msg
@@ -331,8 +334,8 @@ const routes = [
         path: '/admin/leave',
         element: (
             <AdminProtected>
-            <Leaves />
-             </AdminProtected>
+                <Leaves />
+            </AdminProtected>
         ),
     },
     {
@@ -452,8 +455,8 @@ const routes = [
     {
         path: '/admin/dealer',
         element: (
-             <AdminProtected>
-            <Dealers />
+            <AdminProtected>
+                <Dealers />
             </AdminProtected>
         ),
     },
@@ -484,9 +487,9 @@ const routes = [
     {
         path: '/admin/manufacture',
         element: (
-             <AdminProtected>
-            <Manufacturers />
-             </AdminProtected>
+            <AdminProtected>
+                <Manufacturers />
+            </AdminProtected>
         ),
     },
     {
@@ -564,9 +567,9 @@ const routes = [
     {
         path: '/admin/courier-companies',
         element: (
-             <AdminProtected>
-            <CourierCompanies />
-             </AdminProtected>
+            <AdminProtected>
+                <CourierCompanies />
+            </AdminProtected>
         ),
     },
     {
@@ -596,8 +599,8 @@ const routes = [
     {
         path: '/admin/enquiry',
         element: (
-             <AdminProtected>
-            <Enquiry />
+            <AdminProtected>
+                <Enquiry />
             </AdminProtected>
         ),
     },
@@ -985,6 +988,16 @@ const routes = [
     {
         path: '/login',
         element: <Login />,
+        layout: 'blank',
+    },
+    {
+        path: '/terms',
+        element: <Terms />,
+        layout: 'blank',
+    },
+    {
+        path: '/privacy',
+        element: <Privacy />,
         layout: 'blank',
     },
     {
