@@ -596,6 +596,7 @@ const routes = [
             </AdminProtected>
         ),
     },
+    //dummy
     {
         path: '/admin/enquiry',
         element: (
