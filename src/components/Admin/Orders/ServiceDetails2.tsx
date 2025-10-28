@@ -17,6 +17,7 @@ import {
     FileText,
     Trash2, // Added Trash2 import
 } from "lucide-react"
+
 import { getAssignedStaffName, getMachineDetails } from "../../../api" // Adjust path as needed
 import {
     getAllTechnicians,

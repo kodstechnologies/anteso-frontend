@@ -168,9 +168,8 @@ const InvoiceDealer = () => {
 
                     {/* Table */}
                     <div className="mt-2 w-full overflow-hidden">
-                        {isCustomer ? (
+                        {/* {isCustomer ? (
                             <>
-                                {/* Services Table */}
                                 <table className="w-full table-fixed border border-black border-collapse text-[4px] sm:text-xs">
                                     <thead className="bg-gray-100">
                                         <tr>
@@ -196,7 +195,6 @@ const InvoiceDealer = () => {
                                     </tbody>
                                 </table>
 
-                                {/* Additional Services Table */}
                                 {additionalServicesItems.length > 0 && (
                                     <div className="mt-2">
                                         <h3 className="text-sm font-bold mb-2">Additional Services</h3>
@@ -252,10 +250,107 @@ const InvoiceDealer = () => {
                                     ))}
                                 </tbody>
                             </table>
+                        )} */}
+                        {/* Dealer/Manufacturer Detailed Breakdown */}
+                        {!isCustomer && (
+                            <div className="mt-2 space-y-6">
+                                {invoice.dealerHospitals?.map((dh: any, dhIndex: number) => {
+                                    const hospitalServices = dh.services || [];
+                                    const hospitalAdditionalServices = dh.additionalServices || [];
+
+                                    const hospitalSubtotal =
+                                        hospitalServices.reduce((sum: number, s: any) => sum + (s.rate * s.quantity || 0), 0) +
+                                        hospitalAdditionalServices.reduce((sum: number, as: any) => sum + (as.totalAmount || 0), 0);
+
+                                    return (
+                                        <div key={dhIndex} className="border border-black p-2">
+                                            {/* Hospital Header */}
+                                            <div className="bg-gray-100 p-2 border-b border-black text-xs font-semibold">
+                                                <p>
+                                                    <strong>Hospital:</strong> {dh.hospitalName} ({dh.partyCode})
+                                                </p>
+                                                <p>
+                                                    <strong>Location:</strong> {dh.location}, <strong>State:</strong> {dh.dealerState}
+                                                </p>
+                                                <p>
+                                                    <strong>Model:</strong> {dh.modelNo} | <strong>Sr. No:</strong> {dh.srNo || "-"}
+                                                </p>
+                                            </div>
+
+                                            {/* Services Table for this Hospital */}
+                                            {hospitalServices.length > 0 && (
+                                                <div className="mt-2">
+                                                    <h4 className="font-bold text-xs mb-1">Services</h4>
+                                                    <table className="w-full table-fixed border border-black border-collapse text-[10px]">
+                                                        <thead className="bg-gray-50">
+                                                            <tr>
+                                                                <th className="border border-black px-1 py-1 text-xs">S No</th>
+                                                                <th className="border border-black px-1 py-1 text-xs">Machine Type</th>
+                                                                <th className="border border-black px-1 py-1 text-xs">Description</th>
+                                                                <th className="border border-black px-1 py-1 text-xs">HSN/SAC</th>
+                                                                <th className="border border-black px-1 py-1 text-xs">Qty</th>
+                                                                <th className="border border-black px-1 py-1 text-xs">Rate</th>
+                                                                <th className="border border-black px-1 py-1 text-xs">Amount</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {hospitalServices.map((s: any, sIdx: number) => (
+                                                                <tr key={sIdx}>
+                                                                    <td className="border border-black px-1 py-1">{sIdx + 1}</td>
+                                                                    <td className="border border-black px-1 py-1">{s.machineType || "-"}</td>
+                                                                    <td className="border border-black px-1 py-1">{s.description}</td>
+                                                                    <td className="border border-black px-1 py-1">{s.hsnno || "-"}</td>
+                                                                    <td className="border border-black px-1 py-1 text-right">{s.quantity || 0}</td>
+                                                                    <td className="border border-black px-1 py-1 text-right">₹{s.rate?.toLocaleString("en-IN") || 0}</td>
+                                                                    <td className="border border-black px-1 py-1 text-right">
+                                                                        ₹{((s.rate || 0) * (s.quantity || 0)).toLocaleString("en-IN")}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+
+                                            {/* Additional Services Table for this Hospital */}
+                                            {hospitalAdditionalServices.length > 0 && (
+                                                <div className="mt-2">
+                                                    <h4 className="font-bold text-xs mb-1">Additional Services</h4>
+                                                    <table className="w-full table-fixed border border-black border-collapse text-[10px]">
+                                                        <thead className="bg-gray-50">
+                                                            <tr>
+                                                                <th className="border border-black px-1 py-1 text-xs">S No</th>
+                                                                <th className="border border-black px-1 py-1 text-xs">Name</th>
+                                                                <th className="border border-black px-1 py-1 text-xs">Description</th>
+                                                                <th className="border border-black px-1 py-1 text-xs">Amount</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {hospitalAdditionalServices.map((as: any, asIdx: number) => (
+                                                                <tr key={asIdx}>
+                                                                    <td className="border border-black px-1 py-1">{asIdx + 1}</td>
+                                                                    <td className="border border-black px-1 py-1">{as.name}</td>
+                                                                    <td className="border border-black px-1 py-1">{as.description}</td>
+                                                                    <td className="border border-black px-1 py-1 text-right">
+                                                                        ₹{(as.totalAmount || 0).toLocaleString("en-IN")}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+
+                                            <div className="text-right mt-2 font-semibold text-xs">
+                                                <p>Subtotal for this hospital: ₹{hospitalSubtotal.toLocaleString("en-IN")}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
 
-                    {/* Totals */}
                     <div className="text-right mt-4 space-y-1">
                         <p><strong>Sub Total:</strong> ₹{(subTotal ?? 0).toLocaleString("en-IN")}</p>
                         {discount > 0 && <p><strong>Discount:</strong> -₹{discount.toLocaleString("en-IN")}</p>}
@@ -265,7 +360,6 @@ const InvoiceDealer = () => {
                         <p className="text-sm font-bold">Total: ₹{(total ?? 0).toLocaleString("en-IN")}</p>
                     </div>
 
-                    {/* Footer */}
                     <div className="flex flex-col md:flex-row justify-between gap-6 mt-auto text-[10px] sm:text-xs">
                         <div>
                             <h2 className="font-semibold">Bank Details:</h2>
@@ -285,7 +379,6 @@ const InvoiceDealer = () => {
                     </div>
                 </div>
 
-                {/* Buttons */}
                 <div className="flex justify-end mt-4 print:hidden gap-2">
                     <button
                         onClick={handleDownloadPdf}
