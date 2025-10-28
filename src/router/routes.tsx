@@ -596,7 +596,7 @@ const routes = [
             </AdminProtected>
         ),
     },
-    //dummy
+    //dummy push
     {
         path: '/admin/enquiry',
         element: (
