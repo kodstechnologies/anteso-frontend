@@ -32,7 +32,7 @@ const Terms = () => {
         {/* Section 1 - Eligibility */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">1</span> Eligibility
+            <span className="mr-3 text-blue-600 text-xl">1.</span> Eligibility
           </h2>
           <ul className="space-y-4 ml-8">
             <li className="flex items-start">
@@ -53,7 +53,7 @@ const Terms = () => {
         {/* Section 2 - User Registration */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">2</span> User Registration & Accounts
+            <span className="mr-3 text-blue-600 text-xl">2.</span> User Registration & Accounts
           </h2>
           <ul className="space-y-4 ml-8">
             <li className="flex items-start">
@@ -74,7 +74,7 @@ const Terms = () => {
         {/* Section 3 - Services */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">3</span> Services Description
+            <span className="mr-3 text-blue-600 text-xl">3.</span> Services Description
           </h2>
           <p className="mb-4">The App provides the following Services:</p>
           <ol className="space-y-4 ml-8 list-decimal">
@@ -103,7 +103,7 @@ const Terms = () => {
         {/* Section 4 - User Obligations */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">4</span> User Obligations & Responsibilities
+            <span className="mr-3 text-blue-600 text-xl">4.</span> User Obligations & Responsibilities
           </h2>
 
           <div className="space-y-8">
@@ -179,7 +179,7 @@ const Terms = () => {
         {/* Section 5 - IP Rights */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">5</span> Intellectual Property Rights
+            <span className="mr-3 text-blue-600 text-xl">5.</span> Intellectual Property Rights
           </h2>
           <div className="space-y-6">
             <div>
@@ -239,7 +239,7 @@ const Terms = () => {
         {/* Section 6 - Fees */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">6</span> Fees & Payment
+            <span className="mr-3 text-blue-600 text-xl">6.</span> Fees & Payment
           </h2>
           <ul className="space-y-3 ml-8">
             <li className="flex items-start">
@@ -268,7 +268,7 @@ const Terms = () => {
         {/* Section 7 - Data */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">7</span> Data Ownership & Privacy
+            <span className="mr-3 text-blue-600 text-xl">7.</span> Data Ownership & Privacy
           </h2>
           <ul className="space-y-3 ml-8">
             <li className="flex items-start">
@@ -289,7 +289,7 @@ const Terms = () => {
         {/* Section 8 - Warranties */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">8</span> Warranties & Disclaimers
+            <span className="mr-3 text-blue-600 text-xl">8.</span> Warranties & Disclaimers
           </h2>
           <div className="space-y-6">
             <div>
@@ -335,7 +335,7 @@ const Terms = () => {
         {/* Section 9 - Liability */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">9</span> Limitation of Liability
+            <span className="mr-3 text-blue-600 text-xl">9.</span> Limitation of Liability
           </h2>
           <ul className="space-y-3 ml-8">
             <li className="flex items-start">
@@ -356,7 +356,7 @@ const Terms = () => {
         {/* Section 10 - Termination */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">10</span> Termination
+            <span className="mr-3 text-blue-600 text-xl">10.</span> Termination
           </h2>
           <div className="space-y-6">
             <div>
@@ -395,7 +395,7 @@ const Terms = () => {
         {/* Section 11 - Indemnification */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">11</span> Indemnification
+            <span className="mr-3 text-blue-600 text-xl">11.</span> Indemnification
           </h2>
           <p className="ml-8 text-gray-700">
             You agree to indemnify, defend, and hold harmless the Company, its officers, directors, employees, and affiliates from and against any and all claims, damages, losses, liabilities, costs, and expenses (including reasonable legal fees) arising out of or related to:
@@ -411,7 +411,7 @@ const Terms = () => {
         {/* Section 12 - Governing Law */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">12</span> Governing Law & Dispute Resolution
+            <span className="mr-3 text-blue-600 text-xl">12.</span> Governing Law & Dispute Resolution
           </h2>
           <ul className="space-y-3 ml-8">
             <li className="flex items-start">
@@ -436,7 +436,7 @@ const Terms = () => {
         {/* Section 13 - Third-Party */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">13</span> Third-Party Services
+            <span className="mr-3 text-blue-600 text-xl">13.</span> Third-Party Services
           </h2>
           <ul className="space-y-2 ml-8">
             <li className="flex items-start">
@@ -453,7 +453,7 @@ const Terms = () => {
         {/* Section 14 - Updates */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">14</span> Updates & Modifications
+            <span className="mr-3 text-blue-600 text-xl">14.</span> Updates & Modifications
           </h2>
           <ul className="space-y-2 ml-8">
             <li className="flex items-start">
@@ -474,7 +474,7 @@ const Terms = () => {
         {/* Section 15 - Miscellaneous */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-blue-900 mb-5 flex items-center">
-            <span className="mr-3 text-blue-600 text-xl">15</span> Miscellaneous
+            <span className="mr-3 text-blue-600 text-xl">15.</span> Miscellaneous
           </h2>
           <ul className="space-y-2 ml-8">
             <li className="flex items-start">
