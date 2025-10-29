@@ -3,12 +3,13 @@ import { Field, Form, Formik, FormikHelpers } from 'formik';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { showMessage } from '../../../common/ShowMessage';
-import { toolsData } from '../../../../data';
 import { addEmployee, getUnAssignedTools } from '../../../../api';
 
-// Define the interface for the tool data
+// ---------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------
 interface Tool {
-    _id: string,
+    _id: string;
     toolId: string;
     nomenclature: string;
     manufacturer: string;
@@ -25,56 +26,49 @@ interface FormValues {
     email: string;
     phone: string;
     technicianType: string;
-    activeStatus: 'Active',
+    activeStatus: 'Active' | 'Inactive';
     toolIDs: string[];
     tools: { [toolID: string]: string };
-    designation: string,
-    department: string,
-    dateOfJoining: string,
-    workingDays: string,
+    designation: string;
+    department: string;
+    dateOfJoining: string;
+    workingDays: string;
     password?: string;
+    // NEW – file refs (not sent to backend, just for UI)
+    doc1?: File | null;
+    doc2?: File | null;
+    doc3?: File | null;
 }
 
+// ---------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------
 const AddEngineer = () => {
-    const [requiredTools, setRequiredTools] = useState(0);
     const navigate = useNavigate();
     const [toolsData, setToolsData] = useState<Tool[]>([]);
     const [loadingTools, setLoadingTools] = useState(false);
 
+    // --------------------------------------------------------------
+    // Load un-assigned tools
+    // --------------------------------------------------------------
     useEffect(() => {
         const fetchTools = async () => {
             try {
                 setLoadingTools(true);
                 const res = await getUnAssignedTools();
-                console.log("🚀 ~ fetchTools ~ res:", res)
-                setToolsData(res.data); // adjust if your API returns a different shape
+                setToolsData(res.data);
             } catch (error) {
-                console.error("Failed to load tools", error);
+                console.error('Failed to load tools', error);
             } finally {
                 setLoadingTools(false);
             }
         };
-
         fetchTools();
     }, []);
 
-    // Add 'password' to FormValues
-    interface FormValues {
-        name: string;
-        email: string;
-        phone: string;
-        technicianType: string;
-        activeStatus: 'Active';
-        toolIDs: string[];
-        tools: { [toolID: string]: string };
-        designation: string;
-        department: string;
-        dateOfJoining: string;
-        workingDays: string;
-        password?: string; //  added
-    }
-
-    // Updated validation schema
+    // --------------------------------------------------------------
+    // Validation schema
+    // --------------------------------------------------------------
     const SubmittedForm = Yup.object().shape({
         name: Yup.string().required('Please fill the Field'),
         email: Yup.string().email('Invalid email').required('Please fill the Email'),
@@ -90,24 +84,22 @@ const AddEngineer = () => {
             .required('Please fill the Field'),
         technicianType: Yup.string().required('Please fill the Field'),
         activeStatus: Yup.string().required('Please select status'),
-        // password: Yup.string().when('technicianType', {
-        //     is: 'office-staff', // 🔹 required only for office staff
-        //     then: (schema) => schema.required('Password is required for office staff'),
-        //     otherwise: (schema) => schema.notRequired(),
-        // }),
+
         password: Yup.string().when('technicianType', {
-            is: 'office-staff', // only required for office staff
+            is: 'office-staff',
             then: (schema) =>
                 schema
                     .required('Password is required for office staff')
                     .min(6, 'Password must be at least 6 characters long'),
             otherwise: (schema) => schema.notRequired(),
         }),
+
         toolIDs: Yup.array().of(Yup.string()).when('technicianType', {
             is: 'Engineer',
             then: (schema) => schema.min(1, 'Please select at least one tool'),
             otherwise: (schema) => schema.notRequired(),
         }),
+
         tools: Yup.object().when('technicianType', {
             is: 'Engineer',
             then: (schema) =>
@@ -124,51 +116,63 @@ const AddEngineer = () => {
         }),
     });
 
-
-    // Handle form submission
-    // Handle form submission
+    // --------------------------------------------------------------
+    // Form submit
+    // --------------------------------------------------------------
     const submitForm = async (
         values: FormValues,
         { resetForm }: FormikHelpers<FormValues>
     ) => {
         try {
-            console.log('Submitting values:', values);
+            // ---------- Build FormData ----------
+            const payload = new FormData();
 
-            const formattedPayload: any = {
-                name: values.name,
-                phone: values.phone,
-                email: values.email,
-                address: "",
-                technicianType: values.technicianType.toLowerCase(),
-                status: values.activeStatus.toLowerCase(),
-                designation: values.designation,
-                department: values.department,
-                dateOfJoining: new Date(values.dateOfJoining),
-                workingDays: Number(values.workingDays),
-                tools: values.technicianType === "Engineer"
-                    ? values.toolIDs.map(toolId => ({
-                        toolId,
-                        issueDate: values.tools?.[toolId] || null
-                    }))
-                    : []
-            };
+            // Basic fields
+            payload.append('name', values.name);
+            payload.append('phone', values.phone);
+            payload.append('email', values.email);
+            payload.append('technicianType', values.technicianType.toLowerCase());
+            payload.append('status', values.activeStatus.toLowerCase());
+            payload.append('designation', values.designation);
+            payload.append('department', values.department);
+            payload.append('dateOfJoining', values.dateOfJoining);
+            payload.append('workingDays', values.workingDays);
 
-            // 🔹 Add this block: include password if office staff
+            // Password (office-staff only)
             if (values.technicianType === 'office-staff' && values.password) {
-                formattedPayload.password = values.password;
+                payload.append('password', values.password);
             }
 
-            await addEmployee(formattedPayload);
+            // Tools (engineer only)
+            if (values.technicianType === 'Engineer') {
+                const toolsArray = values.toolIDs.map((toolId) => ({
+                    toolId,
+                    issueDate: values.tools?.[toolId] || null,
+                }));
+                payload.append('tools', JSON.stringify(toolsArray));
+            }
+
+            // Documents (engineer only)
+            if (values.technicianType === 'Engineer') {
+                if (values.doc1) payload.append('doc1', values.doc1);
+                if (values.doc2) payload.append('doc2', values.doc2);
+                if (values.doc3) payload.append('doc3', values.doc3);
+            }
+
+            // ---------- API call ----------
+            await addEmployee(payload);
 
             showMessage('Employee added successfully', 'success');
             resetForm();
-            setRequiredTools(0);
             navigate('/admin/employee');
         } catch (error: any) {
             showMessage(error.message || 'Failed to add employee', 'error');
         }
     };
 
+    // --------------------------------------------------------------
+    // Render
+    // --------------------------------------------------------------
     return (
         <>
             {/* Breadcrumb */}
@@ -189,22 +193,19 @@ const AddEngineer = () => {
                     </Link>
                 </li>
             </ol>
-            {/* Show message if no tools are available */}
+
+            {/* No tools warning */}
             {!loadingTools && toolsData.length === 0 && (
                 <div className="p-4 mb-4 text-yellow-800 bg-yellow-100 border border-yellow-300 rounded-lg">
-                    ⚠️ No tools available. Please{' '}
-                    <Link
-                        to="/admin/tools/add"
-                        className="text-primary underline hover:text-primary/80"
-                    >
+                    Warning: No tools available. Please{' '}
+                    <Link to="/admin/tools/add" className="text-primary underline hover:text-primary/80">
                         add tools
                     </Link>{' '}
                     before assigning them to engineers.
                 </div>
             )}
 
-
-            {/* Formik Form */}
+            {/* Formik */}
             <Formik<FormValues>
                 initialValues={{
                     name: '',
@@ -218,14 +219,16 @@ const AddEngineer = () => {
                     activeStatus: 'Active',
                     toolIDs: [],
                     tools: {},
-
+                    doc1: null,
+                    doc2: null,
+                    doc3: null,
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
             >
-                {({ errors, submitCount, values }) => (
+                {({ errors, submitCount, values, setFieldValue }) => (
                     <Form className="space-y-5">
-                        {/* Basic Details Panel */}
+                        {/* ---------- Basic Details ---------- */}
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Basic Details</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -252,48 +255,49 @@ const AddEngineer = () => {
                                         id="phone"
                                         className="form-input"
                                         placeholder="Enter Phone"
-                                        maxLength={10} // extra safeguard
+                                        maxLength={10}
                                         onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
                                             e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
                                         }}
                                     />
-                                    {submitCount > 0 && errors.phone && (
-                                        <div className="text-danger mt-1">{errors.phone}</div>
-                                    )}
+                                    {submitCount > 0 && errors.phone && <div className="text-danger mt-1">{errors.phone}</div>}
                                 </div>
+
+                                {/* Designation */}
                                 <div className={submitCount && errors.designation ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="designation">Designation</label>
                                     <Field name="designation" type="text" id="designation" className="form-input" placeholder="Enter Designation" />
                                     {submitCount > 0 && errors.designation && <div className="text-danger mt-1">{errors.designation}</div>}
                                 </div>
+
+                                {/* Working Days */}
                                 <div className={submitCount && errors.workingDays ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="workingDays">Working Days</label>
                                     <Field name="workingDays" type="number" id="workingDays" className="form-input" placeholder="Enter Working Days" />
                                     {submitCount > 0 && errors.workingDays && <div className="text-danger mt-1">{errors.workingDays}</div>}
                                 </div>
+
+                                {/* Date Of Joining */}
                                 <div className={submitCount && errors.dateOfJoining ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="dateOfJoining">Date Of Joining</label>
-                                    <Field name="dateOfJoining" type="date" id="dateOfJoining" className="form-input" placeholder="Enter Date Of Joining" />
+                                    <Field name="dateOfJoining" type="date" id="dateOfJoining" className="form-input" />
                                     {submitCount > 0 && errors.dateOfJoining && <div className="text-danger mt-1">{errors.dateOfJoining}</div>}
                                 </div>
+
+                                {/* Department */}
                                 <div className={submitCount && errors.department ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="department">Department</label>
                                     <Field name="department" type="text" id="department" className="form-input" placeholder="Enter Department" />
-                                    {submitCount > 0 && errors.phone && <div className="text-danger mt-1">{errors.department}</div>}
+                                    {submitCount > 0 && errors.department && <div className="text-danger mt-1">{errors.department}</div>}
                                 </div>
-
-                                {/* Emp ID */}
-                                {/* <div className={submitCount && errors.empId ? 'has-error' : submitCount ? 'has-success' : ''}>
-                                    <label htmlFor="empId">Employee ID</label>
-                                    <Field name="empId" type="text" id="empId" className="form-input" placeholder="Enter Employee ID" />
-                                    {submitCount > 0 && errors.empId && <div className="text-danger mt-1">{errors.empId}</div>}
-                                </div> */}
 
                                 {/* Role */}
                                 <div className={submitCount && errors.technicianType ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="technicianType">Role</label>
                                     <Field as="select" name="technicianType" className="form-select">
-                                        <option value="" disabled>Select Role</option>
+                                        <option value="" disabled>
+                                            Select Role
+                                        </option>
                                         <option value="office-staff">Office Staff</option>
                                         <option value="Engineer">Engineer</option>
                                     </Field>
@@ -304,18 +308,18 @@ const AddEngineer = () => {
                                 <div className={submitCount && errors.activeStatus ? 'has-error' : submitCount ? 'has-success' : ''}>
                                     <label htmlFor="activeStatus">Active Status</label>
                                     <Field as="select" name="activeStatus" className="form-select">
-                                        <option value="" disabled>Select Status</option>
+                                        <option value="" disabled>
+                                            Select Status
+                                        </option>
                                         <option value="Active">Active</option>
                                         <option value="Inactive">Inactive</option>
                                     </Field>
-                                    {submitCount > 0 && errors.activeStatus && (
-                                        <div className="text-danger mt-1">{errors.activeStatus}</div>
-                                    )}
+                                    {submitCount > 0 && errors.activeStatus && <div className="text-danger mt-1">{errors.activeStatus}</div>}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Tools Panel */}
+                        {/* ---------- Tools (Engineer only) ---------- */}
                         {values.technicianType === 'Engineer' && (
                             <div className="panel">
                                 <h5 className="font-semibold text-lg mb-4">Tools</h5>
@@ -336,7 +340,9 @@ const AddEngineer = () => {
                                                             value={tool._id}
                                                             className="form-checkbox h-5 w-5 text-primary"
                                                         />
-                                                        <span>{tool.nomenclature} ({tool.toolId})</span>
+                                                        <span>
+                                                            {tool.nomenclature} ({tool.toolId})
+                                                        </span>
                                                     </label>
 
                                                     {isSelected && (
@@ -349,9 +355,9 @@ const AddEngineer = () => {
                                                                 type="date"
                                                                 className="form-input"
                                                             />
-                                                            {submitCount > 0 && errors.tools?.[tool._id] && (
+                                                            {submitCount > 0 && (errors.tools as any)?.[tool._id] && (
                                                                 <div className="text-danger text-sm mt-1">
-                                                                    {errors.tools[tool._id]}
+                                                                    {(errors.tools as any)[tool._id]}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -359,14 +365,71 @@ const AddEngineer = () => {
                                                 </div>
                                             );
                                         })
-
                                     )}
-
                                 </div>
                             </div>
                         )}
 
-                        {/* Password - Only for Office Staff */}
+                        {/* ---------- Documents (Engineer only) ---------- */}
+                        {values.technicianType === 'Engineer' && (
+                            <div className="panel">
+                                <h5 className="font-semibold text-lg mb-4">Upload Documents</h5>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                    {/* doc1 */}
+                                    <div>
+                                        <label htmlFor="doc1" className="block mb-1">
+                                            Document 1
+                                        </label>
+                                        <input
+                                            id="doc1"
+                                            type="file"
+                                            accept="image/*,application/pdf"
+                                            className="form-input"
+                                            onChange={(e) => {
+                                                const file = e.currentTarget.files?.[0] ?? null;
+                                                setFieldValue('doc1', file);
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* doc2 */}
+                                    <div>
+                                        <label htmlFor="doc2" className="block mb-1">
+                                            Document 2
+                                        </label>
+                                        <input
+                                            id="doc2"
+                                            type="file"
+                                            accept="image/*,application/pdf"
+                                            className="form-input"
+                                            onChange={(e) => {
+                                                const file = e.currentTarget.files?.[0] ?? null;
+                                                setFieldValue('doc2', file);
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* doc3 */}
+                                    <div>
+                                        <label htmlFor="doc3" className="block mb-1">
+                                            Document 3
+                                        </label>
+                                        <input
+                                            id="doc3"
+                                            type="file"
+                                            accept="image/*,application/pdf"
+                                            className="form-input"
+                                            onChange={(e) => {
+                                                const file = e.currentTarget.files?.[0] ?? null;
+                                                setFieldValue('doc3', file);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ---------- Password (Office Staff only) ---------- */}
                         {values.technicianType === 'office-staff' && (
                             <div className={submitCount && errors.password ? 'has-error' : submitCount ? 'has-success' : ''}>
                                 <label htmlFor="password">Password</label>
@@ -377,13 +440,11 @@ const AddEngineer = () => {
                                     className="form-input"
                                     placeholder="Enter Password"
                                 />
-                                {submitCount > 0 && errors.password && (
-                                    <div className="text-danger mt-1">{errors.password}</div>
-                                )}
+                                {submitCount > 0 && errors.password && <div className="text-danger mt-1">{errors.password}</div>}
                             </div>
                         )}
 
-                        {/* Submit */}
+                        {/* ---------- Submit ---------- */}
                         <div className="w-full mb-6 flex justify-end">
                             <button type="submit" className="btn btn-success !mt-6">
                                 Submit Form

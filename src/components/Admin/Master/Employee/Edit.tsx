@@ -4,23 +4,20 @@ import { Field, Form, Formik, FormikHelpers } from 'formik';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { showMessage } from '../../../common/ShowMessage';
-import { getEmployeeById, editEmployee, getUnassignedTools } from '../../../../api';
+import {
+  getEmployeeById,
+  editEmployee,
+  getUnassignedTools,
+} from '../../../../api';
 
 type RoleValue = 'office staff' | 'engineer';
 type StatusValue = 'active' | 'inactive';
 
-type ToolOption = { id: string; name: string, code: string };
-
-// TODO: replace with tools from your backend if needed
-// const toolsList: ToolOption[] = [
-//   { id: 'TL001', name: 'Caliper' },
-//   { id: 'TL002', name: 'Micrometer' },
-//   { id: 'TL003', name: 'Vernier Scale' },
-// ];
+type ToolOption = { id: string; name: string; code: string };
 
 type ApiTool = {
-  toolId: string;        // readable id e.g. TL001 OR ObjectId (depending on your backend)
-  issueDate?: string;    // ISO string
+  toolId: string;
+  issueDate?: string;
 };
 
 type EmployeeApi = {
@@ -31,14 +28,16 @@ type EmployeeApi = {
   technicianType: RoleValue | string;
   status: StatusValue | string;
   tools?: ApiTool[];
-
-  // New fields from backend
   designation?: string;
   workingDays?: number;
-  dateOfJoining?: string; // ISO string
+  dateOfJoining?: string;
   department?: string;
-};
 
+  // ---------- NEW ----------
+  doc1?: string;
+  doc2?: string;
+  doc3?: string;
+};
 
 type FormValues = {
   name: string;
@@ -48,14 +47,16 @@ type FormValues = {
   tools: string[];
   issueDates: Record<string, string>;
   status: StatusValue | 'Active' | 'Inactive';
-
-  // New fields
   designation: string;
   workingDays: number | '';
   dateOfJoining: string;
   department: string;
-};
 
+  // ---------- NEW ----------
+  doc1?: File | string | null;
+  doc2?: File | string | null;
+  doc3?: File | string | null;
+};
 
 const schema = Yup.object({
   name: Yup.string().required('Please fill the Field'),
@@ -64,10 +65,12 @@ const schema = Yup.object({
     .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits')
     .required('Please fill the Field'),
   role: Yup.string().required('Please fill the Field'),
-  tools: Yup.array().of(Yup.string()).when('role', {
-    is: (val: string) => (val || '').toLowerCase() === 'engineer',
-    then: (s) => s.min(1, 'Please select at least one tool'),
-  }),
+  tools: Yup.array()
+    .of(Yup.string())
+    .when('role', {
+      is: (val: string) => (val || '').toLowerCase() === 'engineer',
+      then: (s) => s.min(1, 'Please select at least one tool'),
+    }),
   issueDates: Yup.object().when('role', {
     is: (val: string) => (val || '').toLowerCase() === 'engineer',
     then: (s) =>
@@ -83,15 +86,11 @@ const schema = Yup.object({
       ),
   }),
   status: Yup.string().required('Please fill the Field'),
-
-  // New validations
   designation: Yup.string().required('Please fill the Designation'),
   workingDays: Yup.number().required('Please fill Working Days').min(0),
   dateOfJoining: Yup.string().required('Please fill Date of Joining'),
   department: Yup.string().required('Please fill the Department'),
 });
-
-
 
 const normalizeRole = (r: string): RoleValue =>
   (r || '').toLowerCase() === 'engineer' ? 'engineer' : 'office staff';
@@ -102,186 +101,68 @@ const normalizeStatus = (s: string): StatusValue =>
 const EditEngineer = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  console.log("🚀 ~ EditEngineer ~ id:", id)
 
   const [initialValues, setInitialValues] = useState<FormValues | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [toolsList, setToolsList] = useState<ToolOption[]>([]);
 
-  // Load employee by id
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     if (!id) return;
-  //     try {
-  //       // 1️⃣ Get employee data (already includes tools)
-  //       const empRes = await getEmployeeById(id);
-  //       const emp = empRes.data as EmployeeApi;
-
-  //       // 2️⃣ Build tools list from populated toolId
-  //       // Build tools list from populated toolId
-  //       // const toolsListData: ToolOption[] =
-  //       //   (emp.tools || []).map((t: any) => ({
-  //       //     id: t.toolId?._id,
-  //       //     name: t.toolId?.nomenclature,
-  //       //   })).filter((t) => t.id); // remove undefined
-  //       // setToolsList(toolsListData);
-
-  //       const toolsListData: ToolOption[] = (emp.tools || []).map((t: any) => ({
-  //         id: t.toolId?._id, // keep this for checkbox value
-  //         code: t.toolId?.toolId, // readable ID (TL045)
-  //         name: t.toolId?.nomenclature,
-  //       }));
-  //       setToolsList(toolsListData);
-
-
-  //       // 3️⃣ Extract selected tools + issueDates
-  //       const tools = (emp.tools || []).map((t: any) => t.toolId._id);
-  //       const issueDates = (emp.tools || []).reduce<Record<string, string>>((acc, t: any) => {
-  //         if (t.toolId?._id) {
-  //           acc[t.toolId._id] = t.issueDate ? t.issueDate.split('T')[0] : '';
-  //         }
-  //         return acc;
-  //       }, {});
-
-  //       setInitialValues({
-  //         name: emp.name || '',
-  //         email: emp.email || '',
-  //         phone: String(emp.phone ?? ''),
-  //         role: normalizeRole(emp.technicianType),
-  //         tools,
-  //         issueDates,
-  //         status: normalizeStatus(emp.status),
-
-  //         // New fields
-  //         designation: emp.designation || '',
-  //         workingDays: emp.workingDays ?? '',
-  //         dateOfJoining: emp.dateOfJoining ? emp.dateOfJoining.split('T')[0] : '',
-  //         department: emp.department || '',
-  //       });
-
-  //     } catch (err) {
-  //       console.error(err);
-  //       showMessage('Failed to load employee data', 'error');
-  //       navigate('/admin/employee');
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchData();
-  // }, [id, navigate]);
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     if (!id) return;
-  //     try {
-  //       // 1️⃣ Fetch employee (includes assigned tools)
-  //       const empRes = await getEmployeeById(id);
-  //       const emp = empRes.data as EmployeeApi;
-
-  //       // 2️⃣ Build assigned tools list
-  //       const assignedTools: ToolOption[] = (emp.tools || []).map((t: any) => ({
-  //         id: t.toolId?._id,
-  //         code: t.toolId?.toolId,
-  //         name: t.toolId?.nomenclature,
-  //       }));
-
-  //       // 3️⃣ Fetch unassigned tools
-  //       const unassignedRes = await getUnassignedTools();
-  //       const unassignedTools: ToolOption[] = (unassignedRes?.data || []).map((t: any) => ({
-  //         id: t._id,
-  //         code: t.toolId,
-  //         name: t.nomenclature,
-  //       }));
-
-  //       // 4️⃣ Merge both lists (avoid duplicates)
-  //       const mergedTools = [
-  //         ...assignedTools,
-  //         ...unassignedTools.filter((u) => !assignedTools.some((a) => a.id === u.id)),
-  //       ];
-
-  //       setToolsList(mergedTools);
-
-  //       // 5️⃣ Extract selected tool IDs and issue dates
-  //       const tools = (emp.tools || []).map((t: any) => t.toolId._id);
-  //       const issueDates = (emp.tools || []).reduce<Record<string, string>>((acc, t: any) => {
-  //         if (t.toolId?._id) {
-  //           acc[t.toolId._id] = t.issueDate ? t.issueDate.split('T')[0] : '';
-  //         }
-  //         return acc;
-  //       }, {});
-
-  //       // 6️⃣ Set initial values for Formik
-  //       setInitialValues({
-  //         name: emp.name || '',
-  //         email: emp.email || '',
-  //         phone: String(emp.phone ?? ''),
-  //         role: normalizeRole(emp.technicianType),
-  //         tools,
-  //         issueDates,
-  //         status: normalizeStatus(emp.status),
-
-  //         designation: emp.designation || '',
-  //         workingDays: emp.workingDays ?? '',
-  //         dateOfJoining: emp.dateOfJoining ? emp.dateOfJoining.split('T')[0] : '',
-  //         department: emp.department || '',
-  //       });
-  //     } catch (err) {
-  //       console.error(err);
-  //       showMessage('Failed to load employee data', 'error');
-  //       navigate('/admin/employee');
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchData();
-  // }, [id, navigate]);
+  // --------------------------------------------------------------
+  // 1. FETCH EMPLOYEE + TOOLS
+  // --------------------------------------------------------------
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
       try {
-        // 1️⃣ Fetch employee (includes assigned tools)
         const empRes = await getEmployeeById(id);
         const emp = empRes.data as EmployeeApi;
+        console.log("🚀 ~ fetchData ~ emp:", empRes.data)
 
-        // 2️⃣ Build assigned tools list safely
+        // ---- assigned tools (populated) ----
         const assignedTools: ToolOption[] = (emp.tools || [])
-          .filter((t: any) => t?.toolId?._id) // ✅ filter invalid ones
+          .filter((t: any) => t?.toolId?._id)
           .map((t: any) => ({
             id: t.toolId._id,
             code: t.toolId.toolId,
             name: t.toolId.nomenclature,
           }));
 
-        // 3️⃣ Fetch unassigned tools
+        // ---- unassigned tools ----
         const unassignedRes = await getUnassignedTools();
-        const unassignedTools: ToolOption[] = (unassignedRes?.data || []).map((t: any) => ({
-          id: t._id,
-          code: t.toolId,
-          name: t.nomenclature,
-        }));
+        const unassignedTools: ToolOption[] = (unassignedRes?.data || []).map(
+          (t: any) => ({
+            id: t._id,
+            code: t.toolId,
+            name: t.nomenclature,
+          })
+        );
 
-        // 4️⃣ Merge both lists (avoid duplicates)
+        // ---- merge (no duplicates) ----
         const mergedTools = [
           ...assignedTools,
-          ...unassignedTools.filter((u) => !assignedTools.some((a) => a.id === u.id)),
+          ...unassignedTools.filter(
+            (u) => !assignedTools.some((a) => a.id === u.id)
+          ),
         ];
-
         setToolsList(mergedTools);
 
-        // 5️⃣ Extract selected tool IDs and issue dates safely
+        // ---- selected tools + issue dates ----
         const tools = (emp.tools || [])
           .filter((t: any) => t?.toolId?._id)
           .map((t: any) => t.toolId._id);
 
-        const issueDates = (emp.tools || []).reduce<Record<string, string>>((acc, t: any) => {
-          if (t?.toolId?._id) {
-            acc[t.toolId._id] = t.issueDate ? t.issueDate.split('T')[0] : '';
-          }
-          return acc;
-        }, {});
+        const issueDates = (emp.tools || []).reduce<Record<string, string>>(
+          (acc, t: any) => {
+            if (t?.toolId?._id) {
+              acc[t.toolId._id] = t.issueDate
+                ? t.issueDate.split('T')[0]
+                : '';
+            }
+            return acc;
+          },
+          {}
+        );
 
-        // 6️⃣ Set initial values for Formik
+        // ---- Formik initial values (WITH ORIGINAL DOC URLs) ----
         setInitialValues({
           name: emp.name || '',
           email: emp.email || '',
@@ -293,11 +174,18 @@ const EditEngineer = () => {
 
           designation: emp.designation || '',
           workingDays: emp.workingDays ?? '',
-          dateOfJoining: emp.dateOfJoining ? emp.dateOfJoining.split('T')[0] : '',
+          dateOfJoining: emp.dateOfJoining
+            ? emp.dateOfJoining.split('T')[0]
+            : '',
           department: emp.department || '',
+
+          // Store original URLs directly
+          doc1: emp.doc1 ?? null,
+          doc2: emp.doc2 ?? null,
+          doc3: emp.doc3 ?? null,
         });
       } catch (err) {
-        console.error('❌ fetchData error:', err);
+        console.error('fetchData error:', err);
         showMessage('Failed to load employee data', 'error');
         navigate('/admin/employee');
       } finally {
@@ -308,30 +196,40 @@ const EditEngineer = () => {
     fetchData();
   }, [id, navigate]);
 
-  const handleSubmit = async (values: FormValues, _helpers: FormikHelpers<FormValues>) => {
+  // --------------------------------------------------------------
+  // 2. SUBMIT HANDLER
+  // --------------------------------------------------------------
+  const handleSubmit = async (
+    values: FormValues,
+    _helpers: FormikHelpers<FormValues>
+  ) => {
     try {
-      // Normalize role/status for backend
       const technicianType: RoleValue = normalizeRole(values.role as string);
       const status: StatusValue = normalizeStatus(values.status as string);
 
-      const payload = {
+      const payload: Record<string, any> = {
         name: values.name,
         email: values.email,
         phone: values.phone,
         technicianType,
         status,
-        tools: technicianType === 'engineer'
-          ? values.tools.map((toolId) => ({
-            toolId,
-            issueDate: values.issueDates?.[toolId] || null,
-          }))
-          : [],
         designation: values.designation,
         workingDays: Number(values.workingDays),
         dateOfJoining: values.dateOfJoining,
         department: values.department,
+        tools:
+          technicianType === 'engineer'
+            ? values.tools.map((toolId) => ({
+              toolId,
+              issueDate: values.issueDates?.[toolId] || null,
+            }))
+            : [],
       };
 
+      // Only send new files
+      if (values.doc1 instanceof File) payload.doc1 = values.doc1;
+      if (values.doc2 instanceof File) payload.doc2 = values.doc2;
+      if (values.doc3 instanceof File) payload.doc3 = values.doc3;
 
       await editEmployee(id as string, payload);
       showMessage('Employee updated successfully', 'success');
@@ -348,7 +246,7 @@ const EditEngineer = () => {
   );
 
   if (loading || !initialValues) {
-    return <div>Loading...</div>;
+    return <div className="text-center py-10">Loading...</div>;
   }
 
   return (
@@ -376,18 +274,17 @@ const EditEngineer = () => {
         validationSchema={schema}
         onSubmit={handleSubmit}
       >
-        {({ errors, values, submitCount, setFieldValue }) => (
+        {({ errors, values, submitCount, setFieldValue, initialValues: initVals }) => (
           <Form className="space-y-5">
+            {/* ---------- EMPLOYEE DETAILS ---------- */}
             <div className="panel">
               <h5 className="font-semibold text-lg mb-4">Employee Details</h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {/* Status */}
-                <div className={submitCount > 0 ? (errors.status ? 'has-error' : 'has-success') : ''}>
+                <div className={submitCount > 0 ? (errors.status ? 'has-error' : ' мног-success') : ''}>
                   <label htmlFor="status">Status</label>
                   <Field as="select" name="status" className="form-select">
-                    <option value="" disabled>
-                      Open this select menu
-                    </option>
+                    <option value="" disabled>Open this select menu</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </Field>
@@ -432,9 +329,6 @@ const EditEngineer = () => {
                   )}
                 </div>
 
-                {/* Emp ID */}
-
-
                 {/* Role */}
                 <div className={submitCount > 0 ? (errors.role ? 'has-error' : 'has-success') : ''}>
                   <label htmlFor="role">Role</label>
@@ -446,15 +340,12 @@ const EditEngineer = () => {
                       const nextRole = e.target.value as FormValues['role'];
                       setFieldValue('role', nextRole);
                       if ((nextRole || '').toLowerCase() !== 'engineer') {
-                        // clear tools if switching away from engineer
                         setFieldValue('tools', []);
                         setFieldValue('issueDates', {});
                       }
                     }}
                   >
-                    <option value="" disabled>
-                      Open this select menu
-                    </option>
+                    <option value="" disabled>Open this select menu</option>
                     <option value="office staff">Office Staff</option>
                     <option value="engineer">Engineer</option>
                   </Field>
@@ -462,6 +353,8 @@ const EditEngineer = () => {
                     <div className="text-danger mt-1">{String(errors.role)}</div>
                   )}
                 </div>
+
+                {/* Designation */}
                 <div className={submitCount > 0 ? (errors.designation ? 'has-error' : 'has-success') : ''}>
                   <label htmlFor="designation">Designation</label>
                   <Field name="designation" type="text" className="form-input" placeholder="Enter Designation" />
@@ -499,8 +392,9 @@ const EditEngineer = () => {
               </div>
             </div>
 
-            {/* Tools (only for Engineer) */}
-            {/* Tools (only for Engineer) */}
+            {/* ---------- DOCUMENT UPLOADS ---------- */}
+
+            {/* ---------- TOOLS (Engineer only) ---------- */}
             {(values.role || '').toLowerCase() === 'engineer' && (
               <div className="panel">
                 <h5 className="font-semibold text-lg mb-4">Assigned Tools</h5>
@@ -517,19 +411,16 @@ const EditEngineer = () => {
                             <Field
                               type="checkbox"
                               name="tools"
-                              value={tool.id} // store ObjectId in backend
+                              value={tool.id}
                               className="form-checkbox h-5 w-5 text-primary"
                             />
-                            {/* <span>
-                              {tool.name} ({tool.code})
-                            </span> */}
                             <span>
-                              {tool.name} ({tool.code}){' '}
-                              {values.tools.includes(tool.id)
-                                ? <span className="text-green-500 text-sm">(Assigned)</span>
-                                : <span className="text-gray-400 text-sm">(Available)</span>}
+                              {tool.name} ({tool.code}) {isSelected ? (
+                                <span className="text-green-500 text-sm">(Assigned)</span>
+                              ) : (
+                                <span className="text-gray-400 text-sm">(Available)</span>
+                              )}
                             </span>
-
                           </label>
 
                           {isSelected && (
@@ -547,12 +438,86 @@ const EditEngineer = () => {
                       );
                     })
                   ) : (
-                    <div className="text-gray-500 italic">No tools assigned</div>
+                    <div className="text-gray-500 italic">No tools available</div>
                   )}
                 </div>
               </div>
             )}
+            <div className="panel">
+              <h5 className="font-semibold text-lg mb-4">Documents (optional)</h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {(['doc1', 'doc2', 'doc3'] as const).map((key) => {
+                  const currentUrl = (initVals as any)[key] ?? null; // Original URL from API
+                  const currentValue = values[key]; // Current form value: File | string | null
 
+                  // Determine if a new file is selected
+                  const isNewFile = currentValue instanceof File;
+                  const isExistingUrl = typeof currentUrl === 'string' && currentUrl;
+
+                  // Extract filename
+                  let fileName = '';
+                  if (isNewFile) {
+                    fileName = (currentValue as File).name;
+                  } else if (isExistingUrl) {
+                    // Extract filename from URL
+                    try {
+                      fileName = currentUrl.split('/').pop()?.split('?')[0] || key.toUpperCase();
+                    } catch {
+                      fileName = key.toUpperCase();
+                    }
+                  }
+
+                  return (
+                    <div key={key}>
+                      <label className="block mb-1">{key.toUpperCase()}</label>
+
+                      <input
+                        type="file"
+                        accept="*/*"
+                        className="form-input"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          setFieldValue(key, file); // null = keep old URL
+                        }}
+                      />
+
+                      {fileName && (
+                        <div className="mt-2 flex items-center gap-2 text-sm">
+                          <svg
+                            className="w-4 h-4 text-gray-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          <span className="truncate max-w-[180px]">{fileName}</span>
+
+                          {/* Show "View" only if original URL exists AND no new file selected */}
+                          {isExistingUrl && !isNewFile && (
+                            <a
+                              href={currentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary underline text-xs"
+                            >
+                              View
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ---------- SUBMIT ---------- */}
             <div className="w-full mb-6 flex justify-end">
               <button type="submit" className="btn btn-success !mt-6">
                 Submit Form

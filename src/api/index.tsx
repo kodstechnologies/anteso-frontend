@@ -698,41 +698,114 @@ export const getQuotationByEEnquiryId = async (enquiryId: any) => {
 }
 
 //employee CRUD
+// export const addEmployee = async (payload: any) => {
+//     console.log("🚀 ~ addEmployee ~ payload:", payload)
+//     try {
+//         const token = Cookies.get('accessToken')
+//         const res = await api.post('/technician/add', payload, {
+//             headers: {
+//                 Authorization: `Bearer ${token}`,
+//             },
+//         })
+//         return res.data
+//     } catch (error: any) {
+//         console.error("🚀 ~ add employee ~ error:", error);
+
+//         throw new Error(
+//             error?.response?.data?.message || "Failed to fetch client data"
+//         );
+//     }
+// }
+
+// src/api/employeeApi.ts
 export const addEmployee = async (payload: any) => {
-    console.log("🚀 ~ addEmployee ~ payload:", payload)
+    console.log("🚀 ~ addEmployee ~ payload:", payload);
     try {
-        const token = Cookies.get('accessToken')
+        const token = Cookies.get('accessToken');
+
         const res = await api.post('/technician/add', payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
+                'Content-Type': 'multipart/form-data', // ✅ important
             },
-        })
-        return res.data
+        });
+
+        return res.data;
     } catch (error: any) {
         console.error("🚀 ~ add employee ~ error:", error);
-
         throw new Error(
-            error?.response?.data?.message || "Failed to fetch client data"
+            error?.response?.data?.message || "Failed to add employee"
         );
     }
-}
+};
 
-export const editEmployee = async (id: any, payload: any) => {
+
+// export const editEmployee = async (id: any, payload: any) => {
+//     try {
+//         const token = Cookies.get('accessToken')
+//         const res = await api.put(`/technician/update-by-id/${id}`, payload, {
+//             headers: {
+//                 Authorization: `Bearer ${token}`,
+//             },
+//         })
+//         return res.data
+//     } catch (error: any) {
+//         console.error("🚀 ~ edit employee ~ error:", error);
+//         throw new Error(
+//             error?.response?.data?.message || "Failed to fetch client data"
+//         );
+//     }
+// }
+
+export const editEmployee = async (id: string, payload: Record<string, any>) => {
     try {
-        const token = Cookies.get('accessToken')
-        const res = await api.put(`/technician/update-by-id/${id}`, payload, {
+        const token = Cookies.get("accessToken");
+        const formData = new FormData();
+
+        // ✅ Append text fields
+        Object.entries(payload).forEach(([key, value]) => {
+            if (
+                key !== "doc1" &&
+                key !== "doc2" &&
+                key !== "doc3" &&
+                key !== "tools"
+            ) {
+                if (value !== undefined && value !== null) {
+                    // Convert non-string values to string
+                    formData.append(key, value instanceof Blob ? value : String(value));
+                }
+            }
+        });
+
+        // ✅ Handle tools array (convert to JSON string)
+        if (Array.isArray(payload.tools)) {
+            formData.append("tools", JSON.stringify(payload.tools));
+        }
+
+        // ✅ Handle document uploads (optional)
+        ["doc1", "doc2", "doc3"].forEach((key) => {
+            const file = payload[key];
+            if (file && file instanceof File) {
+                formData.append(key, file);
+            }
+        });
+
+        // 🔹 API call
+        const res = await api.put(`/technician/update-by-id/${id}`, formData, {
             headers: {
                 Authorization: `Bearer ${token}`,
+                "Content-Type": "multipart/form-data",
             },
-        })
-        return res.data
+        });
+
+        return res.data;
     } catch (error: any) {
-        console.error("🚀 ~ edit employee ~ error:", error);
+        console.error("🚀 ~ editEmployee ~ error:", error);
         throw new Error(
-            error?.response?.data?.message || "Failed to fetch client data"
+            error?.response?.data?.message || "Failed to update employee"
         );
     }
-}
+};
 
 export const getAllEmployees = async () => {
     try {
@@ -751,26 +824,45 @@ export const getAllEmployees = async () => {
     }
 }
 
-export const getEmployeeById = async (id: any) => {
-    console.log("🚀 ~ getEmployeeById ~ id:", id)
-    try {
-        console.log("inside getEmployeeById");
+// export const getEmployeeById = async (id: any) => {
+//     console.log("🚀 ~ getEmployeeById ~ id:", id)
+//     try {
+//         console.log("inside getEmployeeById");
 
-        const token = Cookies.get('accessToken')
+//         const token = Cookies.get('accessToken')
+//         const res = await api.get(`/technician/get-by-id/${id}`, {
+//             headers: {
+//                 Authorization: `Bearer ${token}`,
+//             },
+//         })
+//         console.log("🚀 ~ getEmployeeById ~ res:", res)
+//         return res.data
+//     } catch (error: any) {
+//         console.error("🚀 ~ get employee by id ~ error:", error);
+//         throw new Error(
+//             error?.response?.data?.message || "Failed to fetch client data"
+//         );
+//     }
+// }
+
+export const getEmployeeById = async (id: string) => {
+    console.log("getEmployeeById ~ id:", id);
+    try {
+        const token = Cookies.get('accessToken');
         const res = await api.get(`/technician/get-by-id/${id}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
-        })
-        console.log("🚀 ~ getEmployeeById ~ res:", res)
-        return res.data
+        });
+        console.log("getEmployeeById ~ res:", res);
+        return res.data;
     } catch (error: any) {
-        console.error("🚀 ~ get employee by id ~ error:", error);
+        console.error("get employee by id ~ error:", error);
         throw new Error(
-            error?.response?.data?.message || "Failed to fetch client data"
+            error?.response?.data?.message || "Failed to fetch employee data"
         );
     }
-}
+};
 
 export const deleteEmployeeById = async (id: any) => {
     try {
