@@ -68,7 +68,6 @@ const Hrms = () => {
     const fetchAllocations = async () => {
         try {
             const res = await getAllAllocatedLeaves(selectedYear);
-            console.log("🚀 ~ fetchAllocations ~ res:", res);
             setAllocations(Array.isArray(res?.data) ? res.data : []);
         } catch (error) {
             console.error("Error fetching allocations:", error);

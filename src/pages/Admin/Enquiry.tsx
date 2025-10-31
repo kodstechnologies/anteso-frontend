@@ -47,9 +47,7 @@ const Enquiry = () => {
         const fetchData = async () => {
             try {
                 const response = await getAllEnquiry();
-                console.log("🚀 ~ fetchData ~ response:", response.data)
-
-                // You may need to map/enrich data depending on your backend format
+               
                 const enriched = response.data.map((item: any, index: number) => ({
                     ...item,
                     id: item._id,
@@ -68,8 +66,6 @@ const Enquiry = () => {
                     quotation: item.quotationStatus?.toLowerCase(), // keep status here
                     remark: item.quotation?.[0]?.rejectionRemark || null, // 👈 pick rejectionRemark if exists                    id: item._id,
                 }));
-                console.log("🚀 ~ fetchData ~ enriched:", enriched)
-                console.log("🚀 ~ fetchData ~ enriched.quotation:", enriched.data)
 
                 setItems(enriched);
                 setInitialRecords(enriched); // keep backend sort (latest first)

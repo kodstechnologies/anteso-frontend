@@ -148,7 +148,6 @@ const AddOrder = () => {
     });
 
     const submitForm = (values: FormValues) => {
-        console.log('Form submitted with values:', values);
         showMessage('Form submitted successfully', 'success');
     };
 

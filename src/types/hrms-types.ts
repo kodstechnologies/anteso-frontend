@@ -62,4 +62,5 @@ export interface LeaveRequest {
   leaveType: string
   reason: string
   status: "Pending" | "Approved" | "Rejected"
+  rejectionReason:string
 }

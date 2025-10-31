@@ -1030,7 +1030,7 @@ export const getAllLeave = async () => {
             },
         })
         console.log("🚀 ~ getAllLeave ~ res:", res.data.data.data)
-        return res.data.data.data
+        return res.data.data
     } catch (error: any) {
         console.error("🚀 ~ all courier companies ~ error:", error);
         throw new Error(
@@ -2362,22 +2362,46 @@ export const approveLeave = async (employeeId: any, leaveId: any) => {
         );
     }
 }
-export const rejectLeave = async (employeeId: any, leaveId: any) => {
+// export const rejectLeave = async (employeeId: any, leaveId: any) => {
+//     try {
+//         const token = Cookies.get('accessToken')
+//         const res = await api.post(`/leaves/reject-leave/${employeeId}/${leaveId}`, {}, {
+//             headers: {
+//                 Authorization: `Bearer ${token}`,
+//             }
+//         })
+//         return res
+//     } catch (error: any) {
+//         console.error("🚀 ~ createPayment ~ error:", error);
+//         throw new Error(
+//             error?.response?.data?.message || "Failed to createPayment"
+//         );
+//     }
+// }
+
+// api.ts or wherever this function exists
+export const rejectLeave = async (employeeId: string, leaveId: string, rejectionReason: string) => {
     try {
-        const token = Cookies.get('accessToken')
-        const res = await api.post(`/leaves/reject-leave/${employeeId}/${leaveId}`, {}, {
-            headers: {
-                Authorization: `Bearer ${token}`,
+        const token = Cookies.get("accessToken");
+
+        const res = await api.post(
+            `/leaves/reject-leave/${employeeId}/${leaveId}`,
+            { rejectionReason }, // ✅ send reason in body
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
             }
-        })
-        return res
+        );
+
+        return res;
     } catch (error: any) {
-        console.error("🚀 ~ createPayment ~ error:", error);
+        console.error("🚀 ~ rejectLeave ~ error:", error);
         throw new Error(
-            error?.response?.data?.message || "Failed to createPayment"
+            error?.response?.data?.message || "Failed to reject leave"
         );
     }
-}
+};
 
 export const deleteLeave = async (leaveId: any) => {
     try {
@@ -3185,6 +3209,36 @@ export const getDealerOrders = async () => {
         return res.data;
     } catch (error) {
         console.error("🚀 ~ getDealerOrders ~ error:", error);
+        throw error;
+    }
+}
+
+export const getQuotationHistory = async (id: any) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/quotation/get-quotation-history/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getQuotationHistory ~ error:", error);
+        throw error;
+    }
+}
+
+export const getPendingLeaveApprovals = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/leaves/get-pending-leave-approvals`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getPendingLeaveApprovals ~ error:", error);
         throw error;
     }
 }

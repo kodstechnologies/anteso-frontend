@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../store/themeConfigSlice';
+import PendingLeaveApprovals from './PendingLeaveApprovals';
 import {
     PieChart,
     Pie,
@@ -44,6 +45,9 @@ interface PieStats extends Record<string, any> {
     name: string;
     value: number;
 }
+import Cookies from 'js-cookie';
+import { jwtDecode } from 'jwt-decode';
+
 const COLORS = ['#A5B4FC', '#A7F3D0', '#FDE68A', '#FECACA']; // Subtle, softer colors for donut
 
 const Dashboard: React.FC = () => {
@@ -57,10 +61,25 @@ const Dashboard: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
 
+    const [role, setRole] = useState<string | null>(null);
+
     useEffect(() => {
         dispatch(setPageTitle('Dashboard'));
+
+        // Decode token to get role
+        const token = Cookies.get('accessToken');
+        if (token) {
+            try {
+                const decoded: any = jwtDecode(token);
+                setRole(decoded.role);
+            } catch (err) {
+                console.error("Invalid token:", err);
+            }
+        }
+
         fetchDashboardData();
     }, [dispatch]);
+
 
     const fetchDashboardData = async () => {
         try {
@@ -408,6 +427,7 @@ const Dashboard: React.FC = () => {
                     )}
                 </div>
             </div>
+            {role === 'admin' && <PendingLeaveApprovals />}
         </div>
     );
 };

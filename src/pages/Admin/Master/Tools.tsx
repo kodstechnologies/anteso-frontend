@@ -86,15 +86,12 @@ const Tools = () => {
             try {
                 const response = await AllTools();
                 const tools = response.data?.tools || [];
-                console.log("🚀 ~ fetchTools ~ tools:", tools)
-
-                // Fetch engineer names for all tools
+       
                 const toolsWithEngineers = await Promise.all(
                     tools.map(async (tool:any) => {
                         try {
                             const engineerData = await getEngineerByToolId(tool._id);
-                            console.log("🚀 ~ fetchTools ~ engineerData:", engineerData)
-                            // Assuming the API returns { name: 'Engineer Name', email: '...' }
+                           
                             return { ...tool, engineerName: engineerData.engineer.name || '—' };
                         } catch (err) {
                             console.error('Failed to fetch engineer for tool:', tool._id, err);

@@ -76,12 +76,7 @@ const ViewClients: React.FC = () => {
     phone: Yup.string()
       .matches(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
       .required("Please fill the Field"),
-    gstNo: Yup.string()
-      .matches(
-        /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
-        'Invalid GST Number(eg. 27ABCDE1234F1Z5)'
-      )
-      .required('Please fill the Field'),
+    gstNo: Yup.string(),
     branch: Yup.string().required("Please fill the Field"),
     email: Yup.string().email('Invalid email').required('Please fill the Email'),
   })

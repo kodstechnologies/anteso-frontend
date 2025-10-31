@@ -101,7 +101,6 @@ interface ServiceItem {
 const EditQuotation: React.FC = () => {
     const params = useParams();
     const id = params.id as string;
-    console.log("🚀 ~ EditQuotation ~ id:", id);
     const pdfRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const acolumns = [
@@ -217,9 +216,7 @@ const EditQuotation: React.FC = () => {
         const fetchQuotationData = async () => {
             try {
                 setLoading(true);
-                console.log("🚀 ~ fetchQuotationData ~ calling API with id:", id);
                 const response = await getQuotationByEEnquiryId(id);
-                console.log("🚀 ~ fetchQuotationData ~ response:", response);
                 const data = response.data.data;
                 setQuotationData(data);
                 setError(null);
@@ -318,7 +315,6 @@ const EditQuotation: React.FC = () => {
         };
 
         const response = await updateQuotationById(id, updateData);
-        console.log("🚀 ~ Update response:", response);
 
         setQuotationData(response.data.data); // Update with latest data
     };

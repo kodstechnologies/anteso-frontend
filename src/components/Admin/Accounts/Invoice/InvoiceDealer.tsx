@@ -252,7 +252,74 @@ const InvoiceDealer = () => {
                             </table>
                         )} */}
                         {/* Dealer/Manufacturer Detailed Breakdown */}
-                        {!isCustomer && (
+                        {/* Customer Invoice - Services + Additional Services */}
+                        {isCustomer ? (
+                            <>
+                                {/* Main Services Table */}
+                                {invoice.services && invoice.services.length > 0 && (
+                                    <div className="mt-2">
+                                        <table className="w-full table-fixed border border-black border-collapse text-[10px]">
+                                            <thead className="bg-gray-100">
+                                                <tr>
+                                                    <th className="border border-black px-1 py-1 text-xs">S No</th>
+                                                    <th className="border border-black px-1 py-1 text-xs">Machine Type</th>
+                                                    <th className="border border-black px-1 py-1 text-xs w-[28%]">Description of Services</th>                                                    <th className="border border-black px-1 py-1 text-xs">HSN/SAC Number</th>
+                                                    <th className="border border-black px-1 py-1 text-xs">Quantity</th>
+                                                    <th className="border border-black px-1 py-1 text-xs">Rate</th>
+                                                    <th className="border border-black px-1 py-1 text-xs">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {invoice.services.map((item: any, index: number) => {
+                                                    const amount = (item.rate || 0) * (item.quantity || 0);
+                                                    return (
+                                                        <tr key={index}>
+                                                            <td className="border border-black px-1 py-1">{index + 1}</td>
+                                                            <td className="border border-black px-1 py-1">{item.machineType || "-"}</td>
+                                                            <td className="border border-black px-1 py-1 break-words">{item.description || "-"}</td>
+                                                            <td className="border border-black px-1 py-1">{item.hsnno || "-"}</td>
+                                                            <td className="border border-black px-1 py-1 text-right">{item.quantity || 0}</td>
+                                                            <td className="border border-black px-1 py-1 text-right">₹{(item.rate || 0).toLocaleString("en-IN")}</td>
+                                                            <td className="border border-black px-1 py-1 text-right">₹{amount.toLocaleString("en-IN")}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {/* Additional Services Table */}
+                                {invoice.order?.additionalServices && invoice.order.additionalServices.length > 0 && (
+                                    <div className="mt-4">
+                                        <h3 className="text-sm font-bold mb-2">Additional Services</h3>
+                                        <table className="w-full table-fixed border border-black border-collapse text-[10px]">
+                                            <thead className="bg-gray-100">
+                                                <tr>
+                                                    <th className="border border-black px-1 py-1 text-xs">S No</th>
+                                                    <th className="border border-black px-1 py-1 text-xs">Name</th>
+                                                    <th className="border border-black px-1 py-1 text-xs w-[40%]">Description</th>
+                                                    <th className="border border-black px-1 py-1 text-xs">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {invoice.order.additionalServices.map((item: any, index: number) => (
+                                                    <tr key={index}>
+                                                        <td className="border border-black px-1 py-1">{index + 1}</td>
+                                                        <td className="border border-black px-1 py-1">{item.name || "-"}</td>
+                                                        <td className="border border-black px-1 py-1">{item.description || "-"}</td>
+                                                        <td className="border border-black px-1 py-1 text-right">
+                                                            ₹{(item.totalAmount || 0).toLocaleString("en-IN")}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            /* Dealer Breakdown (already present, keep as-is) */
                             <div className="mt-2 space-y-6">
                                 {invoice.dealerHospitals?.map((dh: any, dhIndex: number) => {
                                     const hospitalServices = dh.services || [];
@@ -264,20 +331,12 @@ const InvoiceDealer = () => {
 
                                     return (
                                         <div key={dhIndex} className="border border-black p-2">
-                                            {/* Hospital Header */}
                                             <div className="bg-gray-100 p-2 border-b border-black text-xs font-semibold">
-                                                <p>
-                                                    <strong>Hospital:</strong> {dh.hospitalName} ({dh.partyCode})
-                                                </p>
-                                                <p>
-                                                    <strong>Location:</strong> {dh.location}, <strong>State:</strong> {dh.dealerState}
-                                                </p>
-                                                <p>
-                                                    <strong>Model:</strong> {dh.modelNo} | <strong>Sr. No:</strong> {dh.srNo || "-"}
-                                                </p>
+                                                <p><strong>Hospital:</strong> {dh.hospitalName} ({dh.partyCode})</p>
+                                                <p><strong>Location:</strong> {dh.location}, <strong>State:</strong> {dh.dealerState}</p>
+                                                <p><strong>Model:</strong> {dh.modelNo} | <strong>Sr. No:</strong> {dh.srNo || "-"}</p>
                                             </div>
 
-                                            {/* Services Table for this Hospital */}
                                             {hospitalServices.length > 0 && (
                                                 <div className="mt-2">
                                                     <h4 className="font-bold text-xs mb-1">Services</h4>
@@ -286,7 +345,7 @@ const InvoiceDealer = () => {
                                                             <tr>
                                                                 <th className="border border-black px-1 py-1 text-xs">S No</th>
                                                                 <th className="border border-black px-1 py-1 text-xs">Machine Type</th>
-                                                                <th className="border border-black px-1 py-1 text-xs">Description</th>
+                                                                <th className="border border-black px-1 py-1 text-xs w-[28%]">Description</th>
                                                                 <th className="border border-black px-1 py-1 text-xs">HSN/SAC</th>
                                                                 <th className="border border-black px-1 py-1 text-xs">Qty</th>
                                                                 <th className="border border-black px-1 py-1 text-xs">Rate</th>
@@ -298,10 +357,10 @@ const InvoiceDealer = () => {
                                                                 <tr key={sIdx}>
                                                                     <td className="border border-black px-1 py-1">{sIdx + 1}</td>
                                                                     <td className="border border-black px-1 py-1">{s.machineType || "-"}</td>
-                                                                    <td className="border border-black px-1 py-1">{s.description}</td>
+                                                                    <td className="border border-black px-1 py-1 break-words">{s.description}</td>
                                                                     <td className="border border-black px-1 py-1">{s.hsnno || "-"}</td>
                                                                     <td className="border border-black px-1 py-1 text-right">{s.quantity || 0}</td>
-                                                                    <td className="border border-black px-1 py-1 text-right">₹{s.rate?.toLocaleString("en-IN") || 0}</td>
+                                                                    <td className="border border-black px-1 py-1 text-right">₹{(s.rate || 0).toLocaleString("en-IN")}</td>
                                                                     <td className="border border-black px-1 py-1 text-right">
                                                                         ₹{((s.rate || 0) * (s.quantity || 0)).toLocaleString("en-IN")}
                                                                     </td>
@@ -312,7 +371,6 @@ const InvoiceDealer = () => {
                                                 </div>
                                             )}
 
-                                            {/* Additional Services Table for this Hospital */}
                                             {hospitalAdditionalServices.length > 0 && (
                                                 <div className="mt-2">
                                                     <h4 className="font-bold text-xs mb-1">Additional Services</h4>
@@ -321,7 +379,7 @@ const InvoiceDealer = () => {
                                                             <tr>
                                                                 <th className="border border-black px-1 py-1 text-xs">S No</th>
                                                                 <th className="border border-black px-1 py-1 text-xs">Name</th>
-                                                                <th className="border border-black px-1 py-1 text-xs">Description</th>
+                                                                <th className="border border-black px-1 py-1 text-xs w-[40%]">Description</th>
                                                                 <th className="border border-black px-1 py-1 text-xs">Amount</th>
                                                             </tr>
                                                         </thead>

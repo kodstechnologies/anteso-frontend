@@ -205,6 +205,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         reportULRNumber: string;
         reportStatus: string;
         reportUrl?: any;
+        remark?: any
     };
     const [reportNumbers, setReportNumbers] = useState<Record<
         string,
@@ -387,6 +388,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             console.log("🚀 ~ fetchMachineData ~ response:", response)
 
             const machinesArray = Array.isArray(response) ? response : [response]
+            console.log("🚀 ~ fetchMachineData ~ machinesArray:", machinesArray)
 
             if (!machinesArray || machinesArray.length === 0) {
                 throw new Error("No machine data found")
@@ -419,6 +421,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     reportURLNumber: workTypeDetail.QAtest?.reportULRNumber || 'N/A',
                                     qaTestReportNumber: workTypeDetail.QAtest?.qaTestReportNumber || 'N/A',
                                     reportStatus: workTypeDetail.QAtest?.reportStatus || 'pending',
+                                    verificationRemark: workTypeDetail.QAtest?.remark
+
                                 },
                                 serviceId: machineData._id,
                                 assignedTechnicianId: workTypeDetail.engineer || undefined,
@@ -477,6 +481,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                 reportULRNumber: 'N/A',
                                 reportStatus: 'pending',
                                 reportUrl: undefined,
+
                             };
                             const updatedQatest: ReportData = {
                                 ...currentQatest,
@@ -505,7 +510,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 for (const service of updatedMachineDataWithAssignments) {
                     const workTypeIdentifier = getWorkTypeIdentifier(service.workTypeName)
                     if (!['qatest', 'elora'].includes(workTypeIdentifier)) continue;
-
+                    console.log("--------------->fetchAllReportNumbers")
                     let assigneeId: string;
                     let targetWorkType;
 
@@ -521,8 +526,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                     try {
                         const response = await getReportNumbers(orderId, service.id, assigneeId, workTypeIdentifier);
+                        console.log("🚀 ~ fetchAllReportNumbers ~ response:----------->", response)
                         if (response?.data?.reportNumbers?.[workTypeIdentifier]) {
                             const reportData = response.data.reportNumbers[workTypeIdentifier];
+                            console.log("🚀 ~ ------------->fetchAllReportNumbers ~ reportData:", reportData)
                             setReportNumbers(prev => {
                                 const current = prev[service.id] || {};
                                 const currentReport = current[workTypeIdentifier] || {
@@ -530,13 +537,16 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     reportULRNumber: 'N/A',
                                     reportStatus: 'pending',
                                     reportUrl: undefined,
+                                    remark: ''
                                 };
                                 const updatedReport: ReportData = {
                                     qaTestReportNumber: reportData.qaTestReportNumber || currentReport.qaTestReportNumber || 'N/A',
                                     reportULRNumber: reportData.reportULRNumber || currentReport.reportULRNumber || 'N/A',
                                     reportStatus: reportData.reportStatus || currentReport.reportStatus || 'pending',
                                     reportUrl: reportData.report || currentReport.reportUrl,
+                                    remark: reportData.remark || currentReport.remark || '',
                                 };
+                                console.log("🚀 ~ fetchAllReportNumbers ~ updatedReport:", updatedReport)
                                 const updated = {
                                     ...prev,
                                     [service.id]: {
@@ -547,7 +557,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                 saveToLocalStorage(STORAGE_KEYS.reportNumbers, updated);
                                 return updated;
                             });
-                        }
+                        } 
                     } catch (error) {
                         console.error(`Error fetching report numbers for ${service.id}:`, error);
                     }
@@ -922,6 +932,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                 if (res?.data?.linkedReport) {
                     const identifier = res.data.reportFor;
+                    const reportData = res.data.linkedReport;
                     setReportNumbers((prev) => {
                         const newReportNumbers = {
                             ...prev,
@@ -932,6 +943,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     reportULRNumber: res.data.linkedReport.reportULRNumber,
                                     reportStatus: res.data.linkedReport.reportStatus,
                                     reportUrl: res.data.linkedReport.report,
+                                    remark: reportData.remark,
                                 },
                             },
                         };
@@ -1049,12 +1061,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             reportULRNumber: 'N/A',
                             reportStatus: 'pending',
                             reportUrl: undefined,
+                            remark: '',
                         };
                         const updatedReport: ReportData = {
                             qaTestReportNumber: res.data.linkedReport.qaTestReportNumber || currentReport.qaTestReportNumber,
                             reportULRNumber: res.data.linkedReport.reportULRNumber || currentReport.reportULRNumber,
                             reportStatus: res.data.linkedReport.reportStatus || currentReport.reportStatus,
                             reportUrl: res.data.linkedReport.report || currentReport.reportUrl,
+                            remark: res.data.linkedReport.remark || currentReport.remark,
                         };
                         const newReportStatus = {
                             ...prev,
@@ -1073,6 +1087,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 } else {
                     await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, newStatus)
                 }
+                
             }
 
             const newAssignments = {
@@ -1882,7 +1897,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
                                                                 )}
 
-                                                                {(selectedStatuses[workType.id] === "complete" || selectedStatuses[workType.id] === "generated" || selectedStatuses[workType.id] === "paid") && (
+                                                                {/* {(selectedStatuses[workType.id] === "complete" || selectedStatuses[workType.id] === "generated" || selectedStatuses[workType.id] === "paid") && (
                                                                     <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
                                                                         <label className="block text-sm font-medium text-green-700">
                                                                             Upload File
@@ -1920,6 +1935,89 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                         </a>
                                                                                         <Eye className="h-3 w-3 text-blue-600 cursor-pointer hover:text-blue-800"
                                                                                             onClick={() => handleViewReport(service.id, 'qatest')} />
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                            {reportNumbers[service.id]?.qatest?.remark && (
+                                                                                <div className="p-2 bg-white rounded border">
+                                                                                    <label className="text-xs text-gray-500">Remark</label>
+                                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                                        <a
+                                                                                            href={reportNumbers[service.id]?.qatest?.remark}
+                                                                                            target="_blank"
+                                                                                            rel="noopener noreferrer"
+                                                                                            className="text-xs text-blue-600 hover:text-blue-800 truncate max-w-[150px"
+                                                                                        >
+                                                                                            {reportNumbers[service.id]?.qatest?.remark.split('/').pop() || 'View Report'}
+                                                                                        </a>
+                                                                                        <Eye className="h-3 w-3 text-blue-600 cursor-pointer hover:text-blue-800"
+                                                                                            onClick={() => handleViewReport(service.id, 'qatest')} />
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )} */}
+                                                                {(selectedStatuses[workType.id] === "complete" || selectedStatuses[workType.id] === "generated" || selectedStatuses[workType.id] === "paid") && (
+                                                                    <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
+                                                                        <label className="block text-sm font-medium text-green-700">
+                                                                            Upload File
+                                                                        </label>
+                                                                        <input
+                                                                            type="file"
+                                                                            required
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files?.[0]
+                                                                                if (file) handleFileUpload(workType.id, file)
+                                                                            }}
+                                                                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
+                                                                        />
+                                                                        <div className="grid grid-cols-2 gap-3 mt-3">
+                                                                            {/* QA Test Report Status */}
+                                                                            <div className="p-2 bg-white rounded border">
+                                                                                <label className="text-xs text-gray-500">QA Test Report Status</label>
+                                                                                <span
+                                                                                    className={`ml-2 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                                                                                        reportNumbers[service.id]?.qatest?.reportStatus || "pending"
+                                                                                    )}`}
+                                                                                >
+                                                                                    {reportNumbers[service.id]?.qatest?.reportStatus || "pending"}
+                                                                                </span>
+                                                                            </div>
+                                                                            {/* Debug: Always show remark */}
+                                                                            {reportNumbers[service.id]?.qatest?.remark && (
+                                                                                <div className="p-2 bg-yellow-50 rounded border col-span-2">
+                                                                                    <label className="text-xs font-medium text-yellow-800">Debug Remark:</label>
+                                                                                    <p className="text-sm text-yellow-900">{reportNumbers[service.id]?.qatest?.remark}</p>
+                                                                                </div>
+                                                                            )}
+                                                                            {/* Show Remark ONLY when status is "rejected" */}
+                                                                            {reportNumbers[service.id]?.qatest?.reportStatus === "rejected" && (
+                                                                                <div className="p-2 bg-white rounded border col-span-2">
+                                                                                    <label className="text-xs text-gray-500 font-medium">Remark (Rejection Reason)</label>
+                                                                                    <p className="mt-1 text-sm text-red-600 break-words bg-red-50 p-2 rounded border border-red-200">
+                                                                                        {reportNumbers[service.id]?.qatest?.remark || "No remark provided"}
+                                                                                    </p>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* Report URL */}
+                                                                            {reportNumbers[service.id]?.qatest?.reportUrl && (
+                                                                                <div className="p-2 bg-white rounded border">
+                                                                                    <label className="text-xs text-gray-500">Report URL</label>
+                                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                                        <a
+                                                                                            href={reportNumbers[service.id]?.qatest?.reportUrl}
+                                                                                            target="_blank"
+                                                                                            rel="noopener noreferrer"
+                                                                                            className="text-xs text-blue-600 hover:text-blue-800 truncate max-w-[150px]"
+                                                                                        >
+                                                                                            {reportNumbers[service.id]?.qatest?.reportUrl.split('/').pop() || 'View Report'}
+                                                                                        </a>
+                                                                                        <Eye
+                                                                                            className="h-3 w-3 text-blue-600 cursor-pointer hover:text-blue-800"
+                                                                                            onClick={() => handleViewReport(service.id, 'qatest')}
+                                                                                        />
                                                                                     </div>
                                                                                 </div>
                                                                             )}
@@ -2108,6 +2206,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                     const identifier = getWorkTypeIdentifier(service.workTypeName);
                                                                                     const reportStatus = reportNumbers[service.id]?.[identifier]?.reportStatus || "pending";
                                                                                     const reportUrl = reportNumbers[service.id]?.[identifier]?.reportUrl;
+                                                                                    console.log("🚀 ~ ServicesCard ~ reportUrl:", reportUrl)
+                                                                                    const reportRemark = reportNumbers[service.id]?.[identifier]?.remark;
+                                                                                    console.log("🚀 ~ ServicesCard ~ reportRemark:", reportRemark)
                                                                                     const labelText = identifier === 'qatest' ? 'QA Test Report Status' : '';
                                                                                     return (
                                                                                         <>

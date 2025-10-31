@@ -43,7 +43,6 @@ const Clients = () => {
         const fetchClients = async () => {
             try {
                 const response = await getAllClients();
-                console.log("🚀 ~ fetchClients ~ response:", response)
                 const clientsFromBackend = response.data.clients.map((item: any) => ({
                     ...item,
                     id: item._id,

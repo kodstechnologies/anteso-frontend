@@ -44,9 +44,7 @@ const AdvancedManagement = () => {
                 setError(null);
 
                 const res = await getAllTechnicians();
-                console.log("🚀 ~ fetchEmployees ~ res:", res);
 
-                // ✅ Use res.data because actual array is inside `data`
                 const formatted = res?.data?.map((item: any, index: number) => ({
                     ...item,
                     clientId: `EMP${String(index + 1).padStart(3, '0')}`, // unique ID for display

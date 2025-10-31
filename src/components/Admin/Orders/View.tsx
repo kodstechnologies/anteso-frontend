@@ -21,6 +21,7 @@ import AdditionalServices from './AdditionalServices';
 import ServiceDetails from './ServiceDetails';
 import { getBasicDetailsByOrderId, getPdfForAcceptQuotation, getWorkOrderCopy } from '../../../api';
 import ServiceDetails2 from './ServiceDetails2'
+import ServicesCard from './ServiceDetails2';
 
 // Define interfaces
 interface OptionType {
@@ -218,6 +219,7 @@ const View = () => {
 
             {/* Service details */}
             <ServiceDetails2 orderId={orderId} />
+            {/* <ServicesCardDemo orderId={orderId} /> */}
             <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
                 <div className="space-y-4">
                     <AdditionalServices />
