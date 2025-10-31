@@ -218,7 +218,7 @@ export default function EmployeeDetailsLeaveManagement() {
 
     return (
         <div className="space-y-8">
-            <style jsx>{`
+            <style >{`
                 .react-calendar__tile.present { background: rgba(40, 167, 69, 0.5) !important; color: black; }
                 .react-calendar__tile.absent { background: #dc3545 !important; color: white; }
                 .react-calendar__tile.sick-leave { background: #ffc107 !important; color: black; }
