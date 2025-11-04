@@ -958,10 +958,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             }))
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
 
-            setMachineData((prevData) =>
-                prevData.map((service) => ({
+            setMachineData((prevData:any) =>
+                prevData.map((service:any) => ({
                     ...service,
-                    workTypes: service.workTypes.map((wt) =>
+                    workTypes: service.workTypes.map((wt:any) =>
                         wt.id === workTypeId
                             ? {
                                 ...wt,
