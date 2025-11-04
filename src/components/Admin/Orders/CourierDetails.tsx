@@ -137,9 +137,10 @@ const CourierDetails = ({ orderId }: { orderId: string }) => {
 
               <div className="text-xs uppercase text-gray-500 font-semibold mt-2 mb-1">Tracking URL</div>
               <div className="text-blue-600 font-medium">
-                <a href={c.trackingUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {/* <a href={c.trackingUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
                   View
-                </a>
+                </a> */}
+                <div className="text-gray-800 font-medium">{c.trackingUrl}</div>
               </div>
             </div>
           ))}
