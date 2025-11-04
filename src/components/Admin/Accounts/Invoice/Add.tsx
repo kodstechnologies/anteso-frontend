@@ -501,22 +501,12 @@ const Add = () => {
 
                           if (values.type === 'Customer') {
                             if (details.services?.length) {
-                              let mainSubtotal = details.quotation?.subtotal || 0;
-                              if (details.additionalServices && Array.isArray(details.additionalServices)) {
-                                const additionalTotal = details.additionalServices.reduce((sum: number, service: any) => {
-                                  return sum + (service.totalAmount || 0);
-                                }, 0);
-                                mainSubtotal -= additionalTotal;
-                              }
-                              mainSubtotal -= (details.advanceAmount || 0);
-
-                              const perServiceRate = details.services.length > 0 ? mainSubtotal / details.services.length : 0;
                               const mappedServices: ServiceItem[] = details.services.map((s: any) => ({
                                 machineType: s.machineType || '',
                                 description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
                                 quantity: 1,
-                                rate: s.rate || perServiceRate,
-                                hsnno: s.machineModel || s.hsnno || '',
+                                rate: s.totalAmount || 0,  // Use totalAmount directly
+                                hsnno: s.machineModel || '',
                               }));
                               setFieldValue('services', mappedServices);
                             } else {
@@ -541,8 +531,8 @@ const Add = () => {
                                 machineType: s.machineType || '',
                                 description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
                                 quantity: 1,
-                                rate: s.rate || (details.services.length > 0 ? mainSubtotal / details.services.length : 0),
-                                hsnno: s.machineModel || s.hsnno || '',
+                                rate: s.totalAmount || 0,  // Use totalAmount directly
+                                hsnno: s.machineModel || '',
                               }))
                               : [];
                             const mappedAdditional: AdditionalService[] = details.additionalServices?.length

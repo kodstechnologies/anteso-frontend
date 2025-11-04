@@ -30,7 +30,7 @@ const EditHospital = () => {
     phone: Yup.string()
       .matches(/^[0-9]{10}$/, "Phone number must be exactly 10 digits")
       .required("Please fill the Field"),
-    gstNo: Yup.string().required("Please fill the Field"),
+    gstNo: Yup.string(),
     branch: Yup.string().required("Please fill the Field"),
   })
 

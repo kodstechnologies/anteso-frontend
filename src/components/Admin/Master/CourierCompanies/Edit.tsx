@@ -3,21 +3,25 @@ import { Field, Form, Formik } from 'formik';
 import * as Yup from 'yup';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
-import { getCourierById, editCourier } from '../../../../api/index'; // Adjust the path if needed
+import { getCourierById, editCourier } from '../../../../api/index';
 
-const EditCourierCompanie = () => {
+const EditCourierCompany = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
     const [initialValues, setInitialValues] = useState({
-        companyName: '',
-        status: '',
+        courierCompanyName: '',
+        trackingId: '',
+        trackingUrl: '',
+        status: 'active',
     });
     const [loading, setLoading] = useState(true);
 
     const validationSchema = Yup.object().shape({
+        courierCompanyName: Yup.string().required('Please enter company name'),
+        trackingId: Yup.string(),
+        trackingUrl: Yup.string().url('Please enter a valid URL'),
         status: Yup.string().required('Please select a status'),
-        companyName: Yup.string().required('Please enter the company name'),
     });
 
     useEffect(() => {
@@ -27,12 +31,14 @@ const EditCourierCompanie = () => {
                     const res = await getCourierById(id);
                     const company = res?.data;
                     setInitialValues({
-                        companyName: company.courierCompanyName,
-                        status: company.status,
+                        courierCompanyName: company.courierCompanyName || '',
+                        trackingId: company.trackingId || '',
+                        trackingUrl: company.trackingUrl || '',
+                        status: company.status || 'active',
                     });
                 }
             } catch (error) {
-                showMessage('Failed to fetch company data', 'error');
+                showMessage('Failed to fetch courier company data', 'error');
             } finally {
                 setLoading(false);
             }
@@ -44,10 +50,7 @@ const EditCourierCompanie = () => {
     const submitForm = async (values: any) => {
         try {
             if (id) {
-                await editCourier(id, {
-                    courierCompanyName: values.companyName,
-                    status: values.status,
-                });
+                await editCourier(id, values);
                 showMessage('Courier company updated successfully', 'success');
                 navigate('/admin/courier-companies');
             }
@@ -76,52 +79,89 @@ const EditCourierCompanie = () => {
                 </li>
             </ol>
 
-            <Formik
-                enableReinitialize
-                initialValues={initialValues}
-                validationSchema={validationSchema}
-                onSubmit={submitForm}
-            >
-                {({ errors, touched }) => (
-                    <Form className="space-y-5">
-                        {/* Status Field */}
-                        <div className={touched.status && errors.status ? 'has-error' : ''}>
-                            <label htmlFor="status">Status</label>
-                            <Field as="select" name="status" className="form-select">
-                                <option value="" disabled>
-                                    Select Status
-                                </option>
-                                <option value="Active">Active</option>
-                                <option value="Inactive">Inactive</option>
-                            </Field>
-                            {touched.status && errors.status && <div className="text-danger mt-1">{errors.status}</div>}
-                        </div>
+            <div className="panel">
+                <h2 className="text-xl font-semibold mb-4">Edit Courier Company</h2>
 
-                        {/* Company Name Field */}
-                        <div className={touched.companyName && errors.companyName ? 'has-error' : ''}>
-                            <label htmlFor="companyName">Company Name</label>
-                            <Field
-                                name="companyName"
-                                type="text"
-                                id="companyName"
-                                placeholder="Enter Company Name"
-                                className="form-input"
-                            />
-                            {touched.companyName && errors.companyName && (
-                                <div className="text-danger mt-1">{errors.companyName}</div>
-                            )}
-                        </div>
+                <Formik
+                    enableReinitialize
+                    initialValues={initialValues}
+                    validationSchema={validationSchema}
+                    onSubmit={submitForm}
+                >
+                    {({ errors, touched }) => (
+                        <Form className="space-y-4">
+                            {/* Company Name */}
+                            <div className={touched.courierCompanyName && errors.courierCompanyName ? 'has-error' : ''}>
+                                <label htmlFor="courierCompanyName" className="block mb-1 font-medium">
+                                    Company Name
+                                </label>
+                                <Field
+                                    type="text"
+                                    name="courierCompanyName"
+                                    id="courierCompanyName"
+                                    placeholder="Enter Company Name"
+                                    className="form-input w-full"
+                                />
+                                {touched.courierCompanyName && errors.courierCompanyName && (
+                                    <div className="text-danger mt-1">{errors.courierCompanyName}</div>
+                                )}
+                            </div>
 
-                        <div className="w-full mb-6 flex justify-end">
-                            <button type="submit" className="btn btn-success !mt-6">
-                                Submit
-                            </button>
-                        </div>
-                    </Form>
-                )}
-            </Formik>
+                            {/* Tracking ID */}
+                            <div className={touched.trackingId && errors.trackingId ? 'has-error' : ''}>
+                                <label htmlFor="trackingId" className="block mb-1 font-medium">
+                                    Tracking ID (optional)
+                                </label>
+                                <Field
+                                    type="text"
+                                    name="trackingId"
+                                    id="trackingId"
+                                    placeholder="Enter Tracking ID"
+                                    className="form-input w-full"
+                                />
+                            </div>
+
+                            {/* Tracking URL */}
+                            <div className={touched.trackingUrl && errors.trackingUrl ? 'has-error' : ''}>
+                                <label htmlFor="trackingUrl" className="block mb-1 font-medium">
+                                    Tracking URL (optional)
+                                </label>
+                                <Field
+                                    type="text"
+                                    name="trackingUrl"
+                                    id="trackingUrl"
+                                    placeholder="Enter Tracking URL"
+                                    className="form-input w-full"
+                                />
+                                {touched.trackingUrl && errors.trackingUrl && (
+                                    <div className="text-danger mt-1">{errors.trackingUrl}</div>
+                                )}
+                            </div>
+
+                            {/* Status */}
+                            <div className={touched.status && errors.status ? 'has-error' : ''}>
+                                <label htmlFor="status" className="block mb-1 font-medium">
+                                    Status
+                                </label>
+                                <Field as="select" name="status" id="status" className="form-select w-full">
+                                    <option value="">Select Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </Field>
+                                {touched.status && errors.status && <div className="text-danger mt-1">{errors.status}</div>}
+                            </div>
+
+                            <div className="w-full mb-6 flex justify-end">
+                                <button type="submit" className="btn btn-primary mt-4">
+                                    Update
+                                </button>
+                            </div>
+                        </Form>
+                    )}
+                </Formik>
+            </div>
         </>
     );
 };
 
-export default EditCourierCompanie;
+export default EditCourierCompany;

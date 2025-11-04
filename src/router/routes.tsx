@@ -82,7 +82,9 @@ import ViewPayment from '../components/Admin/Accounts/Payments/View'
 import Privacy from '../pages/privacy';
 import Terms from '../pages/terms';
 
-
+import StaffEnquiries from '../components/Admin/Enquiry/StaffEnquiries';
+import AddStaffEnquiry from '../components/Admin/Enquiry/AddStaffEnquiry';
+import AddStaffQuotation from '../components/Admin/Quotation/AddStaffQuotation';
 //Invoice
 import Invoice from '../pages/Admin/Master/Invoice';
 import AddInvoice from '../components/Admin/Accounts/Invoice/Add'
@@ -117,6 +119,9 @@ import EditInstitute from '../components/Admin/Master/Clients/EditInstitute'
 import EditRso from '../components/Admin/Master/Clients/EditRso';
 
 import Payslip from '../pages/Admin/Payslip';
+import GenerateReport from '../components/Admin/Orders/ServiceReportGeneration.tsx/GenerateReport';
+import ViewServiceReport from '../components/Admin/Orders/ServiceReportGeneration.tsx/ViewServiceReport';
+
 
 import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
@@ -622,6 +627,22 @@ const routes = [
         ),
     },
     {
+        path: '/staff/enquiry/all',
+        element: (
+            <AdminProtected>
+                <StaffEnquiries />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/staff/enquiry/add',
+        element: (
+            <AdminProtected>
+                <AddStaffEnquiry />
+            </AdminProtected>
+        ),
+    },
+    {
         path: '/admin/enquiry/view/:id',
         element: (
             <AdminProtected>
@@ -650,6 +671,14 @@ const routes = [
         element: (
             <AdminProtected>
                 <AddQuotation />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/staff/quotation/add/:id',
+        element: (
+            <AdminProtected>
+                <AddStaffQuotation />
             </AdminProtected>
         ),
     },
@@ -685,6 +714,7 @@ const routes = [
             </AdminProtected>
         ),
     },
+
     {
         path: '/admin/staff-orders',
         element: (
@@ -698,6 +728,30 @@ const routes = [
         element: (
             <AdminProtected>
                 <CreateOrder />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/generate-service-report',
+        element: (
+            <AdminProtected>
+                <GenerateReport />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report',
+        element: (
+            <AdminProtected>
+                <ViewServiceReport />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report',
+        element: (
+            <AdminProtected>
+                <GenerateReport />
             </AdminProtected>
         ),
     },

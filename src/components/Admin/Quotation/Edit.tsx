@@ -315,6 +315,7 @@ const EditQuotation: React.FC = () => {
         };
 
         const response = await updateQuotationById(id, updateData);
+        console.log("🚀 ~ Update response:", response);
 
         setQuotationData(response.data.data); // Update with latest data
     };
@@ -879,13 +880,13 @@ const EditQuotation: React.FC = () => {
                                     <tr className="text-[.7rem]">
                                         <td className="pl-4 font-bold w-[10rem]">Name:</td>
                                         <td className="pl-2" colSpan={3}>
-                                            {quotationData.enquiry.contactPerson} &nbsp;&nbsp;
+                                            {quotationData.assignedEmployee.name} &nbsp;&nbsp;
                                         </td>
                                     </tr>
                                     <tr className="text-[.7rem]">
                                         <td className="pl-4 font-bold w-[10rem]">Phone:</td>
                                         <td className="pl-2" colSpan={3}>
-                                            {quotationData.enquiry.contactNumber} &nbsp;&nbsp;
+                                            {quotationData.assignedEmployee.phone} &nbsp;&nbsp;
                                         </td>
                                     </tr>
                                     <tr className="text-[.7rem]">

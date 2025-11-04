@@ -152,7 +152,9 @@ const Add = () => {
                         // Fetch total amount for this SRF
                         try {
                           const res = await getTotalAmount(selected);
-                          setFieldValue("totalAmount", res.data.totalAmount || 0);
+                          const roundedAmount = Number(res.data.totalAmount || 0).toFixed(2);
+                          setFieldValue("totalAmount", parseFloat(roundedAmount));
+
                         } catch (error) {
                           console.error("Failed to fetch total amount", error);
                           setFieldValue("totalAmount", 0);

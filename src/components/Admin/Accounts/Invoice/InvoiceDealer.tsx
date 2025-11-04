@@ -280,8 +280,7 @@ const InvoiceDealer = () => {
                                                             <td className="border border-black px-1 py-1">{item.hsnno || "-"}</td>
                                                             <td className="border border-black px-1 py-1 text-right">{item.quantity || 0}</td>
                                                             <td className="border border-black px-1 py-1 text-right">₹{(item.rate || 0).toLocaleString("en-IN")}</td>
-                                                            <td className="border border-black px-1 py-1 text-right">₹{amount.toLocaleString("en-IN")}</td>
-                                                        </tr>
+                                                            <td className="border border-black px-1 py-1 text-right">₹{Number(amount.toFixed(2)).toLocaleString("en-IN")}</td>                                                        </tr>
                                                     );
                                                 })}
                                             </tbody>
@@ -309,7 +308,7 @@ const InvoiceDealer = () => {
                                                         <td className="border border-black px-1 py-1">{item.name || "-"}</td>
                                                         <td className="border border-black px-1 py-1">{item.description || "-"}</td>
                                                         <td className="border border-black px-1 py-1 text-right">
-                                                            ₹{(item.totalAmount || 0).toLocaleString("en-IN")}
+                                                            ₹{(item.totalAmount || 0).toFixed(2).toLocaleString("en-IN")}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -400,8 +399,7 @@ const InvoiceDealer = () => {
                                             )}
 
                                             <div className="text-right mt-2 font-semibold text-xs">
-                                                <p>Subtotal for this hospital: ₹{hospitalSubtotal.toLocaleString("en-IN")}</p>
-                                            </div>
+                                                <p>Subtotal for this hospital: ₹{hospitalSubtotal.toFixed(2).toLocaleString("en-IN")}</p>                                            </div>
                                         </div>
                                     );
                                 })}
@@ -410,12 +408,12 @@ const InvoiceDealer = () => {
                     </div>
 
                     <div className="text-right mt-4 space-y-1">
-                        <p><strong>Sub Total:</strong> ₹{(subTotal ?? 0).toLocaleString("en-IN")}</p>
-                        {discount > 0 && <p><strong>Discount:</strong> -₹{discount.toLocaleString("en-IN")}</p>}
-                        {cgst > 0 && <p><strong>CGST:</strong> ₹{cgst.toLocaleString("en-IN")}</p>}
-                        {sgst > 0 && <p><strong>SGST:</strong> ₹{sgst.toLocaleString("en-IN")}</p>}
-                        {igst > 0 && <p><strong>IGST:</strong> ₹{igst.toLocaleString("en-IN")}</p>}
-                        <p className="text-sm font-bold">Total: ₹{(total ?? 0).toLocaleString("en-IN")}</p>
+                        <p><strong>Sub Total:</strong> ₹{((subTotal ?? 0).toFixed(2)).toLocaleString("en-IN")}</p>
+                        {discount > 0 && <p><strong>Discount:</strong> -₹{((discount).toFixed(2)).toLocaleString("en-IN")}</p>}
+                        {cgst > 0 && <p><strong>CGST:</strong> ₹{((cgst).toFixed(2)).toLocaleString("en-IN")}</p>}
+                        {sgst > 0 && <p><strong>SGST:</strong> ₹{((sgst).toFixed(2)).toLocaleString("en-IN")}</p>}
+                        {igst > 0 && <p><strong>IGST:</strong> ₹{((igst).toFixed(2)).toLocaleString("en-IN")}</p>}
+                        <p className="text-sm font-bold">Total: ₹{((total ?? 0).toFixed(2)).toLocaleString("en-IN")}</p>
                     </div>
 
                     <div className="flex flex-col md:flex-row justify-between gap-6 mt-auto text-[10px] sm:text-xs">

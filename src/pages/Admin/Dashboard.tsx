@@ -357,21 +357,42 @@ const Dashboard: React.FC = () => {
                                     <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 </tr>
                             </thead>
+
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {currentTrips.length > 0 ? (
-                                    currentTrips.map((trip, index) => (
-                                        <tr key={`${trip.employee}-${index}`} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-colors duration-200">
-                                            <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{trip.employee}</td>
-                                            <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{trip.tripName}</td>
-                                            <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">{trip.startDate}</td>
-                                            <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">{trip.endDate}</td>
-                                            <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                                                <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(trip.tripStatus)}`}>
-                                                    {trip.tripStatus || 'N/A'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    currentTrips.map((trip, index) => {
+                                        const formatDate = (dateString:any) => {
+                                            if (!dateString) return "N/A";
+                                            const date = new Date(dateString);
+                                            // if (isNaN(date)) return "Invalid Date";
+                                            return date.toLocaleDateString("en-GB"); // ✅ dd/mm/yyyy format
+                                        };
+
+                                        return (
+                                            <tr
+                                                key={`${trip.employee}-${index}`}
+                                                className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-colors duration-200"
+                                            >
+                                                <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{trip.employee}</td>
+                                                <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{trip.tripName}</td>
+                                                <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {formatDate(trip.startDate)}
+                                                </td>
+                                                <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {formatDate(trip.endDate)}
+                                                </td>
+                                                <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                                                    <span
+                                                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(
+                                                            trip.tripStatus
+                                                        )}`}
+                                                    >
+                                                        {trip.tripStatus || "N/A"}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 ) : (
                                     <tr>
                                         <td colSpan={5} className="px-4 sm:px-6 py-12 text-center text-gray-500">
@@ -382,6 +403,7 @@ const Dashboard: React.FC = () => {
                             </tbody>
                         </table>
                     </div>
+
 
                     {/* Pagination */}
                     {totalPages > 1 && (

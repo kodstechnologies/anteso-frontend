@@ -128,8 +128,13 @@ const Sidebar = () => {
                                                     </>
                                                 )}
                                                 {/* <li><NavLink to="/admin/leave">{t('Leave')}</NavLink></li> */}
-                                                <li><NavLink to="/admin/dealer">{t('Dealer')}</NavLink></li>
-                                                <li><NavLink to="/admin/manufacture">{t('Manufacture')}</NavLink></li>
+                                                {userType === 'admin' && (
+                                                    <>
+                                                        <li><NavLink to="/admin/dealer">{t('Dealer')}</NavLink></li>
+                                                        <li><NavLink to="/admin/manufacture">{t('Manufacture')}</NavLink></li>
+                                                    </>
+                                                )}
+
                                                 <li><NavLink to="/admin/courier-companies">{t('Courier Companies')}</NavLink></li>
                                             </ul>
                                         </AnimateHeight>
@@ -173,14 +178,27 @@ const Sidebar = () => {
                                     )}
 
                                     {/* Shared */}
-                                    <li className="nav-item">
-                                        <NavLink to="/admin/enquiry" className="group">
-                                            <div className="flex items-center gap-2">
-                                                <FiMessageSquare className="group-hover:!text-primary shrink-0" />
-                                                <span>{t('Enquiry')}</span>
-                                            </div>
-                                        </NavLink>
-                                    </li>
+                                    {userType === 'admin' && (
+                                        <li className="nav-item">
+                                            <NavLink to="/admin/enquiry" className="group">
+                                                <div className="flex items-center gap-2">
+                                                    <FiMessageSquare className="group-hover:!text-primary shrink-0" />
+                                                    <span>{t('Enquiry')}</span>
+                                                </div>
+                                            </NavLink>
+                                        </li>
+                                    )}
+
+                                    {userType === 'staff' && (
+                                        <li className="nav-item">
+                                            <NavLink to="/staff/enquiry/all" className="group">
+                                                <div className="flex items-center gap-2">
+                                                    <FiMessageSquare className="group-hover:!text-primary shrink-0" />
+                                                    <span>{t('Enquiry')}</span>
+                                                </div>
+                                            </NavLink>
+                                        </li>
+                                    )}
 
                                     <li className="nav-item">
 

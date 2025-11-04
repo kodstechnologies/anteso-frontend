@@ -87,7 +87,7 @@ const View: React.FC = () => {
 
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
                         <div className="text-xs uppercase text-gray-500 font-semibold mb-1">Status</div>
-                        <div className={`font-medium ${company?.status === 'Active' ? 'text-green-600' : 'text-red-600'}`}>
+                        <div className={`font-medium ${company?.status === 'Active' ? 'text-red-600' : 'text-green-600'}`}>
                             {company?.status}
                         </div>
                     </div>

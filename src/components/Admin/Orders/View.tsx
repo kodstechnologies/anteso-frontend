@@ -69,7 +69,7 @@ const View = () => {
     const [openMachineModal, setOpenMachineModal] = useState(false)
     const [openVerificationModal, setOpenVerificationModal] = useState(false)
     const { orderId } = useParams(); // Assuming you're using a dynamic route like /orders/:orderId
-    console.log("🚀 ~ View ~ orderId:", orderId)
+    // console.log("🚀 ~ View ~ orderId:", orderId)
     const [details, setDetails] = useState<HospitalDetails | null>(null);
 
     if (!orderId) {

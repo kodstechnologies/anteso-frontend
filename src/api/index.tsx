@@ -1573,6 +1573,53 @@ export const getAssignedStaffName = async (orderId: any, serviceId: any, worktyp
         );
     }
 }
+// api/assignment.ts
+export const fetchAssignedStaff = async (orderId: string, machineData: any[]) => {
+    const assignments: Record<string, any> = {};
+    const statuses: Record<string, string> = {};
+
+    for (const service of machineData) {
+        for (const workType of service.workTypes) {
+            const workTypeId = workType.id;
+            const serviceId = workTypeId.split("-")[0];
+            const workTypeName = service.workTypeName || "Unknown";
+
+            try {
+                const res = await getAssignedStaffName(orderId, serviceId, workTypeName);
+                const data = res.data;
+
+                if (data.staff) {
+                    assignments[workTypeId] = {
+                        staffId: data.staff._id,
+                        status: data.status || "pending",
+                        isAssigned: true,
+                        isReassigned: false,
+                    };
+                    statuses[workTypeId] = data.status || "pending";
+                } else {
+                    assignments[workTypeId] = {
+                        staffId: null,
+                        status: "pending",
+                        isAssigned: false,
+                        isReassigned: false,
+                    };
+                    statuses[workTypeId] = "pending";
+                }
+            } catch (err) {
+                console.warn(`Failed to load assignment for ${workTypeId}`, err);
+                assignments[workTypeId] = {
+                    staffId: null,
+                    status: "pending",
+                    isAssigned: false,
+                    isReassigned: false,
+                };
+                statuses[workTypeId] = "pending";
+            }
+        }
+    }
+
+    return { assignments, statuses };
+};
 
 export const getEngineerByTool = async (orderId: any, serviceId: any, worktype: any) => {
     try {
@@ -2567,7 +2614,7 @@ export const addCourierByOrderId = async (orderId: string, payload: any) => {
 export const getAllCourierDetails = async (orderId: any) => {
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.get(`/courier/get-all-courier`, {
+        const res = await api.get(`/courier/get-all-courier/${orderId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -3239,6 +3286,21 @@ export const getPendingLeaveApprovals = async () => {
         return res.data;
     } catch (error) {
         console.error("🚀 ~ getPendingLeaveApprovals ~ error:", error);
+        throw error;
+    }
+}
+
+export const getAllStaffEnquiries = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/enquiry/all-staff-enquiries`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getAllStaffEnquiries ~ error:", error);
         throw error;
     }
 }

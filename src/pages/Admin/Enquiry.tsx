@@ -224,7 +224,6 @@ const Enquiry = () => {
                                     sortable: true,
                                 },
                                 { accessor: 'district', title: 'District', sortable: true },
-
                                 {
                                     accessor: 'state',
                                     sortable: true,
