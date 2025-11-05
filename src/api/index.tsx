@@ -566,7 +566,7 @@ export const addEnquiryCreateDirectOrder = async (payload: any) => {
 
 //used in add quotation
 export const getEnquiryById = async (enquiryId: any) => {
-    console.log("🚀 ~ getEnquiryById ~ enquiryId:", enquiryId)
+    // console.log("🚀 ~ getEnquiryById ~ enquiryId:", enquiryId)
     try {
         const token = Cookies.get('accessToken')
         const res = await api.get(`/enquiry/get-by-id/${enquiryId}`, {
@@ -600,13 +600,13 @@ export const deleteEnquiryById = async (id: any) => {
 export const getAllEnquiry = async () => {
     try {
         const token = Cookies.get('accessToken')
-        console.log("🚀 ~ getAllEnquiry ~ token:", token)
+        // console.log("🚀 ~ getAllEnquiry ~ token:", token)
         const res = await api.get('/enquiry/get-all', {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllEnquiry ~ res:", res)
+        // console.log("🚀 ~ getAllEnquiry ~ res:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ getClientById ~ error:", error);
@@ -846,7 +846,7 @@ export const getAllEmployees = async () => {
 // }
 
 export const getEmployeeById = async (id: string) => {
-    console.log("getEmployeeById ~ id:", id);
+    // console.log("getEmployeeById ~ id:", id);
     try {
         const token = Cookies.get('accessToken');
         const res = await api.get(`/technician/get-by-id/${id}`, {
@@ -854,7 +854,7 @@ export const getEmployeeById = async (id: string) => {
                 Authorization: `Bearer ${token}`,
             },
         });
-        console.log("getEmployeeById ~ res:", res);
+        // console.log("getEmployeeById ~ res:", res);
         return res.data;
     } catch (error: any) {
         console.error("get employee by id ~ error:", error);
@@ -1029,7 +1029,7 @@ export const getAllLeave = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllLeave ~ res:", res.data.data.data)
+        // console.log("🚀 ~ getAllLeave ~ res:", res.data.data.data)
         return res.data.data
     } catch (error: any) {
         console.error("🚀 ~ all courier companies ~ error:", error);
@@ -1117,7 +1117,7 @@ export const AllTools = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllTools ~ res:", res.data)
+        // console.log("🚀 ~ getAllTools ~ res:", res.data)
         return res.data;
     } catch (error: any) {
         console.error("🚀 ~ all  tools ~ error:", error);
@@ -1207,7 +1207,7 @@ export const getAllOrders = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllorders ~ res:", res.data)
+        // console.log("🚀 ~ getAllorders ~ res:", res.data)
         return res.data;
     } catch (error: any) {
         console.error("🚀 ~ all  orders ~ error:", error);
@@ -1224,7 +1224,7 @@ export const getBasicDetailsByOrderId = async (id: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ basic details ~ res:", res.data)
+        // console.log("🚀 ~ basic details ~ res:", res.data)
         return res.data;
     } catch (error: any) {
         console.error("🚀 ~   orders basic details ~ error:", error);
@@ -1243,7 +1243,7 @@ export const getAdditionalServicesByOrderId = async (id: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ basic details ~ res--------->from index :", res.data)
+        // console.log("🚀 ~ basic details ~ res--------->from index :", res.data)
         return res.data;
     } catch (error: any) {
         console.error("🚀 ~   orders basic details ~ error:", error);
@@ -1350,7 +1350,7 @@ export const getAllOfficeStaff = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllOfficeStaff ~ res:", res)
+        // console.log("🚀 ~ getAllOfficeStaff ~ res:", res)
         return res.data.data
     } catch (error: any) {
         console.error("🚀 ~ all  machines ~ error:", error);
@@ -1510,7 +1510,7 @@ export const getAlltripsByTechnicianId = async (id: string) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAlltripsByTechnicianId ~ res:", res)
+        // console.log("🚀 ~ getAlltripsByTechnicianId ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ all  trips ~ error:", error);
@@ -1807,7 +1807,7 @@ export const getAllDealers = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllDealers ~ res:", res)
+        // console.log("🚀 ~ getAllDealers ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getEngineerByTools ~ error:", error);
@@ -1848,7 +1848,7 @@ export const allOrdersWithClient = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ allOrdersWithClient ~ res:", res)
+        // console.log("🚀 ~ allOrdersWithClient ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ allOrdersWithClient ~ error:", error);
@@ -1895,7 +1895,7 @@ export const getAllPayments = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllPayments ~ res:", res)
+        // console.log("🚀 ~ getAllPayments ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getEngineerByTools ~ error:", error);
@@ -2124,7 +2124,7 @@ export const getAllDetails = async (orderId: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllDetails ~ res:", res)
+        // console.log("🚀 ~ getAllDetails ~ res:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ getAllDetails ~ error:", error)
@@ -2142,7 +2142,7 @@ export const getAllSrfNumber = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllSrfNumber ~ res:", res)
+        // console.log("🚀 ~ getAllSrfNumber ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAllSrfNumber ~ error:", error)
@@ -2183,7 +2183,7 @@ export const getAllInvoices = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllInvoices ~ res:", res)
+        // console.log("🚀 ~ getAllInvoices ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAllInvoices ~ error:", error)
@@ -2204,8 +2204,8 @@ export const getInvoiceById = async (invoiceId: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getInvoiceById ~ res:", res)
-        console.log("🚀 ~ getAllSrfNumber ~ res:", res)
+        // console.log("🚀 ~ getInvoiceById ~ res:", res)
+        // console.log("🚀 ~ getAllSrfNumber ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAllSrfNumber ~ error:", error)
@@ -2475,7 +2475,7 @@ export const getAllLeaves = async (id: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllLeaves ~ res:", res)
+        // console.log("🚀 ~ getAllLeaves ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ deletePaymentById ~ error:", error)
@@ -2619,7 +2619,7 @@ export const getAllCourierDetails = async (orderId: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllManufacturer ~ res:", res)
+        // console.log("🚀 ~ getAllManufacturer ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAllManufacturer ~ error:", error);
@@ -2658,7 +2658,7 @@ export const getAllManufacturer = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllManufacturer ~ res:", res)
+        // console.log("🚀 ~ getAllManufacturer ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAllManufacturer ~ error:", error);
@@ -2748,7 +2748,7 @@ export const getSalaries = async (employeeId: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAllManufacturer ~ res:", res)
+        // console.log("🚀 ~ getAllManufacturer ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAllManufacturer ~ error:", error);
@@ -2797,7 +2797,7 @@ export const getDetailsById = async (salaryId: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getDetailsById ~ res:", res)
+        // console.log("🚀 ~ getDetailsById ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAllManufacturer ~ error:", error);
@@ -2903,7 +2903,7 @@ export const getPdfForAcceptQuotation = async (orderId: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getPdfForAcceptQuotation ~ res:", res)
+        // console.log("🚀 ~ getPdfForAcceptQuotation ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getPdfForAcceptQuotation ~ error:", error);
@@ -2941,7 +2941,7 @@ export const getNextQuotationNumber = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getNextQuotationNumber ~ res:", res)
+        // console.log("🚀 ~ getNextQuotationNumber ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getNextQuotationNumber ~ error:", error);
@@ -3048,8 +3048,7 @@ export const getAttendanceStatus = async (employeeId: string, date: string) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getAttendanceStatus ~ date:", date)
-        console.log("🚀 ~ getAttendanceStatus ~ res:", res)
+     
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAttendanceStatus ~ error:", error);
@@ -3185,7 +3184,7 @@ export const getSummary = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getSummary ~ res:", res)
+        // console.log("🚀 ~ getSummary ~ res:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ getSummary ~ error:", error);
@@ -3203,7 +3202,7 @@ export const monthlyStats = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getSummary ~ res:", res)
+        // console.log("🚀 ~ getSummary ~ res:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ getSummary ~ error:", error);
@@ -3220,7 +3219,7 @@ export const employeeTrips = async () => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getSummary ~ res:", res)
+        // console.log("🚀 ~ getSummary ~ res:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ getSummary ~ error:", error);

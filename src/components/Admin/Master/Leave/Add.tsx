@@ -27,7 +27,7 @@ const Add = () => {
       try {
         setLoading(true);
         const res = await getAllEmployees();
-        console.log("✅ Employees fetched:", res);
+        // console.log("✅ Employees fetched:", res);
         if (res?.data) {
           setEmployees(res.data);
         } else {

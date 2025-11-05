@@ -25,7 +25,7 @@ const Hrms = () => {
     }, []);
 
     const currentYear = new Date().getFullYear();
-    const [selectedYear, setSelectedYear] = useState(currentYear );
+    const [selectedYear, setSelectedYear] = useState(currentYear);
 
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -68,6 +68,7 @@ const Hrms = () => {
     const fetchAllocations = async () => {
         try {
             const res = await getAllAllocatedLeaves(selectedYear);
+            console.log("🚀 ~ fetchAllocations ~ res:", res)
             setAllocations(Array.isArray(res?.data) ? res.data : []);
         } catch (error) {
             console.error("Error fetching allocations:", error);
@@ -79,10 +80,14 @@ const Hrms = () => {
         fetchAllocations();
     }, [selectedYear]);
 
-    const totalAllocated = useMemo(() =>
-        allocations.reduce((sum, a) => sum + (a.totalLeaves || 0), 0),
-        [allocations]
-    );
+    const totalAllocated = useMemo(() => {
+        if (!allocations.length) return 0;
+
+        // If all employees have same totalLeaves, just take from first one
+        const leavesPerEmployee = allocations[0]?.totalLeaves || 0;
+        return leavesPerEmployee;
+    }, [allocations]);
+
 
     // Search & Merge logic
     useEffect(() => {
@@ -178,8 +183,9 @@ const Hrms = () => {
                                 Allocate Leaves
                             </button>
                             <span className="text-sm text-gray-600 dark:text-gray-400">
-                                Total Leaves Allocated: {totalAllocated}
+                                Total Leaves per Employee: {totalAllocated}
                             </span>
+
                         </div>
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input

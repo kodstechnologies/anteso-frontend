@@ -277,7 +277,7 @@ const ItemsTable: React.FC<{
 const AddStaffQuotation: React.FC = () => {
     const navigate = useNavigate()
     const { id } = useParams()
-    console.log("🚀 ~ AddQuotation ~ id:", id)
+    // console.log("🚀 ~ AddQuotation ~ id:", id)
     // State
     const [discount, setDiscount] = useState<number>(10)
     const [employees, setEmployees] = useState<Employee[]>([])
@@ -323,7 +323,7 @@ const AddStaffQuotation: React.FC = () => {
             if (!id) return
             try {
                 const data = await getEnquiryById(id)
-                console.log("🚀 ~ fetched enquiry data:", data)
+                // console.log("🚀 ~ fetched enquiry data:", data)
                 setEnquiryData(data)
 
                 // Machines → aitems
@@ -425,7 +425,7 @@ const AddStaffQuotation: React.FC = () => {
                 // ✅ Merge both for dropdown
                 setPeople([...employeeList, ...dealerList]);
 
-                console.log("🚀 ~ fetchData ~ people:", [...employeeList, ...dealerList]);
+                // console.log("🚀 ~ fetchData ~ people:", [...employeeList, ...dealerList]);
             } catch (error) {
                 console.error("Error fetching employees or dealers:", error);
             } finally {

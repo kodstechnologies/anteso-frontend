@@ -89,7 +89,7 @@ interface MachineData {
             reportStatus?: string
             qaTestReportNumber: any
             reportURLNumber: any
-            verificationRemark:any
+            verificationRemark: any
         }
         reportUrl: any
         reportNumber?: string
@@ -236,8 +236,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         try {
             setLoadingDropdowns(true)
             const [techniciansData, staffData] = await Promise.all([getAllTechnicians(), getAllOfficeStaff()])
-            console.log("🚀 ~ fetchDropdownData ~ technicians:", techniciansData)
-            console.log("🚀 ~ fetchDropdownData ~ office staff:", staffData)
+          
             setTechnicians(techniciansData.data || [])
             setOfficeStaff(staffData || [])
         } catch (error) {
@@ -321,7 +320,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                     if (apiResult?.assignedStaff) {
                         const staff = apiResult.assignedStaff;
-                        console.log("🚀 ~ fetchExistingAssignments ~ staff:", staff)
+                        // console.log("🚀 ~ fetchExistingAssignments ~ staff:", staff)
                         freshAssignments[workType.id] = {
                             isAssigned: true,
                             staffId: staff._id,
@@ -343,13 +342,335 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setAssignments(freshAssignments);
             setMachineData(updatedMachineData);
             saveToLocalStorage(STORAGE_KEYS.assignments, freshAssignments);
-            console.log("[v0] Fresh assignments from API:", freshAssignments);
+            // console.log("[v0] Fresh assignments from API:", freshAssignments);
             return updatedMachineData;
         } catch (error) {
             console.error("[v0] Unexpected error in fetchExistingAssignments:", error);
             return machineData;
         }
     };
+
+    // const fetchMachineData = async () => {
+    //     if (!orderId) {
+    //         setError("Order ID is required");
+    //         setLoading(false);
+    //         return;
+    //     }
+
+    //     try {
+    //         setLoading(true);
+    //         setError(null);
+    //         const response = await getMachineDetails(orderId);
+    //         console.log("🚀 ~ fetchMachineData ~ response:", response);
+
+    //         const machinesArray = Array.isArray(response) ? response : [response];
+    //         if (!machinesArray || machinesArray.length === 0) {
+    //             throw new Error("No machine data found");
+    //         }
+
+    //         const allTransformedData: MachineData[] = [];
+    //         const staffAssignments: Record<string, any> = {};
+
+    //         machinesArray.forEach((machineData: any) => {
+    //             const workTypeDetails = machineData.workTypeDetails || [];
+    //             const transformedData: MachineData[] = workTypeDetails.map(
+    //                 (workTypeDetail: any, index: number) => {
+    //                     const createWorkTypes = () => {
+    //                         const workTypes = [];
+    //                         const cardId = `${machineData._id}-${index}`;
+
+    //                         if (workTypeDetail.workType === "Quality Assurance Test") {
+    //                             // ---- QA Raw ----
+    //                             workTypes.push({
+    //                                 id: `${cardId}-qa-raw`,
+    //                                 name: "QA Raw",
+    //                                 description: "",
+    //                                 backendFields: {
+    //                                     serialNo: machineData.serialNumber || machineData.equipmentNo || "N/A",
+    //                                     modelName: machineData.machineModel || "N/A",
+    //                                     remark: machineData.remark || "N/A",
+    //                                     fileUrl: workTypeDetail.viewFile?.[0] || "",
+    //                                     imageUrl: workTypeDetail.viewFile?.[1] || "",
+    //                                     uploadFile: workTypeDetail.uploadFile || "",
+    //                                     viewFile: workTypeDetail.viewFile || [],
+    //                                     reportURLNumber: workTypeDetail.QAtest?.reportULRNumber || "N/A",
+    //                                     qaTestReportNumber: workTypeDetail.QAtest?.qaTestReportNumber || "N/A",
+    //                                     reportStatus: workTypeDetail.QAtest?.reportStatus || "pending",
+    //                                     verificationRemark: workTypeDetail.QAtest?.remark || "",
+    //                                 },
+    //                                 serviceId: machineData._id,
+    //                                 assignedTechnicianId: workTypeDetail.engineer || undefined,
+    //                             });
+
+    //                             // ✅ Save assigned Technician
+    //                             staffAssignments[`${cardId}-qa-raw`] = {
+    //                                 type: "Technician",
+    //                                 id: workTypeDetail.engineer || null,
+    //                             };
+
+    //                             // ---- QA Test ----
+    //                             workTypes.push({
+    //                                 id: `${cardId}-qa-test`,
+    //                                 name: "QA Test",
+    //                                 description: "",
+    //                                 reportNumber: "N/A",
+    //                                 urlNumber: "N/A",
+    //                                 serviceId: machineData._id,
+    //                                 assignedStaffId: workTypeDetail.QAtest?.officeStaff || undefined,
+    //                             });
+
+    //                             // ✅ Save assigned Office Staff
+    //                             staffAssignments[`${cardId}-qa-test`] = {
+    //                                 type: "Office Staff",
+    //                                 id: workTypeDetail.QAtest?.officeStaff || null,
+    //                             };
+    //                         } else {
+    //                             // ---- Other Work Types ----
+    //                             const customId = workTypeDetail.workType
+    //                                 .toLowerCase()
+    //                                 .replace(/[^a-z0-9]/g, "-");
+
+    //                             workTypes.push({
+    //                                 id: `${cardId}-${customId}`,
+    //                                 name: workTypeDetail.workType,
+    //                                 description: "",
+    //                                 reportNumber: "N/A",
+    //                                 urlNumber: "N/A",
+    //                                 serviceId: machineData._id,
+    //                                 assignedStaffId: workTypeDetail.elora || undefined,
+    //                             });
+
+    //                             // ✅ Save Elora (or any other office staff)
+    //                             staffAssignments[`${cardId}-${customId}`] = {
+    //                                 type: "Elora",
+    //                                 id: workTypeDetail.elora || null,
+    //                             };
+    //                         }
+    //                         return workTypes;
+    //                     };
+
+    //                     return {
+    //                         id: `${machineData._id}-${index}`,
+    //                         machineType: machineData.machineType || "Unknown Machine",
+    //                         equipmentId: machineData.equipmentNo || "N/A",
+    //                         workTypeName: workTypeDetail.workType || "General Work",
+    //                         status: workTypeDetail.status || "pending",
+    //                         workTypes: createWorkTypes(),
+    //                         rawPhoto: machineData.rawPhoto || [],
+    //                     };
+    //                 }
+    //             );
+    //             allTransformedData.push(...transformedData);
+    //         });
+
+    //         // ✅ Store the staff assignments in React state
+    //         setAssignedStaffData(staffAssignments);
+    //         console.log("✅ Assigned Staff Data:", staffAssignments);
+
+    //         // ------------------------
+    //         // Machine Data + Reports
+    //         // ------------------------
+    //         setMachineData(allTransformedData);
+
+    //         // Initialize report numbers with proper remark handling
+    //         setReportNumbers((prevReportNumbers) => {
+    //             const mergedReportNumbers = { ...prevReportNumbers };
+
+    //             allTransformedData.forEach((service) => {
+    //                 if (!mergedReportNumbers[service.id]) {
+    //                     mergedReportNumbers[service.id] = {};
+    //                 }
+
+    //                 if (service.workTypeName === "Quality Assurance Test") {
+    //                     const qaRawWorkType = service.workTypes.find(
+    //                         (wt) => wt.name === "QA Raw"
+    //                     );
+
+    //                     if (qaRawWorkType && qaRawWorkType.backendFields) {
+    //                         const currentQatest = mergedReportNumbers[service.id]?.qatest || {
+    //                             qaTestReportNumber: "N/A",
+    //                             reportULRNumber: "N/A",
+    //                             reportStatus: "pending",
+    //                             reportUrl: undefined,
+    //                             remark: "",
+    //                         };
+
+    //                         const updatedQatest: ReportData = {
+    //                             ...currentQatest,
+    //                             reportStatus:
+    //                                 qaRawWorkType.backendFields.reportStatus ||
+    //                                 currentQatest.reportStatus ||
+    //                                 "pending",
+    //                             qaTestReportNumber:
+    //                                 qaRawWorkType.backendFields.qaTestReportNumber ||
+    //                                 currentQatest.qaTestReportNumber ||
+    //                                 "N/A",
+    //                             reportULRNumber:
+    //                                 qaRawWorkType.backendFields.reportURLNumber ||
+    //                                 currentQatest.reportULRNumber ||
+    //                                 "N/A",
+    //                             remark:
+    //                                 qaRawWorkType.backendFields.verificationRemark ||
+    //                                 currentQatest.remark ||
+    //                                 "",
+    //                         };
+
+    //                         mergedReportNumbers[service.id].qatest = updatedQatest;
+    //                     }
+    //                 }
+
+    //                 // Handle other work types (elora)
+    //                 const otherWorkTypes = service.workTypes.filter(wt =>
+    //                     wt.name !== "QA Raw" && wt.name !== "QA Test"
+    //                 );
+
+    //                 if (otherWorkTypes.length > 0) {
+    //                     const workTypeIdentifier = getWorkTypeIdentifier(service.workTypeName);
+    //                     if (!mergedReportNumbers[service.id][workTypeIdentifier]) {
+    //                         mergedReportNumbers[service.id][workTypeIdentifier] = {
+    //                             qaTestReportNumber: "N/A",
+    //                             reportULRNumber: "N/A",
+    //                             reportStatus: "pending",
+    //                             reportUrl: undefined,
+    //                             remark: "",
+    //                         };
+    //                     }
+    //                 }
+    //             });
+
+    //             saveToLocalStorage(STORAGE_KEYS.reportNumbers, mergedReportNumbers);
+    //             return mergedReportNumbers;
+    //         });
+
+    //         const updatedMachineDataWithAssignments = await fetchExistingAssignments();
+
+    //         // ------------------------
+    //         // Enhanced Report Numbers Fetch with better error handling
+    //         // ------------------------
+    //         const fetchAllReportNumbers = async () => {
+    //             const reportPromises = [];
+
+    //             for (const service of updatedMachineDataWithAssignments) {
+    //                 const workTypeIdentifier = getWorkTypeIdentifier(service.workTypeName);
+    //                 if (!["qatest", "elora"].includes(workTypeIdentifier)) continue;
+
+    //                 let assigneeId: string = "";
+    //                 let targetWorkType;
+
+    //                 if (workTypeIdentifier === "qatest") {
+    //                     targetWorkType = service.workTypes.find(
+    //                         (wt) => wt.name === "QA Raw"
+    //                     );
+    //                     assigneeId = targetWorkType?.assignedTechnicianId ||
+    //                         targetWorkType?.assignedStaffId ||
+    //                         "";
+    //                 } else {
+    //                     targetWorkType = service.workTypes.find((wt) =>
+    //                         wt.name.toLowerCase().includes("elora")
+    //                     ) || service.workTypes[0];
+    //                     assigneeId = targetWorkType?.assignedStaffId || "";
+    //                 }
+
+    //                 if (!assigneeId) {
+    //                     console.log(`No assignee found for service ${service.id}, skipping report fetch`);
+    //                     continue;
+    //                 }
+
+    //                 reportPromises.push(
+    //                     getReportNumbers(
+    //                         orderId,
+    //                         service.id,
+    //                         assigneeId,
+    //                         workTypeIdentifier
+    //                     )
+    //                         .then((response) => {
+    //                             if (response?.data?.reportNumbers?.[workTypeIdentifier]) {
+    //                                 const reportData = response.data.reportNumbers[workTypeIdentifier];
+    //                                 console.log(`📊 Report data for ${service.id}-${workTypeIdentifier}:`, reportData);
+
+    //                                 return { serviceId: service.id, identifier: workTypeIdentifier, reportData };
+    //                             }
+    //                             return null;
+    //                         })
+    //                         .catch((error) => {
+    //                             console.error(
+    //                                 `Error fetching report numbers for ${service.id}:`,
+    //                                 error
+    //                             );
+    //                             return null;
+    //                         })
+    //                 );
+    //             }
+
+    //             // Process all report promises
+    //             const reportResults = await Promise.all(reportPromises);
+
+    //             setReportNumbers((prev) => {
+    //                 const updated = { ...prev };
+
+    //                 reportResults.forEach((result) => {
+    //                     if (!result) return;
+
+    //                     const { serviceId, identifier, reportData } = result;
+    //                     const current = updated[serviceId] || {};
+    //                     const currentReport = current[identifier] || {
+    //                         qaTestReportNumber: "N/A",
+    //                         reportULRNumber: "N/A",
+    //                         reportStatus: "pending",
+    //                         reportUrl: undefined,
+    //                         remark: "",
+    //                     };
+
+    //                     const updatedReport: ReportData = {
+    //                         qaTestReportNumber:
+    //                             reportData.qaTestReportNumber ||
+    //                             currentReport.qaTestReportNumber ||
+    //                             "N/A",
+    //                         reportULRNumber:
+    //                             reportData.reportULRNumber ||
+    //                             currentReport.reportULRNumber ||
+    //                             "N/A",
+    //                         reportStatus:
+    //                             reportData.reportStatus ||
+    //                             currentReport.reportStatus ||
+    //                             "pending",
+    //                         reportUrl:
+    //                             reportData.report ||
+    //                             currentReport.reportUrl,
+    //                         remark:
+    //                             reportData.remark || // Ensure remark is always captured
+    //                             currentReport.remark ||
+    //                             "",
+    //                     };
+
+    //                     if (!updated[serviceId]) {
+    //                         updated[serviceId] = {};
+    //                     }
+    //                     updated[serviceId][identifier] = updatedReport;
+    //                 });
+
+    //                 saveToLocalStorage(STORAGE_KEYS.reportNumbers, updated);
+    //                 console.log("📊 Final report numbers after fetch:", updated);
+    //                 return updated;
+    //             });
+    //         };
+
+    //         await fetchAllReportNumbers();
+
+    //         // Force a refresh of assignments to ensure latest data
+    //         setTimeout(() => {
+    //             fetchExistingAssignments();
+    //         }, 1000);
+
+    //     } catch (err: any) {
+    //         console.error("Error fetching machine data:", err);
+    //         setError(err.message || "Failed to fetch machine data");
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
+    // Initialize assignments from assignedStaffData when it changes
+
 
     const fetchMachineData = async () => {
         if (!orderId) {
@@ -362,7 +683,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setLoading(true);
             setError(null);
             const response = await getMachineDetails(orderId);
-            console.log("🚀 ~ fetchMachineData ~ response:", response);
 
             const machinesArray = Array.isArray(response) ? response : [response];
             if (!machinesArray || machinesArray.length === 0) {
@@ -404,10 +724,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                 });
 
                                 // ✅ Save assigned Technician
-                                staffAssignments[`${cardId}-qa-raw`] = {
-                                    type: "Technician",
-                                    id: workTypeDetail.engineer || null,
-                                };
+                                if (workTypeDetail.engineer) {
+                                    staffAssignments[`${cardId}-qa-raw`] = {
+                                        type: "Technician",
+                                        id: workTypeDetail.engineer,
+                                    };
+                                }
 
                                 // ---- QA Test ----
                                 workTypes.push({
@@ -421,10 +743,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                 });
 
                                 // ✅ Save assigned Office Staff
-                                staffAssignments[`${cardId}-qa-test`] = {
-                                    type: "Office Staff",
-                                    id: workTypeDetail.QAtest?.officeStaff || null,
-                                };
+                                if (workTypeDetail.QAtest?.officeStaff) {
+                                    staffAssignments[`${cardId}-qa-test`] = {
+                                        type: "Office Staff",
+                                        id: workTypeDetail.QAtest?.officeStaff,
+                                    };
+                                }
                             } else {
                                 // ---- Other Work Types ----
                                 const customId = workTypeDetail.workType
@@ -438,14 +762,16 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     reportNumber: "N/A",
                                     urlNumber: "N/A",
                                     serviceId: machineData._id,
-                                    assignedStaffId: workTypeDetail.elora || undefined,
+                                    assignedStaffId: workTypeDetail.elora?.officeStaff?._id || undefined,
                                 });
 
-                                // ✅ Save Elora (or any other office staff)
-                                staffAssignments[`${cardId}-${customId}`] = {
-                                    type: "Elora",
-                                    id: workTypeDetail.elora || null,
-                                };
+                                // ✅ Save Elora (or any other office staff) - FIXED THIS PART
+                                if (workTypeDetail.elora?.officeStaff?._id) {
+                                    staffAssignments[`${cardId}-${customId}`] = {
+                                        type: "Elora",
+                                        id: workTypeDetail.elora.officeStaff._id,
+                                    };
+                                }
                             }
                             return workTypes;
                         };
@@ -464,9 +790,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 allTransformedData.push(...transformedData);
             });
 
-            // ✅ Store the staff assignments in React state
+            // ✅ Store the staff assignments in React state AND localStorage
             setAssignedStaffData(staffAssignments);
-            console.log("✅ Assigned Staff Data:", staffAssignments);
+            // console.log("✅ Assigned Staff Data:", staffAssignments);
+
+            // Save to localStorage immediately
+            saveToLocalStorage(`assignedStaffData_${orderId}`, staffAssignments);
 
             // ------------------------
             // Machine Data + Reports
@@ -573,7 +902,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     }
 
                     if (!assigneeId) {
-                        console.log(`No assignee found for service ${service.id}, skipping report fetch`);
+                        // console.log(`No assignee found for service ${service.id}, skipping report fetch`);
                         continue;
                     }
 
@@ -587,7 +916,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             .then((response) => {
                                 if (response?.data?.reportNumbers?.[workTypeIdentifier]) {
                                     const reportData = response.data.reportNumbers[workTypeIdentifier];
-                                    console.log(`📊 Report data for ${service.id}-${workTypeIdentifier}:`, reportData);
+                                    // console.log(`📊 Report data for ${service.id}-${workTypeIdentifier}:`, reportData);
 
                                     return { serviceId: service.id, identifier: workTypeIdentifier, reportData };
                                 }
@@ -651,7 +980,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     });
 
                     saveToLocalStorage(STORAGE_KEYS.reportNumbers, updated);
-                    console.log("📊 Final report numbers after fetch:", updated);
+                    // console.log("📊 Final report numbers after fetch:", updated);
                     return updated;
                 });
             };
@@ -670,7 +999,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setLoading(false);
         }
     };
-    // Initialize assignments from assignedStaffData when it changes
+
     useEffect(() => {
         if (Object.keys(assignedStaffData).length > 0 && (technicians.length > 0 || officeStaff.length > 0)) {
             const newAssignments: Record<string, any> = {};
@@ -779,6 +1108,33 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     }, [machineData, technicians, loadingDropdowns, assignments]);
 
     // Main initialization useEffect
+    // useEffect(() => {
+    //     const loadedExpandedItems = loadFromLocalStorage(STORAGE_KEYS.expandedItems, [])
+    //     const loadedSelectedStatuses = loadFromLocalStorage(STORAGE_KEYS.selectedStatuses, {})
+    //     const loadedFileNames = loadFromLocalStorage(STORAGE_KEYS.uploadedFileNames, {})
+    //     const loadedReportNumbers = loadFromLocalStorage(STORAGE_KEYS.reportNumbers, {})
+    //     const loadedAssignments = loadFromLocalStorage(STORAGE_KEYS.assignments, {})
+    //     const savedVerificationResponses = loadFromLocalStorage(STORAGE_KEYS.verificationResponses, {})
+
+    //     setExpandedItems(loadedExpandedItems)
+    //     setSelectedStatuses(loadedSelectedStatuses)
+    //     setReportNumbers(loadedReportNumbers)
+    //     setAssignments(loadedAssignments)
+    //     setVerificationResponses(savedVerificationResponses)
+
+    //     const mockFiles: Record<string, File | undefined> = {}
+    //     Object.entries(loadedFileNames).forEach(([key, fileName]) => {
+    //         if (fileName) {
+    //             mockFiles[key] = new File([""], fileName as string, { type: "application/octet-stream" })
+    //         }
+    //     })
+    //     setUploadedFiles(mockFiles)
+
+    //     fetchMachineData()
+    //     fetchDropdownData()
+    // }, [orderId])
+
+    // Main initialization useEffect
     useEffect(() => {
         const loadedExpandedItems = loadFromLocalStorage(STORAGE_KEYS.expandedItems, [])
         const loadedSelectedStatuses = loadFromLocalStorage(STORAGE_KEYS.selectedStatuses, {})
@@ -786,6 +1142,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         const loadedReportNumbers = loadFromLocalStorage(STORAGE_KEYS.reportNumbers, {})
         const loadedAssignments = loadFromLocalStorage(STORAGE_KEYS.assignments, {})
         const savedVerificationResponses = loadFromLocalStorage(STORAGE_KEYS.verificationResponses, {})
+
+        // Load assigned staff data from localStorage
+        const loadedAssignedStaffData = loadFromLocalStorage(`assignedStaffData_${orderId}`, {})
+        setAssignedStaffData(loadedAssignedStaffData)
 
         setExpandedItems(loadedExpandedItems)
         setSelectedStatuses(loadedSelectedStatuses)
@@ -927,7 +1287,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const assignedTechResponse = await getAssignedTechnicianName(orderId, serviceId, workTypeName)
             const { technicianName, status } = assignedTechResponse.data
             const machineUpdatesResponse = await getMachineUpdates(employeeId, orderId, serviceId, workTypeName)
-            console.log("🚀 ~ handleEmployeeAssign ~ machineUpdatesResponse:", machineUpdatesResponse)
+            // console.log("🚀 ~ handleEmployeeAssign ~ machineUpdatesResponse:", machineUpdatesResponse)
             const { updatedService } = machineUpdatesResponse.data
 
             const qaWorkTypeDetail = updatedService.workTypeDetails?.find((wtd: any) => wtd.workType === workTypeName)
@@ -958,10 +1318,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             }))
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
 
-            setMachineData((prevData:any) =>
-                prevData.map((service:any) => ({
+            setMachineData((prevData: any) =>
+                prevData.map((service: any) => ({
                     ...service,
-                    workTypes: service.workTypes.map((wt:any) =>
+                    workTypes: service.workTypes.map((wt: any) =>
                         wt.id === workTypeId
                             ? {
                                 ...wt,
@@ -1002,7 +1362,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 return updated;
             });
 
-            console.log("[v0] Assignment successful:", { technicianName, status, updatedService })
+            // console.log("[v0] Assignment successful:", { technicianName, status, updatedService })
         } catch (error: any) {
             console.error("[v0] Assignment failed:", error)
             showMessage(`Failed to assign technician: ${error.message}`, 'error')
@@ -1101,7 +1461,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const newStatuses = { ...selectedStatuses, [workTypeId]: status }
             saveToLocalStorage(STORAGE_KEYS.selectedStatuses, newStatuses)
 
-            console.log("[v0] Staff assignment successful:", { staffId, status, workTypeName })
+            // console.log("[v0] Staff assignment successful:", { staffId, status, workTypeName })
         } catch (error: any) {
             console.error("[v0] Staff assignment failed:", error)
             showMessage(`Failed to assign staff: ${error.message}`, 'error')
@@ -1220,7 +1580,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setSelectedStatuses((prev) => ({ ...prev, [workTypeId]: newStatus }))
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
             saveToLocalStorage(STORAGE_KEYS.selectedStatuses, { ...selectedStatuses, [workTypeId]: newStatus })
-            console.log("[v0] Status update successful:", { newStatus, workTypeName })
+            // console.log("[v0] Status update successful:", { newStatus, workTypeName })
         } catch (error: any) {
             console.error("[v0] Status update failed:", error)
             showModal('Error', `Failed to update status: ${error.message}`);

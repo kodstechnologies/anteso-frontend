@@ -19,7 +19,7 @@ const AdditionalServices = () => {
         const fetchData = async () => {
             try {
                 const data = await getAdditionalServicesByOrderId(orderId);
-                console.log("🚀 ~ fetchData ~ data:", data);
+                // console.log("🚀 ~ fetchData ~ data:", data);
 
                 const servicesWithState = (data.additionalServices || []).map((s: any) => ({
                     ...s,

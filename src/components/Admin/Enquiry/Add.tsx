@@ -148,7 +148,7 @@ const AddEnquiry: React.FC = () => {
         const fetchStates = async () => {
             try {
                 const res = await getAllStates();
-                console.log("🚀 ~ fetchStates ~ res:", res.data.data)
+                // console.log("🚀 ~ fetchStates ~ res:", res.data.data)
                 setStates(res.data.data); // backend response shape (adjust key if needed)
             } catch (error) {
                 console.error("Failed to fetch states:", error);

@@ -17,7 +17,7 @@ const Add = () => {
     const fetchOrders = async () => {
       try {
         const res = await allOrdersWithClient();
-        console.log("🚀 ~ fetchOrders ~ res:", res)
+        // console.log("🚀 ~ fetchOrders ~ res:", res)
         // const options = res.data.orders.map((order: any) => ({
         //   value: order._id, // <-- pass ObjectId here
         //   label: `${order.srfNumber} - ${order.hospitalName}`, // <-- show SRF & client
@@ -103,7 +103,7 @@ const Add = () => {
           // 🔑 Auto-update paymentType when amount/client changes
           useEffect(() => {
             const checkPaymentType = async () => {
-              console.log("🚀 ~ checkPaymentType ~ values.srfClient:", values.srfClient)
+              // console.log("🚀 ~ checkPaymentType ~ values.srfClient:", values.srfClient)
               if (!values.srfClient || !values.paymentAmount || !values.totalAmount) return;
 
               let paymentType = values.paymentType;

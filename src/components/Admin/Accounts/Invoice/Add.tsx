@@ -299,7 +299,7 @@ const Add = () => {
 
         // Fetch customer orders
         const customerRes = await getAllSrfNumber();
-        console.log("🚀 ~ fetchSrfNumbers ~ customerRes:", customerRes);
+        // console.log("🚀 ~ fetchSrfNumbers ~ customerRes:", customerRes);
         if (customerRes?.data?.success) {
           const customerOptions = customerRes.data.data.map((item: any) => ({
             label: `${item.srfNumber} - ${item.name} (Customer)`,
@@ -313,7 +313,7 @@ const Add = () => {
 
         // Fetch dealer orders
         const dealerRes = await getDealerOrders();
-        console.log("🚀 ~ fetchSrfNumbers ~ dealerRes:", dealerRes);
+        // console.log("🚀 ~ fetchSrfNumbers ~ dealerRes:", dealerRes);
         if (dealerRes?.success) {
           const dealerOptions = dealerRes.data.map((item: any) => ({
             label: `${item.srfNumber} (Dealer)`,
@@ -473,7 +473,7 @@ const Add = () => {
                     if (selectedOrderId) {
                       try {
                         const res = await getAllDetails(selectedOrderId);
-                        console.log("🚀 ~ SRF Number onChange ~ res:", res);
+                        // console.log("🚀 ~ SRF Number onChange ~ res:", res);
                         if (res?.success && res.data) {
                           const details = res.data;
                           setFieldValue('buyerName', details.hospitalName || details.dealerName || '');

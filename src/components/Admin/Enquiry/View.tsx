@@ -62,13 +62,13 @@ const employeeOptions: OptionType[] = [
 ]
 const View = () => {
     const { id } = useParams<{ id: string }>() // Use useParams from react-router-dom
-    console.log("🚀 ~ View ~ id:", id)
+    // console.log("🚀 ~ View ~ id:", id)
     const [details, setDetails] = useState<HospitalDetails | null>(null)
     useEffect(() => {
         const fetchDetails = async () => {
             try {
                 const response = await getEnquiryDetailsById(id)
-                console.log("🚀 ~ fetchDetails ~ response:", response)
+                // console.log("🚀 ~ fetchDetails ~ response:", response)
                 // FIX: Set the state with the 'response' directly, as getEnquiryDetailsById already returns the data object.
                 setDetails(response)
             } catch (error) {

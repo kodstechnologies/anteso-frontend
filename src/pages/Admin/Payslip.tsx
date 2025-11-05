@@ -100,7 +100,7 @@ const PayslipPrint = () => {
     }
 `}</style>
 
-                
+
             <div className="w-full min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-[15%] py-4">
                 <div className="w-full bg-white text-xs sm:text-sm print-container">
                     <div className="max-w-[794px] mx-auto border-2 border-gray-800 p-6 shadow-lg">
@@ -151,6 +151,7 @@ const PayslipPrint = () => {
                         </div>
 
                         {/* Salary Breakdown Table */}
+                        {/* Salary Breakdown Table */}
                         <div className="mb-6">
                             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-300 pb-1">
                                 Salary Breakdown
@@ -158,30 +159,41 @@ const PayslipPrint = () => {
                             <table className="w-full border-collapse border border-gray-300 text-xs sm:text-sm">
                                 <thead>
                                     <tr className="bg-gray-100">
-                                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Particulars</th>
-                                        <th className="border border-gray-300 px-3 py-2 text-right font-semibold">Amount</th>
+                                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold">
+                                            Particulars
+                                        </th>
+                                        <th className="border border-gray-300 px-3 py-2 text-right font-semibold">
+                                            Amount
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr className="border-b border-gray-300">
                                         <td className="border border-gray-300 px-3 py-2">Basic Salary</td>
-                                        <td className="border border-gray-300 px-3 py-2 text-right font-semibold">{format(salary.basicSalary)}</td>
+                                        <td className="border border-gray-300 px-3 py-2 text-right font-semibold">
+                                            {format(salary.basicSalary)}
+                                        </td>
                                     </tr>
 
-                                    {/* Only show Incentive if > 0 */}
-                                    {salary.incentive > 0 && (
+                                    {/* ✅ Show Incentive only if it’s greater than 0 */}
+                                    {salary.incentive && salary.incentive > 0 ? (
                                         <tr className="border-b border-gray-300">
                                             <td className="border border-gray-300 px-3 py-2">Incentive</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-right">{format(salary.incentive)}</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-right">
+                                                {format(salary.incentive)}
+                                            </td>
                                         </tr>
-                                    )}
+                                    ) : null}
 
-                                    {salary.leaveWithoutPayDays && salary.leaveWithoutPayDays > 0 && (
+                                    {/* ✅ Show Leave Without Pay Days only if present and > 0 */}
+                                    {salary.leaveWithoutPayDays && salary.leaveWithoutPayDays > 0 ? (
                                         <tr className="border-b border-gray-300">
                                             <td className="border border-gray-300 px-3 py-2">Leave Without Pay Days</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-right">({salary.leaveWithoutPayDays} days)</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-right">
+                                                ({salary.leaveWithoutPayDays} days)
+                                            </td>
                                         </tr>
-                                    )}
+                                    ) : null}
 
                                     <tr className="border-b border-gray-300">
                                         <td className="border border-gray-300 px-3 py-2">Leave Deduction</td>
@@ -192,11 +204,14 @@ const PayslipPrint = () => {
 
                                     <tr className="border-2 border-gray-800 bg-gray-50">
                                         <td className="border border-gray-800 px-3 py-2 font-bold">Net Total Salary</td>
-                                        <td className="border border-gray-800 px-3 py-2 text-right font-bold text-lg">{format(salary.totalSalary)}</td>
+                                        <td className="border border-gray-800 px-3 py-2 text-right font-bold text-lg">
+                                            {format(salary.totalSalary)}
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
+
 
                         {/* Company Details Footer */}
                         <div className="border-t-2 border-gray-800 pt-4 text-center text-xs text-gray-600">
