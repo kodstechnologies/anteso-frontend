@@ -1135,7 +1135,7 @@ export const getByToolId = async (id: any) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-        console.log("🚀 ~ getToolById ~ res.data:", res)
+        // console.log("🚀 ~ getToolById ~ res.data:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ get tools by id ~ error:", error);

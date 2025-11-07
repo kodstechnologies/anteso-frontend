@@ -20,9 +20,13 @@ const Standards: React.FC<StandardsProps> = ({ standards }) => {
               <th className="border px-3 py-2">Make</th>
               <th className="border px-3 py-2">Model</th>
               <th className="border px-3 py-2">Range</th>
+              <th className="border px-3 py-2">Serial Number</th>
+
               <th className="border px-3 py-2">Certificate</th>
               <th className="border px-3 py-2">Calibration Cert No</th>
               <th className="border px-3 py-2">Calibration Valid Till</th>
+              <th className="border px-3 py-2">Uncertainity</th>
+
             </tr>
           </thead>
           <tbody>
@@ -33,11 +37,15 @@ const Standards: React.FC<StandardsProps> = ({ standards }) => {
                 <td className="border px-3 py-2">{item.make}</td>
                 <td className="border px-3 py-2">{item.model}</td>
                 <td className="border px-3 py-2">{item.range}</td>
+                <td className="border px-3 py-2">{item.SrNo}</td>
+
                 <td className="border px-3 py-2">{item.certificate}</td>
                 <td className="border px-3 py-2">
                   {item.calibrationCertificateNo}
                 </td>
                 <td className="border px-3 py-2">{item.calibrationValidTill}</td>
+                <td className="border px-3 py-2">{item.uncertainity}</td>
+
               </tr>
             ))}
           </tbody>

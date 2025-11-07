@@ -17,7 +17,7 @@ const AccuracyOfOperatingPotential: React.FC = () => {
             measuredValues: ['', '', ''],
             averageKvp: '',
             remarks: '',
-        },
+        }, 
     ]);
 
     // **NEW** – array of column header names (one per measured column)
