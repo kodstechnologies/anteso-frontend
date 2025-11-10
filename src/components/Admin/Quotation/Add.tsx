@@ -337,7 +337,7 @@ const ItemsTable: React.FC<{
                             `}
                         />
                     </td>
-                    <td className="text-[.7rem] text-right">
+                    <td className="text-[.7rem] ">
                         <input
                             value={item.price || ""}
                             onChange={(e) => onItemChange(i, "price", e.target.value)}
