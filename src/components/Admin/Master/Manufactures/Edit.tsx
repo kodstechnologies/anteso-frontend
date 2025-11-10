@@ -535,17 +535,7 @@ const EditManufacture = () => {
                                     )}
                                 </div>
 
-                                <div className={submitCount && errors.travel && touched.travel ? "has-error" : ""}>
-                                    <label>Travel Cost Type *</label>
-                                    <Field as="select" name="travel" className="form-input">
-                                        <option value="">Select</option>
-                                        <option value="actual">Actual Cost</option>
-                                        <option value="fixed">Fixed Cost</option>
-                                    </Field>
-                                    {errors.travel && touched.travel && typeof errors.travel === "string" && (
-                                        <div className="text-danger mt-1">{errors.travel}</div>
-                                    )}
-                                </div>
+                            
                             </div>
                         </div>
 
