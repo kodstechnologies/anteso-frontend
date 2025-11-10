@@ -747,14 +747,7 @@ const routes = [
             </AdminProtected>
         ),
     },
-    {
-        path: '/admin/orders/view-service-report',
-        element: (
-            <AdminProtected>
-                <GenerateReport />
-            </AdminProtected>
-        ),
-    },
+ 
     {
         path: '/admin/payments',
         element: (

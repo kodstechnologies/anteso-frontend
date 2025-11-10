@@ -19,7 +19,7 @@ const AdditionalServices = () => {
         const fetchData = async () => {
             try {
                 const data = await getAdditionalServicesByOrderId(orderId);
-                // console.log("🚀 ~ fetchData ~ data:", data);
+                console.log("🚀 ~ fetchData ~ data:", data);
 
                 const servicesWithState = (data.additionalServices || []).map((s: any) => ({
                     ...s,
@@ -253,6 +253,33 @@ const AdditionalServices = () => {
                                             <FileText className="h-4 w-4" />
                                             View Uploaded Report
                                         </a>
+                                    )}
+                                    {/* Updated By Info */}
+                                    {service.updatedBy && (
+                                        <div className="mt-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-2">
+                                            {service.updatedBy.name ? (
+                                                <>
+                                                    <p className="font-medium text-gray-700">
+                                                        Updated By:{" "}
+                                                        <span className="text-blue-700 font-semibold">
+                                                            {service.updatedBy.name}
+                                                        </span>
+                                                    </p>
+                                                    {service.updatedBy.email && (
+                                                        <p className="text-gray-500">{service.updatedBy.email}</p>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                service.updatedBy.email && (
+                                                    <p className="font-medium text-gray-700">
+                                                        Updated By:{" "}
+                                                        <span className="text-blue-700 font-semibold">
+                                                            {service.updatedBy.email}
+                                                        </span>
+                                                    </p>
+                                                )
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             ))}

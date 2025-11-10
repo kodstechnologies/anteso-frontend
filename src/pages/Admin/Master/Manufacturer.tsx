@@ -11,8 +11,8 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { getAllManufacturer, deleteManufacturer } from '../../../api'; // ✅ Import deleteManufacturer
-import ConfirmModal from '../../../components//common/ConfirmModal'; // ✅ Import ConfirmModal (adjust path as needed)
+import { getAllManufacturer, deleteManufacturer } from '../../../api';
+import ConfirmModal from '../../../components//common/ConfirmModal'; 
 
 const Manufacturers = () => {
     const dispatch = useDispatch();
@@ -29,8 +29,8 @@ const Manufacturers = () => {
         columnAccessor: 'manufactureName',
         direction: 'asc',
     });
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); // ✅ State for modal
-    const [recordToDelete, setRecordToDelete] = useState<any>(null); // ✅ State for record to delete
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); 
+    const [recordToDelete, setRecordToDelete] = useState<any>(null);
 
     // Set page title
     useEffect(() => {
@@ -47,6 +47,7 @@ const Manufacturers = () => {
                     ...item,
                     manufacturersID: `MANU${String(index + 1).padStart(3, '0')}`,
                 }));
+                console.log("🚀 ~ fetchManufacturers ~ mappedItems:", mappedItems)
                 setItems(mappedItems);
                 setInitialRecords(sortBy(mappedItems, 'manufactureName'));
             } catch (error) {
@@ -171,9 +172,9 @@ const Manufacturers = () => {
                             records={records}
                             columns={[
                                 { accessor: 'manufacturersID', title: 'MANU ID', sortable: true },
-                                { accessor: 'manufactureName', title: 'Name', sortable: true }, // Updated accessor to match data
+                                { accessor: 'name', title: 'Name', sortable: true }, // Updated accessor to match data
                                 { accessor: 'contactPersonName', title: 'Contact Person', sortable: true },
-                                { accessor: 'pinCode', title: 'Pincode', sortable: true }, // Updated to pinCode
+                                { accessor: 'pincode', title: 'Pincode', sortable: true }, // Updated to pinCode
                                 { accessor: 'branch', title: 'Branch', sortable: true },
                                 {
                                     accessor: 'mouValidity',

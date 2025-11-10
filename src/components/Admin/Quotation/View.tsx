@@ -40,6 +40,7 @@ interface QuotationData {
             machineModel: string
             _id: string
             totalAmount?: number
+            quantity: any
         }>
         // additionalServices: Record<string, string>
         additionalServices: AdditionalServiceData[];
@@ -80,6 +81,7 @@ interface Service {
     machineModel: string
     _id: string
     totalAmount?: number
+    quantity: any
 }
 
 
@@ -312,7 +314,7 @@ const ViewQuotation: React.FC = () => {
             id: index + 1,
             title: service.machineType,
             description: service.workTypeDetails?.map((w: any) => w.workType).join(" + ") || "",
-            quantity: "1",
+            quantity: service.quantity?.toString() ?? "1",
             price: formatNumber(service.totalAmount ?? 0),
             amount: formatNumber(service.totalAmount ?? 0),
         })) || []
@@ -355,10 +357,10 @@ const ViewQuotation: React.FC = () => {
         })) || []
 
     const acolumns = [
-        {
-            key: "type",
-            label: "A",
-        },
+        // {
+        //     key: "type",
+        //     label: "A",
+        // },
         {
             key: "id",
             label: "S.NO",
@@ -369,7 +371,7 @@ const ViewQuotation: React.FC = () => {
         },
         {
             key: "description", // Changed from services
-            label: "DESCRIPTION OF SERVICES",
+            label: "DESCRIPTION",
         },
         {
             key: "quantity",
@@ -388,10 +390,10 @@ const ViewQuotation: React.FC = () => {
         },
     ]
     const bcolumns = [
-        {
-            key: "type",
-            label: "B",
-        },
+        // {
+        //     key: "type",
+        //     label: "B",
+        // },
         {
             key: "id",
             label: "S.NO",
@@ -402,7 +404,7 @@ const ViewQuotation: React.FC = () => {
         },
         {
             key: "description", // Changed from services
-            label: "Description",
+            label: "DESCRIPTION",
         },
         // {
         //     // key: "quantity",
@@ -577,7 +579,7 @@ const ViewQuotation: React.FC = () => {
                                 <tbody className="">
                                     {aitems.map((item) => (
                                         <tr key={item.id} className="">
-                                            <td className="px-2 py-1 text-[.6rem]">{item.type}</td>
+                                            {/* <td className="px-2 py-1 text-[.6rem]">{item.type}</td> */}
                                             <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
                                             <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
                                             <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
@@ -607,7 +609,7 @@ const ViewQuotation: React.FC = () => {
                                 <tbody>
                                     {bitems.map((item) => (
                                         <tr key={item.id}>
-                                            <td className="px-2 py-1 text-[.6rem]">{item.type}</td>
+                                            {/* <td className="px-2 py-1 text-[.6rem]">{item.type}</td> */}
                                             <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
                                             <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
                                             <td className="px-2 py-1 text-[.6rem]">{item.description}</td>

@@ -11,7 +11,7 @@ import type { BreadcrumbItem } from "../../common/Breadcrumb"
 import IconHome from "../../Icon/IconHome"
 import IconBox from "../../Icon/IconBox"
 import IconBook from "../../Icon/IconBook"
-import { allEmployees, createOrder, getAllDealers, getAllStates } from "../../../api"
+import { allEmployees, createOrder, getAllDealers, getAllEmployees, getAllManufacturer, getAllStates } from "../../../api"
 import AnimatedTrashIcon from "../../common/AnimatedTrashIcon"
 
 interface OptionType {
@@ -29,6 +29,7 @@ interface Service {
     equipmentNo: string
     workType: string[]
     machineModel: string
+    quantity: any
 }
 
 interface FormValues {
@@ -165,24 +166,35 @@ const CreateOrder: React.FC = () => {
     const [loading, setLoading] = useState(true)
     const [dealers, setDealers] = useState<any[]>([])   // store dealers here
     const [states, setStates] = useState<StateType[]>([]);
+    const [manufacturer, setManufacturers] = useState<any[]>([]);
+
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [empData, dealerResponse] = await Promise.all([
-                    allEmployees(),
-                    getAllDealers()
+                const [empResponse, dealerResponse, manufacturerResponse] = await Promise.all([
+                    getAllEmployees(), // ✅ replaced here
+                    getAllDealers(),
+                    getAllManufacturer()
                 ]);
 
-                setEmployees(empData || []);
+                // ✅ Employee list
+                setEmployees(empResponse.data || []);
 
-                // Access dealer array properly
+                // ✅ Dealer list (safe check)
                 const dealerList = Array.isArray(dealerResponse.data.dealers)
                     ? dealerResponse.data.dealers
                     : [];
 
                 setDealers(dealerList);
+                const manufacturerList =
+                    Array.isArray(manufacturerResponse?.data?.data)
+                        ? manufacturerResponse.data.data
+                        : Array.isArray(manufacturerResponse?.data)
+                            ? manufacturerResponse.data
+                            : [];
 
-                // console.log("🚀 ~ fetchData ~ dealerList:", dealerList);
+                setManufacturers(manufacturerList);
+
             } catch (error) {
                 console.error("Error fetching employees or dealers:", error);
             } finally {
@@ -192,6 +204,7 @@ const CreateOrder: React.FC = () => {
 
         fetchData();
     }, []);
+
     useEffect(() => {
         const fetchStates = async () => {
             try {
@@ -231,19 +244,15 @@ const CreateOrder: React.FC = () => {
                     equipmentNo: Yup.string(),
                     workType: Yup.array().min(1, "At least one work type is required"),
                     machineModel: Yup.string(),
+                    quantity: Yup.number()               // ← NEW
+                        .typeError("Must be a number")
+                        .positive("Must be greater than 0")
+                        .integer("Must be a whole number")
+                        .required("Quantity is required"),
                 })
             )
             .min(1, "At least one service is required"),
-        // .test(
-        //     "unique-machineType",
-        //     "Each Machine Type must be unique",
-        //     (services) => {
-        //         if (!services) return true;
-        //         const machineTypes = services.map(s => s.machineType);
-        //         const uniqueTypes = new Set(machineTypes);
-        //         return uniqueTypes.size === machineTypes.length;
-        //     }
-        // ),
+
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
                 return { ...schema, [service]: Yup.string().nullable() }
@@ -259,138 +268,65 @@ const CreateOrder: React.FC = () => {
             .required('Urgency is required')
     })
 
-    // const submitForm = async (values: FormValues) => {
-    //     setIsSubmitting(true)
-    //     try {
-    //         const enquiryCount = 1
-    //         const newEnquiryID = `ENQ${String(enquiryCount).padStart(3, "0")}`
-    //         const submissionValues = { ...values, enquiryID: newEnquiryID }
-    //         console.log("Form submitted with values:", submissionValues)
-    //         const response = await createOrder(submissionValues)
-    //         console.log("Order created successfully:", response)
-    //         showMessage("Order created successfully", "success")
-    //         navigate("/admin/orders")
-    //     } catch (error: any) {
-    //         console.error("Error creating order:", error)
-    //         showMessage(error.message || "Failed to create order", "error")
-    //     } finally {
-    //         setIsSubmitting(false)
-    //     }
-    // }
 
-    // const submitForm = async (values: FormValues) => {
-    //     setIsSubmitting(true);
-    //     try {
-    //         const enquiryCount = 1;
-    //         const newEnquiryID = `ENQ${String(enquiryCount).padStart(3, "0")}`;
-
-    //         // Construct FormData for multipart/form-data
-    //         const formData = new FormData();
-
-    //         // Append all basic text fields
-    //         formData.append("leadOwner", values.leadOwner);
-    //         formData.append("hospitalName", values.hospitalName);
-    //         formData.append("fullAddress", values.fullAddress);
-    //         formData.append("city", values.city);
-    //         formData.append("district", values.district || "");
-    //         formData.append("state", values.state);
-    //         formData.append("pinCode", values.pinCode);
-    //         formData.append("branchName", values.branchName || "");
-    //         formData.append("contactPersonName", values.contactPersonName);
-    //         formData.append("emailAddress", values.emailAddress);
-    //         formData.append("contactNumber", values.contactNumber);
-    //         formData.append("designation", values.designation);
-    //         formData.append("urgency", values.urgency);
-    //         formData.append("partyCodeOrSysId", values.partyCodeOrSysId);
-    //         formData.append("procNoOrPoNo", values.procNoOrPoNo);
-    //         formData.append("procExpiryDate", values.procExpiryDate);
-    //         formData.append("instruction", values.instruction || "");
-    //         formData.append("enquiryID", newEnquiryID);
-
-    //         // Append file if uploaded
-    //         const fileInput = document.getElementById("workOrderCopy") as HTMLInputElement;
-    //         if (fileInput && fileInput.files && fileInput.files.length > 0) {
-    //             formData.append("workOrderCopy", fileInput.files[0]);
-    //         }
-
-    //         // Append services (convert array to JSON)
-    //         formData.append("services", JSON.stringify(values.services));
-
-    //         // Append additional services
-    //         formData.append("additionalServices", JSON.stringify(values.additionalServices));
-
-    //         // ✅ Call API
-    //         const response = await createOrder(formData);
-    //         console.log("Order created successfully:", response);
-    //         showMessage("Order created successfully", "success");
-    //         navigate("/admin/orders");
-    //     } catch (error: any) {
-    //         console.error("Error creating order:", error);
-    //         showMessage(error.message || "Failed to create order", "error");
-    //     } finally {
-    //         setIsSubmitting(false);
-    //     }
-    // };
 
 
     const submitForm = async (values: FormValues) => {
         setIsSubmitting(true);
         try {
-            const enquiryCount = 1;
-            const newEnquiryID = `ENQ${String(enquiryCount).padStart(3, "0")}`;
+            const newEnquiryID = `ENQ${String(1).padStart(3, "0")}`;
 
-            // Construct FormData for multipart/form-data
             const formData = new FormData();
 
-            // Append all basic text fields
-            formData.append("leadOwner", values.leadOwner);
-            formData.append("hospitalName", values.hospitalName);
-            formData.append("fullAddress", values.fullAddress);
-            formData.append("city", values.city);
-            formData.append("district", values.district || "");
-            formData.append("state", values.state);
-            formData.append("pinCode", values.pinCode);
-            formData.append("branchName", values.branchName || "");
-            formData.append("contactPersonName", values.contactPersonName);
-            formData.append("emailAddress", values.emailAddress);
-            formData.append("contactNumber", values.contactNumber);
-            formData.append("designation", values.designation);
-            formData.append("urgency", values.urgency);
-            formData.append("partyCodeOrSysId", values.partyCodeOrSysId);
-            formData.append("procNoOrPoNo", values.procNoOrPoNo);
-            formData.append("procExpiryDate", values.procExpiryDate);
-            formData.append("instruction", values.instruction || "");
-            formData.append("enquiryID", newEnquiryID);
+            // ── BASIC FIELDS ───────────────────────────────────────
+            const basic = {
+                leadOwner: values.leadOwner,
+                hospitalName: values.hospitalName,
+                fullAddress: values.fullAddress,
+                city: values.city,
+                district: values.district || "",
+                state: values.state,
+                pinCode: values.pinCode,
+                branchName: values.branchName || "",
+                contactPersonName: values.contactPersonName,
+                emailAddress: values.emailAddress,
+                contactNumber: values.contactNumber,
+                designation: values.designation,
+                urgency: values.urgency,
+                partyCodeOrSysId: values.partyCodeOrSysId,
+                procNoOrPoNo: values.procNoOrPoNo,
+                procExpiryDate: values.procExpiryDate,
+                specialInstructions: values.instruction || "",
+                enquiryID: newEnquiryID,
+            };
+            Object.entries(basic).forEach(([k, v]) => formData.append(k, v as any));
 
-            // Append file if uploaded
             const fileInput = document.getElementById("workOrderCopy") as HTMLInputElement;
-            if (fileInput && fileInput.files && fileInput.files.length > 0) {
-                formData.append("workOrderCopy", fileInput.files[0]);
-            }
+            if (fileInput?.files?.[0]) formData.append("workOrderCopy", fileInput.files[0]);
 
-            // Append services (convert array to JSON)
             formData.append("services", JSON.stringify(values.services));
 
-            // Transform additionalServices object to array of objects for backend
-            let parsedAdditional = [];
+    
+            const additional: { name: string; description: string; totalAmount: number }[] = [];
             for (const [name, description] of Object.entries(values.additionalServices || {})) {
-                if (description && description.trim() !== '') {
-                    parsedAdditional.push({
+                if (description !== undefined) {  // ← CHANGED: allow empty string
+                    additional.push({
                         name,
-                        description,
-                        totalAmount: 0, // Default to 0, or calculate if needed
+                        description: description || "",  // ensure string
+                        totalAmount: 0
                     });
                 }
             }
-            formData.append("additionalServices", JSON.stringify(parsedAdditional));
+            formData.append("additionalServices", JSON.stringify(additional));
 
-            // ✅ Call API
+            // ── SPECIAL INSTRUCTION (already in basic) ───────────────
+            // (nothing else to do)
+
+            // ── CALL API ───────────────────────────────────────────
             const response = await createOrder(formData);
-            console.log("Order created successfully:", response);
             showMessage("Order created successfully", "success");
             navigate("/admin/orders");
         } catch (error: any) {
-            console.error("Error creating order:", error);
             showMessage(error.message || "Failed to create order", "error");
         } finally {
             setIsSubmitting(false);
@@ -440,7 +376,7 @@ const CreateOrder: React.FC = () => {
                     designation: "",
                     workOrderCopy: null,
                     urgency: "",
-                    services: [{ machineType: "", equipmentNo: "", workType: [], machineModel: "" }],
+                    services: [{ machineType: "", equipmentNo: "", workType: [], machineModel: "", quantity: "" }],
                     additionalServices: serviceOptions.reduce(
                         (acc, service) => {
                             acc[service] = undefined
@@ -478,6 +414,11 @@ const CreateOrder: React.FC = () => {
                                                 {dealers.map((dealer) => (
                                                     <option key={dealer._id} value={dealer._id}>
                                                         {dealer.name} - Dealer
+                                                    </option>
+                                                ))}
+                                                {manufacturer.map((m) => (
+                                                    <option key={m._id} value={m._id}>
+                                                        {m.name} - Manufacturer
                                                     </option>
                                                 ))}
 
@@ -728,6 +669,7 @@ const CreateOrder: React.FC = () => {
                                     <>
                                         {values.services.map((_, index) => (
                                             <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end">
+                                                {/* Machine Type */}
                                                 <div className="md:col-span-4">
                                                     <label className="text-sm font-semibold text-gray-700">Machine Type</label>
                                                     <Field as="select" name={`services.${index}.machineType`} className="form-select w-full">
@@ -746,12 +688,31 @@ const CreateOrder: React.FC = () => {
                                                         />
                                                     </div>
                                                 </div>
+                                                {/* Quantity */}
+                                                <div className="md:col-span-2">
+                                                    <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                                                    <Field
+                                                        type="number"
+                                                        name={`services.${index}.quantity`}
+                                                        placeholder="Qty"
+                                                        min="1"
+                                                        className="form-input w-full"
+                                                    />
+                                                    <div className="h-4">
+                                                        <ErrorMessage
+                                                            name={`services.${index}.quantity`}
+                                                            component="div"
+                                                            className="text-red-500 text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {/* equipment/document No. */}
                                                 <div className="md:col-span-2">
                                                     <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
                                                     <Field
                                                         type="text"
                                                         name={`services.${index}.equipmentNo`}
-                                                        placeholder="Enter Equipment ID/Serial No"
+                                                        placeholder="Enter Equipment ID/Serial No."
                                                         className="form-input w-full"
                                                     />
                                                     <div className="h-4">
@@ -762,6 +723,7 @@ const CreateOrder: React.FC = () => {
                                                         />
                                                     </div>
                                                 </div>
+                                                {/* Work Type */}
                                                 <div className="md:col-span-4">
                                                     <label className="text-sm font-semibold text-gray-700">Type Of Work</label>
                                                     <MultiSelectField name={`services.${index}.workType`} options={workTypeOptions} />
@@ -782,6 +744,7 @@ const CreateOrder: React.FC = () => {
                                                         />
                                                     </div>
                                                 </div>
+                                                {/* Remove Button */}
                                                 {values.services.length > 1 && (
                                                     <div className="md:col-span-12 flex justify-end">
                                                         <AnimatedTrashIcon onClick={() => remove(index)} />
@@ -792,9 +755,10 @@ const CreateOrder: React.FC = () => {
                                         {errors.services && typeof errors.services === 'string' && (
                                             <div className="text-red-500 text-sm">{errors.services}</div>
                                         )}
+                                        {/* Add Another Machine */}
                                         <button
                                             type="button"
-                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "" })}
+                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "", quantity: "" })}
                                             className="btn btn-primary w-full sm:w-auto"
                                         >
                                             + Add Another Machine

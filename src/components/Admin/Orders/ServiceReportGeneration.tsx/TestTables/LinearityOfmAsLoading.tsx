@@ -190,7 +190,7 @@ const LinearityOfmAsLoading: React.FC = () => {
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <h2 className="text-2xl font-bold mb-6">Linearity of mAs</h2>
+      <h2 className="text-2xl font-bold mb-6">Linearity of mAs Loading</h2>
 
       {/* ==================== Table 1: FCD & kV Only ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
@@ -262,7 +262,6 @@ const LinearityOfmAsLoading: React.FC = () => {
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
                 mAs Applied
               </th>
-
               <th
                 colSpan={measHeaders.length}
                 className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"

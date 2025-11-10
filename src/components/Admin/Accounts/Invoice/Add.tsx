@@ -17,6 +17,7 @@ interface ServiceItem {
   quantity?: number;
   rate?: number;
   hsnno?: string;
+
 }
 
 interface AdditionalService {
@@ -501,13 +502,17 @@ const Add = () => {
 
                           if (values.type === 'Customer') {
                             if (details.services?.length) {
-                              const mappedServices: ServiceItem[] = details.services.map((s: any) => ({
-                                machineType: s.machineType || '',
-                                description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
-                                quantity: 1,
-                                rate: s.totalAmount || 0,  // Use totalAmount directly
-                                hsnno: s.machineModel || '',
-                              }));
+                              const mappedServices: ServiceItem[] = details.services.map((s: any) => {
+                                const qty = s.quantity || 1;
+                                const total = s.totalAmount || 0;
+                                return {
+                                  machineType: s.machineType || '',
+                                  description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
+                                  quantity: qty,
+                                  rate: qty > 0 ? total / qty : 0, // Rate per unit
+                                  hsnno: s.machineModel || '',
+                                };
+                              });
                               setFieldValue('services', mappedServices);
                             } else {
                               setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, hsnno: '' }]);
@@ -524,13 +529,14 @@ const Add = () => {
                               setFieldValue('additionalServices', []);
                             }
                             setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, services: [], additionalServices: [] }]);
-                          } else if (values.type === 'Dealer/Manufacturer') {
+                          }
+                          else if (values.type === 'Dealer/Manufacturer') {
                             let mainSubtotal = (details.quotation?.subtotal || 0) - (details.advanceAmount || 0);
                             const mappedServices: ServiceItem[] = details.services?.length
                               ? details.services.map((s: any) => ({
                                 machineType: s.machineType || '',
                                 description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
-                                quantity: 1,
+                               quantity: s.quantity || 1,
                                 rate: s.totalAmount || 0,  // Use totalAmount directly
                                 hsnno: s.machineModel || '',
                               }))

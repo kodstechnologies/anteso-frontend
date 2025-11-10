@@ -86,12 +86,12 @@ const Tools = () => {
             try {
                 const response = await AllTools();
                 const tools = response.data?.tools || [];
-       
+
                 const toolsWithEngineers = await Promise.all(
-                    tools.map(async (tool:any) => {
+                    tools.map(async (tool: any) => {
                         try {
                             const engineerData = await getEngineerByToolId(tool._id);
-                           
+
                             return { ...tool, engineerName: engineerData.engineer.name || '—' };
                         } catch (err) {
                             console.error('Failed to fetch engineer for tool:', tool._id, err);
@@ -176,6 +176,7 @@ const Tools = () => {
                             className="whitespace-nowrap table-hover invoice-table"
                             records={records}
                             columns={[
+                                { accessor: 'toolId', sortable: true },
                                 { accessor: 'SrNo', sortable: true },
                                 { accessor: 'nomenclature', sortable: true },
                                 { accessor: 'engineerName', sortable: true },
@@ -198,7 +199,7 @@ const Tools = () => {
                                     render: ({ calibrationValidTill }) => dayjs(calibrationValidTill).format('DD-MM-YYYY'),
                                 },
                                 { accessor: 'range', sortable: true },
-                                { accessor: 'toolId', sortable: true },
+
 
                                 // ✅ New Created By column
                                 {

@@ -31,6 +31,7 @@ interface Service {
     equipmentNo: string
     workType: string[]
     machineModel: string
+    quantity: any
 }
 
 interface FormValues {
@@ -192,7 +193,7 @@ const AddEnquiry: React.FC = () => {
         district: Yup.string(),
         state: Yup.string().required("Please fill the Field"),
         pinCode: Yup.string().required("Please fill the Field"),
-        branch: Yup.string(),   
+        branch: Yup.string(),
         contactPerson: Yup.string().required("Please fill the Field"),
         emailAddress: Yup.string().email("Invalid email").required("Please fill the Email"),
         contactNumber: Yup.string()
@@ -207,6 +208,11 @@ const AddEnquiry: React.FC = () => {
                     equipmentNo: Yup.string(),
                     workType: Yup.array().min(1, "At least one work type is required"),
                     machineModel: Yup.string(),
+                    quantity: Yup.number()               // ← NEW
+                        .typeError("Must be a number")
+                        .positive("Must be greater than 0")
+                        .integer("Must be a whole number")
+                        .required("Quantity is required"),
                 })
             )
             .min(1, "At least one service is required"),
@@ -270,7 +276,7 @@ const AddEnquiry: React.FC = () => {
         } catch (error: any) {
             console.error("Error submitting enquiry:", error);
             // ✅ Enhanced error handling for duplicate key errors
-            const isDuplicateEmailError = error?.response?.data?.errors?.some((errMsg: string) => 
+            const isDuplicateEmailError = error?.response?.data?.errors?.some((errMsg: string) =>
                 errMsg.includes('duplicate key error') && errMsg.includes('email')
             );
             if (isDuplicateEmailError) {
@@ -328,7 +334,7 @@ const AddEnquiry: React.FC = () => {
                     contactNumber: "",
                     designation: "",
                     specialInstructions: "",
-                    services: [{ machineType: "", equipmentNo: "", workType: [], machineModel: "" }],
+                    services: [{ machineType: "", equipmentNo: "", workType: [], machineModel: "", quantity: "" }],
                     additionalServices: serviceOptions.reduce(
                         (acc, service) => {
                             acc[service] = undefined
@@ -528,7 +534,7 @@ const AddEnquiry: React.FC = () => {
                                                 {/* Machine Type */}
                                                 <div className="md:col-span-4">
                                                     <label className="text-sm font-semibold text-gray-700">Machine Type</label>
-                                                    <Field as="select" name={`services.${index}.machineType`} className="form-input w-full">
+                                                    <Field as="select" name={`services.${index}.machineType`} className="form-select w-full">
                                                         <option value="">Select Machine Type</option>
                                                         {machineOptions.map((option) => (
                                                             <option key={option.value} value={option.value}>
@@ -539,6 +545,24 @@ const AddEnquiry: React.FC = () => {
                                                     <div className="h-4">
                                                         <ErrorMessage
                                                             name={`services.${index}.machineType`}
+                                                            component="div"
+                                                            className="text-red-500 text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {/* Quantity */}
+                                                <div className="md:col-span-2">
+                                                    <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                                                    <Field
+                                                        type="number"
+                                                        name={`services.${index}.quantity`}
+                                                        placeholder="Qty"
+                                                        min="1"
+                                                        className="form-input w-full"
+                                                    />
+                                                    <div className="h-4">
+                                                        <ErrorMessage
+                                                            name={`services.${index}.quantity`}
                                                             component="div"
                                                             className="text-red-500 text-sm"
                                                         />
@@ -581,26 +605,22 @@ const AddEnquiry: React.FC = () => {
                                                             className="text-red-500 text-sm"
                                                         />
                                                     </div>
-
                                                 </div>
-
                                                 {/* Remove Button */}
                                                 {values.services.length > 1 && (
                                                     <div className="md:col-span-12 flex justify-end">
                                                         <AnimatedTrashIcon onClick={() => remove(index)} />
                                                     </div>
                                                 )}
-
-
                                             </div>
                                         ))}
-                                        {/* {errors.services && typeof errors.services === 'string' && (
+                                        {errors.services && typeof errors.services === 'string' && (
                                             <div className="text-red-500 text-sm">{errors.services}</div>
-                                        )} */}
+                                        )}
                                         {/* Add Another Machine */}
                                         <button
                                             type="button"
-                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "" })}
+                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "", quantity: "" })}
                                             className="btn btn-primary w-full sm:w-auto"
                                         >
                                             + Add Another Machine

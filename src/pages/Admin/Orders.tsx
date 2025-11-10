@@ -57,6 +57,7 @@ const Orders = () => {
         const fetchOrders = async () => {
             try {
                 const data = await getAllOrders();
+                console.log("🚀 ~ fetchOrders ~ data:", data)
                 setRecords(data.orders || []);
             } catch (error) {
                 console.error('Failed to fetch orders:', error);
@@ -250,13 +251,13 @@ const Orders = () => {
                                             >
                                                 <IconEye className="w-4.5 h-4.5" />
                                             </Link>
-                                            {/* <button
+                                            <button
                                                 type="button"
                                                 className="flex hover:text-danger"
                                                 onClick={() => handleDeleteClick(record._id)}
                                             >
                                                 <IconTrashLines />
-                                            </button> */}
+                                            </button>
                                         </div>
                                     ),
                                 },

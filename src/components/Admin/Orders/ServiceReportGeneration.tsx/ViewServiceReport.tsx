@@ -48,9 +48,6 @@ const ViewServiceReport = () => {
           </div>
           <img src={logo} alt="Right Logo" className="h-24 max-h-28 object-contain" />
         </div>
-
-
-
         <br />
         <br />
 

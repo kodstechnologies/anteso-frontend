@@ -43,6 +43,7 @@ interface EditableQuotationData {
             machineModel: string;
             _id: string;
             totalAmount: number;
+            quantity: any;
         }>;
         additionalServices: AdditionalServiceData[];
         specialInstructions: string;
@@ -96,6 +97,8 @@ interface ServiceItem {
     machineModel: string;
     totalAmount: number;
     serialNumber: any
+    quantity: any
+    ServiceItem: any
 }
 
 const EditQuotation: React.FC = () => {
@@ -104,19 +107,19 @@ const EditQuotation: React.FC = () => {
     const pdfRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const acolumns = [
-        { key: "type", label: "Type", class: "w-10" },
+        // { key: "type", label: "Type", class: "w-10" },
         { key: "id", label: "S.No", class: "w-10" },
-        { key: "title", label: "Machine Type", class: "w-40" },
-        { key: "description", label: "Work Type / Description", class: "w-60" },
-        { key: "quantity", label: "Qty", class: "w-10 text-right" },
-        { key: "amount", label: "Amount", class: "w-20 text-right" },
+        { key: "title", label: "TYPE OF MACHINE", class: "w-40" },
+        { key: "description", label: "DESCRIPTION", class: "w-60" },
+        { key: "quantity", label: "QTY", class: "w-10 text-right" },
+        { key: "amount", label: "TOTAL", class: "w-20 text-right" },
     ];
 
     const bcolumns = [
-        { key: "type", label: "Type", class: "w-10" },
+        // { key: "type", label: "Type", class: "w-10" },
         { key: "id", label: "S.No", class: "w-10" },
-        { key: "title", label: "Service Name", class: "w-40" },
-        { key: "description", label: "Description", class: "w-60" },
+        { key: "title", label: "ADDITIONAL SERVICES", class: "w-40" },
+        { key: "description", label: "DESCRIPTION", class: "w-60" },
         { key: "amount", label: "Amount", class: "w-20 text-right" },
     ];
 
@@ -149,7 +152,9 @@ const EditQuotation: React.FC = () => {
     const [allOptions, setAllOptions] = useState<any[]>([]);
     const [selectedOption, setSelectedOption] = useState<any>(null);
     const [options, setOptions] = useState<OptionType[]>([]);
-
+    const formatCurrency = (value: number): string => {
+        return value.toFixed(2);
+    };
     // const fetchData = async () => {
     //     try {
     //         const employeeData = await allEmployees(); // assume returns array
@@ -523,17 +528,17 @@ const EditQuotation: React.FC = () => {
 
     // Items for PDF preview (using editable data)
     const aitems = editableServices.map((service, index) => ({
-        type: "A",
+        // type: "A",
         id: index + 1,
         title: service.machineType,
         description: service.workTypeDetails?.map((w: any) => w.workType).join(" + ") || "",
-        quantity: "1",
+        quantity: service.quantity?.toString() ?? "1",
         price: (service.totalAmount ?? 0).toString(),
         amount: (service.totalAmount ?? 0).toString(),
     })) || [];
 
     const bitems = editableAdditionalServices.map((service, index) => ({
-        type: "B",
+        // type: "B",
         id: index + 1,
         title: service.name,
         description: service.description || "Additional service",
@@ -543,14 +548,20 @@ const EditQuotation: React.FC = () => {
     })) || [];
 
     // Calculations for PDF (using editable/quotation data)
+    // const subtotal = quotationData?.subtotal || 0;
+    // const discountPercentage = quotationData?.discount || 0;
+    // const discountAmount = Math.round(subtotal * (discountPercentage / 100) * 100) / 100;
+    // const gstRate = quotationData?.gstRate || 0;
+    // const taxableAmount = subtotal - discountAmount;
+    // const gstAmount = Math.round(taxableAmount * (gstRate / 100) * 100) / 100;
+    // const totalAmount = taxableAmount + gstAmount;
     const subtotal = quotationData?.subtotal || 0;
     const discountPercentage = quotationData?.discount || 0;
-    const discountAmount = Math.round(subtotal * (discountPercentage / 100) * 100) / 100;
+    const discountAmount = Number((subtotal * (discountPercentage / 100)).toFixed(2));
     const gstRate = quotationData?.gstRate || 0;
-    const taxableAmount = subtotal - discountAmount;
-    const gstAmount = Math.round(taxableAmount * (gstRate / 100) * 100) / 100;
-    const totalAmount = taxableAmount + gstAmount;
-
+    const taxableAmount = Number((subtotal - discountAmount).toFixed(2));
+    const gstAmount = Number((taxableAmount * (gstRate / 100)).toFixed(2));
+    const totalAmount = Number((taxableAmount + gstAmount).toFixed(2));
 
 
     const formatDate = (dateString: string) => {
@@ -933,10 +944,10 @@ const EditQuotation: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {aitems.map((item) => (
-                                            <tr key={item.id}>
-                                                <td className="px-2 py-1 text-[.6rem]">{item.type}</td>
-                                                <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
+                                        {aitems.map((item, i) => (
+                                            <tr key={i}>
+                                                {/* <td>{item.type}</td>   ← REMOVE */}
+                                                <td className="px-2 py-1 text-[.6rem]">{i + 1}</td>   {/* S.NO */}
                                                 <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
                                                 <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
                                                 <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">{item.quantity}</td>
@@ -962,10 +973,10 @@ const EditQuotation: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {bitems.map((item) => (
-                                            <tr key={item.id}>
-                                                <td className="px-2 py-1 text-[.6rem]">{item.type}</td>
-                                                <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
+                                        {bitems.map((item, i) => (
+                                            <tr key={i}>
+                                                {/* <td>{item.type}</td>   ← REMOVE */}
+                                                <td className="px-2 py-1 text-[.6rem]">{i + 1}</td>   {/* S.NO */}
                                                 <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
                                                 <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
                                                 <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
@@ -979,7 +990,7 @@ const EditQuotation: React.FC = () => {
                         {/* Calculations and QR/Bank beside */}
                         <div className="flex justify-between items-start gap-4 px-4 mt-6">
                             <QrAndBankDetails />
-                            <div className="w-52 space-y-2">
+                            {/* <div className="w-52 space-y-2">
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1 text-gray-900 font-bold text-[.6rem]">SUBTOTAL</div>
                                     <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {subtotal}</div>
@@ -997,6 +1008,28 @@ const EditQuotation: React.FC = () => {
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
                                     <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount}</div>
+                                </div>
+                            </div> */}
+                            <div className="w-52 space-y-2">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Subtotal</div>
+                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {formatCurrency(subtotal)}</div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Discount</div>
+                                    <div className="w-[37%] text-[.7rem] font-bold text-right">{formatCurrency(discountPercentage)}%</div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Rate </div>
+                                    <div className="w-[37%] text-[.7rem] font-bold text-right">{formatCurrency(gstRate)}%</div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Amount </div>
+                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {formatCurrency(gstAmount)}</div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
+                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {formatCurrency(totalAmount)}</div>
                                 </div>
                             </div>
                         </div>

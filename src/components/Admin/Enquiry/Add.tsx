@@ -6,7 +6,7 @@ import { FieldArray, Field, Form, Formik, ErrorMessage, type FieldProps } from "
 import { Link, useNavigate } from "react-router-dom"
 import Select from "react-select"
 import { showMessage } from "../../common/ShowMessage"
-import { addEnquiryCreateDirectOrder, allEmployees, getAllDealers, getAllStates } from "../../../api/index" // Update this path
+import { addEnquiryCreateDirectOrder, getAllDealers, getAllEmployees, getAllManufacturer, getAllStates } from "../../../api/index" // Update this path
 import AnimatedTrashIcon from "../../common/AnimatedTrashIcon"
 
 // Define interfaces
@@ -25,6 +25,7 @@ interface Service {
     equipmentNo: string
     workType: string[]
     machineModel: string
+    quantity: any
 }
 
 type StateType = {
@@ -144,6 +145,8 @@ const AddEnquiry: React.FC = () => {
     const [dealerOptions, setDealerOptions] = useState<{ label: string; value: string }[]>([]);
     const [states, setStates] = useState<StateType[]>([]);
     const [loading, setLoading] = useState(true);
+    const [manufacturerOptions, setManufacturerOptions] = useState<{ label: string; value: string }[]>([]);
+
     useEffect(() => {
         const fetchStates = async () => {
             try {
@@ -161,8 +164,10 @@ const AddEnquiry: React.FC = () => {
     useEffect(() => {
         const fetchEmployees = async () => {
             try {
-                const data = await allEmployees();
-                const options = data.map((emp: any) => ({
+                const res = await getAllEmployees(); // <-- Use your API function
+                console.log("🚀 ~ fetchEmployees ~ res:", res)
+                // If your API returns data in `res.data` (like `return res.data`), this will already be an array
+                const options = res.data.map((emp: any) => ({
                     label: `${emp.name} - employee`,
                     value: emp._id,
                 }));
@@ -175,7 +180,6 @@ const AddEnquiry: React.FC = () => {
         const fetchDealers = async () => {
             try {
                 const res = await getAllDealers();
-                // since your API returns { success, dealers, total }
                 const options = res.data.dealers.map((dealer: any) => ({
                     label: `${dealer.name} - dealer`,
                     value: dealer._id,
@@ -185,10 +189,27 @@ const AddEnquiry: React.FC = () => {
                 console.error("Failed to load dealers", err);
             }
         };
+        const fetchManufacturers = async () => {
+            try {
+                const res = await getAllManufacturer(); // ✅ call your API
+                const data = res.data.data || res.data; // handle both response shapes
+                const options = data.map((m: any) => ({
+                    label: `${m.name} - manufacturer`,
+                    value: m._id,
+                }));
+                // ✅ Append them to the dropdown by merging with existing options
+                setManufacturerOptions(options);
+            } catch (err) {
+                console.error("Failed to load manufacturers", err);
+            }
+        };
 
         fetchEmployees();
         fetchDealers();
+        fetchManufacturers();
+
     }, []);
+
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
         leadOwner: Yup.string().required("Please fill the Field"),
@@ -215,6 +236,11 @@ const AddEnquiry: React.FC = () => {
                     equipmentNo: Yup.string(),
                     workType: Yup.array().min(1, "At least one work type is required"),
                     machineModel: Yup.string(),
+                    quantity: Yup.number()               // ← NEW
+                        .typeError("Must be a number")
+                        .positive("Must be greater than 0")
+                        .integer("Must be a whole number")
+                        .required("Quantity is required"),
                 })
             )
             .min(1, "At least one service is required"),
@@ -300,7 +326,7 @@ const AddEnquiry: React.FC = () => {
                     contactNumber: "",
                     designation: "",
                     specialInstructions: "",
-                    services: [{ machineType: "", equipmentNo: "", workType: [], machineModel: "" }],
+                    services: [{ machineType: "", equipmentNo: "", workType: [], machineModel: "", quantity: "" }],
                     additionalServices: serviceOptions.reduce(
                         (acc, service) => {
                             acc[service] = undefined
@@ -323,12 +349,31 @@ const AddEnquiry: React.FC = () => {
                                     <label htmlFor="leadOwner">Lead Owner</label>
                                     <Field as="select" name="leadOwner" className="form-input">
                                         <option value="">Select Lead Owner</option>
-                                        {[...employeeOptions, ...dealerOptions].map((option) => (
+
+
+                                        {employeeOptions.map((option) => (
                                             <option key={option.value} value={option.value}>
                                                 {option.label}
                                             </option>
                                         ))}
+
+
+
+                                        {dealerOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+
+
+                                        {manufacturerOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+
                                     </Field>
+
                                     {submitCount && errors.leadOwner ? (
                                         <div className="text-danger mt-1">{errors.leadOwner}</div>
                                     ) : null}
@@ -512,6 +557,24 @@ const AddEnquiry: React.FC = () => {
                                                         />
                                                     </div>
                                                 </div>
+                                                {/* Quantity */}
+                                                <div className="md:col-span-2">
+                                                    <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                                                    <Field
+                                                        type="number"
+                                                        name={`services.${index}.quantity`}
+                                                        placeholder="Qty"
+                                                        min="1"
+                                                        className="form-input w-full"
+                                                    />
+                                                    <div className="h-4">
+                                                        <ErrorMessage
+                                                            name={`services.${index}.quantity`}
+                                                            component="div"
+                                                            className="text-red-500 text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
                                                 {/* equipment/document No. */}
                                                 <div className="md:col-span-2">
                                                     <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
@@ -564,7 +627,7 @@ const AddEnquiry: React.FC = () => {
                                         {/* Add Another Machine */}
                                         <button
                                             type="button"
-                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "" })}
+                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "", quantity: "" })}
                                             className="btn btn-primary w-full sm:w-auto"
                                         >
                                             + Add Another Machine

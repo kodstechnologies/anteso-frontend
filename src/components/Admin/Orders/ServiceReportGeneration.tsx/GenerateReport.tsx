@@ -14,6 +14,7 @@ import ExposureRateTableTop from "./TestTables/ExposureRateTableTop";
 import RadiationLeakageLevel from "./TestTables/RadiationLeakageLevel";
 import EffectiveFocalspotMeasurement from "./TestTables/EffectiveFocalspotMeasurement";
 import ConsisitencyOfRadiationOutput from "./TestTables/ConsisitencyOfRadiationOutput";
+import RadiationProfileWidth from "./TestTables/RadiationProfileWidth";
 
 export interface Standard {
     slNumber: string;
@@ -68,6 +69,7 @@ const GenerateReport: React.FC = () => {
         { title: "Radiation Leakage Level", component: <RadiationLeakageLevel /> },
         { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement /> },
         { title: "Consistency of Radiation Output", component: <ConsisitencyOfRadiationOutput /> },
+        { title: "Radiation Profile Width/Slice Thickness", component: <RadiationProfileWidth /> },
     ];
 
     return (

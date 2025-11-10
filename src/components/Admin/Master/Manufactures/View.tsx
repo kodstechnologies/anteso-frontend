@@ -12,7 +12,7 @@ import {
     FaCogs,
     FaRupeeSign,
 } from 'react-icons/fa';
-import { getManufacturerById } from '../../../../api'; // import your API function
+import { getManufacturerById } from '../../../../api';
 
 interface QATest {
     label: string;
@@ -20,8 +20,29 @@ interface QATest {
     price: number;
 }
 
-type ServiceKey = 'INSTITUTE_REGISTRATION' | 'PROCUREMENT' | 'LICENSE';
+/* ----------  API shape (exact) ---------- */
+interface ApiService {
+    serviceName: string;
+    amount: number;
+    _id: string;
+}
+interface ApiManufacturer {
+    _id: string;
+    name: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    branch: string;
+    mouValidity: string;               // ISO string
+    qaTests: any[];
+    services: ApiService[];
+    travelCost: 'Actual Cost' | 'Fixed Cost';
+    cost?: number;                     // present only when travelCost === 'Fixed Cost'
+    // any other fields you may receive (createdAt, email, …) are ignored for UI
+}
 
+/* ----------  UI shape ---------- */
 interface ManufactureType {
     manufactureName: string;
     address: string;
@@ -29,18 +50,12 @@ interface ManufactureType {
     state: string;
     pinCode: string;
     branch: string;
-    mouValidity: string;
+    mouValidity: string;               // "YYYY-MM-DD"
     qaTests: QATest[];
-    services: ServiceKey[];
+    services: ApiService[];
     travel: 'actual' | 'fixed';
-    fixedCost?: number; // optional if fixed travel cost
+    fixedCost?: number;
 }
-
-const serviceLabelMap: Record<ServiceKey, string> = {
-    INSTITUTE_REGISTRATION: 'Institute Registration',
-    PROCUREMENT: 'Procurement',
-    LICENSE: 'License',
-};
 
 const ManufacturerView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -54,35 +69,35 @@ const ManufacturerView: React.FC = () => {
             try {
                 setLoading(true);
                 const res = await getManufacturerById(id);
-                console.log("🚀 ~ fetchManufacturer ~ res:", res)
+                const data: ApiManufacturer = res.data.data;   // <-- exact API payload
 
-                // Assuming the API returns data inside res.data
-                const data = res.data.data;
-
-                // Map API response to your ManufactureType if necessary
-                const mappedData: ManufactureType = {
-                    manufactureName: data.name,
-                    address: data.address,
-                    city: data.city,
-                    state: data.state,
-                    pinCode: data.pincode,
-                    branch: data.branch,
-                    mouValidity: data.mouValidity,
-                    qaTests: data.qaTests?.map((test: any) => ({
-                        label: test.testName,
-                        value: test.testName.toUpperCase().replace(/\s+/g, '_'),
-                        price: test.price,
-                    })) || [],
-                    services: data.services || [],
+                const mapped: ManufactureType = {
+                    manufactureName: data.name ?? '-',
+                    address: data.address ?? '-',
+                    city: data.city ?? '-',
+                    state: data.state ?? '-',
+                    pinCode: data.pincode ?? '-',
+                    branch: data.branch ?? '-',
+                    mouValidity: data.mouValidity?.split('T')[0] ?? '-',
+                    qaTests:
+                        data.qaTests?.map((t: any) => ({
+                            label: t.testName ?? '-',
+                            value: (t.testName ?? '')
+                                .toUpperCase()
+                                .replace(/\s+/g, '_'),
+                            price: t.price ?? 0,
+                        })) ?? [],
+                    services: data.services ?? [],
                     travel: data.travelCost === 'Actual Cost' ? 'actual' : 'fixed',
-                    fixedCost: data.travelCost === 'Fixed Cost' ? data.cost : undefined,
+                    fixedCost:
+                        data.travelCost === 'Fixed Cost' ? data.cost : undefined,
                 };
 
-                setManufacture(mappedData);
+                setManufacture(mapped);
                 setError(null);
             } catch (err: any) {
-                console.error("Failed to fetch manufacturer:", err);
-                setError(err.message || "Failed to fetch manufacturer");
+                console.error('Failed to fetch manufacturer:', err);
+                setError(err.message || 'Failed to fetch manufacturer');
             } finally {
                 setLoading(false);
             }
@@ -93,26 +108,31 @@ const ManufacturerView: React.FC = () => {
 
     if (loading) return <div className="p-6 text-gray-600">Loading...</div>;
     if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
-    if (!manufacture) return <div className="p-6 text-gray-600">No Manufacturer Found</div>;
+    if (!manufacture)
+        return <div className="p-6 text-gray-600">No Manufacturer Found</div>;
 
     return (
         <div className="p-6">
             {/* Breadcrumbs */}
             <ol className="flex text-gray-500 font-semibold dark:text-white-dark pb-4">
                 <li>
-                    <Link to="/" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+                    <Link
+                        to="/"
+                        className="hover:text-gray-500/70 dark:hover:text-white-dark/70"
+                    >
                         Dashboard
                     </Link>
                 </li>
                 <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-                    <Link to="/admin/manufacture" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
+                    <Link
+                        to="/admin/manufacture"
+                        className="hover:text-gray-500/70 dark:hover:text-white-dark/70"
+                    >
                         Manufacture
                     </Link>
                 </li>
                 <li className="before:w-1 before:h-1 before:rounded-full before:bg-primary before:inline-block before:relative before:-top-0.5 before:mx-4">
-                    <Link to="#" className="hover:text-gray-500/70 dark:hover:text-white-dark/70">
-                        View Manufacture
-                    </Link>
+                    View Manufacture
                 </li>
             </ol>
 
@@ -121,6 +141,7 @@ const ManufacturerView: React.FC = () => {
                     <FaIndustry className="text-primary" /> Manufacturer Details
                 </h1>
 
+                {/* Basic Details */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
                     <Detail label="Name" value={manufacture.manufactureName} icon={<FaIndustry />} />
                     <Detail label="Address" value={manufacture.address} icon={<FaMapMarkerAlt />} />
@@ -130,7 +151,7 @@ const ManufacturerView: React.FC = () => {
                     <Detail label="Branch" value={manufacture.branch} icon={<FaNetworkWired />} />
                     <Detail
                         label="MOU Validity"
-                        value={manufacture.mouValidity?.split('T')[0] || 'N/A'}
+                        value={manufacture.mouValidity}
                         icon={<FaRegCalendarCheck />}
                     />
                 </div>
@@ -140,23 +161,58 @@ const ManufacturerView: React.FC = () => {
                     <h2 className="text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
                         <FaVials className="text-primary" /> QA Tests
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
-                        {manufacture.qaTests.map((test) => (
-                            <Detail key={test.value} label={test.label} value={`₹ ${test.price}`} icon={<FaVials />} />
-                        ))}
-                    </div>
+                    {manufacture.qaTests.length ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+                            {manufacture.qaTests.map((test) => (
+                                <Detail
+                                    key={test.value}
+                                    label={test.label}
+                                    value={`₹ ${test.price}`}
+                                    icon={<FaVials />}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">-</p>
+                    )}
                 </div>
 
-                {/* Services */}
+                {/* Services + Amount */}
                 <div className="mt-8">
                     <h2 className="text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
                         <FaCogs className="text-primary" /> Services
                     </h2>
-                    <ul className="list-disc list-inside text-gray-600">
-                        {manufacture.services.map((s) => (
-                            <li key={s}>{serviceLabelMap[s]}</li>
-                        ))}
-                    </ul>
+
+                    {manufacture.services.length ? (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full table-auto border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-100">
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                            Service
+                                        </th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                            Amount
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {manufacture.services.map((s) => (
+                                        <tr key={s._id}>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
+                                                {s.serviceName}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-800">
+                                                ₹ {s.amount}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">-</p>
+                    )}
                 </div>
 
                 {/* Travel Cost */}
@@ -165,7 +221,9 @@ const ManufacturerView: React.FC = () => {
                         <FaRupeeSign className="text-primary" /> Travel Cost Type
                     </h2>
                     <p className="text-gray-600">
-                        {manufacture.travel === 'actual' ? 'Actual Cost' : `Fixed Cost ₹ ${manufacture.fixedCost || 0}`}
+                        {manufacture.travel === 'actual'
+                            ? 'Actual Cost'
+                            : `Fixed Cost ₹ ${manufacture.fixedCost ?? '-'}`}
                     </p>
                 </div>
             </div>
@@ -173,12 +231,12 @@ const ManufacturerView: React.FC = () => {
     );
 };
 
+/* ----------  Re-usable Detail Component ---------- */
 interface DetailProps {
     label: string;
-    value: string;
+    value: string | number;
     icon?: React.ReactNode;
 }
-
 const Detail: React.FC<DetailProps> = ({ label, value, icon }) => (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
         <div className="text-xs uppercase text-gray-500 font-semibold mb-1 flex items-center gap-2">

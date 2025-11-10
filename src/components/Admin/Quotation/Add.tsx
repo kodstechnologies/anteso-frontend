@@ -207,6 +207,84 @@ const InfoRow: React.FC<{ label: string; value: string; isEmail?: boolean }> = (
 // )
 
 
+// const ItemsTable: React.FC<{
+//     title: string
+//     headerBg: string
+//     items: Item[]
+//     onItemChange: (index: number, key: StringItemKeys, value: string) => void
+//     showEditableDescription?: boolean
+// }> = ({ title, headerBg, items, onItemChange, showEditableDescription = false }) => (
+//     <table className="w-full text-xs mb-6">
+//         <thead className={headerBg}>
+//             <tr>
+//                 <th className="p-2 text-[.7rem]">{title}</th>
+//                 <th className="text-[.7rem]">S.NO</th>
+//                 <th className="text-[.7rem] w-36">{title === "A" ? "TYPE OF MACHINE" : "ADDITIONAL SERVICE"}</th>
+//                 <th className="text-[.7rem]">DESCRIPTION</th>
+//                 <th className="text-[.7rem]">QTY</th>
+//                 <th className="text-[.7rem]">RATE</th>
+//             </tr>
+//         </thead>
+//         <tbody>
+//             {items.map((item, i) => (
+//                 <tr key={item.id} className="border-b">
+//                     <td className="p-2 text-[.7rem]">{item.type}</td>
+//                     <td className="text-[.7rem]">{item.id}</td>
+//                     <td className="text-[.7rem]">{item.title}</td>
+//                     {/* ✅ Conditional for description: Editable only for B (additional services) */}
+//                     <td className="text-[.7rem]">
+//                         {showEditableDescription ? (
+//                             <input
+//                                 value={item.description || ""}
+//                                 onChange={(e) => onItemChange(i, "description", e.target.value)}
+//                                 className="w-full border rounded p-1 text-[.7rem]" // Editable for B, no disabled
+//                             />
+//                         ) : (
+//                             <input
+//                                 value={item.description || ""}
+//                                 onChange={() => { }} // No-op for A
+//                                 className="w-full border rounded p-1 text-[.7rem] bg-gray-100 cursor-not-allowed"
+//                                 disabled // Read-only for A (services)
+//                             />
+//                         )}
+//                     </td>
+//                     {/* ✅ Quantity input (read-only for both) */}
+//                     {/* <td>
+//                         <input
+//                             value={item.quantity}
+//                             onChange={() => { }} // No-op
+//                             type="number"
+//                             readOnly
+//                             className="border rounded p-1 text-right text-[.7rem] w-16 bg-gray-100 cursor-not-allowed"
+//                         />
+//                     </td> */}
+//                     <td>
+//                         <input
+//                             value={item.quantity}
+//                             onChange={() => { }}               // no-op
+//                             type="number"
+//                             readOnly
+//                             className={`
+//             border rounded p-1 text-right text-[.7rem] w-16
+//             ${item.type === "A" ? "bg-white" : "bg-gray-100 cursor-not-allowed"}
+//         `}
+//                         />
+//                     </td>
+//                     {/* ✅ TOTAL field: Editable for both A and B (services now allow adding/editing total) */}
+//                     <td className="text-[.7rem] text-right">
+//                         <input
+//                             value={item.price || ""}                     // <-- show price, NOT amount
+//                             onChange={(e) => onItemChange(i, "price", e.target.value)}
+//                             type="number"
+//                             className="border rounded p-1 text-right text-[.7rem] w-24 font-semibold"
+//                         />
+//                     </td>
+//                 </tr>
+//             ))}
+//         </tbody>
+//     </table>
+// )
+
 const ItemsTable: React.FC<{
     title: string
     headerBg: string
@@ -217,7 +295,7 @@ const ItemsTable: React.FC<{
     <table className="w-full text-xs mb-6">
         <thead className={headerBg}>
             <tr>
-                <th className="p-2 text-[.7rem]">{title}</th>
+                {/* REMOVED: <th className="p-2 text-[.7rem]">{title}</th> */}
                 <th className="text-[.7rem]">S.NO</th>
                 <th className="text-[.7rem] w-36">{title === "A" ? "TYPE OF MACHINE" : "ADDITIONAL SERVICE"}</th>
                 <th className="text-[.7rem]">DESCRIPTION</th>
@@ -228,44 +306,43 @@ const ItemsTable: React.FC<{
         <tbody>
             {items.map((item, i) => (
                 <tr key={item.id} className="border-b">
-                    <td className="p-2 text-[.7rem]">{item.type}</td>
-                    <td className="text-[.7rem]">{item.id}</td>
+                    {/* REMOVED: <td className="p-2 text-[.7rem]">{item.type}</td> */}
+                    <td className="text-[.7rem]">{i + 1}</td>  {/* ← 1, 2, 3… */}
                     <td className="text-[.7rem]">{item.title}</td>
-                    {/* ✅ Conditional for description: Editable only for B (additional services) */}
                     <td className="text-[.7rem]">
                         {showEditableDescription ? (
                             <input
                                 value={item.description || ""}
                                 onChange={(e) => onItemChange(i, "description", e.target.value)}
-                                className="w-full border rounded p-1 text-[.7rem]" // Editable for B, no disabled
+                                className="w-full border rounded p-1 text-[.7rem]"
                             />
                         ) : (
                             <input
                                 value={item.description || ""}
-                                onChange={() => { }} // No-op for A
+                                onChange={() => { }}
                                 className="w-full border rounded p-1 text-[.7rem] bg-gray-100 cursor-not-allowed"
-                                disabled // Read-only for A (services)
+                                disabled
                             />
                         )}
                     </td>
-                    {/* ✅ Quantity input (read-only for both) */}
                     <td>
                         <input
                             value={item.quantity}
-                            onChange={() => { }} // No-op
+                            onChange={() => { }}
                             type="number"
                             readOnly
-                            className="border rounded p-1 text-right text-[.7rem] w-16 bg-gray-100 cursor-not-allowed"
+                            className={`
+                                border rounded p-1 text-right text-[.7rem] w-16
+                                ${item.type === "A" ? "bg-white" : "bg-gray-100 cursor-not-allowed"}
+                            `}
                         />
                     </td>
-                    {/* ✅ TOTAL field: Editable for both A and B (services now allow adding/editing total) */}
                     <td className="text-[.7rem] text-right">
                         <input
-                            value={item.amount || item.price || ""} // Use amount if available, fallback to price
-                            onChange={(e) => onItemChange(i, "price", e.target.value)} // Trigger price change for calculation (syncs amount)
+                            value={item.price || ""}
+                            onChange={(e) => onItemChange(i, "price", e.target.value)}
                             type="number"
-                            readOnly={false} // ✅ Editable for both A and B
-                            className="border rounded p-1 text-right text-[.7rem] w-24 font-semibold" // Editable style for both
+                            className="border rounded p-1 text-right text-[.7rem] w-24 font-semibold"
                         />
                     </td>
                 </tr>
@@ -273,6 +350,7 @@ const ItemsTable: React.FC<{
         </tbody>
     </table>
 )
+
 
 const AddQuotation: React.FC = () => {
     const navigate = useNavigate()
@@ -318,65 +396,108 @@ const AddQuotation: React.FC = () => {
     ])
 
     // Effects
+    // useEffect(() => {
+    //     const fetchEnquiry = async () => {
+    //         if (!id) return
+    //         try {
+    //             const data = await getEnquiryById(id)
+    //             console.log("🚀 ~ fetched enquiry data:", data)
+    //             setEnquiryData(data)
+
+    //             // Machines → aitems
+    //             // ✅ Correct (backend sends "services")
+    //             if (Array.isArray(data.services)) {
+    //                 const serviceData: Item[] = data.services.map((service: any, idx: number) => ({
+    //                     id: service._id,
+    //                     type: "A",
+    //                     title: service.machineType || "",
+    //                     description: service.workTypeDetails
+    //                         ? service.workTypeDetails.map((w: any) => w.workType).join(", ")
+    //                         : "",
+    //                     quantity: "1",
+    //                     price: service.totalAmount ? service.totalAmount.toString() : "",
+    //                     amount: service.totalAmount ? service.totalAmount.toString() : "",
+    //                 }));
+    //                 setAItems(serviceData);
+    //             }
+
+
+    //             // Additional Services → bitems
+    //             if (Array.isArray(data.additionalServices)) {
+    //                 const serviceData: Item[] = data.additionalServices.map((service: any) => ({
+    //                     id: service._id, // ✔️ Use ObjectId from DB
+    //                     type: "B",
+    //                     title: service.name || "",
+    //                     description: service.description || "",
+    //                     quantity: "1",
+    //                     price: "",
+    //                     amount: "",
+    //                 }));
+    //                 setBItems(serviceData);
+
+    //             } else if (typeof data.additionalServices === "object") {
+    //                 // if backend sends object
+    //                 const serviceData: Item[] = Object.values(data.additionalServices).map(
+    //                     (service: any) => ({
+    //                         id: service._id, // ✅ Use ObjectId from MongoDB
+    //                         type: "B",
+    //                         title: service.name || "",
+    //                         description: service.description || "",
+    //                         quantity: "1",
+    //                         price: "",
+    //                         amount: "",
+    //                     })
+    //                 )
+
+    //                 setBItems(serviceData)
+    //             }
+
+    //         } catch (err) {
+    //             console.error("Failed to fetch enquiry:", err)
+    //         }
+    //     }
+    //     fetchEnquiry()
+    // }, [id])
+
     useEffect(() => {
         const fetchEnquiry = async () => {
             if (!id) return
             try {
                 const data = await getEnquiryById(id)
-                // console.log("🚀 ~ fetched enquiry data:", data)
                 setEnquiryData(data)
 
-                // Machines → aitems
-                // ✅ Correct (backend sends "services")
+                // ---------- SERVICES (A) ----------
                 if (Array.isArray(data.services)) {
-                    const serviceData: Item[] = data.services.map((service: any, idx: number) => ({
+                    const serviceData: Item[] = data.services.map((service: any) => ({
                         id: service._id,
                         type: "A",
                         title: service.machineType || "",
                         description: service.workTypeDetails
                             ? service.workTypeDetails.map((w: any) => w.workType).join(", ")
                             : "",
-                        quantity: "1",
+                        // <-- REAL QUANTITY FROM BACKEND
+                        quantity: service.quantity?.toString() ?? "1",
                         price: service.totalAmount ? service.totalAmount.toString() : "",
-                        amount: service.totalAmount ? service.totalAmount.toString() : "",
+                        amount: "",                     // will be filled by handleItemChange
                     }));
                     setAItems(serviceData);
                 }
 
-
-                // Additional Services → bitems
+                // ---------- ADDITIONAL SERVICES (B) ----------
                 if (Array.isArray(data.additionalServices)) {
-                    const serviceData: Item[] = data.additionalServices.map((service: any) => ({
-                        id: service._id, // ✔️ Use ObjectId from DB
+                    const addData: Item[] = data.additionalServices.map((service: any) => ({
+                        id: service._id,
                         type: "B",
                         title: service.name || "",
                         description: service.description || "",
-                        quantity: "1",
+                        quantity: "1",                 // <-- ALWAYS 1
                         price: "",
                         amount: "",
                     }));
-                    setBItems(serviceData);
-
-                } else if (typeof data.additionalServices === "object") {
-                    // if backend sends object
-                    const serviceData: Item[] = Object.values(data.additionalServices).map(
-                        (service: any) => ({
-                            id: service._id, // ✅ Use ObjectId from MongoDB
-                            type: "B",
-                            title: service.name || "",
-                            description: service.description || "",
-                            quantity: "1",
-                            price: "",
-                            amount: "",
-                        })
-                    )
-
-                    setBItems(serviceData)
+                    setBItems(addData);
                 }
-
-            } catch (err) {
-                console.error("Failed to fetch enquiry:", err)
-            }
+                // … (object fallback unchanged)
+            } catch (err) { /* … */ }
         }
         fetchEnquiry()
     }, [id])
@@ -457,6 +578,29 @@ const AddQuotation: React.FC = () => {
     //     }
     //     listSetter(updated)
     // }
+
+
+    // const handleItemChange = (
+    //     listSetter: React.Dispatch<React.SetStateAction<Item[]>>,
+    //     items: Item[],
+    //     index: number,
+    //     key: StringItemKeys,
+    //     value: string,
+    // ) => {
+    //     if (key === "quantity") return;
+
+    //     const updated = [...items];
+    //     updated[index][key] = value;
+
+    //     if (key === "price") {
+    //         const qty = Number.parseFloat(updated[index].quantity) || 1;
+    //         const price = Number.parseFloat(updated[index].price) || 0;
+    //         updated[index].amount = (qty * price).toString();  // 👈 Works for both
+    //     }
+
+    //     listSetter(updated);
+    // };
+
     const handleItemChange = (
         listSetter: React.Dispatch<React.SetStateAction<Item[]>>,
         items: Item[],
@@ -464,20 +608,20 @@ const AddQuotation: React.FC = () => {
         key: StringItemKeys,
         value: string,
     ) => {
-        if (key === "quantity") return;
+        if (key === "quantity") return;               // quantity never changes
 
         const updated = [...items];
         updated[index][key] = value;
 
         if (key === "price") {
             const qty = Number.parseFloat(updated[index].quantity) || 1;
-            const price = Number.parseFloat(updated[index].price) || 0;
-            updated[index].amount = (qty * price).toString();  // 👈 Works for both
+            const price = Number.parseFloat(value) || 0;
+            // amount = qty × price  → used only for the grand total
+            updated[index].amount = (qty * price).toString();
         }
 
         listSetter(updated);
     };
-
 
     const handleTerms = {
         add: () => {
@@ -497,6 +641,8 @@ const AddQuotation: React.FC = () => {
     const GST_RATE = 18; // 18%
 
     const calculations = {
+        // aitemsTotal: aitems.reduce((sum, item) => sum + Number.parseFloat(item.amount || "0"), 0),
+        // bitemsTotal: bitems.reduce((sum, item) => sum + Number.parseFloat(item.amount || "0"), 0),
         aitemsTotal: aitems.reduce((sum, item) => sum + Number.parseFloat(item.amount || "0"), 0),
         bitemsTotal: bitems.reduce((sum, item) => sum + Number.parseFloat(item.amount || "0"), 0),
         get subtotal() {
@@ -530,52 +676,88 @@ const AddQuotation: React.FC = () => {
 
         setIsSubmitting(true); try {
 
+            // const serviceSnapshots: ServiceItem[] = aitems.map((s) => {
+            //     const qty = Number.parseFloat(s.quantity) || 1;
+            //     const price = Number.parseFloat(s.price || "0");
+            //     const total = qty * price;
+
+            //     return {
+            //         // id: typeof s.id === "number" ? s.id : Number(s.id),
+            //         id: String(s.id),
+            //         type: s.type || "A",
+            //         title: s.title,
+            //         description: s.description || "",
+            //         quantity: s.quantity || "1",
+            //         price: s.price || "0",
+            //         amount: total.toString(),   // match string type
+            //         machineType: s.title,
+            //         equipmentNo: (s as any).equipmentNo,
+            //         machineModel: (s as any).machineModel,
+            //         serialNumber: (s as any).serialNumber,
+            //         remark: (s as any).remark,
+            //         totalAmount: total,
+            //     };
+            // });
+
+            // const additionalServiceSnapshots: AdditionalServiceItem[] = bitems.map((s) => {
+            //     const qty = Number.parseFloat(s.quantity) || 1;
+            //     const price = Number.parseFloat(s.price || "0");
+            //     const total = qty * price;
+            //     console.log("🚀 ~ handleSubmitQuotation ~ total:", total)
+            //     console.log("🚀 ~ handleSubmitQuotation ~ total:", total)
+
+            //     return {
+            //         // id: s.id?.toString() || "",
+            //         // id: typeof s.id === "number" ? s.id : Number(s.id),
+            //         id: String(s.id),
+            //         type: s.type || "B",
+            //         title: s.title,
+            //         description: s.description || "",
+            //         quantity: s.quantity || "1",
+            //         price: s.price || "0",
+            //         amount: total.toString(),
+            //         name: s.title,
+            //         totalAmount: total,
+            //     };
+            // });
+
+
+
             const serviceSnapshots: ServiceItem[] = aitems.map((s) => {
-                const qty = 1;
+                const qty = Number.parseFloat(s.quantity) || 1;
                 const price = Number.parseFloat(s.price || "0");
                 const total = qty * price;
 
                 return {
-                    // id: typeof s.id === "number" ? s.id : Number(s.id),
                     id: String(s.id),
                     type: s.type || "A",
                     title: s.title,
                     description: s.description || "",
-                    quantity: s.quantity || "1",
-                    price: s.price || "0",
-                    amount: total.toString(),   // match string type
+                    quantity: s.quantity,
+                    price: s.price || "0",           // per-unit price
+                    amount: total.toString(),        // qty × price (for display in PDF)
                     machineType: s.title,
-                    equipmentNo: (s as any).equipmentNo,
-                    machineModel: (s as any).machineModel,
-                    serialNumber: (s as any).serialNumber,
-                    remark: (s as any).remark,
-                    totalAmount: total,
+                    totalAmount: total,              // backend field
                 };
             });
 
             const additionalServiceSnapshots: AdditionalServiceItem[] = bitems.map((s) => {
-                const qty = Number.parseFloat(s.quantity || "1");
+                const qty = Number.parseFloat(s.quantity) || 1;
                 const price = Number.parseFloat(s.price || "0");
                 const total = qty * price;
-                console.log("🚀 ~ handleSubmitQuotation ~ total:", total)
-                console.log("🚀 ~ handleSubmitQuotation ~ total:", total)
 
                 return {
-                    // id: s.id?.toString() || "",
-                    // id: typeof s.id === "number" ? s.id : Number(s.id),
                     id: String(s.id),
                     type: s.type || "B",
                     title: s.title,
                     description: s.description || "",
-                    quantity: s.quantity || "1",
+                    quantity: s.quantity,
                     price: s.price || "0",
                     amount: total.toString(),
                     name: s.title,
                     totalAmount: total,
                 };
             });
-
-
             const quotationData: QuotationData = {
                 date: new Date().toLocaleDateString("en-GB", {
                     day: "2-digit",
