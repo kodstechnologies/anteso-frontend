@@ -441,26 +441,44 @@ export const editInstituteByHospitalIdandInstituteId = async (hospitalId: any, I
         throw error;
     }
 }
+// export const editRsohospitalIdandRsoId = async (hospitalId: any, rsoId: any, payload: any) => {
+//     console.log("🚀 ~ editRsoByClientIDandRsoId ~ rsoId:", rsoId)
+//     console.log("🚀 ~ editRsoByClientIDandRsoId ~ clientId:", hospitalId)
+//     try {
+//         const token = Cookies.get('accessToken');
+//         const res = await api.put(`/rso/edit/${hospitalId}/${rsoId}`, payload, {
+//             headers: {
+//                 Authorization: `Bearer ${token}`,
+//                 "Content-Type": "multipart/form-data", // 👈 add this
+//             },
+//         })
+//         return res.data
+//     } catch (error: any) {
+//         // console.log("🚀 ~ createRsoByClientId ~ error:", error)
+//         console.error("🚀 ~update rso ~ error:", error?.response?.data || error.message);
+//         throw error;
+//     }
+// }
+
+//delete hospital,rso and institute
+
 export const editRsohospitalIdandRsoId = async (hospitalId: any, rsoId: any, payload: any) => {
-    console.log("🚀 ~ editRsoByClientIDandRsoId ~ rsoId:", rsoId)
-    console.log("🚀 ~ editRsoByClientIDandRsoId ~ clientId:", hospitalId)
     try {
         const token = Cookies.get('accessToken');
         const res = await api.put(`/rso/edit/${hospitalId}/${rsoId}`, payload, {
             headers: {
                 Authorization: `Bearer ${token}`,
-                "Content-Type": "multipart/form-data", // 👈 add this
+                // Remove Content-Type — let browser set it with boundary
+                // "Content-Type": "multipart/form-data",
             },
-        })
-        return res.data
+        });
+        return res.data;
     } catch (error: any) {
-        // console.log("🚀 ~ createRsoByClientId ~ error:", error)
-        console.error("🚀 ~update rso ~ error:", error?.response?.data || error.message);
+        console.error("Update RSO error:", error?.response?.data || error.message);
         throw error;
     }
-}
+};
 
-//delete hospital,rso and institute
 export const deleteHospitalByClientIdAndHospitalId = async (clientId: any, hospitalId: any,) => {
     console.log("🚀 ~ deleteHospitalByClientIdAndHospitalId ~ hospitalId:", hospitalId)
     try {
@@ -3048,7 +3066,7 @@ export const getAttendanceStatus = async (employeeId: string, date: string) => {
                 Authorization: `Bearer ${token}`,
             },
         })
-     
+
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAttendanceStatus ~ error:", error);

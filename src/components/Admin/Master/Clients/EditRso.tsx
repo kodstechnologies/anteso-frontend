@@ -16,15 +16,15 @@ interface RsoData {
   rpId: string
   tldBadge: string
   validity: string
-  attachment?: string
+  attachment?: string | File
 }
 
 const EditRSO = () => {
   const navigate = useNavigate()
   const { clientId, hospitalId, rsoId } = useParams<{ clientId: string; hospitalId: string; rsoId: string }>()
-  console.log("🚀 ~ EditRSO ~ rsoId:", rsoId)
-  console.log("🚀 ~ EditRSO ~ hospitalId:", hospitalId)
-  console.log("🚀 ~ EditRSO ~ clientId:", clientId)
+  console.log("EditRSO rsoId:", rsoId)
+  console.log("EditRSO hospitalId:", hospitalId)
+  console.log("EditRSO clientId:", clientId)
   const [loading, setLoading] = useState(false)
   const [initialData, setInitialData] = useState<RsoData | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
@@ -40,7 +40,7 @@ const EditRSO = () => {
     rpId: Yup.string().required("Please fill the RP ID"),
     tldBadge: Yup.string().required("Please fill the TLD Badge"),
     validity: Yup.string().required("Please fill the Validity Date"),
-    attachment: Yup.string().url("Invalid URL").optional(),
+    attachment: Yup.mixed().optional(), // No restrictions
   })
 
   useEffect(() => {
@@ -53,7 +53,7 @@ const EditRSO = () => {
       try {
         setDataLoading(true)
         const response = await getRsoByHospitalIdAndRsoId(hospitalId, rsoId)
-        console.log("🚀 ~ fetchRsoData ~ response:", response)
+        console.log("fetchRsoData response:", response)
 
         const rsoData = response.data || response
         setInitialData({
@@ -63,7 +63,7 @@ const EditRSO = () => {
           phone: rsoData.phone || "",
           rpId: rsoData.rpId || "",
           tldBadge: rsoData.tldBadge || "",
-          validity: rsoData.validity || "",
+          validity: rsoData.validity ? rsoData.validity.split("T")[0] : "", // Format date for input
           attachment: rsoData.attachment || "",
         })
       } catch (error) {
@@ -116,42 +116,49 @@ const EditRSO = () => {
           </Link>
         </li>
       </ol>
+
       <Formik
         initialValues={initialData}
         validationSchema={SubmittedForm}
         enableReinitialize={true}
         onSubmit={async (values, { setSubmitting, setFieldError }) => {
           setLoading(true)
+          const formData = new FormData()
+
+            // Append all fields except attachment
+            ; (Object.keys(values) as (keyof typeof values)[]).forEach((key) => {
+              if (key !== "attachment") {
+                formData.append(key, values[key] as any)
+              }
+            })
+
+          // Append file if selected
+          if (values.attachment && values.attachment instanceof File) {
+            formData.append("attachment", values.attachment)
+          }
+
           try {
-            const response = await editRsohospitalIdandRsoId(hospitalId, rsoId, values)
-            console.log("🚀 ~ onSubmit={ ~ response:", response)
+            const response = await editRsohospitalIdandRsoId(hospitalId, rsoId, formData)
+            console.log("onSubmit response:", response)
             showMessage("RSO updated successfully!", "success")
             navigate(`/admin/clients/preview/${clientId}/${hospitalId}`)
           } catch (error: any) {
             const message = error?.response?.data?.message
-            console.log("🚀 ~ onSubmit ~ message:", message)
-            if (message?.includes("email")) {
-              setFieldError("email", message)
-            } else if (message?.includes("phone")) {
-              setFieldError("phone", message)
-            } else if (message?.includes("rsoId")) {
-              setFieldError("rsoId", message)
-            } else if (message?.includes("rpId")) {
-              setFieldError("rpId", message)
-            } else if (message?.includes("tldBadge")) {
-              setFieldError("tldBadge", message)
-            } else if (message?.includes("validity")) {
-              setFieldError("validity", message)
-            } else {
-              showMessage(message || "Failed to update RSO", "error")
-            }
+            console.log("onSubmit message:", message)
+            if (message?.includes("email")) setFieldError("email", message)
+            else if (message?.includes("phone")) setFieldError("phone", message)
+            else if (message?.includes("rsoId")) setFieldError("rsoId", message)
+            else if (message?.includes("rpId")) setFieldError("rpId", message)
+            else if (message?.includes("tldBadge")) setFieldError("tldBadge", message)
+            else if (message?.includes("validity")) setFieldError("validity", message)
+            else showMessage(message || "Failed to update RSO", "error")
           } finally {
             setSubmitting(false)
             setLoading(false)
           }
         }}
       >
-        {({ errors, submitCount, touched }) => (
+        {({ values, setFieldValue, errors, submitCount }) => (
           <Form className="space-y-5">
             <div className="panel">
               <h5 className="font-semibold text-lg mb-4">Edit RSO Details</h5>
@@ -161,6 +168,7 @@ const EditRSO = () => {
                   <Field name="rsoId" type="text" id="rsoId" placeholder="Enter RSO ID" className="form-input" />
                   {submitCount && errors.rsoId ? <div className="text-danger mt-1">{errors.rsoId}</div> : null}
                 </div>
+
                 <div className={submitCount ? (errors.password ? "has-error" : "has-success") : ""}>
                   <label htmlFor="password">Password</label>
                   <div className="relative">
@@ -190,11 +198,13 @@ const EditRSO = () => {
                   </div>
                   {submitCount && errors.password ? <div className="text-danger mt-1">{errors.password}</div> : ""}
                 </div>
+
                 <div className={submitCount ? (errors.email ? "has-error" : "has-success") : ""}>
                   <label htmlFor="email">Email</label>
                   <Field name="email" type="email" id="email" placeholder="Enter Email Address" className="form-input" />
                   {submitCount && errors.email ? <div className="text-danger mt-1">{errors.email}</div> : ""}
                 </div>
+
                 <div className={submitCount ? (errors.phone ? "has-error" : "has-success") : ""}>
                   <label htmlFor="phone">Phone</label>
                   <Field
@@ -207,16 +217,19 @@ const EditRSO = () => {
                   />
                   {submitCount && errors.phone ? <div className="text-danger mt-1">{errors.phone}</div> : ""}
                 </div>
+
                 <div className={submitCount ? (errors.rpId ? "has-error" : "has-success") : ""}>
                   <label htmlFor="rpId">RP ID</label>
                   <Field name="rpId" type="text" id="rpId" placeholder="Enter RP ID" className="form-input" />
                   {submitCount && errors.rpId ? <div className="text-danger mt-1">{errors.rpId}</div> : ""}
                 </div>
+
                 <div className={submitCount ? (errors.tldBadge ? "has-error" : "has-success") : ""}>
                   <label htmlFor="tldBadge">TLD Badge</label>
                   <Field name="tldBadge" type="text" id="tldBadge" placeholder="Enter TLD Badge" className="form-input" />
                   {submitCount && errors.tldBadge ? <div className="text-danger mt-1">{errors.tldBadge}</div> : ""}
                 </div>
+
                 <div className={submitCount ? (errors.validity ? "has-error" : "has-success") : ""}>
                   <label htmlFor="validity">Validity</label>
                   <Field
@@ -228,19 +241,44 @@ const EditRSO = () => {
                   />
                   {submitCount && errors.validity ? <div className="text-danger mt-1">{errors.validity}</div> : ""}
                 </div>
-                <div className={submitCount ? (errors.attachment ? "has-error" : "has-success") : ""}>
-                  <label htmlFor="attachment">Attachment URL</label>
-                  <Field
-                    name="attachment"
-                    type="text"
+
+                {/* Attachment Field */}
+                <div className={submitCount ? (errors.attachment ? "has-error" : "") : ""}>
+                  <label htmlFor="attachment">Attachment (upload new file)</label>
+
+                  {/* Current file */}
+                  {initialData?.attachment && typeof initialData.attachment === "string" && (
+                    <div className="mb-2 text-sm text-gray-600">
+                      Current: <a href={initialData.attachment} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View File</a>
+                    </div>
+                  )}
+
+                  {/* File Input */}
+                  <input
                     id="attachment"
-                    placeholder="Enter Attachment URL (optional)"
-                    className="form-input"
+                    name="attachment"
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.currentTarget.files?.[0]
+                      if (file) {
+                        setFieldValue("attachment", file)
+                      }
+                    }}
+                    className="form-input file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                   />
-                  {submitCount && errors.attachment ? <div className="text-danger mt-1">{errors.attachment}</div> : ""}
+
+                  {/* Selected file name */}
+                  {values.attachment && values.attachment instanceof File && (
+                    <p className="mt-1 text-sm text-green-600">Selected: {values.attachment.name}</p>
+                  )}
+
+                  {submitCount && errors.attachment ? (
+                    <div className="text-danger mt-1">{errors.attachment as string}</div>
+                  ) : null}
                 </div>
               </div>
             </div>
+
             <div className="w-full mb-6 flex justify-end gap-4">
               <button type="submit" className="btn btn-success !mt-6">
                 Update RSO
