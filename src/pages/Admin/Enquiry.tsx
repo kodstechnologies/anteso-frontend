@@ -47,6 +47,7 @@ const Enquiry = () => {
         const fetchData = async () => {
             try {
                 const response = await getAllEnquiry();
+                console.log("🚀 ~ fetchData ~ response:", response)
                
                 const enriched = response.data.map((item: any, index: number) => ({
                     ...item,

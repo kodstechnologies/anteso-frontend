@@ -223,6 +223,7 @@ const EditQuotation: React.FC = () => {
                 setLoading(true);
                 const response = await getQuotationByEEnquiryId(id);
                 const data = response.data.data;
+                console.log("🚀 ~ fetchQuotationData ~ data:", data)
                 setQuotationData(data);
                 setError(null);
 
@@ -675,27 +676,51 @@ const EditQuotation: React.FC = () => {
                 <div className="mb-4">
                     <h3 className="text-lg font-semibold mb-2">Services</h3>
                     {editableServices.map((service) => (
-                        <div key={service._id} className="border p-3 rounded-md mb-2">
-                            <div className="grid grid-cols-3 gap-2 mb-2">
-                                <input
-                                    value={service.machineType}
-                                    placeholder="Machine Type"
-                                    className="px-2 py-1 border rounded text-sm"
-                                    readOnly // Assuming machine type not editable
-                                />
-                                <input
-                                    value={service.equipmentNo}
-                                    placeholder="Equipment No"
-                                    className="px-2 py-1 border rounded text-sm"
-                                    readOnly
-                                />
-                                <input
-                                    type="number"
-                                    value={service.totalAmount}
-                                    onChange={(e) => handleServiceAmountChange(service._id, Number(e.target.value))}
-                                    placeholder="Total Amount"
-                                    className="px-2 py-1 border rounded text-sm"
-                                />
+                        <div key={service._id} className="border p-3 rounded-md mb-3 bg-gray-50">
+                            {/* Single Row: 4 Inputs */}
+                            <div className="grid grid-cols-12 gap-2 items-center">
+                                {/* Machine Type */}
+                                <div className="col-span-3">
+                                    <input
+                                        value={service.machineType}
+                                        placeholder="Machine Type"
+                                        className="w-full px-2 py-1.5 border rounded text-sm bg-white"
+                                        readOnly
+                                    />
+                                </div>
+
+                                {/* Quantity (Disabled) */}
+                                <div className="col-span-2">
+                                    <input
+                                        type="number"
+                                        value={service.quantity ?? 1}
+                                        placeholder="Qty"
+                                        className="w-full px-2 py-1.5 border rounded text-sm bg-gray-100 text-gray-700"
+                                        readOnly
+                                        disabled
+                                    />
+                                </div>
+
+                                {/* Equipment No */}
+                                <div className="col-span-3">
+                                    <input
+                                        value={service.equipmentNo}
+                                        placeholder="Equipment No"
+                                        className="w-full px-2 py-1.5 border rounded text-sm bg-white"
+                                        readOnly
+                                    />
+                                </div>
+
+                                {/* Total Amount (Editable) */}
+                                <div className="col-span-4">
+                                    <input
+                                        type="number"
+                                        value={service.totalAmount}
+                                        onChange={(e) => handleServiceAmountChange(service._id, Number(e.target.value))}
+                                        placeholder="Total Amount"
+                                        className="w-full px-2 py-1.5 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
                             </div>
                         </div>
                     ))}

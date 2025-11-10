@@ -7,7 +7,7 @@ import signature from "../../../assets/quotationImg/signature.png"
 import qrcode from "../../../assets/quotationImg/qrcode.png"
 import logo from "../../../assets/logo/logo-sm.png"
 import IconTrashLines from "../../Icon/IconTrashLines"
-import { allEmployees, getEnquiryById, createQuotationByEnquiryId, getAllDealers, getNextQuotationNumber } from "../../../api"
+import { getEnquiryById, createQuotationByEnquiryId, getAllDealers, getNextQuotationNumber, getAllEmployees, getAllManufacturer } from "../../../api"
 import { showMessage } from "../../common/ShowMessage"
 import ConfirmModal from "../../common/ConfirmModal"
 
@@ -369,7 +369,7 @@ const AddQuotation: React.FC = () => {
     const [isDiscountApplied, setIsDiscountApplied] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMessage, setModalMessage] = useState("");
-
+    const [manufacturers, setManufacturers] = useState<any[]>([]) // NEW
     const [aitems, setAItems] = useState<Item[]>([
         {
             type: "",
@@ -523,34 +523,46 @@ const AddQuotation: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [empData, dealerResponse] = await Promise.all([
-                    allEmployees(),
-                    getAllDealers()
+                const [empRes, dealerRes, manufacturerRes] = await Promise.all([
+                    getAllEmployees(),
+                    getAllDealers(),
+                    getAllManufacturer()
                 ]);
 
-                const employeeList = (empData || []).map((e: any) => ({
+                // === 1. EMPLOYEES ===
+                const employeeList = (empRes?.data || []).map((e: any) => ({
                     ...e,
                     type: "employee",
                 }));
 
-                const dealerList = Array.isArray(dealerResponse.data.dealers)
-                    ? dealerResponse.data.dealers.map((d: any) => ({
-                        ...d,
-                        type: "dealer",
-                    }))
-                    : [];
+                // === 2. DEALERS ===
+                const dealerList = (dealerRes?.data?.dealers || []).map((d: any) => ({
+                    ...d,
+                    type: "dealer",
+                }));
 
+                // === 3. MANUFACTURERS ===
+                const manufacturerList = (manufacturerRes?.data?.data || []).map((m: any) => ({
+                    ...m,
+                    type: "manufacturer",
+                }));
+
+                // Optional: Store separately if needed elsewhere
                 setEmployees(employeeList);
                 setDealers(dealerList);
+                setManufacturers(manufacturerList);
 
-                // ✅ Merge both for dropdown
-                setPeople([...employeeList, ...dealerList]);
+                // === UNIFIED DROPDOWN LIST ===
+                const unifiedPeople = [...employeeList, ...dealerList, ...manufacturerList];
+                setPeople(unifiedPeople);
 
-                // console.log("🚀 ~ fetchData ~ people:", [...employeeList, ...dealerList]);
-            } catch (error) {
-                console.error("Error fetching employees or dealers:", error);
-            } finally {
-                // setLoading(false);
+                console.log("Unified People:", unifiedPeople);
+
+            } catch (error: any) {
+                console.error("Error fetching people data:", error);
+                const msg = error?.response?.data?.message || "Failed to load contacts.";
+                setModalMessage(msg);
+                setModalOpen(true);
             }
         };
 
@@ -773,9 +785,12 @@ const AddQuotation: React.FC = () => {
                     hospitalName: enquiryData?.hospitalName || "",
                 },
                 assignedEmployee: {
-                    id: employees[selectedIndex]?._id || "",
-                    name: employees[selectedIndex]?.name || "",
-                    phone: employees[selectedIndex]?.phone || 0,
+                    // id: employees[selectedIndex]?._id || "",
+                    // name: employees[selectedIndex]?.name || "",
+                    // phone: employees[selectedIndex]?.phone || 0,
+                    id: people[selectedIndex]?._id || "",
+                    name: people[selectedIndex]?.name || "",
+                    phone: people[selectedIndex]?.phone || 0,
                 },
                 items: {
                     services: serviceSnapshots,
@@ -891,9 +906,9 @@ const AddQuotation: React.FC = () => {
                             <InfoRow label="Contact" value={enquiryData?.customer?.phone || "N/A"} />
                             <tr className="text-[.7rem]">
                                 <td className="font-bold">From:</td>
-                                <td className="pl-2">
+                                <td className="pl-2" colSpan={2}>
                                     <select
-                                        className="text-[.7rem] border border-gray-300 rounded px-1 focus:outline-none"
+                                        className="text-[.7rem] border border-gray-300 rounded px-1 focus:outline-none w-full"
                                         value={selectedIndex}
                                         onChange={(e) => setSelectedIndex(Number(e.target.value))}
                                     >
