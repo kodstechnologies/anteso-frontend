@@ -566,56 +566,52 @@ const ViewQuotation: React.FC = () => {
                             <table className="w-full text-xs mb-1">
                                 <thead>
                                     <tr>
-                                        {acolumns.map((column) => (
+                                        {acolumns.map((col) => (
                                             <th
-                                                key={column.key}
-                                                className={`${column?.class} px-2  bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
+                                                key={col.key}
+                                                className={`${col.class} px-2 bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
                                             >
-                                                {column.label}
+                                                {col.label}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="">
-                                    {aitems.map((item) => (
-                                        <tr key={item.id} className="">
-                                            {/* <td className="px-2 py-1 text-[.6rem]">{item.type}</td> */}
-                                            <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
+                                <tbody>
+                                    {aitems.map((item, i) => (
+                                        <tr key={i}>
+                                            <td className="px-2 py-1 text-[.6rem]">{i + 1}</td>
                                             <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
                                             <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
-                                            <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">{item.quantity}</td>
-                                            {/* <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.price}</td> */}
-                                            <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
+                                            <td className="px-2 py-1 text-[.6rem] text-right">{item.quantity}</td>
+                                            <td className="px-2 py-1 text-[.6rem] text-right">₹ {item.amount}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         )}
 
+                        {/* ────── B-ITEMS TABLE ────── */}
                         {bitems.length > 0 && (
                             <table className="w-full text-xs mb-6">
                                 <thead>
                                     <tr>
-                                        {bcolumns.map((column) => (
+                                        {bcolumns.map((col) => (
                                             <th
-                                                key={column.key}
-                                                className={`${column?.class} px-2 py-1 bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
+                                                key={col.key}
+                                                className={`${col.class} px-2 py-1 bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
                                             >
-                                                {column.label}
+                                                {col.label}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {bitems.map((item) => (
-                                        <tr key={item.id}>
-                                            {/* <td className="px-2 py-1 text-[.6rem]">{item.type}</td> */}
-                                            <td className="px-2 py-1 text-[.6rem]">{item.id}</td>
+                                    {bitems.map((item, i) => (
+                                        <tr key={i}>
+                                            <td className="px-2 py-1 text-[.6rem]">{i + 1}</td>
                                             <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
                                             <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
-                                            {/* <td className="px-2 py-1 text-[.6rem]">{item.quantity}</td> */}
-                                            {/* <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.price}</td> */}
-                                            <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
+                                            <td className="px-2 py-1 text-[.6rem] text-right">₹ {item.amount}</td>
                                         </tr>
                                     ))}
                                 </tbody>
