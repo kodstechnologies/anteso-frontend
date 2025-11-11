@@ -14,8 +14,14 @@ import ExposureRateTableTop from "./TestTables/ExposureRateTableTop";
 import RadiationLeakageLevel from "./TestTables/RadiationLeakageLevel";
 import EffectiveFocalspotMeasurement from "./TestTables/EffectiveFocalspotMeasurement";
 import ConsisitencyOfRadiationOutput from "./TestTables/ConsisitencyOfRadiationOutput";
-import RadiationProfileWidth from "./TestTables/RadiationProfileWidth";
-
+import RadiationProfileWidth from "./TestTables/CTScan/RadiationProfileWidth";
+import MeasurementOfMaLinearity from "./TestTables/CTScan/measurementOfMaLinearity";
+import TimerAccuracy from "./TestTables/CTScan/TimerAccuracy";
+import MeasurementOfOperatingPotential from "./TestTables/MeasurementOfOperatingPotential";
+import MeasurementOfCTDI from "./TestTables/CTScan/MeasurementOfCTDI";
+import HighContrastResolutionForCTScan from "./TestTables/CTScan/HighContrastResolutionForCTScan";
+import LowContrastResolutionForCTScan from "./TestTables/CTScan/LowContrastResolutionForCTScan";
+import TotalFilterationForCTScan from "./TestTables/CTScan/TotalFilterationForCTScan";
 export interface Standard {
     slNumber: string;
     nomenclature: string;
@@ -61,15 +67,22 @@ const GenerateReport: React.FC = () => {
 
     // Define accordion items
     const accordionItems = [
-        { title: "Accuracy of Operating Potential", component: <AccuracyOfOperatingPotential /> },
-        { title: "Linearity of mAs Loading", component: <LinearityOfmAsLoading /> },
-        { title: "Low Contrast Resolution", component: <LowContrastResolution /> },
-        { title: "High Contrast Resolution", component: <HighContrastResolution /> },
-        { title: "Exposure Rate (Table Top)", component: <ExposureRateTableTop /> },
-        { title: "Radiation Leakage Level", component: <RadiationLeakageLevel /> },
-        { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement /> },
-        { title: "Consistency of Radiation Output", component: <ConsisitencyOfRadiationOutput /> },
+        // { title: "Accuracy of Operating Potential", component: <AccuracyOfOperatingPotential /> },
+        // { title: "Linearity of mAs Loading", component: <LinearityOfmAsLoading /> },
+        // { title: "Low Contrast Resolution", component: <LowContrastResolution /> },
+        // { title: "High Contrast Resolution", component: <HighContrastResolution /> },
+        // { title: "Exposure Rate (Table Top)", component: <ExposureRateTableTop /> },
+        // { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement /> },
+        // { title: "Consistency of Radiation Output", component: <ConsisitencyOfRadiationOutput /> },
         { title: "Radiation Profile Width/Slice Thickness", component: <RadiationProfileWidth /> },
+        { title: "Measuremenr of mA Linearity", component: <MeasurementOfMaLinearity /> },
+        { title: "Timer Accuracy", component: <TimerAccuracy /> },
+        { title: "Measurement Of Operating Potential", component: <MeasurementOfOperatingPotential /> },
+        { title: "Measurement Of Computed Tomography Dose Index", component: <MeasurementOfCTDI /> },
+        { title: "High Contrast Resolution For CTScan", component: <HighContrastResolutionForCTScan /> },
+        { title: "Low Contrast Resolution For CTScan", component: <LowContrastResolutionForCTScan /> },
+        { title: "Total Filteration For CTScan", component: <TotalFilterationForCTScan /> },
+        { title: "Radiation Leakage Level", component: <RadiationLeakageLevel /> },
     ];
 
     return (

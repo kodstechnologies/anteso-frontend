@@ -626,7 +626,7 @@ const EditQuotation: React.FC = () => {
             <div className="mb-6 p-4 bg-white rounded-lg shadow">
                 <h2 className="text-xl font-bold mb-4">Edit Quotation Details</h2>
                 <div className="mb-4">
-                    <label className="block text-sm font-medium mb-1">Assign Employee / Dealer</label>
+                    {/* <label className="block text-sm font-medium mb-1">Assigned Employee / Dealer</label> */}
                     <select
                         value={selectedOption?._id || ""}
                         onChange={(e) => {
@@ -634,6 +634,7 @@ const EditQuotation: React.FC = () => {
                             setSelectedOption(selected || null);
                         }}
                         className="w-full px-3 py-2 border rounded-md"
+                        disabled
                     >
                         <option value="" disabled>Select Employee / Dealer</option>
                         {options.map(opt => (
