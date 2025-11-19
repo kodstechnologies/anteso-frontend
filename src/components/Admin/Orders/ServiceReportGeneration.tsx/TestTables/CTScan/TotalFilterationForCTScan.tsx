@@ -1,71 +1,160 @@
 // components/TestTables/TotalFilterationForCTScan.tsx
-import React, { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Loader2, Edit3, Save } from 'lucide-react';
+import {
+    addTotalFilteration,
+    getTotalFilterationByTestId,
+    updateTotalFilteration,
+} from '../../../../../../api';
+import toast from 'react-hot-toast';
 
 interface Row {
-    id: string;
     appliedKV: string;
     appliedMA: string;
     time: string;
     sliceThickness: string;
-    measuredTF: string; // stored as string for input control
-    remark: string;
+    measuredTF: string; // stored as string, rounded to 2 decimals
 }
 
-const TotalFilterationForCTScan: React.FC = () => {
-    const [rows, setRows] = useState<Row[]>([
-        {
-            id: '1',
-            appliedKV: '120',
-            appliedMA: '100',
-            time: '1.0',
-            sliceThickness: '5.0',
-            measuredTF: '2.50',
-            remark: '',
-        },
-    ]);
+interface Props {
+    serviceId: string;
+    testId?: string;
+    onRefresh?: () => void;
+}
 
-    const [tolerance, setTolerance] = useState<string>('±0.5 mm');
+const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+    const [testId, setTestId] = useState<string | null>(propTestId || null);
 
-    // Add new row
-    const addRow = () => {
-        setRows((prev) => [
-            ...prev,
-            {
-                id: Date.now().toString(),
-                appliedKV: '',
-                appliedMA: '',
-                time: '',
-                sliceThickness: '',
-                measuredTF: '',
-                remark: '',
-            },
-        ]);
+    // Single fixed row
+    const [row, setRow] = useState<Row>({
+        appliedKV: '',
+        appliedMA: '',
+        time: '',
+        sliceThickness: '',
+        measuredTF: '',
+    });
+
+    const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [hasSaved, setHasSaved] = useState(false);
+
+    // === Auto Remark: Pass if ≥ 2.5, else Fail ===
+    const remark = useMemo(() => {
+        const tf = parseFloat(row.measuredTF);
+        if (isNaN(tf)) return '';
+        return tf >= 2.5 ? 'Pass' : 'Fail';
+    }, [row.measuredTF]);
+
+    // === Update Row Field ===
+    const updateField = (field: keyof Row, value: string) => {
+        if (field === 'measuredTF') {
+            const num = parseFloat(value);
+            const rounded = isNaN(num) ? '' : num.toFixed(2);
+            setRow(prev => ({ ...prev, [field]: rounded }));
+        } else {
+            setRow(prev => ({ ...prev, [field]: value }));
+        }
     };
 
-    // Remove row (keep at least one)
-    const removeRow = (id: string) => {
-        if (rows.length <= 1) return;
-        setRows((prev) => prev.filter((r) => r.id !== id));
-    };
+    // === Form Valid ===
+    const isFormValid = useMemo(() => {
+        return (
+            !!serviceId &&
+            row.appliedKV.trim() &&
+            row.appliedMA.trim() &&
+            row.time.trim() &&
+            row.sliceThickness.trim() &&
+            row.measuredTF.trim()
+        );
+    }, [serviceId, row]);
 
-    // Update any field
-    const updateRow = (id: string, field: keyof Row, value: string) => {
-        setRows((prev) =>
-            prev.map((row) => {
-                if (row.id !== id) return row;
+    // === Load Data ===
+    useEffect(() => {
+        if (!testId) {
+            setIsLoading(false);
+            return;
+        }
 
-                // Special handling: round Measured TF to 2 decimal places
-                if (field === 'measuredTF') {
-                    const num = parseFloat(value);
-                    const rounded = isNaN(num) ? '' : num.toFixed(2);
-                    return { ...row, [field]: rounded };
+        const load = async () => {
+            try {
+                const { data } = await getTotalFilterationByTestId(testId);
+                const rec = data;
+
+                if (rec.rows?.[0]) {
+                    const r = rec.rows[0];
+                    setRow({
+                        appliedKV: String(r.appliedKV),
+                        appliedMA: String(r.appliedMA),
+                        time: String(r.time),
+                        sliceThickness: String(r.sliceThickness),
+                        measuredTF: r.measuredTF ? parseFloat(r.measuredTF).toFixed(2) : '',
+                    });
                 }
 
-                return { ...row, [field]: value };
-            })
-        );
+                setHasSaved(true);
+                setIsEditing(false);
+            } catch (e: any) {
+                if (e.response?.status !== 404) toast.error('Failed to load data');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        load();
+    }, [testId]);
+
+    // === Save / Update ===
+    const handleSave = async () => {
+        if (!isFormValid) return;
+        setIsSaving(true);
+
+        const payload = {
+            rows: [
+                {
+                    ...row,
+                    measuredTF: parseFloat(row.measuredTF),
+                },
+            ],
+        };
+
+        try {
+            let res;
+            if (testId) {
+                res = await updateTotalFilteration(testId, payload);
+                toast.success('Updated successfully!');
+            } else {
+                res = await addTotalFilteration(serviceId, payload);
+                setTestId(res.data.testId);
+                toast.success('Saved successfully!');
+            }
+            setHasSaved(true);
+            setIsEditing(false);
+            onRefresh?.();
+        } catch (e: any) {
+            toast.error(e.message || 'Save failed');
+        } finally {
+            setIsSaving(false);
+        }
     };
+
+    const toggleEdit = () => {
+        if (!hasSaved) return;
+        setIsEditing(true);
+    };
+
+    const isViewMode = hasSaved && !isEditing;
+    const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
+    const ButtonIcon = isViewMode ? Edit3 : Save;
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-10">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <span className="ml-2">Loading...</span>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-10">
@@ -73,7 +162,7 @@ const TotalFilterationForCTScan: React.FC = () => {
                 Total Filtration for CT Scan
             </h2>
 
-            {/* ==================== Main Table ==================== */}
+            {/* ==================== Main Table: Single Row ==================== */}
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
                 <h3 className="px-6 py-3 text-lg font-semibold bg-teal-50 border-b">
                     Filtration Measurement
@@ -100,105 +189,103 @@ const TotalFilterationForCTScan: React.FC = () => {
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     Remark
                                 </th>
-                                <th className="w-12" />
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {rows.map((row) => (
-                                <tr key={row.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-2 border-r">
-                                        <input
-                                            type="text"
-                                            value={row.appliedKV}
-                                            onChange={(e) => updateRow(row.id, 'appliedKV', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                            placeholder="120"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-2 border-r">
-                                        <input
-                                            type="text"
-                                            value={row.appliedMA}
-                                            onChange={(e) => updateRow(row.id, 'appliedMA', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                            placeholder="100"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-2 border-r">
-                                        <input
-                                            type="text"
-                                            value={row.time}
-                                            onChange={(e) => updateRow(row.id, 'time', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                            placeholder="1.0"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-2 border-r">
-                                        <input
-                                            type="text"
-                                            value={row.sliceThickness}
-                                            onChange={(e) => updateRow(row.id, 'sliceThickness', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                            placeholder="5.0"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-2 border-r">
-                                        <input
-                                            type="text"
-                                            value={row.measuredTF}
-                                            onChange={(e) => updateRow(row.id, 'measuredTF', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
-                                            placeholder="2.50"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-2">
-                                        <input
-                                            type="text"
-                                            value={row.remark}
-                                            onChange={(e) => updateRow(row.id, 'remark', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                                            placeholder="e.g. Within limits"
-                                        />
-                                    </td>
-                                    <td className="px-2 py-2 text-center">
-                                        {rows.length > 1 && (
-                                            <button
-                                                onClick={() => removeRow(row.id)}
-                                                className="text-red-600 hover:bg-red-100 p-1 rounded"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                            <tr className="hover:bg-gray-50">
+                                <td className="px-4 py-2 border-r">
+                                    <input
+                                        type="text"
+                                        value={row.appliedKV}
+                                        onChange={e => updateField('appliedKV', e.target.value)}
+                                        disabled={isViewMode}
+                                        className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                            }`}
+                                        placeholder="120"
+                                    />
+                                </td>
+                                <td className="px-4 py-2 border-r">
+                                    <input
+                                        type="text"
+                                        value={row.appliedMA}
+                                        onChange={e => updateField('appliedMA', e.target.value)}
+                                        disabled={isViewMode}
+                                        className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                            }`}
+                                        placeholder="100"
+                                    />
+                                </td>
+                                <td className="px-4 py-2 border-r">
+                                    <input
+                                        type="text"
+                                        value={row.time}
+                                        onChange={e => updateField('time', e.target.value)}
+                                        disabled={isViewMode}
+                                        className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                            }`}
+                                        placeholder="1.0"
+                                    />
+                                </td>
+                                <td className="px-4 py-2 border-r">
+                                    <input
+                                        type="text"
+                                        value={row.sliceThickness}
+                                        onChange={e => updateField('sliceThickness', e.target.value)}
+                                        disabled={isViewMode}
+                                        className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                            }`}
+                                        placeholder="5.0"
+                                    />
+                                </td>
+                                <td className="px-4 py-2 border-r">
+                                    <input
+                                        type="text"
+                                        value={row.measuredTF}
+                                        onChange={e => updateField('measuredTF', e.target.value)}
+                                        disabled={isViewMode}
+                                        className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                            }`}
+                                        placeholder="2.50"
+                                    />
+                                </td>
+                                <td className="px-4 py-2">
+                                    <span
+                                        className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${remark === 'Pass' ? 'bg-green-100 text-green-800' : remark === 'Fail' ? 'bg-red-100 text-red-800' : 'text-gray-400'
+                                            }`}
+                                    >
+                                        {remark || '—'}
+                                    </span>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
-                <div className="px-6 py-3 bg-gray-50 border-t">
-                    <button
-                        onClick={addRow}
-                        className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 text-sm font-medium"
-                    >
-                        <Plus className="w-4 h-4" /> Add Measurement
-                    </button>
-                </div>
             </div>
 
-            {/* ==================== Tolerance (Outside) ==================== */}
-            <div className="bg-white p-6 shadow-md rounded-lg">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tolerance for Total Filtration:
-                </label>
-                <div className="flex items-center gap-2">
-                    <input
-                        type="text"
-                        value={tolerance}
-                        onChange={(e) => setTolerance(e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        placeholder="e.g. ±0.5 mm"
-                    />
-                </div>
+            {/* ==================== SAVE BUTTON ==================== */}
+            <div className="flex justify-end mt-6">
+                <button
+                    onClick={isViewMode ? toggleEdit : handleSave}
+                    disabled={isSaving || (!isViewMode && !isFormValid)}
+                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : isViewMode
+                                ? 'bg-orange-600 hover:bg-orange-700'
+                                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+                        }`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <ButtonIcon className="w-4 h-4" />
+                            {buttonText} Filtration
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );

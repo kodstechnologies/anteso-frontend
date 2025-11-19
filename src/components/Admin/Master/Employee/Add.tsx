@@ -94,26 +94,11 @@ const AddEngineer = () => {
             otherwise: (schema) => schema.notRequired(),
         }),
 
-        toolIDs: Yup.array().of(Yup.string()).when('technicianType', {
-            is: 'Engineer',
-            then: (schema) => schema.min(1, 'Please select at least one tool'),
-            otherwise: (schema) => schema.notRequired(),
-        }),
+        toolIDs: Yup.array().of(Yup.string()).notRequired(),
 
-        tools: Yup.object().when('technicianType', {
-            is: 'Engineer',
-            then: (schema) =>
-                schema.test(
-                    'tool-issue-dates',
-                    'Each selected tool must have an issue date',
-                    function (value: any) {
-                        const { toolIDs } = this.parent;
-                        if (!toolIDs || toolIDs.length === 0) return true;
-                        return toolIDs.every((toolID: string) => !!value?.[toolID]);
-                    }
-                ),
-            otherwise: (schema) => schema.notRequired(),
-        }),
+
+        tools: Yup.object().notRequired(),
+
     });
 
     // --------------------------------------------------------------
@@ -131,7 +116,12 @@ const AddEngineer = () => {
             payload.append('name', values.name);
             payload.append('phone', values.phone);
             payload.append('email', values.email);
-            payload.append('technicianType', values.technicianType.toLowerCase());
+            const normalizedType = values.technicianType
+                .toLowerCase()
+                .replace(/\s+/g, "-");
+            payload.append('technicianType', normalizedType);
+
+            // payload.append('technicianType', values.technicianType.toLowerCase());
             payload.append('status', values.activeStatus.toLowerCase());
             payload.append('designation', values.designation);
             payload.append('department', values.department);

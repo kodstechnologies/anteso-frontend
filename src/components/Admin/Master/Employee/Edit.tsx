@@ -10,7 +10,7 @@ import {
   getUnassignedTools,
 } from '../../../../api';
 
-type RoleValue = 'office staff' | 'engineer';
+type RoleValue = 'office-staff' | 'engineer';
 type StatusValue = 'active' | 'inactive';
 
 type ToolOption = { id: string; name: string; code: string };
@@ -65,26 +65,10 @@ const schema = Yup.object({
     .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits')
     .required('Please fill the Field'),
   role: Yup.string().required('Please fill the Field'),
-  tools: Yup.array()
-    .of(Yup.string())
-    .when('role', {
-      is: (val: string) => (val || '').toLowerCase() === 'engineer',
-      then: (s) => s.min(1, 'Please select at least one tool'),
-    }),
-  issueDates: Yup.object().when('role', {
-    is: (val: string) => (val || '').toLowerCase() === 'engineer',
-    then: (s) =>
-      s.test(
-        'allToolsHaveDates',
-        'Please provide issue dates for selected tools',
-        function (value) {
-          const v = value as Record<string, string> | undefined;
-          const selected = (this.parent as FormValues).tools;
-          if (!selected?.length) return true;
-          return selected.every((toolId) => v?.[toolId]);
-        }
-      ),
-  }),
+  tools: Yup.array().of(Yup.string()).notRequired(),
+
+  issueDates: Yup.object().notRequired(),
+
   status: Yup.string().required('Please fill the Field'),
   designation: Yup.string().required('Please fill the Designation'),
   workingDays: Yup.number().required('Please fill Working Days').min(0),
@@ -93,7 +77,7 @@ const schema = Yup.object({
 });
 
 const normalizeRole = (r: string): RoleValue =>
-  (r || '').toLowerCase() === 'engineer' ? 'engineer' : 'office staff';
+  (r || '').toLowerCase() === 'engineer' ? 'engineer' : 'office-staff';
 
 const normalizeStatus = (s: string): StatusValue =>
   (s || '').toLowerCase() === 'inactive' ? 'inactive' : 'active';

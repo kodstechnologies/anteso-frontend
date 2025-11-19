@@ -239,6 +239,20 @@ const Orders = () => {
                                 { accessor: 'contactNumber', title: 'Customer Mobile', sortable: true, render: (r) => r.contactNumber || '-' },
                                 { accessor: 'status', title: 'Status', sortable: true, render: (r) => r.status || '-' },
                                 {
+                                    accessor: 'createdAt',
+                                    title: 'Created At',
+                                    sortable: true,
+                                    render: (r) =>
+                                        r.createdAt
+                                            ? new Date(r.createdAt).toLocaleDateString('en-GB', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                year: 'numeric',
+                                            })
+                                            : '-',
+                                },
+
+                                {
                                     accessor: 'action',
                                     title: 'Actions',
                                     sortable: false,

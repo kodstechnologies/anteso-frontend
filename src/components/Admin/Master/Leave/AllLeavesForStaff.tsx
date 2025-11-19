@@ -22,6 +22,7 @@ interface LeaveItem {
     leaveType: string;
     reason: string;
     status: string;
+    rejectionReason?: string;
 }
 
 interface DecodedToken {
@@ -60,6 +61,7 @@ const AllLeavesForStaff: React.FC = () => {
 
             const response = await getAllLeavesByStaff(staffId);
             const data = response.data?.data || [];
+            console.log("🚀 ~ fetchLeavesForStaff ~ data:", data)
             setLeaves(data);
             setRecords(sortBy(data, "startDate"));
         } catch (error) {
@@ -144,9 +146,26 @@ const AllLeavesForStaff: React.FC = () => {
                                             : status === "Pending"
                                                 ? "warning"
                                                 : "secondary";
-                                return <span className={`text-${color}`}>{status}</span>;
+                                return <span className="text-md text-red-600 font-semibold">{status}</span>;
                             },
                         },
+                        {
+                            accessor: "reason",
+                            title: "Reason for leave rejection",
+                            sortable: true,
+                            render: ({ reason, status, rejectionReason }) => (
+                                <div className="space-y-1">
+                                   
+
+                                    {status === "Rejected" && rejectionReason && (
+                                        <span className="text-md text-red-600 font-semibold">
+                                             {rejectionReason}
+                                        </span>
+                                    )}
+                                </div>
+                            ),
+                        },
+
                         {
                             accessor: "actions",
                             title: "Actions",

@@ -43,6 +43,7 @@ const Employee = () => {
             try {
                 setLoading(true);
                 const response = await getAllEmployees();
+                console.log("🚀 ~ fetchEmployees ~ response:", response)
 
                 const transformed = response?.data?.map((employee: any, index: number) => ({
                     ...employee,
@@ -164,7 +165,7 @@ const Employee = () => {
                             className="whitespace-nowrap table-hover invoice-table"
                             records={records}
                             columns={[
-                                { accessor: 'employeeId', title: 'EMP ID', sortable: true },
+                                { accessor: 'empId', title: 'EMP ID', sortable: true },
                                 { accessor: 'name', sortable: true },
                                 { accessor: 'email', sortable: true },
                                 { accessor: 'phone', sortable: true },

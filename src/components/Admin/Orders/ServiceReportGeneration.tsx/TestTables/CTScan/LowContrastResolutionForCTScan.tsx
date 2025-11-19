@@ -1,240 +1,173 @@
 // components/TestTables/LowContrastResolutionForCTScan.tsx
 import React, { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-
-// Table 1: Parameters
-interface ParamRow {
-  id: string;
-  parameter: string;
-  value: string;
-}
-
-// Table 2: Results
-interface ResultRow {
-  id: string;
-  size: string;
-  value: string;
-  unit: string;
-}
+import { CheckCircle, XCircle } from 'lucide-react';
 
 const LowContrastResolutionForCTScan: React.FC = () => {
-  /* ==================== Table 1: Parameters ==================== */
-  const [paramRows, setParamRows] = useState<ParamRow[]>([
-    { id: '1', parameter: 'Hole Size (mm)', value: '5.0' },
-  ]);
+  const [kvp, setKvp] = useState('120');
+  const [ma, setMa] = useState('200');
+  const [sliceThickness, setSliceThickness] = useState('5.0');
+  const [ww, setWw] = useState('400');
 
-  const addParamRow = () => {
-    setParamRows((prev) => [
-      ...prev,
-      { id: Date.now().toString(), parameter: '', value: '' },
-    ]);
-  };
+  const [observedSize, setObservedSize] = useState('5.0');
+  const [contrastLevel, setContrastLevel] = useState('1.0');
 
-  const removeParamRow = (id: string) => {
-    if (paramRows.length <= 1) return;
-    setParamRows((prev) => prev.filter((r) => r.id !== id));
-  };
+  const minimumTolerance = '5.0 mm at 1% contrast difference (minimum)';
+  const expectedTolerance = '2.5 mm at 0.5% contrast difference (expected)';
 
-  const updateParamRow = (id: string, field: 'parameter' | 'value', newValue: string) => {
-    setParamRows((prev) =>
-      prev.map((row) =>
-        row.id === id ? { ...row, [field]: newValue } : row
-      )
-    );
-  };
+  const observed = parseFloat(observedSize);
+  const isValidNumber = !isNaN(observed) && observed > 0;
 
-  /* ==================== Table 2: Results ==================== */
-  const [resultRows, setResultRows] = useState<ResultRow[]>([
-    { id: '1', size: '5.0', value: 'Visible', unit: 'mm' },
-  ]);
+  const status = !isValidNumber
+    ? 'incomplete'
+    : observed <= 5.0
+      ? 'pass'
+      : 'fail';
 
-  const addResultRow = () => {
-    setResultRows((prev) => [
-      ...prev,
-      { id: Date.now().toString(), size: '', value: '', unit: '' },
-    ]);
-  };
-
-  const removeResultRow = (id: string) => {
-    if (resultRows.length <= 1) return;
-    setResultRows((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const updateResultRow = (
-    id: string,
-    field: 'size' | 'value' | 'unit',
-    newValue: string
-  ) => {
-    setResultRows((prev) =>
-      prev.map((row) =>
-        row.id === id ? { ...row, [field]: newValue } : row
-      )
-    );
-  };
-
-  /* ==================== Tolerance ==================== */
-  const [tolerance, setTolerance] = useState<string>('±5%');
+  const isExpectedMet = isValidNumber && observed <= 2.5;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-10">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        Low Contrast Resolution for CT Scan
-      </h2>
+    <div className="p-8 max-w-5xl mx-auto space-y-10 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Low Contrast Resolution for CT Scan
+        </h1>
+        <p className="text-gray-600 mt-2">Quality Control Test – Detectability Assessment</p>
+      </div>
 
-      {/* ==================== Table 1: Parameters ==================== */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
-          Test Parameters
-        </h3>
+      {/* Table 1: Acquisition Parameters */}
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4">
+          <h2 className="text-xl font-semibold">Acquisition Parameters</h2>
+        </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full">
+            <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                  Parameter
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Value
-                </th>
-                <th className="w-12" />
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">kVp</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">mA</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Slice Thickness (mm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Window Width (WW)</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paramRows.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border-r">
-                    <input
-                      type="text"
-                      value={row.parameter}
-                      onChange={(e) => updateParamRow(row.id, 'parameter', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g. Hole Size (mm)"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="text"
-                      value={row.value}
-                      onChange={(e) => updateParamRow(row.id, 'value', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g. 5.0"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-center">
-                    {paramRows.length > 1 && (
-                      <button
-                        onClick={() => removeParamRow(row.id)}
-                        className="text-red-600 hover:bg-red-100 p-1 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+            <tbody>
+              <tr className="hover:bg-gray-50 transition">
+                <td className="px-6 py-4"><input type="text" value={kvp} onChange={(e) => setKvp(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-center font-medium" /></td>
+                <td className="px-6 py-4"><input type="text" value={ma} onChange={(e) => setMa(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-center font-medium" /></td>
+                <td className="px-6 py-4"><input type="text" value={sliceThickness} onChange={(e) => setSliceThickness(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-center font-medium" /></td>
+                <td className="px-6 py-4"><input type="text" value={ww} onChange={(e) => setWw(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-center font-medium" /></td>
+              </tr>
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-3 bg-gray-50 border-t">
-          <button
-            onClick={addParamRow}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" /> Add Parameter
-          </button>
-        </div>
       </div>
 
-      {/* ==================== Table 2: Results ==================== */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-indigo-50 border-b">
-          Low Contrast Results
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                  Size (mm)
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                  Value
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Unit
-                </th>
-                <th className="w-12" />
+      {/* Table 2: Low Contrast Result – Clean header (no gradient) */}
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-gray-800 text-white px-6 py-4">
+          <h2 className="text-xl font-semibold">Low Contrast Resolution Result</h2>
+        </div>
+        <div className="p-8">
+          <table className="min-w-full">
+            <tbody>
+              <tr className="border-b-2 border-gray-200">
+                <td className="py-6 px-4 text-lg font-medium text-gray-800 w-1/3">
+                  Low Contrast Resolution
+                </td>
+                <td className="py-6 px-4 text-center">
+                  <input
+                    type="text"
+                    value={observedSize}
+                    onChange={(e) => setObservedSize(e.target.value)}
+                    className={`w-32 px-6 py-4 text-2xl font-bold text-center rounded-lg border-4 transition-all ${status === 'pass'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : status === 'fail'
+                          ? 'border-red-500 bg-red-50 text-red-700'
+                          : 'border-gray-300'
+                      } focus:ring-4 focus:ring-indigo-300`}
+                    placeholder="5.0"
+                  />
+                  <p className="text-sm text-gray-600 mt-2">mm (smallest visible object)</p>
+                </td>
+                <td className="py-6 px-4 text-center">
+                  <div className="flex items-center justify-center gap-3">
+                    <span className="text-xl font-medium">at</span>
+                    <input
+                      type="text"
+                      value={contrastLevel}
+                      onChange={(e) => setContrastLevel(e.target.value)}
+                      className="w-20 px-4 py-4 text-2xl font-bold text-center border-4 border-indigo-500 rounded-lg focus:ring-4 focus:ring-indigo-300"
+                    />
+                    <span className="text-xl font-medium">%</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">contrast difference</p>
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {resultRows.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border-r">
-                    <input
-                      type="text"
-                      value={row.size}
-                      onChange={(e) => updateResultRow(row.id, 'size', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="5.0"
-                    />
-                  </td>
-                  <td className="px-4 py-2 border-r">
-                    <input
-                      type="text"
-                      value={row.value}
-                      onChange={(e) => updateResultRow(row.id, 'value', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Visible"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="text"
-                      value={row.unit}
-                      onChange={(e) => updateResultRow(row.id, 'unit', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="mm"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-center">
-                    {resultRows.length > 1 && (
-                      <button
-                        onClick={() => removeResultRow(row.id)}
-                        className="text-red-600 hover:bg-red-100 p-1 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-3 bg-gray-50 border-t">
-          <button
-            onClick={addResultRow}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" /> Add Result
-          </button>
+      </div>
+
+      {/* Tolerance & Small Result Badge */}
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* Acceptance Criteria */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border-2 border-blue-200">
+          <h3 className="text-xl font-bold text-blue-900 mb-6">Acceptance Criteria</h3>
+          <div className="space-y-6 text-lg">
+            <div className="flex items-start gap-3">
+              <span className="text-blue-600 mt-1 text-xl">•</span>
+              <div>
+                <span className="font-semibold text-gray-800">Minimum Required:</span><br />
+                <span className="text-blue-700 font-medium">{minimumTolerance}</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-green-600 mt-1 text-xl">•</span>
+              <div>
+                <span className="font-semibold text-gray-800">Expected Performance:</span><br />
+                <span className={`font-medium ${isExpectedMet ? 'text-green-700' : 'text-gray-600'}`}>
+                  {expectedTolerance}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Small PASS/FAIL Badge – Same size as High Contrast */}
+        <div className="flex items-center justify-center">
+          <div className={`rounded-xl px-10 py-8 shadow-xl transition-all ${status === 'pass' ? 'bg-green-600' :
+              status === 'fail' ? 'bg-red-600' :
+                'bg-gray-500'
+            } text-white`}>
+            <div className="text-center">
+              {status === 'pass' && <CheckCircle className="w-16 h-16 mx-auto mb-3" />}
+              {status === 'fail' && <XCircle className="w-16 h-16 mx-auto mb-3" />}
+              {status === 'incomplete' && <div className="w-16 h-16 mx-auto mb-3 bg-white bg-opacity-20 rounded-full" />}
+
+              <h2 className="text-4xl font-bold uppercase">
+                {status === 'pass' ? 'PASS' : status === 'fail' ? 'FAIL' : 'Pending'}
+              </h2>
+              <p className="text-sm mt-2 opacity-90">
+                {status === 'pass' && 'Meets requirement'}
+                {status === 'fail' && 'Does not meet'}
+                {status === 'incomplete' && 'Enter value'}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ==================== Tolerance (Outside) ==================== */}
-      <div className="bg-white p-6 shadow-md rounded-lg">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tolerance for Low Contrast Resolution:
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={tolerance}
-            onChange={(e) => setTolerance(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="e.g. ±5% or ≥5 mm"
-          />
-        </div>
+      {/* Remark */}
+      <div className="mt-10 bg-amber-50 border-2 border-amber-300 rounded-xl p-6">
+        <h3 className="text-xl font-bold text-amber-900 mb-3">Remark</h3>
+        <p className={`text-lg font-medium leading-relaxed ${status === 'pass' ? 'text-green-700' : 'text-red-700'}`}>
+          {status === 'pass' &&
+            `The CT scanner can detect low-contrast objects as small as ${observedSize} mm at ${contrastLevel}% contrast difference. This meets the minimum acceptance criterion.`}
+          {status === 'fail' &&
+            `The CT scanner can only detect down to ${observedSize} mm at ${contrastLevel}% contrast difference, which does NOT meet the minimum requirement of ≤ 5.0 mm.`}
+          {status === 'incomplete' &&
+            'Please enter the smallest visible low-contrast object size to determine compliance.'}
+        </p>
       </div>
     </div>
   );

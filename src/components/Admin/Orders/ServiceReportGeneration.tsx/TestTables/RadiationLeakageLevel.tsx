@@ -1,119 +1,86 @@
-import React, { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+// components/TestTables/RadiationLeakageLevel.tsx
+import React, { useState, useEffect, useMemo } from 'react';
+import { Loader2, Edit3, Save } from 'lucide-react';
+import {
+  addRadiationLeakage,
+  getRadiationLeakageByTestId,
+  updateRadiationLeakage,
+} from '../../../../../api';
+import toast from 'react-hot-toast';
 
-// Table 1: FCM & Time
 interface SettingsRow {
-  id: string;
   fcm: string;
   time: string;
 }
 
-// Table 2: Leakage Data
 interface LeakageRow {
-  id: string;
   location: string;
   left: string;
   right: string;
   front: string;
   back: string;
   top: string;
-  result: string;
-  remark: string;
 }
 
-const RadiationLeakageLevel: React.FC = () => {
-  // === Table 1: FCM & Time ===
-  const [settingsRows, setSettingsRows] = useState<SettingsRow[]>([
-    { id: '1', fcm: '', time: '' },
-  ]);
+interface Props {
+  serviceId: string;
+  testId?: string;
+  onRefresh?: () => void;
+}
 
-  const addSettingsRow = () => {
-    setSettingsRows((prev) => [
-      ...prev,
-      { id: Date.now().toString(), fcm: '', time: '' },
-    ]);
-  };
+const RadiationLeakageLevel: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+  const [testId, setTestId] = useState<string | null>(propTestId || null);
 
-  const removeSettingsRow = (id: string) => {
-    if (settingsRows.length <= 1) return;
-    setSettingsRows((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const updateSettingsRow = (id: string, field: 'fcm' | 'time', value: string) => {
-    setSettingsRows((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-    );
-  };
-
-  // === Table 2: Leakage Measurements ===
+  // Fixed rows
+  const [settings, setSettings] = useState<SettingsRow>({ fcm: '', time: '' });
   const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
-    {
-      id: '1',
-      location: 'Tube',
-      left: '',
-      right: '',
-      front: '',
-      back: '',
-      top: '',
-      result: '',
-      remark: '',
-    },
-    {
-      id: '2',
-      location: 'Collimator',
-      left: '',
-      right: '',
-      front: '',
-      back: '',
-      top: '',
-      result: '',
-      remark: '',
-    },
+    { location: 'Tube', left: '', right: '', front: '', back: '', top: '' },
+    { location: 'Collimator', left: '', right: '', front: '', back: '', top: '' },
   ]);
 
-  const addLeakageRow = () => {
-    setLeakageRows((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        location: '',
-        left: '',
-        right: '',
-        front: '',
-        back: '',
-        top: '',
-        result: '',
-        remark: '',
-      },
-    ]);
-  };
-
-  const removeLeakageRow = (id: string) => {
-    if (leakageRows.length <= 1) return;
-    setLeakageRows((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const updateLeakageRow = (
-    id: string,
-    field:
-      | 'location'
-      | 'left'
-      | 'right'
-      | 'front'
-      | 'back'
-      | 'top'
-      | 'result'
-      | 'remark',
-    value: string
-  ) => {
-    setLeakageRows((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-    );
-  };
-
-  // === Tolerance & Notes (outside) ===
   const [tolerance, setTolerance] = useState<string>('');
   const [notes, setNotes] = useState<string[]>(['']);
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
+
+  // === Auto Result (max of 5) & Remark ===
+  const processedLeakage = useMemo(() => {
+    const tol = parseFloat(tolerance) || Infinity;
+
+    return leakageRows.map((row) => {
+      const values = [
+        parseFloat(row.left),
+        parseFloat(row.right),
+        parseFloat(row.front),
+        parseFloat(row.back),
+        parseFloat(row.top),
+      ].filter((v) => !isNaN(v));
+
+      const max = values.length > 0 ? Math.max(...values) : NaN;
+      const result = isNaN(max) ? '' : max.toFixed(3);
+      const remark = !isNaN(max) && max <= tol ? 'Pass' : !isNaN(max) ? 'Fail' : '';
+
+      return { ...row, result, remark };
+    });
+  }, [leakageRows, tolerance]);
+
+  // === Update Handlers ===
+  const updateSettings = (field: 'fcm' | 'time', value: string) => {
+    setSettings((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateLeakage = (index: number, field: keyof LeakageRow, value: string) => {
+    setLeakageRows((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const updateNote = (index: number, value: string) => {
+    setNotes((prev) => prev.map((n, i) => (i === index ? value : n)));
+  };
 
   const addNote = () => {
     setNotes((prev) => [...prev, '']);
@@ -124,15 +91,133 @@ const RadiationLeakageLevel: React.FC = () => {
     setNotes((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateNote = (index: number, value: string) => {
-    setNotes((prev) => prev.map((n, i) => (i === index ? value : n)));
+  // === Form Valid ===
+  const isFormValid = useMemo(() => {
+    return (
+      !!serviceId &&
+      settings.fcm.trim() &&
+      settings.time.trim() &&
+      leakageRows.every((r) =>
+        r.left.trim() && r.right.trim() && r.front.trim() && r.back.trim() && r.top.trim()
+      ) &&
+      tolerance.trim()
+    );
+  }, [serviceId, settings, leakageRows, tolerance]);
+
+  // === Load Data ===
+  useEffect(() => {
+    if (!testId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const { data } = await getRadiationLeakageByTestId(testId);
+        const rec = data;
+
+        if (rec.measurementSettings?.[0]) {
+          setSettings({
+            fcm: String(rec.measurementSettings[0].fcm),
+            time: String(rec.measurementSettings[0].time),
+          });
+        }
+
+        if (Array.isArray(rec.leakageMeasurements)) {
+          setLeakageRows(
+            rec.leakageMeasurements.map((r: any) => ({
+              location: r.location || '',
+              left: String(r.left),
+              right: String(r.right),
+              front: String(r.front),
+              back: String(r.back),
+              top: String(r.top),
+            }))
+          );
+        }
+
+        setTolerance(rec.tolerance || '');
+        setNotes(rec.notes && rec.notes.length > 0 ? rec.notes : ['']);
+
+        setHasSaved(true);
+        setIsEditing(false);
+      } catch (e: any) {
+        if (e.response?.status !== 404) toast.error('Failed to load data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    load();
+  }, [testId]);
+
+  // === Save / Update ===
+  const handleSave = async () => {
+    if (!isFormValid) return;
+    setIsSaving(true);
+
+    const payload = {
+      measurementSettings: [
+        {
+          fcm: parseFloat(settings.fcm) || 0,
+          time: parseFloat(settings.time) || 0,
+        },
+      ],
+      leakageMeasurements: leakageRows.map((r) => ({
+        location: r.location,
+        left: parseFloat(r.left) || 0,
+        right: parseFloat(r.right) || 0,
+        front: parseFloat(r.front) || 0,
+        back: parseFloat(r.back) || 0,
+        top: parseFloat(r.top) || 0,
+      })),
+      tolerance: tolerance.trim(),
+      notes: notes.filter((n) => n.trim()),
+    };
+
+    try {
+      let res;
+      if (testId) {
+        res = await updateRadiationLeakage(testId, payload);
+        toast.success('Updated successfully!');
+      } else {
+        res = await addRadiationLeakage(serviceId, payload);
+        setTestId(res.data.testId);
+        toast.success('Saved successfully!');
+      }
+      setHasSaved(true);
+      setIsEditing(false);
+      onRefresh?.();
+    } catch (e: any) {
+      toast.error(e.message || 'Save failed');
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const toggleEdit = () => {
+    if (!hasSaved) return;
+    setIsEditing(true);
+  };
+
+  const isViewMode = hasSaved && !isEditing;
+  const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
+  const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-full overflow-x-auto space-y-8">
       <h2 className="text-2xl font-bold mb-6">Radiation Leakage Level</h2>
 
-      {/* ==================== Table 1: FCM & Time ==================== */}
+      {/* ==================== Table 1: FCM & Time (Fixed) ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
           Measurement Settings
@@ -146,57 +231,38 @@ const RadiationLeakageLevel: React.FC = () => {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Time (sec)
               </th>
-              <th className="w-10" />
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {settingsRows.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-r">
-                  <input
-                    type="text"
-                    value={row.fcm}
-                    onChange={(e) => updateSettingsRow(row.id, 'fcm', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="100"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={row.time}
-                    onChange={(e) => updateSettingsRow(row.id, 'time', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="1.0"
-                  />
-                </td>
-                <td className="px-2 py-2 text-center">
-                  {settingsRows.length > 1 && (
-                    <button
-                      onClick={() => removeSettingsRow(row.id)}
-                      className="text-red-600 hover:bg-red-100 p-1 rounded"
-                      title="Remove Row"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 border-r">
+                <input
+                  type="text"
+                  value={settings.fcm}
+                  onChange={(e) => updateSettings('fcm', e.target.value)}
+                  disabled={isViewMode}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                    }`}
+                  placeholder="100"
+                />
+              </td>
+              <td className="px-4 py-2">
+                <input
+                  type="text"
+                  value={settings.time}
+                  onChange={(e) => updateSettings('time', e.target.value)}
+                  disabled={isViewMode}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                    }`}
+                  placeholder="1.0"
+                />
+              </td>
+            </tr>
           </tbody>
         </table>
-        <div className="px-4 py-3 bg-gray-50 border-t flex justify-start">
-          <button
-            onClick={addSettingsRow}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            Add Row
-          </button>
-        </div>
       </div>
 
-      {/* ==================== Table 2: Leakage Results ==================== */}
+      {/* ==================== Table 2: Leakage Results (Fixed 2 rows) ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
           Leakage Measurement Results
@@ -216,139 +282,66 @@ const RadiationLeakageLevel: React.FC = () => {
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Remark
               </th>
-              <th rowSpan={2} className="w-12" />
             </tr>
             <tr>
-              <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                Left
-              </th>
-              <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                Right
-              </th>
-              <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                Front
-              </th>
-              <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                Back
-              </th>
-              <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Top
-              </th>
+              {['Left', 'Right', 'Front', 'Back', 'Top'].map((dir) => (
+                <th
+                  key={dir}
+                  className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                >
+                  {dir}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {leakageRows.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
-                {/* Location */}
+            {processedLeakage.map((row, idx) => (
+              <tr key={idx} className="hover:bg-gray-50">
                 <td className="px-4 py-2 border-r">
                   <input
                     type="text"
                     value={row.location}
-                    onChange={(e) => updateLeakageRow(row.id, 'location', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g. Tube"
+                    onChange={(e) => updateLeakage(idx, 'location', e.target.value)}
+                    disabled={isViewMode}
+                    className={`w-full px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                      }`}
                   />
                 </td>
-                {/* Left */}
-                <td className="px-2 py-2 border-r">
-                  <input
-                    type="text"
-                    value={row.left}
-                    onChange={(e) => updateLeakageRow(row.id, 'left', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.02"
-                  />
-                </td>
-                {/* Right */}
-                <td className="px-2 py-2 border-r">
-                  <input
-                    type="text"
-                    value={row.right}
-                    onChange={(e) => updateLeakageRow(row.id, 'right', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.01"
-                  />
-                </td>
-                {/* Front */}
-                <td className="px-2 py-2 border-r">
-                  <input
-                    type="text"
-                    value={row.front}
-                    onChange={(e) => updateLeakageRow(row.id, 'front', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.03"
-                  />
-                </td>
-                {/* Back */}
-                <td className="px-2 py-2 border-r">
-                  <input
-                    type="text"
-                    value={row.back}
-                    onChange={(e) => updateLeakageRow(row.id, 'back', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.02"
-                  />
-                </td>
-                {/* Top */}
-                <td className="px-2 py-2 border-r">
-                  <input
-                    type="text"
-                    value={row.top}
-                    onChange={(e) => updateLeakageRow(row.id, 'top', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.01"
-                  />
-                </td>
-                {/* Result */}
+                {(['left', 'right', 'front', 'back', 'top'] as const).map((field) => (
+                  <td key={field} className="px-2 py-2 border-r">
+                    <input
+                      type="text"
+                      value={leakageRows[idx][field]}
+                      onChange={(e) => updateLeakage(idx, field, e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                        }`}
+                      placeholder="0.00"
+                    />
+                  </td>
+                ))}
                 <td className="px-4 py-2 border-r">
-                  <input
-                    type="text"
-                    value={row.result}
-                    onChange={(e) => updateLeakageRow(row.id, 'result', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.018"
-                  />
+                  <span className="block text-center font-medium">{row.result || '—'}</span>
                 </td>
-                {/* Remark */}
                 <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={row.remark}
-                    onChange={(e) => updateLeakageRow(row.id, 'remark', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Pass"
-                  />
-                </td>
-                {/* Remove */}
-                <td className="px-2 py-2 text-center">
-                  {leakageRows.length > 1 && (
-                    <button
-                      onClick={() => removeLeakageRow(row.id)}
-                      className="text-red-600 hover:bg-red-100 p-1 rounded"
-                      title="Remove Row"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  <span
+                    className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remark === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : row.remark === 'Fail'
+                          ? 'bg-red-100 text-red-800'
+                          : 'text-gray-400'
+                      }`}
+                  >
+                    {row.remark || '—'}
+                  </span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-
-        {/* Add Row Button at Bottom */}
-        <div className="px-4 py-3 bg-gray-50 border-t flex justify-start">
-          <button
-            onClick={addLeakageRow}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            Add Row
-          </button>
-        </div>
       </div>
 
-      {/* ==================== Tolerance & Notes (Outside) ==================== */}
+      {/* ==================== Tolerance & Notes ==================== */}
       <div className="bg-white shadow-md rounded-lg p-6 space-y-6">
         {/* Tolerance */}
         <div>
@@ -356,12 +349,14 @@ const RadiationLeakageLevel: React.FC = () => {
             Tolerance (mGy/h)
           </label>
           <div className="flex items-center gap-2 max-w-xs">
-            <span className="text-sm text-gray-600">Less than or equal to</span>
+            <span className="text-sm text-gray-600">≤</span>
             <input
               type="text"
               value={tolerance}
               onChange={(e) => setTolerance(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              disabled={isViewMode}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                }`}
               placeholder="1.0"
             />
           </div>
@@ -370,16 +365,15 @@ const RadiationLeakageLevel: React.FC = () => {
         {/* Notes */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Notes
-            </label>
-            <button
-              onClick={addNote}
-              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-            >
-              <Plus className="w-3 h-3" />
-              Add Note
-            </button>
+            <label className="block text-sm font-medium text-gray-700">Notes</label>
+            {!isViewMode && (
+              <button
+                onClick={addNote}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+              >
+                Add Note
+              </button>
+            )}
           </div>
           <div className="space-y-2">
             {notes.map((note, index) => (
@@ -389,22 +383,49 @@ const RadiationLeakageLevel: React.FC = () => {
                   type="text"
                   value={note}
                   onChange={(e) => updateNote(index, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  disabled={isViewMode}
+                  className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                    }`}
                   placeholder="Enter note..."
                 />
-                {notes.length > 1 && (
+                {notes.length > 1 && !isViewMode && (
                   <button
                     onClick={() => removeNote(index)}
                     className="text-red-600 hover:bg-red-100 p-1 rounded"
-                    title="Remove Note"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    Remove
                   </button>
                 )}
               </div>
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ==================== SAVE BUTTON ==================== */}
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving || (!isViewMode && !isFormValid)}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
+              ? 'bg-gray-400 cursor-not-allowed'
+              : isViewMode
+                ? 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-4 h-4" />
+              {buttonText} Leakage
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

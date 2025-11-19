@@ -78,6 +78,7 @@ interface MachineData {
         description: string
         assignedStaff?: number
         pendingTasks?: number
+        completedAt?: string
         backendFields?: {
             serialNo: string
             modelName: string
@@ -90,6 +91,8 @@ interface MachineData {
             qaTestReportNumber: any
             reportURLNumber: any
             verificationRemark: any
+            assignedAtEngineer?: string | undefined;  // For QA Raw
+            assignedAtStaff?: string | undefined    // For QA Test
         }
         reportUrl: any
         reportNumber?: string
@@ -100,6 +103,8 @@ interface MachineData {
         assignedStaffId?: string
         assignmentStatus?: string
         serviceId?: string
+        assignedAtEngineer?: string | undefined
+        assignedAtStaff?: string | undefined
     }>
     rawPhoto?: string[]
 }
@@ -139,7 +144,13 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </div>
     );
 };
-
+const formatDate = (isoString?: string): string => {
+    if (!isoString) return "Not assigned yet";
+    return new Date(isoString).toLocaleString("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+    });
+};
 export default function ServicesCard({ orderId }: ServicesCardProps) {
     const STORAGE_KEYS = {
         assignments: `assignments_${orderId}`,
@@ -236,7 +247,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         try {
             setLoadingDropdowns(true)
             const [techniciansData, staffData] = await Promise.all([getAllTechnicians(), getAllOfficeStaff()])
-          
+
             setTechnicians(techniciansData.data || [])
             setOfficeStaff(staffData || [])
         } catch (error) {
@@ -721,6 +732,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     },
                                     serviceId: machineData._id,
                                     assignedTechnicianId: workTypeDetail.engineer || undefined,
+                                    assignedAtEngineer: workTypeDetail.assignedAt || undefined,
                                 });
 
                                 // ✅ Save assigned Technician
@@ -740,6 +752,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     urlNumber: "N/A",
                                     serviceId: machineData._id,
                                     assignedStaffId: workTypeDetail.QAtest?.officeStaff || undefined,
+                                    assignedAtStaff: workTypeDetail.QAtest?.assignedAt,
+                                    completedAt: workTypeDetail.completedAt || undefined,
                                 });
 
                                 // ✅ Save assigned Office Staff
@@ -2153,7 +2167,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                             </div>
                                                         ) : (
                                                             <div className="space-y-4">
-                                                                <div className="flex items-center gap-2 text-green-600">
+                                                                {/* <div className="flex items-center gap-2 text-green-600">
                                                                     <Check className="h-4 w-4" />
                                                                     <span className="font-medium">
                                                                         Assigned to:{" "}
@@ -2169,6 +2183,63 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             {workType.assignmentStatus}
                                                                         </span>
                                                                     )}
+                                                                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                        <span>
+                                                                            Engineer assigned at: {formatDate(workType.assignedAtEngineer)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div> */}
+                                                                <div className="space-y-3">
+                                                                    {/* Assigned to + status badge */}
+                                                                    <div className="flex items-center gap-3 text-green-600">
+                                                                        <Check className="h-4 w-4 flex-shrink-0" />
+                                                                        <span className="font-medium">
+                                                                            Assigned to:{" "}
+                                                                            {workType.assignedTechnicianName ||
+                                                                                technicians.find((tech) => tech._id === assignments[workType.id]?.employeeId)?.name ||
+                                                                                "Unknown"}
+                                                                        </span>
+
+                                                                        {workType.assignmentStatus && (
+                                                                            <span
+                                                                                className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                                                                                    workType.assignmentStatus
+                                                                                )}`}
+                                                                            >
+                                                                                {workType.assignmentStatus}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Assigned at – now nicely separated */}
+                                                                    <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                                                                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path
+                                                                                fillRule="evenodd"
+                                                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                                                                                clipRule="evenodd"
+                                                                            />
+                                                                        </svg>
+                                                                        <span>Engineer assigned at: {formatDate(workType.assignedAtEngineer)}</span>
+                                                                    </div>
+
+                                                                    {/* Optional: Completed at (if you added it) */}
+                                                                    {["complete", "generated"].includes(selectedStatuses[workType.id] || service.status || "") &&
+                                                                        workType.completedAt && (
+                                                                            <div className="text-xs text-green-600 font-medium flex items-center gap-1.5">
+                                                                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                                    <path
+                                                                                        fillRule="evenodd"
+                                                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                                                        clipRule="evenodd"
+                                                                                    />
+                                                                                </svg>
+                                                                                <span>Completed at: {formatDate(workType.completedAt)}</span>
+                                                                            </div>
+                                                                        )}
                                                                 </div>
                                                                 <div className="grid grid-cols-2 gap-4">
                                                                     <div className="p-3 bg-white rounded-md border">
@@ -2333,7 +2404,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                                         disabled={loadingDropdowns || assigningStaff[workType.id]}
                                                                     >
-                                                                        <option value="">{loadingDropdowns ? "Loading staff..." : "Select Staff"}</option>
+                                                                        <option value="">{loadingDropdowns ? "Loading staff..." : "Select Staff----"}</option>
                                                                         {officeStaff.map((staff) => (
                                                                             <option key={staff._id} value={staff._id}>
                                                                                 {staff.name}
@@ -2368,7 +2439,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         {assigningStaff[workType.id] && <Loader2 className="h-4 w-4 animate-spin" />}
                                                                         {assigningStaff[workType.id] ? "Assigning..." : "Assign"}
                                                                     </button>
+
                                                                 </div>
+
                                                             </div>
                                                         ) : (
                                                             <div className="space-y-3">
@@ -2386,7 +2459,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         >
                                                                             {selectedStatuses[workType.id] || "pending"}
                                                                         </span>
+
                                                                     </div>
+
+
                                                                     <div className="flex gap-2">
                                                                         <button
                                                                             onClick={() => handleEditToggle(workType.id)}
@@ -2403,6 +2479,15 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             Reassign
                                                                         </button>
                                                                     </div>
+
+                                                                </div>
+                                                                <div className="text-xs text-gray-500 flex items-center gap-1">
+                                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                                    </svg>
+                                                                    <span>
+                                                                        Staff assigned at: {formatDate(workType.assignedAtStaff)}
+                                                                    </span>
                                                                 </div>
                                                                 {editingWorkType[workType.id] && (
                                                                     <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
@@ -2456,30 +2541,40 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             }}
                                                                             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
                                                                         />
+
                                                                         {/* <label className="block text-sm font-medium text-green-700">
-                                                                            Upload File & Generate Report
+                                                                            Generate Report
                                                                         </label> */}
 
                                                                         {/* ✅ Upload + Generate Report Buttons */}
-                                                                        {/* <div className="flex items-center gap-3">
-                                                                            <input
-                                                                                type="file"
-                                                                                required
-                                                                                onChange={(e) => {
-                                                                                    const file = e.target.files?.[0];
-                                                                                    if (file) handleFileUpload(workType.id, file);
-                                                                                }}
-                                                                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
-                                                                            />
+                                                                        <div className="flex items-center gap-3">
+                                                                            <>
+                                                                                {console.log("Service object →", service)}
+                                                                                {/* Your existing JSX here */}
+                                                                                {/* <button
+                                                                                    onClick={() => {
+                                                                                        if (!service?.id || !service?.machineType) {
+                                                                                            console.error("Cannot navigate: missing service.id or machineType", service);
+                                                                                            alert("Invalid service data. Cannot generate report.");
+                                                                                            return;
+                                                                                        }
 
-                                                                            <button
-                                                                                onClick={() => navigate("/admin/orders/generate-service-report")}
-                                                                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
-                                                                            >
-                                                                                <FileText className="h-4 w-4" />
-                                                                                Generate Report
-                                                                            </button>
-                                                                        </div> */}
+                                                                                        const cleanId = service.id.replace(/-0$/, "");
+                                                                                        console.log("Navigating with:", { serviceId: cleanId, machineType: service.machineType });
+
+                                                                                        navigate("/admin/orders/generic-service-table", {
+                                                                                            state: {
+                                                                                                serviceId: cleanId,
+                                                                                                machineType: service.machineType,
+                                                                                            },
+                                                                                        });
+                                                                                    }}
+                                                                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                                                                                >
+                                                                                    Generate Report
+                                                                                </button> */}
+                                                                            </>
+                                                                        </div>
                                                                         <div className="grid grid-cols-2 gap-3 mt-3">
                                                                             <div className="p-2 bg-white rounded border">
                                                                                 <label className="text-xs text-gray-500">QA Test Report Status</label>
@@ -2535,6 +2630,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 Uploaded: {uploadedFiles[workType.id]?.name}
                                                                             </span>
                                                                         </div>
+                                                                    </div>
+                                                                )}
+                                                                {["complete", "generated"].includes(selectedStatuses[workType.id]) && (
+                                                                    <div className="text-xs text-green-600 font-medium flex items-center gap-1 mt-2">
+                                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                        <span>Status Completed at: {formatDate(workType.completedAt)}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -2612,7 +2715,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         >
                                                                             {selectedStatuses[workType.id] || "pending"}
                                                                         </span>
+
                                                                     </div>
+                                                                    {/* <div className="text-xs text-gray-500 flex items-center gap-1">
+                                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                        <span>Engineer assigned at: {formatDate(workTypeDetails?.assignedAt)}</span>
+                                                                    </div> */}
                                                                     <div className="flex gap-2">
                                                                         <button
                                                                             onClick={() => handleEditToggle(workType.id)}

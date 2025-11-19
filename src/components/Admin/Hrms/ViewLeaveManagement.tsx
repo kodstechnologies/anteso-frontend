@@ -5,7 +5,7 @@ import "react-calendar/dist/Calendar.css"
 import { isSameDay, startOfMonth, endOfMonth, isSunday } from "date-fns"
 import { toast } from "react-toastify"
 import { useParams } from "react-router-dom"
-import { getAllLeaves, approveLeave, rejectLeave, deleteLeave, getEmployeeById, getAttendanceStatus, getAllAllocatedLeaves } from "../../../api"
+import { getAllLeaves, approveLeave, rejectLeave, deleteLeave, getEmployeeById, getAttendanceStatus, getAllAllocatedLeaves, getLeavesPerEmployee } from "../../../api"
 import type { AttendanceEntry, Employee, LeaveRequest } from "../../../types/hrms-types"
 import { ChevronDown, ChevronUp } from "lucide-react"
 
@@ -25,6 +25,7 @@ export default function EmployeeDetailsLeaveManagement() {
     const [employeeDetails, setEmployeeDetails] = useState<any>(null)
     const [showTools, setShowTools] = useState(false)
     const [attendanceMap, setAttendanceMap] = useState<Record<string, string>>({})
+    const [leaveSummary, setLeaveSummary] = useState<any>(null);
 
     // Rejection Modal State
     const [rejectModal, setRejectModal] = useState<{ open: boolean; leaveId: string | null }>({
@@ -63,6 +64,24 @@ export default function EmployeeDetailsLeaveManagement() {
         }
         fetchAllocatedLeaves()
     }, [id])
+    // Fetch Leave Summary (Allocated + CompOff)
+    useEffect(() => {
+        const fetchLeaveSummary = async () => {
+            if (!id) return;
+
+            try {
+                const currentYear = new Date().getFullYear();
+                const res = await getLeavesPerEmployee(id, currentYear);
+                console.log("🚀 ~ fetchLeaveSummary ~ res:", res)
+
+                setLeaveSummary(res?.data);
+            } catch (err: any) {
+                toast.error(err.message || "Failed to fetch leave summary");
+            }
+        };
+
+        fetchLeaveSummary();
+    }, [id]);
 
     // Fetch Attendance
     useEffect(() => {
@@ -304,6 +323,18 @@ export default function EmployeeDetailsLeaveManagement() {
             {selectedDate && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg text-gray-800">
                     <strong>Status for {selectedDate.toLocaleDateString()}:</strong> {getStatusForDate(selectedDate)}
+                </div>
+            )}
+            {leaveSummary && (
+                <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 mt-6">
+                    <h2 className="text-xl font-bold mb-4">Leave Summary ({leaveSummary.year})</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <p><strong>Allocated Leaves:</strong> {leaveSummary.allocatedLeaves}</p>
+                        <p><strong>Comp Off Leaves:</strong> {leaveSummary.compOffLeaves}</p>
+                        {/* <p><strong>Total Leaves:</strong> {leaveSummary.totalLeaves}</p>
+                        <p><strong>Used Leaves:</strong> {leaveSummary.usedLeaves}</p>
+                        <p><strong>Remaining Leaves:</strong> {leaveSummary.remainingLeaves}</p> */}
+                    </div>
                 </div>
             )}
 

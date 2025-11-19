@@ -50,7 +50,7 @@ export const adminLogin = async (payload: any) => {
 
 export const sendOTp = async (mobileNumber: string) => {
     try {
-        const res = await otpApi.post('/send-otp', { mobileNumber });
+        const res = await api.post('/auth/send-otp-staff', { mobileNumber });
         return res;
     } catch (error) {
         console.error("🚀 ~ sendOTp ~ error:", error);
@@ -60,7 +60,7 @@ export const sendOTp = async (mobileNumber: string) => {
 
 export const verifyOtp = async (mobileNumber: string, otp: string) => {
     try {
-        const res = await otpApi.post('/verify-otp', { mobileNumber, otp });
+        const res = await api.post('/auth/verify-otp-staff', { mobileNumber, otp });
         return res;
     } catch (error) {
         console.error("🚀 ~ verifyOtp ~ error:", error);
@@ -70,7 +70,7 @@ export const verifyOtp = async (mobileNumber: string, otp: string) => {
 
 export const resetPassword = async (phone: string, password: string) => {
     try {
-        const res = await otpApi.post('/reset-password', { phone, password });
+        const res = await api.post('/auth/reset-password', { phone, password });
         return res;
     } catch (error) {
         console.error("🚀 ~ resetPassword ~ error:", error);
@@ -1107,6 +1107,15 @@ export const deleteLeaveById = async (id: any) => {
         );
     }
 }
+export const getLeavesPerEmployee = async (employeeId: string, year: number) => {
+    try {
+        const res = await api.get(`/leaves/get-leaves-for-employee/${employeeId}?year=${year}`);
+        return res.data;
+    } catch (error: any) {
+        console.error("Error fetching leaves summary:", error);
+        throw error.response?.data || { message: "Failed to fetch leave summary" };
+    }
+};
 
 //tools
 export const addTools = async (payload: any) => {
@@ -3321,3 +3330,423 @@ export const getAllStaffEnquiries = async () => {
         throw error;
     }
 }
+
+
+//service report API'S
+export const getDetails = async (serviceId: any) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/service-report/get-details/${serviceId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getDetails ~ error:", error);
+        throw error;
+    }
+}
+export const getTools = async (serviceId: any) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/service-report/get-tools/${serviceId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getDetails ~ error:", error);
+        throw error;
+    }
+}
+
+//CT Scan
+//radiation profile
+export const addRadiationProfileWidth = async (serviceId: string, payload: any) => {
+    console.log("🚀 ~ addRadiationProfileWidth ~ called:")
+
+    console.log("🚀 ~ addRadiationProfileWidth ~ payload:", payload)
+    console.log("🚀 ~ addRadiationProfileWidth ~ serviceId:", serviceId)
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.post(
+            `/service-report/ct-scan/radiation-profile-width/${serviceId}`,
+            payload,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+        console.log("🚀 ~ addRadiationProfileWidth ~ res:", res)
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error?.response?.data?.message || 'Failed to save Radiation Profile Width');
+    }
+};
+export const getRadiationProfileWidthByTestId = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/ct-scan/radiation-profile-width/${testId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    console.log("🚀 ~ getRadiationProfileWidthByTestId ~ res.data.data:", res.data.data)
+    return res.data.data;
+};
+
+// UPDATE BY TEST ID
+export const updateRadiationProfileWidth = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(
+        `/service-report/ct-scan/radiation-profile-width/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+//MeasurementOfOperatingPotential
+export const addMeasurementOfOperatingPotential = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(
+        `/service-report/ct-scan/measurement-of-operating-potential/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+// GET BY TEST ID
+export const getMeasurementOfOperatingPotentialByTestId = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/ct-scan/measurement-of-operating-potential/${testId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    console.log("🚀 ~ getMeasurementOfOperatingPotentialByTestId ~ res.data.data:", res.data.data)
+    return res.data.data;
+};
+// UPDATE BY TEST ID
+export const updateMeasurementOfOperatingPotential = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(
+        `/service-report/ct-scan/measurement-of-operating-potential/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+//MeasurementOfMaLinearity
+export const addMeasurementOfMaLinearity = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.post(
+            `/service-report/ct-scan/measurement-of-ma-linearity/${serviceId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('Create failed:', error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID
+export const getMeasurementOfMaLinearityByTestId = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/measurement-of-ma-linearity/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("🚀 ~ getMeasurementOfMaLinearityByTestId ~ res.data.data:", res.data.data)
+        return res.data.data;
+    } catch (error: any) {
+        console.error('Fetch failed:', error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID
+export const updateMeasurementOfMaLinearity = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.put(
+            `/service-report/ct-scan/measurement-of-ma-linearity/${testId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('Update failed:', error);
+        throw error;
+    }
+};
+
+//timer accyracy
+// CREATE
+export const addTimerAccuracy = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.post(
+            `/service-report/ct-scan/timer-accuracy/${serviceId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('TimerAccuracy create failed:', error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID
+export const getTimerAccuracyByTestId = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/timer-accuracy/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("🚀 ~ getTimerAccuracyByTestId ~ res.data.data:", res.data.data)
+        return res.data.data;
+    } catch (error: any) {
+        console.error('TimerAccuracy fetch failed:', error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID
+export const updateTimerAccuracy = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.put(
+            `/service-report/ct-scan/timer-accuracy/${testId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('TimerAccuracy update failed:', error);
+        throw error;
+    }
+};
+
+//measurement of CTDI
+
+// CREATE
+export const addMeasurementOfCTDI = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.post(
+            `/service-report/ct-scan/measurement-of-CTDI/${serviceId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('MeasurementOfCTDI create failed:', error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID
+export const getMeasurementOfCTDIByTestId = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/measurement-of-CTDI/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("🚀 ~ getMeasurementOfCTDIByTestId ~ res.data.data:", res.data.data)
+        return res.data.data;
+    } catch (error: any) {
+        console.error('MeasurementOfCTDI fetch failed:', error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID
+export const updateMeasurementOfCTDI = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.put(
+            `/service-report/ct-scan/measurement-of-CTDI/${testId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('MeasurementOfCTDI update failed:', error);
+        throw error;
+    }
+};
+
+
+//total filteration
+
+
+// CREATE
+export const addTotalFilteration = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.post(
+            `/service-report/ct-scan/total-filteration/${serviceId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('TotalFilteration create failed:', error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID
+export const getTotalFilterationByTestId = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/total-filteration/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("🚀 ~ getTotalFilterationByTestId ~ res.data.data:", res.data.data)
+        return res.data.data;
+    } catch (error: any) {
+        console.error('TotalFilteration fetch failed:', error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID
+export const updateTotalFilteration = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.put(
+            `/service-report/ct-scan/total-filteration/${testId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('TotalFilteration update failed:', error);
+        throw error;
+    }
+};
+
+//RadiationLeakage
+// CREATE
+export const addRadiationLeakage = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.post(
+            `/service-report/ct-scan/radiation-leakage/${serviceId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('RadiationLeakage create failed:', error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID
+export const getRadiationLeakageByTestId = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/radiation-leakage/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("🚀 ~ getRadiationLeakageByTestId ~ res.data:", res.data)
+        return res.data.data;
+    } catch (error: any) {
+        console.error('RadiationLeakage fetch failed:', error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID
+export const updateRadiationLeakage = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.put(
+            `/service-report/ct-scan/radiation-leakage/${testId}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('RadiationLeakage update failed:', error);
+        throw error;
+    }
+};
+
+export const addOutputConsistency = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.post(
+            `/service-report/ct-scan/output-consistency/${serviceId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('OutputConsistency create failed:', error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID
+export const getOutputConsistencyByTestId = async (testId: string) => {
+    console.log("🚀 ~ getOutputConsistencyByTestId ~ testId:------->", testId)
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/output-consistency/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("🚀 ~ getOutputConsistencyByTestId ~ res.data.data:-------->", res.data.data)
+        return res.data.data; // matches your backend response structure
+    } catch (error: any) {
+        console.error('OutputConsistency fetch failed:', error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID
+export const updateOutputConsistency = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.put(
+            `/service-report/ct-scan/output-consistency/${testId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error('OutputConsistency update failed:', error);
+        throw error;
+    }
+};
+
+
+export const saveReportHeader = async (serviceId: any, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(
+        `/service-report/report-header/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+// api/index.ts or wherever
+export const getReportHeader = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/report-header/${serviceId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    console.log("🚀 ~ getReportHeader ~ res:", res)
+    return res.data;
+};

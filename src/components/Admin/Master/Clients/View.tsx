@@ -2,7 +2,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
-import { Edit, Trash2, Building2, Eye } from "lucide-react"
+import { Edit, Trash2, Building2, Eye, Search } from "lucide-react"
 import * as Yup from "yup"
 import { Field, Form, Formik } from "formik"
 import {
@@ -69,6 +69,7 @@ const ViewClients: React.FC = () => {
   const [deleteItem, setDeleteItem] = useState<{ type: string; id: number | string; name: string } | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
+  const [searchTerm, setSearchTerm] = useState("");
 
   const SubmittedForm = Yup.object().shape({
     name: Yup.string().required("Please fill the Field"),
@@ -164,8 +165,19 @@ const ViewClients: React.FC = () => {
 
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
-  const currentHospitals = hospitals.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(hospitals.length / itemsPerPage);
+  // const currentHospitals = hospitals.slice(indexOfFirst, indexOfLast);
+  // Filter hospitals by name
+  const filteredHospitals = hospitals.filter((h) =>
+    h.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination after search
+  const currentHospitals = filteredHospitals.slice(indexOfFirst, indexOfLast);
+
+  // Update total pages
+  const totalPages = Math.ceil(filteredHospitals.length / itemsPerPage);
+
+  // const totalPages = Math.ceil(hospitals.length / itemsPerPage);
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>
@@ -368,6 +380,18 @@ const ViewClients: React.FC = () => {
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Hospitals</h3>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+
+                <input
+                  type="text"
+                  placeholder="Search by hospital name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             {/* Hospitals Table */}
@@ -477,8 +501,8 @@ const ViewClients: React.FC = () => {
                       key={page}
                       onClick={() => setCurrentPage(page)}
                       className={`px-3 py-2 border border-gray-300 rounded-md text-sm font-medium ${currentPage === page
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                          : 'bg-white text-gray-500 hover:bg-gray-50'
+                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                        : 'bg-white text-gray-500 hover:bg-gray-50'
                         }`}
                     >
                       {page}

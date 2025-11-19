@@ -1,9 +1,14 @@
-// components/TestTables/MeasyrementOfCTDI.tsx
-import React, { useState, useMemo } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+// components/TestTables/MeasurementOfCTDI.tsx
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
+import {
+    addMeasurementOfCTDI,
+    getMeasurementOfCTDIByTestId,
+    updateMeasurementOfCTDI,
+} from '../../../../../../api';
+import toast from 'react-hot-toast';
 
 interface Table1Row {
-    id: string;
     kvp: string;
     mAs: string;
     sliceThickness: string;
@@ -21,38 +26,29 @@ interface Table2Row {
     result: string;
     head: string;
     body: string;
-    // For peripheral: will hold dynamic readings
     readings?: PeripheralReading[];
 }
 
-const MeasurementOfCTDI: React.FC = () => {
-    /* ==================== Table 1: kVp, mAs, Slice Thickness ==================== */
-    const [table1Rows, setTable1Rows] = useState<Table1Row[]>([
-        { id: '1', kvp: '', mAs: '', sliceThickness: '' },
-    ]);
+interface Tolerance {
+    expected: { value: string; quote: string };
+    maximum: { value: string; quote: string };
+}
 
-    const addTable1Row = () => {
-        setTable1Rows((prev) => [
-            ...prev,
-            { id: Date.now().toString(), kvp: '', mAs: '', sliceThickness: '' },
-        ]);
-    };
+interface Props {
+    serviceId: string;
+    testId?: string;
+    onRefresh?: () => void;
+}
 
-    const removeTable1Row = (id: string) => {
-        if (table1Rows.length <= 1) return;
-        setTable1Rows((prev) => prev.filter((r) => r.id !== id));
-    };
+const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+    const [testId, setTestId] = useState<string | null>(propTestId || null);
 
-    const updateTable1 = (id: string, field: 'kvp' | 'mAs' | 'sliceThickness', value: string) => {
-        setTable1Rows((prev) =>
-            prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-        );
-    };
+    // Table 1: Fixed single row
+    const [table1Row, setTable1Row] = useState<Table1Row>({ kvp: '', mAs: '', sliceThickness: '' });
 
-    /* ==================== Table 2: CTDI Calculations ==================== */
+    // Table 2: Fixed structure + dynamic peripheral
     const [peripheralLabels, setPeripheralLabels] = useState<string[]>(['A', 'B', 'C']);
-
-    const initialRows: Table2Row[] = [
+    const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
         { id: 'ctdic', result: 'Axial Dose CTDIc', head: '', body: '' },
         {
             id: 'peripheral',
@@ -69,13 +65,21 @@ const MeasurementOfCTDI: React.FC = () => {
         { id: 'ctdip', result: 'Peripheral Dose CTDIp(mean)', head: '', body: '' },
         { id: 'ctdiw', result: 'CTDIw', head: '', body: '' },
         { id: 'ctdiwRated', result: 'CTDIw (Rated)', head: '', body: '' },
-    ];
+    ]);
 
-    const [table2Rows, setTable2Rows] = useState<Table2Row[]>(initialRows);
+    const [tolerance, setTolerance] = useState<Tolerance>({
+        expected: { value: '', quote: '' },
+        maximum: { value: '', quote: '' },
+    });
 
-    /* ---------- Peripheral Column Handling ---------- */
+    const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [hasSaved, setHasSaved] = useState(false);
+
+    // === Peripheral Column Handling ===
     const addPeripheralColumn = () => {
-        const nextLabel = String.fromCharCode(65 + peripheralLabels.length); // D, E, F...
+        const nextLabel = String.fromCharCode(65 + peripheralLabels.length);
         setPeripheralLabels((prev) => [...prev, nextLabel]);
         setTable2Rows((prev) =>
             prev.map((row) => {
@@ -95,18 +99,18 @@ const MeasurementOfCTDI: React.FC = () => {
 
     const removePeripheralColumn = (index: number) => {
         if (peripheralLabels.length <= 1) return;
-        setPeripheralLabels((prev) => prev.filter((_, i) => i !== index));
-        setTable2Rows((prev) =>
-            prev.map((row) => {
-                if (row.id === 'peripheral' && row.readings) {
-                    return {
-                        ...row,
-                        readings: row.readings.filter((_, i) => i !== index),
-                    };
-                }
-                return row;
-            })
-        );
+        if (window.confirm('Delete this peripheral column?')) {
+            setPeripheralLabels((prev) => prev.filter((_, i) => i !== index));
+            setTable2Rows((prev) =>
+                prev.map((row) => {
+                    if (row.id === 'peripheral' && row.readings) {
+                        return { ...row, readings: row.readings.filter((_, i) => i !== index) };
+                    }
+                    return row;
+                })
+            );
+            if (hasSaved) setTimeout(() => onRefresh?.(), 100);
+        }
     };
 
     const updatePeripheralLabel = (index: number, value: string) => {
@@ -128,11 +132,7 @@ const MeasurementOfCTDI: React.FC = () => {
         );
     };
 
-    const updatePeripheralValue = (
-        readingId: string,
-        field: 'head' | 'body',
-        value: string
-    ) => {
+    const updatePeripheralValue = (readingId: string, field: 'head' | 'body', value: string) => {
         setTable2Rows((prev) =>
             prev.map((row) => {
                 if (row.id === 'peripheral' && row.readings) {
@@ -152,14 +152,12 @@ const MeasurementOfCTDI: React.FC = () => {
         );
     };
 
-    /* ---------- Auto-calculate CTDIp(mean), CTDIw ---------- */
+    // === Auto-calculate CTDIp(mean), CTDIw ===
     const processedTable2 = useMemo(() => {
         const round = (num: number) => (isNaN(num) ? '' : num.toFixed(2));
 
         const ctdicRow = table2Rows.find((r) => r.id === 'ctdic');
         const peripheralRow = table2Rows.find((r) => r.id === 'peripheral');
-        const ctdiwRow = table2Rows.find((r) => r.id === 'ctdiw');
-        const ctdiwRatedRow = table2Rows.find((r) => r.id === 'ctdiwRated');
 
         let ctdipHeadMean = '';
         let ctdipBodyMean = '';
@@ -167,12 +165,8 @@ const MeasurementOfCTDI: React.FC = () => {
         let ctdiwBody = '';
 
         if (peripheralRow?.readings) {
-            const headValues = peripheralRow.readings
-                .map((r) => parseFloat(r.head))
-                .filter((v) => !isNaN(v));
-            const bodyValues = peripheralRow.readings
-                .map((r) => parseFloat(r.body))
-                .filter((v) => !isNaN(v));
+            const headValues = peripheralRow.readings.map((r) => parseFloat(r.head)).filter((v) => !isNaN(v));
+            const bodyValues = peripheralRow.readings.map((r) => parseFloat(r.body)).filter((v) => !isNaN(v));
 
             const headMean = headValues.length > 0 ? headValues.reduce((a, b) => a + b, 0) / headValues.length : NaN;
             const bodyMean = bodyValues.length > 0 ? bodyValues.reduce((a, b) => a + b, 0) / bodyValues.length : NaN;
@@ -192,27 +186,160 @@ const MeasurementOfCTDI: React.FC = () => {
         }
 
         return table2Rows.map((row) => {
-            if (row.id === 'ctdip') {
-                return { ...row, head: ctdipHeadMean, body: ctdipBodyMean };
-            }
-            if (row.id === 'ctdiw') {
-                return { ...row, head: ctdiwHead, body: ctdiwBody };
-            }
+            if (row.id === 'ctdip') return { ...row, head: ctdipHeadMean, body: ctdipBodyMean };
+            if (row.id === 'ctdiw') return { ...row, head: ctdiwHead, body: ctdiwBody };
             return row;
         });
     }, [table2Rows]);
 
-    /* ==================== Tolerance ==================== */
-    const [expectedValue, setExpectedValue] = useState<string>('');
-    const [expectedQuote, setExpectedQuote] = useState<string>('');
-    const [maximumValue, setMaximumValue] = useState<string>('');
-    const [maximumQuote, setMaximumQuote] = useState<string>('');
+    // === Form Valid ===
+    const isFormValid = useMemo(() => {
+        return (
+            !!serviceId &&
+            table1Row.kvp.trim() &&
+            table1Row.mAs.trim() &&
+            table1Row.sliceThickness.trim() &&
+            table2Rows.find(r => r.id === 'ctdic')?.head.trim() &&
+            table2Rows.find(r => r.id === 'ctdic')?.body.trim() &&
+            table2Rows.find(r => r.id === 'peripheral')?.readings?.every(r => r.head.trim() && r.body.trim())
+        );
+    }, [serviceId, table1Row, table2Rows]);
+
+    // === Load Data ===
+    useEffect(() => {
+        if (!testId) {
+            setIsLoading(false);
+            return;
+        }
+
+        const load = async () => {
+            try {
+                const { data } = await getMeasurementOfCTDIByTestId(testId);
+                const rec = data;
+
+                if (rec.table1?.[0]) {
+                    setTable1Row(rec.table1[0]);
+                }
+
+                if (Array.isArray(rec.table2)) {
+                    const peripheralRow = rec.table2.find((r: any) => r.id === 'peripheral');
+                    if (peripheralRow?.readings) {
+                        setPeripheralLabels(peripheralRow.readings.map((r: any) => r.label));
+                    }
+
+                    setTable2Rows(
+                        rec.table2.map((r: any) => {
+                            if (r.id === 'peripheral') {
+                                return {
+                                    ...r,
+                                    readings: r.readings?.map((rd: any) => ({
+                                        id: Date.now().toString() + rd.label,
+                                        label: rd.label,
+                                        head: String(rd.head),
+                                        body: String(rd.body),
+                                    })) || [],
+                                };
+                            }
+                            return {
+                                ...r,
+                                head: String(r.head),
+                                body: String(r.body),
+                            };
+                        })
+                    );
+                }
+
+                if (rec.tolerance) {
+                    setTolerance({
+                        expected: { value: rec.tolerance.expected?.value || '', quote: rec.tolerance.expected?.quote || '' },
+                        maximum: { value: rec.tolerance.maximum?.value || '', quote: rec.tolerance.maximum?.quote || '' },
+                    });
+                }
+
+                setHasSaved(true);
+                setIsEditing(false);
+            } catch (e: any) {
+                if (e.response?.status !== 404) toast.error('Failed to load data');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        load();
+    }, [testId]);
+
+    // === Save / Update ===
+    const handleSave = async () => {
+        if (!isFormValid) return;
+        setIsSaving(true);
+
+        const payload = {
+            table1: [table1Row],
+            table2: table2Rows.map(r => {
+                if (r.id === 'peripheral') {
+                    return {
+                        id: r.id,
+                        result: r.result,
+                        readings: r.readings?.map(rd => ({
+                            label: rd.label,
+                            head: parseFloat(rd.head) || null,
+                            body: parseFloat(rd.body) || null,
+                        })),
+                    };
+                }
+                return {
+                    id: r.id,
+                    result: r.result,
+                    head: parseFloat(r.head) || null,
+                    body: parseFloat(r.body) || null,
+                };
+            }),
+            tolerance,
+        };
+
+        try {
+            let res;
+            if (testId) {
+                res = await updateMeasurementOfCTDI(testId, payload);
+                toast.success('Updated successfully!');
+            } else {
+                res = await addMeasurementOfCTDI(serviceId, payload);
+                setTestId(res.data.testId);
+                toast.success('Saved successfully!');
+            }
+            setHasSaved(true);
+            setIsEditing(false);
+            onRefresh?.();
+        } catch (e: any) {
+            toast.error(e.message || 'Save failed');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const toggleEdit = () => {
+        if (!hasSaved) return;
+        setIsEditing(true);
+    };
+
+    const isViewMode = hasSaved && !isEditing;
+    const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
+    const ButtonIcon = isViewMode ? Edit3 : Save;
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-10">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <span className="ml-2">Loading...</span>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-10">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Measurement of CTDI</h2>
 
-            {/* ==================== Table 1: kVp, mAs, Slice Thickness ==================== */}
+            {/* ==================== Table 1: Fixed Single Row ==================== */}
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
                 <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
                     Operating Parameters
@@ -230,61 +357,46 @@ const MeasurementOfCTDI: React.FC = () => {
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                     Slice Thickness (mm)
                                 </th>
-                                <th className="w-12" />
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {table1Rows.map((row) => (
-                                <tr key={row.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-2 border-r">
-                                        <input
-                                            type="text"
-                                            value={row.kvp}
-                                            onChange={(e) => updateTable1(row.id, 'kvp', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="120"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-2 border-r">
-                                        <input
-                                            type="text"
-                                            value={row.mAs}
-                                            onChange={(e) => updateTable1(row.id, 'mAs', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="100"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-2">
-                                        <input
-                                            type="text"
-                                            value={row.sliceThickness}
-                                            onChange={(e) => updateTable1(row.id, 'sliceThickness', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="5.0"
-                                        />
-                                    </td>
-                                    <td className="px-2 py-2 text-center">
-                                        {table1Rows.length > 1 && (
-                                            <button
-                                                onClick={() => removeTable1Row(row.id)}
-                                                className="text-red-600 hover:bg-red-100 p-1 rounded"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                            <tr className="hover:bg-gray-50">
+                                <td className="px-4 py-2 border-r">
+                                    <input
+                                        type="text"
+                                        value={table1Row.kvp}
+                                        onChange={e => setTable1Row(p => ({ ...p, kvp: e.target.value }))}
+                                        disabled={isViewMode}
+                                        className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                            }`}
+                                        placeholder="120"
+                                    />
+                                </td>
+                                <td className="px-4 py-2 border-r">
+                                    <input
+                                        type="text"
+                                        value={table1Row.mAs}
+                                        onChange={e => setTable1Row(p => ({ ...p, mAs: e.target.value }))}
+                                        disabled={isViewMode}
+                                        className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                            }`}
+                                        placeholder="100"
+                                    />
+                                </td>
+                                <td className="px-4 py-2">
+                                    <input
+                                        type="text"
+                                        value={table1Row.sliceThickness}
+                                        onChange={e => setTable1Row(p => ({ ...p, sliceThickness: e.target.value }))}
+                                        disabled={isViewMode}
+                                        className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                            }`}
+                                        placeholder="5.0"
+                                    />
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
-                </div>
-                <div className="px-6 py-3 bg-gray-50 border-t">
-                    <button
-                        onClick={addTable1Row}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-                    >
-                        <Plus className="w-4 h-4" /> Add Row
-                    </button>
                 </div>
             </div>
 
@@ -316,12 +428,14 @@ const MeasurementOfCTDI: React.FC = () => {
                                             <tr className="bg-gray-50 font-medium">
                                                 <td colSpan={3} className="px-6 py-2 text-left border-r">
                                                     {row.result}
-                                                    <button
-                                                        onClick={addPeripheralColumn}
-                                                        className="ml-4 p-1 text-green-600 hover:bg-green-100 rounded"
-                                                    >
-                                                        <Plus className="w-4 h-4" />
-                                                    </button>
+                                                    {!isViewMode && (
+                                                        <button
+                                                            onClick={addPeripheralColumn}
+                                                            className="ml-4 p-1 text-green-600 hover:bg-green-100 rounded"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                             {row.readings.map((reading, idx) => (
@@ -332,9 +446,11 @@ const MeasurementOfCTDI: React.FC = () => {
                                                                 type="text"
                                                                 value={reading.label}
                                                                 onChange={(e) => updatePeripheralLabel(idx, e.target.value)}
-                                                                className="w-12 px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                disabled={isViewMode}
+                                                                className={`w-12 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                                                    }`}
                                                             />
-                                                            {peripheralLabels.length > 1 && (
+                                                            {peripheralLabels.length > 1 && !isViewMode && (
                                                                 <button
                                                                     onClick={() => removePeripheralColumn(idx)}
                                                                     className="text-red-600 hover:bg-red-100 p-0.5 rounded"
@@ -349,7 +465,9 @@ const MeasurementOfCTDI: React.FC = () => {
                                                             type="text"
                                                             value={reading.head}
                                                             onChange={(e) => updatePeripheralValue(reading.id, 'head', e.target.value)}
-                                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            disabled={isViewMode}
+                                                            className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                                                }`}
                                                             placeholder="0.00"
                                                         />
                                                     </td>
@@ -358,7 +476,9 @@ const MeasurementOfCTDI: React.FC = () => {
                                                             type="text"
                                                             value={reading.body}
                                                             onChange={(e) => updatePeripheralValue(reading.id, 'body', e.target.value)}
-                                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            disabled={isViewMode}
+                                                            className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                                                }`}
                                                             placeholder="0.00"
                                                         />
                                                     </td>
@@ -372,20 +492,14 @@ const MeasurementOfCTDI: React.FC = () => {
                                     <tr key={row.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-2 font-medium border-r">{row.result}</td>
                                         <td className="px-6 py-2 border-r">
-                                            {row.id === 'ctdiwRated' ? (
+                                            {row.id === 'ctdiwRated' || row.id === 'ctdic' ? (
                                                 <input
                                                     type="text"
                                                     value={row.head}
                                                     onChange={(e) => updateTable2Value(row.id, 'head', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="0.00"
-                                                />
-                                            ) : row.id === 'ctdic' ? (
-                                                <input
-                                                    type="text"
-                                                    value={row.head}
-                                                    onChange={(e) => updateTable2Value(row.id, 'head', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    disabled={isViewMode}
+                                                    className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                                        }`}
                                                     placeholder="0.00"
                                                 />
                                             ) : (
@@ -393,20 +507,14 @@ const MeasurementOfCTDI: React.FC = () => {
                                             )}
                                         </td>
                                         <td className="px-6 py-2">
-                                            {row.id === 'ctdiwRated' ? (
+                                            {row.id === 'ctdiwRated' || row.id === 'ctdic' ? (
                                                 <input
                                                     type="text"
                                                     value={row.body}
                                                     onChange={(e) => updateTable2Value(row.id, 'body', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="0.00"
-                                                />
-                                            ) : row.id === 'ctdic' ? (
-                                                <input
-                                                    type="text"
-                                                    value={row.body}
-                                                    onChange={(e) => updateTable2Value(row.id, 'body', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    disabled={isViewMode}
+                                                    className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                                        }`}
                                                     placeholder="0.00"
                                                 />
                                             ) : (
@@ -427,51 +535,81 @@ const MeasurementOfCTDI: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Expected Value
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Expected Value</label>
                         <div className="flex gap-2">
                             <input
                                 type="text"
-                                value={expectedValue}
-                                onChange={(e) => setExpectedValue(e.target.value)}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={tolerance.expected.value}
+                                onChange={(e) => setTolerance(p => ({ ...p, expected: { ...p.expected, value: e.target.value } }))}
+                                disabled={isViewMode}
+                                className={`flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                    }`}
                                 placeholder="e.g. 10.50"
                             />
                             <span className="self-center text-sm text-gray-600">mGy/100mAs</span>
                         </div>
                         <textarea
-                            value={expectedQuote}
-                            onChange={(e) => setExpectedQuote(e.target.value)}
+                            value={tolerance.expected.quote}
+                            onChange={(e) => setTolerance(p => ({ ...p, expected: { ...p.expected, quote: e.target.value } }))}
                             rows={2}
-                            className="mt-2 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            placeholder="Quote or reference for expected value..."
+                            disabled={isViewMode}
+                            className={`mt-2 w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                }`}
+                            placeholder="Quote or reference..."
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Maximum Value
-                        </label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Value</label>
                         <div className="flex gap-2">
                             <input
                                 type="text"
-                                value={maximumValue}
-                                onChange={(e) => setMaximumValue(e.target.value)}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={tolerance.maximum.value}
+                                onChange={(e) => setTolerance(p => ({ ...p, maximum: { ...p.maximum, value: e.target.value } }))}
+                                disabled={isViewMode}
+                                className={`flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                    }`}
                                 placeholder="e.g. 12.00"
                             />
                             <span className="self-center text-sm text-gray-600">mGy/100mAs</span>
                         </div>
                         <textarea
-                            value={maximumQuote}
-                            onChange={(e) => setMaximumQuote(e.target.value)}
+                            value={tolerance.maximum.quote}
+                            onChange={(e) => setTolerance(p => ({ ...p, maximum: { ...p.maximum, quote: e.target.value } }))}
                             rows={2}
-                            className="mt-2 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            placeholder="Quote or reference for maximum limit..."
+                            disabled={isViewMode}
+                            className={`mt-2 w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                }`}
+                            placeholder="Quote or reference..."
                         />
                     </div>
                 </div>
+            </div>
+
+            {/* ==================== SAVE BUTTON ==================== */}
+            <div className="flex justify-end mt-6">
+                <button
+                    onClick={isViewMode ? toggleEdit : handleSave}
+                    disabled={isSaving || (!isViewMode && !isFormValid)}
+                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : isViewMode
+                                ? 'bg-orange-600 hover:bg-orange-700'
+                                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+                        }`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <ButtonIcon className="w-4 h-4" />
+                            {buttonText} CTDI
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );

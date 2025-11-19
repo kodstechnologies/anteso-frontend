@@ -119,9 +119,9 @@ import EditInstitute from '../components/Admin/Master/Clients/EditInstitute'
 import EditRso from '../components/Admin/Master/Clients/EditRso';
 
 import Payslip from '../pages/Admin/Payslip';
-import GenerateReport from '../components/Admin/Orders/ServiceReportGeneration.tsx/GenerateReport';
+import GenerateReportCTScan from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CTScan/GenerateReport-CTScan';
 import ViewServiceReport from '../components/Admin/Orders/ServiceReportGeneration.tsx/ViewServiceReport';
-
+import GenericServiceTable from "../components/Admin/Orders/ServiceReportGeneration.tsx/GenerictServiceTyoeTable"
 
 import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
@@ -731,11 +731,19 @@ const routes = [
             </AdminProtected>
         ),
     },
+    // {
+    //     path: '/admin/orders/generate-service-report',
+    //     element: (
+    //         <AdminProtected>
+    //             <GenerateReportCTScan />
+    //         </AdminProtected>
+    //     ),
+    // },
     {
-        path: '/admin/orders/generate-service-report',
+        path: '/admin/orders/generic-service-table',
         element: (
             <AdminProtected>
-                <GenerateReport />
+                <GenericServiceTable />
             </AdminProtected>
         ),
     },
@@ -747,7 +755,7 @@ const routes = [
             </AdminProtected>
         ),
     },
- 
+
     {
         path: '/admin/payments',
         element: (
