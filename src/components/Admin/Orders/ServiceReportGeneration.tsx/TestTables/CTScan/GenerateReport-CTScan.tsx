@@ -19,8 +19,11 @@ import TotalFilterationForCTScan from "./TotalFilterationForCTScan";
 import RadiationLeakageLeveFromXRayTube from "./RadiationLeakageLevelFromX-RayTubeHouse";
 import MeasureMaxRadiationLevel from "./MeasureMaxRadiationLevel";
 import ConsisitencyOfRadiationOutput from "../CTScan/OutputConsistency";
-import HighContrastResolution from "../CTScan/HighContrastResolutionForCTScan";
-import LowContrastResolution from "../CTScan/LowContrastResolutionForCTScan";
+import HighContrastResolutionForCT from "../CTScan/HighContrastResolutionForCTScan";
+import LowContrastResolutionForCT from "../CTScan/LowContrastResolutionForCTScan";
+import CentralBeamAlignment from "../Inventional-Radiology/CentralBeamAlignment";
+import ExposureRateTableTop from "../Inventional-Radiology/ExposureRateTableTop";
+import HighContrastResolutionForCTScan from "../CTScan/HighContrastResolutionForCTScan";
 interface Standard {
     slNumber: string;
     nomenclature: string;
@@ -325,10 +328,13 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     { title: "Measurement of CTDI", component: <MeasurementOfCTDI serviceId={serviceId} /> },
                     { title: "Total Filtration", component: <TotalFilterationForCTScan serviceId={serviceId} /> },
                     { title: "Radiation Leakage Level", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} /> },
-                    { title: "Maximum Radiation Level", component: <MeasureMaxRadiationLevel serviceId={serviceId} /> },
-                    { title: "Consisitency Of RadiationOutput", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
-                    { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
-                    { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
+                    // { title: "Maximum Radiation Level", component: <MeasureMaxRadiationLevel serviceId={serviceId} /> },
+                    // { title: "Consisitency Of RadiationOutput", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
+                    // { title: "Low Contrast Resolution", component: <LowContrastResolutionForCT serviceId={serviceId} /> },
+                    // { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} /> },
+                    // { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
+                    // { title: "Exposure Rate Table Top", component: <ExposureRateTableTop serviceId={serviceId} /> },
+
 
 
                 ].map((item, i) => (

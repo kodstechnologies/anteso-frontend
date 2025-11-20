@@ -332,7 +332,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         </table>
       </div>
 
-      <style jsx>{`
+      {/* <style jsx>{`
         @media print {
           table {
             font-size: 9px !important;
@@ -348,7 +348,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
           .w-24 { width: 60px !important; }
           .w-12 { width: 30px !important; }
         }
-      `}</style>
+      `}</style> */}
     </div>
   );
 };

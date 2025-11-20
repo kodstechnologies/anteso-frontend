@@ -21,7 +21,7 @@ const ForgotPassword = () => {
     const [phoneNumber, setPhoneNumber] = useState("");
 
     // Resend OTP state
-    const [timer, setTimer] = useState(60);
+    const [timer, setTimer] = useState(600);
     const timerRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -37,7 +37,7 @@ const ForgotPassword = () => {
 
 
     const startTimer = () => {
-        setTimer(60);
+        setTimer(600); // 10 minutes
 
         // Clear existing interval
         if (timerRef.current) {
@@ -53,6 +53,12 @@ const ForgotPassword = () => {
                 return prev - 1;
             });
         }, 1000);
+    };
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+        const s = (seconds % 60).toString().padStart(2, "0");
+        return `${m}:${s}`;
     };
 
 
@@ -292,7 +298,7 @@ const ForgotPassword = () => {
                                         className={`mt-2 text-sm font-medium ${timer > 0 || loading ? "text-gray-400 cursor-not-allowed" : "text-primary hover:underline"
                                             }`}
                                     >
-                                        {timer > 0 ? `Resend OTP in ${timer}s` : "Resend OTP"}
+                                        {timer > 0 ? `Resend OTP in ${formatTime(timer)}` : "Resend OTP"}
                                     </button>
                                 </div>
                             )}

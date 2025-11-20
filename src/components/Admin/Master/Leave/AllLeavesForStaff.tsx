@@ -132,7 +132,13 @@ const AllLeavesForStaff: React.FC = () => {
                             accessor: "reason",
                             title: "Reason",
                             sortable: true,
+                            render: ({ reason }) => (
+                                <div className="whitespace-normal break-words max-w-[250px]">
+                                    {reason}
+                                </div>
+                            ),
                         },
+
                         {
                             accessor: "status",
                             title: "Status",
@@ -150,21 +156,22 @@ const AllLeavesForStaff: React.FC = () => {
                             },
                         },
                         {
-                            accessor: "reason",
-                            title: "Reason for leave rejection",
+                            accessor: "rejectionReason",
+                            title: "Reason for Leave Rejection",
                             sortable: true,
-                            render: ({ reason, status, rejectionReason }) => (
-                                <div className="space-y-1">
-                                   
-
-                                    {status === "Rejected" && rejectionReason && (
+                            render: ({ status, rejectionReason }) => (
+                                <div className="whitespace-normal break-words max-w-[250px]">
+                                    {status === "Rejected" && rejectionReason ? (
                                         <span className="text-md text-red-600 font-semibold">
-                                             {rejectionReason}
+                                            {rejectionReason}
                                         </span>
+                                    ) : (
+                                        <span className="text-gray-400">—</span>
                                     )}
                                 </div>
                             ),
                         },
+
 
                         {
                             accessor: "actions",

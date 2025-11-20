@@ -377,7 +377,9 @@ export default function EmployeeDetailsLeaveManagement() {
                                             <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-800">{leave.startDate.toLocaleDateString()}</td>
                                             <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-800">{leave.endDate.toLocaleDateString()}</td>
                                             <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-indigo-700">{leave.leaveType}</td>
-                                            <td className="px-5 py-4 text-sm text-gray-600 max-w-xs truncate">{leave.reason}</td>
+                                            <td className="px-5 py-4 text-sm text-gray-600 max-w-xs">
+                                                {leave.reason}
+                                            </td>
                                             <td className="px-5 py-4 whitespace-nowrap">
                                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
                                                     ${leave.status === "Approved" ? "bg-green-100 text-green-800" :
@@ -388,11 +390,13 @@ export default function EmployeeDetailsLeaveManagement() {
                                             </td>
                                             <td className="px-5 py-4 text-sm max-w-xs">
                                                 {leave.status === "Rejected" ? (
-                                                    <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs font-medium border border-red-200 hover:bg-red-100 transition cursor-default">
+                                                    <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 px-3 py-1.5  text-xs font-medium border border-red-200 hover:bg-red-100 transition cursor-default">
                                                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                                                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                                         </svg>
-                                                        <span className="truncate max-w-[120px]">{leave.rejectionReason}</span>
+                                                        <span className="whitespace-normal break-words">
+                                                            {leave.rejectionReason}
+                                                        </span>
                                                     </div>
                                                 ) : (
                                                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">—</span>

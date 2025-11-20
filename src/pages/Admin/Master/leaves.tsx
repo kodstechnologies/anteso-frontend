@@ -25,6 +25,7 @@ interface LeaveItem {
     leaveType: string;
     reason: string;
     status: any;
+    rejectionReason:any
 }
 
 const Leaves: React.FC = () => {
@@ -154,10 +155,16 @@ const Leaves: React.FC = () => {
                             sortable: true,
                         },
                         {
-                            accessor: 'reason',
-                            title: 'Reason',
+                            accessor: "reason",
+                            title: "Reason",
                             sortable: true,
+                            render: ({ reason }) => (
+                                <div className="whitespace-normal break-words max-w-[250px]">
+                                    {reason}
+                                </div>
+                            ),
                         },
+
                         {
                             accessor: 'status',
                             title: 'Status',
@@ -173,6 +180,22 @@ const Leaves: React.FC = () => {
                                                 'secondary';
                                 return <span className={`text-${statusColor}`}>{status}</span>;
                             },
+                        },
+                        {
+                            accessor: "rejectionReason",
+                            title: "Reason for Leave Rejection",
+                            sortable: true,
+                            render: ({ status, rejectionReason }) => (
+                                <div className="whitespace-normal break-words max-w-[250px]">
+                                    {status === "Rejected" && rejectionReason ? (
+                                        <span className="text-md text-red-600 font-semibold">
+                                            {rejectionReason}
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-400">—</span>
+                                    )}
+                                </div>
+                            ),
                         },
                         {
                             accessor: 'actions',

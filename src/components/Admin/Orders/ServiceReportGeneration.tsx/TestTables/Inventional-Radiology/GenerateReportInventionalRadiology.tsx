@@ -1,14 +1,15 @@
 // GenerateReport-InventionalRadiology.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Disclosure } from "@headlessui/react";           // ← Added
+import { ChevronDownIcon } from "@heroicons/react/24/outline"; // ← Added
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools } from "../../../../../../api"; // <-- adjust the relative path
+import { getDetails, getTools } from "../../../../../../api";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Test-table imports (adjust paths as per your folder structure)
+// Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
 import CentralBeamAlignment from "./CentralBeamAlignment";
 import EffectiveFocalspotMeasurement from "./EffectiveFocalspotMeasurement";
@@ -20,7 +21,6 @@ import LowContrastResolution from "../LowContrastResolution";
 import HighContrastResolution from "../HighContrastResolution";
 import ExposureRateTableTop from "./ExposureRateTableTop";
 import TubeHousingLeakage from "./TubeHousingLeakage";
-// Add more test components specific to Interventional Radiology if needed
 
 export interface Standard {
   slNumber: string;
@@ -31,8 +31,8 @@ export interface Standard {
   range: string;
   certificate: string | null;
   calibrationCertificateNo: string;
-  calibrationValidTill: string; // ISO string → we’ll slice to YYYY-MM-DD
-  uncertainity: string; // ← now a user-editable string
+  calibrationValidTill: string;
+  uncertainity: string;
 }
 
 interface DetailsResponse {
@@ -64,7 +64,7 @@ interface ToolsResponse {
     manufacturer: string;
     model: string;
     calibrationCertificateNo: string;
-    calibrationValidTill: string; // ISO
+    calibrationValidTill: string;
     range: string;
     certificate: string | null;
   }>;
@@ -74,19 +74,14 @@ interface InventionalRadiologyProps {
   serviceId: string;
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              MAIN COMPONENT                               */
-/* -------------------------------------------------------------------------- */
 const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }) => {
   const navigate = useNavigate();
 
-  /* --------------------------- STATE ------------------------------------ */
   const [details, setDetails] = useState<DetailsResponse | null>(null);
   const [tools, setTools] = useState<Standard[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  /* --------------------------- FETCH DATA ------------------------------- */
   useEffect(() => {
     if (!serviceId) return;
 
@@ -127,7 +122,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
 
   const formatDate = (iso: string) => iso.split("T")[0];
 
-  /* --------------------------- RENDER ----------------------------------- */
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto p-8 text-center">
@@ -160,7 +154,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
         Generate QA Test Report - Interventional Radiology
       </h1>
 
-      {/* ───────────────────── 1. Customer Name & Address ───────────────────── */}
+      {/* 1. Customer Name & Address */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-blue-700 mb-3">
           1. Name and Address of Customer
@@ -191,7 +185,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
         </div>
       </section>
 
-      {/* ───────────────────── 2. Customer Reference ───────────────────── */}
+      {/* 2. Customer Reference */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-blue-700 mb-3">
           2. Customer Reference
@@ -240,7 +234,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
         </div>
       </section>
 
-      {/* ───────────────────── 3. Device Under Test ───────────────────── */}
+      {/* 3. Device Under Test */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-blue-700 mb-3">
           3. Details of the Device Under Test
@@ -275,13 +269,10 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
         </div>
       </section>
 
-      {/* ───────────────────── Standards (Tools) ───────────────────── */}
       <Standards standards={tools} />
-
-      {/* ───────────────────── Notes ───────────────────── */}
       <Notes />
 
-      {/* ───────────────────── View Report Button ───────────────────── */}
+      {/* View Report Button */}
       <div className="mt-8 flex justify-end gap-4">
         <button
           type="button"
@@ -292,98 +283,39 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
         </button>
       </div>
 
-      {/* <div className="mt-10 space-y-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-6">Tests</h2>
+      {/* ============================== ACCORDION TESTS ============================== */}
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
-        <div className="space-y-8">
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            AccuracyOfIrradiationTime
-            </h3>
-            <AccuracyOfIrradiationTime serviceId={serviceId} />
-          </div>
+        {/* {[
+          { title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
+          { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
+          { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement serviceId={serviceId} /> },
+          { title: "Accuracy of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
+          { title: "Total Filtration", component: <TotalFilteration serviceId={serviceId} /> },
+          { title: "Linearity of mAs Loading", component: <LinearityOfmAsLoading serviceId={serviceId} /> },
+          { title: "Consistency of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
+          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
+          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
+          { title: "Exposure Rate Table Top", component: <ExposureRateTableTop serviceId={serviceId} /> },
+          { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
+        ].map((item, idx) => (
+          <Disclosure key={idx} defaultOpen={idx === 0}>
+            {({ open }) => (
+              <>
+                <Disclosure.Button className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition">
+                  <span>{item.title}</span>
+                  <ChevronDownIcon className={`w-6 h-6 transition-transform ${open ? "rotate-180" : ""}`} />
+                </Disclosure.Button>
 
-
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              CentralBeamAlignment
-            </h3>
-            <CentralBeamAlignment serviceId={serviceId} />
-          </div>
-
-    
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-             EffectiveFocalspotMeasurement
-            </h3>
-            <EffectiveFocalspotMeasurement serviceId={serviceId} />
-          </div>
-
-  
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              AccuracyOfOperatingPotential
-            </h3>
-            <AccuracyOfOperatingPotential serviceId={serviceId} />
-          </div>
-
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-             TotalFilteration
-            </h3>
-            <TotalFilteration serviceId={serviceId} />
-          </div>
-
-
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-             LinearityOfmAsLoading
-            </h3>
-            <LinearityOfmAsLoading serviceId={serviceId} />
-          </div>
-
-     
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              ConsisitencyOfRadiationOutput
-            </h3>
-            <ConsisitencyOfRadiationOutput serviceId={serviceId} />
-          </div>
-
-         
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              LowContrastResolution
-            </h3>
-            <LowContrastResolution serviceId={serviceId} />
-          </div>
-
-    
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              HighContrastResolution
-            </h3>
-            <HighContrastResolution serviceId={serviceId} />
-          </div>
-
-
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              ExposureRateTableTop
-            </h3>
-            <ExposureRateTableTop serviceId={serviceId} />
-          </div>
-
-          <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              TubeHousingLeakage
-            </h3>
-            <TubeHousingLeakage serviceId={serviceId} />
-          </div>
-
-         
-        </div>
-      </div> */}
+                <Disclosure.Panel className="border border-gray-300 rounded-b-lg p-6 bg-gray-50 mb-6">
+                  {item.component}
+                </Disclosure.Panel>
+              </>
+            )}
+          </Disclosure>
+        ))} */}
+      </div>
     </div>
   );
 };
