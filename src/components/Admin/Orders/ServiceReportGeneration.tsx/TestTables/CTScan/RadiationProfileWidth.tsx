@@ -16,9 +16,9 @@ interface Table2Row {
     toleranceValue: string;
     remarks: string;
 }
-interface Props { serviceId: string; testId?: string; }
+interface Props { serviceId: string; testId?: string; onTestSaved?: (testId: string) => void;}
 
-const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId }) => {
+const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId ,onTestSaved}) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
     const [table1Row, setTable1Row] = useState<Table1Row>({ kvp: '', ma: '' });
     const [table2Rows, setTable2Rows] = useState<Table2Row[]>([

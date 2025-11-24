@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 // ---- 1. Import every report component (create them in separate files) ----
 import CTScanReport from '../ServiceReportGeneration.tsx/TestTables/CTScan/GenerateReport-CTScan';
 import InventionalRadiology from './TestTables/Inventional-Radiology/GenerateReportInventionalRadiology';
+import MammographyReport from "./TestTables/Mammography/GenerateReportMammography"
 // import CBCTReport from './reports/CBCTReport';
 // import FixedXRayReport from './reports/FixedXRayReport';
 // import MobileXRayReport from './reports/MobileXRayReport';
@@ -30,7 +31,7 @@ const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   // 'Mobile X-Ray': MobileXRayReport,
   // 'C-Arm': CArmReport,
   'Cath Lab/Interventional Radiology': InventionalRadiology,
-  // Mammography: MammographyReport,
+  "Mammography": MammographyReport,
   'CT Scan': CTScanReport,
   // 'PET CT': PETCTReport,
   // 'CT Simulator': CTSimulatorReport,

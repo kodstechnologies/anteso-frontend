@@ -14,14 +14,16 @@ import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
 import CentralBeamAlignment from "./CentralBeamAlignment";
 import EffectiveFocalspotMeasurement from "./EffectiveFocalspotMeasurement";
 import AccuracyOfOperatingPotential from "../AccuracyOfOperatingPotential";
-import TotalFilteration from "../TotalFilteration";
+import TotalFilteration from "../Inventional-Radiology/TotalFilterationForInventionalRadiology";
 import LinearityOfmAsLoading from "../LinearityOfmAsLoading";
 import ConsisitencyOfRadiationOutput from "../CTScan/ConsisitencyOfRadiationOutput";
-import LowContrastResolution from "../LowContrastResolution";
-import HighContrastResolution from "../HighContrastResolution";
+import LowContrastResolution from "./LowContrastResolutionInventionalRadiology";
+import HighContrastResolution from "./HighContrastResolutionForInventionalRadiology";
 import ExposureRateTableTop from "./ExposureRateTableTop";
-import TubeHousingLeakage from "./TubeHousingLeakage";
-
+import TubeHousingLeakage from "./TubeHousingLeakageForInventionalRadiology";
+import RadiationProtectionInterventionalRadiology from "./RadiationProtectionInventionalRadiology";
+import EquipmentSettingForInterventionalRadiology from "./EquipmentSettingForInventionalRadiology";
+import MaxRadiationLevel from "./MaxRadiationLevel";
 export interface Standard {
   slNumber: string;
   nomenclature: string;
@@ -121,7 +123,15 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
   }, [serviceId]);
 
   const formatDate = (iso: string) => iso.split("T")[0];
+  const [savedTestIds, setSavedTestIds] = useState<Record<string, string>>({});
 
+  // Helper to save testId when a test is saved
+  const handleTestSaved = (testName: string, testId: string) => {
+    setSavedTestIds(prev => ({
+      ...prev,
+      [testName]: testId
+    }));
+  };
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto p-8 text-center">
@@ -287,18 +297,41 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
       <div className="mt-12">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
-        {/* {[
-          { title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
+        {[
           { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
           { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement serviceId={serviceId} /> },
+          { title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
+
           { title: "Accuracy of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
           { title: "Total Filtration", component: <TotalFilteration serviceId={serviceId} /> },
           { title: "Linearity of mAs Loading", component: <LinearityOfmAsLoading serviceId={serviceId} /> },
           { title: "Consistency of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
           { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
           { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
-          { title: "Exposure Rate Table Top", component: <ExposureRateTableTop serviceId={serviceId} /> },
+          {
+            title: "Exposure Rate Table Top",
+            component: (
+              <ExposureRateTableTop
+                serviceId={serviceId}
+                testId={
+                  details.qaTests.find(test =>
+                    test.qaTestReportNumber?.toLowerCase().includes("exposure rate") ||
+                    test.qaTestReportNumber?.toLowerCase().includes("table top")
+                  )?.qaTestId || null
+                }
+                onTestSaved={(newTestId) => {
+                  console.log("Exposure Rate saved with testId:", newTestId);
+                  // Optional: refresh details if needed
+                }}
+              />
+            ),
+          },
           { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
+          { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} /> },
+          { title: "Equipment Setting", component: <EquipmentSettingForInterventionalRadiology serviceId={serviceId} /> },
+          { title: "Max Radiation Level", component: <MaxRadiationLevel serviceId={serviceId} /> },
+
+
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
             {({ open }) => (
@@ -314,7 +347,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
               </>
             )}
           </Disclosure>
-        ))} */}
+        ))}
       </div>
     </div>
   );

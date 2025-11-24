@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { saveReportHeader } from "../../../../../../api";
+import { getRadiationProfileWidthByServiceId, saveReportHeader } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 
 import Standards from "../../Standards";
@@ -24,6 +24,8 @@ import LowContrastResolutionForCT from "../CTScan/LowContrastResolutionForCTScan
 import CentralBeamAlignment from "../Inventional-Radiology/CentralBeamAlignment";
 import ExposureRateTableTop from "../Inventional-Radiology/ExposureRateTableTop";
 import HighContrastResolutionForCTScan from "../CTScan/HighContrastResolutionForCTScan";
+import RadiationProtectionSurvey from "./DetailsOfRadiationProtection"
+import EquipementSetting from "./EquipementSetting";
 interface Standard {
     slNumber: string;
     nomenclature: string;
@@ -58,7 +60,7 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
-
+    const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
     const [formData, setFormData] = useState({
         customerName: "",
         address: "",
@@ -191,7 +193,13 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             setSaving(false);
         }
     };
-
+    useEffect(() => {
+        const load = async () => {
+            const data = await getRadiationProfileWidthByServiceId(serviceId);
+            setRadiationProfileTest(data);
+        };
+        if (serviceId) load();
+    }, [serviceId]);
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -321,14 +329,27 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
                 {[
-                    { title: "Radiation Profile Width/Slice Thickness", component: <RadiationProfileWidth serviceId={serviceId} /> },
+                    // { title: "Radiation Profile Width/Slice Thickness", component: <RadiationProfileWidth serviceId={serviceId} /> },
+                    {
+                        title: "Radiation Profile Width for CT Scan",
+                        component: (
+                            <RadiationProfileWidth
+                                serviceId={serviceId}
+                                testId={radiationProfileTest?._id || null}   // ← magic line
+                                onTestSaved={(id:any) => console.log("Radiation Profile saved:", id)}
+                            />
+                        ),
+                    },
                     { title: "Measurement of Operating Potential", component: <MeasurementOfOperatingPotential serviceId={serviceId} /> },
                     { title: "Measurement of mA Linearity", component: <MeasurementOfMaLinearity serviceId={serviceId} /> },
                     { title: "Timer Accuracy", component: <TimerAccuracy serviceId={serviceId} /> },
                     { title: "Measurement of CTDI", component: <MeasurementOfCTDI serviceId={serviceId} /> },
                     { title: "Total Filtration", component: <TotalFilterationForCTScan serviceId={serviceId} /> },
                     { title: "Radiation Leakage Level", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} /> },
-                    // { title: "Maximum Radiation Level", component: <MeasureMaxRadiationLevel serviceId={serviceId} /> },
+
+                    { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
+                    { title: "Equipement Setting", component: <EquipementSetting serviceId={serviceId} /> },
+                    { title: "Maximum Radiation Level", component: <MeasureMaxRadiationLevel serviceId={serviceId} /> },
                     // { title: "Consisitency Of RadiationOutput", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
                     // { title: "Low Contrast Resolution", component: <LowContrastResolutionForCT serviceId={serviceId} /> },
                     // { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} /> },

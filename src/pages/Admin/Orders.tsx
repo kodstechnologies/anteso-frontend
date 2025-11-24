@@ -265,13 +265,13 @@ const Orders = () => {
                                             >
                                                 <IconEye className="w-4.5 h-4.5" />
                                             </Link>
-                                            {/* <button
+                                            <button
                                                 type="button"
                                                 className="flex hover:text-danger"
                                                 onClick={() => handleDeleteClick(record._id)}
                                             >
                                                 <IconTrashLines />
-                                            </button> */}
+                                            </button>
                                         </div>
                                     ),
                                 },

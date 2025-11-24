@@ -105,6 +105,16 @@ interface MachineData {
         serviceId?: string
         assignedAtEngineer?: string | undefined
         assignedAtStaff?: string | undefined
+        statusHistory?: Array<{
+            oldStatus: string
+            newStatus: string
+            updatedBy: {
+                _id: string
+                name: string
+            }
+            updatedAt: string
+            remark?: string
+        }>
     }>
     rawPhoto?: string[]
 }
@@ -754,6 +764,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     assignedStaffId: workTypeDetail.QAtest?.officeStaff || undefined,
                                     assignedAtStaff: workTypeDetail.QAtest?.assignedAt,
                                     completedAt: workTypeDetail.completedAt || undefined,
+                                    statusHistory: workTypeDetail.QAtest?.statusHistory || workTypeDetail.statusHistory || [],
                                 });
 
                                 // ✅ Save assigned Office Staff
@@ -2542,16 +2553,16 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
                                                                         />
 
-                                                                        {/* <label className="block text-sm font-medium text-green-700">
+                                                                        <label className="block text-sm font-medium text-green-700">
                                                                             Generate Report
-                                                                        </label> */}
+                                                                        </label>
 
                                                                         {/* ✅ Upload + Generate Report Buttons */}
                                                                         <div className="flex items-center gap-3">
                                                                             <>
                                                                                 {console.log("Service object →", service)}
                                                                                 {/* Your existing JSX here */}
-                                                                                {/* <button
+                                                                                <button
                                                                                     onClick={() => {
                                                                                         if (!service?.id || !service?.machineType) {
                                                                                             console.error("Cannot navigate: missing service.id or machineType", service);
@@ -2572,7 +2583,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
                                                                                 >
                                                                                     Generate Report
-                                                                                </button> */}
+                                                                                </button>
                                                                             </>
                                                                         </div>
                                                                         <div className="grid grid-cols-2 gap-3 mt-3">
@@ -2640,6 +2651,51 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         <span>Status Completed at: {formatDate(workType.completedAt)}</span>
                                                                     </div>
                                                                 )}
+                                                            </div>
+
+                                                        )}
+                                                        {/* ================ STATUS CHANGE HISTORY ================ */}
+                                                        {workType.statusHistory && workType.statusHistory.length > 0 && (
+                                                            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                                                    <RefreshCw className="h-4 w-4" />
+                                                                    Status Change History
+                                                                </h4>
+                                                                <div className="space-y-2 text-xs">
+                                                                    {workType.statusHistory.map((hist: any, idx: number) => (
+                                                                        <div
+                                                                            key={idx}
+                                                                            className="flex items-start justify-between gap-3 p-2 bg-white rounded border hover:shadow-sm transition-shadow"
+                                                                        >
+                                                                            <div className="flex-1">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="font-medium text-gray-900">
+                                                                                        {hist.updatedBy?.name || "Unknown User"}
+                                                                                    </span>
+                                                                                    <span className="text-gray-500">→</span>
+                                                                                    <span
+                                                                                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${hist.newStatus === "complete" || hist.newStatus === "generated"
+                                                                                                ? "bg-green-100 text-green-800 border-green-300"
+                                                                                                : hist.newStatus === "in progress"
+                                                                                                    ? "bg-blue-100 text-blue-800 border-blue-300"
+                                                                                                    : "bg-yellow-100 text-yellow-800 border-yellow-300"
+                                                                                            }`}                                                                                    >
+                                                                                        {hist.oldStatus} → {hist.newStatus}
+                                                                                    </span>
+                                                                                </div>
+                                                                                {hist.remark && (
+                                                                                    <p className="text-gray-600 mt-1 italic">"{hist.remark}"</p>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="text-right text-gray-500 whitespace-nowrap">
+                                                                                {new Date(hist.updatedAt).toLocaleString("en-IN", {
+                                                                                    dateStyle: "short",
+                                                                                    timeStyle: "short",
+                                                                                })}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </div>

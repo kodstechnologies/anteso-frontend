@@ -3362,6 +3362,32 @@ export const getTools = async (serviceId: any) => {
     }
 }
 
+
+
+
+export const saveReportHeader = async (serviceId: any, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(
+        `/service-report/report-header/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+// api/index.ts or wherever
+export const getReportHeader = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/report-header/${serviceId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    console.log("🚀 ~ getReportHeader ~ res:", res)
+    return res.data;
+};
+
+
+
+
+
 //CT Scan
 //radiation profile
 export const addRadiationProfileWidth = async (serviceId: string, payload: any) => {
@@ -3426,6 +3452,26 @@ export const getMeasurementOfOperatingPotentialByTestId = async (testId: string)
     console.log("🚀 ~ getMeasurementOfOperatingPotentialByTestId ~ res.data.data:", res.data.data)
     return res.data.data;
 };
+
+// src/api/radiationProfileWidth.ts
+
+export const getRadiationProfileWidthByServiceId = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/inventional-radiology/radiation-profile-width/service/${serviceId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data.data; // null if not created yet, or full object with _id
+    } catch (error: any) {
+        if (error.response?.status === 404 || !error.response) return null;
+        console.error("Failed to load Radiation Profile Width test:", error);
+        throw error;
+    }
+};
+
 // UPDATE BY TEST ID
 export const updateMeasurementOfOperatingPotential = async (testId: string, payload: any) => {
     const token = Cookies.get('accessToken');
@@ -3732,21 +3778,118 @@ export const updateOutputConsistency = async (testId: string, payload: any) => {
 };
 
 
-export const saveReportHeader = async (serviceId: any, payload: any) => {
-    const token = Cookies.get('accessToken');
-    const res = await api.put(
-        `/service-report/report-header/${serviceId}`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    return res.data;
-};
-// api/index.ts or wherever
-export const getReportHeader = async (serviceId: string) => {
-    const token = Cookies.get('accessToken');
-    const res = await api.get(`/service-report/report-header/${serviceId}`, {
+//inventional radilogy/Cath lab
+//accuracy of irradiation time
+export const createAccuracyOfIrradiationTime = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/inventional-radiology/accuracy-of-irradiation-time/${serviceId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
-    console.log("🚀 ~ getReportHeader ~ res:", res)
     return res.data;
+};
+
+export const getAccuracyOfIrradiationTime = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/inventional-radiology/accuracy-of-irradiation-time/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // assuming your backend returns { success: true, data: {...} }
+    } catch (error: any) {
+        if (error.response?.status === 404) return null; // no data yet
+        throw error;
+    }
+};
+
+export const updateAccuracyOfIrradiationTime = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/inventional-radiology/accuracy-of-irradiation-time/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+
+
+//total filteration
+export const createTotalFilteration = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/inventional-radiology/total-filteration/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data; // returns { success: true, data: { testId, serviceReportId } }
+};
+
+// GET by testId
+export const getTotalFilteration = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/inventional-radiology/total-filteration/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // your backend returns { success: true, data: { ...test } }
+    } catch (error: any) {
+        if (error.response?.status === 404) return null; // no test yet
+        throw error;
+    }
+};
+
+// UPDATE by testId
+export const updateTotalFilterationforInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/inventional-radiology/total-filteration/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//exposure rate at table top
+export const addExposureRateTableTop = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.post(
+            `/service-report/inventional-radiology/exposure-rate/${serviceId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("ExposureRateTableTop create failed:", error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID
+export const getExposureRateTableTopByTestId = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/inventional-radiology/exposure-rate/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("🚀 ~ getExposureRateTableTopByTestId ~ res:", res)
+        return res.data.data;
+    } catch (error: any) {
+        console.error("ExposureRateTableTop fetch failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID
+export const updateExposureRateTableTop = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.put(
+            `/service-report/inventional-radiology/exposure-rate/${testId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("ExposureRateTableTop update failed:", error);
+        throw error;
+    }
 };
