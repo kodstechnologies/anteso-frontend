@@ -158,7 +158,7 @@ const Mammography: React.FC<MammographyProps> = ({ serviceId }) => {
     return (
         <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
             <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Generate QA Test Report - Interventional Radiology
+                Generate QA Test Report -Mammaography
             </h1>
 
             {/* 1. Customer Name & Address */}
