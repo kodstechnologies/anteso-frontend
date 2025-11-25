@@ -347,9 +347,9 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     { title: "Total Filtration", component: <TotalFilterationForCTScan serviceId={serviceId} /> },
                     { title: "Radiation Leakage Level", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} /> },
 
-                    { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
-                    { title: "Equipement Setting", component: <EquipementSetting serviceId={serviceId} /> },
-                    { title: "Maximum Radiation Level", component: <MeasureMaxRadiationLevel serviceId={serviceId} /> },
+                    // { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
+                    // { title: "Equipement Setting", component: <EquipementSetting serviceId={serviceId} /> },
+                    // { title: "Maximum Radiation Level", component: <MeasureMaxRadiationLevel serviceId={serviceId} /> },
                     // { title: "Consisitency Of RadiationOutput", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
                     // { title: "Low Contrast Resolution", component: <LowContrastResolutionForCT serviceId={serviceId} /> },
                     // { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} /> },

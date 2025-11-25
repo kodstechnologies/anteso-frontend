@@ -2553,15 +2553,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
                                                                         />
 
-                                                                        <label className="block text-sm font-medium text-green-700">
+                                                                        {/* <label className="block text-sm font-medium text-green-700">
                                                                             Generate Report
                                                                         </label>
 
-                                                                        {/* ✅ Upload + Generate Report Buttons */}
                                                                         <div className="flex items-center gap-3">
                                                                             <>
                                                                                 {console.log("Service object →", service)}
-                                                                                {/* Your existing JSX here */}
                                                                                 <button
                                                                                     onClick={() => {
                                                                                         if (!service?.id || !service?.machineType) {
@@ -2585,7 +2583,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                     Generate Report
                                                                                 </button>
                                                                             </>
-                                                                        </div>
+                                                                        </div> */}
                                                                         <div className="grid grid-cols-2 gap-3 mt-3">
                                                                             <div className="p-2 bg-white rounded border">
                                                                                 <label className="text-xs text-gray-500">QA Test Report Status</label>

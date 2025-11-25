@@ -116,7 +116,7 @@ const StaffOrders = () => {
                     {/* Search and Create Button */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                         <div className="flex items-center gap-2">
-                            <Link to={'create'} className="btn btn-primary gap-2">
+                            <Link to={'/admin/staff-orders/create'} className="btn btn-primary gap-2">
                                 <IconPlus /> Create Order
                             </Link>
                         </div>
@@ -235,13 +235,13 @@ const StaffOrders = () => {
                                             >
                                                 <IconEye className="w-4.5 h-4.5" />
                                             </Link>
-                                            {/* <button
+                                            <button
                                                 type="button"
                                                 className="flex hover:text-danger"
                                                 onClick={() => handleDeleteClick(record._id)}
                                             >
                                                 <IconTrashLines />
-                                            </button> */}
+                                            </button>
                                         </div>
                                     ),
                                 },

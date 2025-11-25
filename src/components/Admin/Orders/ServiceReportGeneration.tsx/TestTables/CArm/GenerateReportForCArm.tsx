@@ -1,8 +1,8 @@
 // GenerateReport-InventionalRadiology.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Disclosure } from "@headlessui/react";           // ← Added
-import { ChevronDownIcon } from "@heroicons/react/24/outline"; // ← Added
+import { Disclosure } from "@headlessui/react";          
+import { ChevronDownIcon } from "@heroicons/react/24/outline"; 
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -11,19 +11,16 @@ import { getDetails, getTools } from "../../../../../../api";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
-import CentralBeamAlignment from "./CentralBeamAlignment";
-import EffectiveFocalspotMeasurement from "./EffectiveFocalspotMeasurement";
-import AccuracyOfOperatingPotential from "../AccuracyOfOperatingPotential";
-import TotalFilteration from "../Inventional-Radiology/TotalFilterationForInventionalRadiology";
-import LinearityOfmAsLoading from "../LinearityOfmAsLoading";
-import ConsisitencyOfRadiationOutput from "../CTScan/ConsisitencyOfRadiationOutput";
-import LowContrastResolution from "./LowContrastResolutionInventionalRadiology";
-import HighContrastResolution from "./HighContrastResolutionForInventionalRadiology";
-import ExposureRateTableTop from "./ExposureRateTableTop";
-import TubeHousingLeakage from "./TubeHousingLeakageForInventionalRadiology";
-import RadiationProtectionInterventionalRadiology from "./RadiationProtectionInventionalRadiology";
-import EquipmentSettingForInterventionalRadiology from "./EquipmentSettingForInventionalRadiology";
-import MaxRadiationLevel from "./MaxRadiationLevel";
+import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
+import TotalFilteration from "./TotalFilteration";
+// import LinearityOfmAsLoading from "../LinearityOfmAsLoading";
+import ConsisitencyOfRadiationOutput from "./OutputConsisitency";
+import LowContrastResolution from "./LowContrastResolution";
+import HighContrastResolution from "./HighContrastResolution";
+import ExposureRateAtTableTop from "./ExposureRateAtTableTop";
+import TubeHousingLeakage from "./TubeHousingLeakage";
+
+
 export interface Standard {
   slNumber: string;
   nomenclature: string;
@@ -72,11 +69,11 @@ interface ToolsResponse {
   }>;
 }
 
-interface InventionalRadiologyProps {
+interface CArmProps {
   serviceId: string;
 }
 
-const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }) => {
+const CArm: React.FC<CArmProps> = ({ serviceId }) => {
   const navigate = useNavigate();
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -161,7 +158,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-        Generate QA Test Report - Interventional Radiology
+        Generate QA Test Report - C-Arm
       </h1>
 
       {/* 1. Customer Name & Address */}
@@ -293,45 +290,19 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
         </button>
       </div>
 
-      {/* ============================== ACCORDION TESTS ============================== */}
       <div className="mt-12">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          // { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
-          // { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement serviceId={serviceId} /> },
-          { title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
+          // { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
+          { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} /> },
+          { title: "Consisitency Of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
 
-          // { title: "Accuracy of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
-          { title: "Total Filtration", component: <TotalFilteration serviceId={serviceId} /> },
-          // { title: "Linearity of mAs Loading", component: <LinearityOfmAsLoading serviceId={serviceId} /> },
-          // { title: "Consistency of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
           // { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
           // { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
-          {
-            title: "Exposure Rate Table Top",
-            component: (
-              <ExposureRateTableTop
-                serviceId={serviceId}
-                testId={
-                  details.qaTests.find(test =>
-                    test.qaTestReportNumber?.toLowerCase().includes("exposure rate") ||
-                    test.qaTestReportNumber?.toLowerCase().includes("table top")
-                  )?.qaTestId || null
-                }
-                onTestSaved={(newTestId) => {
-                  console.log("Exposure Rate saved with testId:", newTestId);
-                  // Optional: refresh details if needed
-                }}
-              />
-            ),
-          },
+          { title: "Exposure Rate At TableTop", component: <ExposureRateAtTableTop serviceId={serviceId} /> },
           { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
-          // { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} /> },
-          // { title: "Equipment Setting", component: <EquipmentSettingForInterventionalRadiology serviceId={serviceId} /> },
-          // { title: "Max Radiation Level", component: <MaxRadiationLevel serviceId={serviceId} /> },
-
-
+          
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
             {({ open }) => (
@@ -353,4 +324,4 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
   );
 };
 
-export default InventionalRadiology;
+export default CArm;

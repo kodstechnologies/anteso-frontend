@@ -731,6 +731,14 @@ const routes = [
             </AdminProtected>
         ),
     },
+    {
+        path: '/admin/staff-orders/create',
+        element: (
+            <AdminProtected>
+                <CreateOrder />
+            </AdminProtected>
+        ),
+    },
     // {
     //     path: '/admin/orders/generate-service-report',
     //     element: (

@@ -3893,3 +3893,268 @@ export const updateExposureRateTableTop = async (testId: string, payload: any) =
         throw error;
     }
 };
+
+//mammography
+export const addAccuracyOfOperatingPotentialForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.post(
+            `/service-report/mammography/accuracy-of-operating-potential/${serviceId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("AccuracyOfOperatingPotentialForMammography create failed:", error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID (preferred — returns null if not created)
+export const getAccuracyOfOperatingPotentialByServiceIdForMammography = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    console.log("inside getAccuracyOfOperatingPotentialByServiceIdForMammography")
+    try {
+        const res = await api.get(
+            `/service-report/mammography/accuracy-of-operating-potential-by-serviceId/${serviceId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        console.log("🚀 ~ getAccuracyOfOperatingPotentialByServiceIdForMammography ~ res:", res)
+        return res.data.data; // null on first visit
+    } catch (error: any) {
+        if (error.response?.status === 404 || !error.response) return null;
+        console.error("AccuracyOfOperatingPotential fetch by serviceId failed:", error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID (legacy support)
+export const getAccuracyOfOperatingPotentialByTestIdForMammography = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/mammography/accuracy-of-operating-potential/${testId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data.data;
+    } catch (error: any) {
+        console.error("AccuracyOfOperatingPotential fetch by testId failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID (legacy)
+export const updateAccuracyOfOperatingPotentialForMammography = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.put(
+            `/service-report/mammography/accuracy-of-operating-potential/${testId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("AccuracyOfOperatingPotentialForMammography update failed:", error);
+        throw error;
+    }
+};
+
+//Linearity of mAs Loading
+export const addLinearityOfMasLLoadingForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.post(
+            `/service-report/mammography/linearity-of-mas-loading/${serviceId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("LinearityOfMasLLoading create/update failed:", error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID (preferred — returns null if not created yet)
+export const getLinearityOfMasLLoadingByServiceIdForMammography = async (serviceId: string) => {
+    console.log("🚀 ~ getLinearityOfMasLLoadingByServiceIdForMammography ~ serviceId:", serviceId)
+    console.log("inside 🚀 ~ getLinearityOfMasLLoadingByServiceIdForMammography :")
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/mammography/linearity-of-mas-loading-by-service/${serviceId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data.data; // will be null on first visit
+    } catch (error: any) {
+        if (error.response?.status === 404 || !error.response) return null;
+        console.error("LinearityOfMasLLoading fetch by serviceId failed:", error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID (legacy support)
+export const getLinearityOfMasLLoadingByTestIdForMammography = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/mammography/linearity-of-mas-loading/${testId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data.data;
+    } catch (error: any) {
+        console.error("LinearityOfMasLLoading fetch by testId failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID (legacy)
+export const updateLinearityOfMasLLoadingForMammography = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.put(
+            `/service-report/mammography/linearity-of-mas-loading/${testId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("LinearityOfMasLLoading update failed:", error);
+        throw error;
+    }
+};
+
+//totalFilteration
+export const addTotalFilterationForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.post(
+            `/service-report/mammography/total-filteration/${serviceId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data; // { success: true, data: {...} }
+    } catch (error: any) {
+        console.error("Total Filteration create failed:", error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID → returns null if not created yet (first visit)
+export const getTotalFilterationByServiceIdForMammography = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/mammography/total-filteration-by-serviceId/${serviceId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data.data; // will be object or undefined → we return null
+    } catch (error: any) {
+        if (error.response?.status === 404) {
+            return null; // First time user visits → no data yet
+        }
+        console.error("Total Filteration fetch by serviceId failed:", error);
+        throw error;
+    }
+};
+
+// GET BY TEST ID (legacy — rarely used)
+export const getTotalFilterationByTestIdForMammography = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/mammography/total-filteration/${testId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data.data;
+    } catch (error: any) {
+        console.error("Total Filteration fetch by testId failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE BY TEST ID
+export const updateTotalFilterationForMammography = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.put(
+            `/service-report/mammography/total-filteration/${testId}`,
+            payload,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("Total Filteration update failed:", error);
+        throw error;
+    }
+};
+
+
+//reproducibility of irradiation out put
+export const addReproducibilityOfOutputForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/mammography/reproducibility-of-output/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+export const getReproducibilityOfOutputByServiceIdForMammography = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/mammography/reproducibility-of-output-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateReproducibilityOfOutputForMammography = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/mammography/reproducibility-of-output/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+export const getReproducibilityOfOutputForMammography = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/mammography/reproducubility-of-irradiation-output/${testId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getReproducibilityOfOutputForMammography testId failed:", error);
+        throw error;
+    }
+};

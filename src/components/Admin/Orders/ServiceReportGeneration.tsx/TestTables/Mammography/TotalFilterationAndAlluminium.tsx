@@ -2,6 +2,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addTotalFilterationForMammography,
+  getTotalFilterationByServiceIdForMammography,
+  updateTotalFilterationForMammography,
+} from '../../../../../../api'; // Adjust path as needed
 
 interface TableRow {
   id: string;
@@ -22,16 +27,19 @@ interface HvlTolerances {
   at50: HvlToleranceItem;
 }
 
-interface Props {
-  serviceId: string;
-  testId?: string;
-  onRefresh?: () => void;
+interface SavedData {
+  targetWindow: string;
+  addedFilterThickness: string | null;
+  table: { kvp: number | null; mAs: number | null; alEquivalence: number | null; hvt: number | null }[];
+  resultHVT28kVp: number | null;
+  hvlTolerances: HvlTolerances;
+  _id?: string;
 }
 
 const operators = ['>', '>=', '<', '<=', '='] as const;
 
-const TotalFiltrationAndAluminium: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
-  const [testId, setTestId] = useState<string | null>(propTestId || null);
+const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+  const [testId, setTestId] = useState<string | null>(null);
 
   const [targetWindow, setTargetWindow] = useState('Molybdenum target, Beryllium window or Rh/Rh or W/Al');
   const [addedFilterThickness, setAddedFilterThickness] = useState('');
@@ -40,11 +48,10 @@ const TotalFiltrationAndAluminium: React.FC<Props> = ({ serviceId, testId: propT
   ]);
   const [resultHVT28kVp, setResultHVT28kVp] = useState('');
 
-  // HVL tolerances with operator + value
   const [hvlTolerances, setHvlTolerances] = useState<HvlTolerances>({
-    at30: { operator: '>=', value: '0.3' },
-    at40: { operator: '>=', value: '0.4' },
-    at50: { operator: '>=', value: '0.5' },
+    at30: { operator: '>=', value: '0.30' },
+    at40: { operator: '>=', value: '0.40' },
+    at50: { operator: '>=', value: '0.50' },
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -52,7 +59,7 @@ const TotalFiltrationAndAluminium: React.FC<Props> = ({ serviceId, testId: propT
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // Auto-sync result HVT at 28 kVp
+  // Auto-sync HVT at 28 kVp
   const hvtAt28kVp = useMemo(() => {
     const row = rows.find(r => r.kvp.trim() === '28');
     return row?.hvt.trim() || '';
@@ -64,41 +71,49 @@ const TotalFiltrationAndAluminium: React.FC<Props> = ({ serviceId, testId: propT
     }
   }, [hvtAt28kVp, resultHVT28kVp]);
 
-  const isFormValid = useMemo(() => {
-    return (
-      !!serviceId &&
-      targetWindow.trim() &&
-      rows.every(r => r.kvp.trim() && r.mAs.trim() && r.alEquivalence.trim() && r.hvt.trim())
-    );
-  }, [serviceId, targetWindow, rows]);
-
-  // Load data
+  // Load data from backend
   useEffect(() => {
-    if (!testId) {
-      setIsLoading(false);
-      return;
-    }
     const load = async () => {
+      if (!serviceId) return;
       try {
-        setHasSaved(true);
-      } catch (e) {
-        toast.error('Failed to load data');
+        const data: SavedData | null = await getTotalFilterationByServiceIdForMammography(serviceId);
+        if (data) {
+          setTargetWindow(data.targetWindow || '');
+          setAddedFilterThickness(data.addedFilterThickness || '');
+          setRows(
+            data.table.map((t, i) => ({
+              id: Date.now().toString() + i,
+              kvp: t.kvp?.toString() || '',
+              mAs: t.mAs?.toString() || '',
+              alEquivalence: t.alEquivalence?.toString() || '',
+              hvt: t.hvt?.toString() || '',
+            }))
+          );
+          setResultHVT28kVp(data.resultHVT28kVp?.toString() || '');
+          setHvlTolerances(data.hvlTolerances || {
+            at30: { operator: '>=', value: '0.30' },
+            at40: { operator: '>=', value: '0.40' },
+            at50: { operator: '>=', value: '0.50' },
+          });
+          setTestId(data._id || null);
+          setHasSaved(true);
+          setIsEditing(false);
+        }
+      } catch (err) {
+        console.error("Failed to load Total Filtration data:", err);
+        toast.error("Failed to load data");
       } finally {
         setIsLoading(false);
       }
     };
     load();
-  }, [testId]);
+  }, [serviceId]);
 
   // Save handler
-  const handleSave = async () => {
-    if (!isFormValid) {
-      toast.error('Please fill all required fields');
-      return;
-    }
+  const saveData = async () => {
+    if (!serviceId) return;
 
     setIsSaving(true);
-
     const payload = {
       targetWindow,
       addedFilterThickness: addedFilterThickness || null,
@@ -117,30 +132,35 @@ const TotalFiltrationAndAluminium: React.FC<Props> = ({ serviceId, testId: propT
     };
 
     try {
-      toast.success(testId ? 'Updated successfully!' : 'Saved successfully!');
-      if (!testId) setTestId('new-id');
+      if (testId) {
+        await updateTotalFilterationForMammography(testId, payload);
+        toast.success("Updated successfully!");
+      } else {
+        const res = await addTotalFilterationForMammography(serviceId, payload);
+        setTestId(res.data._id);
+        toast.success("Saved successfully!");
+      }
       setHasSaved(true);
       setIsEditing(false);
-      onRefresh?.();
-    } catch (e: any) {
-      toast.error(e.message || 'Save failed');
+    } catch (err: any) {
+      toast.error(err.message || "Save failed");
     } finally {
       setIsSaving(false);
     }
   };
 
   const toggleEdit = () => {
-    if (!hasSaved) return;
-    setIsEditing(true);
+    if (isEditing) {
+      setIsEditing(false);
+    } else {
+      setIsEditing(true);
+    }
   };
 
   const isViewMode = hasSaved && !isEditing;
-  const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
-  const ButtonIcon = isViewMode ? Edit3 : Save;
 
   // Row operations
   const addRow = () => {
-    if (isViewMode) return;
     setRows(prev => [...prev, {
       id: Date.now().toString(),
       kvp: '',
@@ -151,17 +171,15 @@ const TotalFiltrationAndAluminium: React.FC<Props> = ({ serviceId, testId: propT
   };
 
   const removeRow = (id: string) => {
-    if (isViewMode || rows.length <= 1) return;
+    if (rows.length <= 1) return;
     setRows(prev => prev.filter(r => r.id !== id));
   };
 
   const updateRow = (id: string, field: keyof TableRow, value: string) => {
-    if (isViewMode) return;
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
   };
 
   const updateTolerance = (kvp: 'at30' | 'at40' | 'at50', field: 'operator' | 'value', value: string) => {
-    if (isViewMode) return;
     setHvlTolerances(prev => ({
       ...prev,
       [kvp]: { ...prev[kvp], [field]: value }
@@ -170,78 +188,73 @@ const TotalFiltrationAndAluminium: React.FC<Props> = ({ serviceId, testId: propT
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-10">
-        <Loader2 className="w-8 h-8 animate-spin" />
-        <span className="ml-2">Loading...</span>
+      <div className="flex items-center justify-center p-16">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+        <span className="ml-3 text-lg">Loading Total Filtration Test...</span>
       </div>
     );
   }
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
-      {/* Header + Save Button */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">
           Total Filtration & Aluminium Equivalence (HVT) - Mammography
         </h2>
 
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <ButtonIcon className="w-4 h-4" />
-              {buttonText} Test
-            </>
+        <div className="flex items-center gap-4">
+          {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
+
+          {hasSaved && (
+            <button
+              onClick={toggleEdit}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+            >
+              <Edit3 className="w-4 h-4" />
+              {isEditing ? 'Cancel' : 'Edit'}
+            </button>
           )}
-        </button>
+
+          {isEditing && (
+            <button
+              onClick={saveData}
+              disabled={isSaving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {testId ? 'Update' : 'Save'} Test
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Anode/Filter & Added Filter */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-teal-50 border-b">
+      <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
+        <h3 className="px-6 py-4 text-lg font-semibold bg-teal-50 border-b text-teal-900">
           Target / Filter & Added Filtration
         </h3>
         <div className="p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Anode/Filter Combination
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Anode/Filter Combination</label>
             <input
               type="text"
               value={targetWindow}
               onChange={(e) => setTargetWindow(e.target.value)}
-              disabled={isViewMode}
-              className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''
-                }`}
+              readOnly={!isEditing}
+              className={`w-full px-4 py-2 border rounded-md font-medium ${isEditing ? 'border-gray-300 focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Added Filter Thickness (mm Molybdenum)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Added Filter Thickness (mm Molybdenum)</label>
             <div className="flex items-center gap-3">
               <input
                 type="text"
                 value={addedFilterThickness}
                 onChange={(e) => setAddedFilterThickness(e.target.value)}
-                disabled={isViewMode}
+                readOnly={!isEditing}
                 placeholder="0.03"
-                className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''
-                  }`}
+                className={`w-32 px-4 py-2 border rounded-md text-center ${isEditing ? 'focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
               />
               <span className="text-sm text-gray-600">mm Molybdenum</span>
             </div>
@@ -249,82 +262,66 @@ const TotalFiltrationAndAluminium: React.FC<Props> = ({ serviceId, testId: propT
         </div>
       </div>
 
-      {/* HVT Measurement Table */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-teal-50 border-b">
+      {/* HVT Table */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
+        <h3 className="px-6 py-4 text-lg font-semibold bg-blue-50 border-b text-blue-900">
           HVT Measurement Data
         </h3>
-
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                  Operating Potential (kVp)
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                  mAs
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                  Al Equivalence of Compression Device (mm Al)
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  HVT (mm Al)
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">kVp</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">Al Equivalence (mm Al)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">HVT (mm Al)</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-3 border-r">
+                  <td className="px-6 py-4 border-r">
                     <input
                       type="text"
                       value={row.kvp}
                       onChange={(e) => updateRow(row.id, 'kvp', e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''
-                        }`}
+                      readOnly={!isEditing}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                       placeholder="28"
                     />
                   </td>
-                  <td className="px-6 py-3 border-r">
+                  <td className="px-6 py-4 border-r">
                     <input
                       type="text"
                       value={row.mAs}
                       onChange={(e) => updateRow(row.id, 'mAs', e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''
-                        }`}
+                      readOnly={!isEditing}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                     />
                   </td>
-                  <td className="px-6 py-3 border-r">
+                  <td className="px-6 py-4 border-r">
                     <input
                       type="text"
                       value={row.alEquivalence}
                       onChange={(e) => updateRow(row.id, 'alEquivalence', e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''
-                        }`}
+                      readOnly={!isEditing}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                     />
                   </td>
-                  <td className="px-6 py-3">
+                  <td className="px-6 py-4">
                     <input
                       type="text"
                       value={row.hvt}
                       onChange={(e) => updateRow(row.id, 'hvt', e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''
-                        }`}
+                      readOnly={!isEditing}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                     />
                   </td>
-                  <td className="px-2 text-center">
-                    {rows.length > 1 && !isViewMode && (
-                      <button
-                        onClick={() => removeRow(row.id)}
-                        className="text-red-600 hover:bg-red-100 p-1.5 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
+                  <td className="px-3 text-center">
+                    {isEditing && rows.length > 1 && (
+                      <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     )}
                   </td>
@@ -333,85 +330,52 @@ const TotalFiltrationAndAluminium: React.FC<Props> = ({ serviceId, testId: propT
             </tbody>
           </table>
         </div>
-
-        <div className="px-6 py-4 bg-gray-50 border-t">
-          {!isViewMode && (
-            <button
-              onClick={addRow}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Add Row
+        <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
+          {isEditing && (
+            <button onClick={addRow} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <Plus className="w-5 h-5" /> Add Row
             </button>
           )}
         </div>
       </div>
 
       {/* Result */}
-      <div className="bg-amber-50 border border-amber-300 rounded-lg p-6">
-        <p className="text-lg font-semibold text-amber-900">
+      <div className="bg-amber-50 border-2 border-amber-400 rounded-xl p-6 text-center">
+        <p className="text-xl font-bold text-amber-900">
           Result: The HVT of the unit is{' '}
-          <input
-            type="text"
-            value={resultHVT28kVp}
-            onChange={(e) => setResultHVT28kVp(e.target.value)}
-            disabled={isViewMode}
-            className={`inline-block w-32 px-3 py-1 text-center font-bold text-amber-900 bg-transparent border-b-2 border-amber-600 focus:outline-none ${isViewMode ? 'border-transparent' : ''
-              }`}
-            placeholder="0.00"
-          />{' '}
-          mm of Al for 28 kVp
+          <span className="inline-block w-32 px-4 py-2 bg-white border-2 border-amber-600 rounded font-bold text-amber-900">
+            {resultHVT28kVp || '—'}
+          </span>{' '}
+          mm Al at 28 kVp
         </p>
       </div>
 
-      {/* Editable Recommended HVL Values with Dropdown */}
-      <div className="bg-white shadow-md rounded-lg p-6 space-y-6">
-        <h3 className="text-lg font-semibold text-gray-800">
-          Recommended Minimum HVL Values
-        </h3>
-
+      {/* Recommended HVL Tolerances */}
+      <div className="bg-white shadow-md rounded-lg p-6 border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-800 mb-6">Recommended Minimum HVL Values</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {(['at30', 'at40', 'at50'] as const).map((kvp) => {
-            const tolerance = hvlTolerances[kvp];
-            const label = kvp === 'at30' ? '30 kVp' : kvp === 'at40' ? '40 kVp' : '50 kVp';
-
+          {(['at30', 'at40', 'at50'] as const).map((key) => {
+            const t = hvlTolerances[key];
+            const label = key === 'at30' ? '30 kVp' : key === 'at40' ? '40 kVp' : '50 kVp';
             return (
-              <div key={kvp} className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  First HVL at {label}
-                </label>
+              <div key={key} className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">First HVL at {label}</label>
                 <div className="flex items-center gap-3">
-                  {/* Operator Dropdown */}
-                  <div className="relative">
-                    <select
-                      value={tolerance.operator}
-                      onChange={(e) => updateTolerance(kvp, 'operator', e.target.value)}
-                      disabled={isViewMode}
-                      className={`appearance-none bg-white border rounded-md px-4 py-2 pr-8 text-center font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
-                          ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
-                          : 'hover:border-gray-400'
-                        }`}
-                    >
-                      {operators.map(op => (
-                        <option key={op} value={op}>{op}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-3 w-4 h-4 pointer-events-none text-gray-500" />
-                  </div>
-
-                  {/* Value Input */}
+                  <select
+                    value={t.operator}
+                    onChange={(e) => updateTolerance(key, 'operator', e.target.value)}
+                    disabled={!isEditing}
+                    className={`px-4 py-2 border rounded-md font-medium ${isEditing ? 'cursor-pointer' : 'bg-gray-50 cursor-not-allowed'}`}
+                  >
+                    {operators.map(op => <option key={op} value={op}>{op}</option>)}
+                  </select>
                   <input
                     type="text"
-                    value={tolerance.value}
-                    onChange={(e) => updateTolerance(kvp, 'value', e.target.value)}
-                    disabled={isViewMode}
-                    className={`w-32 px-4 py-2 border rounded-md text-center font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
-                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                        : 'border-gray-300'
-                      }`}
-                    placeholder="0.3"
+                    value={t.value}
+                    onChange={(e) => updateTolerance(key, 'value', e.target.value)}
+                    disabled={!isEditing}
+                    className={`w-28 px-4 py-2 text-center border rounded-md font-medium ${isEditing ? 'focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
                   />
-
                   <span className="text-sm text-gray-600">mm Al</span>
                 </div>
               </div>

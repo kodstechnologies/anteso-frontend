@@ -11,7 +11,7 @@ import { getDetails, getTools } from "../../../../../../api";
 
 // Test-table imports (unchanged)
 
-import AccuracyOfIrradiationTime from "./AccuracyOfOperatingPotential";
+import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
 import LinearityOfMasLLoading from "./LinearityOfMasLLoading";
 import TotalFiltrationAndAluminium from "./TotalFilterationAndAlluminium";
 import ReproducibilityOfOutput from "./ReproducibilityOfOutput";
@@ -82,6 +82,7 @@ const Mammography: React.FC<MammographyProps> = ({ serviceId }) => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        console.log("🚀 ~ Mammography ~ serviceId:", serviceId)
         if (!serviceId) return;
 
         const fetchAll = async () => {
@@ -290,21 +291,20 @@ const Mammography: React.FC<MammographyProps> = ({ serviceId }) => {
                 </button>
             </div>
 
-            {/* ============================== ACCORDION TESTS ============================== */}
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
                 {[
-                    { title: "Accuracy Of IrradiationTime", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
+                    { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
                     { title: "Linearity Of mAs Loading", component: <LinearityOfMasLLoading serviceId={serviceId} /> },
                     { title: "Total Filtration And Aluminium Equivalence of the Compression Device", component: <TotalFiltrationAndAluminium serviceId={serviceId} /> },
 
                     { title: "Reproducibility Of Radiation Output", component: <ReproducibilityOfOutput serviceId={serviceId} /> },
                     { title: "Radiation Leakage Level At 5CM from the External Surface of X-Ray Tube Housing", component: <RadiationLeakageLevel serviceId={serviceId} /> },
                     { title: "Imaging Performance Evaluation", component: <ImagingPhantom serviceId={serviceId} /> },
-                    { title: "Details of Radiation Protection Survey of the Installation", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
-                    { title: "Equipement Setting", component: <EquipementSetting serviceId={serviceId} /> },
-                    { title: "Provided Maximum RadiationLevels (mR/hr) at different locations", component: <MaximumRadiationLevel serviceId={serviceId} /> },
+                    // { title: "Details of Radiation Protection Survey of the Installation", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
+                    // { title: "Equipement Setting", component: <EquipementSetting serviceId={serviceId} /> },
+                    // { title: "Provided Maximum RadiationLevels (mR/hr) at different locations", component: <MaximumRadiationLevel serviceId={serviceId} /> },
 
 
                 ].map((item, idx) => (

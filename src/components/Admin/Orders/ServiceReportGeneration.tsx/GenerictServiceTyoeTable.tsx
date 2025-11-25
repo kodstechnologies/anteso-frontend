@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 import CTScanReport from '../ServiceReportGeneration.tsx/TestTables/CTScan/GenerateReport-CTScan';
 import InventionalRadiology from './TestTables/Inventional-Radiology/GenerateReportInventionalRadiology';
 import MammographyReport from "./TestTables/Mammography/GenerateReportMammography"
+import CArmReport from "./TestTables/CArm/GenerateReportForCArm"
 // import CBCTReport from './reports/CBCTReport';
 // import FixedXRayReport from './reports/FixedXRayReport';
 // import MobileXRayReport from './reports/MobileXRayReport';
@@ -29,7 +30,7 @@ import MammographyReport from "./TestTables/Mammography/GenerateReportMammograph
 const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   // 'Fixed X-Ray': FixedXRayReport,
   // 'Mobile X-Ray': MobileXRayReport,
-  // 'C-Arm': CArmReport,
+  'C-Arm': CArmReport,
   'Cath Lab/Interventional Radiology': InventionalRadiology,
   "Mammography": MammographyReport,
   'CT Scan': CTScanReport,
