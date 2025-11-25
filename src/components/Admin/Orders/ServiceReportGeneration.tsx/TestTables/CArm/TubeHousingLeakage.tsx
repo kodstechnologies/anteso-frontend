@@ -37,7 +37,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Fixed rows
-  const [settings, setSettings] = useState<SettingsRow>({ kv: '', ma: '', time: '' });
+  const [settings, setSettings] = useState<SettingsRow>({ kv: '', ma: '', time: '',fcd:'' });
   const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
     {
       location: 'Tube',
