@@ -232,15 +232,32 @@ const AddEnquiry: React.FC = () => {
         services: Yup.array()
             .of(
                 Yup.object().shape({
-                    machineType: Yup.string().required("Required"),
-                    equipmentNo: Yup.string(),
-                    workType: Yup.array().min(1, "At least one work type is required"),
-                    machineModel: Yup.string(),
-                    quantity: Yup.number()               // ← NEW
+                    machineType: Yup.string()
+                        .required("Machine Type is required")
+                        .test(
+                            "not-others-without-custom",
+                            "Please specify the custom machine type",
+                            function (value) {
+                                const { customMachineType } = this.parent;
+                                if (value === "Others") {
+                                    return !!customMachineType && customMachineType.trim().length > 0;
+                                }
+                                return true;
+                            }
+                        ),
+                    customMachineType: Yup.string().when("machineType", {
+                        is: "Others",
+                        then: (schema) => schema.required("Please specify the machine type").min(2, "Too short"),
+                        otherwise: (schema) => schema.optional().nullable(),
+                    }),
+                    quantity: Yup.number()
                         .typeError("Must be a number")
                         .positive("Must be greater than 0")
                         .integer("Must be a whole number")
                         .required("Quantity is required"),
+                    workType: Yup.array().min(1, "At least one work type is required"),
+                    equipmentNo: Yup.string(),
+                    machineModel: Yup.string(),
                 })
             )
             .min(1, "At least one service is required"),
@@ -350,14 +367,11 @@ const AddEnquiry: React.FC = () => {
                                     <Field as="select" name="leadOwner" className="form-input">
                                         <option value="">Select Lead Owner</option>
 
-
                                         {employeeOptions.map((option) => (
                                             <option key={option.value} value={option.value}>
                                                 {option.label}
                                             </option>
                                         ))}
-
-
 
                                         {dealerOptions.map((option) => (
                                             <option key={option.value} value={option.value}>
@@ -536,106 +550,153 @@ const AddEnquiry: React.FC = () => {
                             <FieldArray name="services">
                                 {({ push, remove }) => (
                                     <>
-                                        {values.services.map((_, index) => (
-                                            <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 items-end">
-                                                {/* Machine Type */}
-                                                <div className="md:col-span-4">
-                                                    <label className="text-sm font-semibold text-gray-700">Machine Type</label>
-                                                    <Field as="select" name={`services.${index}.machineType`} className="form-select w-full">
-                                                        <option value="">Select Machine Type</option>
-                                                        {machineOptions.map((option) => (
-                                                            <option key={option.value} value={option.value}>
-                                                                {option.label}
-                                                            </option>
-                                                        ))}
-                                                    </Field>
-                                                    <div className="h-4">
-                                                        <ErrorMessage
-                                                            name={`services.${index}.machineType`}
-                                                            component="div"
-                                                            className="text-red-500 text-sm"
-                                                        />
+                                        {values.services.map((service, index) => {
+                                            const selectedMachineType = service.machineType;
+                                            const isOthersSelected = selectedMachineType === "Others" ||
+                                                (!machineOptions.map(o => o.value).includes(selectedMachineType) && selectedMachineType);
+
+                                            return (
+                                                <div key={index} className="border border-gray-200 rounded-lg p-5 mb-6 relative">
+                                                    {values.services.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => remove(index)}
+                                                            className="absolute top-2 right-2 text-red-500 hover:text-red-700 z-10"
+                                                        >
+                                                            <AnimatedTrashIcon onClick={() => remove(index)} />
+                                                        </button>
+                                                    )}
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                                        {/* Machine Type Dropdown */}
+                                                        <div className="md:col-span-4">
+                                                            <label className="text-sm font-semibold text-gray-700">Machine Type</label>
+                                                            <Field
+                                                                as="select"
+                                                                name={`services.${index}.machineType`}
+                                                                className="form-select w-full"
+                                                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                                                                    const value = e.target.value;
+                                                                    if (value !== "Others") {
+                                                                        setFieldValue(`services.${index}.machineType`, value);
+                                                                    } else {
+                                                                        // User selected "Others" → keep "Others" temporarily, but allow typing
+                                                                        setFieldValue(`services.${index}.machineType`, "Others");
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">Select Machine Type</option>
+                                                                {machineOptions.map((option) => (
+                                                                    <option key={option.value} value={option.value}>
+                                                                        {option.label}
+                                                                    </option>
+                                                                ))}
+                                                            </Field>
+                                                            <ErrorMessage
+                                                                name={`services.${index}.machineType`}
+                                                                component="div"
+                                                                className="text-red-500 text-sm mt-1"
+                                                            />
+                                                        </div>
+
+                                                        {/* Show custom input if "Others" is selected OR user has typed a custom value */}
+                                                        {isOthersSelected && (
+                                                            <div className="md:col-span-4">
+                                                                <label className="text-sm font-semibold text-gray-700">
+                                                                    Specify Other Machine Type <span className="text-red-500">*</span>
+                                                                </label>
+                                                                <Field
+                                                                    type="text"
+                                                                    name={`services.${index}.machineType`}  // ← Important: bind directly to machineType!
+                                                                    placeholder="e.g. LINAC, Brachytherapy, etc."
+                                                                    className="form-input w-full mt-1"
+                                                                    value={selectedMachineType === "Others" ? "" : selectedMachineType}
+                                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                                        const customValue = e.target.value.trim();
+                                                                        setFieldValue(`services.${index}.machineType`, customValue || "Others");
+                                                                    }}
+                                                                />
+                                                                {/* {selectedMachineType === "Others" && (
+                                                                    <p className="text-xs text-amber-600 mt-1">
+                                                                        Please type the machine type
+                                                                    </p>
+                                                                )} */}
+                                                                <ErrorMessage
+                                                                    name={`services.${index}.machineType`}
+                                                                    component="div"
+                                                                    className="text-red-500 text-sm mt-1"
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {/* Quantity */}
+                                                        <div className="md:col-span-2">
+                                                            <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                                                            <Field
+                                                                type="number"
+                                                                name={`services.${index}.quantity`}
+                                                                placeholder="Qty"
+                                                                min="1"
+                                                                className="form-input w-full"
+                                                            />
+                                                            <ErrorMessage name={`services.${index}.quantity`} component="div" className="text-red-500 text-sm" />
+                                                        </div>
+
+                                                        {/* Equipment No. */}
+                                                        <div className="md:col-span-2">
+                                                            <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
+                                                            <Field
+                                                                type="text"
+                                                                name={`services.${index}.equipmentNo`}
+                                                                placeholder="Enter ID"
+                                                                className="form-input w-full"
+                                                            />
+                                                        </div>
+
+                                                        {/* Work Type */}
+                                                        <div className="md:col-span-4">
+                                                            <label className="text-sm font-semibold text-gray-700">Type Of Work</label>
+                                                            <MultiSelectField name={`services.${index}.workType`} options={workTypeOptions} />
+                                                        </div>
+
+                                                        {/* Machine Model */}
+                                                        <div className="md:col-span-2">
+                                                            <label className="text-sm font-semibold text-gray-700">Machine Model</label>
+                                                            <Field
+                                                                type="text"
+                                                                name={`services.${index}.machineModel`}
+                                                                placeholder="Enter Model"
+                                                                className="form-input w-full"
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                {/* Quantity */}
-                                                <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                                                    <Field
-                                                        type="number"
-                                                        name={`services.${index}.quantity`}
-                                                        placeholder="Qty"
-                                                        min="1"
-                                                        className="form-input w-full"
-                                                    />
-                                                    <div className="h-4">
-                                                        <ErrorMessage
-                                                            name={`services.${index}.quantity`}
-                                                            component="div"
-                                                            className="text-red-500 text-sm"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {/* equipment/document No. */}
-                                                <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
-                                                    <Field
-                                                        type="text"
-                                                        name={`services.${index}.equipmentNo`}
-                                                        placeholder="Enter Equipment ID/Serial No."
-                                                        className="form-input w-full"
-                                                    />
-                                                    <div className="h-4">
-                                                        <ErrorMessage
-                                                            name={`services.${index}.equipmentNo`}
-                                                            component="div"
-                                                            className="text-red-500 text-sm"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {/* Work Type */}
-                                                <div className="md:col-span-4">
-                                                    <label className="text-sm font-semibold text-gray-700">Type Of Work</label>
-                                                    <MultiSelectField name={`services.${index}.workType`} options={workTypeOptions} />
-                                                </div>
-                                                <div className="md:col-span-2">
-                                                    <label className="text-sm font-semibold text-gray-700">Machine Model</label>
-                                                    <Field
-                                                        type="text"
-                                                        name={`services.${index}.machineModel`}
-                                                        placeholder="Enter Machine Model"
-                                                        className="form-input w-full"
-                                                    />
-                                                    <div className="h-4">
-                                                        <ErrorMessage
-                                                            name={`services.${index}.machineModel`}
-                                                            component="div"
-                                                            className="text-red-500 text-sm"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {/* Remove Button */}
-                                                {values.services.length > 1 && (
-                                                    <div className="md:col-span-12 flex justify-end">
-                                                        <AnimatedTrashIcon onClick={() => remove(index)} />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                        {errors.services && typeof errors.services === 'string' && (
-                                            <div className="text-red-500 text-sm">{errors.services}</div>
-                                        )}
-                                        {/* Add Another Machine */}
+                                            );
+                                        })}
+
+                                        {/* Add button */}
                                         <button
                                             type="button"
-                                            onClick={() => push({ machineType: "", equipmentNo: "", workType: [], machineModel: "", quantity: "" })}
+                                            onClick={() =>
+                                                push({
+                                                    machineType: "",
+                                                    equipmentNo: "",
+                                                    workType: [],
+                                                    machineModel: "",
+                                                    quantity: "",
+                                                })
+                                            }
                                             className="btn btn-primary w-full sm:w-auto"
                                         >
                                             + Add Another Machine
                                         </button>
+
+                                        {errors.services && typeof errors.services === "string" && (
+                                            <div className="text-red-500 text-sm mt-2">{errors.services}</div>
+                                        )}
                                     </>
                                 )}
                             </FieldArray>
-
                         </div>
 
                         {/* Additional Services */}

@@ -1,27 +1,26 @@
-// GenerateReport-InventionalRadiology.tsx
+// src/components/reports/generate/GenerateReport-Mammography.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Disclosure } from "@headlessui/react";           // ← Added
-import { ChevronDownIcon } from "@heroicons/react/24/outline"; // ← Added
+import { Disclosure } from "@headlessui/react";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader } from "../../../../../../api";
 
-// Test-table imports (unchanged)
+// Mammography Test Components
+import AccuracyOfOperatingPotential from "../Mammography/AccuracyOfOperatingPotential";
+import LinearityOfMasLLoading from "../Mammography/LinearityOfMasLLoading";
+import TotalFiltrationAndAluminium from "../Mammography/TotalFilterationAndAlluminium";
+import ReproducibilityOfOutput from "../Mammography/ReproducibilityOfOutput";
+import RadiationLeakageLevel from "../Mammography/RadiationLeakageLevel";
+import ImagingPhantom from "../Mammography/ImagingPhantom";
+import RadiationProtectionSurvey from "../Mammography/RadiationProtectionSurvey";
+import EquipementSetting from "../Mammography/EquipmentSetting";
+import MaximumRadiationLevel from "../Mammography/MaximumRadiationLevel";
 
-import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
-import LinearityOfMasLLoading from "./LinearityOfMasLLoading";
-import TotalFiltrationAndAluminium from "./TotalFilterationAndAlluminium";
-import ReproducibilityOfOutput from "./ReproducibilityOfOutput";
-import RadiationLeakageLevel from "./RadiationLeakageLevel";
-import ImagingPhantom from "./ImagingPhantom";
-import RadiationProtectionSurvey from "./RadiationProtectionSurvey";
-import EquipementSetting from "./EquipmentSetting";
-import MaximumRadiationLevel from "./MaximumRadiationLevel";
-
-export interface Standard {
+interface Standard {
     slNumber: string;
     nomenclature: string;
     make: string;
@@ -31,7 +30,7 @@ export interface Standard {
     certificate: string | null;
     calibrationCertificateNo: string;
     calibrationValidTill: string;
-    uncertainity: string;
+    uncertainity?: string;
 }
 
 interface DetailsResponse {
@@ -41,281 +40,294 @@ interface DetailsResponse {
     machineType: string;
     machineModel: string;
     serialNumber: string;
-    engineerAssigned: {
-        name: string;
-        email: string;
-        designation: string;
-    };
-    qaTests: Array<{
-        qaTestId: string;
-        qaTestReportNumber: string;
-        reportULRNumber: string;
-        createdAt: string;
-    }>;
+    engineerAssigned: { name: string };
+    qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-interface ToolsResponse {
-    toolsAssigned: Array<{
-        _id: string;
-        toolId: string;
-        SrNo: string;
-        nomenclature: string;
-        manufacturer: string;
-        model: string;
-        calibrationCertificateNo: string;
-        calibrationValidTill: string;
-        range: string;
-        certificate: string | null;
-    }>;
-}
-
-interface MammographyProps {
-    serviceId: string;
-}
-
-const Mammography: React.FC<MammographyProps> = ({ serviceId }) => {
+const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     const navigate = useNavigate();
+
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+
+    const [formData, setFormData] = useState({
+        customerName: "",
+        address: "",
+        srfNumber: "",
+        srfDate: "",
+        testReportNumber: "",
+        issueDate: "",
+        nomenclature: "Mammography Unit",
+        make: "",
+        model: "",
+        slNumber: "",
+        condition: "OK",
+        testingProcedureNumber: "AERB/MAMMO/2023",
+        pages: "",
+        testDate: "",
+        testDueDate: "",
+        location: "",
+        temperature: "",
+        humidity: "",
+        engineerNameRPId: "",
+    });
 
     useEffect(() => {
-        console.log("🚀 ~ Mammography ~ serviceId:", serviceId)
-        if (!serviceId) return;
+        const fetchInitialData = async () => {
+            if (!serviceId) return;
 
-        const fetchAll = async () => {
             try {
                 setLoading(true);
-                const [detRes, toolRes] = await Promise.all([
+                const [detailsRes, toolsRes] = await Promise.all([
                     getDetails(serviceId),
                     getTools(serviceId),
                 ]);
 
-                setDetails(detRes.data);
-                const mapped: Standard[] = toolRes.data.toolsAssigned.map(
-                    (t: any, idx: number) => ({
-                        slNumber: String(idx + 1),
-                        nomenclature: t.nomenclature,
-                        make: t.manufacturer,
-                        model: t.model,
-                        SrNo: t.SrNo,
-                        range: t.range,
-                        certificate: t.certificate ?? "",
-                        calibrationCertificateNo: t.calibrationCertificateNo,
-                        calibrationValidTill: t.calibrationValidTill.split("T")[0],
-                        uncertainity: "",
-                    })
-                );
-                setTools(mapped);
+                const data = detailsRes.data;
+                const firstTest = data.qaTests[0];
+
+                setDetails(data);
+
+                setFormData({
+                    customerName: data.hospitalName,
+                    address: data.hospitalAddress,
+                    srfNumber: data.srfNumber,
+                    srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    testReportNumber: firstTest?.qaTestReportNumber || "",
+                    issueDate: new Date().toISOString().split("T")[0],
+                    nomenclature: "Mammography Unit",
+                    make: "",
+                    model: data.machineModel,
+                    slNumber: data.serialNumber,
+                    condition: "OK",
+                    testingProcedureNumber: "AERB/MAMMO/2023",
+                    pages: "",
+                    testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    testDueDate: "",
+                    location: data.hospitalAddress,
+                    temperature: "",
+                    humidity: "",
+                    engineerNameRPId: data.engineerAssigned?.name || "",
+                });
+
+                const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
+                    slNumber: String(i + 1),
+                    nomenclature: t.nomenclature,
+                    make: t.manufacturer || t.make || "",
+                    model: t.model || "",
+                    SrNo: t.SrNo,
+                    range: t.range || "",
+                    certificate: t.certificate || null,
+                    calibrationCertificateNo: t.calibrationCertificateNo || "",
+                    calibrationValidTill: t.calibrationValidTill.split("T")[0],
+                }));
+
+                setTools(mappedTools);
             } catch (err: any) {
-                console.error(err);
-                setError(err?.message ?? "Failed to load report data");
+                console.error("Failed to load data:", err);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchAll();
+        fetchInitialData();
     }, [serviceId]);
 
-    const formatDate = (iso: string) => iso.split("T")[0];
-    const [savedTestIds, setSavedTestIds] = useState<Record<string, string>>({});
-
-    // Helper to save testId when a test is saved
-    const handleTestSaved = (testName: string, testId: string) => {
-        setSavedTestIds(prev => ({
-            ...prev,
-            [testName]: testId
-        }));
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleSaveHeader = async () => {
+        setSaving(true);
+        setSaveSuccess(false);
+        setSaveError(null);
+
+        try {
+            const payload = {
+                ...formData,
+                toolsUsed: tools.map(t => ({
+                    SrNo: t.SrNo,
+                    nomenclature: t.nomenclature,
+                    make: t.make,
+                    model: t.model,
+                    range: t.range,
+                    calibrationCertificateNo: t.calibrationCertificateNo,
+                    calibrationValidTill: t.calibrationValidTill,
+                    certificate: t.certificate,
+                })),
+                notes: [
+                    { slNo: "5.1", text: "The Test Report relates only to the above item tested." },
+                    { slNo: "5.2", text: "Partial reproduction of this report is not allowed without written approval." },
+                    { slNo: "5.3", text: "Any discrepancies must be reported within 15 days of receipt." },
+                    { slNo: "5.4", text: "Testing performed as per AERB Safety Code for Medical Diagnostic X-ray Equipment." },
+                    { slNo: "5.5", text: "Results are valid under stated test conditions." },
+                ],
+            };
+
+            await saveReportHeader(serviceId, payload);
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 5000);
+        } catch (err: any) {
+            setSaveError(err?.response?.data?.message || "Failed to save report header");
+        } finally {
+            setSaving(false);
+        }
+    };
+
     if (loading) {
         return (
-            <div className="max-w-6xl mx-auto p-8 text-center">
-                <p className="text-lg">Loading report data…</p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="max-w-6xl mx-auto p-8 text-center text-red-600">
-                <p>{error}</p>
-                <button
-                    onClick={() => navigate(-1)}
-                    className="mt-4 px-4 py-2 bg-gray-600 text-white rounded"
-                >
-                    Go Back
-                </button>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-xl font-medium text-gray-700">Loading Mammography Report Form...</div>
             </div>
         );
     }
 
     if (!details) {
-        return <div className="max-w-6xl mx-auto p-8">No data received.</div>;
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center text-red-600">
+                Failed to load service details.
+            </div>
+        );
     }
 
     return (
-        <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Generate QA Test Report -Mammaography
+        <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+            <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
+                Generate Mammography QA Test Report
             </h1>
 
-            {/* 1. Customer Name & Address */}
-            <section className="mb-8">
-                <h2 className="text-lg font-semibold text-blue-700 mb-3">
-                    1. Name and Address of Customer
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Customer Info */}
+            <section className="mb-10 bg-gray-50 p-6 rounded-lg">
+                <h2 className="text-xl font-semibold text-blue-700 mb-4">1. Name and Address of Customer</h2>
+                <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Customer Name
-                        </label>
-                        <input
-                            type="text"
-                            defaultValue={details.hospitalName}
-                            className="border p-2 rounded-md w-full"
-                            readOnly
-                        />
+                        <label className="block font-medium mb-1">Customer Name</label>
+                        <input type="text" value={formData.customerName} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Customer Address
-                        </label>
-                        <input
-                            type="text"
-                            defaultValue={details.hospitalAddress}
-                            className="border p-2 rounded-md w-full"
-                            readOnly
-                        />
+                        <label className="block font-medium mb-1">Address</label>
+                        <input type="text" value={formData.address} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
                     </div>
                 </div>
             </section>
 
-            {/* 2. Customer Reference */}
-            <section className="mb-8">
-                <h2 className="text-lg font-semibold text-blue-700 mb-3">
-                    2. Customer Reference
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* Reference */}
+            <section className="mb-10 bg-gray-50 p-6 rounded-lg">
+                <h2 className="text-xl font-semibold text-blue-700 mb-4">2. Customer Reference</h2>
+                <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            2.1 SRF Number
-                        </label>
-                        <input
-                            type="text"
-                            defaultValue={details.srfNumber}
-                            className="border p-2 rounded-md w-full"
-                            readOnly
-                        />
+                        <label className="block font-medium mb-1">2.1 SRF Number</label>
+                        <input type="text" value={formData.srfNumber} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Dated
-                        </label>
-                        <input
-                            type="date"
-                            defaultValue={formatDate(details.qaTests[0]?.createdAt ?? "")}
-                            className="border p-2 rounded-md w-full"
-                        />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            2.2 Test Report Number
-                        </label>
-                        <input
-                            type="text"
-                            defaultValue={details.qaTests[0]?.qaTestReportNumber ?? "N/A"}
-                            className="border p-2 rounded-md w-full"
-                        />
+                        <label className="block font-medium mb-1">SRF Date</label>
+                        <input type="date" name="srfDate" value={formData.srfDate} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Issue Date
-                        </label>
-                        <input type="date" className="border p-2 rounded-md w-full" />
+                        <label className="block font-medium mb-1">2.2 Test Report Number</label>
+                        <input type="text" name="testReportNumber" value={formData.testReportNumber} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" />
+                    </div>
+                    <div>
+                        <label className="block font-medium mb-1">Issue Date</label>
+                        <input type="date" name="issueDate" value={formData.issueDate} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" />
                     </div>
                 </div>
             </section>
 
-            {/* 3. Device Under Test */}
-            <section className="mb-8">
-                <h2 className="text-lg font-semibold text-blue-700 mb-3">
-                    3. Details of the Device Under Test
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Device Details */}
+            <section className="mb-10 bg-gray-50 p-6 rounded-lg">
+                <h2 className="text-xl font-semibold text-blue-700 mb-4">3. Details of Device Under Test</h2>
+                <div className="grid md:grid-cols-3 gap-6">
                     {[
-                        { label: "Nomenclature", value: details.machineType },
-                        { label: "Make", value: "" },
-                        { label: "Model", value: details.machineModel },
-                        { label: "Serial Number", value: details.serialNumber },
-                        { label: "Condition of Test Item", value: "" },
-                        { label: "Testing Procedure Number", value: "" },
-                        { label: "No. of Pages", value: "" },
-                        { label: "QA Test Date", value: formatDate(details.qaTests[0]?.createdAt ?? ""), type: "date" },
-                        { label: "QA Test Due Date", value: "", type: "date" },
-                        { label: "Testing Done At Location", value: details.hospitalAddress },
-                        { label: "Temperature (°C)", value: "", type: "number" },
-                        { label: "Humidity (RH %)", value: "", type: "number" },
-                    ].map((field, i) => (
-                        <div key={i}>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {field.label}
-                            </label>
+                        { label: "Nomenclature", name: "nomenclature", readOnly: true },
+                        { label: "Make", name: "make" },
+                        { label: "Model", name: "model", readOnly: true },
+                        { label: "Serial Number", name: "slNumber", readOnly: true },
+                        { label: "Condition", name: "condition" },
+                        { label: "Testing Procedure No.", name: "testingProcedureNumber" },
+                        { label: "No. of Pages", name: "pages" },
+                        { label: "Test Date", name: "testDate", type: "date" },
+                        { label: "Due Date", name: "testDueDate", type: "date" },
+                        { label: "Location", name: "location" },
+                        { label: "Temperature (°C)", name: "temperature", type: "number" },
+                        { label: "Humidity (%)", name: "humidity", type: "number" },
+                    ].map(field => (
+                        <div key={field.name}>
+                            <label className="block font-medium mb-1">{field.label}</label>
                             <input
-                                type={field.type ?? "text"}
-                                defaultValue={field.value}
-                                className="border p-2 rounded-md w-full"
-                                readOnly={field.label === "Nomenclature" || field.label === "Model" || field.label === "Serial Number"}
+                                type={field.type || "text"}
+                                name={field.name}
+                                value={(formData as any)[field.name]}
+                                onChange={handleInputChange}
+                                readOnly={field.readOnly}
+                                className={`w-full border rounded-md px-3 py-2 ${field.readOnly ? "bg-gray-100" : ""}`}
                             />
                         </div>
                     ))}
                 </div>
             </section>
 
-            <Standards standards={tools} />
+            {/* <Standards standards={tools} /> */}
             <Notes />
 
-            {/* View Report Button */}
-            <div className="mt-8 flex justify-end gap-4">
+            {/* Save & View Buttons */}
+            <div className="my-10 flex justify-end gap-6">
+                {saveSuccess && (
+                    <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
+                        Report Header Saved Successfully!
+                    </div>
+                )}
+                {saveError && (
+                    <div className="text-red-600 bg-red-50 px-4 py-3 rounded-lg border border-red-300">
+                        {saveError}
+                    </div>
+                )}
+
                 <button
-                    type="button"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => navigate("/admin/orders/view-service-report")}
+                    onClick={handleSaveHeader}
+                    disabled={saving}
+                    className={`px-8 py-3 rounded-lg font-bold text-white transition ${saving ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"
+                        }`}
+                >
+                    {saving ? "Saving Header..." : "Save Report Header"}
+                </button>
+
+                <button
+                    onClick={() => navigate(`/admin/orders/view-service-report-mammography?serviceId=${serviceId}`)}
+                    className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report
                 </button>
             </div>
 
+            {/* QA Tests */}
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
                 {[
-                    { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
-                    { title: "Linearity Of mAs Loading", component: <LinearityOfMasLLoading serviceId={serviceId} /> },
-                    { title: "Total Filtration And Aluminium Equivalence of the Compression Device", component: <TotalFiltrationAndAluminium serviceId={serviceId} /> },
-
-                    { title: "Reproducibility Of Radiation Output", component: <ReproducibilityOfOutput serviceId={serviceId} /> },
-                    { title: "Radiation Leakage Level At 5CM from the External Surface of X-Ray Tube Housing", component: <RadiationLeakageLevel serviceId={serviceId} /> },
-                    { title: "Imaging Performance Evaluation", component: <ImagingPhantom serviceId={serviceId} /> },
-                    // { title: "Details of Radiation Protection Survey of the Installation", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
-                    // { title: "Equipement Setting", component: <EquipementSetting serviceId={serviceId} /> },
-                    // { title: "Provided Maximum RadiationLevels (mR/hr) at different locations", component: <MaximumRadiationLevel serviceId={serviceId} /> },
-
-
-                ].map((item, idx) => (
-                    <Disclosure key={idx} defaultOpen={idx === 0}>
+                    { title: "Accuracy of Operating Potential (kVp)", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
+                    { title: "Linearity of mAs Loading", component: <LinearityOfMasLLoading serviceId={serviceId} /> },
+                    { title: "Total Filtration & Aluminium Equivalence", component: <TotalFiltrationAndAluminium serviceId={serviceId} /> },
+                    { title: "Reproducibility of Radiation Output", component: <ReproducibilityOfOutput serviceId={serviceId} /> },
+                    { title: "Radiation Leakage Level (5 cm from Tube Housing)", component: <RadiationLeakageLevel serviceId={serviceId} /> },
+                    { title: "Imaging Performance Evaluation (Phantom)", component: <ImagingPhantom serviceId={serviceId} /> },
+                    { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
+                    { title: "Equipment Settings Verification", component: <EquipementSetting serviceId={serviceId} /> },
+                    // { title: "Maximum Radiation Levels at Different Locations", component: <MaximumRadiationLevel serviceId={serviceId} /> },
+                ].map((item, i) => (
+                    <Disclosure key={i} defaultOpen={i === 0}>
                         {({ open }) => (
                             <>
                                 <Disclosure.Button className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition">
                                     <span>{item.title}</span>
                                     <ChevronDownIcon className={`w-6 h-6 transition-transform ${open ? "rotate-180" : ""}`} />
                                 </Disclosure.Button>
-
                                 <Disclosure.Panel className="border border-gray-300 rounded-b-lg p-6 bg-gray-50 mb-6">
                                     {item.component}
                                 </Disclosure.Panel>
@@ -328,4 +340,4 @@ const Mammography: React.FC<MammographyProps> = ({ serviceId }) => {
     );
 };
 
-export default Mammography;
+export default GenerateReportMammography;

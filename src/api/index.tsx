@@ -4117,7 +4117,7 @@ export const updateTotalFilterationForMammography = async (testId: string, paylo
 //reproducibility of irradiation out put
 export const addReproducibilityOfOutputForMammography = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
-    const res = await api.post(`/service-report/mammography/reproducibility-of-output/${serviceId}`, payload, {
+    const res = await api.post(`/service-report/mammography/reproducubility-of-irradiation-output/${serviceId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -4126,7 +4126,7 @@ export const addReproducibilityOfOutputForMammography = async (serviceId: string
 export const getReproducibilityOfOutputByServiceIdForMammography = async (serviceId: string) => {
     const token = Cookies.get("accessToken");
     try {
-        const res = await api.get(`/service-report/mammography/reproducibility-of-output-by-service/${serviceId}`, {
+        const res = await api.get(`/service-report/mammography/reproducubility-of-irradiation-output-by-service/${serviceId}`, {
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data;
@@ -4138,7 +4138,7 @@ export const getReproducibilityOfOutputByServiceIdForMammography = async (servic
 
 export const updateReproducibilityOfOutputForMammography = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
-    const res = await api.put(`/service-report/mammography/reproducibility-of-output/${testId}`, payload, {
+    const res = await api.put(`/service-report/mammography/reproducubility-of-irradiation-output/${testId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -4157,4 +4157,187 @@ export const getReproducibilityOfOutputForMammography = async (testId: string) =
         console.error("getReproducibilityOfOutputForMammography testId failed:", error);
         throw error;
     }
+};
+
+//radiation leakage level
+export const addRadiationLeakageLevelForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/mammography/radiation-leakage-level/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by serviceId (returns null if not found)
+export const getRadiationLeakageLevelByServiceIdForMammography = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/mammography/radiation-leakage-level-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+// READ - Get by testId
+export const getRadiationLeakageLevelForMammography = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/mammography/radiation-leakage-level/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getRadiationLeakageLevelForMammography failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateRadiationLeakageLevelForMammography = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/mammography/radiation-leakage-level/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+
+//imaging phantom
+export const addImagingPhantomForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/mammography/imaging-phantom/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by serviceId (returns null if not found)
+export const getImagingPhantomByServiceIdForMammography = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/mammography/imaging-phantom-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+// READ - Get by testId
+export const getImagingPhantomForMammography = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/mammography/imaging-phantom/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getImagingPhantomForMammography failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateImagingPhantomForMammography = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/mammography/imaging-phantom/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//radiation protection survey
+export const addRadiationProtectionSurveyForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/mammography/radiation-protection-survey/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by serviceId (returns null if not found - matches your pattern)
+export const getRadiationProtectionSurveyByServiceIdForMammography = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/mammography/radiation-protection-survey-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+// READ - Get by testId (legacy support)
+export const getRadiationProtectionSurveyForMammography = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/mammography/radiation-protection-survey/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getRadiationProtectionSurveyForMammography failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing survey
+export const updateRadiationProtectionSurveyForMammography = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/mammography/radiation-protection-survey/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+export const addEquipmentSettingForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/mammography/equipment-setting/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by serviceId (returns null if not found - matches your pattern)
+export const getEquipmentSettingByServiceIdForMammography = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/mammography/equipment-setting-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+// READ - Get by testId (legacy support)
+export const getEquipmentSettingForMammography = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/mammography/equipment-setting/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getEquipmentSettingForMammography failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing equipment setting
+export const updateEquipmentSettingForMammography = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/mammography/equipment-setting/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
 };

@@ -1,7 +1,14 @@
 // components/TestTables/ImagingPhantom.tsx
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Edit3, Save, Loader2, Plus, Trash2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addImagingPhantomForMammography,
+  getImagingPhantomByServiceIdForMammography,
+  updateImagingPhantomForMammography,
+} from '../../../../../../api';
 
 interface PhantomRow {
   id: string;
@@ -9,6 +16,21 @@ interface PhantomRow {
   visibleCount: string;
   toleranceOperator: '>' | '>=' | '<' | '<=' | '=';
   toleranceValue: string;
+}
+
+interface SavedRow {
+  name: string;
+  visibleCount: number;
+  tolerance: {
+    operator: '>' | '>=' | '<' | '<=' | '=';
+    value: number;
+  };
+}
+
+interface SavedData {
+  _id?: string;
+  rows: SavedRow[];
+  remark: 'Pass' | 'Fail';
 }
 
 interface Props {
@@ -25,44 +47,60 @@ const defaultRows: PhantomRow[] = [
 
 const operators = ['>', '>=', '<', '<=', '='] as const;
 
-const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
-  const [testId, setTestId] = useState<string | null>(propTestId || null);
+const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
+  const [testId, setTestId] = useState<string | null>(null);
   const [rows, setRows] = useState<PhantomRow[]>(defaultRows);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
   const [hasSaved, setHasSaved] = useState(false);
 
   const isViewMode = hasSaved && !isEditing;
 
-  // Load data
+  // Load existing data
   useEffect(() => {
-    if (!testId) {
-      setIsLoading(false);
-      return;
-    }
     const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        // Replace with real API when ready
-        // const { data } = await getImagingPhantom(testId);
-        // setRows(data.rows?.length ? data.rows : defaultRows);
-        setHasSaved(true);
-      } catch (e) {
-        toast.error('Failed to load data');
+        const data: SavedData | null = await getImagingPhantomByServiceIdForMammography(serviceId);
+        if (data) {
+          setRows(
+            data.rows.length > 0
+              ? data.rows.map((r, i) => ({
+                id: Date.now().toString() + i,
+                name: r.name,
+                visibleCount: r.visibleCount.toString(),
+                toleranceOperator: r.tolerance.operator,
+                toleranceValue: r.tolerance.value.toString(),
+              }))
+              : defaultRows
+          );
+          setTestId(data._id || null);
+          setHasSaved(true);
+          setIsEditing(false);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to load Imaging Phantom data');
       } finally {
         setIsLoading(false);
       }
     };
+
     load();
-  }, [testId]);
+  }, [serviceId]);
 
   // Save handler
   const handleSave = async () => {
     const hasEmpty = rows.some(r =>
       !r.name.trim() ||
-      !r.visibleCount.trim() ||
-      !r.toleranceValue.trim()
+      r.visibleCount.trim() === '' ||
+      r.toleranceValue.trim() === ''
     );
 
     if (hasEmpty) {
@@ -81,40 +119,28 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefr
           value: parseFloat(r.toleranceValue) || 0,
         },
       })),
-      remark: rows.every(r => {
-        const visible = parseFloat(r.visibleCount) || 0;
-        const tol = parseFloat(r.toleranceValue) || 0;
-        switch (r.toleranceOperator) {
-          case '>': return visible > tol;
-          case '>=': return visible >= tol;
-          case '<': return visible < tol;
-          case '<=': return visible <= tol;
-          case '=': return visible === tol;
-          default: return false;
-        }
-      }) ? 'Pass' : 'Fail',
     };
 
     try {
-      // Replace with real API
-      // await saveImagingPhantom(testId || null, payload);
-      toast.success(testId ? 'Updated successfully!' : 'Saved successfully!');
-      if (!testId) setTestId('new-id');
+      if (testId) {
+        await updateImagingPhantomForMammography(testId, payload);
+        toast.success('Updated successfully!');
+      } else {
+        const res = await addImagingPhantomForMammography(serviceId, payload);
+        setTestId(res.data._id || res.data.testId);
+        toast.success('Saved successfully!');
+      }
       setHasSaved(true);
       setIsEditing(false);
       onRefresh?.();
-    } catch (e: any) {
-      toast.error(e.message || 'Save failed');
+    } catch (err: any) {
+      toast.error(err.message || 'Save failed');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const toggleEdit = () => {
-    if (hasSaved) {
-      setIsEditing(true);
-    }
-  };
+  const toggleEdit = () => setIsEditing(true);
 
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
@@ -136,7 +162,7 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefr
     setRows(prev => prev.filter(r => r.id !== id));
   };
 
-  const updateRow = (id: string, field: keyof PhantomRow, value: string) => {
+  const updateRow = (id: string, field: keyof PhantomRow, value: any) => {
     if (isViewMode) return;
     setRows(prev => prev.map(r =>
       r.id === id ? { ...r, [field]: value } : r
@@ -145,9 +171,9 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefr
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-10">
-        <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-        <span className="ml-3 text-gray-600">Loading...</span>
+      <div className="flex items-center justify-center p-16">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+        <span className="ml-4 text-lg">Loading Imaging Phantom Test...</span>
       </div>
     );
   }
@@ -160,28 +186,39 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefr
           Mammography Phantom Image Quality Test
         </h2>
 
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <ButtonIcon className="w-4 h-4" />
-              {buttonText} Test
-            </>
+        <div className="flex items-center gap-4">
+          {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
+
+          {isViewMode && (
+            <button
+              onClick={toggleEdit}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+            >
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </button>
           )}
-        </button>
+
+          {!isViewMode && (
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  {buttonText} Test
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Phantom Table */}
@@ -204,7 +241,7 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefr
                   Number of objects visible
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Tolerance (at AGD &lt; 3 mGy)
+                  Tolerance (at AGD less than 3 mGy)
                 </th>
                 <th className="w-12"></th>
               </tr>
@@ -212,55 +249,51 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefr
             <tbody className="bg-white divide-y divide-gray-200">
               {rows.map((row, index) => (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  {/* Sr No */}
                   <td className="px-6 py-4 text-center font-medium text-gray-700 border-r">
                     {index + 1}
                   </td>
 
-                  {/* Object Name */}
                   <td className="px-6 py-4 border-r">
                     <input
                       type="text"
                       value={row.name}
                       onChange={(e) => updateRow(row.id, 'name', e.target.value)}
-                      disabled={isViewMode}
+                      readOnly={isViewMode}
                       placeholder="e.g. Fibers"
                       className={`w-full px-3 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
-                          ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                          : 'border-gray-300'
+                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                        : 'border-gray-300'
                         }`}
                     />
                   </td>
 
-                  {/* Visible Count */}
                   <td className="px-6 py-4 border-r">
                     <input
                       type="number"
                       min="0"
                       value={row.visibleCount}
                       onChange={(e) => updateRow(row.id, 'visibleCount', e.target.value)}
-                      disabled={isViewMode}
+                      readOnly={isViewMode}
                       className={`w-24 px-3 py-2 text-center border rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
-                          ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                          : 'border-gray-300'
+                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                        : 'border-gray-300'
                         }`}
                       placeholder="0"
                     />
                   </td>
 
-                  {/* Tolerance */}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      {/* Operator Dropdown */}
                       <div className="relative">
                         <select
                           value={row.toleranceOperator}
                           onChange={(e) => updateRow(row.id, 'toleranceOperator', e.target.value as any)}
                           disabled={isViewMode}
                           className={`appearance-none bg-white border rounded-md px-4 py-2 pr-8 text-center font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
-                              ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
-                              : 'hover:border-gray-400'
-                            }`}
+                            ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                            : 'hover:border-gray-400'
+                            }ividual
+                          }`}
                         >
                           {operators.map(op => (
                             <option key={op} value={op}>{op}</option>
@@ -269,29 +302,26 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefr
                         <ChevronDown className="absolute right-2 top-3 w-4 h-4 pointer-events-none text-gray-500" />
                       </div>
 
-                      {/* Tolerance Value */}
                       <input
                         type="number"
                         step="0.1"
                         min="0"
                         value={row.toleranceValue}
                         onChange={(e) => updateRow(row.id, 'toleranceValue', e.target.value)}
-                        disabled={isViewMode}
+                        readOnly={isViewMode}
                         className={`w-24 px-3 py-2 text-center border rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
-                            ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                            : 'border-gray-300'
+                          ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                          : 'border-gray-300'
                           }`}
                         placeholder="5"
                       />
 
-                      {/* Auto Text */}
                       <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
                         {row.name.trim() ? `${row.name.toLowerCase()} must be clearly visible` : 'objects must be clearly visible'}
                       </span>
                     </div>
                   </td>
 
-                  {/* Delete Button */}
                   <td className="px-3 py-4 text-center">
                     {rows.length > 1 && !isViewMode && (
                       <button
@@ -309,7 +339,6 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefr
           </table>
         </div>
 
-        {/* Add Row Button */}
         <div className="px-6 py-4 bg-gray-50 border-t">
           {!isViewMode && (
             <button
@@ -322,13 +351,6 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, testId: propTestId, onRefr
           )}
         </div>
       </div>
-
-      {/* Optional Info */}
-      {/* <div className="bg-amber-50 border border-amber-300 rounded-lg p-6">
-        <p className="text-sm text-amber-900 font-medium">
-          Note: All objects must be clearly visible at an average glandular dose less than 3 mGy
-        </p>
-      </div> */}
     </div>
   );
 };

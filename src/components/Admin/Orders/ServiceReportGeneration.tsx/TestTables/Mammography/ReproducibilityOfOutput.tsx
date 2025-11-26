@@ -1,32 +1,42 @@
+// ReproducibilityOfOutput.tsx — FIXED FOR YOUR SCHEMA
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addReproducibilityOfOutputForMammography,
   getReproducibilityOfOutputByServiceIdForMammography,
   updateReproducibilityOfOutputForMammography,
-} from '../../../../../../api'; // Adjust path
+} from '../../../../../../api';
+
+interface OutputMeasurement {
+  value: string;
+}
 
 interface OutputRow {
   id: string;
   kv: string;
   mas: string;
-  outputs: string[];
+  outputs: OutputMeasurement[];  // ← Now array of objects!
   avg: string;
   remark: string;
+}
+
+interface Tolerance {
+  operator: string;
+  value: string;
 }
 
 interface SavedData {
   outputRows: {
     kv: string;
     mas: string;
-    outputs: string[];
+    outputs: OutputMeasurement[];  // ← Must match schema
     avg: string;
     remark: string;
   }[];
-  tolerance: string;
+  tolerance: Tolerance;
   _id?: string;
 }
 
@@ -37,7 +47,7 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
       id: '1',
       kv: '28',
       mas: '100',
-      outputs: ['', '', '', '', ''],
+      outputs: [{ value: '' }, { value: '' }, { value: '' }, { value: '' }, { value: '' }],
       avg: '',
       remark: '',
     },
@@ -45,40 +55,43 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
   const [outputHeaders, setOutputHeaders] = useState<string[]>([
     'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
   ]);
-  const [tolerance, setTolerance] = useState<string>('5.0');
+  const [tolerance, setTolerance] = useState<Tolerance>({ operator: '<=', value: '5.0' });
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isEditing, setIsEditing] = useState(true);   // Start in edit mode
+  const [isEditing, setIsEditing] = useState(true);
   const [hasSaved, setHasSaved] = useState(false);
 
   const outputColumnsCount = outputHeaders.length;
 
-  // Auto calculate average and CV + remark
+  // Auto calculate average, CV, and remark
   useEffect(() => {
-    setOutputRows(prev => prev.map(row => {
-      const values = row.outputs
-        .map(v => parseFloat(v))
-        .filter(v => !isNaN(v));
+    const toleranceValue = parseFloat(tolerance.value) || 5.0;
 
-      if (values.length === 0) {
-        return { ...row, avg: '', remark: '' };
-      }
+    setOutputRows(prev =>
+      prev.map(row => {
+        const values = row.outputs
+          .map(m => parseFloat(m.value))
+          .filter(v => !isNaN(v) && v > 0);
 
-      const avg = values.reduce((a, b) => a + b, 0) / values.length;
-      const avgStr = avg.toFixed(3);
+        if (values.length === 0) {
+          return { ...row, avg: '', remark: '' };
+        }
 
-      // Coefficient of Variation
-      const stdDev = Math.sqrt(values.map(x => Math.pow(x - avg, 2)).reduce((a, b) => a + b, 0) / values.length);
-      const cv = values.length > 1 ? (stdDev / avg) * 100 : 0;
-      const cvStr = cv.toFixed(2);
+        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+        const avgStr = avg.toFixed(3);
 
-      const toleranceVal = parseFloat(tolerance) || 5.0;
-      const remark = cv <= toleranceVal ? 'Pass' : 'Fail';
+        const variance = values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
+        const stdDev = Math.sqrt(variance);
+        const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
+        const cvStr = cv.toFixed(2);
 
-      return { ...row, avg: avgStr, remark };
-    }));
-  }, [outputRows.map(r => r.outputs.join()).join(), tolerance]);
+        const remark = cv <= toleranceValue ? 'Pass' : 'Fail';
+
+        return { ...row, avg: avgStr, remark: `${cvStr}% → ${remark}` };
+      })
+    );
+  }, [outputRows.map(r => r.outputs.map(o => o.value).join()).join(), tolerance.value]);
 
   // Load data
   useEffect(() => {
@@ -91,18 +104,18 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
             id: Date.now().toString() + i,
             kv: r.kv || '',
             mas: r.mas || '',
-            outputs: r.outputs || [],
+            outputs: r.outputs.length > 0 ? r.outputs : [{ value: '' }, { value: '' }, { value: '' }, { value: '' }, { value: '' }],
             avg: r.avg || '',
             remark: r.remark || '',
           })));
-          setTolerance(data.tolerance || '5.0');
+          setTolerance(data.tolerance || { operator: '<=', value: '5.0' });
           setTestId(data._id || null);
           setHasSaved(true);
           setIsEditing(false);
         }
       } catch (err) {
         console.error(err);
-        toast.error("Failed to load data");
+        toast.error('Failed to load data');
       } finally {
         setIsLoading(false);
       }
@@ -110,7 +123,7 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
     load();
   }, [serviceId]);
 
-  // Save handler
+  // Save handler — sends correct { value: "1.25" } format
   const saveData = async () => {
     if (!serviceId) return;
     setIsSaving(true);
@@ -119,7 +132,7 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
       outputRows: outputRows.map(r => ({
         kv: r.kv,
         mas: r.mas,
-        outputs: r.outputs,
+        outputs: r.outputs,  // ← Already correct format!
         avg: r.avg,
         remark: r.remark,
       })),
@@ -129,23 +142,23 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
     try {
       if (testId) {
         await updateReproducibilityOfOutputForMammography(testId, payload);
-        toast.success("Updated successfully!");
+        toast.success('Updated successfully!');
       } else {
         const res = await addReproducibilityOfOutputForMammography(serviceId, payload);
         setTestId(res.data._id);
-        toast.success("Saved successfully!");
+        toast.success('Saved successfully!');
       }
       setHasSaved(true);
       setIsEditing(false);
     } catch (err: any) {
-      toast.error(err.message || "Save failed");
+      toast.error(err.message || 'Save failed');
+      console.error(err);
     } finally {
       setIsSaving(false);
     }
   };
 
   const toggleEdit = () => setIsEditing(prev => !prev);
-
   const showEditButton = hasSaved && !isEditing;
   const showSaveButton = isEditing;
 
@@ -153,11 +166,14 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
   const addOutputColumn = () => {
     const newHeader = `Meas ${outputHeaders.length + 1}`;
     setOutputHeaders(prev => [...prev, newHeader]);
-    setOutputRows(prev => prev.map(row => ({ ...row, outputs: [...row.outputs, ''] })));
+    setOutputRows(prev => prev.map(row => ({
+      ...row,
+      outputs: [...row.outputs, { value: '' }],
+    })));
   };
 
   const removeOutputColumn = (idx: number) => {
-    if (outputHeaders.length <= 3) return; // min 3 recommended
+    if (outputHeaders.length <= 3) return;
     setOutputHeaders(prev => prev.filter((_, i) => i !== idx));
     setOutputRows(prev => prev.map(row => ({
       ...row,
@@ -174,7 +190,7 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
       id: Date.now().toString(),
       kv: '28',
       mas: '100',
-      outputs: Array(outputColumnsCount).fill(''),
+      outputs: Array(outputColumnsCount).fill(null).map(() => ({ value: '' })),
       avg: '',
       remark: '',
     }]);
@@ -186,18 +202,18 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
   };
 
   const updateCell = (rowId: string, field: 'kv' | 'mas' | number, value: string) => {
-    setOutputRows(prev => prev.map(row => {
-      if (row.id !== rowId) return row;
-      if (field === 'kv' || field === 'mas') {
-        return { ...row, [field]: value };
-      }
-      if (typeof field === 'number') {
-        const outputs = [...row.outputs];
-        outputs[field] = value;
-        return { ...row, outputs };
-      }
-      return row;
-    }));
+    setOutputRows(prev =>
+      prev.map(row => {
+        if (row.id !== rowId) return row;
+        if (field === 'kv' || field === 'mas') return { ...row, [field]: value };
+        if (typeof field === 'number') {
+          const outputs = [...row.outputs];
+          outputs[field] = { value };
+          return { ...row, outputs };
+        }
+        return row;
+      })
+    );
   };
 
   if (isLoading) {
@@ -221,21 +237,13 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
           {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
 
           {showEditButton && (
-            <button
-              onClick={toggleEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-            >
-              <Edit3 className="w-4 h-4" />
-              Edit
+            <button onClick={toggleEdit} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+              <Edit3 className="w-4 h-4" /> Edit
             </button>
           )}
 
           {showSaveButton && (
-            <button
-              onClick={saveData}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
-            >
+            <button onClick={saveData} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50">
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -320,11 +328,11 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
                       className="w-full px-3 py-2 text-center border rounded text-sm"
                     />
                   </td>
-                  {row.outputs.map((val, i) => (
+                  {row.outputs.map((measurement, i) => (
                     <td key={i} className="px-2 py-2 border-r">
                       <input
                         type="text"
-                        value={val}
+                        value={measurement.value}
                         onChange={e => updateCell(row.id, i, e.target.value)}
                         readOnly={!isEditing}
                         className="w-full px-3 py-2 text-center border rounded text-sm"
@@ -336,7 +344,7 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
                     {row.avg || '—'}
                   </td>
                   <td className="px-4 py-2 text-center">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${row.remark === 'Pass' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${row.remark.includes('Pass') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                       {row.remark || '—'}
                     </span>
                   </td>
@@ -365,25 +373,26 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
       {/* Tolerance */}
       <div className="bg-gradient-to-r from-blue-50 to-teal-50 border-2 border-blue-200 rounded-xl p-6 max-w-md">
         <label className="block text-lg font-semibold text-gray-800 mb-3">
-          Acceptance Criteria (CV ≤ {tolerance}%)
+          Acceptance Criteria (CV {tolerance.operator} {tolerance.value}%)
         </label>
         <div className="flex items-center gap-4">
-          <span className="text-lg">CV ≤</span>
+          <span className="text-lg">CV</span>
+          <span className="text-3xl font-bold">{tolerance.operator}</span>
           <input
             type="text"
-            value={tolerance}
-            onChange={e => setTolerance(e.target.value)}
+            value={tolerance.value}
+            onChange={e => setTolerance(prev => ({ ...prev, value: e.target.value }))}
             readOnly={!isEditing}
-            className="w-32 px-4 py-3 text-xl font-bold text-center border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-300"
+            className="w-32 px-4 py-3 text-xl font-bold text-center border-4 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-300 bg-white"
           />
           <span className="text-lg">%</span>
         </div>
         <p className="text-sm text-gray-600 mt-3">
-          IEC 61223-3-1 & AERB: Coefficient of Variation should be ≤ 5%
+          IEC 61223-3-1 & AERB: Coefficient of Variation should be {tolerance.operator} {tolerance.value}%
         </p>
       </div>
     </div>
   );
 };
 
-export default  ReproducibilityOfOutput;
+export default ReproducibilityOfOutput;
