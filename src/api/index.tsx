@@ -561,11 +561,11 @@ export const deleteRsoByHospitalIdAndRsoId = async (hospitalId: any, rsoId: any,
 
 export const addEnquiry = async (payload: any) => {
     try {
-        const token = Cookies.get("accessToken");
-        const res = await api.post("/enquiry/add", payload, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+        // const token = Cookies.get("accessToken");
+        const res = await api.post("/auth/add", payload, {
+            // headers: {
+            //     Authorization: `Bearer ${token}`,
+            // },
         });
         console.log("🚀 ~ addEnquiry ~ res:", res)
         return res.data;
@@ -1957,11 +1957,9 @@ export const getAllPayments = async () => {
 
 export const getAllStates = async () => {
     try {
-        const token = Cookies.get('accessToken')
-        const res = await api.get(`/enquiry/all-states`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+        // const token = Cookies.get('accessToken')
+        const res = await api.get(`/auth/all-states`, {
+           
         })
         return res
     } catch (error: any) {
