@@ -3894,6 +3894,9 @@ export const updateExposureRateTableTop = async (testId: string, payload: any) =
     }
 };
 
+
+
+
 //mammography
 export const addAccuracyOfOperatingPotentialForMammography = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
@@ -4337,6 +4340,301 @@ export const getEquipmentSettingForMammography = async (testId: string) => {
 export const updateEquipmentSettingForMammography = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(`/service-report/mammography/equipment-setting/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+
+
+//CArm
+export const createTotalFilterationForCArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/c-arm/total-filteration/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (main way when editing existing test)
+export const getTotalFilterationForCArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/total-filteration/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getTotalFilterationForCArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — ideal for first load)
+export const getTotalFilterationByServiceIdForCArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/total-filteration-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // returns null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getTotalFilterationByServiceIdForCArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateTotalFilterationForCArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/c-arm/total-filteration/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+
+//output consistency
+export const createOutputConsistencyForCArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/c-arm/output-consistency/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (used when editing existing test)
+export const getOutputConsistencyForCArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/output-consistency/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getOutputConsistencyForCArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — perfect for first load)
+export const getOutputConsistencyByServiceIdForCArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/output-consistency-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // will be null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getOutputConsistencyByServiceIdForCArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateOutputConsistencyForCArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/c-arm/output-consistency/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//high contrast resolution
+export const createHighContrastResolutionForCArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/c-arm/high-contrast-resolution/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (main way when editing existing test)
+export const getHighContrastResolutionForCArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/high-contrast-resolution/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getHighContrastResolutionForCArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — ideal for first load)
+export const getHighContrastResolutionByServiceIdForCArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/high-contrast-resolution-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // returns null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getHighContrastResolutionByServiceIdForCArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateHighContrastResolutionForCArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/c-arm/high-contrast-resolution/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//Low Contrast Resolution
+export const createLowContrastResolutionForCArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/c-arm/low-contrast-resolution/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (used when editing existing test)
+export const getLowContrastResolutionForCArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/low-contrast-resolution/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getLowContrastResolutionForCArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — perfect for first load)
+export const getLowContrastResolutionByServiceIdForCArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/low-contrast-resolution-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // will be null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getLowContrastResolutionByServiceIdForCArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateLowContrastResolutionForCArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/c-arm/low-contrast-resolution/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//exposure rate
+export const createExposureRateForCArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/c-arm/exposure-rate/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (used when editing existing test)
+export const getExposureRateForCArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/exposure-rate/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getExposureRateForCArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — perfect for first load)
+export const getExposureRateByServiceIdForCArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/exposure-rate-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // will be null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getExposureRateByServiceIdForCArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateExposureRateForCArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/c-arm/exposure-rate/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+export const createTubeHousingLeakage = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/c-arm/tube-housing/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (when opening existing saved test)
+export const getTubeHousingLeakageById = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/tube-housing/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getTubeHousingLeakageById failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — perfect for first load)
+export const getTubeHousingLeakageByServiceId = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/c-arm/tube-housing-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // will be null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getTubeHousingLeakageByServiceId failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateTubeHousingLeakage = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/c-arm/tube-housing/${testId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

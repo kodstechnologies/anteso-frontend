@@ -11,14 +11,12 @@ import { getDetails, getTools } from "../../../../../../api";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
-import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
+import AccuracyOfOperaingPotential from "./AccuracyOfOperaingPotential";
 import TotalFilteration from "./TotalFilteration";
-// import LinearityOfmAsLoading from "../LinearityOfmAsLoading";
-import ConsisitencyOfRadiationOutput from "./OutputConsisitency";
-import LowContrastResolution from "./LowContrastResolution";
-import HighContrastResolution from "./HighContrastResolution";
-import ExposureRateAtTableTop from "./ExposureRateAtTableTop";
-import TubeHousingLeakage from "./TubeHousingLeakage";
+import LinearityOfMaLoading from "./LinearityOfMaLoading";
+import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
+import RadiationLeakageLevel from "./RadiationLeakageLevel";
+import RadiationProtectionSurvey from "./RadiationProtectionSurvey";
 
 
 export interface Standard {
@@ -69,11 +67,11 @@ interface ToolsResponse {
   }>;
 }
 
-interface CArmProps {
+interface BMDProps {
   serviceId: string;
 }
 
-const CArm: React.FC<CArmProps> = ({ serviceId }) => {
+const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
   const navigate = useNavigate();
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -158,7 +156,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-        Generate QA Test Report - C-Arm
+        Generate QA Test Report - BMD/DEXA
       </h1>
 
       {/* 1. Customer Name & Address */}
@@ -294,14 +292,14 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          // { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
-          { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} /> },
-          { title: "Consisitency Of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
+          { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime  /> },
+          { title: "Accuracy Of Operaing Potential", component: <AccuracyOfOperaingPotential  /> },
+          { title: "Total Filteration", component: <TotalFilteration /> },
 
-          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
-          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
-          { title: "Exposure Rate At TableTop", component: <ExposureRateAtTableTop serviceId={serviceId} /> },
-          { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
+          { title: "Linearity Of Ma Loading stations", component: <LinearityOfMaLoading /> },
+          { title: "Consistency Of Radiation Output", component: <ConsistencyOfRadiationOutput  /> },
+          { title: "Radiation Leakage Level at 1m from tube hosuing and collimator", component: <RadiationLeakageLevel /> },
+          { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey  /> },
           
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
@@ -324,4 +322,4 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
   );
 };
 
-export default CArm;
+export default GenerateReportForBMD;

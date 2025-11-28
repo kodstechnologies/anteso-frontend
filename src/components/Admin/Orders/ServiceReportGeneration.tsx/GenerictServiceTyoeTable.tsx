@@ -6,6 +6,9 @@ import CTScanReport from '../ServiceReportGeneration.tsx/TestTables/CTScan/Gener
 import InventionalRadiology from './TestTables/Inventional-Radiology/GenerateReportInventionalRadiology';
 import MammographyReport from "./TestTables/Mammography/GenerateReportMammography"
 import CArmReport from "./TestTables/CArm/GenerateReportForCArm"
+import BMDReport from "./TestTables/BMD/GenerateReportForBMD"
+import RadioFluro from "./TestTables/FixedRadioFluro/GenerateServiceReport"
+// import RadioF
 // import CBCTReport from './reports/CBCTReport';
 // import FixedXRayReport from './reports/FixedXRayReport';
 // import MobileXRayReport from './reports/MobileXRayReport';
@@ -38,16 +41,17 @@ const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   // 'CT Simulator': CTSimulatorReport,
   // OPG: OPGReport,
   // CBCT: CBCTReport,
-  // 'BMD/DEXA': BMDReport,
+  'BMD/DEXA': BMDReport,
   // 'Dental IOPA': DentalIOPAreport,
   // 'Dental Hand Held': DentalHandHeldReport,
   // 'O Arm': OArmReport,
   // 'KV Imaging (OBI)': KVImagingReport,
   // 'Lead Apron Test': LeadApronReport,
   // 'Thyroid Shield Test': ThyroidShieldReport,
-  // 'Gonad Shield Test': GonadShieldReport,
+  'Gonad Shield Test': RadioFluro,
   // 'Radiation Survey of Radiation Facility': RadiationSurveyReport,
   // Others: OthersReport,
+
 };
 
 // ---- 3. The page component --------------------------------------------

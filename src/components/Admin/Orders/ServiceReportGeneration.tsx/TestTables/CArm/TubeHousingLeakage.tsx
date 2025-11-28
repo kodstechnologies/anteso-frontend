@@ -1,19 +1,21 @@
+// src/components/TestTables/TubeHousingLeakage.tsx
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
-import {
-  addRadiationLeakage,
-  getRadiationLeakageByTestId,
-  updateRadiationLeakage,
-} from '../../../../../../api';
 import toast from 'react-hot-toast';
+import {
+  createTubeHousingLeakage,
+  getTubeHousingLeakageById,
+  getTubeHousingLeakageByServiceId,
+  updateTubeHousingLeakage,
+} from "../../../../../../api"; // Correct API imports
 
-interface SettingsRow {
+interface Settings {
   kv: string;
   ma: string;
   time: string;
-  fcd: any;
+  fcd: string;
 }
 
 interface LeakageRow {
@@ -29,173 +31,136 @@ interface LeakageRow {
 
 interface Props {
   serviceId: string;
-  testId?: string;
-  onRefresh?: () => void;
+  testId?: string | null;
+  onTestSaved?: (testId: string) => void;
 }
 
-export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function TubeHousingLeakage({ serviceId, testId: propTestId, onTestSaved }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
-
-  // Fixed rows
-  const [settings, setSettings] = useState<SettingsRow>({ kv: '', ma: '', time: '',fcd:'' });
-  const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
-    {
-      location: 'Tube',
-      front: '',
-      back: '',
-      left: '',
-      right: '',
-      max: '',
-      unit: 'mGy/h',
-      remark: '',
-    },
-  ]);
-
-  const [workload, setWorkload] = useState<string>('');
-  const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
-  const [toleranceValue, setToleranceValue] = useState<string>('');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
-  const [toleranceTime, setToleranceTime] = useState<string>('1');
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
-  const [hasSaved, setHasSaved] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // === Auto Max per row ===
+  // Form Data
+  const [settings, setSettings] = useState<Settings>({ kv: "", ma: "", time: "", fcd: "" });
+  const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
+    { location: "Tube", front: "", back: "", left: "", right: "", max: "", unit: "mGy/h", remark: "" },
+  ]);
+  const [workload, setWorkload] = useState<string>("");
+  const [workloadUnit, setWorkloadUnit] = useState<string>("mA·min/week");
+  const [toleranceValue, setToleranceValue] = useState<string>("1.0");
+  const [toleranceOperator, setToleranceOperator] = useState<"less than or equal to" | "greater than or equal to" | "=">("less than or equal to");
+  const [toleranceTime, setToleranceTime] = useState<string>("1");
+
+  // Auto-calculate max per row
   const processedLeakage = useMemo(() => {
-    return leakageRows.map((row) => {
+    return leakageRows.map(row => {
       const values = [row.front, row.back, row.left, row.right]
-        .map((v) => parseFloat(v) || 0)
-        .filter((v) => v > 0);
-      const max = values.length > 0 ? Math.max(...values).toFixed(3) : '';
+        .map(v => parseFloat(v) || 0);
+      const max = values.length > 0 ? Math.max(...values).toFixed(3) : "";
       return { ...row, max };
     });
   }, [leakageRows]);
 
-  // === Max Leakage Result ===
+  // Max Leakage Calculation: (Workload × Max Reading) / (60 × 100)
   const maxLeakageResult = useMemo(() => {
-    const workloadVal = parseFloat(workload) || 0;
-    const maxLeakage = Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0));
-    if (workloadVal > 0 && maxLeakage > 0) {
-      return ((workloadVal * maxLeakage) / (60 * 100)).toFixed(3);
+    const workloadNum = parseFloat(workload) || 0;
+    const maxReading = Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0));
+    if (workloadNum > 0 && maxReading > 0) {
+      return ((workloadNum * maxReading) / (60 * 100)).toFixed(4);
     }
-    return '';
+    return "";
   }, [workload, processedLeakage]);
 
-  const maxRadiationLeakage = useMemo(() => {
+  // Final Radiation Leakage (mGy/h) = Result ÷ 114
+  const finalLeakage = useMemo(() => {
     const result = parseFloat(maxLeakageResult) || 0;
-    return result > 0 ? (result / 114).toFixed(3) : '';
+    return result > 0 ? (result / 114).toFixed(4) : "";
   }, [maxLeakageResult]);
 
-  // === Auto Remark ===
-  const finalRemark = useMemo(() => {
-    const maxLeak = parseFloat(maxRadiationLeakage) || 0;
-    const tol = parseFloat(toleranceValue) || 0;
+  // Auto Pass/Fail
+  const finalResult = useMemo(() => {
+    const leakage = parseFloat(finalLeakage) || 0;
+    const tolerance = parseFloat(toleranceValue) || 0;
 
-    if (!toleranceValue || !maxRadiationLeakage) return '';
+    if (!toleranceValue || !finalLeakage) return "";
 
-    let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = maxLeak <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = maxLeak >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(maxLeak - tol) < 0.001;
+    if (toleranceOperator === "less than or equal to") return leakage <= tolerance ? "Pass" : "Fail";
+    if (toleranceOperator === "greater than or equal to") return leakage >= tolerance ? "Pass" : "Fail";
+    if (toleranceOperator === "=") return Math.abs(leakage - tolerance) < 0.001 ? "Pass" : "Fail";
 
-    return pass ? 'Pass' : 'Fail';
-  }, [maxRadiationLeakage, toleranceValue, toleranceOperator]);
+    return "";
+  }, [finalLeakage, toleranceValue, toleranceOperator]);
 
-  // === Update Handlers ===
-  const updateSettings = (field: 'kv' | 'ma' | 'time'|'fcd', value: string) => {
-    setSettings(prev => ({ ...prev, [field]: value }));
-  };
-
-  const updateLeakage = (index: number, field: keyof LeakageRow, value: string) => {
-    setLeakageRows(prev =>
-      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
-    );
-  };
-
-  // === Form Valid ===
-  const isFormValid = useMemo(() => {
-    return (
-      !!serviceId &&
-      settings.kv.trim() &&
-      settings.ma.trim() &&
-      settings.time.trim() &&
-      leakageRows.every(r =>
-        r.front.trim() && r.back.trim() && r.left.trim() && r.right.trim()
-      ) &&
-      workload.trim() &&
-      toleranceValue.trim()
-    );
-  }, [serviceId, settings, leakageRows, workload, toleranceValue]);
-
-  // === Load Data ===
+  // Load existing test
   useEffect(() => {
-    if (!testId) {
-      setIsLoading(false);
-      return;
-    }
-
-    const load = async () => {
+    const loadTest = async () => {
+      setIsLoading(true);
       try {
-        const { data } = await getRadiationLeakageByTestId(testId);
-        const rec = data;
+        let data = null;
 
-        if (rec.measurementSettings?.[0]) {
-          setSettings({
-            kv: String(rec.measurementSettings[0].kv),
-            ma: String(rec.measurementSettings[0].ma),
-            time: String(rec.measurementSettings[0].time),
-            fcd: String(rec.measurementSettings[0].time)
-          });
+        if (propTestId) {
+          data = await getTubeHousingLeakageById(propTestId);
+        } else {
+          data = await getTubeHousingLeakageByServiceId(serviceId);
         }
 
-        if (Array.isArray(rec.leakageMeasurements)) {
+        if (data) {
+          setTestId(data._id);
+          setSettings({
+            kv: String(data.measurementSettings.kv || ""),
+            ma: String(data.measurementSettings.ma || ""),
+            time: String(data.measurementSettings.time || ""),
+            fcd: String(data.measurementSettings.fcd || ""),
+          });
           setLeakageRows(
-            rec.leakageMeasurements.map((r: any) => ({
-              location: r.location || '',
-              front: String(r.front),
-              back: String(r.back),
-              left: String(r.left),
-              right: String(r.right),
-              max: '',
-              unit: r.unit || 'mGy/h',
-              remark: '',
+            data.leakageMeasurements.map((r: any) => ({
+              location: r.location || "Tube",
+              front: String(r.front || ""),
+              back: String(r.back || ""),
+              left: String(r.left || ""),
+              right: String(r.right || ""),
+              max: "",
+              unit: r.unit || "mGy/h",
+              remark: "",
             }))
           );
+          setWorkload(String(data.workload || ""));
+          setWorkloadUnit(data.workloadUnit || "mA·min/week");
+          setToleranceValue(data.tolerance || "1.0");
+          setToleranceOperator(data.toleranceOperator || "less than or equal to");
+          setToleranceTime(data.toleranceTime || "1");
+
+          setIsSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsSaved(false);
+          setIsEditing(true);
         }
-
-        setWorkload(rec.workload || '');
-        setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
-        setToleranceValue(rec.tolerance || '');
-        setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
-        setToleranceTime(rec.toleranceTime || '1');
-
-        setHasSaved(true);
-        setIsEditing(false);
-      } catch (e: any) {
-        if (e.response?.status !== 404) toast.error('Failed to load data');
+      } catch (err: any) {
+        console.error("Load failed:", err);
+        setIsSaved(false);
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
 
-    load();
-  }, [testId]);
+    loadTest();
+  }, [propTestId, serviceId]);
 
-  // === Save / Update ===
+  // Save / Update
   const handleSave = async () => {
-    if (!isFormValid) return;
-    setIsSaving(true);
+    if (!serviceId) return toast.error("Service ID missing");
 
     const payload = {
-      measurementSettings: [
-        {
-          kv: parseFloat(settings.kv) || 0,
-          ma: parseFloat(settings.ma) || 0,
-          time: parseFloat(settings.time) || 0,
-        },
-      ],
+      measurementSettings: {
+        kv: parseFloat(settings.kv) || 0,
+        ma: parseFloat(settings.ma) || 0,
+        time: parseFloat(settings.time) || 0,
+        fcd: parseFloat(settings.fcd) || 0,
+      },
       leakageMeasurements: leakageRows.map(r => ({
         location: r.location,
         front: parseFloat(r.front) || 0,
@@ -209,234 +174,156 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       tolerance: toleranceValue.trim(),
       toleranceOperator,
       toleranceTime: toleranceTime.trim(),
+      maxLeakagePerHour: finalLeakage,
+      finalResult: finalResult || "",
     };
 
+    setIsSaving(true);
     try {
-      let res;
       if (testId) {
-        res = await updateRadiationLeakage(testId, payload);
-        toast.success('Updated successfully!');
+        await updateTubeHousingLeakage(testId, payload);
+        toast.success("Updated successfully!");
       } else {
-        res = await addRadiationLeakage(serviceId, payload);
-        setTestId(res.data.testId);
-        toast.success('Saved successfully!');
+        const res = await createTubeHousingLeakage(serviceId, payload);
+        const newId = res.data?._id || res.data?.testId;
+        setTestId(newId);
+        onTestSaved?.(newId);
+        toast.success("Saved successfully!");
       }
-      setHasSaved(true);
+      setIsSaved(true);
       setIsEditing(false);
-      onRefresh?.();
-    } catch (e: any) {
-      toast.error(e.message || 'Save failed');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Save failed");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const toggleEdit = () => {
-    if (!hasSaved) return;
-    setIsEditing(true);
-  };
+  const startEditing = () => setIsEditing(true);
 
-  const isViewMode = hasSaved && !isEditing;
-  const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
-  const ButtonIcon = isViewMode ? Edit3 : Save;
+  const isViewOnly = isSaved && !isEditing;
+  const buttonText = !isSaved ? "Save Test" : isEditing ? "Update Test" : "Edit Test";
+  const ButtonIcon = !isSaved || isEditing ? Save : Edit3;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-10">
-        <Loader2 className="w-8 h-8 animate-spin" />
-        <span className="ml-2">Loading...</span>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+        <span className="ml-3 text-lg">Loading test data...</span>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-full overflow-x-auto space-y-8">
-      <h2 className="text-2xl font-bold mb-6">Radiation Leakage Level from X-Ray</h2>
+    <div className="p-6 max-w-full mx-auto space-y-8">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">Radiation Leakage from Tube Housing</h2>
+        <button
+          onClick={isViewOnly ? startEditing : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving
+              ? "bg-gray-400 cursor-not-allowed"
+              : isViewOnly
+                ? "bg-orange-600 hover:bg-orange-700"
+                : "bg-teal-600 hover:bg-teal-700"
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-5 h-5" />
+              {buttonText}
+            </>
+          )}
+        </button>
+      </div>
 
-
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
+      {/* Measurement Settings */}
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+        <h3 className="px-6 py-4 text-lg font-semibold bg-gradient-to-r from-blue-50 to-blue-100 border-b">
           Measurement Settings
         </h3>
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full">
+          <thead className="bg-blue-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                kV
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                mA
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                Time (sec)
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                FCD (cm)
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-blue-900 uppercase">kV</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-blue-900 uppercase">mA</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-blue-900 uppercase">Time (sec)</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-blue-900 uppercase">FCD (cm)</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             <tr className="hover:bg-gray-50">
-              <td className="px-4 py-2 border-r">
-                <input
-                  type="text"
-                  value={settings.kv}
-                  onChange={(e) => updateSettings('kv', e.target.value)}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                  placeholder="120"
-                />
-              </td>
-              <td className="px-4 py-2 border-r">
-                <input
-                  type="text"
-                  value={settings.ma}
-                  onChange={(e) => updateSettings('ma', e.target.value)}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                  placeholder="100"
-                />
-              </td>
-              <td className="px-4 py-2 border-r">
-                <input
-                  type="text"
-                  value={settings.time}
-                  onChange={(e) => updateSettings('time', e.target.value)}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                  placeholder="1.0"
-                />
-              </td>
-              <td className="px-4 py-2">
-                <input
-                  type="text"
-                  value={settings.fcd || ''}
-                  onChange={(e) => updateSettings('fcd', e.target.value)}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                  placeholder="100"
-                />
-              </td>
+              {["kv", "ma", "time", "fcd"].map((field) => (
+                <td key={field} className="px-6 py-4">
+                  <input
+                    type="text"
+                    value={settings[field as keyof Settings]}
+                    onChange={(e) => setSettings(prev => ({ ...prev, [field]: e.target.value }))}
+                    disabled={isViewOnly}
+                    className={`w-full px-4 py-2 text-center border rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 ${isViewOnly ? "bg-gray-50 cursor-not-allowed" : ""
+                      }`}
+                    placeholder={field === "fcd" ? "100" : "120"}
+                  />
+                </td>
+              ))}
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* ==================== Workload Input ==================== */}
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Workload</label>
-        <div className="flex items-center gap-2 max-w-xs">
-          <input
-            type="text"
-            value={workload}
-            onChange={(e) => setWorkload(e.target.value)}
-            disabled={isViewMode}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-              }`}
-            placeholder="500"
-          />
-          <input
-            type="text"
-            value={workloadUnit}
-            onChange={(e) => setWorkloadUnit(e.target.value)}
-            disabled={isViewMode}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-              }`}
-            placeholder="mA·min/week"
-          />
-        </div>
-      </div>
-
-      {/* ==================== Table 2: Leakage Results (Fixed 1 row) ==================== */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
+      {/* Leakage Measurements */}
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+        <h3 className="px-6 py-4 text-lg font-semibold bg-gradient-to-r from-blue-50 to-blue-100 border-b">
           Leakage Measurement Results
         </h3>
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-blue-50">
-            <tr>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                Location
-              </th>
-              <th colSpan={4} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                Exposure Level (mGy)
-              </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                Max
-              </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                Unit
-              </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Remark
-              </th>
-            </tr>
-            <tr>
-              {['Front', 'Back', 'Left', 'Right'].map((dir) => (
-                <th
-                  key={dir}
-                  className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
-                >
-                  {dir}
-                </th>
-              ))}
+        <table className="min-w-full">
+          <thead>
+            <tr className="bg-blue-50">
+              <th className="px-6 py-3 text-left text-xs font-bold text-blue-900 uppercase">Location</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-blue-900 uppercase">Front</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-blue-900 uppercase">Back</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-blue-900 uppercase">Left</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-blue-900 uppercase">Right</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-blue-900 uppercase">Max</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-blue-900 uppercase">Unit</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-blue-900 uppercase">Result</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {processedLeakage.map((row, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-r">
+              <tr key={idx} className="hover:bg-gray-50 border-t">
+                <td className="px-6 py-4">
                   <input
                     type="text"
                     value={row.location}
-                    onChange={(e) => updateLeakage(idx, 'location', e.target.value)}
-                    disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                      }`}
-                    placeholder="Tube"
+                    onChange={(e) => setLeakageRows(prev => prev.map((r, i) => i === idx ? { ...r, location: e.target.value } : r))}
+                    disabled={isViewOnly}
+                    className="w-full px-3 py-2 text-center border rounded-lg text-sm"
                   />
                 </td>
-                {(['front', 'back', 'left', 'right'] as const).map((field) => (
-                  <td key={field} className="px-2 py-2 border-r">
+                {["front", "back", "left", "right"].map((dir) => (
+                  <td key={dir} className="px-6 py-4">
                     <input
-                      type="text"
-                      value={leakageRows[idx][field]}
-                      onChange={(e) => updateLeakage(idx, field, e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                        }`}
-                      placeholder="0.00"
+                      type="number"
+                      step="0.001"
+                      value={leakageRows[idx][dir as keyof LeakageRow]}
+                      onChange={(e) => setLeakageRows(prev => prev.map((r, i) => i === idx ? { ...r, [dir]: e.target.value } : r))}
+                      disabled={isViewOnly}
+                      className="w-full px-3 py-2 text-center border rounded-lg text-sm font-medium"
                     />
                   </td>
                 ))}
-                <td className="px-2 py-2 border-r bg-gray-50">
-                  <input
-                    type="text"
-                    value={row.max}
-                    readOnly
-                    className="w-full px-2 py-1 bg-gray-100 text-sm text-center font-medium"
-                  />
-                </td>
-                <td className="px-2 py-2 border-r">
-                  <input
-                    type="text"
-                    value={row.unit}
-                    onChange={(e) => updateLeakage(idx, 'unit', e.target.value)}
-                    disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                      }`}
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <span
-                    className={`inline-block w-full px-2 py-1 text-sm text-center font-medium rounded ${finalRemark === 'Pass'
-                      ? 'bg-green-100 text-green-800'
-                      : finalRemark === 'Fail'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-gray-100'
-                      }`}
-                  >
-                    {finalRemark || '—'}
+                <td className="px-6 py-4 text-center font-bold bg-blue-50">{row.max || "-"}</td>
+                <td className="px-6 py-4 text-center">{row.unit}</td>
+                <td className="px-6 py-4 text-center">
+                  <span className={`px-4 py-2 rounded-full text-sm font-bold ${finalResult === "Pass" ? "bg-green-100 text-green-800" : finalResult === "Fail" ? "bg-red-100 text-red-800" : "bg-gray-100"}`}>
+                    {finalResult || "—"}
                   </span>
                 </td>
               </tr>
@@ -445,107 +332,48 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         </table>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-3">Max Leakage Calculation</h3>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="font-medium">{workload || '—'}</span>
-          <span>×</span>
-          <span className="font-medium">
-            {Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0)).toFixed(3) || '—'}
-          </span>
-          <span>÷</span>
-          <span className="font-medium">60</span>
-          <span>×</span>
-          <span className="font-medium">100</span>
-          <span>=</span>
-          <input
-            type="text"
-            value={maxLeakageResult}
-            readOnly
-            className="w-24 px-2 py-1 bg-gray-100 text-sm font-medium text-center rounded"
-          />
+      {/* Workload & Tolerance */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-200">
+          <h3 className="text-lg font-bold text-indigo-900 mb-4">Workload</h3>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              value={workload}
+              onChange={(e) => setWorkload(e.target.value)}
+              disabled={isViewOnly}
+              className="w-32 px-4 py-3 text-center border-2 rounded-lg font-bold focus:ring-4 focus:ring-indigo-300"
+            />
+            <span className="text-lg font-medium">{workloadUnit}</span>
+          </div>
+        </div>
+
+        <div className="bg-white shadow-lg rounded-xl p-6 border border-indigo-300">
+          <h3 className="text-lg font-bold text-indigo-900 mb-4">Acceptance Criteria</h3>
+          <div className="flex items-center gap-3">
+            <span className="text-lg">Maximum Leakage ≤</span>
+            <input
+              type="number"
+              step="0.1"
+              value={toleranceValue}
+              onChange={(e) => setToleranceValue(e.target.value)}
+              disabled={isViewOnly}
+              className="w-32 px-4 py-3 text-center border-2 border-indigo-500 rounded-lg font-bold focus:ring-4 focus:ring-indigo-300"
+            />
+            <span className="text-lg font-bold">mGy/h in {toleranceTime} hour</span>
+          </div>
         </div>
       </div>
 
-      {/* ==================== Maximum Radiation Leakage ==================== */}
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-3">Maximum Radiation Leakage from Tube Housing</h3>
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={maxRadiationLeakage}
-            readOnly
-            className="w-32 px-3 py-2 bg-gray-100 text-sm font-medium text-center rounded"
-          />
-          <span className="text-sm text-gray-600">mGy/h</span>
-          <span className="text-sm text-gray-500 italic">(Result ÷ 114)</span>
+      {/* Final Result */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-8 text-center">
+        <h3 className="text-2xl font-bold text-purple-900 mb-4">Final Radiation Leakage</h3>
+        <div className="text-4xl font-extrabold text-purple-800">
+          {finalLeakage || "—"} mGy/h
         </div>
-      </div>
-
-      {/* ==================== Tolerance ==================== */}
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tolerance (mGy/h)
-        </label>
-        <div className="flex items-center gap-2 max-w-md">
-          <input
-            type="text"
-            value={toleranceValue}
-            onChange={(e) => setToleranceValue(e.target.value)}
-            disabled={isViewMode}
-            className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-              }`}
-            placeholder="1.0"
-          />
-          <select
-            value={toleranceOperator}
-            onChange={(e) => setToleranceOperator(e.target.value as any)}
-            disabled={isViewMode}
-            className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-              }`}
-          >
-            <option value="less than or equal to">less than or equal to</option>
-            <option value="greater than or equal to">greater than or equal to</option>
-            <option value="=">=</option>
-          </select>
-          <span className="text-sm text-gray-600">in</span>
-          <input
-            type="text"
-            value={toleranceTime}
-            onChange={(e) => setToleranceTime(e.target.value)}
-            disabled={isViewMode}
-            className={`w-20 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-              }`}
-            placeholder="1"
-          />
-          <span className="text-sm text-gray-600">hr</span>
+        <div className={`mt-4 text-2xl font-bold ${finalResult === "Pass" ? "text-green-600" : finalResult === "Fail" ? "text-red-600" : "text-gray-500"}`}>
+          {finalResult || "Pending"}
         </div>
-      </div>
-
-      {/* ==================== SAVE BUTTON ==================== */}
-      <div className="flex justify-end mt-6">
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving || (!isViewMode && !isFormValid)}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <ButtonIcon className="w-4 h-4" />
-              {buttonText} Leakage
-            </>
-          )}
-        </button>
       </div>
     </div>
   );

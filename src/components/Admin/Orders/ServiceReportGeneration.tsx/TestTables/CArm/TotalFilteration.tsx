@@ -1,12 +1,14 @@
 // src/components/TestTables/TotalFilterationForInventionalRadiology.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-    createTotalFilteration,
-    getTotalFilteration,
-    updateTotalFilterationforInventionalRadiology,
-} from "../../../../../../api"; 
+    createTotalFilterationForCArm,
+    getTotalFilterationForCArm,
+    getTotalFilterationByServiceIdForCArm,
+    updateTotalFilterationForCArm,
+} from "../../../../../../api"; // Adjust path as needed
+
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -27,8 +29,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     onTestSaved,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
-    const [isSaved, setIsSaved] = useState(!!initialTestId);
-    const [isLoading, setIsLoading] = useState(!!initialTestId);
+    const [isSaved, setIsSaved] = useState(!!initialTestId); // true = read-only, false = editing
+    const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     const [mAStations, setMAStations] = useState<string[]>(["50 mA", "100 mA"]);
@@ -43,43 +45,55 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     const [toleranceValue, setToleranceValue] = useState("2.0");
     const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "" });
 
-    // Load existing test data
+    // Load test data on mount (by testId if available, otherwise by serviceId)
     useEffect(() => {
-        if (initialTestId) {
-            const loadTest = async () => {
-                setIsLoading(true);
-                try {
-                    const data = await getTotalFilteration(initialTestId);
-                    if (data) {
-                        setMAStations(data.mAStations || ["50 mA", "100 mA"]);
-                        setRows(
-                            data.measurements?.map((m: any) => ({
-                                id: Date.now().toString() + Math.random(),
-                                appliedKvp: m.appliedKvp || "",
-                                measuredValues: m.measuredValues || [],
-                                averageKvp: m.averageKvp || "",
-                                remarks: m.remarks || "-",
-                            })) || rows
-                        );
-                        setToleranceSign(data.tolerance?.sign || "±");
-                        setToleranceValue(data.tolerance?.value || "2.0");
-                        setTotalFiltration({
-                            measured: data.totalFiltration?.measured || "",
-                            required: data.totalFiltration?.required || "",
-                        });
-                        setIsSaved(true);
-                    }
-                } catch (err) {
-                    toast.error("Failed to load test data");
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            loadTest();
-        }
-    }, [initialTestId]);
+        const loadTestData = async () => {
+            setIsLoading(true);
+            try {
+                let data = null;
 
-    // Save function
+                if (initialTestId) {
+                    // If testId is passed → load directly
+                    data = await getTotalFilterationForCArm(initialTestId);
+                } else {
+                    // Otherwise → check if test exists for this service
+                    data = await getTotalFilterationByServiceIdForCArm(serviceId);
+                }
+
+                if (data) {
+                    setTestId(data._id || data.testId || null);
+                    setMAStations(data.mAStations || ["50 mA", "100 mA"]);
+                    setRows(
+                        data.measurements?.map((m: any) => ({
+                            id: Date.now().toString() + Math.random(),
+                            appliedKvp: m.appliedKvp || "",
+                            measuredValues: m.measuredValues || [],
+                            averageKvp: m.averageKvp || "",
+                            remarks: m.remarks || "-",
+                        })) || rows
+                    );
+                    setToleranceSign(data.tolerance?.sign || "±");
+                    setToleranceValue(data.tolerance?.value || "2.0");
+                    setTotalFiltration({
+                        measured: data.totalFiltration?.measured || "",
+                        required: data.totalFiltration?.required || "",
+                    });
+                    setIsSaved(true); // Show "Edit" mode
+                } else {
+                    setIsSaved(false); // New test → allow editing
+                }
+            } catch (err: any) {
+                console.error("Failed to load test:", err);
+                setIsSaved(false); // On error, allow creating new
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadTestData();
+    }, [initialTestId, serviceId]);
+
+    // Save function (Create or Update)
     const saveTest = async () => {
         if (!serviceId) {
             toast.error("Service ID is missing");
@@ -102,37 +116,35 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         try {
             let result;
             if (testId) {
-                result = await updateTotalFilterationforInventionalRadiology(testId, payload);
+                result = await updateTotalFilterationForCArm(testId, payload);
+                toast.success("Updated successfully");
             } else {
-                result = await createTotalFilteration(serviceId, payload);
+                result = await createTotalFilterationForCArm(serviceId, payload);
                 if (result.success && result.data?.testId) {
                     setTestId(result.data.testId);
                     onTestSaved?.(result.data.testId);
                 }
+                toast.success("Saved successfully");
             }
 
-            setIsSaved(true);
-            toast.success(testId ? "Updated successfully" : "Saved successfully");
+            setIsSaved(true); // Switch to read-only (show "Edit" button)
         } catch (err: any) {
-            toast.error(err.response?.data?.message || "Save failed");
+            toast.error(err?.response?.data?.message || "Save failed");
         } finally {
             setIsSaving(false);
         }
     };
 
-    // Auto-save on change (debounced)
-    useEffect(() => {
-        if (isSaved && testId) {
-            const timeout = setTimeout(saveTest, 1000);
-            return () => clearTimeout(timeout);
-        }
-    }, [mAStations, rows, toleranceSign, toleranceValue, totalFiltration]);
+    // Enable editing mode
+    const enableEditing = () => {
+        setIsSaved(false);
+        // toast.info("You are now editing. Click Save when done.");
+    };
 
-    // Your existing functions
+    // All your logic functions (with setIsSaved(false) removed from auto-trigger)
     const addMAColumn = () => {
         setMAStations(prev => [...prev, "200 mA"]);
         setRows(prev => prev.map(row => ({ ...row, measuredValues: [...row.measuredValues, ""] })));
-        setIsSaved(false);
     };
 
     const removeMAColumn = (index: number) => {
@@ -142,7 +154,6 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             ...row,
             measuredValues: row.measuredValues.filter((_, i) => i !== index),
         })));
-        setIsSaved(false);
     };
 
     const updateMAHeader = (index: number, value: string) => {
@@ -151,7 +162,6 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             updated[index] = value || `mA ${index + 1}`;
             return updated;
         });
-        setIsSaved(false);
     };
 
     const addRow = () => {
@@ -163,20 +173,17 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             remarks: "-",
         };
         setRows(prev => [...prev, newRow]);
-        setIsSaved(false);
     };
 
     const removeRow = (id: string) => {
         if (rows.length <= 1) return;
         setRows(prev => prev.filter(r => r.id !== id));
-        setIsSaved(false);
     };
 
     const updateCell = (rowId: string, field: "appliedKvp" | number, value: string) => {
         setRows(prev => prev.map(row => {
             if (row.id !== rowId) return row;
             if (field === "appliedKvp") {
-                setIsSaved(false);
                 return { ...row, appliedKvp: value };
             }
 
@@ -198,7 +205,6 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                         : diff <= tol ? "PASS" : "FAIL";
             }
 
-            setIsSaved(false);
             return { ...row, measuredValues: newMeasured, averageKvp: avg, remarks: remark };
         }));
     };
@@ -220,13 +226,13 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
     return (
         <div className="p-6 max-w-full overflow-x-auto space-y-10">
-            {/* Save/Edit Button */}
+            {/* Save / Edit Button */}
             <div className="flex justify-end">
                 <button
-                    onClick={saveTest}
-                    disabled={isSaving || isSaved}
+                    onClick={isSaved ? enableEditing : saveTest}
+                    disabled={isSaving}
                     className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
-                            ? "bg-gray-500 text-white hover:bg-gray-600"
+                            ? "bg-gray-600 text-white hover:bg-gray-700"
                             : "bg-green-600 text-white hover:bg-green-700"
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
@@ -237,7 +243,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                         </>
                     ) : isSaved ? (
                         <>
-                            <Edit3 className="w-5 h-5" />
+                            <Edit3 className="w-5 h-5 " />
                             Edit
                         </>
                     ) : (
@@ -249,178 +255,192 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 </button>
             </div>
 
-            {/* Your Beautiful Table & UI */}
-            <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
-                <div className="px-6 py-4 bg-blue-50 border-b border-gray-300">
-                    <h3 className="text-xl font-bold text-blue-900">
-                        Accuracy of kVp at Different mA Stations
-                    </h3>
-                </div>
+            {/* Disable all inputs when in saved (read-only) mode */}
+            <div className={isSaved ? "pointer-events-none opacity-75" : ""}>
+                {/* Your beautiful table & UI (unchanged) */}
+                <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+                    <div className="px-6 py-4 bg-blue-50 border-b border-gray-300">
+                        <h3 className="text-xl font-bold text-blue-900">
+                            Accuracy of kVp at Different mA Stations
+                        </h3>
+                    </div>
 
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
-                                Applied kVp
-                            </th>
-                            <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
-                                <div className="flex items-center justify-between">
-                                    <span>Measured Values (kVp)</span>
-                                    <button onClick={addMAColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
-                                        <Plus className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </th>
-                            <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
-                                Average kVp
-                            </th>
-                            <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                Remarks
-                            </th>
-                            <th rowSpan={2} className="w-12" />
-                        </tr>
-                        <tr>
-                            {mAStations.map((header, idx) => (
-                                <th key={idx} className="px-3 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
-                                    <div className="flex items-center justify-center gap-1">
-                                        <input
-                                            type="text"
-                                            value={header}
-                                            onChange={(e) => updateMAHeader(idx, e.target.value)}
-                                            className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        {mAStations.length > 1 && (
-                                            <button onClick={() => removeMAColumn(idx)} className="p-1 text-red-600 hover:bg-red-100 rounded">
-                                                <Trash2 className="w-4 h-4" />
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                                    Applied kVp
+                                </th>
+                                <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                                    <div className="flex items-center justify-between">
+                                        <span>Measured Values (kVp)</span>
+                                        {!isSaved && (
+                                            <button onClick={addMAColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
+                                                <Plus className="w-5 h-5" />
                                             </button>
                                         )}
                                     </div>
                                 </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {rows.map((row) => (
-                            <tr key={row.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-3 border-r">
-                                    <input
-                                        type="number"
-                                        value={row.appliedKvp}
-                                        onChange={(e) => updateCell(row.id, "appliedKvp", e.target.value)}
-                                        className="w-full px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                                        placeholder="80"
-                                    />
-                                </td>
-                                {row.measuredValues.map((val, idx) => (
-                                    <td key={idx} className="px-3 py-3 text-center border-r">
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                                    Average kVp
+                                </th>
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                    Remarks
+                                </th>
+                                <th rowSpan={2} className="w-12" />
+                            </tr>
+                            <tr>
+                                {mAStations.map((header, idx) => (
+                                    <th key={idx} className="px-3 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <input
+                                                type="text"
+                                                value={header}
+                                                onChange={(e) => updateMAHeader(idx, e.target.value)}
+                                                className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                disabled={isSaved}
+                                            />
+                                            {mAStations.length > 1 && !isSaved && (
+                                                <button onClick={() => removeMAColumn(idx)} className="p-1 text-red-600 hover:bg-red-100 rounded">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {rows.map((row) => (
+                                <tr key={row.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-3 border-r">
                                         <input
                                             type="number"
-                                            step="0.1"
-                                            value={val}
-                                            onChange={(e) => updateCell(row.id, idx, e.target.value)}
+                                            value={row.appliedKvp}
+                                            onChange={(e) => updateCell(row.id, "appliedKvp", e.target.value)}
                                             className="w-full px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                                            placeholder="0.0"
+                                            placeholder="80"
+                                            disabled={isSaved}
                                         />
                                     </td>
-                                ))}
-                                <td className="px-6 py-3 text-center font-bold text-gray-800 border-r">
-                                    {row.averageKvp || "-"}
-                                </td>
-                                <td className="px-6 py-3 text-center">
-                                    <span className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === "PASS" ? "bg-green-100 text-green-800" :
-                                            row.remarks === "FAIL" ? "bg-red-100 text-red-800" :
-                                                "bg-gray-100 text-gray-600"
-                                        }`}>
-                                        {row.remarks}
-                                    </span>
-                                </td>
-                                <td className="px-3 py-3 text-center">
-                                    {rows.length > 1 && (
-                                        <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
-                                            <Trash2 className="w-5 h-5" />
-                                        </button>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                    {row.measuredValues.map((val, idx) => (
+                                        <td key={idx} className="px-3 py-3 text-center border-r">
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                value={val}
+                                                onChange={(e) => updateCell(row.id, idx, e.target.value)}
+                                                className="w-full px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                                placeholder="0.0"
+                                                disabled={isSaved}
+                                            />
+                                        </td>
+                                    ))}
+                                    <td className="px-6 py-3 text-center font-bold text-gray-800 border-r">
+                                        {row.averageKvp || "-"}
+                                    </td>
+                                    <td className="px-6 py-3 text-center">
+                                        <span className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === "PASS" ? "bg-green-100 text-green-800" :
+                                                row.remarks === "FAIL" ? "bg-red-100 text-red-800" :
+                                                    "bg-gray-100 text-gray-600"
+                                            }`}>
+                                            {row.remarks}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                        {rows.length > 1 && !isSaved && (
+                                            <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
 
-                <div className="px-6 py-4 bg-gray-50 border-t">
-                    <button onClick={addRow} className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        <Plus className="w-5 h-5" /> Add Row
-                    </button>
-                </div>
-            </div>
-
-            {/* Tolerance */}
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-lg border border-indigo-300 shadow-md">
-                <h4 className="text-lg font-bold text-indigo-900 mb-4">Tolerance for kVp Accuracy</h4>
-                <div className="flex items-center gap-4">
-                    <span className="font-medium text-indigo-800">Tolerance:</span>
-                    <select
-                        value={toleranceSign}
-                        onChange={(e) => { setToleranceSign(e.target.value as any); setIsSaved(false); }}
-                        className="px-4 py-2 border border-indigo-400 rounded bg-white font-medium"
-                    >
-                        <option value="±">±</option>
-                        <option value="+">Positive only (+)</option>
-                        <option value="-">Negative only (-)</option>
-                    </select>
-                    <input
-                        type="number"
-                        step="0.1"
-                        value={toleranceValue}
-                        onChange={(e) => { setToleranceValue(e.target.value); setIsSaved(false); }}
-                        className="w-28 px-4 py-2 text-center border border-indigo-400 rounded font-medium focus:ring-2 focus:ring-indigo-500"
-                    />
-                    <span className="font-medium text-indigo-800">kV</span>
-                </div>
-            </div>
-
-            {/* Total Filtration */}
-            <div className="bg-white shadow-lg rounded-lg border border-gray-300 p-8">
-                <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
-                <div className="flex items-center justify-center gap-12">
-                    <span className="text-xl font-medium text-gray-700">Total Filtration is</span>
-                    <div className="flex items-center gap-6">
-                        <div className="text-center">
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={totalFiltration.measured}
-                                onChange={(e) => { setTotalFiltration({ ...totalFiltration, measured: e.target.value }); setIsSaved(false); }}
-                                className="w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-green-500 focus:ring-4 focus:ring-green-200"
-                                placeholder="2.35"
-                            />
-                            <p className="text-sm text-gray-600 mt-1">Measured</p>
-                        </div>
-                        <span className="text-3xl font-bold text-gray-800">mm Al</span>
-                        <div className="text-center">
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={totalFiltration.required}
-                                onChange={(e) => { setTotalFiltration({ ...totalFiltration, required: e.target.value }); setIsSaved(false); }}
-                                className="w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200"
-                                placeholder="2.50"
-                            />
-                            <p className="text-sm text-gray-600 mt-1">Required</p>
-                        </div>
+                    <div className="px-6 py-4 bg-gray-50 border-t">
+                        {!isSaved && (
+                            <button onClick={addRow} className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                <Plus className="w-5 h-5" /> Add Row
+                            </button>
+                        )}
                     </div>
-                    <span className={`text-5xl font-bold ${getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"}`}>
-                        {getFiltrationRemark()}
-                    </span>
                 </div>
-            </div>
 
-            <div className="bg-amber-50 border-2 border-amber-400 rounded-lg p-6">
-                <p className="text-lg font-bold text-amber-900 mb-3">Tolerance for Total Filtration:</p>
-                <ul className="space-y-2 text-amber-800">
-                    <li>• <strong>1.5 mm Al</strong> for kV {">"} 70</li>
-                    <li>• <strong>2.0 mm Al</strong> for 70 ≤ kV ≤ 100</li>
-                    <li>• <strong>2.5 mm Al</strong> for kV {">"} 100</li>
-                </ul>
+                {/* Tolerance */}
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-lg border border-indigo-300 shadow-md">
+                    <h4 className="text-lg font-bold text-indigo-900 mb-4">Tolerance for kVp Accuracy</h4>
+                    <div className="flex items-center gap-4">
+                        <span className="font-medium text-indigo-800">Tolerance:</span>
+                        <select
+                            value={toleranceSign}
+                            onChange={(e) => setToleranceSign(e.target.value as any)}
+                            className="px-4 py-2 border border-indigo-400 rounded bg-white font-medium"
+                            disabled={isSaved}
+                        >
+                            <option value="±">±</option>
+                            <option value="+">Positive only (+)</option>
+                            <option value="-">Negative only (-)</option>
+                        </select>
+                        <input
+                            type="number"
+                            step="0.1"
+                            value={toleranceValue}
+                            onChange={(e) => setToleranceValue(e.target.value)}
+                            className="w-28 px-4 py-2 text-center border border-indigo-400 rounded font-medium focus:ring-2 focus:ring-indigo-500"
+                            disabled={isSaved}
+                        />
+                        <span className="font-medium text-indigo-800">kV</span>
+                    </div>
+                </div>
+
+                {/* Total Filtration */}
+                <div className="bg-white shadow-lg rounded-lg border border-gray-300 p-8">
+                    <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
+                    <div className="flex items-center justify-center gap-12">
+                        <span className="text-xl font-medium text-gray-700">Total Filtration is</span>
+                        <div className="flex items-center gap-6">
+                            <div className="text-center">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={totalFiltration.measured}
+                                    onChange={(e) => setTotalFiltration({ ...totalFiltration, measured: e.target.value })}
+                                    className="w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-green-500 focus:ring-4 focus:ring-green-200"
+                                    placeholder="2.35"
+                                    disabled={isSaved}
+                                />
+                                <p className="text-sm text-gray-600 mt-1">Measured</p>
+                            </div>
+                            <span className="text-3xl font-bold text-gray-800">mm Al</span>
+                            <div className="text-center">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={totalFiltration.required}
+                                    onChange={(e) => setTotalFiltration({ ...totalFiltration, required: e.target.value })}
+                                    className="w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200"
+                                    placeholder="2.50"
+                                    disabled={isSaved}
+                                />
+                                <p className="text-sm text-gray-600 mt-1">Required</p>
+                            </div>
+                        </div>
+                        <span className={`text-5xl font-bold ${getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"}`}>
+                            {getFiltrationRemark()}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="bg-amber-50 border-2 border-amber-400 rounded-lg p-6">
+                    <p className="text-lg font-bold text-amber-900 mb-3">Tolerance for Total Filtration:</p>
+                    <ul className="space-y-2 text-amber-800">
+                        <li>• <strong>1.5 mm Al</strong> for kV {">"} 70</li>
+                        <li>• <strong>2.0 mm Al</strong> for 70 ≤ kV ≤ 100</li>
+                        <li>• <strong>2.5 mm Al</strong> for kV {">"} 100</li>
+                    </ul>
+                </div>
             </div>
         </div>
     );

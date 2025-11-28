@@ -30,7 +30,7 @@ interface Props {
   onTestSaved?: (testId: string) => void;
 }
 
-const OutputConsistencyForCArm: React.FC<Props> = ({
+const OutputConsistencyForFixedRadioFluoro: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
@@ -292,10 +292,10 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
           onClick={isViewMode ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
             }`}
         >
           {isSaving ? (
@@ -495,10 +495,10 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
           <span className="text-sm font-medium text-gray-700">Final Result:</span>
           <span
             className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${remark === 'Pass'
-                ? 'bg-green-100 text-green-800'
-                : remark === 'Fail'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-gray-100 text-gray-500'
+              ? 'bg-green-100 text-green-800'
+              : remark === 'Fail'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-gray-100 text-gray-500'
               }`}
           >
             {remark || '—'}
@@ -509,4 +509,4 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
   );
 };
 
-export default OutputConsistencyForCArm;
+export default OutputConsistencyForFixedRadioFluoro;

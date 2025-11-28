@@ -1,24 +1,28 @@
-// src/components/reports/generate/GenerateReport-Mammography.tsx
+// GenerateReport-CTScan.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { getRadiationProfileWidthByServiceId, saveReportHeader } from "../../../../../../api";
+import { getDetails, getTools } from "../../../../../../api";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader } from "../../../../../../api";
-
-// Mammography Test Components
-import AccuracyOfOperatingPotential from "../Mammography/AccuracyOfOperatingPotential";
-import LinearityOfMasLLoading from "../Mammography/LinearityOfMasLLoading";
-import TotalFiltrationAndAluminium from "../Mammography/TotalFilterationAndAlluminium";
-import ReproducibilityOfOutput from "../Mammography/ReproducibilityOfOutput";
-import RadiationLeakageLevel from "../Mammography/RadiationLeakageLevel";
-import ImagingPhantom from "../Mammography/ImagingPhantom";
-import RadiationProtectionSurvey from "../Mammography/RadiationProtectionSurvey";
-import EquipementSetting from "../Mammography/EquipmentSetting";
-import MaximumRadiationLevel from "../Mammography/MaximumRadiationLevel";
+// Test Components
+import Congruence from "./CongruenceOfRadiation"
+import CentralBeamAlignment from "./CentralBeamAlignment";
+import EffectiveFocalSpot from "./EffectiveFocalSpot";
+import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
+import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
+import TotalFilteration from "./TotalFilteration";
+import LinearityOfMasLoading from "./LinearityOfMasLoading";
+import OutputConsistency from "./OutputConsistency";
+import LowContrastResolution from "./LowContrastResolution"
+import HighContrastResolution from "./HighContrastResolution";
+import ExposureRateTableTop from "./ExposureRateTableTop";
+import RadiationLeakageLevel from "./RadiationLeakageLevel";
+import RadiationProtectionSurvey from "./RadiationProtectionSurvey";
 
 interface Standard {
     slNumber: string;
@@ -30,7 +34,7 @@ interface Standard {
     certificate: string | null;
     calibrationCertificateNo: string;
     calibrationValidTill: string;
-    uncertainity?: string;
+    uncertainity: string;
 }
 
 interface DetailsResponse {
@@ -44,7 +48,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -54,7 +58,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
-
+    const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
     const [formData, setFormData] = useState({
         customerName: "",
         address: "",
@@ -62,12 +66,12 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
         srfDate: "",
         testReportNumber: "",
         issueDate: "",
-        nomenclature: "Mammography Unit",
+        nomenclature: "",
         make: "",
         model: "",
         slNumber: "",
         condition: "OK",
-        testingProcedureNumber: "AERB/MAMMO/2023",
+        testingProcedureNumber: "",
         pages: "",
         testDate: "",
         testDueDate: "",
@@ -77,6 +81,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
         engineerNameRPId: "",
     });
 
+    // Only fetch initial service details and tools — NOT saved report
     useEffect(() => {
         const fetchInitialData = async () => {
             if (!serviceId) return;
@@ -93,6 +98,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
 
                 setDetails(data);
 
+                // Pre-fill form from service details
                 setFormData({
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
@@ -100,12 +106,12 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                     srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
-                    nomenclature: "Mammography Unit",
+                    nomenclature: data.machineType,
                     make: "",
                     model: data.machineModel,
                     slNumber: data.serialNumber,
                     condition: "OK",
-                    testingProcedureNumber: "AERB/MAMMO/2023",
+                    testingProcedureNumber: "",
                     pages: "",
                     testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
                     testDueDate: "",
@@ -115,22 +121,23 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                     engineerNameRPId: data.engineerAssigned?.name || "",
                 });
 
+                // Map tools
                 const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
                     slNumber: String(i + 1),
                     nomenclature: t.nomenclature,
-                    make: t.manufacturer || t.make || "",
-                    model: t.model || "",
+                    make: t.manufacturer || t.make,
+                    model: t.model,
                     SrNo: t.SrNo,
-                    range: t.range || "",
+                    range: t.range,
                     certificate: t.certificate || null,
-                    calibrationCertificateNo: t.calibrationCertificateNo || "",
+                    calibrationCertificateNo: t.calibrationCertificateNo,
                     calibrationValidTill: t.calibrationValidTill.split("T")[0],
+                    // uncertainity: "",
                 }));
-                console.log("🚀 ~ fetchInitialData ~ mappedTools:", mappedTools)
 
                 setTools(mappedTools);
             } catch (err: any) {
-                console.error("Failed to load data:", err);
+                console.error("Failed to load initial data:", err);
             } finally {
                 setLoading(false);
             }
@@ -153,6 +160,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
             const payload = {
                 ...formData,
                 toolsUsed: tools.map(t => ({
+                    tool: t.certificate || null,
                     SrNo: t.SrNo,
                     nomenclature: t.nomenclature,
                     make: t.make,
@@ -161,30 +169,39 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                     calibrationCertificateNo: t.calibrationCertificateNo,
                     calibrationValidTill: t.calibrationValidTill,
                     certificate: t.certificate,
+                    // uncertainity: t.uncertainity,
                 })),
                 notes: [
-                    { slNo: "5.1", text: "The Test Report relates only to the above item tested." },
-                    { slNo: "5.2", text: "Partial reproduction of this report is not allowed without written approval." },
-                    { slNo: "5.3", text: "Any discrepancies must be reported within 15 days of receipt." },
-                    { slNo: "5.4", text: "Testing performed as per AERB Safety Code for Medical Diagnostic X-ray Equipment." },
-                    { slNo: "5.5", text: "Results are valid under stated test conditions." },
+                    { slNo: "5.1", text: "The Test Report relates only to the above item only." },
+                    { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
+                    { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
+                    { slNo: "5.4", text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats." },
+                    { slNo: "5.5", text: "Any error in this Report should be brought to our knowledge within 30 days from the date of this report." },
+                    { slNo: "5.6", text: "Results reported are valid at the time of and under the stated conditions of measurements." },
+                    { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
                 ],
             };
 
             await saveReportHeader(serviceId, payload);
             setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 5000);
+            setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {
             setSaveError(err?.response?.data?.message || "Failed to save report header");
         } finally {
             setSaving(false);
         }
     };
-
+    useEffect(() => {
+        const load = async () => {
+            const data = await getRadiationProfileWidthByServiceId(serviceId);
+            setRadiationProfileTest(data);
+        };
+        if (serviceId) load();
+    }, [serviceId]);
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-xl font-medium text-gray-700">Loading Mammography Report Form...</div>
+                <div className="text-xl font-medium text-gray-700">Loading report form...</div>
             </div>
         );
     }
@@ -192,7 +209,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
     if (!details) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center text-red-600">
-                Failed to load service details.
+                Failed to load service details. Please try again.
             </div>
         );
     }
@@ -200,7 +217,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
-                Generate Mammography QA Test Report
+                Generate CT-Scan QA Test Report
             </h1>
 
             {/* Customer Info */}
@@ -209,11 +226,11 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                 <div className="grid md:grid-cols-2 gap-6">
                     <div>
                         <label className="block font-medium mb-1">Customer Name</label>
-                        <input type="text" value={formData.customerName} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
+                        <input type="text" name="customerName" value={formData.customerName} onChange={handleInputChange} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
                     </div>
                     <div>
                         <label className="block font-medium mb-1">Address</label>
-                        <input type="text" value={formData.address} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
+                        <input type="text" name="address" value={formData.address} onChange={handleInputChange} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
                     </div>
                 </div>
             </section>
@@ -250,11 +267,11 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                         { label: "Make", name: "make" },
                         { label: "Model", name: "model", readOnly: true },
                         { label: "Serial Number", name: "slNumber", readOnly: true },
-                        { label: "Condition", name: "condition" },
-                        { label: "Testing Procedure No.", name: "testingProcedureNumber" },
+                        { label: "Condition of Test Item", name: "condition" },
+                        { label: "Testing Procedure Number", name: "testingProcedureNumber" },
                         { label: "No. of Pages", name: "pages" },
                         { label: "Test Date", name: "testDate", type: "date" },
-                        { label: "Due Date", name: "testDueDate", type: "date" },
+                        { label: "Test Due Date", name: "testDueDate", type: "date" },
                         { label: "Location", name: "location" },
                         { label: "Temperature (°C)", name: "temperature", type: "number" },
                         { label: "Humidity (%)", name: "humidity", type: "number" },
@@ -274,13 +291,13 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                 </div>
             </section>
 
-            {/* <Standards standards={tools} /> */}
+            <Standards standards={tools} />
             <Notes />
 
-            {/* Save & View Buttons */}
+            {/* Save & View */}
             <div className="my-10 flex justify-end gap-6">
                 {saveSuccess && (
-                    <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
+                    <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
                         Report Header Saved Successfully!
                     </div>
                 )}
@@ -296,9 +313,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                     className={`px-8 py-3 rounded-lg font-bold text-white transition ${saving ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"
                         }`}
                 >
-                    {saving ? "Saving Header..." : "Save Report Header"}
+                    {saving ? "Saving..." : "Save Report Header"}
                 </button>
-
                 <button
                     onClick={() => navigate(`/admin/orders/view-service-report?serviceId=${serviceId}`)}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
@@ -307,20 +323,39 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                 </button>
             </div>
 
-            {/* QA Tests */}
+            {/* Test Tables */}
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
-
                 {[
-                    { title: "Accuracy of Operating Potential (kVp)", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
-                    { title: "Linearity of mAs Loading", component: <LinearityOfMasLLoading serviceId={serviceId} /> },
-                    { title: "Total Filtration & Aluminium Equivalence", component: <TotalFiltrationAndAluminium serviceId={serviceId} /> },
-                    { title: "Reproducibility of Radiation Output", component: <ReproducibilityOfOutput serviceId={serviceId} /> },
-                    { title: "Radiation Leakage Level (5 cm from Tube Housing)", component: <RadiationLeakageLevel serviceId={serviceId} /> },
-                    { title: "Imaging Performance Evaluation (Phantom)", component: <ImagingPhantom serviceId={serviceId} /> },
-                    { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
-                    { title: "Equipment Settings Verification", component: <EquipementSetting serviceId={serviceId} /> },
-                    // { title: "Maximum Radiation Levels at Different Locations", component: <MaximumRadiationLevel serviceId={serviceId} /> },
+                    // { title: "Radiation Profile Width/Slice Thickness", component: <RadiationProfileWidth serviceId={serviceId} /> },
+                    {
+                        title: "Congruence of radiation & Optical Field",
+                        component: (
+                            <Congruence
+                                serviceId={serviceId}
+                                testId={radiationProfileTest?._id || null}   // ← magic line
+                                onTestSaved={(id: any) => console.log("Radiation Profile saved:", id)}
+                            />
+                        ),
+                    },
+                    { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
+                    { title: "Effective Focal Spot Measurement", component: <EffectiveFocalSpot serviceId={serviceId} /> },
+                    // { title: "Timer Test", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
+                    // { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
+                    // { title: "Total Filtration", component: <TotalFilteration serviceId={serviceId} /> },
+                    // { title: "Linearity Of mAs Loading", component: <LinearityOfMasLoading serviceId={serviceId} /> },
+
+                    // { title: "Output Consistency", component: <OutputConsistency serviceId={serviceId} /> },
+                    // { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
+                    // { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
+
+                    { title: "Exposure Rate Table Top", component: <ExposureRateTableTop serviceId={serviceId} /> },
+                    { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} /> },
+                    // { title: "Details Of Radiation Protection Survey of the Installation", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
+                    // { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} /> },
+
+
+
                 ].map((item, i) => (
                     <Disclosure key={i} defaultOpen={i === 0}>
                         {({ open }) => (
@@ -341,4 +376,4 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
     );
 };
 
-export default GenerateReportMammography;
+export default RadioFluro;

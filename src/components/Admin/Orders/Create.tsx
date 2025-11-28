@@ -136,6 +136,24 @@ const machineOptions: OptionType[] = [
     "Gonad Shield Test",
     "Radiation Survey of Radiation Facility",
     "Others",
+    
+    //  "Radiography (Fixed)",
+    // "Radiography (Mobile)",
+    // "Radiography (Portable)",
+    // "Radiography and Fluoroscopy",
+    // "Interventional Radiology",
+    // "C-Arm",
+    // "O-Arm",
+    // "Computed Tomography",
+    // "Mammography",
+    // "Dental Cone Beam CT",
+    // "Ortho Pantomography (OPG)",
+    // "Dental (Intra Oral)",
+    // "Dental (Hand-held)",
+    // "Bone Densitometer (BMD)",
+    // "KV Imaging (OBI)",
+    // "Radiography (Mobile) with HT",
+    // "Lead Apron/ Thyroid Shield/ Gonald Shield",
 ].map((label) => ({ label, value: label }))
 
 const urgencyOptions: string[] = [
