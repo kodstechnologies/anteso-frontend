@@ -24,14 +24,37 @@ api.interceptors.request.use(
 );
 
 // Response interceptor to handle 401 errors
+// api.interceptors.response.use(
+//     (response) => response,
+//     (error) => {
+//         if (error.response?.status === 401) {
+//             // Token is invalid or expired
+//             Cookies.remove('accessToken');
+//             Cookies.remove('refreshToken');
+//             // Redirect to login page
+//             window.location.href = '/login';
+//         }
+//         return Promise.reject(error);
+//     }
+// );
+
+
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Token is invalid or expired
+            // Check if it's a public route
+            const publicRoutes = ['/enquiry_form'];
+            const currentPath = window.location.pathname;
+
+            // Don't redirect if we're on a public route
+            if (publicRoutes.includes(currentPath)) {
+                return Promise.reject(error); // Just reject, don't redirect
+            }
+
+            // Token is invalid or expired - redirect only for protected routes
             Cookies.remove('accessToken');
             Cookies.remove('refreshToken');
-            // Redirect to login page
             window.location.href = '/login';
         }
         return Promise.reject(error);

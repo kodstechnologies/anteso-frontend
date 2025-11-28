@@ -136,7 +136,7 @@ const About = lazy(() => import('../pages/About'));
 const Error = lazy(() => import('../components/Error'));
 
 const routes = [
-    { path: '/enquiry_form', element: <EnquriryForm /> },
+    { path: '/enquiry_form', element: <EnquriryForm />,  layout: 'blank' },
     { path: '/order_form', element: <OrderForm /> },
     // { path: '/quotation', element: <Quotation /> },
     // dashboard
@@ -607,7 +607,7 @@ const routes = [
         element: (
             // <AdminProtected>
                 <Enquiry />
-            // </AdminProtected>
+            //  </AdminProtected>
         ),
     },
     {
