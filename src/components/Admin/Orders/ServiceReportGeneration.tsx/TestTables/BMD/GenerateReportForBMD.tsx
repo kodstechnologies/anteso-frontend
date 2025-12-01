@@ -1,8 +1,8 @@
 // GenerateReport-InventionalRadiology.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Disclosure } from "@headlessui/react";          
-import { ChevronDownIcon } from "@heroicons/react/24/outline"; 
+import { Disclosure } from "@headlessui/react";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -11,12 +11,14 @@ import { getDetails, getTools } from "../../../../../../api";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
-import AccuracyOfOperaingPotential from "./AccuracyOfOperaingPotential";
+import AccuracyOfOperaingPotential from "./AccuracyOfOperaingPotentialAndTime";
 import TotalFilteration from "./TotalFilteration";
 import LinearityOfMaLoading from "./LinearityOfMaLoading";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
-import RadiationLeakageLevel from "./RadiationLeakageLevel";
 import RadiationProtectionSurvey from "./RadiationProtectionSurvey";
+import TubeHousingLeakage from "./TubeHousingLeakage";
+import EquipmentSetting from "./EquipmentSetting";
+import MaxRadiationLevel from "./MaxRadiationLevel";
 
 
 export interface Standard {
@@ -292,15 +294,17 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime  /> },
-          { title: "Accuracy Of Operaing Potential", component: <AccuracyOfOperaingPotential  /> },
-          { title: "Total Filteration", component: <TotalFilteration /> },
+          { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime /> },
+          { title: "Accuracy Of Operaing Potential", component: <AccuracyOfOperaingPotential serviceId={serviceId} /> },
+          { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId}/> },
 
-          { title: "Linearity Of Ma Loading stations", component: <LinearityOfMaLoading /> },
-          { title: "Consistency Of Radiation Output", component: <ConsistencyOfRadiationOutput  /> },
-          { title: "Radiation Leakage Level at 1m from tube hosuing and collimator", component: <RadiationLeakageLevel /> },
-          { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey  /> },
-          
+          { title: "Linearity Of Ma Loading stations", component: <LinearityOfMaLoading serviceId={serviceId}/> },
+          { title: "Consistency Of Radiation Output", component: <ConsistencyOfRadiationOutput /> },
+          { title: "Radiation Leakage Level at 1m from tube hosuing and collimator", component: <TubeHousingLeakage serviceId={serviceId} /> },
+          { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey /> },
+          { title: "Equipment Setting", component: <EquipmentSetting /> },
+          { title: "Maximum Radiation level", component: <MaxRadiationLevel /> },
+
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
             {({ open }) => (

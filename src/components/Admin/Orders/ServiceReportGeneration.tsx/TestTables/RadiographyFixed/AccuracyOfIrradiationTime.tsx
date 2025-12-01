@@ -4,6 +4,7 @@ const AccuracyOfIrradiationTime = () => {
   return (
     <div>AccuracyOfIrradiationTime</div>
   )
+  
 }
 
 export default AccuracyOfIrradiationTime

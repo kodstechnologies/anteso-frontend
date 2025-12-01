@@ -8,6 +8,8 @@ import MammographyReport from "./TestTables/Mammography/GenerateReportMammograph
 import CArmReport from "./TestTables/CArm/GenerateReportForCArm"
 import BMDReport from "./TestTables/BMD/GenerateReportForBMD"
 import RadioFluro from "./TestTables/FixedRadioFluro/GenerateServiceReport"
+import DentalReport from "./TestTables/DentalIntra/GenerateServiceReport" 
+import CBCTReport from "./TestTables/DentalConeBeamCT/GenerateServiceReport"
 // import RadioF
 // import CBCTReport from './reports/CBCTReport';
 // import FixedXRayReport from './reports/FixedXRayReport';
@@ -34,21 +36,21 @@ const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   // 'Fixed X-Ray': FixedXRayReport,
   // 'Mobile X-Ray': MobileXRayReport,
   'C-Arm': CArmReport,
-  'Cath Lab/Interventional Radiology': InventionalRadiology,
+  'Interventional Radiology': InventionalRadiology,
   "Mammography": MammographyReport,
-  'CT Scan': CTScanReport,
+  'Computed Tomography': CTScanReport,
   // 'PET CT': PETCTReport,
   // 'CT Simulator': CTSimulatorReport,
   // OPG: OPGReport,
-  // CBCT: CBCTReport,
-  'BMD/DEXA': BMDReport,
+  "Dental Cone Beam CT": CBCTReport,
+  'Bone Densitometer (BMD)': BMDReport,
   // 'Dental IOPA': DentalIOPAreport,
-  // 'Dental Hand Held': DentalHandHeldReport,
+  'Dental (Intra Oral)': DentalReport,
   // 'O Arm': OArmReport,
   // 'KV Imaging (OBI)': KVImagingReport,
   // 'Lead Apron Test': LeadApronReport,
   // 'Thyroid Shield Test': ThyroidShieldReport,
-  'Gonad Shield Test': RadioFluro,
+  'Radiography and Fluoroscopy': RadioFluro,
   // 'Radiation Survey of Radiation Facility': RadiationSurveyReport,
   // Others: OthersReport,
 
@@ -63,7 +65,7 @@ const GenerateServiceReport: React.FC = () => {
   const { state } = location as { state?: { serviceId?: string; machineType?: string } };
 
   console.log("🧭 From location.state:", state);
-  // ------------------------------------------------
+  
   if (!state?.serviceId || !state?.machineType) {
     return (
       <div className="p-8 text-center text-red-600">

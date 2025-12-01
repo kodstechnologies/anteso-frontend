@@ -22,7 +22,7 @@ interface Tolerance {
   value: string;
 }
 
-const ConsistencyOfRadiationOutput: React.FC = () => {
+const ReproducibilityOfRadiationOutput: React.FC = () => {
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
     {
       id: '1',
@@ -292,4 +292,4 @@ const ConsistencyOfRadiationOutput: React.FC = () => {
   );
 };
 
-export default ConsistencyOfRadiationOutput;
+export default ReproducibilityOfRadiationOutput;

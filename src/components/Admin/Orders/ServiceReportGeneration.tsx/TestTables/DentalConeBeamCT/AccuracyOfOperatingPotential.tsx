@@ -15,13 +15,13 @@ interface RowData {
     remarks: "PASS" | "FAIL" | "-";
 }
 
-interface TotalFilterationForInventionalRadiologyProps {
+interface AccuracyOfOperatingPotentialProps {
     serviceId: string;
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
 }
 
-const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInventionalRadiologyProps> = ({
+const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> = ({
     serviceId,
     testId: initialTestId = null,
     onTestSaved,
@@ -426,4 +426,4 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
     );
 };
 
-export default TotalFilterationForInventionalRadiology;
+export default AccuracyOfOperatingPotential;

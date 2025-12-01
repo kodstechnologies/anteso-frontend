@@ -10,22 +10,14 @@ import Standards from "../../Standards";
 import Notes from "../../Notes";
 
 // Test Components
-import Congruence from "./CongruenceOfRadiation"
-import CentralBeamAlignment from "./CentralBeamAlignment";
-import EffectiveFocalSpot from "./EffectiveFocalSpot";
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
 import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
 import TotalFilteration from "./TotalFilteration";
-import LinearityOfMasLoading from "./LinearityOfMasLoading";
-import OutputConsistency from "./OutputConsistency";
-import LowContrastResolution from "./LowContrastResolution"
-import HighContrastResolution from "./HighContrastResolution";
-import ExposureRateTableTop from "./ExposureRateTableTop";
+import LinearityOfmALoading from "./LinearityOfmALoading";
+import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
 import RadiationLeakageLevel from "./RadiationLeakageLevel";
-import RadiationProtectionSurvey from "./RadiationProtectionSurvey";
-import LinearityOfmALoading from "./LinearityOfmALoadingstations";
-import EquipementSetting from "./EquipmentSetting";
-
+import EquipmentSetting from "./EquipmentSetting";
+import MaximumRadiationLevel from "./MaximumRadiationLevel";
 
 interface Standard {
     slNumber: string;
@@ -51,7 +43,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -220,7 +212,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
-                Generate Radiography and Fluoroscopy QA Test Report
+                Generate CT-Scan QA Test Report
             </h1>
 
             {/* Customer Info */}
@@ -330,35 +322,16 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
                 {[
-                    // { title: "Radiation Profile Width/Slice Thickness", component: <RadiationProfileWidth serviceId={serviceId} /> },
-                    {
-                        title: "Congruence of radiation & Optical Field",
-                        component: (
-                            <Congruence
-                                serviceId={serviceId}
-                                testId={radiationProfileTest?._id || null}   // ← magic line
-                                onTestSaved={(id: any) => console.log("Radiation Profile saved:", id)}
-                            />
-                        ),
-                    },
-                    { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
-                    { title: "Effective Focal Spot Measurement", component: <EffectiveFocalSpot serviceId={serviceId} /> },
+
                     { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
                     { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
-                    { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} /> },
+                    { title: "Total Filteration", component: <TotalFilteration  /> },
+                    { title: "Linearity Of mA/mAs Loading", component: <LinearityOfmALoading serviceId={serviceId} /> },
+                    { title: "Consistency Of Radiation Output", component: <ConsistencyOfRadiationOutput  serviceId={serviceId}/> },
+                    { title: "Radiation Leakage Level", component: <RadiationLeakageLevel/> },
+                    { title: "Equipment Setting", component: <EquipmentSetting /> },
+                    { title: "Maximum Radiation Level", component: <MaximumRadiationLevel /> },
 
-                    { title: "Linearity Of mAs Loading", component: <LinearityOfMasLoading serviceId={serviceId} /> },
-                    { title: "Linearity Of mA Loading", component: <LinearityOfmALoading serviceId={serviceId} /> },
-
-                    { title: "Output Consistency", component: <OutputConsistency serviceId={serviceId} /> },
-                    { title: "Low Contrast Resolution", component: <LowContrastResolution  /> },
-                    { title: "High Contrast Resolution", component: <HighContrastResolution /> },
-
-                    { title: "Exposure Rate Table Top", component: <ExposureRateTableTop serviceId={serviceId} /> },
-                    { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} /> },
-                    { title: "Details Of Radiation Protection Survey of the Installation", component: <RadiationProtectionSurvey /> },
-
-                    // { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} /> },
 
 
 
@@ -382,4 +355,4 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     );
 };
 
-export default RadioFluro;
+export default DentalConeBeamCT;

@@ -86,11 +86,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">": return err > tol ? "FAIL" : "PASS";
-      case "<": return err < tol ? "PASS" : "FAIL";
+      case ">":  return err > tol ? "FAIL" : "PASS";
+      case "<":  return err < tol ? "PASS" : "FAIL";
       case ">=": return err >= tol ? "FAIL" : "PASS";
       case "<=": return err <= tol ? "PASS" : "FAIL";
-      default: return "-";
+      default:   return "-";
     }
   };
 
@@ -107,10 +107,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           setTable2Rows(
             data.irradiationTimes.length > 0
               ? data.irradiationTimes.map((t: any, i: number) => ({
-                id: String(i + 1),
-                setTime: t.setTime,
-                measuredTime: t.measuredTime,
-              }))
+                  id: String(i + 1),
+                  setTime: t.setTime,
+                  measuredTime: t.measuredTime,
+                }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
           setToleranceOperator(data.tolerance?.operator || "<=");
