@@ -294,16 +294,16 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime /> },
-          { title: "Accuracy Of Operaing Potential", component: <AccuracyOfOperaingPotential serviceId={serviceId} /> },
+          // { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime /> },
+          { title: "Accuracy Of Operaing Potential", component: <AccuracyOfOperaingPotential  /> },
           { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId}/> },
 
           { title: "Linearity Of Ma Loading stations", component: <LinearityOfMaLoading serviceId={serviceId}/> },
-          { title: "Consistency Of Radiation Output", component: <ConsistencyOfRadiationOutput /> },
+          { title: "Reproducibility Of Radiation Output", component: <ConsistencyOfRadiationOutput /> },
           { title: "Radiation Leakage Level at 1m from tube hosuing and collimator", component: <TubeHousingLeakage serviceId={serviceId} /> },
           { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey /> },
-          { title: "Equipment Setting", component: <EquipmentSetting /> },
-          { title: "Maximum Radiation level", component: <MaxRadiationLevel /> },
+          // { title: "Equipment Setting", component: <EquipmentSetting /> },
+          // { title: "Maximum Radiation level", component: <MaxRadiationLevel /> },
 
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
