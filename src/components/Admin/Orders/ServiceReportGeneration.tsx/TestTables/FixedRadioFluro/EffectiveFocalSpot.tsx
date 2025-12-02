@@ -158,7 +158,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
             
             // Add Large Focus (use existing data if available, otherwise use defaults)
             if (existingRowsMap.has('Large Focus')) {
-              loadedRows.push(existingRowsMap.get('Large Focus')!);
+              // loadedRows.push(existingRowsMap.get('Large Focus')!);
             } else {
               loadedRows.push({
                 id: 'large',
@@ -173,7 +173,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
             // Add Small Focus (use existing data if available, otherwise use defaults)
             if (existingRowsMap.has('Small Focus')) {
-              loadedRows.push(existingRowsMap.get('Small Focus')!);
+              // loadedRows.push(existingRowsMap.get('Small Focus')!);
             } else {
               loadedRows.push({
                 id: 'small',
