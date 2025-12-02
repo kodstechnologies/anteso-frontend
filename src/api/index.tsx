@@ -1959,7 +1959,7 @@ export const getAllStates = async () => {
     try {
         // const token = Cookies.get('accessToken')
         const res = await api.get(`/auth/all-states`, {
-           
+
         })
         return res
     } catch (error: any) {
@@ -4119,7 +4119,7 @@ export const updateAccuracyOfIrradiationTimeForFixedRadioFluro = async (testId: 
 // Linearity of mAs Loading Stations – Fixed Radio Fluoro
 export const addLinearityOfMasLoadingStationsForFixedRadioFluro = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
-    
+
     const res = await api.post(
         `/service-report/fixed-radio-fluro/linearity-of-mas-loading-stations/${serviceId}`,
         payload,
@@ -4154,7 +4154,7 @@ export const getLinearityOfMasLoadingStationsByTestIdForFixedRadioFluro = async 
 export const updateLinearityOfMasLoadingStationsForFixedRadioFluro = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     console.log(testId);
-    
+
     const res = await api.put(
         `/service-report/fixed-radio-fluro/linearity-of-mas-loading-stations/${testId}`,
         payload,
@@ -5208,6 +5208,228 @@ export const updateTubeHousingLeakageForFixedRadioFluro = async (testId: string,
     const token = Cookies.get("accessToken");
     const res = await api.put(
         `/service-report/fixed-radio-fluro/tube-housing/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+//BMD MACHINE
+
+// === 1. Accuracy of Operating Potential and Time ===
+export const addAccuracyOfOperatingPotentialAndTimeForBMD = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/bmd/accuracy-of-operating-potential-and-time/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/bmd/accuracy-of-operating-potential-and-time-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getAccuracyOfOperatingPotentialAndTimeByTestIdForBMD = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/bmd/accuracy-of-operating-potential-and-time/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateAccuracyOfOperatingPotentialAndTimeForBMD = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/bmd/accuracy-of-operating-potential-and-time/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// === 2. Linearity of mAs Loading ===
+export const addLinearityOfMaLoadingForBMD = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/bmd/linearity-of-mas-loading/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMaLoadingByServiceIdForBMD = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/bmd/linearity-of-mas-loading-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getLinearityOfMaLoadingByTestIdForBMD = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/bmd/linearity-of-mas-loading/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateLinearityOfMaLoadingForBMD = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/bmd/linearity-of-mas-loading/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// === 3. Radiation Leakage Level (Tube Housing Leakage) ===
+export const addRadiationLeakageLevelForBMD = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/bmd/radiation-leakage-level/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationLeakageLevelByServiceIdForBMD = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/bmd/radiation-leakage-level-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationLeakageLevelByTestIdForBMD = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/bmd/radiation-leakage-level/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateRadiationLeakageLevelForBMD = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/bmd/radiation-leakage-level/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// === 4. Radiation Protection Survey ===
+export const addRadiationProtectionSurveyForBmd = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/bmd/radiation-protection-survey/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationProtectionSurveyByServiceIdForBmd = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/bmd/radiation-protection-survey-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationProtectionSurveyByTestIdForBmd = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/bmd/radiation-protection-survey/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateRadiationProtectionSurveyForBmd = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/bmd/radiation-protection-survey/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// === 5. Reproducibility of Radiation Output ===
+export const addReproducibilityOfRadiationOutputForBmd = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/bmd/reproducibility-of-radiation-output/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getReproducibilityOfRadiationOutputByServiceIdForBmd = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/bmd/reproducibility-of-radiation-output-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getReproducibilityOfRadiationOutputByTestIdForBmd = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/bmd/reproducibility-of-radiation-output/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateReproducibilityOfRadiationOutputForBMD = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/bmd/reproducibility-of-radiation-output/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
