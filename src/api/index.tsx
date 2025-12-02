@@ -3915,7 +3915,516 @@ export const updateExposureRateTableTop = async (testId: string, payload: any) =
     }
 };
 
+// ========================================================================
+// Fixed Radio Fluoro – APIs
+// ========================================================================
 
+// Accuracy of Operating Potential – Fixed Radio Fluoro
+export const addAccuracyOfOperatingPotentialForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/accuracy-of-operating-potential/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfOperatingPotentialByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/accuracy-of-operating-potential-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getAccuracyOfOperatingPotentialByTestIdForFixedRadioFluro = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/fixed-radio-fluro/accuracy-of-operating-potential/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateAccuracyOfOperatingPotentialForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/accuracy-of-operating-potential/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Total Filtration – Fixed Radio Fluoro
+export const addTotalFiltrationForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/total-filteration/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getTotalFiltrationByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/total-filteration-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getTotalFiltrationByTestIdForFixedRadioFluro = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/fixed-radio-fluro/total-filteration/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateTotalFiltrationForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/total-filteration/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Output Consistency – Fixed Radio Fluoro
+export const addOutputConsistencyForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/output-consistency/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getOutputConsistencyByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/output-consistency-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getOutputConsistencyByTestIdForFixedRadioFluro = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/fixed-radio-fluro/output-consistency/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateOutputConsistencyForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/output-consistency/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Exposure Rate – Fixed Radio Fluoro
+export const addExposureRateTableTopForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/exposure-rate/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getExposureRateTableTopByTestIdForFixedRadioFluro = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/fixed-radio-fluro/exposure-rate/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateExposureRateTableTopForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/exposure-rate/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Accuracy of Irradiation Time – Fixed Radio Fluoro
+export const createAccuracyOfIrradiationTimeForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/accuracy-of-irradiation-time/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/accuracy-of-irradiation-time-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateAccuracyOfIrradiationTimeForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/accuracy-of-irradiation-time/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Linearity of mAs Loading Stations – Fixed Radio Fluoro
+export const addLinearityOfMasLoadingStationsForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/linearity-of-mas-loading-stations/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/linearity-of-mas-loading-stations-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getLinearityOfMasLoadingStationsByTestIdForFixedRadioFluro = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/fixed-radio-fluro/linearity-of-mas-loading-stations/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateLinearityOfMasLoadingStationsForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    console.log(testId);
+    
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/linearity-of-mas-loading-stations/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Linearity of mAs Loading – Fixed Radio Fluoro
+export const addLinearityOfMasLoadingForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/linearity-of-mas-loading/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMasLoadingByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/linearity-of-mas-loading-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateLinearityOfMasLoadingForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/linearity-of-mas-loading/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Central Beam Alignment – Fixed Radio Fluoro
+export const addCentralBeamAlignmentForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/central-beam-alignment/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getCentralBeamAlignmentByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/central-beam-alignment-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateCentralBeamAlignmentForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/central-beam-alignment/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Congruence – Fixed Radio Fluoro
+export const addCongruenceForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/congruence/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getCongruenceByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/congruence-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateCongruenceForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/congruence/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Effective Focal Spot – Fixed Radio Fluoro
+export const addEffectiveFocalSpotForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/effective-focal-spot/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getEffectiveFocalSpotByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/effective-focal-spot-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateEffectiveFocalSpotForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/effective-focal-spot/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Radiation Protection Survey – Fixed Radio Fluoro
+export const addRadiationProtectionSurveyForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/radiation-protection-survey/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationProtectionSurveyByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/radiation-protection-survey-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateRadiationProtectionSurveyForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/radiation-protection-survey/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// High Contrast Resolution – Fixed Radio Fluoro
+export const addHighContrastResolutionForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/high-contrast-resolution/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getHighContrastResolutionByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/high-contrast-resolution-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getHighContrastResolutionByTestIdForFixedRadioFluro = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/fixed-radio-fluro/high-contrast-resolution/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateHighContrastResolutionForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/high-contrast-resolution/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Low Contrast Resolution – Fixed Radio Fluoro
+export const addLowContrastResolutionForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/low-contrast-resolution/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLowContrastResolutionByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/low-contrast-resolution-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getLowContrastResolutionByTestIdForFixedRadioFluro = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/fixed-radio-fluro/low-contrast-resolution/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateLowContrastResolutionForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/low-contrast-resolution/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
 
 
 //mammography
@@ -4658,5 +5167,49 @@ export const updateTubeHousingLeakage = async (testId: string, payload: any) => 
     const res = await api.put(`/service-report/c-arm/tube-housing/${testId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
+    return res.data;
+};
+
+// Tube Housing Leakage – Fixed Radio Fluoro
+export const addTubeHousingLeakageForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/fixed-radio-fluro/tube-housing/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getTubeHousingLeakageByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/tube-housing-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getTubeHousingLeakageByTestIdForFixedRadioFluro = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/fixed-radio-fluro/tube-housing/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateTubeHousingLeakageForFixedRadioFluro = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/tube-housing/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
     return res.data;
 };

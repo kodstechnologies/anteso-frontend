@@ -3,9 +3,9 @@ import React, { useState, useEffect } from "react";
 import { Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  addExposureRateTableTop,
-  getExposureRateTableTopByTestId,
-  updateExposureRateTableTop,
+  addExposureRateTableTopForFixedRadioFluro,
+  getExposureRateTableTopByTestIdForFixedRadioFluro,
+  updateExposureRateTableTopForFixedRadioFluro,
 } from "../../../../../../api";
 
 interface Row {
@@ -54,7 +54,7 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
     const loadTest = async () => {
       setIsLoading(true);
       try {
-        const data = await getExposureRateTableTopByTestId(initialTestId);
+        const data = await getExposureRateTableTopByTestIdForFixedRadioFluro(initialTestId);
         if (data && data.rows) {
           setRows(
             data.rows.map((r: any, i: number) => ({
@@ -127,10 +127,10 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
     try {
       let result;
       if (testId) {
-        result = await updateExposureRateTableTop(testId, payload);
+        result = await updateExposureRateTableTopForFixedRadioFluro(testId, payload);
         toast.success("Updated successfully");
       } else {
-        result = await addExposureRateTableTop(serviceId, payload);
+        result = await addExposureRateTableTopForFixedRadioFluro(serviceId, payload);
         if (result.success && result.data?.testId) {
           setTestId(result.data.testId);
           onTestSaved?.(result.data.testId);

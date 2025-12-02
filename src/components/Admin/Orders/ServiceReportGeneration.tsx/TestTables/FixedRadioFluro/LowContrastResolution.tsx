@@ -1,9 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Loader2, Edit3, Save } from 'lucide-react';
+import toast from 'react-hot-toast';
+import {
+  addLowContrastResolutionForFixedRadioFluro,
+  getLowContrastResolutionByServiceIdForFixedRadioFluro,
+  updateLowContrastResolutionForFixedRadioFluro,
+} from '../../../../../../api';
 
-const LowContrastResolution: React.FC = () => {
+interface Props {
+  serviceId: string;
+}
+
+const LowContrastResolution: React.FC<Props> = ({ serviceId }) => {
   const [smallestHoleSize, setSmallestHoleSize] = useState<string>('');
   const [recommendedStandard, setRecommendedStandard] = useState<string>('3.0');
   const [tolerance, setTolerance] = useState<string>('');
+  const [testId, setTestId] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Parse tolerance string (supports: ±5%, +10%, -5%, 5%, etc.)
   const parseTolerance = (tol: string): { value: number; isPlusMinus: boolean } | null => {
@@ -48,12 +64,112 @@ const LowContrastResolution: React.FC = () => {
     return isPass ? 'PASS' : 'FAIL';
   }, [smallestHoleSize, recommendedStandard, tolerance]);
 
-  // You can access `remark` anywhere (e.g., in form submit, console, parent component via ref, etc.)
-  // Example: console.log('Result:', remark);
+  // Load from backend
+  useEffect(() => {
+    const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const res = await getLowContrastResolutionByServiceIdForFixedRadioFluro(serviceId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          setSmallestHoleSize(String(data.smallestHoleSize ?? ''));
+          setRecommendedStandard(String(data.recommendedStandard ?? '3.0'));
+          setTolerance(String(data.tolerance ?? ''));
+          setIsSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load Low Contrast Resolution data');
+        }
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId]);
+
+  const handleSave = async () => {
+    if (!serviceId) {
+      toast.error('Service ID missing');
+      return;
+    }
+    if (!smallestHoleSize.trim()) {
+      toast.error('Enter measured hole size');
+      return;
+    }
+    setIsSaving(true);
+    const payload = {
+      smallestHoleSize,
+      recommendedStandard,
+      tolerance,
+      remark,
+    };
+    try {
+      let res;
+      if (testId) {
+        res = await updateLowContrastResolutionForFixedRadioFluro(testId, payload);
+        toast.success('Updated successfully');
+      } else {
+        res = await addLowContrastResolutionForFixedRadioFluro(serviceId, payload);
+        const newId = res?.data?._id || res?.data?.data?._id;
+        if (newId) setTestId(newId);
+        toast.success('Saved successfully');
+      }
+      setIsSaved(true);
+      setIsEditing(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Save failed');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isViewMode = isSaved && !isEditing;
+  const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <h2 className="text-2xl font-bold mb-6">Low Contrast Resolution</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Low Contrast Resolution</h2>
+        <button
+          onClick={isViewMode ? () => setIsEditing(true) : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-white font-medium ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700'}`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-4 h-4" />
+              {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
+            </>
+          )}
+        </button>
+      </div>
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
@@ -81,7 +197,8 @@ const LowContrastResolution: React.FC = () => {
                   type="text"
                   value={smallestHoleSize}
                   onChange={(e) => setSmallestHoleSize(e.target.value)}
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isViewMode}
+                  className={`w-24 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="e.g. 2.5"
                 />
               </td>
@@ -100,7 +217,8 @@ const LowContrastResolution: React.FC = () => {
                   type="text"
                   value={recommendedStandard}
                   onChange={(e) => setRecommendedStandard(e.target.value)}
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
+                  disabled={isViewMode}
+                  className={`w-24 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50 ${isViewMode ? 'cursor-not-allowed' : ''}`}
                 />
               </td>
               <td className="px-6 py-4 text-sm text-gray-600">
@@ -118,7 +236,8 @@ const LowContrastResolution: React.FC = () => {
               type="text"
               value={tolerance}
               onChange={(e) => setTolerance(e.target.value)}
-              className="w-40 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              disabled={isViewMode}
+              className={`w-40 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               placeholder="e.g. ±5%"
             />
             {/* Hidden remark for logic/debugging */}

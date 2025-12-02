@@ -3,6 +3,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addTubeHousingLeakageForFixedRadioFluro,
+  getTubeHousingLeakageByServiceIdForFixedRadioFluro,
+  updateTubeHousingLeakageForFixedRadioFluro,
+} from '../../../../../../api';
 
 interface SettingsRow {
   fcd: string;
@@ -51,7 +56,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
@@ -132,28 +137,151 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     );
   }, [serviceId, settings, workload, toleranceValue, leakageRows]);
 
-  const handleSave = async () => {
-    if (!isFormValid) return;
-    setIsSaving(true);
+  // Load existing data
+  useEffect(() => {
+    const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const res = await getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          if (data.fcd) setSettings({ fcd: data.fcd, kv: data.kv, ma: data.ma, time: data.time });
+          if (data.workload) setWorkload(data.workload);
+          if (data.toleranceValue) setToleranceValue(data.toleranceValue);
+          if (data.toleranceOperator) setToleranceOperator(data.toleranceOperator);
+          if (data.toleranceTime) setToleranceTime(data.toleranceTime);
+          if (Array.isArray(data.leakageMeasurements) && data.leakageMeasurements.length > 0) {
+            setLeakageRows(data.leakageMeasurements.map((m: any) => ({
+              location: m.location || '',
+              left: String(m.left ?? ''),
+              right: String(m.right ?? ''),
+              front: String(m.front ?? ''),
+              back: String(m.back ?? ''),
+              top: String(m.top ?? ''),
+              max: String(m.max ?? ''),
+              result: String(m.result ?? ''),
+              unit: m.unit || 'mR/h',
+              mgy: String(m.mgy ?? ''),
+            })));
+          }
+          setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load Tube Housing Leakage data');
+        }
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId]);
 
-    setTimeout(() => {
-      toast.success('Tube Housing Leakage saved successfully!');
+  const handleSave = async () => {
+    console.log('handleSave called', { isFormValid, serviceId, testId });
+    
+    if (!serviceId) {
+      toast.error('Service ID is missing');
+      return;
+    }
+    
+    if (!isFormValid) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const payload = {
+        fcd: settings.fcd,
+        kv: settings.kv,
+        ma: settings.ma,
+        time: settings.time,
+        workload,
+        leakageMeasurements: processedLeakage.map(row => ({
+          location: row.location,
+          left: parseFloat(row.left) || 0,
+          right: parseFloat(row.right) || 0,
+          front: parseFloat(row.front) || 0,
+          back: parseFloat(row.back) || 0,
+          top: parseFloat(row.top) || 0,
+          max: row.max,
+          result: row.result,
+          unit: row.unit,
+          mgy: row.mgy,
+        })),
+        toleranceValue,
+        toleranceOperator,
+        toleranceTime,
+        remark: finalRemark,
+      };
+
+      let result;
+      let currentTestId = testId;
+
+      // If no testId, try to get existing data by serviceId first
+      if (!currentTestId) {
+        try {
+          const existing = await getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId);
+          if (existing?.data?._id) {
+            currentTestId = existing.data._id;
+            setTestId(currentTestId);
+          }
+        } catch (err) {
+          // No existing data, will create new
+        }
+      }
+
+      if (currentTestId) {
+        // Update existing
+        result = await updateTubeHousingLeakageForFixedRadioFluro(currentTestId, payload);
+        toast.success('Updated successfully!');
+      } else {
+        // Create new
+        result = await addTubeHousingLeakageForFixedRadioFluro(serviceId, payload);
+        const newId = result?.data?._id || result?.data?.data?._id || result?._id;
+        if (newId) {
+          setTestId(newId);
+        }
+        toast.success('Saved successfully!');
+      }
+      
       setHasSaved(true);
       setIsEditing(false);
-      setTestId('mock-test-id-123');
       onRefresh?.();
+    } catch (err: any) {
+      console.error('Save error:', err);
+      toast.error(err?.response?.data?.message || err?.message || 'Save failed');
+    } finally {
       setIsSaving(false);
-    }, 1000);
+    }
   };
 
   const toggleEdit = () => {
-    if (!hasSaved) return;
+    console.log('toggleEdit called');
     setIsEditing(true);
   };
 
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-full overflow-x-auto space-y-8">
@@ -311,8 +439,17 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       {/* Save Button */}
       <div className="flex justify-end mt-8">
         <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving || (!isViewMode && !isFormValid)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Button clicked', { isViewMode, isSaving, isFormValid });
+            if (isViewMode) {
+              toggleEdit();
+            } else {
+              handleSave();
+            }
+          }}
+          disabled={isSaving || (isViewMode ? false : !isFormValid)}
           className={`flex items-center gap-3 px-8 py-3 text-white font-medium rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
             ? 'bg-gray-400 cursor-not-allowed'
             : isViewMode

@@ -1,9 +1,14 @@
 // src/components/TestTables/EffectiveFocalSpot.tsx
-'use client';
+ 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Edit3, Save, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addEffectiveFocalSpotForFixedRadioFluro,
+  getEffectiveFocalSpotByServiceIdForFixedRadioFluro,
+  updateEffectiveFocalSpotForFixedRadioFluro,
+} from '../../../../../../api';
 
 interface FocalSpotRow {
   id: string;
@@ -26,6 +31,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [fcd, setFcd] = useState<string>('100');
 
@@ -109,20 +115,139 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       ? 'FAIL'
       : 'PENDING';
 
+  // Load existing data
+  useEffect(() => {
+    const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const res = await getEffectiveFocalSpotByServiceIdForFixedRadioFluro(serviceId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          setFcd(String(data.fcd ?? '100'));
+          if (data.toleranceCriteria) {
+            setTolSmallMul(String(data.toleranceCriteria.small?.multiplier ?? '0.5'));
+            setSmallLimit(String(data.toleranceCriteria.small?.upperLimit ?? '0.8'));
+            setTolMediumMul(String(data.toleranceCriteria.medium?.multiplier ?? '0.4'));
+            setMediumLower(String(data.toleranceCriteria.medium?.lowerLimit ?? '0.8'));
+            setMediumUpper(String(data.toleranceCriteria.medium?.upperLimit ?? '1.5'));
+            setTolLargeMul(String(data.toleranceCriteria.large?.multiplier ?? '0.3'));
+          }
+          if (Array.isArray(data.focalSpots) && data.focalSpots.length > 0) {
+            // Create a map of existing rows by focusType
+            const existingRowsMap = new Map(
+              data.focalSpots.map((r: any) => [
+                r.focusType,
+                {
+                  id: r.focusType === 'Large Focus' ? 'large' : r.focusType === 'Small Focus' ? 'small' : String(Date.now()),
+                  focusType: r.focusType || 'Large Focus',
+                  statedWidth: String(r.statedWidth ?? ''),
+                  statedHeight: String(r.statedHeight ?? ''),
+                  measuredWidth: String(r.measuredWidth ?? ''),
+                  measuredHeight: String(r.measuredHeight ?? ''),
+                  remark: (r.remark as any) || '',
+                }
+              ])
+            );
+
+            // Ensure both Large Focus and Small Focus rows exist
+            const loadedRows: FocalSpotRow[] = [];
+            
+            // Add Large Focus (use existing data if available, otherwise use defaults)
+            if (existingRowsMap.has('Large Focus')) {
+              loadedRows.push(existingRowsMap.get('Large Focus')!);
+            } else {
+              loadedRows.push({
+                id: 'large',
+                focusType: 'Large Focus',
+                statedWidth: '1.2',
+                statedHeight: '1.2',
+                measuredWidth: '',
+                measuredHeight: '',
+                remark: '',
+              });
+            }
+
+            // Add Small Focus (use existing data if available, otherwise use defaults)
+            if (existingRowsMap.has('Small Focus')) {
+              loadedRows.push(existingRowsMap.get('Small Focus')!);
+            } else {
+              loadedRows.push({
+                id: 'small',
+                focusType: 'Small Focus',
+                statedWidth: '0.6',
+                statedHeight: '0.6',
+                measuredWidth: '',
+                measuredHeight: '',
+                remark: '',
+              });
+            }
+
+            setRows(loadedRows);
+          }
+          setIsSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load Effective Focal Spot data');
+        }
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId, propTestId]);
+
   const handleSave = async () => {
     if (!serviceId) return toast.error("Service ID missing");
     setIsSaving(true);
     try {
-      toast.success(testId ? "Updated successfully!" : "Saved successfully!");
+      const payload = {
+        fcd: parseFloat(fcd) || 0,
+        toleranceCriteria: {
+          small: { multiplier: parseFloat(tolSmallMul) || 0.5, upperLimit: parseFloat(smallLimit) || 0.8 },
+          medium: {
+            multiplier: parseFloat(tolMediumMul) || 0.4,
+            lowerLimit: parseFloat(mediumLower) || 0.8,
+            upperLimit: parseFloat(mediumUpper) || 1.5,
+          },
+          large: { multiplier: parseFloat(tolLargeMul) || 0.3, lowerLimit: parseFloat(mediumUpper) || 1.5 },
+        },
+        focalSpots: processedRows.map(r => ({
+          focusType: r.focusType,
+          statedWidth: parseFloat(r.statedWidth) || 0,
+          statedHeight: parseFloat(r.statedHeight) || 0,
+          measuredWidth: parseFloat(r.measuredWidth) || 0,
+          measuredHeight: parseFloat(r.measuredHeight) || 0,
+          remark: r.remark,
+        })),
+        finalResult,
+      };
+
+      let res;
+      if (testId) {
+        res = await updateEffectiveFocalSpotForFixedRadioFluro(testId, payload);
+        toast.success('Updated successfully!');
+      } else {
+        res = await addEffectiveFocalSpotForFixedRadioFluro(serviceId, payload);
+        const newId = res?.data?._id || res?.data?.data?._id;
+        if (newId) {
+          setTestId(newId);
+          onTestSaved?.(newId);
+        }
+        toast.success('Saved successfully!');
+      }
       setIsSaved(true);
       setIsEditing(false);
-      if (!testId) {
-        const newId = "mock-focalspot-123";
-        setTestId(newId);
-        onTestSaved?.(newId);
-      }
-    } catch (err) {
-      toast.error("Save failed");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Save failed");
     } finally {
       setIsSaving(false);
     }
@@ -132,11 +257,20 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
   const isViewOnly = isSaved && !isEditing;
   const ButtonIcon = !isSaved || isEditing ? Save : Edit3;
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Effective Focal Spot Size</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Effective Focal Spot Size Measurement</h2>
         <button
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}

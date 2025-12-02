@@ -72,6 +72,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         testReportNumber: "",
         issueDate: "",
         nomenclature: "",
+        category: "",
         make: "",
         model: "",
         slNumber: "",
@@ -118,6 +119,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
+                    category: "",
                     make: "",
                     model: data.machineModel,
                     slNumber: data.serialNumber,
@@ -345,6 +347,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                 <div className="grid md:grid-cols-3 gap-6">
                     {[
                         { label: "Nomenclature", name: "nomenclature", readOnly: true },
+                        { label: "Category", name: "category" },
                         { label: "Make", name: "make" },
                         { label: "Model", name: "model", readOnly: true },
                         { label: "Serial Number", name: "slNumber", readOnly: true },
@@ -446,19 +449,19 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             ? [
                                 {
                                     title: "Linearity Of mAs Loading",
-                                    component: <LinearityOfMasLoading  />,
+                                    component: <LinearityOfMasLoading serviceId={serviceId} />,
                                 },
                             ]
                             : []),
 
                     { title: "Output Consistency", component: <OutputConsistency serviceId={serviceId} /> },
-                    { title: "Low Contrast Resolution", component: <LowContrastResolution /> },
-                    { title: "High Contrast Resolution", component: <HighContrastResolution /> },
+                    { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
+                    { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
                     { title: "Exposure Rate Table Top", component: <ExposureRateTableTop serviceId={serviceId} /> },
                     { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} /> },
                     {
                         title: "Details Of Radiation Protection Survey of the Installation",
-                        component: <RadiationProtectionSurvey />,
+                        component: <RadiationProtectionSurvey serviceId={serviceId} />,
                     },
                     // { title: "Equipment Setting", component: <EquipementSetting serviceId={serviceId} /> },
                 ].map((item, i) => (

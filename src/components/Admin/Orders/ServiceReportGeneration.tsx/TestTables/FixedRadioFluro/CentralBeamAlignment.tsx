@@ -1,9 +1,14 @@
 // src/components/TestTables/CentralBeamAlignment.tsx
-'use client';
+ 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Edit3, Save, Loader2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addCentralBeamAlignmentForFixedRadioFluro,
+  getCentralBeamAlignmentByServiceIdForFixedRadioFluro,
+  updateCentralBeamAlignmentForFixedRadioFluro,
+} from '../../../../../../api';
 
 interface TechniqueRow {
   id: string;
@@ -29,6 +34,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Technique Factors (Fixed single row)
   const [techniqueRow, setTechniqueRow] = useState<TechniqueRow>({
@@ -56,25 +62,9 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       return { remark: '' as const, pass: false };
     }
 
-    let pass = false;
-
-    switch (toleranceOperator) {
-      case '<':
-        pass = observed < tolerance;
-        break;
-      case '<=':
-        pass = observed <= tolerance;
-        break;
-      case '>':
-        pass = observed > tolerance;
-        break;
-      case '>=':
-        pass = observed >= tolerance;
-        break;
-      case '=':
-        pass = Math.abs(observed - tolerance) < 0.1;
-        break;
-    }
+    // Central beam tilt must be <= tolerance to pass
+    // Pass if observed <= tolerance, Fail if observed > tolerance
+    const pass = observed <= tolerance;
 
     return {
       remark: pass ? 'Pass' : 'Fail' as 'Pass' | 'Fail',
@@ -82,7 +72,96 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
     };
   }, [observedTilt, toleranceValue, toleranceOperator]);
 
-  const finalResult = evaluation.remark === 'Pass' ? 'PASS' : evaluation.remark === 'Fail' ? 'FAIL' : 'PENDING';
+  const finalResult = evaluation.remark === 'Pass' ? 'PASS' :
+    evaluation.remark === 'Fail' ? 'FAIL' : 'PENDING';
+
+  // Load existing data
+  useEffect(() => {
+    const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const res = await getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          if (data.techniqueFactors) {
+            setTechniqueRow({
+              id: '1',
+              fcd: String(data.techniqueFactors.fcd ?? ''),
+              kv: String(data.techniqueFactors.kv ?? ''),
+              mas: String(data.techniqueFactors.mas ?? ''),
+            });
+          }
+          if (data.observedTilt) {
+            setObservedTilt(String(data.observedTilt.value ?? ''));
+          }
+          if (data.tolerance) {
+            setToleranceOperator(data.tolerance.operator || '<=');
+            setToleranceValue(String(data.tolerance.value ?? '2'));
+          }
+          setIsSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load Central Beam Alignment data');
+        }
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId, propTestId]);
+
+  // Load existing data
+  useEffect(() => {
+    const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const res = await getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          if (data.techniqueFactors) {
+            setTechniqueRow({
+              id: '1',
+              fcd: String(data.techniqueFactors.fcd ?? ''),
+              kv: String(data.techniqueFactors.kv ?? ''),
+              mas: String(data.techniqueFactors.mas ?? ''),
+            });
+          }
+          if (data.observedTilt) {
+            setObservedTilt(String(data.observedTilt.value ?? ''));
+          }
+          if (data.tolerance) {
+            setToleranceOperator(data.tolerance.operator || '<=');
+            setToleranceValue(String(data.tolerance.value ?? '2'));
+          }
+          setIsSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load Central Beam Alignment data');
+        }
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId, propTestId]);
 
   // Update technique fields
   const updateTechnique = (field: keyof TechniqueRow, value: string) => {
@@ -112,20 +191,23 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
     setIsSaving(true);
     try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      toast.success(testId ? "Test updated successfully!" : "Test saved successfully!");
+      let res;
+      if (testId) {
+        res = await updateCentralBeamAlignmentForFixedRadioFluro(testId, payload);
+        toast.success('Updated successfully!');
+      } else {
+        res = await addCentralBeamAlignmentForFixedRadioFluro(serviceId, payload);
+        const newId = res?.data?._id || res?.data?.data?._id;
+        if (newId) {
+          setTestId(newId);
+          onTestSaved?.(newId);
+        }
+        toast.success('Saved successfully!');
+      }
       setIsSaved(true);
       setIsEditing(false);
-
-      if (!testId) {
-        const newId = `central-beam-${Date.now()}`;
-        setTestId(newId);
-        onTestSaved?.(newId);
-      }
-    } catch (err) {
-      toast.error("Failed to save test");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Save failed');
     } finally {
       setIsSaving(false);
     }
@@ -135,6 +217,15 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const isViewOnly = isSaved && !isEditing;
   const buttonText = !isSaved ? "Save Test" : isEditing ? "Update Test" : "Edit Test";
   const ButtonIcon = !isSaved || isEditing ? Save : Edit3;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-12">

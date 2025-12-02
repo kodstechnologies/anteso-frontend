@@ -3,10 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  createOutputConsistencyForCArm,
-  getOutputConsistencyForCArm,
-  getOutputConsistencyByServiceIdForCArm,
-  updateOutputConsistencyForCArm,
+  addOutputConsistencyForFixedRadioFluro,
+  getOutputConsistencyByServiceIdForFixedRadioFluro,
+  getOutputConsistencyByTestIdForFixedRadioFluro,
+  updateOutputConsistencyForFixedRadioFluro,
 } from "../../../../../../api";
 
 interface OutputRow {
@@ -102,15 +102,19 @@ const OutputConsistency: React.FC<Props> = ({
     const loadTest = async () => {
       setIsLoading(true);
       try {
-        let data = null;
+        let response = null;
         if (propTestId) {
-          data = await getOutputConsistencyForCArm(propTestId);
+          response = await getOutputConsistencyByTestIdForFixedRadioFluro(propTestId);
         } else {
-          data = await getOutputConsistencyByServiceIdForCArm(serviceId);
+          response = await getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId);
         }
 
+        // Handle nested response structure (response.data or response)
+        const data = response?.data || response;
+
         if (data) {
-          setTestId(data._id || data.testId);
+          const existingTestId = data._id || data.testId || data.id;
+          setTestId(existingTestId);
           setFfd(data.ffd || '100');
           setTolerance(data.tolerance || '2.0');
           setHeaders(data.measurementHeaders || headers);
@@ -126,8 +130,12 @@ const OutputConsistency: React.FC<Props> = ({
           );
           setIsSaved(true);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Load failed:", err);
+        // Only set isSaved to false if it's not a 404 (no data found)
+        if (err?.response?.status !== 404) {
+          console.warn("Non-404 error loading test data");
+        }
         setIsSaved(false);
       } finally {
         setIsLoading(false);
@@ -159,11 +167,13 @@ const OutputConsistency: React.FC<Props> = ({
     try {
       let result;
       if (testId) {
-        result = await updateOutputConsistencyForCArm(testId, payload);
+        result = await updateOutputConsistencyForFixedRadioFluro(testId, payload);
         toast.success('Test updated successfully!');
       } else {
-        result = await createOutputConsistencyForCArm(serviceId, payload);
-        const newId = result.data?._id || result.data?.testId;
+        result = await addOutputConsistencyForFixedRadioFluro(serviceId, payload);
+        // Handle nested response structure
+        const responseData = result?.data?.data || result?.data || result;
+        const newId = responseData?._id || responseData?.testId || responseData?.id;
         if (newId) {
           setTestId(newId);
           onTestSaved?.(newId);
@@ -172,7 +182,28 @@ const OutputConsistency: React.FC<Props> = ({
       }
       setIsSaved(true);
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Save failed');
+      const errorMessage = e?.response?.data?.message || 'Save failed';
+      
+      // If data already exists, try to reload it to get the testId
+      if (errorMessage.includes('already exists')) {
+        toast.error('Data already exists. Loading existing data...');
+        try {
+          const response = await getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId);
+          const data = response?.data || response;
+          if (data) {
+            const existingTestId = data._id || data.testId || data.id;
+            setTestId(existingTestId);
+            setIsSaved(true);
+            toast.success('Existing data loaded. Click "Edit Test" to modify it.');
+          }
+        } catch (loadErr) {
+          console.error('Failed to load existing data:', loadErr);
+          toast.error('Failed to load existing data');
+        }
+      } else {
+        toast.error(errorMessage);
+      }
+      console.error('Save error:', e);
     } finally {
       setIsSaving(false);
     }

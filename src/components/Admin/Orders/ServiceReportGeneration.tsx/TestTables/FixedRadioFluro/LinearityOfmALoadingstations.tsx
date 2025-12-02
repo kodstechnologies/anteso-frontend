@@ -1,9 +1,14 @@
 // components/TestTables/LinearityOfMaLoading.tsx
-'use client';
+ 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addLinearityOfMasLoadingStationsForFixedRadioFluro,
+  getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro,
+  updateLinearityOfMasLoadingStationsForFixedRadioFluro,
+} from '../../../../../../api';
 
 interface Table1Row {
   fcd: string;
@@ -162,27 +167,155 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     );
   }, [serviceId, table1Row, table2Rows]);
 
-  // === Load Data (Mock - replace with real API if needed) ===
+  // === Load Data from backend ===
   useEffect(() => {
-    setIsLoading(false);
-  }, []);
+    const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const res = await getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro(serviceId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          setTable1Row({
+            fcd: data.table1?.[0]?.fcd || '',
+            kv: data.table1?.[0]?.kv || '',
+            time: data.table1?.[0]?.time || '',
+          });
+          setMeasHeaders(data.measHeaders && data.measHeaders.length > 0 ? data.measHeaders : ['Meas 1', 'Meas 2', 'Meas 3']);
+          if (Array.isArray(data.table2) && data.table2.length > 0) {
+            setTable2Rows(
+              data.table2.map((r: any) => ({
+                id: Date.now().toString() + Math.random(),
+                ma: r.mAsApplied || r.ma || '',
+                measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
+                average: r.average || '',
+                x: r.x || '',
+                xMax: r.xMax || '',
+                xMin: r.xMin || '',
+                col: r.col || '',
+                remarks: r.remarks || '',
+              }))
+            );
+          }
+          setTolerance(data.tolerance || '0.1');
+          setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load mA linearity data');
+        }
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId]);
 
-  // === Save Handler (Mock - connect to your API) ===
+  // === Save Handler (connected to Fixed Radio Fluoro API) ===
   const handleSave = async () => {
-    if (!isFormValid) {
-      toast.error('Please fill all required fields');
+    console.log('handleSave called', { isFormValid, serviceId, testId, table1Row, table2Rows: table2Rows.length });
+    
+    if (!serviceId) {
+      toast.error('Service ID is missing');
       return;
     }
+    
+    if (!isFormValid) {
+      toast.error('Please fill all required fields');
+      console.log('Form validation failed:', { 
+        fcd: table1Row.fcd, 
+        kv: table1Row.kv, 
+        time: table1Row.time,
+        table2Rows: table2Rows.map(r => ({ ma: r.ma, hasOutputs: r.measuredOutputs.some(v => v.trim()) }))
+      });
+      return;
+    }
+    
     setIsSaving(true);
-    await new Promise(r => setTimeout(r, 1000)); // Simulate API
-    toast.success('Linearity of mA Loading saved successfully!');
-    setHasSaved(true);
-    setIsEditing(false);
-    setIsSaving(false);
-    onRefresh?.();
+    try {
+      console.log('Starting save...', { serviceId, testId });
+      // Use processedTable2 to get calculated values
+      const payload = {
+        table1: [table1Row],
+        table2: processedTable2.map(r => ({
+          mAsApplied: r.ma,
+          measuredOutputs: r.measuredOutputs.map(v => {
+            const val = v.trim();
+            return val === '' ? null : (isNaN(parseFloat(val)) ? val : parseFloat(val));
+          }),
+          average: r.average || '',
+          x: r.x || '',
+          xMax: r.xMax || '',
+          xMin: r.xMin || '',
+          col: r.col || '',
+          remarks: r.remarks || '',
+        })),
+        measHeaders,
+        tolerance,
+      };
+      
+      let result;
+      let currentTestId = testId;
+
+      // If no testId, try to get existing data by serviceId first
+      if (!currentTestId) {
+        try {
+          const existing = await getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro(serviceId);
+          if (existing?.data?._id) {
+            currentTestId = existing.data._id;
+            setTestId(currentTestId);
+          }
+        } catch (err) {
+          // No existing data, will create new
+        }
+      }
+
+      console.log('Payload prepared:', payload);
+      
+      if (currentTestId) {
+        // Update existing
+        console.log('Updating with testId:', currentTestId);
+        result = await updateLinearityOfMasLoadingStationsForFixedRadioFluro(currentTestId, payload);
+        console.log('Update result:', result);
+        toast.success('Updated successfully!');
+      } else {
+        // Create new (backend uses upsert, so this will work even if data exists)
+        console.log('Creating new with serviceId:', serviceId);
+        result = await addLinearityOfMasLoadingStationsForFixedRadioFluro(serviceId, payload);
+        console.log('Create result:', result);
+        const newId = result?.data?._id || result?.data?.data?._id || result?._id;
+        if (newId) {
+          setTestId(newId);
+        }
+        toast.success('Saved successfully!');
+      }
+      setHasSaved(true);
+      setIsEditing(false);
+      onRefresh?.();
+    } catch (err: any) {
+      console.error('Save error:', err);
+      console.error('Error details:', {
+        message: err?.message,
+        response: err?.response?.data,
+        status: err?.response?.status
+      });
+      toast.error(err?.response?.data?.message || err?.message || 'Save failed');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const toggleEdit = () => setIsEditing(true);
+  const toggleEdit = () => {
+    console.log('toggleEdit called');
+    setIsEditing(true);
+  };
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
@@ -388,8 +521,17 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       {/* SAVE BUTTON */}
       <div className="flex justify-end mt-6">
         <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving || (!isViewMode && !isFormValid)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Button clicked', { isViewMode, isSaving, isFormValid });
+            if (isViewMode) {
+              toggleEdit();
+            } else {
+              handleSave();
+            }
+          }}
+          disabled={isSaving || (isViewMode ? false : !isFormValid)}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
             ? 'bg-gray-400 cursor-not-allowed'
             : isViewMode
