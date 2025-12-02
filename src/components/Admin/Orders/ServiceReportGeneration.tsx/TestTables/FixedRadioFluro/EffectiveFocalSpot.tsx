@@ -138,7 +138,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
           }
           if (Array.isArray(data.focalSpots) && data.focalSpots.length > 0) {
             // Create a map of existing rows by focusType
-            const existingRowsMap = new Map(
+            const existingRowsMap = new Map<string, FocalSpotRow>(
               data.focalSpots.map((r: any) => [
                 r.focusType,
                 {
@@ -157,8 +157,9 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
             const loadedRows: FocalSpotRow[] = [];
             
             // Add Large Focus (use existing data if available, otherwise use defaults)
-            if (existingRowsMap.has('Large Focus')) {
-              // loadedRows.push(existingRowsMap.get('Large Focus')!);
+            const largeFocusRow = existingRowsMap.get('Large Focus');
+            if (largeFocusRow) {
+               loadedRows.push(largeFocusRow);
             } else {
               loadedRows.push({
                 id: 'large',
@@ -172,8 +173,9 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
             }
 
             // Add Small Focus (use existing data if available, otherwise use defaults)
-            if (existingRowsMap.has('Small Focus')) {
-              // loadedRows.push(existingRowsMap.get('Small Focus')!);
+            const smallFocusRow = existingRowsMap.get('Small Focus');
+            if (smallFocusRow) {
+               loadedRows.push(smallFocusRow);
             } else {
               loadedRows.push({
                 id: 'small',
