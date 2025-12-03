@@ -4,9 +4,9 @@ import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Edit3, Save, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  addAccuracyOfIrradiationTimeForCBCT,
-  getAccuracyOfIrradiationTimeByServiceIdForCBCT,
-  updateAccuracyOfIrradiationTimeForCBCT,
+  addAccuracyOfIrradiationTimeForOPG,
+  getAccuracyOfIrradiationTimeByServiceIdForOPG,
+  updateAccuracyOfIrradiationTimeForOPG,
 } from "../../../../../../api";
 
 interface AccuracyOfIrradiationTimeProps {
@@ -110,7 +110,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       if (!serviceId) return;
       setLoading(true);
       try {
-        const res = await getAccuracyOfIrradiationTimeByServiceIdForCBCT(serviceId);
+        const res = await getAccuracyOfIrradiationTimeByServiceIdForOPG(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -170,10 +170,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     try {
       let result;
       if (testId) {
-        result = await updateAccuracyOfIrradiationTimeForCBCT(testId, payload);
+        result = await updateAccuracyOfIrradiationTimeForOPG(testId, payload);
         toast.success("Updated successfully!");
       } else {
-        result = await addAccuracyOfIrradiationTimeForCBCT(serviceId, payload);
+        result = await addAccuracyOfIrradiationTimeForOPG(serviceId, payload);
         const newTestId = result?.data?.testId || result?.data?._id;
         if (newTestId) {
           setTestId(newTestId);

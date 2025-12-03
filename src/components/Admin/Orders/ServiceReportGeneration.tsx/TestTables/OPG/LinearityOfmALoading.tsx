@@ -5,10 +5,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addLinearityOfMaLoadingForCBCT,
-  getLinearityOfMaLoadingByServiceIdForCBCT,
-  getLinearityOfMaLoadingByTestIdForCBCT,
-  updateLinearityOfMaLoadingForCBCT,
+  addLinearityOfMaLoadingForOPG,
+  getLinearityOfMaLoadingByServiceIdForOPG,
+  getLinearityOfMaLoadingByTestIdForOPG,
+  updateLinearityOfMaLoadingForOPG,
 } from '../../../../../../api';
 
 interface Table1Row {
@@ -176,17 +176,17 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         return;
       }
       try {
-        const res = await getLinearityOfMaLoadingByServiceIdForCBCT(serviceId);
+        const res = await getLinearityOfMaLoadingByServiceIdForOPG(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          // CBCT backend uses table1 as object, not array
+          // OPG backend uses table1 as object, not array
           setTable1Row({
             fcd: data.table1?.fcd || '',
             kv: data.table1?.kv || '',
             time: data.table1?.time || '',
           });
-          // Note: CBCT doesn't have measHeaders, we'll use default
+          // Note: OPG doesn't have measHeaders, we'll use default
           if (Array.isArray(data.table2) && data.table2.length > 0) {
             setTable2Rows(
               data.table2.map((r: any, i: number) => ({
@@ -277,7 +277,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       // If no testId, try to get existing data by serviceId first
       if (!currentTestId) {
         try {
-          const existing = await getLinearityOfMaLoadingByServiceIdForCBCT(serviceId);
+          const existing = await getLinearityOfMaLoadingByServiceIdForOPG(serviceId);
           if (existing?.data?._id) {
             currentTestId = existing.data._id;
             setTestId(currentTestId);
@@ -292,13 +292,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       if (currentTestId) {
         // Update existing
         console.log('Updating with testId:', currentTestId);
-        result = await updateLinearityOfMaLoadingForCBCT(currentTestId, payload);
+        result = await updateLinearityOfMaLoadingForOPG(currentTestId, payload);
         console.log('Update result:', result);
         toast.success('Updated successfully!');
       } else {
         // Create new (backend uses upsert, so this will work even if data exists)
         console.log('Creating new with serviceId:', serviceId);
-        result = await addLinearityOfMaLoadingForCBCT(serviceId, payload);
+        result = await addLinearityOfMaLoadingForOPG(serviceId, payload);
         console.log('Create result:', result);
         const newId = result?.data?._id || result?.data?.data?._id || result?._id;
         if (newId) {

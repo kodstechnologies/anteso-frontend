@@ -5,10 +5,10 @@ import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Loader2, Edit3, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  addRadiationProtectionSurveyForCBCT,
-  getRadiationProtectionSurveyByServiceIdForCBCT,
-  getRadiationProtectionSurveyByTestIdForCBCT,
-  updateRadiationProtectionSurveyForCBCT,
+  addRadiationProtectionSurveyForOPG,
+  getRadiationProtectionSurveyByServiceIdForOPG,
+  getRadiationProtectionSurveyByTestIdForOPG,
+  updateRadiationProtectionSurveyForOPG,
 } from "../../../../../../api";
 
 interface LocationData {
@@ -21,10 +21,12 @@ interface LocationData {
 }
 interface Props {
   serviceId: string;
+  testId?: string | null;
+  onTestSaved?: (testId: string) => void;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
-  const [testId, setTestId] = useState<string | null>(null);
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved }) => {
+  const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -105,7 +107,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
         return;
       }
       try {
-        const res = await getRadiationProtectionSurveyByServiceIdForCBCT(serviceId);
+        const res = await getRadiationProtectionSurveyByServiceIdForOPG(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -178,12 +180,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     try {
       let res;
       if (testId) {
-        res = await updateRadiationProtectionSurveyForCBCT(testId, payload);
+        res = await updateRadiationProtectionSurveyForOPG(testId, payload);
         toast.success("Updated successfully");
       } else {
-        res = await addRadiationProtectionSurveyForCBCT(serviceId, payload);
+        res = await addRadiationProtectionSurveyForOPG(serviceId, payload);
         const newId = res?.data?._id || res?.data?.data?._id;
-        if (newId) setTestId(newId);
+        if (newId) {
+          setTestId(newId);
+          onTestSaved?.(newId);
+        }
         toast.success("Saved successfully");
       }
       setIsSaved(true);

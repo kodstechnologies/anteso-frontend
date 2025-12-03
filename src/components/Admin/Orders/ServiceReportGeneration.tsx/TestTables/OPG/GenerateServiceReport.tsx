@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForCBCT } from "../../../../../../api";
+import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForOPG } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 
 import Standards from "../../Standards";
@@ -43,7 +43,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -57,12 +57,12 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     const [showTimerModal, setShowTimerModal] = useState(true); // Show on load
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
     const [savedTestIds, setSavedTestIds] = useState<{
-        AccuracyOfIrradiationTimeCBCT?: string;
-        AccuracyOfOperatingPotentialCBCT?: string;
-        OutputConsistencyForCBCT?: string;
-        LinearityOfMaLoadingCBCT?: string;
-        RadiationLeakageTestCBCT?: string;
-        RadiationProtectionSurveyCBCT?: string;
+        AccuracyOfIrradiationTimeOPG?: string;
+        AccuracyOfOperatingPotentialOPG?: string;
+        OutputConsistencyForOPG?: string;
+        LinearityOfMaLoadingOPG?: string;
+        RadiationLeakageTestOPG?: string;
+        RadiationProtectionSurveyOPG?: string;
     }>({});
     const [formData, setFormData] = useState({
         customerName: "",
@@ -207,7 +207,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         const loadReportHeader = async () => {
             if (!serviceId) return;
             try {
-                const res = await getReportHeaderForCBCT(serviceId);
+                const res = await getReportHeaderForOPG(serviceId);
                 if (res?.exists && res?.data) {
                     // Update form data from report header
                     setFormData(prev => ({
@@ -234,12 +234,12 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
 
                     // Save test IDs
                     setSavedTestIds({
-                        AccuracyOfIrradiationTimeCBCT: res.data.AccuracyOfIrradiationTimeCBCT?._id || res.data.AccuracyOfIrradiationTimeCBCT,
-                        AccuracyOfOperatingPotentialCBCT: res.data.AccuracyOfOperatingPotentialCBCT?._id || res.data.AccuracyOfOperatingPotentialCBCT,
-                        OutputConsistencyForCBCT: res.data.OutputConsistencyForCBCT?._id || res.data.OutputConsistencyForCBCT,
-                        LinearityOfMaLoadingCBCT: res.data.LinearityOfMaLoadingCBCT?._id || res.data.LinearityOfMaLoadingCBCT,
-                        RadiationLeakageTestCBCT: res.data.RadiationLeakageTestCBCT?._id || res.data.RadiationLeakageTestCBCT,
-                        RadiationProtectionSurveyCBCT: res.data.RadiationProtectionSurveyCBCT?._id || res.data.RadiationProtectionSurveyCBCT,
+                        AccuracyOfIrradiationTimeOPG: res.data.AccuracyOfIrradiationTimeOPG?._id || res.data.AccuracyOfIrradiationTimeOPG,
+                        AccuracyOfOperatingPotentialOPG: res.data.AccuracyOfOperatingPotentialOPG?._id || res.data.AccuracyOfOperatingPotentialOPG,
+                        OutputConsistencyForOPG: res.data.OutputConsistencyForOPG?._id || res.data.OutputConsistencyForOPG,
+                        LinearityOfMaLoadingOPG: res.data.LinearityOfMaLoadingOPG?._id || res.data.LinearityOfMaLoadingOPG,
+                        RadiationLeakageTestOPG: res.data.RadiationLeakageTestOPG?._id || res.data.RadiationLeakageTestOPG,
+                        RadiationProtectionSurveyOPG: res.data.RadiationProtectionSurveyOPG?._id || res.data.RadiationProtectionSurveyOPG,
                     });
                 }
             } catch (err) {
@@ -279,7 +279,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                 <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105 animate-in fade-in duration-300">
                     <h3 className="text-2xl font-bold text-gray-800 mb-4">Timer Test Availability</h3>
                     <p className="text-gray-600 mb-8">
-                        Does this Dental Cone Beam CT unit have a selectable <strong>Irradiation Time (Timer)</strong> setting?
+                        Does this OPG unit have a selectable <strong>Irradiation Time (Timer)</strong> setting?
                     </p>
                     <div className="flex gap-4 justify-center">
                         <button
@@ -304,7 +304,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
-                Generate CT-Scan QA Test Report
+                Generate OPG QA Test Report
             </h1>
 
             {/* Customer Info */}
@@ -403,7 +403,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     {saving ? "Saving..." : "Save Report Header"}
                 </button>
                 <button
-                    onClick={() => navigate(`/admin/orders/view-service-report-dental-cone-beam-ct?serviceId=${serviceId}`)}
+                    onClick={() => navigate(`/admin/orders/view-service-report?serviceId=${serviceId}`)}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report
@@ -418,8 +418,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                         title: "Accuracy Of Operating Potential", 
                         component: <AccuracyOfOperatingPotential 
                             serviceId={serviceId} 
-                            testId={savedTestIds.AccuracyOfOperatingPotentialCBCT || null}
-                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialCBCT: id }))}
+                            testId={savedTestIds.AccuracyOfOperatingPotentialOPG || null}
+                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialOPG: id }))}
                         /> 
                     },
                     { title: "Total Filteration", component: <TotalFilteration /> },
@@ -431,8 +431,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                                 title: "Accuracy Of Irradiation Time",
                                 component: <AccuracyOfIrradiationTime 
                                     serviceId={serviceId} 
-                                    testId={savedTestIds.AccuracyOfIrradiationTimeCBCT || null}
-                                    onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfIrradiationTimeCBCT: id }))}
+                                    testId={savedTestIds.AccuracyOfIrradiationTimeOPG || null}
+                                    onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfIrradiationTimeOPG: id }))}
                                 />,
                             },
                         ]
@@ -445,7 +445,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                                 title: "Linearity Of mA Loading",
                                 component: <LinearityOfmALoading 
                                     serviceId={serviceId} 
-                                    testId={savedTestIds.LinearityOfMaLoadingCBCT || undefined}
+                                    testId={savedTestIds.LinearityOfMaLoadingOPG || undefined}
                                 />,
                             },
                         ]
@@ -455,8 +455,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                                     title: "Linearity Of mAs Loading",
                                     component: <LinearityOfMasLoading 
                                         serviceId={serviceId} 
-                                        testId={savedTestIds.LinearityOfMaLoadingCBCT || null}
-                                        onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMaLoadingCBCT: id }))}
+                                        testId={savedTestIds.LinearityOfMaLoadingOPG || null}
+                                        onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMaLoadingOPG: id }))}
                                     />,
                                 },
                             ]
@@ -466,15 +466,15 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                         title: "Consistency Of Radiation Output", 
                         component: <ConsistencyOfRadiationOutput 
                             serviceId={serviceId} 
-                            testId={savedTestIds.OutputConsistencyForCBCT || null}
-                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, OutputConsistencyForCBCT: id }))}
+                            testId={savedTestIds.OutputConsistencyForOPG || null}
+                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, OutputConsistencyForOPG: id }))}
                         /> 
                     },
                     { 
                         title: "Radiation Leakage Level", 
                         component: <RadiationLeakageLevel 
                             serviceId={serviceId} 
-                            testId={savedTestIds.RadiationLeakageTestCBCT || undefined}
+                            testId={savedTestIds.RadiationLeakageTestOPG || undefined}
                         /> 
                     },
                     // { title: "Equipment Setting", component: <EquipmentSetting /> },
@@ -482,7 +482,9 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     { 
                         title: "Details Of Radiation Protection", 
                         component: <DetailsOfRadiationProtection 
-                            serviceId={serviceId} 
+                            serviceId={serviceId}
+                            testId={savedTestIds.RadiationProtectionSurveyOPG || null}
+                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, RadiationProtectionSurveyOPG: id }))}
                         /> 
                     },
 
@@ -506,4 +508,4 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     );
 };
 
-export default DentalConeBeamCT;
+export default OPG;

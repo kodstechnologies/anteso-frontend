@@ -10,6 +10,7 @@ import BMDReport from "./TestTables/BMD/GenerateReportForBMD"
 import RadioFluro from "./TestTables/FixedRadioFluro/GenerateServiceReport"
 import DentalReport from "./TestTables/DentalIntra/GenerateServiceReport" 
 import CBCTReport from "./TestTables/DentalConeBeamCT/GenerateServiceReport"
+import OPGReport from "./TestTables/OPG/GenerateServiceReport"
 // import RadioF
 // import CBCTReport from './reports/CBCTReport';
 // import FixedXRayReport from './reports/FixedXRayReport';
@@ -41,7 +42,7 @@ const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   'Computed Tomography': CTScanReport,
   // 'PET CT': PETCTReport,
   // 'CT Simulator': CTSimulatorReport,
-  // OPG: OPGReport,
+   "Ortho Pantomography (OPG)": OPGReport,
   "Dental Cone Beam CT": CBCTReport,
   'Bone Densitometer (BMD)': BMDReport,
   // 'Dental IOPA': DentalIOPAreport,

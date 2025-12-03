@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import {
-  addRadiationLeakageLevelForCBCT,
-  getRadiationLeakageLevelByServiceIdForCBCT,
-  getRadiationLeakageLevelByTestIdForCBCT,
-  updateRadiationLeakageLevelForCBCT,
+  addRadiationLeakageLevelForOPG,
+  getRadiationLeakageLevelByServiceIdForOPG,
+  getRadiationLeakageLevelByTestIdForOPG,
+  updateRadiationLeakageLevelForOPG,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
 
@@ -137,7 +137,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         return;
       }
       try {
-        const res = await getRadiationLeakageLevelByServiceIdForCBCT(serviceId);
+        const res = await getRadiationLeakageLevelByServiceIdForOPG(serviceId);
         const rec = res?.data;
         if (!rec) {
           setIsLoading(false);
@@ -221,10 +221,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     try {
       let res;
       if (testId) {
-        res = await updateRadiationLeakageLevelForCBCT(testId, payload);
+        res = await updateRadiationLeakageLevelForOPG(testId, payload);
         toast.success('Updated successfully!');
       } else {
-        res = await addRadiationLeakageLevelForCBCT(serviceId, payload);
+        res = await addRadiationLeakageLevelForOPG(serviceId, payload);
         const newTestId = res?.data?.testId || res?.data?._id;
         if (newTestId) {
           setTestId(newTestId);

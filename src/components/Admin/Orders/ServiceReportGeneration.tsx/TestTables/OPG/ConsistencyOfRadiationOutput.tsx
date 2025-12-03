@@ -3,10 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addConsistencyOfRadiationOutputForCBCT,
-  getConsistencyOfRadiationOutputByServiceIdForCBCT,
-  getConsistencyOfRadiationOutputByTestIdForCBCT,
-  updateConsistencyOfRadiationOutputForCBCT,
+  addConsistencyOfRadiationOutputForOPG,
+  getConsistencyOfRadiationOutputByServiceIdForOPG,
+  getConsistencyOfRadiationOutputByTestIdForOPG,
+  updateConsistencyOfRadiationOutputForOPG,
 } from "../../../../../../api";
 
 interface OutputRow {
@@ -121,10 +121,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         let data = null;
 
         if (propTestId) {
-          const res = await getConsistencyOfRadiationOutputByTestIdForCBCT(propTestId);
+          const res = await getConsistencyOfRadiationOutputByTestIdForOPG(propTestId);
           data = res?.data;
         } else {
-          const res = await getConsistencyOfRadiationOutputByServiceIdForCBCT(serviceId);
+          const res = await getConsistencyOfRadiationOutputByServiceIdForOPG(serviceId);
           data = res?.data;
         }
 
@@ -193,10 +193,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     try {
       let result;
       if (testId) {
-        result = await updateConsistencyOfRadiationOutputForCBCT(testId, payload);
+        result = await updateConsistencyOfRadiationOutputForOPG(testId, payload);
         toast.success('Updated successfully!');
       } else {
-        result = await addConsistencyOfRadiationOutputForCBCT(serviceId, payload);
+        result = await addConsistencyOfRadiationOutputForOPG(serviceId, payload);
         const newId = result?.data?.testId || result?.data?._id;
         if (newId) {
           setTestId(newId);

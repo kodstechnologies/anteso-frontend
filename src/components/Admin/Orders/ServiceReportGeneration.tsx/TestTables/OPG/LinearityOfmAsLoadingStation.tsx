@@ -5,10 +5,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addLinearityOfMaLoadingForCBCT,
-  getLinearityOfMaLoadingByServiceIdForCBCT,
-  getLinearityOfMaLoadingByTestIdForCBCT,
-  updateLinearityOfMaLoadingForCBCT,
+  addLinearityOfMaLoadingForOPG,
+  getLinearityOfMaLoadingByServiceIdForOPG,
+  getLinearityOfMaLoadingByTestIdForOPG,
+  updateLinearityOfMaLoadingForOPG,
 } from '../../../../../../api';
 
 interface ExposureCondition {
@@ -103,7 +103,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         return;
       }
       try {
-        const res = await getLinearityOfMaLoadingByServiceIdForCBCT(serviceId);
+        const res = await getLinearityOfMaLoadingByServiceIdForOPG(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -209,7 +209,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       // If no testId, try to get existing data by serviceId first
       if (!currentTestId) {
         try {
-          const existing = await getLinearityOfMaLoadingByServiceIdForCBCT(serviceId);
+          const existing = await getLinearityOfMaLoadingByServiceIdForOPG(serviceId);
           if (existing?.data?._id) {
             currentTestId = existing.data._id;
             setTestId(currentTestId);
@@ -221,11 +221,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
       if (currentTestId) {
         // Update existing
-        result = await updateLinearityOfMaLoadingForCBCT(currentTestId, payload);
+        result = await updateLinearityOfMaLoadingForOPG(currentTestId, payload);
         toast.success('Updated successfully!');
       } else {
         // Create new
-        result = await addLinearityOfMaLoadingForCBCT(serviceId, payload);
+        result = await addLinearityOfMaLoadingForOPG(serviceId, payload);
         const newId = result?.data?.testId || result?.data?._id;
         if (newId) {
           setTestId(newId);

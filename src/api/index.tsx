@@ -5436,3 +5436,563 @@ export const updateReproducibilityOfRadiationOutputForBMD = async (testId: strin
     );
     return res.data;
 };
+
+// ==================== Dental Cone Beam CT APIs ====================
+
+// Accuracy of Irradiation Time - CBCT
+export const addAccuracyOfIrradiationTimeForCBCT = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-cone-beam-ct/accuracy-of-irradiation-time/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfIrradiationTimeByServiceIdForCBCT = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-cone-beam-ct/accuracy-of-irradiation-time-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getAccuracyOfIrradiationTimeByTestIdForCBCT = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-cone-beam-ct/accuracy-of-irradiation-time/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateAccuracyOfIrradiationTimeForCBCT = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-cone-beam-ct/accuracy-of-irradiation-time/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Accuracy of Operating Potential - CBCT
+export const addAccuracyOfOperatingPotentialForCBCT = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-cone-beam-ct/accuracy-of-operating-potential/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfOperatingPotentialByServiceIdForCBCT = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-cone-beam-ct/accuracy-of-operating-potential-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getAccuracyOfOperatingPotentialByTestIdForCBCT = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-cone-beam-ct/accuracy-of-operating-potential/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateAccuracyOfOperatingPotentialForCBCT = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-cone-beam-ct/accuracy-of-operating-potential/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Consistency of Radiation Output - CBCT
+export const addConsistencyOfRadiationOutputForCBCT = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-cone-beam-ct/consistency-of-radiation-output/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getConsistencyOfRadiationOutputByServiceIdForCBCT = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-cone-beam-ct/consistency-of-radiation-output-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getConsistencyOfRadiationOutputByTestIdForCBCT = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-cone-beam-ct/consistency-of-radiation-output/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateConsistencyOfRadiationOutputForCBCT = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-cone-beam-ct/consistency-of-radiation-output/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Linearity of mA Loading - CBCT
+export const addLinearityOfMaLoadingForCBCT = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-cone-beam-ct/linearity-of-ma-loading/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMaLoadingByServiceIdForCBCT = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-cone-beam-ct/linearity-of-ma-loading-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getLinearityOfMaLoadingByTestIdForCBCT = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-cone-beam-ct/linearity-of-ma-loading/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateLinearityOfMaLoadingForCBCT = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-cone-beam-ct/linearity-of-ma-loading/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Radiation Leakage Level - CBCT
+export const addRadiationLeakageLevelForCBCT = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-cone-beam-ct/radiation-leakage-level/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationLeakageLevelByServiceIdForCBCT = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-cone-beam-ct/radiation-leakage-level-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationLeakageLevelByTestIdForCBCT = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-cone-beam-ct/radiation-leakage-level/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateRadiationLeakageLevelForCBCT = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-cone-beam-ct/radiation-leakage-level/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Radiation Protection Survey - CBCT
+export const addRadiationProtectionSurveyForCBCT = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-cone-beam-ct/radiation-protection-survey/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationProtectionSurveyByServiceIdForCBCT = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-cone-beam-ct/radiation-protection-survey-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationProtectionSurveyByTestIdForCBCT = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-cone-beam-ct/radiation-protection-survey/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateRadiationProtectionSurveyForCBCT = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-cone-beam-ct/radiation-protection-survey/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Get Report Header for CBCT
+export const getReportHeaderForCBCT = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/dental-cone-beam-ct/report-header/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+// ==================== OPG APIs ====================
+
+// Accuracy of Irradiation Time - OPG
+export const addAccuracyOfIrradiationTimeForOPG = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/opg/accuracy-of-irradiation-time/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfIrradiationTimeByServiceIdForOPG = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/opg/accuracy-of-irradiation-time-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getAccuracyOfIrradiationTimeByTestIdForOPG = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/opg/accuracy-of-irradiation-time/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateAccuracyOfIrradiationTimeForOPG = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/opg/accuracy-of-irradiation-time/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Accuracy of Operating Potential - OPG
+export const addAccuracyOfOperatingPotentialForOPG = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/opg/accuracy-of-operating-potential/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfOperatingPotentialByServiceIdForOPG = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/opg/accuracy-of-operating-potential-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getAccuracyOfOperatingPotentialByTestIdForOPG = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/opg/accuracy-of-operating-potential/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateAccuracyOfOperatingPotentialForOPG = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/opg/accuracy-of-operating-potential/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Consistency of Radiation Output - OPG
+export const addConsistencyOfRadiationOutputForOPG = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/opg/consistency-of-radiation-output/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getConsistencyOfRadiationOutputByServiceIdForOPG = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/opg/consistency-of-radiation-output-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getConsistencyOfRadiationOutputByTestIdForOPG = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/opg/consistency-of-radiation-output/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateConsistencyOfRadiationOutputForOPG = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/opg/consistency-of-radiation-output/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Linearity of mA Loading - OPG
+export const addLinearityOfMaLoadingForOPG = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/opg/linearity-of-ma-loading/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMaLoadingByServiceIdForOPG = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/opg/linearity-of-ma-loading-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getLinearityOfMaLoadingByTestIdForOPG = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/opg/linearity-of-ma-loading/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateLinearityOfMaLoadingForOPG = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/opg/linearity-of-ma-loading/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Radiation Leakage Level - OPG
+export const addRadiationLeakageLevelForOPG = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/opg/radiation-leakage-level/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationLeakageLevelByServiceIdForOPG = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/opg/radiation-leakage-level-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationLeakageLevelByTestIdForOPG = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/opg/radiation-leakage-level/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateRadiationLeakageLevelForOPG = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/opg/radiation-leakage-level/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Radiation Protection Survey - OPG
+export const addRadiationProtectionSurveyForOPG = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/opg/radiation-protection-survey/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationProtectionSurveyByServiceIdForOPG = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/opg/radiation-protection-survey-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationProtectionSurveyByTestIdForOPG = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/opg/radiation-protection-survey/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateRadiationProtectionSurveyForOPG = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/opg/radiation-protection-survey/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Get Report Header for OPG
+export const getReportHeaderForOPG = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/opg/report-header/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};

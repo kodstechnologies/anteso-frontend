@@ -3,10 +3,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-    addAccuracyOfOperatingPotentialForCBCT,
-    getAccuracyOfOperatingPotentialByServiceIdForCBCT,
-    getAccuracyOfOperatingPotentialByTestIdForCBCT,
-    updateAccuracyOfOperatingPotentialForCBCT,
+    addAccuracyOfOperatingPotentialForOPG,
+    getAccuracyOfOperatingPotentialByServiceIdForOPG,
+    getAccuracyOfOperatingPotentialByTestIdForOPG,
+    updateAccuracyOfOperatingPotentialForOPG,
 } from "../../../../../../api"; 
 interface RowData {
     id: string;
@@ -54,7 +54,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             if (!serviceId) return;
             setIsLoading(true);
             try {
-                const res = await getAccuracyOfOperatingPotentialByServiceIdForCBCT(serviceId);
+                const res = await getAccuracyOfOperatingPotentialByServiceIdForOPG(serviceId);
                 const data = res?.data;
                 if (data) {
                     setTestId(data._id || null);
@@ -119,10 +119,10 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
         try {
             let result;
             if (testId) {
-                result = await updateAccuracyOfOperatingPotentialForCBCT(testId, payload);
+                result = await updateAccuracyOfOperatingPotentialForOPG(testId, payload);
                 toast.success("Updated successfully");
             } else {
-                result = await addAccuracyOfOperatingPotentialForCBCT(serviceId, payload);
+                result = await addAccuracyOfOperatingPotentialForOPG(serviceId, payload);
                 const newTestId = result?.data?.testId || result?.data?._id;
                 if (newTestId) {
                     setTestId(newTestId);
