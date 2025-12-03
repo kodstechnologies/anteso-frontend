@@ -98,12 +98,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
         setLoading(true);
         const response = await getReportHeader(serviceId);
         if (response.exists && response.data) {
-          // Ensure arrays have default values
-          setReport({
-            ...response.data,
-            toolsUsed: response.data.toolsUsed || [],
-            notes: response.data.notes || [],
-          });
+          setReport(response.data);
         } else {
           setNotFound(true);
         }
@@ -422,7 +417,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {report.toolsUsed && report.toolsUsed.length > 0 ? (
+                    {report.toolsUsed.length > 0 ? (
                       report.toolsUsed.map((tool, i) => (
                         <tr key={i}>
                           <td className="border p-2 text-center">{i + 1}</td>
@@ -452,7 +447,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             <section className="mb-12">
               <h2 className="font-bold text-lg mb-3">5. Notes</h2>
               <div className="ml-8 text-sm">
-                {report.notes && report.notes.length > 0 ? (
+                {report.notes.length > 0 ? (
                   report.notes.map((n) => (
                     <p key={n.slNo}>
                       <strong>{n.slNo}.</strong> {n.text}
@@ -513,350 +508,76 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                         </div>
                       </div>
                     )}
-
-                    <div className="overflow-x-auto print:overflow-visible">
-                      <table className="w-full border-2 border-black text-sm print:text-xs print:min-w-full">
-                        <thead className="bg-gray-200">
-                          <tr>
-                            <th rowSpan={2} className="border border-black p-3">Set kVp</th>
-                            <th colSpan={3} className="border border-black p-3">Measured kVp at Different mA</th>
-                            <th rowSpan={2} className="border border-black p-3 bg-blue-100">Average kVp</th>
-                            <th rowSpan={2} className="border border-black p-3 bg-green-100">Remarks</th>
-                          </tr>
-                          <tr>
-                            <th className="border border-black p-2">10 mA</th>
-                            <th className="border border-black p-2">100 mA</th>
-                            <th className="border border-black p-2">200 mA</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {testData.accuracyOfOperatingPotential.table2.map((row: any, i: number) => (
-                            <tr key={i} className="text-center">
-                              <td className="border p-3 font-bold">{row.setKV || "-"}</td>
-                              <td className="border p-3">{row.ma10 || "-"}</td>
-                              <td className="border p-3">{row.ma100 || "-"}</td>
-                              <td className="border p-3">{row.ma200 || "-"}</td>
-                              <td className="border p-3 font-semibold bg-blue-50">{row.avgKvp || "-"}</td>
-                              <td className="border p-3 font-bold">
-                                <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>
-                                  {row.remarks || "Pending"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {testData.accuracyOfOperatingPotential.tolerance && (
-                      <div className="mt-4 text-right text-sm font-medium text-gray-700">
-                        Acceptable Tolerance: {testData.accuracyOfOperatingPotential.tolerance.sign === "minus" ? "-" : "±"}
-                        {testData.accuracyOfOperatingPotential.tolerance.value}
-                        {testData.accuracyOfOperatingPotential.tolerance.type === "percent" ? "%" : " kVp"}
-                      </div>
-                    )}
                   </div>
                 )}
 
-                {/* 2. Low Contrast Resolution */}
+                {testData.linearityOfmAsLoading && (
+                  <div className="mb-12 print:mb-10">
+                    <h3 className="text-xl font-bold mb-2">2. Linearity of mAs Loading</h3>
+                    <p className="text-sm text-gray-600">
+                      Linearity of mAs loading measurements are available for this service.
+                    </p>
+                  </div>
+                )}
+
                 {testData.lowContrastResolution && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">2. Low Contrast Resolution</h3>
-                    <div className="overflow-x-auto print:overflow-visible">
-                      <table className="w-full border-2 border-black text-sm print:text-xs print:min-w-full">
-                        <thead className="bg-gray-200">
-                          <tr>
-                            <th className="border border-black p-3">Smallest Hole Size (mm)</th>
-                            <th className="border border-black p-3">Recommended Standard (mm)</th>
-                            <th className="border border-black p-3">Tolerance</th>
-                            <th className="border border-black p-3 bg-green-100">Remarks</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="text-center">
-                            <td className="border p-3 font-semibold">{testData.lowContrastResolution.smallestHoleSize || "-"}</td>
-                            <td className="border p-3">{testData.lowContrastResolution.recommendedStandard || "-"}</td>
-                            <td className="border p-3">{testData.lowContrastResolution.tolerance || "-"}</td>
-                            <td className="border p-3 font-bold">
-                              <span className={testData.lowContrastResolution.remark === "Pass" ? "text-green-600" : "text-red-600"}>
-                                {testData.lowContrastResolution.remark || "Pending"}
-                              </span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="mb-12 print:mb-10">
+                    <h3 className="text-xl font-bold mb-2">3. Low Contrast Resolution</h3>
+                    <p className="text-sm text-gray-600">
+                      Low contrast resolution measurements are available for this service.
+                    </p>
                   </div>
                 )}
 
-                {/* 3. High Contrast Resolution */}
                 {testData.highContrastResolution && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">3. High Contrast Resolution</h3>
-                    <div className="overflow-x-auto print:overflow-visible">
-                      <table className="w-full border-2 border-black text-sm print:text-xs print:min-w-full">
-                        <thead className="bg-gray-200">
-                          <tr>
-                            <th className="border border-black p-3">Measured LP/mm</th>
-                            <th className="border border-black p-3">Recommended Standard (LP/mm)</th>
-                            <th className="border border-black p-3">Tolerance</th>
-                            <th className="border border-black p-3 bg-green-100">Remarks</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="text-center">
-                            <td className="border p-3 font-semibold">{testData.highContrastResolution.measuredLpPerMm || "-"}</td>
-                            <td className="border p-3">{testData.highContrastResolution.recommendedStandard || "-"}</td>
-                            <td className="border p-3">{testData.highContrastResolution.tolerance || "-"}</td>
-                            <td className="border p-3 font-bold">
-                              <span className={testData.highContrastResolution.remark === "Pass" ? "text-green-600" : "text-red-600"}>
-                                {testData.highContrastResolution.remark || "Pending"}
-                              </span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* 4. Exposure Rate at Table Top */}
-                {testData.exposureRate && testData.exposureRate.rows && testData.exposureRate.rows.length > 0 && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">4. Exposure Rate at Table Top</h3>
-                    <div className="mb-4 text-sm text-gray-600">
-                      <p><strong>Non-AEC Tolerance:</strong> {testData.exposureRate.nonAecTolerance || "-"}%</p>
-                      <p><strong>AEC Tolerance:</strong> {testData.exposureRate.aecTolerance || "-"}%</p>
-                      <p><strong>Minimum Focus Distance:</strong> {testData.exposureRate.minFocusDistance || "-"} cm</p>
-                    </div>
-                    <div className="overflow-x-auto print:overflow-visible">
-                      <table className="w-full border-2 border-black text-sm print:text-xs print:min-w-full">
-                        <thead className="bg-gray-200">
-                          <tr>
-                            <th className="border border-black p-3">Distance (cm)</th>
-                            <th className="border border-black p-3">Applied kV</th>
-                            <th className="border border-black p-3">Applied mA</th>
-                            <th className="border border-black p-3">Exposure (mGy)</th>
-                            <th className="border border-black p-3 bg-green-100">Remarks</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {testData.exposureRate.rows.map((row: any, i: number) => (
-                            <tr key={i} className="text-center">
-                              <td className="border p-3">{row.distance || "-"}</td>
-                              <td className="border p-3">{row.appliedKv || "-"}</td>
-                              <td className="border p-3">{row.appliedMa || "-"}</td>
-                              <td className="border p-3 font-semibold">{row.exposure || "-"}</td>
-                              <td className="border p-3">{row.remark || "-"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* 5. Congruence of Radiation */}
-                {report?.CongruenceOfRadiationForRadioFluro && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">5. Congruence of Radiation</h3>
-                    {report.CongruenceOfRadiationForRadioFluro.techniqueFactors && (
-                      <div className="mb-4 bg-gray-50 p-4 rounded border">
-                        <p className="font-semibold mb-2">Technique Factors:</p>
-                        <div className="text-sm">
-                          <span className="font-medium">FCD:</span> {report.CongruenceOfRadiationForRadioFluro.techniqueFactors[0]?.fcd || "-"} cm,{' '}
-                          <span className="font-medium">kV:</span> {report.CongruenceOfRadiationForRadioFluro.techniqueFactors[0]?.kv || "-"},{' '}
-                          <span className="font-medium">mAs:</span> {report.CongruenceOfRadiationForRadioFluro.techniqueFactors[0]?.mas || "-"}
-                        </div>
-                      </div>
-                    )}
-                    {report.CongruenceOfRadiationForRadioFluro.congruenceMeasurements && report.CongruenceOfRadiationForRadioFluro.congruenceMeasurements.length > 0 && (
-                      <div className="overflow-x-auto print:overflow-visible">
-                        <table className="w-full border-2 border-black text-sm print:text-xs print:min-w-full">
-                          <thead className="bg-gray-200">
-                            <tr>
-                              <th className="border border-black p-3">Dimension</th>
-                              <th className="border border-black p-3">Observed Shift (mm)</th>
-                              <th className="border border-black p-3">Edge Shift (mm)</th>
-                              <th className="border border-black p-3">% FED</th>
-                              <th className="border border-black p-3">Tolerance (%)</th>
-                              <th className="border border-black p-3 bg-green-100">Remarks</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {report.CongruenceOfRadiationForRadioFluro.congruenceMeasurements.map((row: any, i: number) => (
-                              <tr key={i} className="text-center">
-                                <td className="border p-3 font-bold">{row.dimension || "-"}</td>
-                                <td className="border p-3">{row.observedShift || "-"}</td>
-                                <td className="border p-3">{row.edgeShift || "-"}</td>
-                                <td className="border p-3">{row.percentFED || "-"}</td>
-                                <td className="border p-3">{row.tolerance || "-"}</td>
-                                <td className="border p-3 font-bold">
-                                  <span className={row.remark === "Pass" ? "text-green-600" : "text-red-600"}>
-                                    {row.remark || "Pending"}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                    {report.CongruenceOfRadiationForRadioFluro.finalResult && (
-                      <div className="mt-4 text-right text-sm font-medium">
-                        <span className="font-bold">Final Result: </span>
-                        <span className={report.CongruenceOfRadiationForRadioFluro.finalResult === "PASS" ? "text-green-600" : "text-red-600"}>
-                          {report.CongruenceOfRadiationForRadioFluro.finalResult}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 6. Central Beam Alignment */}
-                {report?.CentralBeamAlignmentForRadioFluoro && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">6. Central Beam Alignment</h3>
-                    {report.CentralBeamAlignmentForRadioFluoro.techniqueFactors && (
-                      <div className="mb-4 bg-gray-50 p-4 rounded border">
-                        <p className="font-semibold mb-2">Technique Factors:</p>
-                        <div className="text-sm">
-                          <span className="font-medium">FCD:</span> {report.CentralBeamAlignmentForRadioFluoro.techniqueFactors.fcd || "-"} cm,{' '}
-                          <span className="font-medium">kV:</span> {report.CentralBeamAlignmentForRadioFluoro.techniqueFactors.kv || "-"},{' '}
-                          <span className="font-medium">mAs:</span> {report.CentralBeamAlignmentForRadioFluoro.techniqueFactors.mas || "-"}
-                        </div>
-                      </div>
-                    )}
-                    <div className="overflow-x-auto print:overflow-visible">
-                      <table className="w-full border-2 border-black text-sm print:text-xs print:min-w-full">
-                        <thead className="bg-gray-200">
-                          <tr>
-                            <th className="border border-black p-3">Observed Tilt</th>
-                            <th className="border border-black p-3">Tolerance</th>
-                            <th className="border border-black p-3 bg-green-100">Remarks</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="text-center">
-                            <td className="border p-3 font-semibold">
-                              {report.CentralBeamAlignmentForRadioFluoro.observedTilt?.operator || ""} {report.CentralBeamAlignmentForRadioFluoro.observedTilt?.value || "-"}°
-                            </td>
-                            <td className="border p-3">
-                              {report.CentralBeamAlignmentForRadioFluoro.tolerance?.operator || ""} {report.CentralBeamAlignmentForRadioFluoro.tolerance?.value || "-"}°
-                            </td>
-                            <td className="border p-3 font-bold">
-                              <span className={report.CentralBeamAlignmentForRadioFluoro.observedTilt?.remark === "Pass" ? "text-green-600" : "text-red-600"}>
-                                {report.CentralBeamAlignmentForRadioFluoro.observedTilt?.remark || "Pending"}
-                              </span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                    {report.CentralBeamAlignmentForRadioFluoro.finalResult && (
-                      <div className="mt-4 text-right text-sm font-medium">
-                        <span className="font-bold">Final Result: </span>
-                        <span className={report.CentralBeamAlignmentForRadioFluoro.finalResult === "PASS" ? "text-green-600" : "text-red-600"}>
-                          {report.CentralBeamAlignmentForRadioFluoro.finalResult}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 7. Linearity of mAs Loading */}
-                {(testData.linearityOfmAsLoading?.table2Rows || report?.LinearityOfmAsLoadingFixedRadioFluoro?.table2Rows) && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">7. Linearity of mAs Loading</h3>
-                    {(testData.linearityOfmAsLoading?.exposureCondition || report?.LinearityOfmAsLoadingFixedRadioFluoro?.exposureCondition) && (
-                      <div className="mb-4 bg-gray-50 p-4 rounded border">
-                        <p className="font-semibold mb-2">Exposure Conditions:</p>
-                        <div className="text-sm">
-                          <span className="font-medium">FCD:</span> {testData.linearityOfmAsLoading?.exposureCondition?.fcd || report?.LinearityOfmAsLoadingFixedRadioFluoro?.exposureCondition?.fcd || "-"} cm,{' '}
-                          <span className="font-medium">kV:</span> {testData.linearityOfmAsLoading?.exposureCondition?.kv || report?.LinearityOfmAsLoadingFixedRadioFluoro?.exposureCondition?.kv || "-"}
-                        </div>
-                      </div>
-                    )}
-                    {(testData.linearityOfmAsLoading?.table2Rows || report?.LinearityOfmAsLoadingFixedRadioFluoro?.table2Rows) && (
-                      <div className="overflow-x-auto print:overflow-visible">
-                        <table className="w-full border-2 border-black text-sm print:text-xs print:min-w-full">
-                          <thead className="bg-gray-200">
-                            <tr>
-                              <th className="border border-black p-3">mAs Range</th>
-                              <th colSpan={3} className="border border-black p-3">Measured Outputs</th>
-                              <th className="border border-black p-3 bg-blue-100">Average</th>
-                              <th className="border border-black p-3 bg-yellow-100">Coefficient (CoL)</th>
-                              <th className="border border-black p-3 bg-green-100">Remarks</th>
-                            </tr>
-                            <tr>
-                              <th></th>
-                              <th className="border border-black p-2">Reading 1</th>
-                              <th className="border border-black p-2">Reading 2</th>
-                              <th className="border border-black p-2">Reading 3</th>
-                              <th></th>
-                              <th></th>
-                              <th></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(testData.linearityOfmAsLoading?.table2Rows || report?.LinearityOfmAsLoadingFixedRadioFluoro?.table2Rows || []).map((row: any, i: number) => (
-                              <tr key={i} className="text-center">
-                                <td className="border p-3 font-bold">{row.mAsRange || "-"}</td>
-                                <td className="border p-3">{row.measuredOutputs?.[0] || "-"}</td>
-                                <td className="border p-3">{row.measuredOutputs?.[1] || "-"}</td>
-                                <td className="border p-3">{row.measuredOutputs?.[2] || "-"}</td>
-                                <td className="border p-3 font-semibold bg-blue-50">{row.average || "-"}</td>
-                                <td className="border p-3 font-semibold bg-yellow-50">{row.col || "-"}</td>
-                                <td className="border p-3 font-bold">
-                                  <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>
-                                    {row.remarks || "Pending"}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                    {(testData.linearityOfmAsLoading?.tolerance || report?.LinearityOfmAsLoadingFixedRadioFluoro?.tolerance) && (
-                      <div className="mt-4 text-right text-sm font-medium text-gray-700">
-                        Acceptable Tolerance: ≤ {testData.linearityOfmAsLoading?.tolerance || report?.LinearityOfmAsLoadingFixedRadioFluoro?.tolerance || "0.1"}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 8. Output Consistency */}
-                {testData.outputConsistency && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">8. Output Consistency</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Output consistency measurements (mean and COV) are available for this service.
+                  <div className="mb-12 print:mb-10">
+                    <h3 className="text-xl font-bold mb-2">4. High Contrast Resolution</h3>
+                    <p className="text-sm text-gray-600">
+                      High contrast resolution measurements are available for this service.
                     </p>
                   </div>
                 )}
 
-                {/* 9. Tube Housing Leakage */}
+                {testData.exposureRate && (
+                  <div className="mb-12 print:mb-10">
+                    <h3 className="text-xl font-bold mb-2">5. Exposure Rate at Table Top</h3>
+                    <p className="text-sm text-gray-600">
+                      Exposure rate measurements at table top are available for this service.
+                    </p>
+                  </div>
+                )}
+
                 {testData.tubeHousingLeakage && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">9. Radiation Leakage from Tube Housing</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Tube housing leakage measurements at 1 m from the focus are available for this service.
+                  <div className="mb-12 print:mb-10">
+                    <h3 className="text-xl font-bold mb-2">
+                      6. Radiation Leakage from Tube Housing
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Tube housing leakage measurements at 1 m from the focus are available for this
+                      service.
                     </p>
                   </div>
                 )}
 
-                {/* 10. Accuracy of Irradiation Time */}
                 {testData.accuracyOfIrradiationTime && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">10. Accuracy of Irradiation Time</h3>
-                    <p className="text-sm text-gray-600 mb-4">
+                  <div className="mb-12 print:mb-10">
+                    <h3 className="text-xl font-bold mb-2">7. Accuracy of Irradiation Time</h3>
+                    <p className="text-sm text-gray-600">
                       Irradiation time accuracy measurements are available for this service.
                     </p>
                   </div>
                 )}
 
-                {!Object.values(testData).some(Boolean) && !report?.CongruenceOfRadiationForRadioFluro && !report?.CentralBeamAlignmentForRadioFluoro && (
+                {testData.outputConsistency && (
+                  <div className="mb-12 print:mb-10">
+                    <h3 className="text-xl font-bold mb-2">8. Output Consistency</h3>
+                    <p className="text-sm text-gray-600">
+                      Output consistency measurements (mean and COV) are available for this service.
+                    </p>
+                  </div>
+                )}
+
+                {!Object.values(testData).some(Boolean) && (
                   <p className="text-center text-xl text-gray-500 mt-32">
                     No test results available yet.
                   </p>

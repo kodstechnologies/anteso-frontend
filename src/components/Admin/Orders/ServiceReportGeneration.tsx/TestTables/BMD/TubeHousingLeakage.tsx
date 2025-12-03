@@ -3,6 +3,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addRadiationLeakageLevelForBMD,
+  getRadiationLeakageLevelByServiceIdForBMD,
+  updateRadiationLeakageLevelForBMD,
+} from '../../../../../../api';
 
 interface SettingsRow {
   distance: string;
@@ -130,24 +135,123 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     );
   }, [serviceId, settings, leakageRows, workload, toleranceValue]);
 
-  // Mock load (replace with your API later)
+  // Load existing test data
   useEffect(() => {
-    setIsLoading(false);
-  }, []);
+    if (!serviceId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const loadTest = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getRadiationLeakageLevelByServiceIdForBMD(serviceId);
+        if (data?.data) {
+          const testData = data.data;
+          setTestId(testData._id);
+          if (testData.measurementSettings) {
+            setSettings({
+              distance: testData.measurementSettings.distance || '',
+              kv: testData.measurementSettings.kv || '',
+              ma: testData.measurementSettings.ma || '',
+              time: testData.measurementSettings.time || '',
+            });
+          }
+          if (testData.leakageMeasurements && testData.leakageMeasurements.length > 0) {
+            setLeakageRows(testData.leakageMeasurements.map((m: any) => ({
+              location: m.location || 'Tube Housing',
+              front: m.front || '',
+              back: m.back || '',
+              left: m.left || '',
+              right: m.right || '',
+              top: m.top || '',
+              max: m.max || '',
+              unit: m.unit || 'mGy/h',
+              remark: '',
+            })));
+          }
+          if (testData.workload) {
+            setWorkload(testData.workload.value || '');
+            setWorkloadUnit(testData.workload.unit || 'mA·min/week');
+          }
+          if (testData.tolerance) {
+            setToleranceValue(testData.tolerance.value || '');
+            setToleranceOperator(testData.tolerance.operator || 'less than or equal to');
+            setToleranceTime(testData.tolerance.time || '1');
+          }
+          setHasSaved(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load test data');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTest();
+  }, [serviceId]);
 
   const handleSave = async () => {
     if (!isFormValid) {
       toast.error('Please fill all fields');
       return;
     }
+    if (!serviceId) {
+      toast.error('Service ID is missing');
+      return;
+    }
+
     setIsSaving(true);
-    // Simulate save
-    await new Promise(r => setTimeout(r, 1000));
-    toast.success('Saved successfully!');
-    setHasSaved(true);
-    setIsEditing(false);
-    setIsSaving(false);
-    onRefresh?.();
+    try {
+      const payload = {
+        measurementSettings: settings,
+        leakageMeasurements: processedLeakage.map(l => ({
+          location: l.location,
+          front: l.front,
+          back: l.back,
+          left: l.left,
+          right: l.right,
+          top: l.top,
+          max: l.max,
+          unit: l.unit,
+        })),
+        workload: {
+          value: workload,
+          unit: workloadUnit,
+        },
+        tolerance: {
+          value: toleranceValue,
+          operator: toleranceOperator,
+          time: toleranceTime,
+        },
+        calculatedResult: {
+          maxLeakageIntermediate: maxLeakageResult,
+          finalLeakageRate,
+          remark: finalRemark,
+        },
+      };
+
+      let result;
+      if (testId) {
+        result = await updateRadiationLeakageLevelForBMD(testId, payload);
+      } else {
+        result = await addRadiationLeakageLevelForBMD(serviceId, payload);
+        if (result?.data?._id) {
+          setTestId(result.data._id);
+        }
+      }
+
+      setHasSaved(true);
+      setIsEditing(false);
+      toast.success(testId ? 'Updated successfully' : 'Saved successfully');
+      onRefresh?.();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Save failed');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleEdit = () => setIsEditing(true);

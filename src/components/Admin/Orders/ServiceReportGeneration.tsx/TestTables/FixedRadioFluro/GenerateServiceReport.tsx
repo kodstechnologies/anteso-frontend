@@ -72,7 +72,6 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         testReportNumber: "",
         issueDate: "",
         nomenclature: "",
-        category: "",
         make: "",
         model: "",
         slNumber: "",
@@ -119,7 +118,6 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
-                    category: "",
                     make: "",
                     model: data.machineModel,
                     slNumber: data.serialNumber,
@@ -347,7 +345,6 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                 <div className="grid md:grid-cols-3 gap-6">
                     {[
                         { label: "Nomenclature", name: "nomenclature", readOnly: true },
-                        { label: "Category", name: "category" },
                         { label: "Make", name: "make" },
                         { label: "Model", name: "model", readOnly: true },
                         { label: "Serial Number", name: "slNumber", readOnly: true },

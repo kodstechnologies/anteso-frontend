@@ -1,7 +1,12 @@
 // src/components/TestTables/AccuracyOfOperatingPotentialAndTime.tsx
-import React, { useState } from "react";
-import { Plus, Trash2, Save, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Trash2, Save, Loader2, Edit3 } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  addAccuracyOfOperatingPotentialAndTimeForBMD,
+  getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD,
+  updateAccuracyOfOperatingPotentialAndTimeForBMD,
+} from "../../../../../../api";
 
 interface MAStationData {
   kvp: string;
@@ -19,9 +24,22 @@ interface RowData {
   remark: "PASS" | "FAIL" | "-";
 }
 
-const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
+interface Props {
+  serviceId: string;
+  testId?: string;
+  onTestSaved?: (testId: string) => void;
+}
+
+const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({ 
+  serviceId, 
+  testId: propTestId,
+  onTestSaved 
+}) => {
+  const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [rows, setRows] = useState<RowData[]>([
     {
@@ -145,13 +163,110 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
     setIsSaved(false);
   };
 
+  // Load existing test data
+  useEffect(() => {
+    if (!serviceId) return;
+    
+    const loadTest = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD(serviceId);
+        if (data?.data) {
+          const testData = data.data;
+          setTestId(testData._id);
+          if (testData.rows && testData.rows.length > 0) {
+            setRows(testData.rows.map((r: any) => ({
+              id: Date.now().toString() + Math.random(),
+              appliedKvp: r.appliedkVp || r.appliedKvp || "",
+              setTime: r.setTime || "",
+              maStation1: r.maStation1 || { kvp: "", time: "" },
+              maStation2: r.maStation2 || { kvp: "", time: "" },
+              avgKvp: r.avgKvp || "",
+              avgTime: r.avgTime || "",
+              remark: r.remark || "-",
+            })));
+          }
+          if (testData.kvpToleranceSign) setKvpToleranceSign(testData.kvpToleranceSign);
+          if (testData.kvpToleranceValue) setKvpToleranceValue(testData.kvpToleranceValue);
+          if (testData.timeToleranceSign) setTimeToleranceSign(testData.timeToleranceSign);
+          if (testData.timeToleranceValue) setTimeToleranceValue(testData.timeToleranceValue);
+          if (testData.totalFiltration) setTotalFiltration(testData.totalFiltration);
+          if (testData.filtrationTolerance) setFiltrationTolerance(testData.filtrationTolerance);
+          setIsSaved(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error("Failed to load test data");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadTest();
+  }, [serviceId]);
+
   const saveTest = async () => {
+    if (!serviceId) {
+      toast.error("Service ID is missing");
+      return;
+    }
+
     setIsSaving(true);
-    await new Promise(r => setTimeout(r, 1000));
-    toast.success("Test saved locally!");
-    setIsSaving(false);
-    setIsSaved(true);
+    try {
+      const payload = {
+        rows: rows.map(r => ({
+          appliedKvp: r.appliedKvp,
+          setTime: r.setTime,
+          maStation1: r.maStation1,
+          maStation2: r.maStation2,
+          avgKvp: r.avgKvp,
+          avgTime: r.avgTime,
+          remark: r.remark,
+        })),
+        kvpToleranceSign,
+        kvpToleranceValue,
+        timeToleranceSign,
+        timeToleranceValue,
+        totalFiltration,
+        filtrationTolerance,
+      };
+
+      let result;
+      if (testId) {
+        result = await updateAccuracyOfOperatingPotentialAndTimeForBMD(testId, payload);
+      } else {
+        result = await addAccuracyOfOperatingPotentialAndTimeForBMD(serviceId, payload);
+        if (result?.data?._id) {
+          setTestId(result.data._id);
+          onTestSaved?.(result.data._id);
+        }
+      }
+
+      setIsSaved(true);
+      setIsEditing(false);
+      toast.success(testId ? "Updated successfully" : "Saved successfully");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const toggleEdit = () => {
+    setIsEditing(true);
+    setIsSaved(false);
+  };
+
+  const isViewMode = isSaved && !isEditing;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-full space-y-8">
@@ -161,9 +276,11 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
           Accuracy of Operating Potential (kVp) and Irradiation Time
         </h2>
         <button
-          onClick={saveTest}
+          onClick={isViewMode ? toggleEdit : saveTest}
           disabled={isSaving}
-          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${isSaved
+          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${isViewMode
+              ? "bg-orange-600 text-white hover:bg-orange-700"
+              : isSaved
               ? "bg-gray-400 text-white"
               : "bg-blue-600 text-white hover:bg-blue-700"
             } disabled:opacity-50`}
@@ -173,15 +290,15 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
               <Loader2 className="w-4 h-4 animate-spin" />
               Saving...
             </>
-          ) : isSaved ? (
+          ) : isViewMode ? (
             <>
-              <Save className="w-4 h-4" />
-              Saved
+              <Edit3 className="w-4 h-4" />
+              Edit
             </>
           ) : (
             <>
               <Save className="w-4 h-4" />
-              Save Test
+              {testId ? "Update" : "Save"} Test
             </>
           )}
         </button>
@@ -242,7 +359,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
                       step="1"
                       value={row.appliedKvp}
                       onChange={e => updateRow(row.id, "appliedKvp", e.target.value)}
-                      className="w-full px-2 py-1 text-center border rounded text-sm focus:border-blue-400 focus:outline-none"
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-sm focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       placeholder="80"
                     />
                   </td>
@@ -252,7 +370,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
                       step="0.001"
                       value={row.setTime}
                       onChange={e => updateRow(row.id, "setTime", e.target.value)}
-                      className="w-full px-2 py-1 text-center border rounded text-sm focus:border-blue-400 focus:outline-none"
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-sm focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       placeholder="0.100"
                     />
                   </td>
@@ -262,7 +381,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
                       step="0.1"
                       value={row.maStation1.kvp}
                       onChange={e => updateRow(row.id, "ma1_kvp", e.target.value)}
-                      className="w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none"
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
                   </td>
                   <td className="px-3 py-3 border-r">
@@ -271,7 +391,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
                       step="0.001"
                       value={row.maStation1.time}
                       onChange={e => updateRow(row.id, "ma1_time", e.target.value)}
-                      className="w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none"
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
                   </td>
                   <td className="px-3 py-3 border-r">
@@ -280,7 +401,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
                       step="0.1"
                       value={row.maStation2.kvp}
                       onChange={e => updateRow(row.id, "ma2_kvp", e.target.value)}
-                      className="w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none"
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
                   </td>
                   <td className="px-3 py-3 border-r">
@@ -289,7 +411,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
                       step="0.001"
                       value={row.maStation2.time}
                       onChange={e => updateRow(row.id, "ma2_time", e.target.value)}
-                      className="w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none"
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
                   </td>
                   <td className="px-4 py-3 text-center font-medium border-r">{row.avgKvp || "-"}</td>
@@ -319,13 +442,15 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
         </div>
 
         <div className="px-4 py-3 bg-gray-50 border-t flex justify-start">
-          <button
-            onClick={addRow}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
-          >
-            <Plus className="w-4 h-4" />
-            Add Row
-          </button>
+          {!isViewMode && (
+            <button
+              onClick={addRow}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4" />
+              Add Row
+            </button>
+          )}
         </div>
       </div>
 
@@ -337,7 +462,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
             <select
               value={kvpToleranceSign}
               onChange={e => setKvpToleranceSign(e.target.value as any)}
-              className="px-3 py-1 border rounded text-sm"
+              disabled={isViewMode}
+              className={`px-3 py-1 border rounded text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
               <option value="±">±</option>
               <option value="+">Positive (+)</option>
@@ -347,7 +473,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
               type="number"
               value={kvpToleranceValue}
               onChange={e => setKvpToleranceValue(e.target.value)}
-              className="w-20 px-2 py-1 border rounded text-center text-sm"
+              disabled={isViewMode}
+              className={`w-20 px-2 py-1 border rounded text-center text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             />
             <span className="text-sm text-gray-600">kV</span>
           </div>
@@ -359,7 +486,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
             <select
               value={timeToleranceSign}
               onChange={e => setTimeToleranceSign(e.target.value as any)}
-              className="px-3 py-1 border rounded text-sm"
+              disabled={isViewMode}
+              className={`px-3 py-1 border rounded text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
               <option value="±">±</option>
               <option value="+">+ Only</option>
@@ -368,7 +496,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
               type="number"
               value={timeToleranceValue}
               onChange={e => setTimeToleranceValue(e.target.value)}
-              className="w-20 px-2 py-1 border rounded text-center text-sm"
+              disabled={isViewMode}
+              className={`w-20 px-2 py-1 border rounded text-center text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             />
             <span className="text-sm text-gray-600">%</span>
           </div>
@@ -384,7 +513,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
             type="number"
             value={totalFiltration.atKvp}
             onChange={e => setTotalFiltration({ ...totalFiltration, atKvp: e.target.value })}
-            className="w-20 px-2 py-1 border rounded text-center"
+            disabled={isViewMode}
+            className={`w-20 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             placeholder="80"
           />
           <span>kVp)</span>
@@ -393,7 +523,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
             step="0.01"
             value={totalFiltration.measured1}
             onChange={e => setTotalFiltration({ ...totalFiltration, measured1: e.target.value })}
-            className="w-32 px-3 py-2 border rounded font-medium text-center"
+            disabled={isViewMode}
+            className={`w-32 px-3 py-2 border rounded font-medium text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             placeholder="2.30"
           />
           <span>and</span>
@@ -402,7 +533,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
             step="0.01"
             value={totalFiltration.measured2}
             onChange={e => setTotalFiltration({ ...totalFiltration, measured2: e.target.value })}
-            className="w-32 px-3 py-2 border rounded font-medium text-center"
+            disabled={isViewMode}
+            className={`w-32 px-3 py-2 border rounded font-medium text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             placeholder="2.50"
           />
           <span>mm Al</span>
@@ -415,32 +547,38 @@ const AccuracyOfOperatingPotentialAndTime: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <input type="number" step="0.1" value={filtrationTolerance.value1}
             onChange={e => setFiltrationTolerance({ ...filtrationTolerance, value1: e.target.value })}
-            className="w-20 px-2 py-1 border rounded text-center" />
+            disabled={isViewMode}
+            className={`w-20 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} />
           <span>mm Al for kV</span>
           <span className="font-medium">{filtrationTolerance.operator1}</span>
           <input type="number" value={filtrationTolerance.kvp1}
             onChange={e => setFiltrationTolerance({ ...filtrationTolerance, kvp1: e.target.value })}
-            className="w-20 px-2 py-1 border rounded text-center" />
+            disabled={isViewMode}
+            className={`w-20 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} />
           <span>,</span>
           <input type="number" step="0.1" value={filtrationTolerance.value2}
             onChange={e => setFiltrationTolerance({ ...filtrationTolerance, value2: e.target.value })}
-            className="w-20 px-2 py-1 border rounded text-center" />
+            disabled={isViewMode}
+            className={`w-20 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} />
           <span>mm Al for</span>
           <code className="px-2 py-1 bg-gray-200 rounded text-xs">
             {filtrationTolerance.operator2}
           </code>
           <input type="number" value={filtrationTolerance.kvp2}
             onChange={e => setFiltrationTolerance({ ...filtrationTolerance, kvp2: e.target.value })}
-            className="w-20 px-2 py-1 border rounded text-center" />
+            disabled={isViewMode}
+            className={`w-20 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} />
           <span>,</span>
           <input type="number" step="0.1" value={filtrationTolerance.value3}
             onChange={e => setFiltrationTolerance({ ...filtrationTolerance, value3: e.target.value })}
-            className="w-20 px-2 py-1 border rounded text-center" />
+            disabled={isViewMode}
+            className={`w-20 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} />
           <span>mm Al for kV</span>
           <span className="font-medium">{filtrationTolerance.operator3}</span>
           <input type="number" value={filtrationTolerance.kvp3}
             onChange={e => setFiltrationTolerance({ ...filtrationTolerance, kvp3: e.target.value })}
-            className="w-20 px-2 py-1 border rounded text-center" />
+            disabled={isViewMode}
+            className={`w-20 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} />
         </div>
       </div>
     </div>

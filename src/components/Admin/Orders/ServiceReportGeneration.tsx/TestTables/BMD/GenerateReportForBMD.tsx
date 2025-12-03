@@ -294,16 +294,16 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          // { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime /> },
-          { title: "Accuracy Of Operaing Potential", component: <AccuracyOfOperaingPotential  /> },
-          { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId}/> },
-
-          { title: "Linearity Of Ma Loading stations", component: <LinearityOfMaLoading serviceId={serviceId}/> },
-          { title: "Reproducibility Of Radiation Output", component: <ConsistencyOfRadiationOutput /> },
-          { title: "Radiation Leakage Level at 1m from tube hosuing and collimator", component: <TubeHousingLeakage serviceId={serviceId} /> },
-          { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey /> },
-          // { title: "Equipment Setting", component: <EquipmentSetting /> },
-          // { title: "Maximum Radiation level", component: <MaxRadiationLevel /> },
+          // { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
+          { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperaingPotential serviceId={serviceId} onTestSaved={(testId) => handleTestSaved('accuracy', testId)} /> },
+          // Note: TotalFilteration is not in BMD backend routes - may need to be removed or handled separately
+          // { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId}/> },
+          { title: "Linearity Of Ma Loading stations", component: <LinearityOfMaLoading serviceId={serviceId} testId={savedTestIds['linearity']} onRefresh={() => {}} /> },
+          { title: "Reproducibility Of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} testId={savedTestIds['reproducibility']} onTestSaved={(testId) => handleTestSaved('reproducibility', testId)} /> },
+          { title: "Radiation Leakage Level at 1m from tube housing and collimator", component: <TubeHousingLeakage serviceId={serviceId} testId={savedTestIds['leakage']} onRefresh={() => {}} /> },
+          { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey serviceId={serviceId} testId={savedTestIds['protection']} onTestSaved={(testId) => handleTestSaved('protection', testId)} /> },
+          // { title: "Equipment Setting", component: <EquipmentSetting serviceId={serviceId} /> },
+          // { title: "Maximum Radiation level", component: <MaxRadiationLevel serviceId={serviceId} /> },
 
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>

@@ -4,6 +4,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addLinearityOfMaLoadingForBMD,
+  getLinearityOfMaLoadingByServiceIdForBMD,
+  updateLinearityOfMaLoadingForBMD,
+} from '../../../../../../api';
 
 interface Table1Row {
   fcd: string;
@@ -162,24 +167,105 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     );
   }, [serviceId, table1Row, table2Rows]);
 
-  // === Load Data (Mock - replace with real API if needed) ===
+  // === Load Data ===
   useEffect(() => {
-    setIsLoading(false);
-  }, []);
+    if (!serviceId) {
+      setIsLoading(false);
+      return;
+    }
 
-  // === Save Handler (Mock - connect to your API) ===
+    const loadTest = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getLinearityOfMaLoadingByServiceIdForBMD(serviceId);
+        if (data?.data) {
+          const testData = data.data;
+          setTestId(testData._id);
+          if (testData.table1) {
+            setTable1Row({
+              fcd: testData.table1.fcd || '',
+              kv: testData.table1.kv || '',
+              time: testData.table1.time || '',
+            });
+          }
+          if (testData.table2 && testData.table2.length > 0) {
+            const firstRow = testData.table2[0];
+            const numCols = firstRow.measuredOutputs?.length || 3;
+            setMeasHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
+            setTable2Rows(testData.table2.map((r: any) => ({
+              id: Date.now().toString() + Math.random(),
+              ma: r.ma || '',
+              measuredOutputs: r.measuredOutputs || Array(numCols).fill(''),
+              average: r.average || '',
+              x: r.x || '',
+              xMax: r.xMax || '',
+              xMin: r.xMin || '',
+              col: r.col || '',
+              remarks: r.remarks || '',
+            })));
+          }
+          if (testData.tolerance) setTolerance(testData.tolerance);
+          setHasSaved(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load test data');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTest();
+  }, [serviceId]);
+
+  // === Save Handler ===
   const handleSave = async () => {
     if (!isFormValid) {
       toast.error('Please fill all required fields');
       return;
     }
+    if (!serviceId) {
+      toast.error('Service ID is missing');
+      return;
+    }
+
     setIsSaving(true);
-    await new Promise(r => setTimeout(r, 1000)); // Simulate API
-    toast.success('Linearity of mA Loading saved successfully!');
-    setHasSaved(true);
-    setIsEditing(false);
-    setIsSaving(false);
-    onRefresh?.();
+    try {
+      const payload = {
+        table1: table1Row,
+        table2: processedTable2.map(p => ({
+          ma: p.ma,
+          measuredOutputs: p.measuredOutputs,
+          average: p.average,
+          x: p.x,
+          xMax: p.xMax,
+          xMin: p.xMin,
+          col: p.col,
+          remarks: p.remarks,
+        })),
+        tolerance,
+      };
+
+      let result;
+      if (testId) {
+        result = await updateLinearityOfMaLoadingForBMD(testId, payload);
+      } else {
+        result = await addLinearityOfMaLoadingForBMD(serviceId, payload);
+        if (result?.data?._id) {
+          setTestId(result.data._id);
+        }
+      }
+
+      setHasSaved(true);
+      setIsEditing(false);
+      toast.success(testId ? 'Updated successfully' : 'Saved successfully');
+      onRefresh?.();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Save failed');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleEdit = () => setIsEditing(true);

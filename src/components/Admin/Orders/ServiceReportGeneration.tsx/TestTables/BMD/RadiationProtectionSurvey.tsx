@@ -2,7 +2,13 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  addRadiationProtectionSurveyForBmd,
+  getRadiationProtectionSurveyByServiceIdForBmd,
+  updateRadiationProtectionSurveyForBmd,
+} from "../../../../../../api";
 
 interface LocationData {
   id: string;
@@ -13,7 +19,22 @@ interface LocationData {
   category: "worker" | "public";
 }
 
-const RadiationProtectionSurvey: React.FC = () => {
+interface Props {
+  serviceId: string;
+  testId?: string;
+  onTestSaved?: (testId: string) => void;
+}
+
+const RadiationProtectionSurvey: React.FC<Props> = ({ 
+  serviceId, 
+  testId: propTestId,
+  onTestSaved 
+}) => {
+  const [testId, setTestId] = useState<string | null>(propTestId || null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [surveyDate, setSurveyDate] = useState<string>("");
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
@@ -65,6 +86,7 @@ const RadiationProtectionSurvey: React.FC = () => {
       category
     };
     setLocations(prev => [...prev, newRow]);
+    setIsSaved(false);
   };
 
   const removeRow = (id: string) => {
@@ -73,7 +95,123 @@ const RadiationProtectionSurvey: React.FC = () => {
 
   const updateRow = (id: string, field: "location" | "mRPerHr", value: string) => {
     setLocations(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+    setIsSaved(false);
   };
+
+  // Load existing test data
+  useEffect(() => {
+    if (!serviceId) {
+      setIsLoading(false);
+      return;
+    }
+
+        const loadTest = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getRadiationProtectionSurveyByServiceIdForBmd(serviceId);
+        if (data?.data) {
+          const testData = data.data;
+          setTestId(testData._id);
+          if (testData.surveyDate) setSurveyDate(testData.surveyDate);
+          if (testData.calibrationCertificateValid) setHasValidCalibration(testData.calibrationCertificateValid);
+          if (testData.appliedCurrent) setAppliedCurrent(testData.appliedCurrent);
+          if (testData.appliedVoltage) setAppliedVoltage(testData.appliedVoltage);
+          if (testData.exposureTime) setExposureTime(testData.exposureTime);
+          if (testData.workload) setWorkload(testData.workload);
+          if (testData.locations && testData.locations.length > 0) {
+            setLocations(testData.locations.map((l: any) => ({
+              id: Date.now().toString() + Math.random(),
+              location: l.location || '',
+              mRPerHr: l.mRPerHr || '',
+              mRPerWeek: l.mRPerWeek || '',
+              result: l.result || '',
+              category: l.category || 'worker',
+            })));
+          }
+          setIsSaved(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load test data');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTest();
+  }, [serviceId]);
+
+  const handleSave = async () => {
+    if (!serviceId) {
+      toast.error('Service ID is missing');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        surveyDate,
+        calibrationCertificateValid: hasValidCalibration,
+        appliedCurrent,
+        appliedVoltage,
+        exposureTime,
+        workload,
+        locations: locations.map(l => ({
+          location: l.location,
+          mRPerHr: l.mRPerHr,
+          mRPerWeek: l.mRPerWeek,
+          result: l.result,
+          category: l.category,
+        })),
+      };
+
+      // Debug logging
+      console.log('=== Saving Radiation Protection Survey ===');
+      console.log('Payload:', JSON.stringify(payload, null, 2));
+      console.log('Locations count:', payload.locations.length);
+      console.log('ServiceId:', serviceId);
+      console.log('TestId:', testId);
+
+      let result;
+      if (testId) {
+        result = await updateRadiationProtectionSurveyForBmd(testId, payload);
+      } else {
+        result = await addRadiationProtectionSurveyForBmd(serviceId, payload);
+        if (result?.data?._id) {
+          setTestId(result.data._id);
+          onTestSaved?.(result.data._id);
+        }
+      }
+
+      setIsSaved(true);
+      setIsEditing(false);
+      console.log('Save result:', result);
+      console.log('Response data:', result?.data);
+      toast.success(testId ? 'Updated successfully' : 'Saved successfully');
+    } catch (err: any) {
+      console.error('Save error:', err);
+      console.error('Error response:', err.response?.data);
+      toast.error(err.response?.data?.message || 'Save failed');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleEdit = () => {
+    setIsEditing(true);
+    setIsSaved(false);
+  };
+
+  const isViewMode = isSaved && !isEditing;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   // Group locations
   const workerLocations = locations.filter(l => l.category === "worker");
@@ -107,9 +245,38 @@ const RadiationProtectionSurvey: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12 print:space-y-8">
-      <h1 className="text-4xl font-bold text-center text-gray-800 print:text-3xl">
-        Radiation Protection Survey Report
-      </h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-4xl font-bold text-center text-gray-800 print:text-3xl">
+          Radiation Protection Survey Report
+        </h1>
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+              ? 'bg-gray-400 cursor-not-allowed'
+              : isViewMode
+                ? 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : isViewMode ? (
+            <>
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              {testId ? 'Update' : 'Save'} Test
+            </>
+          )}
+        </button>
+      </div>
 
       {/* 1. Survey Details */}
       <section className="bg-white rounded-2xl shadow-lg border border-gray-200 print:shadow-none print:border print:border-gray-400">
@@ -119,13 +286,15 @@ const RadiationProtectionSurvey: React.FC = () => {
         <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2 print:gap-6">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Survey</label>
-            <input type="date" value={surveyDate} onChange={e => setSurveyDate(e.target.value)}
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 print:border-gray-400" />
+            <input type="date" value={surveyDate} onChange={e => { setSurveyDate(e.target.value); setIsSaved(false); }}
+              disabled={isViewMode}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 print:border-gray-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} />
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Valid Calibration Certificate?</label>
-            <select value={hasValidCalibration} onChange={e => setHasValidCalibration(e.target.value)}
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 print:border-gray-400">
+            <select value={hasValidCalibration} onChange={e => { setHasValidCalibration(e.target.value); setIsSaved(false); }}
+              disabled={isViewMode}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 print:border-gray-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}>
               <option value="">Select</option>
               <option value="Yes">Yes</option>
               <option value="No">No</option>
@@ -143,23 +312,27 @@ const RadiationProtectionSurvey: React.FC = () => {
         <div className="p-8 grid grid-cols-2 md:grid-cols-4 gap-6 print:grid-cols-4 print:gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Applied Current (mA)</label>
-            <input type="number" value={appliedCurrent} onChange={e => setAppliedCurrent(e.target.value)}
-              className="mt-1 w-full px-4 py-3 text-center border rounded-lg print:border-gray-400" placeholder="100" />
+            <input type="number" value={appliedCurrent} onChange={e => { setAppliedCurrent(e.target.value); setIsSaved(false); }}
+              disabled={isViewMode}
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg print:border-gray-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} placeholder="100" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Applied Voltage (kV)</label>
-            <input type="number" value={appliedVoltage} onChange={e => setAppliedVoltage(e.target.value)}
-              className="mt-1 w-full px-4 py-3 text-center border rounded-lg print:border-gray-400" placeholder="80" />
+            <input type="number" value={appliedVoltage} onChange={e => { setAppliedVoltage(e.target.value); setIsSaved(false); }}
+              disabled={isViewMode}
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg print:border-gray-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} placeholder="80" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Exposure Time (s)</label>
-            <input type="number" step="0.001" value={exposureTime} onChange={e => setExposureTime(e.target.value)}
-              className="mt-1 w-full px-4 py-3 text-center border rounded-lg print:border-gray-400" placeholder="0.5" />
+            <input type="number" step="0.001" value={exposureTime} onChange={e => { setExposureTime(e.target.value); setIsSaved(false); }}
+              disabled={isViewMode}
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg print:border-gray-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} placeholder="0.5" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
-            <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
-              className="mt-1 w-full px-4 py-3 text-center border rounded-lg print:border-gray-400" placeholder="5000" />
+            <input type="number" value={workload} onChange={e => { setWorkload(e.target.value); setIsSaved(false); }}
+              disabled={isViewMode}
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg print:border-gray-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} placeholder="5000" />
           </div>
         </div>
       </section>
@@ -189,7 +362,8 @@ const RadiationProtectionSurvey: React.FC = () => {
                         type="text"
                         value={row.location}
                         onChange={e => updateRow(row.id, "location", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 print:border-gray-400"
+                        disabled={isViewMode}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 print:border-gray-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       />
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -234,7 +408,8 @@ const RadiationProtectionSurvey: React.FC = () => {
                         type="text"
                         value={row.location}
                         onChange={e => updateRow(row.id, "location", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 print:border-gray-400"
+                        disabled={isViewMode}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 print:border-gray-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       />
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -243,7 +418,8 @@ const RadiationProtectionSurvey: React.FC = () => {
                         step="0.001"
                         value={row.mRPerHr}
                         onChange={e => updateRow(row.id, "mRPerHr", e.target.value)}
-                        className="w-28 px-3 py-2 text-center border border-gray-300 rounded-md print:border-gray-400"
+                        disabled={isViewMode}
+                        className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md print:border-gray-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         placeholder="0.000"
                       />
                     </td>
@@ -276,14 +452,16 @@ const RadiationProtectionSurvey: React.FC = () => {
           </div>
 
           {/* Add Buttons */}
-          <div className="flex justify-center gap-8 mt-8 print:hidden">
-            <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-5 h-5" /> Add Worker Location
-            </button>
-            <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-              <Plus className="w-5 h-5" /> Add Public Location
-            </button>
-          </div>
+          {!isViewMode && (
+            <div className="flex justify-center gap-8 mt-8 print:hidden">
+              <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <Plus className="w-5 h-5" /> Add Worker Location
+              </button>
+              <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <Plus className="w-5 h-5" /> Add Public Location
+              </button>
+            </div>
+          )}
 
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12 print:mt-8 print:gap-6">
