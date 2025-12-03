@@ -48,8 +48,8 @@ interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
-  toolsUsed: Tool[];
-  notes: Note[];
+  toolsUsed?: Tool[]; // Make optional
+  notes?: Note[]; // Make optional
 
   accuracyOfOperatingPotentialFixedRadioFluoro?: any;
   OutputConsistencyForFixedRadioFluoro?: any;
@@ -64,6 +64,22 @@ interface ReportData {
   CentralBeamAlignmentForRadioFluoro?: any;
 }
 
+// Default notes to use if none are provided
+const defaultNotes: Note[] = [
+  { slNo: "5.1", text: "The Test Report relates only to the above item only." },
+  {
+    slNo: "5.2",
+    text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
+  },
+  { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
+  {
+    slNo: "5.4",
+    text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
+  },
+  { slNo: "5.5", text: "Any error in this Report should be brought to our knowledge within 30 days from the date of this report." },
+  { slNo: "5.6", text: "Results reported are valid at the time of and under the stated conditions of measurements." },
+  { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
+];
 
 const ViewServiceReportFixedRadioFluro: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -98,7 +114,14 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
         setLoading(true);
         const response = await getReportHeader(serviceId);
         if (response.exists && response.data) {
-          setReport(response.data);
+          // Ensure arrays exist before setting state
+          const data = response.data;
+          const processedData: ReportData = {
+            ...data,
+            toolsUsed: data.toolsUsed || [],
+            notes: data.notes || defaultNotes,
+          };
+          setReport(processedData);
         } else {
           setNotFound(true);
         }
@@ -128,7 +151,6 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
       tubeHousingLeakage: report.TubeHousingLeakageFixedRadioFlouro,
       accuracyOfIrradiationTime: report.AccuracyOfIrradiationTimeFixedRadioFluoro,
     });
-
 
     setTestsLoading(false);
   }, [report]);
@@ -278,6 +300,12 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
     },
   ];
 
+  // Get notes array - use report notes if available, otherwise use defaults
+  const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
+
+  // Get tools array - use report tools if available, otherwise use empty array
+  const toolsArray = report.toolsUsed || [];
+
   return (
     <>
       {/* Floating buttons */}
@@ -417,8 +445,8 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {report.toolsUsed.length > 0 ? (
-                      report.toolsUsed.map((tool, i) => (
+                    {toolsArray.length > 0 ? (
+                      toolsArray.map((tool, i) => (
                         <tr key={i}>
                           <td className="border p-2 text-center">{i + 1}</td>
                           <td className="border p-2">{tool.nomenclature}</td>
@@ -447,15 +475,11 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             <section className="mb-12">
               <h2 className="font-bold text-lg mb-3">5. Notes</h2>
               <div className="ml-8 text-sm">
-                {report.notes.length > 0 ? (
-                  report.notes.map((n) => (
-                    <p key={n.slNo}>
-                      <strong>{n.slNo}.</strong> {n.text}
-                    </p>
-                  ))
-                ) : (
-                  <p>No notes added.</p>
-                )}
+                {notesArray.map((n) => (
+                  <p key={n.slNo}>
+                    <strong>{n.slNo}.</strong> {n.text}
+                  </p>
+                ))}
               </div>
             </section>
 

@@ -311,7 +311,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     {saving ? "Saving..." : "Save Report Header"}
                 </button>
                 <button
-                    onClick={() => navigate(`/admin/orders/view-service-report?serviceId=${serviceId}`)}
+                    onClick={() => navigate(`/admin/orders/view-service-report-dental-cone-beam-ct?serviceId=${serviceId}`)}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report
@@ -322,7 +322,6 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
                 {[
-
                     { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
                     { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
                     { title: "Total Filteration", component: <TotalFilteration /> },

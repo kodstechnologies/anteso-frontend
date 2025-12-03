@@ -124,6 +124,8 @@ import ViewServiceReport from '../components/Admin/Orders/ServiceReportGeneratio
 import GenericServiceTable from "../components/Admin/Orders/ServiceReportGeneration.tsx/GenerictServiceTyoeTable"
 
 import ViewServiceReportFixedRadioFluoro from "../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/FixedRadioFluro/ViewServiceReport"
+import ViewServiceReportDentalConeBeamCT from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/DentalConeBeamCT/ViewServiceReport';
+
 
 import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
@@ -769,7 +771,15 @@ const routes = [
         path: '/admin/orders/view-service-report-fixed-radio-flouro',
         element: (
             <AdminProtected>
-                <ViewServiceReportFixedRadioFluoro  />
+                <ViewServiceReportFixedRadioFluoro />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-dental-cone-beam-ct',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportDentalConeBeamCT />
             </AdminProtected>
         ),
     },

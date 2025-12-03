@@ -171,6 +171,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    // In RadioFluro.tsx - handleSaveHeader function
     const handleSaveHeader = async () => {
         setSaving(true);
         setSaveSuccess(false);
@@ -191,7 +192,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     certificate: t.certificate,
                     uncertainity: t.uncertainity,
                 })),
-                notes: [
+                notes: [  // Make sure this is included
                     { slNo: "5.1", text: "The Test Report relates only to the above item only." },
                     {
                         slNo: "5.2",
@@ -254,10 +255,10 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             onClick={() => handleTimerChoice(false)}
                             className="px-8 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition transform hover:scale-105"
                         >
-                            No Timer 
+                            No Timer
                         </button>
                     </div>
-                   
+
                 </div>
             </div>
         );
