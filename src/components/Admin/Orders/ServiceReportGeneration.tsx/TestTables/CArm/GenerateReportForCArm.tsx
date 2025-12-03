@@ -1,8 +1,8 @@
 // GenerateReport-InventionalRadiology.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Disclosure } from "@headlessui/react";          
-import { ChevronDownIcon } from "@heroicons/react/24/outline"; 
+import { Disclosure } from "@headlessui/react";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -19,7 +19,6 @@ import LowContrastResolution from "./LowContrastResolution";
 import HighContrastResolution from "./HighContrastResolution";
 import ExposureRateAtTableTop from "./ExposureRateAtTableTop";
 import TubeHousingLeakage from "./TubeHousingLeakage";
-
 
 export interface Standard {
   slNumber: string;
@@ -295,14 +294,14 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
 
         {[
           // { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
+          { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
           { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} /> },
           { title: "Consisitency Of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
-
           { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
           { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
           { title: "Exposure Rate At TableTop", component: <ExposureRateAtTableTop serviceId={serviceId} /> },
           { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
-          
+
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
             {({ open }) => (

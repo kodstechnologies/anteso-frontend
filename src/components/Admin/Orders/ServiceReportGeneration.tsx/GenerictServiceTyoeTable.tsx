@@ -47,7 +47,7 @@ const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   // 'Dental IOPA': DentalIOPAreport,
   'Dental (Intra Oral)': DentalReport,
   // 'O Arm': OArmReport,
-  // 'KV Imaging (OBI)': KVImagingReport,
+  // 'KV Imaging (OBI)': KVImagingReport,s
   // 'Lead Apron Test': LeadApronReport,
   // 'Thyroid Shield Test': ThyroidShieldReport,
   'Radiography and Fluoroscopy': RadioFluro,
