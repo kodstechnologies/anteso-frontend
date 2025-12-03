@@ -123,6 +123,8 @@ import GenerateReportCTScan from '../components/Admin/Orders/ServiceReportGenera
 import ViewServiceReport from '../components/Admin/Orders/ServiceReportGeneration.tsx/ViewServiceReport';
 import GenericServiceTable from "../components/Admin/Orders/ServiceReportGeneration.tsx/GenerictServiceTyoeTable"
 
+import ViewServiceReportFixedRadioFluoro from "../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/FixedRadioFluro/ViewServiceReport"
+
 import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
 const ContactUsCover = lazy(() => import('../pages/Pages/ContactUsCover'));
@@ -136,7 +138,7 @@ const About = lazy(() => import('../pages/About'));
 const Error = lazy(() => import('../components/Error'));
 
 const routes = [
-    { path: '/enquiry_form', element: <EnquriryForm />,  layout: 'blank' },
+    { path: '/enquiry_form', element: <EnquriryForm />, layout: 'blank' },
     { path: '/order_form', element: <OrderForm /> },
     // { path: '/quotation', element: <Quotation /> },
     // dashboard
@@ -606,7 +608,7 @@ const routes = [
         path: '/admin/enquiry',
         element: (
             // <AdminProtected>
-                <Enquiry />
+            <Enquiry />
             //  </AdminProtected>
         ),
     },
@@ -763,7 +765,14 @@ const routes = [
             </AdminProtected>
         ),
     },
-
+    {
+        path: '/admin/orders/view-service-report-fixed-radio-flouro',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportFixedRadioFluoro  />
+            </AdminProtected>
+        ),
+    },
     {
         path: '/admin/payments',
         element: (

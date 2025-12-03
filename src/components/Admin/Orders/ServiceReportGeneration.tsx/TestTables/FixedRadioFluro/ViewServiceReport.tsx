@@ -3,10 +3,10 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeader } from "../../../../../../api";
 import FixedRadioFlouroResultTable from "./FixedRadioFluoroResultTable";
-import logo from "../../../../assets/logo/logo-sm.png";
-import logoA from "../../../../assets/quotationImg/NABLlogo.png";
-import AntesoQRCode from "../../../../assets/quotationImg/qrcode.png";
-import Signature from "../../../../assets/quotationImg/signature.png";
+import logo from "../../../../../../assets/logo/logo-sm.png";
+import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
+import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
+import Signature from "../../../../../../assets/quotationImg/signature.png";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
@@ -51,19 +51,19 @@ interface ReportData {
   toolsUsed: Tool[];
   notes: Note[];
 
-  // Fixed Radio Fluoro populated sub-documents from report header
-  accuracyOfOperatingPotentialFixedRadioFluoro?: any | null;
-  OutputConsistencyForFixedRadioFluoro?: any | null;
-  LowContrastResolutionFixedRadioFlouro?: any | null;
-  HighContrastResolutionFixedRadioFluoro?: any | null;
-  ExposureRateTableTopFixedRadioFlouro?: any | null;
-  LinearityOfmAsLoadingFixedRadioFluoro?: any | null;
-  TubeHousingLeakageFixedRadioFlouro?: any | null;
-  AccuracyOfIrradiationTimeFixedRadioFluoro?: any | null;
-  CongruenceOfRadiationForRadioFluro?: any | null;
-  CentralBeamAlignmentForRadioFluoro?: any | null;
-  RadiationProtectionSurvey?: any | null;
+  accuracyOfOperatingPotentialFixedRadioFluoro?: any;
+  OutputConsistencyForFixedRadioFluoro?: any;
+  LowContrastResolutionFixedRadioFlouro?: any;
+  HighContrastResolutionFixedRadioFluoro?: any;
+  ExposureRateTableTopFixedRadioFlouro?: any;
+  LinearityOfmAsLoadingFixedRadioFluoro?: any;
+  TubeHousingLeakageFixedRadioFlouro?: any;
+  AccuracyOfIrradiationTimeFixedRadioFluoro?: any;
+
+  CongruenceOfRadiationForRadioFluro?: any;
+  CentralBeamAlignmentForRadioFluoro?: any;
 }
+
 
 const ViewServiceReportFixedRadioFluro: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -123,18 +123,17 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
     if (!report) return;
 
     setTestsLoading(true);
-
     setTestData({
-      accuracyOfOperatingPotential: report.accuracyOfOperatingPotentialFixedRadioFluoro || null,
-      totalFiltration: null, // (Total filtration test for Fixed RF is not wired via header yet)
-      outputConsistency: report.OutputConsistencyForFixedRadioFluoro || null,
-      lowContrastResolution: report.LowContrastResolutionFixedRadioFlouro || null,
-      highContrastResolution: report.HighContrastResolutionFixedRadioFluoro || null,
-      exposureRate: report.ExposureRateTableTopFixedRadioFlouro || null,
-      linearityOfmAsLoading: report.LinearityOfmAsLoadingFixedRadioFluoro || null,
-      tubeHousingLeakage: report.TubeHousingLeakageFixedRadioFlouro || null,
-      accuracyOfIrradiationTime: report.AccuracyOfIrradiationTimeFixedRadioFluoro || null,
+      accuracyOfOperatingPotential: report.accuracyOfOperatingPotentialFixedRadioFluoro,
+      outputConsistency: report.OutputConsistencyForFixedRadioFluoro,
+      lowContrastResolution: report.LowContrastResolutionFixedRadioFlouro,
+      highContrastResolution: report.HighContrastResolutionFixedRadioFluoro,
+      exposureRate: report.ExposureRateTableTopFixedRadioFlouro,
+      linearityOfmAsLoading: report.LinearityOfmAsLoadingFixedRadioFluoro,
+      tubeHousingLeakage: report.TubeHousingLeakageFixedRadioFlouro,
+      accuracyOfIrradiationTime: report.AccuracyOfIrradiationTimeFixedRadioFluoro,
     });
+
 
     setTestsLoading(false);
   }, [report]);
@@ -500,7 +499,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                 {testData.accuracyOfOperatingPotential && testData.accuracyOfOperatingPotential.table2 && (
                   <div className="mb-16 print:mb-12">
                     <h3 className="text-xl font-bold mb-4">1. Accuracy of Operating Potential (kVp)</h3>
-                    
+
                     {testData.accuracyOfOperatingPotential.table1 && testData.accuracyOfOperatingPotential.table1.length > 0 && (
                       <div className="mb-6 bg-gray-50 p-4 rounded border">
                         <p className="font-semibold mb-2">Test Conditions:</p>

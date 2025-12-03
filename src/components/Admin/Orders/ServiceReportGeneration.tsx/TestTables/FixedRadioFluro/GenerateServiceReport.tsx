@@ -400,7 +400,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     {saving ? "Saving..." : "Save Report Header"}
                 </button>
                 <button
-                    onClick={() => navigate(`/admin/orders/view-service-report?serviceId=${serviceId}`)}
+                    onClick={() => navigate(`/admin/orders/view-service-report-fixed-radio-flouro?serviceId=${serviceId}`)}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report

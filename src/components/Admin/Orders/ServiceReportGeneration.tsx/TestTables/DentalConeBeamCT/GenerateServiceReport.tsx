@@ -17,8 +17,8 @@ import LinearityOfmALoading from "./LinearityOfmALoading";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
 import RadiationLeakageLevel from "./RadiationLeakageLevel";
 import EquipmentSetting from "./EquipmentSetting";
-import MaximumRadiationLevel from "./MaximumRadiationLevel";
-
+import LinearityOfMasLoading from "./LinearityOfmAsLoadingStation"
+import DetailsOfRadiationProtection from "./DetailsOfRadiationProtectionSurvey";
 interface Standard {
     slNumber: string;
     nomenclature: string;
@@ -325,15 +325,15 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
 
                     { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
                     { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
-                    { title: "Total Filteration", component: <TotalFilteration  /> },
-                    { title: "Linearity Of mA/mAs Loading", component: <LinearityOfmALoading serviceId={serviceId} /> },
-                    { title: "Consistency Of Radiation Output", component: <ConsistencyOfRadiationOutput  serviceId={serviceId}/> },
-                    { title: "Radiation Leakage Level", component: <RadiationLeakageLevel/> },
-                    { title: "Equipment Setting", component: <EquipmentSetting /> },
-                    { title: "Maximum Radiation Level", component: <MaximumRadiationLevel /> },
+                    { title: "Total Filteration", component: <TotalFilteration /> },
+                    { title: "Linearity Of mA Loading", component: <LinearityOfmALoading serviceId={serviceId} /> },
+                    { title: "Linearity Of mAs Loading", component: <LinearityOfMasLoading serviceId={serviceId} /> },
 
-
-
+                    { title: "Consistency Of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} /> },
+                    { title: "Radiation Leakage Level", component: <RadiationLeakageLevel serviceId={serviceId} /> },
+                    // { title: "Equipment Setting", component: <EquipmentSetting /> },
+                    // { title: "Maximum Radiation Level", component: <MaximumRadiationLevel /> },
+                    { title: "Details Of Radiation Protection", component: <DetailsOfRadiationProtection serviceId={serviceId} /> },
 
                 ].map((item, i) => (
                     <Disclosure key={i} defaultOpen={i === 0}>

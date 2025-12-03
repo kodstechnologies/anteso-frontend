@@ -3397,6 +3397,7 @@ export const saveReportHeader = async (serviceId: any, payload: any) => {
 };
 // api/index.ts or wherever
 export const getReportHeader = async (serviceId: string) => {
+    console.log("i m inside-- getReportHeader")
     const token = Cookies.get('accessToken');
     const res = await api.get(`/service-report/fixed-radio-fluro/report-header/${serviceId}`, {
         headers: { Authorization: `Bearer ${token}` },
