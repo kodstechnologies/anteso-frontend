@@ -3,9 +3,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-    createTotalFilteration,
-    getTotalFilteration,
-    updateTotalFilterationforInventionalRadiology,
+    addTotalFiltrationForFixedRadioFluro,
+    getTotalFiltrationByTestIdForFixedRadioFluro,
+    getTotalFiltrationByServiceIdForFixedRadioFluro,
+    updateTotalFiltrationForFixedRadioFluro,
 } from "../../../../../../api"; 
 interface RowData {
     id: string;
@@ -15,13 +16,13 @@ interface RowData {
     remarks: "PASS" | "FAIL" | "-";
 }
 
-interface TotalFilterationForFixedRadioFluoroProps {
+interface TotalFilterationProps {
     serviceId: string;
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
 }
 
-const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadioFluoroProps> = ({
+const TotalFilteration: React.FC<TotalFilterationProps> = ({
     serviceId,
     testId: initialTestId = null,
     onTestSaved,
@@ -45,22 +46,44 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
 
     // Load existing test data
     useEffect(() => {
-        if (initialTestId) {
             const loadTest = async () => {
+            if (!serviceId) {
+                setIsLoading(false);
+                return;
+            }
+
                 setIsLoading(true);
                 try {
-                    const data = await getTotalFilteration(initialTestId);
+                let data = null;
+                
+                // Try loading by testId first if available
+                if (initialTestId) {
+                    const result = await getTotalFiltrationByTestIdForFixedRadioFluro(initialTestId);
+                    if (result?.data) {
+                        data = result.data;
+                    }
+                } else {
+                    // Try loading by serviceId
+                    const result = await getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId);
+                    if (result?.data) {
+                        data = result.data;
+                    }
+                }
+
                     if (data) {
+                    setTestId(data._id || null);
                         setMAStations(data.mAStations || ["50 mA", "100 mA"]);
+                    if (data.measurements && data.measurements.length > 0) {
                         setRows(
-                            data.measurements?.map((m: any) => ({
+                            data.measurements.map((m: any) => ({
                                 id: Date.now().toString() + Math.random(),
                                 appliedKvp: m.appliedKvp || "",
                                 measuredValues: m.measuredValues || [],
                                 averageKvp: m.averageKvp || "",
                                 remarks: m.remarks || "-",
-                            })) || rows
+                            }))
                         );
+                    }
                         setToleranceSign(data.tolerance?.sign || "±");
                         setToleranceValue(data.tolerance?.value || "2.0");
                         setTotalFiltration({
@@ -68,16 +91,20 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
                             required: data.totalFiltration?.required || "",
                         });
                         setIsSaved(true);
+                } else {
+                    setIsSaved(false);
                     }
-                } catch (err) {
+            } catch (err: any) {
+                if (err.response?.status !== 404) {
                     toast.error("Failed to load test data");
+                }
+                setIsSaved(false);
                 } finally {
                     setIsLoading(false);
                 }
             };
             loadTest();
-        }
-    }, [initialTestId]);
+    }, [serviceId, initialTestId]);
 
     // Save function
     const saveTest = async () => {
@@ -101,18 +128,37 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
         setIsSaving(true);
         try {
             let result;
-            if (testId) {
-                result = await updateTotalFilterationforInventionalRadiology(testId, payload);
-            } else {
-                result = await createTotalFilteration(serviceId, payload);
-                if (result.success && result.data?.testId) {
-                    setTestId(result.data.testId);
-                    onTestSaved?.(result.data.testId);
+            let currentTestId = testId;
+
+            // If no testId, try to get existing data by serviceId first
+            if (!currentTestId) {
+                try {
+                    const existing = await getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId);
+                    if (existing?.data?._id) {
+                        currentTestId = existing.data._id;
+                        setTestId(currentTestId);
+                    }
+                } catch (err) {
+                    // No existing data, will create new
                 }
             }
 
+            if (currentTestId) {
+                // Update existing
+                result = await updateTotalFiltrationForFixedRadioFluro(currentTestId, payload);
+                toast.success("Updated successfully");
+            } else {
+                // Create new
+                result = await addTotalFiltrationForFixedRadioFluro(serviceId, payload);
+                const newId = result?.data?._id || result?.data?.data?._id || result?._id;
+                if (newId) {
+                    setTestId(newId);
+                    onTestSaved?.(newId);
+                }
+                toast.success("Saved successfully");
+            }
+
             setIsSaved(true);
-            toast.success(testId ? "Updated successfully" : "Saved successfully");
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Save failed");
         } finally {
@@ -120,13 +166,6 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
         }
     };
 
-    // Auto-save on change (debounced)
-    useEffect(() => {
-        if (isSaved && testId) {
-            const timeout = setTimeout(saveTest, 1000);
-            return () => clearTimeout(timeout);
-        }
-    }, [mAStations, rows, toleranceSign, toleranceValue, totalFiltration]);
 
     // Your existing functions
     const addMAColumn = () => {
@@ -223,11 +262,11 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
             {/* Save/Edit Button */}
             <div className="flex justify-end">
                 <button
-                    onClick={saveTest}
-                    disabled={isSaving || isSaved}
+                    onClick={isSaved ? () => setIsSaved(false) : saveTest}
+                    disabled={isSaving}
                     className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
-                            ? "bg-gray-500 text-white hover:bg-gray-600"
-                            : "bg-green-600 text-white hover:bg-green-700"
+                            ? "bg-orange-600 text-white hover:bg-orange-700"
+                            : "bg-teal-600 text-white hover:bg-teal-700"
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     {isSaving ? (
@@ -243,7 +282,7 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
                     ) : (
                         <>
                             <Save className="w-5 h-5" />
-                            Save Test
+                            {testId ? "Update Test" : "Save Test"}
                         </>
                     )}
                 </button>
@@ -426,4 +465,4 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
     );
 };
 
-export default TotalFilterationForFicedRadioFluoro;
+export default TotalFilteration;

@@ -19,6 +19,8 @@ import LowContrastResolution from "./LowContrastResolution";
 import HighContrastResolution from "./HighContrastResolution";
 import ExposureRateAtTableTop from "./ExposureRateAtTableTop";
 import TubeHousingLeakage from "./TubeHousingLeakage";
+import LinearityOfMaLoading from "./LinearityOfMaLoadingStations";
+import LinearityOfMasLoading from "./LinearityOfMasLoadingStations";
 
 export interface Standard {
   slNumber: string;
@@ -79,7 +81,8 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
   const [tools, setTools] = useState<Standard[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [showTimerModal, setShowTimerModal] = useState(true);
+  const [hasTimer, setHasTimer] = useState<boolean | null>(null);
   useEffect(() => {
     if (!serviceId) return;
 
@@ -149,11 +152,40 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
       </div>
     );
   }
-
+  
+  const handleTimerChoice = (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+  };
   if (!details) {
     return <div className="max-w-6xl mx-auto p-8">No data received.</div>;
   }
-
+  if (showTimerModal && hasTimer === null) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105">
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">Timer Availability</h3>
+          <p className="text-gray-600 mb-8 text-center">
+            Does this C-Arm unit have a selectable <strong>Irradiation Time (Timer)</strong> setting?
+          </p>
+          <div className="flex gap-6 justify-center">
+            <button
+              onClick={() => handleTimerChoice(true)}
+              className="px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-xl hover:bg-green-700 transition transform hover:scale-105"
+            >
+              Yes, Has Timer
+            </button>
+            <button
+              onClick={() => handleTimerChoice(false)}
+              className="px-8 py-4 bg-red-600 text-white font-bold text-lg rounded-xl hover:bg-red-700 transition transform hover:scale-105"
+            >
+              No Timer
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
@@ -289,18 +321,42 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
         </button>
       </div>
 
+      <div className="mt-8 flex justify-end">
+        <button
+          type="button"
+          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700"
+          onClick={() => navigate("/admin/orders/view-service-report")}
+        >
+          View Generated Report
+        </button>
+      </div>
+
+      {/* QA Tests - Conditional Linearity */}
       <div className="mt-12">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          // { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
           { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
           { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} /> },
-          { title: "Consisitency Of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
+          { title: "Consistency Of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
           { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
           { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
-          { title: "Exposure Rate At TableTop", component: <ExposureRateAtTableTop serviceId={serviceId} /> },
+          { title: "Exposure Rate At Table Top", component: <ExposureRateAtTableTop serviceId={serviceId} /> },
           { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
+
+          // Conditional Linearity Test
+          ...(hasTimer === true
+            ? [{
+              title: "Linearity Of mA Loading",
+              component: <LinearityOfMaLoading serviceId={serviceId} />
+            }]
+            : hasTimer === false
+              ? [{
+                title: "Linearity Of mAs Loading",
+                component: <LinearityOfMasLoading serviceId={serviceId} />
+              }]
+              : []
+          ),
 
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>

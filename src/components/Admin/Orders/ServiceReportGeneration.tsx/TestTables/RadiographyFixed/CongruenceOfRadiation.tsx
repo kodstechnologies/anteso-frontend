@@ -4,6 +4,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addCongruenceForFixedRadioFluro,
+  getCongruenceByServiceIdForFixedRadioFluro,
+  updateCongruenceForFixedRadioFluro,
+} from '../../../../../../api';
 
 interface TechniqueRow {
   id: string;
@@ -88,7 +93,57 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
     setCongruenceRows(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
   };
 
-  // Save handler (mock - replace with real API)
+  // Load existing data
+  useEffect(() => {
+    const load = async () => {
+      if (!serviceId) return;
+      setIsLoading(true);
+      try {
+        const res = await getCongruenceByServiceIdForFixedRadioFluro(serviceId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          if (Array.isArray(data.techniqueFactors) && data.techniqueFactors.length > 0) {
+            setTechniqueRows(
+              data.techniqueFactors.map((t: any, i: number) => ({
+                id: String(i + 1),
+                fcd: String(t.fcd ?? ''),
+                kv: String(t.kv ?? ''),
+                mas: String(t.mas ?? ''),
+              }))
+            );
+          }
+          if (Array.isArray(data.congruenceMeasurements) && data.congruenceMeasurements.length > 0) {
+            setCongruenceRows(
+              data.congruenceMeasurements.map((r: any, i: number) => ({
+                id: i === 0 ? 'x' : i === 1 ? 'y' : String(i + 1),
+                dimension: r.dimension || '',
+                observedShift: String(r.observedShift ?? ''),
+                edgeShift: String(r.edgeShift ?? ''),
+                percentFED: String(r.percentFED ?? ''),
+                tolerance: String(r.tolerance ?? ''),
+                remark: (r.remark as any) || '',
+              }))
+            );
+          }
+          setIsSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load Congruence data');
+        }
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId, propTestId]);
+
+  // Save handler
   const handleSave = async () => {
     if (!serviceId) return toast.error("Service ID missing");
 
@@ -106,20 +161,23 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
 
     setIsSaving(true);
     try {
-      // Replace with your actual API call
-      // await createCongruenceTest(serviceId, payload);
-      // or update if testId exists
-
-      toast.success(testId ? "Updated successfully!" : "Saved successfully!");
+      let res;
+      if (testId) {
+        res = await updateCongruenceForFixedRadioFluro(testId, payload);
+        toast.success('Updated successfully!');
+      } else {
+        res = await addCongruenceForFixedRadioFluro(serviceId, payload);
+        const newId = res?.data?._id || res?.data?.data?._id;
+        if (newId) {
+          setTestId(newId);
+          onTestSaved?.(newId);
+        }
+        toast.success('Saved successfully!');
+      }
       setIsSaved(true);
       setIsEditing(false);
-      if (!testId) {
-        const newId = "mock-id-123";
-        setTestId(newId);
-        onTestSaved?.(newId);
-      }
-    } catch (err) {
-      toast.error("Save failed");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Save failed');
     } finally {
       setIsSaving(false);
     }
@@ -130,6 +188,15 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
   const buttonText = !isSaved ? "Save Test" : isEditing ? "Update Test" : "Edit Test";
   const ButtonIcon = !isSaved || isEditing ? Save : Edit3;
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
       {/* Header */}
@@ -139,10 +206,10 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving
-              ? "bg-gray-400 cursor-not-allowed"
-              : isViewOnly
-                ? "bg-orange-600 hover:bg-orange-700"
-                : "bg-teal-600 hover:bg-teal-700"
+            ? "bg-gray-400 cursor-not-allowed"
+            : isViewOnly
+              ? "bg-orange-600 hover:bg-orange-700"
+              : "bg-teal-600 hover:bg-teal-700"
             }`}
         >
           {isSaving ? (
@@ -296,10 +363,10 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span className={`px-5 py-2 rounded-full text-sm font-bold ${row.remark === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : row.remark === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-600'
+                      ? 'bg-green-100 text-green-800'
+                      : row.remark === 'Fail'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-600'
                       }`}>
                       {row.remark || '—'}
                     </span>

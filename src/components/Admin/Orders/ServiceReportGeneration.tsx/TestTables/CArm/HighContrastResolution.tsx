@@ -28,43 +28,18 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
 
   const [measuredLpPerMm, setMeasuredLpPerMm] = useState<string>('');
   const [recommendedStandard, setRecommendedStandard] = useState<string>('1.50');
-  const [tolerance, setTolerance] = useState<string>('');
 
-  // Parse tolerance (±10%, +5%, 10%, etc.)
-  const parseTolerance = (tol: string): { value: number; isPlusMinus: boolean } | null => {
-    if (!tol.trim()) return null;
-    const cleaned = tol.trim().replace('%', '').trim();
-    const match = cleaned.match(/^([±+-]?\d*\.?\d+)$/);
-    if (!match) return null;
-    const num = parseFloat(match[1]);
-    if (isNaN(num)) return null;
-    const isPlusMinus = cleaned.includes('±');
-    return { value: Math.abs(num), isPlusMinus };
-  };
-
-  // Auto compute PASS/FAIL
+  // PASS if Measured > Recommended Standard (higher resolution = better)
   const remark = useMemo(() => {
     const measured = parseFloat(measuredLpPerMm);
     const standard = parseFloat(recommendedStandard);
 
     if (isNaN(measured) || isNaN(standard)) return '';
-    if (!tolerance.trim()) return 'Tolerance required';
 
-    const parsed = parseTolerance(tolerance);
-    if (!parsed) return 'Invalid tolerance';
+    return measured > standard ? 'PASS' : 'FAIL';
+  }, [measuredLpPerMm, recommendedStandard]);
 
-    const { value: tolPercent, isPlusMinus } = parsed;
-    const tolAmount = (standard * tolPercent) / 100;
-
-    const lowerLimit = isPlusMinus ? standard - tolAmount : standard;
-    const upperLimit = standard + tolAmount;
-
-    const isPass = measured >= lowerLimit && (isPlusMinus ? measured <= upperLimit : true);
-
-    return isPass ? 'PASS' : 'FAIL';
-  }, [measuredLpPerMm, recommendedStandard, tolerance]);
-
-  // Load existing test
+  // Load existing test data
   useEffect(() => {
     const loadTest = async () => {
       setIsLoading(true);
@@ -78,10 +53,9 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
         }
 
         if (data) {
-          setTestId(data._id);
+          setTestId(data._id || data.testId);
           setMeasuredLpPerMm(data.measuredLpPerMm || '');
           setRecommendedStandard(data.recommendedStandard || '1.50');
-          setTolerance(data.tolerance || '');
           setIsSaved(true);
           setIsEditing(false);
         } else {
@@ -103,11 +77,11 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
   // Save / Update
   const handleSave = async () => {
     if (!measuredLpPerMm.trim()) {
-      toast.error("Please enter measured value");
+      toast.error("Please enter the measured resolution (lp/mm)");
       return;
     }
-    if (!tolerance.trim()) {
-      toast.error("Please enter tolerance");
+    if (!recommendedStandard.trim()) {
+      toast.error("Please enter the recommended standard");
       return;
     }
 
@@ -115,7 +89,6 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
     const payload = {
       measuredLpPerMm: measuredLpPerMm.trim(),
       recommendedStandard: recommendedStandard.trim(),
-      tolerance: tolerance.trim(),
     };
 
     try {
@@ -125,8 +98,10 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
       } else {
         const res = await createHighContrastResolutionForCArm(serviceId, payload);
         const newId = res.data?._id || res.data?.testId;
-        setTestId(newId);
-        onTestSaved?.(newId);
+        if (newId) {
+          setTestId(newId);
+          onTestSaved?.(newId);
+        }
         toast.success("Saved successfully!");
       }
       setIsSaved(true);
@@ -138,10 +113,7 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
     }
   };
 
-  const startEditing = () => {
-    setIsEditing(true);
-  };
-
+  const startEditing = () => setIsEditing(true);
   const isViewOnly = isSaved && !isEditing;
 
   const buttonText = !isSaved ? 'Save Test' : isEditing ? 'Update Test' : 'Edit Test';
@@ -158,6 +130,7 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-8">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">High Contrast Resolution</h2>
 
@@ -168,7 +141,7 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
               ? 'bg-gray-400 cursor-not-allowed'
               : isViewOnly
                 ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700'
+                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
             }`}
         >
           {isSaving ? (
@@ -185,6 +158,7 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
         </button>
       </div>
 
+      {/* Main Table */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -218,7 +192,7 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
                 />
               </td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                lp/mm (line pairs per millimeter)
+                lp/mm (higher is better)
               </td>
             </tr>
 
@@ -233,7 +207,7 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
                   value={recommendedStandard}
                   onChange={(e) => setRecommendedStandard(e.target.value)}
                   disabled={isViewOnly}
-                  className={`w-full text-center px-4 py-2 border rounded-md bg-blue-50 font-medium ${isViewOnly ? 'cursor-not-allowed' : 'focus:ring-2 focus:ring-blue-500'
+                  className={`w-full text-center px-4 py-2 border rounded-md bg-blue-50 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewOnly ? 'cursor-not-allowed' : ''
                     }`}
                   placeholder="1.50"
                 />
@@ -245,49 +219,43 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
           </tbody>
         </table>
 
-        {/* Tolerance Input */}
-        <div className="px-6 py-4 bg-gray-50 border-t">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-gray-700">Tolerance:</span>
-              <input
-                type="text"
-                value={tolerance}
-                onChange={(e) => setTolerance(e.target.value)}
-                disabled={isViewOnly}
-                className={`w-48 px-4 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewOnly ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
-                placeholder="e.g. ±10%, +5%, 10%"
-              />
-            </div>
-
-            {/* Final Result */}
-            <div className="flex items-center gap-4">
-              <span className="text-lg font-semibold text-gray-700">Result:</span>
+        {/* Result Section */}
+        <div className="px-6 py-8 bg-gray-50 border-t">
+          <div className="text-center space-y-6">
+            <div className="flex items-center">
+              <span className="text-xl font-bold text-gray-700 mb-4">Result</span>
               <span
-                className={`inline-flex px-6 py-3 text-xl font-bold rounded-full ${remark === 'PASS'
-                    ? 'bg-green-100 text-green-800'
+                className={`inline-flex px-16 py-6 text-md font-extrabold rounded-full shadow-xl border-4 ${remark === 'PASS'
+                    ? 'bg-green-100 text-green-800 border-green-400'
                     : remark === 'FAIL'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-gray-100 text-gray-600'
+                      ? 'bg-red-100 text-red-800 border-red-400'
+                      : 'bg-gray-100 text-gray-600 border-gray-300'
                   }`}
               >
                 {remark || '—'}
               </span>
             </div>
+
+            {/* Acceptance Criteria */}
+            <div className="bg-blue-50 border border-blue-300 rounded-lg p-5 max-w-2xl mx-auto">
+              <p className="text-lg font-semibold text-blue-900">
+                Acceptance Criteria:
+              </p>
+              <p className="mt-2 text-2xl font-bold text-blue-800">
+                Measured Resolution <span className="text-teal-600">&gt;</span> Recommended Standard
+              </p>
+              {remark && (
+                <p className="mt-4 text-xl">
+                  {measuredLpPerMm} lp/mm {' > '} {recommendedStandard} lp/mm →{' '}
+                  <span className={remark === 'PASS' ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+                    {remark}
+                  </span>
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Optional: Show computed limits */}
-      {remark && remark !== 'Tolerance required' && remark !== 'Invalid tolerance' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-          <strong>Acceptance Range:</strong>{' '}
-          {parseTolerance(tolerance)?.isPlusMinus
-            ? `${(parseFloat(recommendedStandard) - (parseFloat(recommendedStandard) * parseTolerance(tolerance)!.value) / 100).toFixed(3)} – ${(parseFloat(recommendedStandard) + (parseFloat(recommendedStandard) * parseTolerance(tolerance)!.value) / 100).toFixed(3)} lp/mm`
-            : `≥ ${recommendedStandard} lp/mm`}
-        </div>
-      )}
     </div>
   );
 };

@@ -304,7 +304,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
-                Generate CT-Scan QA Test Report
+                Generate Dental Cone Beam CT QA Test Report
             </h1>
 
             {/* Customer Info */}

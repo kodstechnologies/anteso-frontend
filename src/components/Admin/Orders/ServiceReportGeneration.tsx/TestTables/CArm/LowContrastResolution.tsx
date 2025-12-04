@@ -28,41 +28,16 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
 
   const [smallestHoleSize, setSmallestHoleSize] = useState<string>('');
   const [recommendedStandard, setRecommendedStandard] = useState<string>('3.0');
-  const [tolerance, setTolerance] = useState<string>('');
 
-  // Parse tolerance (±5%, +10%, 5%, etc.)
-  const parseTolerance = (tol: string): { value: number; isPlusMinus: boolean } | null => {
-    if (!tol.trim()) return null;
-    const cleaned = tol.trim().replace('%', '').trim();
-    const match = cleaned.match(/^([±+-]?\d*\.?\d+)$/);
-    if (!match) return null;
-    const num = parseFloat(match[1]);
-    if (isNaN(num)) return null;
-    const isPlusMinus = cleaned.includes('±');
-    return { value: Math.abs(num), isPlusMinus };
-  };
-
-  // Auto compute PASS/FAIL — smaller hole = better
+  // Simple PASS/FAIL: smaller hole = better
   const remark = useMemo(() => {
     const measured = parseFloat(smallestHoleSize);
     const standard = parseFloat(recommendedStandard);
 
     if (isNaN(measured) || isNaN(standard)) return '';
-    if (!tolerance.trim()) return 'Tolerance required';
 
-    const parsed = parseTolerance(tolerance);
-    if (!parsed) return 'Invalid tolerance';
-
-    const { value: tolPercent, isPlusMinus } = parsed;
-    const tolAmount = (standard * tolPercent) / 100;
-
-    const upperLimit = standard + tolAmount;           // Acceptable upper bound (worse)
-    const lowerLimit = isPlusMinus ? standard - tolAmount : 0;
-
-    const isPass = measured <= upperLimit && measured >= lowerLimit;
-
-    return isPass ? 'PASS' : 'FAIL';
-  }, [smallestHoleSize, recommendedStandard, tolerance]);
+    return measured < standard ? 'PASS' : 'FAIL';
+  }, [smallestHoleSize, recommendedStandard]);
 
   // Load existing test
   useEffect(() => {
@@ -81,17 +56,16 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
           setTestId(data._id);
           setSmallestHoleSize(data.smallestHoleSize || '');
           setRecommendedStandard(data.recommendedStandard || '3.0');
-          setTolerance(data.tolerance || '');
           setIsSaved(true);
-          setIsEditing(false); // Start in view mode when data exists
+          setIsEditing(false);
         } else {
           setIsSaved(false);
-          setIsEditing(true); // Start in edit mode when no data exists
+          setIsEditing(true);
         }
       } catch (err) {
         console.error("Load failed:", err);
         setIsSaved(false);
-        setIsEditing(true); // Start in edit mode on error
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
@@ -103,11 +77,12 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
   // Save / Update
   const handleSave = async () => {
     if (!smallestHoleSize.trim()) {
-      toast.error("Please enter smallest hole size");
+      toast.error("Please enter the smallest hole size");
       return;
     }
-    if (!tolerance.trim()) {
-      toast.error("Please enter tolerance");
+
+    if (!recommendedStandard.trim()) {
+      toast.error("Please enter the recommended standard");
       return;
     }
 
@@ -115,7 +90,6 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
     const payload = {
       smallestHoleSize: smallestHoleSize.trim(),
       recommendedStandard: recommendedStandard.trim(),
-      tolerance: tolerance.trim(),
     };
 
     try {
@@ -130,7 +104,7 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
         toast.success("Saved successfully!");
       }
       setIsSaved(true);
-      setIsEditing(false); // Switch to view mode after saving
+      setIsEditing(false);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Save failed");
     } finally {
@@ -138,25 +112,16 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
     }
   };
 
-  const startEditing = () => {
-    setIsEditing(true);
-  };
-
+  const startEditing = () => setIsEditing(true);
   const isViewOnly = isSaved && !isEditing;
 
-  // Determine button text and icon based on current state
   const getButtonConfig = () => {
-    if (!isSaved) {
-      return { text: 'Save Test', icon: Save };
-    } else if (isEditing) {
-      return { text: 'Update Test', icon: Save };
-    } else {
-      return { text: 'Edit Test', icon: Edit3 };
-    }
+    if (!isSaved) return { text: 'Save Test', icon: Save };
+    if (isEditing) return { text: 'Update Test', icon: Save };
+    return { text: 'Edit Test', icon: Edit3 };
   };
 
-  const buttonConfig = getButtonConfig();
-  const ButtonIcon = buttonConfig.icon;
+  const { text: buttonText, icon: ButtonIcon } = getButtonConfig();
 
   if (isLoading) {
     return (
@@ -190,7 +155,7 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonConfig.text}
+              {buttonText}
             </>
           )}
         </button>
@@ -229,7 +194,7 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
                 />
               </td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                mm (smaller = better)
+                mm (smaller is better)
               </td>
             </tr>
 
@@ -244,7 +209,7 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
                   value={recommendedStandard}
                   onChange={(e) => setRecommendedStandard(e.target.value)}
                   disabled={isViewOnly}
-                  className={`w-full text-center px-4 py-2 border rounded-md bg-blue-50 font-medium ${isViewOnly ? 'cursor-not-allowed' : 'focus:ring-2 focus:ring-blue-500'
+                  className={`w-full text-center px-4 py-2 border rounded-md bg-blue-50 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewOnly ? 'cursor-not-allowed' : ''
                     }`}
                   placeholder="3.0"
                 />
@@ -256,58 +221,38 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
           </tbody>
         </table>
 
-        {/* Tolerance & Result */}
-        <div className="px-6 py-4 bg-gray-50 border-t">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-gray-700">Tolerance:</span>
-              <input
-                type="text"
-                value={tolerance}
-                onChange={(e) => setTolerance(e.target.value)}
-                disabled={isViewOnly}
-                className={`w-48 px-4 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewOnly ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
-                placeholder="e.g. ±5%, +10%"
-              />
-            </div>
+        {/* Result */}
+        <div className="px-6 py-6 bg-gray-50 border-t">
+          <div className="flex items-center justify-center gap-8">
+            <span className="text-xl font-bold text-gray-700">Result:</span>
+            <span
+              className={`inline-flex px-12 py-5 text-md font-extrabold rounded-full shadow-lg ${remark === 'PASS'
+                  ? 'bg-green-100 text-green-800 border-4 border-green-300'
+                  : remark === 'FAIL'
+                    ? 'bg-red-100 text-red-800 border-4 border-red-300'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+            >
+              {remark || '—'}
+            </span>
+          </div>
 
-            {/* Final Result */}
-            <div className="flex items-center gap-4">
-              <span className="text-lg font-semibold text-gray-700">Result:</span>
-              <span
-                className={`inline-flex px-6 py-3 text-xl font-bold rounded-full ${remark === 'PASS'
-                    ? 'bg-green-100 text-green-800'
-                    : remark === 'FAIL'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
-              >
-                {remark || '—'}
-              </span>
-            </div>
+          {/* Clear Criteria */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              <strong>Acceptance Criteria:</strong> Measured value must be <strong>less than</strong> Recommended Standard
+            </p>
+            {remark && (
+              <p className="mt-3 text-lg font-semibold">
+                {parseFloat(smallestHoleSize)} mm {'<'} {recommendedStandard} mm →{' '}
+                <span className={remark === 'PASS' ? 'text-green-600' : 'text-red-600'}>
+                  {remark}
+                </span>
+              </p>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Optional: Show acceptance range */}
-      {remark && !remark.includes('required') && !remark.includes('Invalid') && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-          <strong>Acceptance Range:</strong>{' '}
-          {parseTolerance(tolerance)?.isPlusMinus
-            ? `${(
-              parseFloat(recommendedStandard) -
-              (parseFloat(recommendedStandard) * parseTolerance(tolerance)!.value) / 100
-            ).toFixed(2)} – ${(
-              parseFloat(recommendedStandard) +
-              (parseFloat(recommendedStandard) * parseTolerance(tolerance)!.value) / 100
-            ).toFixed(2)} mm`
-            : `≤ ${(
-              parseFloat(recommendedStandard) +
-              (parseFloat(recommendedStandard) * parseTolerance(tolerance)!.value) / 100
-            ).toFixed(2)} mm`}
-        </div>
-      )}
     </div>
   );
 };

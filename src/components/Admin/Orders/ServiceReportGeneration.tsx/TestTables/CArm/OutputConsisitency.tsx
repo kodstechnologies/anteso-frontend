@@ -9,19 +9,20 @@ import {
   updateOutputConsistencyForCArm,
 } from "../../../../../../api";
 
-interface Table1Row {
+interface Parameters {
   id: string;
-  mas: string;
-  sliceThickness: string;
+  ffd: string;
   time: string;
 }
 
 interface OutputRow {
   id: string;
   kvp: string;
+  ma: string;
   outputs: string[];
   mean: string;
   cov: string;
+  remark?: 'Pass' | 'Fail' | '';
 }
 
 interface Props {
@@ -36,26 +37,25 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
   onTestSaved,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
-  const [isSaved, setIsSaved] = useState(!!propTestId); // true = view mode (show "Edit")
+  const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Table 1 - Fixed parameters
-  const [parameters, setParameters] = useState<Table1Row>({
+  const [parameters, setParameters] = useState<Parameters>({
     id: '1',
-    mas: '',
-    sliceThickness: '',
-    time: '',
+    ffd: '100',
+    time: '1.0',
   });
 
-  // Table 2 - Dynamic rows
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
     {
       id: '1',
-      kvp: '',
+      kvp: '80',
+      ma: '100',
       outputs: ['', '', '', '', ''],
       mean: '',
       cov: '',
+      remark: '',
     },
   ]);
 
@@ -63,53 +63,47 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
     'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
   ]);
 
-  const [tolerance, setTolerance] = useState<string>('2.0');
+  const [tolerance, setTolerance] = useState<string>('0.02'); // Decimal: 2% = 0.02
 
-  // Auto-calculate Mean & COV
+  // Auto-calculate Mean, COV (decimal), and Remark per row
   useEffect(() => {
-    setOutputRows((rows) =>
-      rows.map((row) => {
+    const tol = parseFloat(tolerance) || 0.02;
+
+    setOutputRows(rows =>
+      rows.map(row => {
         const nums = row.outputs
-          .filter((v) => v.trim() !== '')
-          .map((v) => parseFloat(v))
-          .filter((n) => !isNaN(n));
+          .filter(v => v.trim() !== '')
+          .map(v => parseFloat(v))
+          .filter(n => !isNaN(n));
 
         if (nums.length === 0) {
-          return { ...row, mean: '', cov: '' };
+          return { ...row, mean: '', cov: '', remark: '' };
         }
 
         const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-
         let cov = 0;
         if (nums.length > 1) {
-          const variance =
-            nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-            (nums.length - 1);
+          const variance = nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (nums.length - 1);
           cov = Math.sqrt(variance) / mean;
         }
+
+        const remark = cov <= tol ? 'Pass' : 'Fail';
 
         return {
           ...row,
           mean: mean.toFixed(3),
-          cov: cov.toFixed(4),
+          cov: cov.toFixed(3),
+          remark,
         };
       })
     );
-  }, [outputRows.map((r) => r.outputs.join(',')).join('|')]);
+  }, [outputRows.map(r => r.outputs.join(',')).join('|'), tolerance]);
 
-  // Final Remark
-  const remark = useMemo(() => {
-    if (!tolerance || !isSaved) return '';
-    const tol = parseFloat(tolerance);
-    if (isNaN(tol)) return '';
-
-    const allPass = outputRows.every((row) => {
-      if (!row.cov) return true;
-      return parseFloat(row.cov) * 100 <= tol;
-    });
-
-    return allPass ? 'Pass' : 'Fail';
-  }, [outputRows, tolerance, isSaved]);
+  // Final Result (overall)
+  const finalRemark = useMemo(() => {
+    if (!isSaved || outputRows.length === 0) return '';
+    return outputRows.every(r => r.remark === 'Pass' || r.remark === '') ? 'Pass' : 'Fail';
+  }, [outputRows, isSaved]);
 
   // Load test data
   useEffect(() => {
@@ -117,7 +111,6 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
       setIsLoading(true);
       try {
         let data = null;
-
         if (propTestId) {
           data = await getOutputConsistencyForCArm(propTestId);
         } else {
@@ -128,56 +121,53 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
           setTestId(data._id || data.testId);
           setParameters({
             id: '1',
-            mas: data.parameters?.mas || '',
-            sliceThickness: data.parameters?.sliceThickness || '',
-            time: data.parameters?.time || '',
+            ffd: data.parameters?.ffd || '100',
+            time: data.parameters?.time || '1.0',
           });
           setOutputRows(
             data.outputRows?.map((row: any) => ({
               id: Date.now().toString() + Math.random(),
               kvp: row.kvp || '',
+              ma: row.ma || '100',
               outputs: row.outputs || Array(headers.length).fill(''),
               mean: row.mean || '',
               cov: row.cov || '',
+              remark: row.remark || '',
             })) || outputRows
           );
           setHeaders(data.measurementHeaders || headers);
-          setTolerance(data.tolerance || '2.0');
+          setTolerance(data.tolerance || '0.02');
           setIsSaved(true);
         } else {
           setIsSaved(false);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Load failed:", err);
         setIsSaved(false);
       } finally {
         setIsLoading(false);
       }
     };
-
     loadTest();
   }, [propTestId, serviceId]);
 
   // Save / Update
   const handleSave = async () => {
-    if (!serviceId) {
-      toast.error('Service ID is missing');
-      return;
-    }
-
+    if (!serviceId) return toast.error('Service ID is missing');
     setIsSaving(true);
 
     const payload = {
       parameters: {
-        mas: parameters.mas.trim(),
-        sliceThickness: parameters.sliceThickness.trim(),
+        ffd: parameters.ffd.trim(),
         time: parameters.time.trim(),
       },
-      outputRows: outputRows.map((row) => ({
+      outputRows: outputRows.map(row => ({
         kvp: row.kvp.trim(),
+        ma: row.ma.trim(),
         outputs: row.outputs.map(v => v.trim()),
         mean: row.mean || "",
         cov: row.cov || "",
+        remark: row.remark || "",
       })),
       measurementHeaders: headers,
       tolerance: tolerance.trim(),
@@ -205,73 +195,55 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
     }
   };
 
-  const startEditing = () => {
-    setIsSaved(false);
-    // toast.info("You can now edit the test");
-  };
-
+  const startEditing = () => setIsSaved(false);
   const isViewMode = isSaved;
 
   // Dynamic handlers
   const addColumn = () => {
     if (isViewMode) return;
-    const newHeader = `Meas ${headers.length + 1}`;
-    setHeaders((prev) => [...prev, newHeader]);
-    setOutputRows((rows) =>
-      rows.map((r) => ({ ...r, outputs: [...r.outputs, ''] }))
-    );
+    setHeaders(prev => [...prev, `Meas ${prev.length + 1}`]);
+    setOutputRows(rows => rows.map(r => ({ ...r, outputs: [...r.outputs, ''] })));
   };
 
   const removeColumn = (idx: number) => {
     if (isViewMode || headers.length <= 1) return;
-    setHeaders((prev) => prev.filter((_, i) => i !== idx));
-    setOutputRows((rows) =>
-      rows.map((r) => ({
-        ...r,
-        outputs: r.outputs.filter((_, i) => i !== idx),
-      }))
-    );
+    setHeaders(prev => prev.filter((_, i) => i !== idx));
+    setOutputRows(rows => rows.map(r => ({ ...r, outputs: r.outputs.filter((_, i) => i !== idx) })));
   };
 
   const updateHeader = (idx: number, value: string) => {
     if (isViewMode) return;
-    setHeaders((prev) => {
-      const copy = [...prev];
-      copy[idx] = value || `Meas ${idx + 1}`;
-      return copy;
-    });
+    setHeaders(prev => prev.map((h, i) => i === idx ? (value || `Meas ${idx + 1}`) : h));
   };
 
   const addRow = () => {
     if (isViewMode) return;
-    setOutputRows((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        kvp: '',
-        outputs: Array(headers.length).fill(''),
-        mean: '',
-        cov: '',
-      },
-    ]);
+    setOutputRows(prev => [...prev, {
+      id: Date.now().toString(),
+      kvp: '',
+      ma: '100',
+      outputs: Array(headers.length).fill(''),
+      mean: '',
+      cov: '',
+      remark: '',
+    }]);
   };
 
   const removeRow = (id: string) => {
     if (isViewMode || outputRows.length <= 1) return;
-    setOutputRows((prev) => prev.filter((r) => r.id !== id));
+    setOutputRows(prev => prev.filter(r => r.id !== id));
   };
 
-  const updateOutputCell = (rowId: string, field: 'kvp' | number, value: string) => {
+  const updateOutputCell = (rowId: string, field: 'kvp' | 'ma' | number, value: string) => {
     if (isViewMode) return;
-    setOutputRows((prev) =>
-      prev.map((row) => {
-        if (row.id !== rowId) return row;
-        if (field === 'kvp') return { ...row, kvp: value };
-        const newOutputs = [...row.outputs];
-        newOutputs[field] = value;
-        return { ...row, outputs: newOutputs };
-      })
-    );
+    setOutputRows(prev => prev.map(row => {
+      if (row.id !== rowId) return row;
+      if (field === 'kvp') return { ...row, kvp: value };
+      if (field === 'ma') return { ...row, ma: value };
+      const outputs = [...row.outputs];
+      outputs[field] = value;
+      return { ...row, outputs };
+    }));
   };
 
   if (isLoading) {
@@ -287,32 +259,25 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
     <div className="p-6 max-w-full mx-auto space-y-10">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Output Consistency</h2>
-
         <button
           onClick={isViewMode ? startEditing : handleSave}
           disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving ? 'bg-gray-400 cursor-not-allowed' :
+              isViewMode ? 'bg-orange-600 hover:bg-orange-700' :
+                'bg-teal-600 hover:bg-teal-700'
             }`}
         >
           {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
+            <>Saving...</>
           ) : (
-            <>
-              {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            <>{isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
             </>
           )}
         </button>
       </div>
 
-      {/* Table 1: Test Parameters */}
+      {/* Table 1: FFD & Time */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-teal-50 border-b">
           Test Parameters
@@ -320,8 +285,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">mAs</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Slice Thickness (mm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">FFD (cm)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Time (s)</th>
             </tr>
           </thead>
@@ -330,21 +294,11 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
               <td className="px-6 py-4">
                 <input
                   type="text"
-                  value={parameters.mas}
-                  onChange={(e) => setParameters(p => ({ ...p, mas: e.target.value }))}
+                  value={parameters.ffd}
+                  onChange={(e) => setParameters(p => ({ ...p, ffd: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                  className={`w-full px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="100"
-                />
-              </td>
-              <td className="px-6 py-4">
-                <input
-                  type="text"
-                  value={parameters.sliceThickness}
-                  onChange={(e) => setParameters(p => ({ ...p, sliceThickness: e.target.value }))}
-                  disabled={isViewMode}
-                  className={`w-full px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-                  placeholder="5"
                 />
               </td>
               <td className="px-6 py-4">
@@ -353,7 +307,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                   value={parameters.time}
                   onChange={(e) => setParameters(p => ({ ...p, time: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                  className={`w-full px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="1.0"
                 />
               </td>
@@ -362,7 +316,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         </table>
       </div>
 
-      {/* Table 2: Radiation Output */}
+      {/* Table 2: Output Consistency with Remark */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-teal-50 border-b">
           Radiation Output Consistency
@@ -371,13 +325,9 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                  kVp
-                </th>
-                <th
-                  colSpan={headers.length}
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r relative"
-                >
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">kVp</th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mA</th>
+                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r relative">
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
@@ -387,12 +337,9 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                  Mean (X̄)
-                </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                  COV (%)
-                </th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">Mean (X̄)</th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">COV</th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">Remark</th>
                 <th rowSpan={2} className="w-10" />
               </tr>
               <tr>
@@ -426,7 +373,17 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                       onChange={(e) => updateOutputCell(row.id, 'kvp', e.target.value)}
                       disabled={isViewMode}
                       className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                      placeholder="120"
+                      placeholder="80"
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-r">
+                    <input
+                      type="text"
+                      value={row.ma}
+                      onChange={(e) => updateOutputCell(row.id, 'ma', e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      placeholder="100"
                     />
                   </td>
                   {row.outputs.map((val, idx) => (
@@ -442,10 +399,18 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                     </td>
                   ))}
                   <td className="px-4 py-2 border-r text-center font-medium">
-                    {row.mean ? parseFloat(row.mean).toFixed(3) : '-'}
+                    {row.mean || '-'}
                   </td>
                   <td className="px-4 py-2 border-r text-center font-medium">
-                    {row.cov ? (parseFloat(row.cov) * 100).toFixed(2) + '%' : '-'}
+                    {row.cov || '-'}
+                  </td>
+                  <td className="px-4 py-2 border-r text-center">
+                    <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full ${row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
+                        row.remark === 'Fail' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-500'
+                      }`}>
+                      {row.remark || '—'}
+                    </span>
                   </td>
                   <td className="px-2 py-2 text-center">
                     {outputRows.length > 1 && !isViewMode && (
@@ -462,10 +427,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
 
         <div className="px-6 py-3 bg-gray-50 border-t">
           {!isViewMode && (
-            <button
-              onClick={addRow}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
+            <button onClick={addRow} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
               <Plus className="w-4 h-4" />
               Add Row
             </button>
@@ -473,10 +435,10 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Tolerance & Final Remark */}
+      {/* Tolerance & Final Result */}
       <div className="bg-white shadow-md rounded-lg p-6 max-w-md">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tolerance (COV ≤)
+          Tolerance (COV Less than or equal to)
         </label>
         <div className="flex items-center gap-3 mb-4">
           <span className="text-sm text-gray-600">Less than or equal to</span>
@@ -486,22 +448,17 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
             onChange={(e) => setTolerance(e.target.value)}
             disabled={isViewMode}
             className={`w-32 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-            placeholder="2.0"
+            placeholder="0.02"
           />
-          <span className="text-sm text-gray-600">%</span>
         </div>
 
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-gray-700">Final Result:</span>
-          <span
-            className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${remark === 'Pass'
-                ? 'bg-green-100 text-green-800'
-                : remark === 'Fail'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-gray-100 text-gray-500'
-              }`}
-          >
-            {remark || '—'}
+          <span className={`inline-flex px-6 py-3 text-lg font-bold rounded-full ${finalRemark === 'Pass' ? 'bg-green-100 text-green-800' :
+              finalRemark === 'Fail' ? 'bg-red-100 text-red-800' :
+                'bg-gray-100 text-gray-500'
+            }`}>
+            {finalRemark || '—'}
           </span>
         </div>
       </div>

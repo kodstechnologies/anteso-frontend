@@ -1,5 +1,5 @@
 // components/TestTables/LinearityOfMaLoading.tsx
-'use client';
+ 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
@@ -221,23 +221,23 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   // === Save Handler (connected to Fixed Radio Fluoro API) ===
   const handleSave = async () => {
     console.log('handleSave called', { isFormValid, serviceId, testId, table1Row, table2Rows: table2Rows.length });
-
+    
     if (!serviceId) {
       toast.error('Service ID is missing');
       return;
     }
-
+    
     if (!isFormValid) {
       toast.error('Please fill all required fields');
-      console.log('Form validation failed:', {
-        fcd: table1Row.fcd,
-        kv: table1Row.kv,
+      console.log('Form validation failed:', { 
+        fcd: table1Row.fcd, 
+        kv: table1Row.kv, 
         time: table1Row.time,
         table2Rows: table2Rows.map(r => ({ ma: r.ma, hasOutputs: r.measuredOutputs.some(v => v.trim()) }))
       });
       return;
     }
-
+    
     setIsSaving(true);
     try {
       console.log('Starting save...', { serviceId, testId });
@@ -260,7 +260,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         measHeaders,
         tolerance,
       };
-
+      
       let result;
       let currentTestId = testId;
 
@@ -278,7 +278,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
 
       console.log('Payload prepared:', payload);
-
+      
       if (currentTestId) {
         // Update existing
         console.log('Updating with testId:', currentTestId);
