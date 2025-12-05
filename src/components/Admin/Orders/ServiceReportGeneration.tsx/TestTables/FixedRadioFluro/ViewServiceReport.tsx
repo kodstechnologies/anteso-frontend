@@ -19,8 +19,6 @@ interface Tool {
   range: string;
   calibrationCertificateNo: string;
   calibrationValidTill: string;
-  certificate?: string;
-  uncertainity?: string;
 }
 
 interface Note {
@@ -36,7 +34,6 @@ interface ReportData {
   testReportNumber: string;
   issueDate: string;
   nomenclature: string;
-  category?: string;
   make: string;
   model: string;
   slNumber: string;
@@ -48,34 +45,27 @@ interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
-  toolsUsed?: Tool[]; // Make optional
-  notes?: Note[]; // Make optional
+  toolsUsed?: Tool[];
+  notes?: Note[];
 
+  // Test documents
   accuracyOfOperatingPotentialFixedRadioFluoro?: any;
-  OutputConsistencyForFixedRadioFluoro?: any;
+  OutputConsistencyForFixedRadioFlouro?: any;
   LowContrastResolutionFixedRadioFlouro?: any;
   HighContrastResolutionFixedRadioFluoro?: any;
   ExposureRateTableTopFixedRadioFlouro?: any;
   LinearityOfmAsLoadingFixedRadioFluoro?: any;
   TubeHousingLeakageFixedRadioFlouro?: any;
   AccuracyOfIrradiationTimeFixedRadioFluoro?: any;
-
   CongruenceOfRadiationForRadioFluro?: any;
   CentralBeamAlignmentForRadioFluoro?: any;
 }
 
-// Default notes to use if none are provided
 const defaultNotes: Note[] = [
   { slNo: "5.1", text: "The Test Report relates only to the above item only." },
-  {
-    slNo: "5.2",
-    text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
-  },
+  { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
   { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
-  {
-    slNo: "5.4",
-    text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
-  },
+  { slNo: "5.4", text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats." },
   { slNo: "5.5", text: "Any error in this Report should be brought to our knowledge within 30 days from the date of this report." },
   { slNo: "5.6", text: "Results reported are valid at the time of and under the stated conditions of measurements." },
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
@@ -88,19 +78,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
-
-  const [testsLoading, setTestsLoading] = useState(false);
-  const [testData, setTestData] = useState<any>({
-    accuracyOfOperatingPotential: null,
-    totalFiltration: null,
-    outputConsistency: null,
-    lowContrastResolution: null,
-    highContrastResolution: null,
-    exposureRate: null,
-    linearityOfmAsLoading: null,
-    tubeHousingLeakage: null,
-    accuracyOfIrradiationTime: null,
-  });
+  const [testData, setTestData] = useState<any>({});
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -113,15 +91,27 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
       try {
         setLoading(true);
         const response = await getReportHeader(serviceId);
+
         if (response.exists && response.data) {
-          // Ensure arrays exist before setting state
           const data = response.data;
-          const processedData: ReportData = {
+          setReport({
             ...data,
             toolsUsed: data.toolsUsed || [],
             notes: data.notes || defaultNotes,
-          };
-          setReport(processedData);
+          });
+
+          setTestData({
+            accuracyOfOperatingPotential: data.accuracyOfOperatingPotentialFixedRadioFluoro || null,
+            outputConsistency: data.OutputConsistencyForFixedRadioFlouro || null,
+            lowContrastResolution: data.LowContrastResolutionFixedRadioFlouro || null,
+            highContrastResolution: data.HighContrastResolutionFixedRadioFluoro || null,
+            exposureRate: data.ExposureRateTableTopFixedRadioFlouro || null,
+            linearityOfmAsLoading: data.LinearityOfmAsLoadingFixedRadioFluoro || null,
+            tubeHousingLeakage: data.TubeHousingLeakageFixedRadioFlouro || null,
+            accuracyOfIrradiationTime: data.AccuracyOfIrradiationTimeFixedRadioFluoro || null,
+            congruenceOfRadiation: data.CongruenceOfRadiationForRadioFluro || null,
+            centralBeamAlignment: data.CentralBeamAlignmentForRadioFluoro || null,
+          });
         } else {
           setNotFound(true);
         }
@@ -136,29 +126,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
     fetchReport();
   }, [serviceId]);
 
-  // For Fixed Radio Fluoro, test data comes directly populated in the header
-  useEffect(() => {
-    if (!report) return;
-
-    setTestsLoading(true);
-    setTestData({
-      accuracyOfOperatingPotential: report.accuracyOfOperatingPotentialFixedRadioFluoro,
-      outputConsistency: report.OutputConsistencyForFixedRadioFluoro,
-      lowContrastResolution: report.LowContrastResolutionFixedRadioFlouro,
-      highContrastResolution: report.HighContrastResolutionFixedRadioFluoro,
-      exposureRate: report.ExposureRateTableTopFixedRadioFlouro,
-      linearityOfmAsLoading: report.LinearityOfmAsLoadingFixedRadioFluoro,
-      tubeHousingLeakage: report.TubeHousingLeakageFixedRadioFlouro,
-      accuracyOfIrradiationTime: report.AccuracyOfIrradiationTimeFixedRadioFluoro,
-    });
-
-    setTestsLoading(false);
-  }, [report]);
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString("en-GB");
-  };
+  const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
 
   const downloadPDF = async () => {
     const element = document.getElementById("report-content");
@@ -171,11 +139,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
         btn.disabled = true;
       }
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false });
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const imgWidth = 210;
@@ -207,24 +171,14 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">
-        Loading Report...
-      </div>
-    );
-  }
-
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl">Loading Report...</div>;
   if (notFound || !report) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-10 rounded-lg shadow-xl text-center">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
           <p>Please generate and save the report header first.</p>
-          <button
-            onClick={() => window.history.back()}
-            className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
+          <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg">
             Go Back
           </button>
         </div>
@@ -232,94 +186,17 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
     );
   }
 
-  // Build a simple summary table input for FixedRadioFluroResultTable
-  const summaryRows = [
-    {
-      srNo: "1",
-      parameterTested: "Accuracy of Operating Potential",
-      specifiedValue: "",
-      measuredValue: testData.accuracyOfOperatingPotential ? "Measured" : "Not Tested",
-      tolerance: "As per AERB protocol",
-      remark: "",
-    },
-    {
-      srNo: "2",
-      parameterTested: "Linearity of mAs Loading",
-      specifiedValue: "",
-      measuredValue: testData.linearityOfmAsLoading ? "Measured" : "Not Tested",
-      tolerance: "CoL ≤ 0.1",
-      remark: "",
-    },
-    {
-      srNo: "3",
-      parameterTested: "Low Contrast Resolution",
-      specifiedValue: "",
-      measuredValue: testData.lowContrastResolution ? "Measured" : "Not Tested",
-      tolerance: "As per AERB protocol",
-      remark: "",
-    },
-    {
-      srNo: "4",
-      parameterTested: "High Contrast Resolution",
-      specifiedValue: "",
-      measuredValue: testData.highContrastResolution ? "Measured" : "Not Tested",
-      tolerance: "As per AERB protocol",
-      remark: "",
-    },
-    {
-      srNo: "5",
-      parameterTested: "Exposure Rate at Table Top",
-      specifiedValue: "",
-      measuredValue: testData.exposureRate ? "Measured" : "Not Tested",
-      tolerance: "As per AERB protocol",
-      remark: "",
-    },
-    {
-      srNo: "6",
-      parameterTested: "Tube Housing Leakage",
-      specifiedValue: "< 1 mGy in one hour",
-      measuredValue: testData.tubeHousingLeakage ? "Measured" : "Not Tested",
-      tolerance: "< 1 mGy in one hour",
-      remark: "",
-    },
-    {
-      srNo: "7",
-      parameterTested: "Accuracy of Irradiation Time",
-      specifiedValue: "",
-      measuredValue: testData.accuracyOfIrradiationTime ? "Measured" : "Not Tested",
-      tolerance: "±5 %",
-      remark: "",
-    },
-    {
-      srNo: "8",
-      parameterTested: "Output Consistency",
-      specifiedValue: "",
-      measuredValue: testData.outputConsistency ? "Measured" : "Not Tested",
-      tolerance: "COV ≤ 2 %",
-      remark: "",
-    },
-  ];
-
-  // Get notes array - use report notes if available, otherwise use defaults
-  const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
-
-  // Get tools array - use report tools if available, otherwise use empty array
   const toolsArray = report.toolsUsed || [];
+  const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
 
   return (
     <>
-      {/* Floating buttons */}
+      {/* Floating Buttons */}
       <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
-        <button
-          onClick={() => window.print()}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl"
-        >
+        <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
         </button>
-        <button
-          onClick={downloadPDF}
-          className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl"
-        >
+        <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Download PDF
         </button>
       </div>
@@ -334,22 +211,13 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
               <div className="text-right">
                 <table className="text-xs border border-gray-600">
                   <tbody>
-                    <tr>
-                      <td className="border px-3 py-1 font-bold">SRF No.</td>
-                      <td className="border px-3 py-1">{report.srfNumber}</td>
-                    </tr>
-                    <tr>
-                      <td className="border px-3 py-1 font-bold">SRF Date</td>
-                      <td className="border px-3 py-1">{formatDate(report.srfDate)}</td>
-                    </tr>
-                    <tr>
-                      <td className="border px-3 py-1 font-bold">ULR No.</td>
-                      <td className="border px-3 py-1">TC9A43250001485F</td>
-                    </tr>
+                    <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
+                    <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
+                    <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
                   </tbody>
                 </table>
               </div>
-              <img src={logo} alt="Company Logo" className="h-28" />
+              <img src={logo} alt="Logo" className="h-28" />
             </div>
 
             <div className="text-center mb-6">
@@ -361,67 +229,50 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
               QA TEST REPORT FOR FIXED RADIOGRAPHY & FLUOROSCOPY EQUIPMENT
             </h1>
             <p className="text-center italic text-sm mb-10">
-              (Periodic Quality Assurance shall be carried out at least once in two years as per AERB
-              guidelines)
+              (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
             </p>
 
-            {/* Customer Details */}
+            {/* Customer & Reference */}
             <section className="mb-8">
               <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
               <div className="border-2 border-gray-600 p-5 text-lg">
-                <p>
-                  <strong>Customer:</strong> {report.customerName || "N/A"}
-                </p>
-                <p>
-                  <strong>Address:</strong> {report.address || "N/A"}
-                </p>
+                <p><strong>Customer:</strong> {report.customerName}</p>
+                <p><strong>Address:</strong> {report.address}</p>
               </div>
             </section>
 
-            {/* Reference */}
             <section className="mb-8">
               <h2 className="font-bold text-lg mb-3">2. Reference</h2>
               <table className="w-full border-2 border-gray-600 text-sm">
                 <tbody>
-                  <tr>
-                    <td className="border p-3 font-medium w-1/2">SRF No. &amp; Date</td>
-                    <td className="border p-3">
-                      {report.srfNumber} / {formatDate(report.srfDate)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="border p-3 font-medium">Test Report No. &amp; Issue Date</td>
-                    <td className="border p-3">
-                      {report.testReportNumber} / {formatDate(report.issueDate)}
-                    </td>
-                  </tr>
+                  <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
+                  <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
                 </tbody>
               </table>
             </section>
 
-            {/* Device Details */}
+            {/* Equipment Details */}
             <section className="mb-8">
               <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
               <table className="w-full border-2 border-gray-600 text-sm">
                 <tbody>
                   {[
                     ["Nomenclature", report.nomenclature],
-                    ["Category", report.category || ""],
-                    ["Make", report.make],
+                    ["Make", report.make || "-"],
                     ["Model", report.model],
                     ["Serial No.", report.slNumber],
                     ["Condition", report.condition],
-                    ["Testing Procedure No.", report.testingProcedureNumber],
+                    ["Testing Procedure No.", report.testingProcedureNumber || "-"],
                     ["Engineer Name & RP ID", report.engineerNameRPId],
                     ["Test Date", formatDate(report.testDate)],
                     ["Due Date", formatDate(report.testDueDate)],
                     ["Location", report.location],
-                    ["Temperature (°C)", report.temperature],
-                    ["Humidity (%)", report.humidity],
+                    ["Temperature (°C)", report.temperature || "-"],
+                    ["Humidity (%)", report.humidity || "-"],
                   ].map(([label, value]) => (
                     <tr key={label}>
                       <td className="border p-3 font-medium w-1/2">{label}</td>
-                      <td className="border p-3">{value || "-"}</td>
+                      <td className="border p-3">{value}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -431,8 +282,8 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* Tools Used */}
             <section className="mb-8">
               <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
-              <div className="overflow-x-auto print:overflow-visible">
-                <table className="w-full border-2 border-gray-600 text-xs print:text-xxs print:min-w-full">
+              <div className="overflow-x-auto">
+                <table className="w-full border-2 border-gray-600 text-xs">
                   <thead className="bg-gray-200">
                     <tr>
                       <th className="border p-2">Sl No.</th>
@@ -445,26 +296,18 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {toolsArray.length > 0 ? (
-                      toolsArray.map((tool, i) => (
-                        <tr key={i}>
-                          <td className="border p-2 text-center">{i + 1}</td>
-                          <td className="border p-2">{tool.nomenclature}</td>
-                          <td className="border p-2">
-                            {tool.make} / {tool.model}
-                          </td>
-                          <td className="border p-2">{tool.SrNo}</td>
-                          <td className="border p-2">{tool.range}</td>
-                          <td className="border p-2">{tool.calibrationCertificateNo}</td>
-                          <td className="border p-2">{formatDate(tool.calibrationValidTill)}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="text-center py-4 border">
-                          No tools recorded
-                        </td>
+                    {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
+                      <tr key={i}>
+                        <td className="border p-2 text-center">{i + 1}</td>
+                        <td className="border p-2">{tool.nomenclature}</td>
+                        <td className="border p-2">{tool.make} / {tool.model}</td>
+                        <td className="border p-2">{tool.SrNo}</td>
+                        <td className="border p-2">{tool.range}</td>
+                        <td className="border p-2">{tool.calibrationCertificateNo}</td>
+                        <td className="border p-2">{formatDate(tool.calibrationValidTill)}</td>
                       </tr>
+                    )) : (
+                      <tr><td colSpan={7} className="text-center py-4">No tools recorded</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -475,17 +318,15 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             <section className="mb-12">
               <h2 className="font-bold text-lg mb-3">5. Notes</h2>
               <div className="ml-8 text-sm">
-                {notesArray.map((n) => (
-                  <p key={n.slNo}>
-                    <strong>{n.slNo}.</strong> {n.text}
-                  </p>
+                {notesArray.map(n => (
+                  <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
                 ))}
               </div>
             </section>
 
             {/* Signature */}
             <div className="flex justify-between items-end mt-20">
-              <img src={AntesoQRCode} alt="QR Code" className="h-24" />
+              <img src={AntesoQRCode} alt="QR" className="h-24" />
               <div className="text-center">
                 <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
                 <p className="font-bold">Authorized Signatory</p>
@@ -503,153 +344,232 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
         {/* PAGE BREAK */}
         <div className="print:break-before-page"></div>
 
-        {/* PAGE 2+ - DETAILED TEST RESULTS (HIGH LEVEL) */}
-        <div className="bg-white px-8 py-12 print:p-8 print:px-4">
-          <div className="max-w-5xl mx-auto print:max-w-none print:mx-0">
-            <h2 className="text-3xl font-bold text-center underline mb-16">
-              DETAILED TEST RESULTS
-            </h2>
+        {/* PAGE 2+ - DETAILED TEST RESULTS */}
+        <div className="bg-white px-8 py-12 print:p-8">
+          <div className="max-w-5xl mx-auto print:max-w-none">
+            <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
 
-            {testsLoading ? (
-              <p className="text-center text-xl">Loading test results...</p>
-            ) : (
-              <>
-                {/* 1. Accuracy of Operating Potential */}
-                {testData.accuracyOfOperatingPotential && testData.accuracyOfOperatingPotential.table2 && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">1. Accuracy of Operating Potential (kVp)</h3>
+            {/* 1. Accuracy of Operating Potential */}
+            {testData.accuracyOfOperatingPotential?.table2?.length > 0 && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+                <h3 className="text-xl font-bold mb-6">1. Accuracy of Operating Potential (kVp)</h3>
 
-                    {testData.accuracyOfOperatingPotential.table1 && testData.accuracyOfOperatingPotential.table1.length > 0 && (
-                      <div className="mb-6 bg-gray-50 p-4 rounded border">
-                        <p className="font-semibold mb-2">Test Conditions:</p>
-                        <div className="text-sm">
-                          {testData.accuracyOfOperatingPotential.table1.map((cond: any, i: number) => (
-                            <div key={i} className="mb-1">
-                              <span className="font-medium">Time:</span> {cond.time || "-"},{' '}
-                              <span className="font-medium">Slice Thickness:</span> {cond.sliceThickness || "-"}
-                            </div>
-                          ))}
+                {/* Test Conditions */}
+                {testData.accuracyOfOperatingPotential.table1?.length > 0 && (
+                  <div className="mb-6 bg-gray-50 p-4 rounded border">
+                    <p className="font-semibold mb-2">Test Conditions:</p>
+                    <div className="text-sm grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {testData.accuracyOfOperatingPotential.table1.map((c: any, i: number) => (
+                        <div key={i}>
+                          <span className="font-medium">mA:</span> {c.mA || c.ma || "-"},{' '}
+                          <span className="font-medium">Time:</span> {c.time || "-"} ms
                         </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {testData.linearityOfmAsLoading && (
-                  <div className="mb-12 print:mb-10">
-                    <h3 className="text-xl font-bold mb-2">2. Linearity of mAs Loading</h3>
-                    <p className="text-sm text-gray-600">
-                      Linearity of mAs loading measurements are available for this service.
-                    </p>
-                  </div>
-                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-2 border-black text-sm">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-3">Set kVp</th>
+                        <th className="border border-black p-3">Measured kVp</th>
+                        <th className="border border-black p-3">% Deviation</th>
+                        <th className="border border-black p-3 bg-blue-100">Tolerance</th>
+                        <th className="border border-black p-3 bg-green-100">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {testData.accuracyOfOperatingPotential.table2.map((row: any, i: number) => (
+                        <tr key={i} className="text-center">
+                          <td className="border p-3 font-semibold">{row.setKvp || row.setKVp || "-"}</td>
+                          <td className="border p-3">{row.measuredKvp || row.measuredKVp || "-"}</td>
+                          <td className="border p-3">{row.deviation != null ? row.deviation.toFixed(2) + "%" : "-"}</td>
+                          <td className="border p-3">±10%</td>
+                          <td className="border p-3 font-bold">
+                            <span className={Math.abs(row.deviation || 0) <= 10 ? "text-green-600" : "text-red-600"}>
+                              {Math.abs(row.deviation || 0) <= 10 ? "PASS" : "FAIL"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
-                {testData.lowContrastResolution && (
-                  <div className="mb-12 print:mb-10">
-                    <h3 className="text-xl font-bold mb-2">3. Low Contrast Resolution</h3>
-                    <p className="text-sm text-gray-600">
-                      Low contrast resolution measurements are available for this service.
-                    </p>
-                  </div>
-                )}
-
-                {testData.highContrastResolution && (
-                  <div className="mb-12 print:mb-10">
-                    <h3 className="text-xl font-bold mb-2">4. High Contrast Resolution</h3>
-                    <p className="text-sm text-gray-600">
-                      High contrast resolution measurements are available for this service.
-                    </p>
-                  </div>
-                )}
-
-                {testData.exposureRate && (
-                  <div className="mb-12 print:mb-10">
-                    <h3 className="text-xl font-bold mb-2">5. Exposure Rate at Table Top</h3>
-                    <p className="text-sm text-gray-600">
-                      Exposure rate measurements at table top are available for this service.
-                    </p>
-                  </div>
-                )}
-
-                {testData.tubeHousingLeakage && (
-                  <div className="mb-12 print:mb-10">
-                    <h3 className="text-xl font-bold mb-2">
-                      6. Radiation Leakage from Tube Housing
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Tube housing leakage measurements at 1 m from the focus are available for this
-                      service.
-                    </p>
-                  </div>
-                )}
-
-                {testData.accuracyOfIrradiationTime && (
-                  <div className="mb-12 print:mb-10">
-                    <h3 className="text-xl font-bold mb-2">7. Accuracy of Irradiation Time</h3>
-                    <p className="text-sm text-gray-600">
-                      Irradiation time accuracy measurements are available for this service.
-                    </p>
-                  </div>
-                )}
-
-                {testData.outputConsistency && (
-                  <div className="mb-12 print:mb-10">
-                    <h3 className="text-xl font-bold mb-2">8. Output Consistency</h3>
-                    <p className="text-sm text-gray-600">
-                      Output consistency measurements (mean and COV) are available for this service.
-                    </p>
-                  </div>
-                )}
-
-                {!Object.values(testData).some(Boolean) && (
-                  <p className="text-center text-xl text-gray-500 mt-32">
-                    No test results available yet.
+            {/* 2. Output Consistency */}
+            {testData.outputConsistency && (
+              <div className="mb-16 print:mb-12">
+                <h3 className="text-xl font-bold mb-6">2. Output Consistency</h3>
+                <div className="bg-gray-50 p-8 p-8 rounded-lg border text-center">
+                  <p className="text-xl"><strong>Coefficient of Variation (COV):</strong> {testData.outputConsistency.cov?.toFixed(3) || "N/A"}</p>
+                  <p className="text-lg mt-3"><strong>Tolerance:</strong> ≤ 0.05</p>
+                  <p className="text-4xl font-bold mt-6">
+                    <span className={testData.outputConsistency.cov <= 0.05 ? "text-green-600" : "text-red-600"}>
+                      {testData.outputConsistency.cov <= 0.05 ? "PASS" : "FAIL"}
+                    </span>
                   </p>
-                )}
-              </>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Low Contrast Resolution */}
+            {testData.lowContrastResolution && (
+              <div className="mb-16 print:mb-12">
+                <h3 className="text-xl font-bold mb-6">3. Low Contrast Resolution</h3>
+                <div className="bg-gray-50 p-8 rounded-lg border text-center">
+                  <p className="text-xl"><strong>Smallest Visible Hole Size:</strong> {testData.lowContrastResolution.smallestHoleSize} mm</p>
+                  <p className="text-lg mt-3"><strong>Recommended:</strong> ≤ {testData.lowContrastResolution.recommendedStandard} mm</p>
+                  <p className="text-4xl font-bold mt-6">
+                    <span className={Number(testData.lowContrastResolution.smallestHoleSize) <= Number(testData.lowContrastResolution.recommendedStandard) ? "text-green-600" : "text-red-600"}>
+                      {Number(testData.lowContrastResolution.smallestHoleSize) <= Number(testData.lowContrastResolution.recommendedStandard) ? "PASS" : "FAIL"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 4. High Contrast Resolution */}
+            {testData.highContrastResolution && (
+              <div className="mb-16 print:mb-12">
+                <h3 className="text-xl font-bold mb-6">4. High Contrast Resolution</h3>
+                <div className="bg-gray-50 p-8 rounded-lg border text-center">
+                  <p className="text-xl"><strong>Measured:</strong> {testData.highContrastResolution.measuredLpPerMm} lp/mm</p>
+                  <p className="text-lg mt-3"><strong>Recommended:</strong> ≥ {testData.highContrastResolution.recommendedStandard} lp/mm</p>
+                  <p className="text-4xl font-bold mt-6">
+                    <span className={Number(testData.highContrastResolution.measuredLpPerMm) >= Number(testData.highContrastResolution.recommendedStandard) ? "text-green-600" : "text-red-600"}>
+                      {Number(testData.highContrastResolution.measuredLpPerMm) >= Number(testData.highContrastResolution.recommendedStandard) ? "PASS" : "FAIL"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 5. Exposure Rate at Table Top */}
+            {testData.exposureRate && (
+              <div className="mb-16 print:mb-12">
+                <h3 className="text-xl font-bold mb-6">5. Exposure Rate at Table Top</h3>
+                <div className="bg-gray-50 p-8 rounded-lg border text-center">
+                  <p className="text-xl"><strong>Measured Value:</strong> {testData.exposureRate.measuredValue || "N/A"} mGy/min</p>
+                  <p className="text-lg mt-3"><strong>Limit:</strong> ≤ 5 mGy/min</p>
+                  <p className="text-4xl font-bold mt-6">
+                    <span className={(testData.exposureRate.measuredValue || 0) <= 5 ? "text-green-600" : "text-red-600"}>
+                      {(testData.exposureRate.measuredValue || 0) <= 5 ? "PASS" : "FAIL"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 6. Tube Housing Leakage */}
+            {testData.tubeHousingLeakage && (
+              <div className="mb-16 print:mb-12">
+                <h3 className="text-xl font-bold mb-6">6. Radiation Leakage from Tube Housing</h3>
+                <div className="bg-gray-50 p-8 rounded-lg border text-center">
+                  <p className="text-xl"><strong>Measured Leakage:</strong> {testData.tubeHousingLeakage.leakageRate || "N/A"} mGy/hr</p>
+                  <p className="text-lg mt-3"><strong>Limit:</strong> ≤ 1 mGy/hr at 1m</p>
+                  <p className="text-4xl font-bold mt-6">
+                    <span className={(testData.tubeHousingLeakage.leakageRate || 0) <= 1 ? "text-green-600" : "text-red-600"}>
+                      {(testData.tubeHousingLeakage.leakageRate || 0) <= 1 ? "PASS" : "FAIL"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 7. Linearity of mAs Loading */}
+            {testData.linearityOfmAsLoading && (
+              <div className="mb-16 print:mb-12">
+                <h3 className="text-xl font-bold mb-6">7. Linearity of mAs Loading</h3>
+                <div className="bg-gray-50 p-8 rounded-lg border text-center">
+                  <p className="text-xl"><strong>Coefficient of Linearity:</strong> {testData.linearityOfmAsLoading.col?.toFixed(3) || "N/A"}</p>
+                  <p className="text-lg mt-3"><strong>Tolerance:</strong> ≤ 0.1</p>
+                  <p className="text-4xl font-bold mt-6">
+                    <span className={(testData.linearityOfmAsLoading.col || 0) <= 0.1 ? "text-green-600" : "text-red-600"}>
+                      {(testData.linearityOfmAsLoading.col || 0) <= 0.1 ? "PASS" : "FAIL"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 8. Accuracy of Irradiation Time */}
+            {testData.accuracyOfIrradiationTime && (
+              <div className="mb-16 print:mb-12">
+                <h3 className="text-xl font-bold mb-6">8. Accuracy of Irradiation Time</h3>
+                <div className="bg-gray-50 p-8 rounded-lg border text-center">
+                  <p className="text-xl"><strong>Maximum Deviation:</strong> {testData.accuracyOfIrradiationTime.maxDeviation?.toFixed(1)}%</p>
+                  <p className="text-lg mt-3"><strong>Tolerance:</strong> ±5%</p>
+                  <p className="text-4xl font-bold mt-6">
+                    <span className={Math.abs(testData.accuracyOfIrradiationTime.maxDeviation || 0) <= 5 ? "text-green-600" : "text-red-600"}>
+                      {Math.abs(testData.accuracyOfIrradiationTime.maxDeviation || 0) <= 5 ? "PASS" : "FAIL"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 9. Congruence of Radiation Field */}
+            {testData.congruenceOfRadiation && (
+              <div className="mb-16 print:mb-12">
+                <h3 className="text-xl font-bold mb-6">9. Congruence of Radiation and Light Field</h3>
+                <div className="bg-gray-50 p-8 rounded-lg border text-center">
+                  <p className="text-xl"><strong>Max Misalignment:</strong> {testData.congruenceOfRadiation.maxMisalignment} cm</p>
+                  <p className="text-lg mt-3"><strong>Tolerance:</strong> ≤ 2 cm</p>
+                  <p className="text-4xl font-bold mt-6">
+                    <span className={(testData.congruenceOfRadiation.maxMisalignment || 0) <= 2 ? "text-green-600" : "text-red-600"}>
+                      {(testData.congruenceOfRadiation.maxMisalignment || 0) <= 2 ? "PASS" : "FAIL"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 10. Central Beam Alignment */}
+            {testData.centralBeamAlignment && (
+              <div className="mb-16 print:mb-12">
+                <h3 className="text-xl font-bold mb-6">10. Central Beam Alignment</h3>
+                <div className="bg-gray-50 p-8 rounded-lg border text-center">
+                  <p className="text-xl"><strong>Deviation:</strong> {testData.centralBeamAlignment.deviation} mm</p>
+                  <p className="text-lg mt-3"><strong>Limit:</strong> ≤ 1% of SID</p>
+                  <p className="text-4xl font-bold mt-6">
+                    <span className={(testData.centralBeamAlignment.deviation || 0) <= (0.01 * (testData.centralBeamAlignment.sid || 100)) ? "text-green-600" : "text-red-600"}>
+                      {(testData.centralBeamAlignment.deviation || 0) <= (0.01 * (testData.centralBeamAlignment.sid || 100)) ? "PASS" : "FAIL"}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* No data fallback */}
+            {Object.values(testData).every(v => !v) && (
+              <p className="text-center text-xl text-gray-500 mt-32">
+                No detailed test results available for this report.
+              </p>
             )}
           </div>
         </div>
 
-        {/* MAIN SUMMARY TABLE */}
-        <div className="px-8 py-12 print:p-8 print:px-4">
-          <div className="max-w-5xl mx-auto print:max-w-none print:mx-0">
-            <FixedRadioFlouroResultTable testResults={summaryRows} />
+        {/* Summary Table */}
+        <div className="px-8 py-12 print:p-8">
+          <div className="max-w-5xl mx-auto print:max-w-none">
+            {/* <FixedRadioFlouroResultTable testResults={summaryRows} /> */}
           </div>
         </div>
       </div>
 
-      {/* Print Styles */}
-      <style>
-        {`
-          @media print {
-            body { 
-              -webkit-print-color-adjust: exact; 
-              margin: 0;
-              padding: 0;
-            }
-            .print\\:break-before-page { page-break-before: always; }
-            @page { 
-              margin: 1cm;
-              size: A4;
-            }
-            table { 
-              page-break-inside: avoid;
-              break-inside: avoid;
-            }
-            tr { 
-              page-break-inside: avoid;
-              break-inside: avoid;
-            }
-            h1, h2, h3, h4, h5, h6 {
-              page-break-after: avoid;
-            }
-            p, li {
-              page-break-inside: avoid;
-            }
-          }
-        `}
-      </style>
+      <style>{`
+        @media print {
+          body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+          .print\\:break-before-page { page-break-before: always; }
+          @page { margin: 1cm; size: A4; }
+          table, tr, td, th { page-break-inside: avoid; }
+          h1,h2,h3,h4,h5,h6 { page-break-after: avoid; }
+        }
+      `}</style>
     </>
   );
 };

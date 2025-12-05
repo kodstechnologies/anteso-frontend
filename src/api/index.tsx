@@ -3406,6 +3406,17 @@ export const getReportHeader = async (serviceId: string) => {
     return res.data;
 };
 
+// export const getReportHeaderForCBCT = async (serviceId: string) => {
+//     console.log("i m inside-- getReportHeader")
+//     const token = Cookies.get('accessToken');
+//     const res = await api.get(`/service-report/fixed-radio-fluro/report-header/${serviceId}`, {
+//         headers: { Authorization: `Bearer ${token}` },
+//     });
+//     console.log("🚀 ~ getReportHeader ~ res:", res)
+//     return res.data;
+// };
+
+
 
 
 
