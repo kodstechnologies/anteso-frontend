@@ -66,44 +66,42 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
   const [tolerance, setTolerance] = useState<string>('0.02'); // Decimal: 2% = 0.02
 
   // Auto-calculate Mean, COV (decimal), and Remark per row
-  useEffect(() => {
+  const processedRows = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.02;
 
-    setOutputRows(rows =>
-      rows.map(row => {
-        const nums = row.outputs
-          .filter(v => v.trim() !== '')
-          .map(v => parseFloat(v))
-          .filter(n => !isNaN(n));
+    return outputRows.map(row => {
+      const nums = row.outputs
+        .filter(v => v.trim() !== '')
+        .map(v => parseFloat(v))
+        .filter(n => !isNaN(n));
 
-        if (nums.length === 0) {
-          return { ...row, mean: '', cov: '', remark: '' };
-        }
+      if (nums.length === 0) {
+        return { ...row, mean: '', cov: '', remark: '' };
+      }
 
-        const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-        let cov = 0;
-        if (nums.length > 1) {
-          const variance = nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (nums.length - 1);
-          cov = Math.sqrt(variance) / mean;
-        }
+      const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+      let cov = 0;
+      if (nums.length > 1) {
+        const variance = nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (nums.length - 1);
+        cov = Math.sqrt(variance) / mean;
+      }
 
-        const remark = cov <= tol ? 'Pass' : 'Fail';
+      const remark = cov <= tol ? 'Pass' : 'Fail';
 
-        return {
-          ...row,
-          mean: mean.toFixed(3),
-          cov: cov.toFixed(3),
-          remark,
-        };
-      })
-    );
-  }, [outputRows.map(r => r.outputs.join(',')).join('|'), tolerance]);
+      return {
+        ...row,
+        mean: mean.toFixed(3),
+        cov: cov.toFixed(3),
+        remark,
+      };
+    });
+  }, [outputRows, tolerance]);
 
   // Final Result (overall)
   const finalRemark = useMemo(() => {
-    if (!isSaved || outputRows.length === 0) return '';
-    return outputRows.every(r => r.remark === 'Pass' || r.remark === '') ? 'Pass' : 'Fail';
-  }, [outputRows, isSaved]);
+    if (!isSaved || processedRows.length === 0) return '';
+    return processedRows.every(r => r.remark === 'Pass' || r.remark === '') ? 'Pass' : 'Fail';
+  }, [processedRows, isSaved]);
 
   // Load test data
   useEffect(() => {
@@ -161,7 +159,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         ffd: parameters.ffd.trim(),
         time: parameters.time.trim(),
       },
-      outputRows: outputRows.map(row => ({
+      outputRows: processedRows.map(row => ({
         kvp: row.kvp.trim(),
         ma: row.ma.trim(),
         outputs: row.outputs.map(v => v.trim()),
@@ -364,7 +362,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {outputRows.map((row) => (
+              {processedRows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2 border-r">
                     <input
@@ -413,7 +411,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                     </span>
                   </td>
                   <td className="px-2 py-2 text-center">
-                    {outputRows.length > 1 && !isViewMode && (
+                    {processedRows.length > 1 && !isViewMode && (
                       <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-1 rounded">
                         <Trash2 className="w-4 h-4" />
                       </button>

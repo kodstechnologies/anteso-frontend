@@ -4,9 +4,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addTubeHousingLeakageForFixedRadioFluro,
+  addRadiationLeakageLevelForRadiographyPortable,
   getTubeHousingLeakageByServiceIdForFixedRadioFluro,
-  updateTubeHousingLeakageForFixedRadioFluro,
+  updateRadiationLeakageLevelForRadiographyPortable,
 } from '../../../../../../api';
 
 interface SettingsRow {
@@ -242,11 +242,11 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
       if (currentTestId) {
         // Update existing
-        result = await updateTubeHousingLeakageForFixedRadioFluro(currentTestId, payload);
+        result = await updateRadiationLeakageLevelForRadiographyPortable(currentTestId, payload);
         toast.success('Updated successfully!');
       } else {
         // Create new
-        result = await addTubeHousingLeakageForFixedRadioFluro(serviceId, payload);
+        result = await addRadiationLeakageLevelForRadiographyPortable(serviceId, payload);
         const newId = result?.data?._id || result?.data?.data?._id || result?._id;
         if (newId) {
           setTestId(newId);

@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import {
-  createAccuracyOfIrradiationTimeForFixedRadioFluro,
-  getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro,
+  addAccuracyOfIrradiationTimeForRadiographyPortable,
+  getAccuracyOfIrradiationTimeByServiceIdForRadiographyPortable,
+  updateAccuracyOfIrradiationTimeForRadiographyPortable,
 } from "../../../../../../api";
 
 interface AccuracyOfIrradiationTimeProps {
@@ -26,7 +27,7 @@ interface Table2Row {
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
 }) => {
-  const [testId, setTestId] = useState<string | null>(null); // Mongo _id (optional, not strictly needed)
+  const [testId, setTestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -99,7 +100,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       if (!serviceId) return;
       setLoading(true);
       try {
-        const res = await getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro(serviceId);
+        const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyPortable(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -148,10 +149,14 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
     setSaving(true);
     try {
-      // Backend upserts by serviceId; single create call is enough
-      const res = await createAccuracyOfIrradiationTimeForFixedRadioFluro(serviceId, payload);
+      let res;
+      if (testId) {
+        res = await updateAccuracyOfIrradiationTimeForRadiographyPortable(testId, payload);
+      } else {
+        res = await addAccuracyOfIrradiationTimeForRadiographyPortable(serviceId, payload);
+      }
       if (res?.data?._id) setTestId(res.data._id);
-      alert("Saved successfully!");
+      alert(testId ? "Updated successfully!" : "Saved successfully!");
     } catch (err) {
       alert("Failed to save");
       console.error(err);

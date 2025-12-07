@@ -5,9 +5,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addCongruenceForFixedRadioFluro,
-  getCongruenceByServiceIdForFixedRadioFluro,
-  updateCongruenceForFixedRadioFluro,
+  addCongruenceForRadiographyPortable,
+  getCongruenceByServiceIdForRadiographyPortable,
+  updateCongruenceForRadiographyPortable,
 } from '../../../../../../api';
 
 interface TechniqueRow {
@@ -99,7 +99,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       if (!serviceId) return;
       setIsLoading(true);
       try {
-        const res = await getCongruenceByServiceIdForFixedRadioFluro(serviceId);
+        const res = await getCongruenceByServiceIdForRadiographyPortable(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -163,10 +163,10 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
     try {
       let res;
       if (testId) {
-        res = await updateCongruenceForFixedRadioFluro(testId, payload);
+        res = await updateCongruenceForRadiographyPortable(testId, payload);
         toast.success('Updated successfully!');
       } else {
-        res = await addCongruenceForFixedRadioFluro(serviceId, payload);
+        res = await addCongruenceForRadiographyPortable(serviceId, payload);
         const newId = res?.data?._id || res?.data?.data?._id;
         if (newId) {
           setTestId(newId);

@@ -1,9 +1,14 @@
 // src/components/TestTables/EffectiveFocalSpot.tsx
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Edit3, Save, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addEffectiveFocalSpotForRadiographyFixed,
+  getEffectiveFocalSpotByServiceIdForRadiographyFixed,
+  updateEffectiveFocalSpotForRadiographyFixed,
+} from '../../../../../../api';
 
 interface FocalSpotRow {
   id: string;
@@ -109,20 +114,95 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       ? 'FAIL'
       : 'PENDING';
 
+  // Load existing test data
+  useEffect(() => {
+    if (!serviceId) return;
+    const loadTest = async () => {
+      try {
+        const res = await getEffectiveFocalSpotByServiceIdForRadiographyFixed(serviceId);
+        if (res?.data) {
+          const data = res.data;
+          setTestId(data._id);
+          if (data.fcd) setFcd(String(data.fcd));
+          if (data.toleranceCriteria) {
+            setTolSmallMul(String(data.toleranceCriteria.small?.multiplier || '0.5'));
+            setSmallLimit(String(data.toleranceCriteria.small?.upperLimit || '0.8'));
+            setTolMediumMul(String(data.toleranceCriteria.medium?.multiplier || '0.4'));
+            setMediumLower(String(data.toleranceCriteria.medium?.lowerLimit || '0.8'));
+            setMediumUpper(String(data.toleranceCriteria.medium?.upperLimit || '1.5'));
+            setTolLargeMul(String(data.toleranceCriteria.large?.multiplier || '0.3'));
+          }
+          if (data.focalSpots && data.focalSpots.length > 0) {
+            setRows(data.focalSpots.map((spot: any) => ({
+              id: spot.focusType === 'Large Focus' ? 'large' : 'small',
+              focusType: spot.focusType || (spot.focusType === 'Large Focus' ? 'Large Focus' : 'Small Focus'),
+              statedWidth: String(spot.statedWidth || ''),
+              statedHeight: String(spot.statedHeight || ''),
+              measuredWidth: String(spot.measuredWidth || ''),
+              measuredHeight: String(spot.measuredHeight || ''),
+              remark: spot.remark || '',
+            })));
+          }
+          setIsSaved(true);
+          setIsEditing(false);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          console.error("Failed to load test data:", err);
+        }
+      }
+    };
+    loadTest();
+  }, [serviceId]);
+
   const handleSave = async () => {
     if (!serviceId) return toast.error("Service ID missing");
     setIsSaving(true);
     try {
+      const payload = {
+        fcd: parseFloat(fcd) || 100,
+        toleranceCriteria: {
+          small: {
+            multiplier: parseFloat(tolSmallMul) || 0.5,
+            upperLimit: parseFloat(smallLimit) || 0.8,
+          },
+          medium: {
+            multiplier: parseFloat(tolMediumMul) || 0.4,
+            lowerLimit: parseFloat(mediumLower) || 0.8,
+            upperLimit: parseFloat(mediumUpper) || 1.5,
+          },
+          large: {
+            multiplier: parseFloat(tolLargeMul) || 0.3,
+            lowerLimit: parseFloat(mediumUpper) || 1.5,
+          },
+        },
+        focalSpots: processedRows.map(row => ({
+          focusType: row.focusType,
+          statedWidth: parseFloat(row.statedWidth) || 0,
+          statedHeight: parseFloat(row.statedHeight) || 0,
+          measuredWidth: parseFloat(row.measuredWidth) || 0,
+          measuredHeight: parseFloat(row.measuredHeight) || 0,
+          remark: row.remark,
+        })),
+        finalResult: finalResult,
+      };
+
+      let result;
+      if (testId) {
+        result = await updateEffectiveFocalSpotForRadiographyFixed(testId, payload);
+      } else {
+        result = await addEffectiveFocalSpotForRadiographyFixed(serviceId, payload);
+        if (result?.data?._id) {
+          setTestId(result.data._id);
+          onTestSaved?.(result.data._id);
+        }
+      }
+
       toast.success(testId ? "Updated successfully!" : "Saved successfully!");
       setIsSaved(true);
       setIsEditing(false);
-      if (!testId) {
-        const newId = "mock-focalspot-123";
-        setTestId(newId);
-        onTestSaved?.(newId);
-      }
-    } catch (err) {
-      toast.error("Save failed");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Save failed");
     } finally {
       setIsSaving(false);
     }

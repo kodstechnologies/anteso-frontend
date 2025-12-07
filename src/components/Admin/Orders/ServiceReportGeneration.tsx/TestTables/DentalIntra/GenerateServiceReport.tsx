@@ -7,7 +7,7 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForDentalIntra } from "../../../../../../api";
 
 // Test-table imports (unchanged)
 import AccuracyOfOperatingPotentialAndTime from "./AccuracyOfOperatingPotentialAndTime";
@@ -75,6 +75,30 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
     const [tools, setTools] = useState<Standard[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [formData, setFormData] = useState({
+        customerName: "",
+        address: "",
+        srfNumber: "",
+        srfDate: "",
+        testReportNumber: "",
+        issueDate: "",
+        nomenclature: "",
+        make: "",
+        model: "",
+        slNumber: "",
+        condition: "OK",
+        testingProcedureNumber: "",
+        pages: "",
+        testDate: "",
+        testDueDate: "",
+        location: "",
+        temperature: "",
+        humidity: "",
+        engineerNameRPId: "",
+    });
 
     useEffect(() => {
         if (!serviceId) return;
@@ -87,12 +111,38 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                     getTools(serviceId),
                 ]);
 
-                setDetails(detRes.data);
+                const data = detRes.data;
+                setDetails(data);
+                
+                // Pre-fill form from service details
+                const firstTest = data.qaTests[0];
+                setFormData({
+                    customerName: data.hospitalName,
+                    address: data.hospitalAddress,
+                    srfNumber: data.srfNumber,
+                    srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    testReportNumber: firstTest?.qaTestReportNumber || "",
+                    issueDate: new Date().toISOString().split("T")[0],
+                    nomenclature: data.machineType,
+                    make: "",
+                    model: data.machineModel,
+                    slNumber: data.serialNumber,
+                    condition: "OK",
+                    testingProcedureNumber: "",
+                    pages: "",
+                    testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    testDueDate: "",
+                    location: data.hospitalAddress,
+                    temperature: "",
+                    humidity: "",
+                    engineerNameRPId: data.engineerAssigned?.name || "",
+                });
+
                 const mapped: Standard[] = toolRes.data.toolsAssigned.map(
                     (t: any, idx: number) => ({
                         slNumber: String(idx + 1),
                         nomenclature: t.nomenclature,
-                        make: t.manufacturer,
+                        make: t.manufacturer || t.make,
                         model: t.model,
                         SrNo: t.SrNo,
                         range: t.range,
@@ -124,6 +174,97 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
             [testName]: testId
         }));
     };
+
+    // Load report header and test IDs
+    useEffect(() => {
+        const loadReportHeader = async () => {
+            if (!serviceId) return;
+            try {
+                const res = await getReportHeaderForDentalIntra(serviceId);
+                if (res?.exists && res?.data) {
+                    // Update form data from report header
+                    setFormData(prev => ({
+                        ...prev,
+                        customerName: res.data.customerName || prev.customerName,
+                        address: res.data.address || prev.address,
+                        srfNumber: res.data.srfNumber || prev.srfNumber,
+                        srfDate: res.data.srfDate || prev.srfDate,
+                        testReportNumber: res.data.testReportNumber || prev.testReportNumber,
+                        issueDate: res.data.issueDate || prev.issueDate,
+                        nomenclature: res.data.nomenclature || prev.nomenclature,
+                        make: res.data.make || prev.make,
+                        model: res.data.model || prev.model,
+                        slNumber: res.data.slNumber || prev.slNumber,
+                        condition: res.data.condition || prev.condition,
+                        testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
+                        testDate: res.data.testDate || prev.testDate,
+                        testDueDate: res.data.testDueDate || prev.testDueDate,
+                        location: res.data.location || prev.location,
+                        temperature: res.data.temperature || prev.temperature,
+                        humidity: res.data.humidity || prev.humidity,
+                        engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
+                    }));
+
+                    // Save test IDs
+                    setSavedTestIds({
+                        AccuracyOfOperatingPotentialAndTimeDentalIntra: res.data.AccuracyOfOperatingPotentialAndTimeDentalIntra?._id || res.data.AccuracyOfOperatingPotentialAndTimeDentalIntra,
+                        LinearityOfTimeDentalIntra: res.data.LinearityOfTimeDentalIntra?._id || res.data.LinearityOfTimeDentalIntra,
+                        ReproducibilityOfRadiationOutputDentalIntra: res.data.ReproducibilityOfRadiationOutputDentalIntra?._id || res.data.ReproducibilityOfRadiationOutputDentalIntra,
+                        TubeHousingLeakageDentalIntra: res.data.TubeHousingLeakageDentalIntra?._id || res.data.TubeHousingLeakageDentalIntra,
+                    });
+                }
+            } catch (err) {
+                console.log("No report header found or failed to load:", err);
+            }
+        };
+        loadReportHeader();
+    }, [serviceId]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSaveHeader = async () => {
+        setSaving(true);
+        setSaveSuccess(false);
+        setSaveError(null);
+
+        try {
+            const payload = {
+                ...formData,
+                toolsUsed: tools.map(t => ({
+                    toolId: t.certificate || null,
+                    SrNo: t.SrNo,
+                    nomenclature: t.nomenclature,
+                    make: t.make,
+                    model: t.model,
+                    range: t.range,
+                    calibrationCertificateNo: t.calibrationCertificateNo,
+                    calibrationValidTill: t.calibrationValidTill,
+                    certificate: t.certificate,
+                    uncertainity: t.uncertainity || "",
+                })),
+                notes: [
+                    { slNo: "5.1", text: "The Test Report relates only to the above item only." },
+                    { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
+                    { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
+                    { slNo: "5.4", text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats." },
+                    { slNo: "5.5", text: "Any error in this Report should be brought to our knowledge within 30 days from the date of this report." },
+                    { slNo: "5.6", text: "Results reported are valid at the time of and under the stated conditions of measurements." },
+                    { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
+                ],
+            };
+
+            await saveReportHeader(serviceId, payload);
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 4000);
+        } catch (err: any) {
+            setSaveError(err?.response?.data?.message || "Failed to save report header");
+        } finally {
+            setSaving(false);
+        }
+    };
     if (loading) {
         return (
             <div className="max-w-6xl mx-auto p-8 text-center">
@@ -153,7 +294,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
     return (
         <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
             <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Generate QA Test Report - BMD/DEXA
+                Generate QA Test Report - Dental Intra
             </h1>
 
             {/* 1. Customer Name & Address */}
@@ -168,8 +309,10 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         </label>
                         <input
                             type="text"
-                            defaultValue={details.hospitalName}
-                            className="border p-2 rounded-md w-full"
+                            name="customerName"
+                            value={formData.customerName}
+                            onChange={handleInputChange}
+                            className="border p-2 rounded-md w-full bg-gray-100"
                             readOnly
                         />
                     </div>
@@ -179,8 +322,10 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         </label>
                         <input
                             type="text"
-                            defaultValue={details.hospitalAddress}
-                            className="border p-2 rounded-md w-full"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleInputChange}
+                            className="border p-2 rounded-md w-full bg-gray-100"
                             readOnly
                         />
                     </div>
@@ -199,8 +344,10 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         </label>
                         <input
                             type="text"
-                            defaultValue={details.srfNumber}
-                            className="border p-2 rounded-md w-full"
+                            name="srfNumber"
+                            value={formData.srfNumber}
+                            onChange={handleInputChange}
+                            className="border p-2 rounded-md w-full bg-gray-100"
                             readOnly
                         />
                     </div>
@@ -210,7 +357,9 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         </label>
                         <input
                             type="date"
-                            defaultValue={formatDate(details.qaTests[0]?.createdAt ?? "")}
+                            name="srfDate"
+                            value={formData.srfDate}
+                            onChange={handleInputChange}
                             className="border p-2 rounded-md w-full"
                         />
                     </div>
@@ -223,7 +372,9 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         </label>
                         <input
                             type="text"
-                            defaultValue={details.qaTests[0]?.qaTestReportNumber ?? "N/A"}
+                            name="testReportNumber"
+                            value={formData.testReportNumber}
+                            onChange={handleInputChange}
                             className="border p-2 rounded-md w-full"
                         />
                     </div>
@@ -231,7 +382,13 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                             Issue Date
                         </label>
-                        <input type="date" className="border p-2 rounded-md w-full" />
+                        <input 
+                            type="date" 
+                            name="issueDate"
+                            value={formData.issueDate}
+                            onChange={handleInputChange}
+                            className="border p-2 rounded-md w-full" 
+                        />
                     </div>
                 </div>
             </section>
@@ -243,28 +400,30 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
-                        { label: "Nomenclature", value: details.machineType },
-                        { label: "Make", value: "" },
-                        { label: "Model", value: details.machineModel },
-                        { label: "Serial Number", value: details.serialNumber },
-                        { label: "Condition of Test Item", value: "" },
-                        { label: "Testing Procedure Number", value: "" },
-                        { label: "No. of Pages", value: "" },
-                        { label: "QA Test Date", value: formatDate(details.qaTests[0]?.createdAt ?? ""), type: "date" },
-                        { label: "QA Test Due Date", value: "", type: "date" },
-                        { label: "Testing Done At Location", value: details.hospitalAddress },
-                        { label: "Temperature (°C)", value: "", type: "number" },
-                        { label: "Humidity (RH %)", value: "", type: "number" },
-                    ].map((field, i) => (
-                        <div key={i}>
+                        { label: "Nomenclature", name: "nomenclature", readOnly: true },
+                        { label: "Make", name: "make" },
+                        { label: "Model", name: "model", readOnly: true },
+                        { label: "Serial Number", name: "slNumber", readOnly: true },
+                        { label: "Condition of Test Item", name: "condition" },
+                        { label: "Testing Procedure Number", name: "testingProcedureNumber" },
+                        { label: "No. of Pages", name: "pages" },
+                        { label: "QA Test Date", name: "testDate", type: "date" },
+                        { label: "QA Test Due Date", name: "testDueDate", type: "date" },
+                        { label: "Testing Done At Location", name: "location" },
+                        { label: "Temperature (°C)", name: "temperature", type: "number" },
+                        { label: "Humidity (RH %)", name: "humidity", type: "number" },
+                    ].map((field) => (
+                        <div key={field.name}>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 {field.label}
                             </label>
                             <input
                                 type={field.type ?? "text"}
-                                defaultValue={field.value}
-                                className="border p-2 rounded-md w-full"
-                                readOnly={field.label === "Nomenclature" || field.label === "Model" || field.label === "Serial Number"}
+                                name={field.name}
+                                value={(formData as any)[field.name]}
+                                onChange={handleInputChange}
+                                className={`border p-2 rounded-md w-full ${field.readOnly ? "bg-gray-100" : ""}`}
+                                readOnly={field.readOnly}
                             />
                         </div>
                     ))}
@@ -274,12 +433,33 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
             <Standards standards={tools} />
             <Notes />
 
-            {/* View Report Button */}
+            {/* Save & View Buttons */}
             <div className="mt-8 flex justify-end gap-4">
+                {saveSuccess && (
+                    <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+                        Report Header Saved Successfully!
+                    </div>
+                )}
+                {saveError && (
+                    <div className="text-red-600 bg-red-50 px-4 py-3 rounded-lg border border-red-300">
+                        {saveError}
+                    </div>
+                )}
+
+                <button
+                    type="button"
+                    onClick={handleSaveHeader}
+                    disabled={saving}
+                    className={`px-6 py-2 rounded-md font-medium text-white transition ${
+                        saving ? "bg-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+                    }`}
+                >
+                    {saving ? "Saving..." : "Save Report Header"}
+                </button>
                 <button
                     type="button"
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => navigate("/admin/orders/view-service-report")}
+                    onClick={() => navigate(`/admin/orders/view-service-report-dental-intra?serviceId=${serviceId}`)}
                 >
                     View Generated Report
                 </button>
@@ -291,7 +471,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                 {[
                     { title: "Accuracy Of Irradiation Time", component: <AccuracyOfOperatingPotentialAndTime serviceId={serviceId} /> },
                     { title: "Linearity Of Time", component: <LinearityOfTime serviceId={serviceId} /> },
-                    { title: "Reproducibility Of Radiation Output", component: <ReproducibilityOfRadiationOutput /> },
+                    { title: "Reproducibility Of Radiation Output", component: <ReproducibilityOfRadiationOutput serviceId={serviceId} /> },
                     { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
 
 

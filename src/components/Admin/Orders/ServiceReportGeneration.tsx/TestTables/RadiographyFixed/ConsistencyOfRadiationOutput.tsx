@@ -5,9 +5,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addReproducibilityOfRadiationOutputForBmd,
-  getReproducibilityOfRadiationOutputByServiceIdForBmd,
-  updateReproducibilityOfRadiationOutputForBMD,
+  addOutputConsistencyForRadiographyMobileHT,
+  getOutputConsistencyByServiceIdForRadiographyMobileHT,
+  updateOutputConsistencyForRadiographyMobileHT,
 } from '../../../../../../api';
 
 interface FCDData {
@@ -183,7 +183,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     const loadTest = async () => {
       setIsLoading(true);
       try {
-        const data = await getReproducibilityOfRadiationOutputByServiceIdForBmd(serviceId);
+        const data = await getOutputConsistencyByServiceIdForRadiographyMobileHT(serviceId);
         if (data?.data) {
           const testData = data.data;
           setTestId(testData._id);
@@ -246,9 +246,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       let result;
       if (testId) {
-        result = await updateReproducibilityOfRadiationOutputForBMD(testId, payload);
+        result = await updateOutputConsistencyForRadiographyMobileHT(testId, payload);
       } else {
-        result = await addReproducibilityOfRadiationOutputForBmd(serviceId, payload);
+        result = await addOutputConsistencyForRadiographyMobileHT(serviceId, payload);
         if (result?.data?._id) {
           setTestId(result.data._id);
           onTestSaved?.(result.data._id);

@@ -3,6 +3,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addTubeHousingLeakageForDentalIntra,
+  getTubeHousingLeakageByServiceIdForDentalIntra,
+  updateTubeHousingLeakageForDentalIntra,
+} from "../../../../../../api";
 
 interface SettingsRow {
   distance: string;
@@ -130,24 +135,136 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     );
   }, [serviceId, settings, leakageRows, workload, toleranceValue]);
 
-  // Mock load (replace with your API later)
+  // Load existing test data
   useEffect(() => {
-    setIsLoading(false);
-  }, []);
+    if (!serviceId) return;
+    
+    const loadTest = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getTubeHousingLeakageByServiceIdForDentalIntra(serviceId);
+        if (data?.data) {
+          const testData = data.data;
+          setTestId(testData._id);
+          
+          // Map measurementSettings (backend) to settings (frontend)
+          if (testData.measurementSettings) {
+            setSettings({
+              distance: testData.measurementSettings.distance || '',
+              kv: testData.measurementSettings.kv || '',
+              ma: testData.measurementSettings.ma || '',
+              time: testData.measurementSettings.time || '',
+            });
+          }
+          
+          // Map leakageMeasurements (backend) to leakageRows (frontend)
+          if (testData.leakageMeasurements && testData.leakageMeasurements.length > 0) {
+            setLeakageRows(testData.leakageMeasurements.map((row: any) => ({
+              location: row.location || 'Tube Housing',
+              front: row.front || '',
+              back: row.back || '',
+              left: row.left || '',
+              right: row.right || '',
+              top: row.top || '',
+              max: row.max || '',
+              unit: row.unit || 'mGy/h',
+              remark: row.remark || '',
+            })));
+          }
+          
+          // Map workload (backend has {value, unit}) to separate state
+          if (testData.workload) {
+            setWorkload(testData.workload.value || '');
+            setWorkloadUnit(testData.workload.unit || 'mA·min/week');
+          }
+          
+          // Map tolerance (backend has {value, operator, time}) to separate state
+          if (testData.tolerance) {
+            setToleranceValue(testData.tolerance.value || '');
+            setToleranceOperator(testData.tolerance.operator || 'less than or equal to');
+            setToleranceTime(testData.tolerance.time || '1');
+          }
+          
+          setHasSaved(true);
+          setIsEditing(false);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error("Failed to load test data");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadTest();
+  }, [serviceId]);
 
   const handleSave = async () => {
     if (!isFormValid) {
       toast.error('Please fill all fields');
       return;
     }
+    if (!serviceId) {
+      toast.error("Service ID is missing");
+      return;
+    }
+
     setIsSaving(true);
-    // Simulate save
-    await new Promise(r => setTimeout(r, 1000));
-    toast.success('Saved successfully!');
-    setHasSaved(true);
-    setIsEditing(false);
-    setIsSaving(false);
-    onRefresh?.();
+    try {
+      // Map frontend state to backend schema structure
+      const payload = {
+        measurementSettings: {
+          distance: settings.distance,
+          kv: settings.kv,
+          ma: settings.ma,
+          time: settings.time,
+        },
+        leakageMeasurements: processedLeakage.map(row => ({
+          location: row.location,
+          front: row.front,
+          back: row.back,
+          left: row.left,
+          right: row.right,
+          top: row.top,
+          max: row.max,
+          unit: row.unit,
+        })),
+        workload: {
+          value: workload,
+          unit: workloadUnit,
+        },
+        tolerance: {
+          value: toleranceValue,
+          operator: toleranceOperator,
+          time: toleranceTime,
+        },
+        calculatedResult: {
+          maxLeakageIntermediate: maxLeakageResult,
+          finalLeakageRate: finalLeakageRate,
+          remark: finalRemark,
+        },
+      };
+
+      let result;
+      if (testId) {
+        result = await updateTubeHousingLeakageForDentalIntra(testId, payload);
+      } else {
+        result = await addTubeHousingLeakageForDentalIntra(serviceId, payload);
+        if (result?.data?._id || result?.data?.testId) {
+          setTestId(result.data._id || result.data.testId);
+        }
+      }
+
+      setHasSaved(true);
+      setIsEditing(false);
+      toast.success(testId ? "Updated successfully" : "Saved successfully");
+      onRefresh?.();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.response?.data?.error || "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleEdit = () => setIsEditing(true);

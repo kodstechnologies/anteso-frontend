@@ -1,13 +1,12 @@
 // components/TestTables/LinearityOfMasLoading.tsx
-'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addLinearityOfMasLoadingForFixedRadioFluro,
-  getLinearityOfMasLoadingByServiceIdForFixedRadioFluro,
-  updateLinearityOfMasLoadingForFixedRadioFluro,
+  addLinearityOfMasLoadingStationsForRadiographyPortable,
+  getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable,
+  updateLinearityOfMasLoadingStationsForRadiographyPortable,
 } from '../../../../../../api';
 
 interface ExposureCondition {
@@ -101,7 +100,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
         return;
       }
       try {
-        const res = await getLinearityOfMasLoadingByServiceIdForFixedRadioFluro(serviceId);
+        const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -179,7 +178,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       // If no testId, try to get existing data by serviceId first
       if (!currentTestId) {
         try {
-          const existing = await getLinearityOfMasLoadingByServiceIdForFixedRadioFluro(serviceId);
+          const existing = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId);
           if (existing?.data?._id) {
             currentTestId = existing.data._id;
             setTestId(currentTestId);
@@ -191,11 +190,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
       if (currentTestId) {
         // Update existing
-        result = await updateLinearityOfMasLoadingForFixedRadioFluro(currentTestId, payload);
+        result = await updateLinearityOfMasLoadingStationsForRadiographyPortable(currentTestId, payload);
         toast.success('Updated successfully!');
       } else {
         // Create new
-        result = await addLinearityOfMasLoadingForFixedRadioFluro(serviceId, payload);
+        result = await addLinearityOfMasLoadingStationsForRadiographyPortable(serviceId, payload);
         const newId = result?.data?._id || result?.data?.data?._id || result?._id;
         if (newId) {
           setTestId(newId);

@@ -155,7 +155,8 @@ const machineOptions: OptionType[] = [
     "Radiography (Mobile) with HT",
     "Lead Apron",
     "Thyroid Shield",
-    "Gonald Shield"
+    "Gonald Shield",
+    "Others",
 ].map((label) => ({ label, value: label }))
 
 const urgencyOptions: string[] = [

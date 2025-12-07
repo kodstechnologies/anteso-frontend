@@ -8,10 +8,14 @@ import MammographyReport from "./TestTables/Mammography/GenerateReportMammograph
 import CArmReport from "./TestTables/CArm/GenerateReportForCArm"
 import BMDReport from "./TestTables/BMD/GenerateReportForBMD"
 import RadioFluro from "./TestTables/FixedRadioFluro/GenerateServiceReport"
-import DentalReport from "./TestTables/DentalIntra/GenerateServiceReport" 
+import DentalReport from "./TestTables/DentalIntra/GenerateServiceReport"
 import CBCTReport from "./TestTables/DentalConeBeamCT/GenerateServiceReport"
 import OPGReport from "./TestTables/OPG/GenerateServiceReport"
 import RadiographyFixed from './TestTables/RadiographyFixed/GeneraateServiceReport';
+import DentalHandHeldReport from "./TestTables/DentalHandHeld/GenerateServiceReport"
+import RadiographyMobileHTReport from "./TestTables/RadiographyMobileHT/GenerateServiceReport"
+import RadiographyPortableReport from "./TestTables/RadiographyPortable/GenerateServiceReport"
+import RadiographyMobileReport from "./TestTables/RadiographyMobile/GenerateServiceReport"
 // import RadioF
 // import CBCTReport from './reports/CBCTReport';
 // import FixedXRayReport from './reports/FixedXRayReport';
@@ -43,12 +47,15 @@ const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   'Computed Tomography': CTScanReport,
   // 'PET CT': PETCTReport,
   'Radiography (Fixed)': RadiographyFixed,
-   "Ortho Pantomography (OPG)": OPGReport,
+  "Ortho Pantomography (OPG)": OPGReport,
   "Dental Cone Beam CT": CBCTReport,
   'Bone Densitometer (BMD)': BMDReport,
   // 'Dental IOPA': DentalIOPAreport,
   'Dental (Intra Oral)': DentalReport,
-  // 'O Arm': OArmReport,
+  'Dental (Hand-held)': DentalHandHeldReport,
+'Radiography (Mobile) with HT': RadiographyMobileHTReport,
+'Radiography (Portable)': RadiographyPortableReport,
+  'Radiography (Mobile)': RadiographyMobileReport,
   // 'KV Imaging (OBI)': KVImagingReport,s
   // 'Lead Apron Test': LeadApronReport,
   // 'Thyroid Shield Test': ThyroidShieldReport,
@@ -67,7 +74,7 @@ const GenerateServiceReport: React.FC = () => {
   const { state } = location as { state?: { serviceId?: string; machineType?: string } };
 
   console.log("🧭 From location.state:", state);
-  
+
   if (!state?.serviceId || !state?.machineType) {
     return (
       <div className="p-8 text-center text-red-600">

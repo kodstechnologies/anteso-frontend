@@ -5,9 +5,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addLinearityOfMasLoadingStationsForFixedRadioFluro,
-  getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro,
-  updateLinearityOfMasLoadingStationsForFixedRadioFluro,
+  addLinearityOfMasLoadingStationsForRadiographyFixed,
+  getLinearityOfMasLoadingStationsByServiceIdForRadiographyFixed,
+  updateLinearityOfMasLoadingStationsForRadiographyFixed,
 } from '../../../../../../api';
 
 interface Table1Row {
@@ -175,7 +175,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         return;
       }
       try {
-        const res = await getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro(serviceId);
+        const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyFixed(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -267,7 +267,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       // If no testId, try to get existing data by serviceId first
       if (!currentTestId) {
         try {
-          const existing = await getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro(serviceId);
+          const existing = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyFixed(serviceId);
           if (existing?.data?._id) {
             currentTestId = existing.data._id;
             setTestId(currentTestId);
@@ -282,13 +282,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       if (currentTestId) {
         // Update existing
         console.log('Updating with testId:', currentTestId);
-        result = await updateLinearityOfMasLoadingStationsForFixedRadioFluro(currentTestId, payload);
+        result = await updateLinearityOfMasLoadingStationsForRadiographyFixed(currentTestId, payload);
         console.log('Update result:', result);
         toast.success('Updated successfully!');
       } else {
         // Create new (backend uses upsert, so this will work even if data exists)
         console.log('Creating new with serviceId:', serviceId);
-        result = await addLinearityOfMasLoadingStationsForFixedRadioFluro(serviceId, payload);
+        result = await addLinearityOfMasLoadingStationsForRadiographyFixed(serviceId, payload);
         console.log('Create result:', result);
         const newId = result?.data?._id || result?.data?.data?._id || result?._id;
         if (newId) {

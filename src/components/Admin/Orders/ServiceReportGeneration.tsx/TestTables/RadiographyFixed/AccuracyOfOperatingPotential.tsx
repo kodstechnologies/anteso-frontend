@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
-  addMeasurementOfOperatingPotential,
-  getMeasurementOfOperatingPotentialByTestId,
-  updateMeasurementOfOperatingPotential,
+  addAccuracyOfOperatingPotentialForRadiographyMobileHT,
+  getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobileHT,
+  updateAccuracyOfOperatingPotentialForRadiographyMobileHT,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
 
@@ -131,14 +131,19 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
 
   // === Load Existing Data ===
   useEffect(() => {
-    if (!testId) {
+    if (!serviceId) {
       setIsLoading(false);
       return;
     }
     const load = async () => {
       try {
-        const { data } = await getMeasurementOfOperatingPotentialByTestId(testId);
-        const rec = data;
+        const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobileHT(serviceId);
+        if (!res?.data) {
+          setIsLoading(false);
+          return;
+        }
+        const rec = res.data;
+        if (rec._id) setTestId(rec._id);
 
         // Table 1
         if (rec.table1?.[0]) {
@@ -179,7 +184,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
       }
     };
     load();
-  }, [testId]);
+  }, [serviceId]);
 
   // === Save / Update ===
   const handleSave = async () => {
@@ -221,11 +226,11 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
     try {
       let res;
       if (testId) {
-        res = await updateMeasurementOfOperatingPotential(testId, payload);
+        res = await updateAccuracyOfOperatingPotentialForRadiographyMobileHT(testId, payload);
         toast.success('Updated successfully!');
       } else {
-        res = await addMeasurementOfOperatingPotential(serviceId, payload);
-        setTestId(res.data.testId);
+        res = await addAccuracyOfOperatingPotentialForRadiographyMobileHT(serviceId, payload);
+        if (res?.data?._id) setTestId(res.data._id);
         toast.success('Saved successfully!');
       }
       setHasSaved(true);

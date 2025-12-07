@@ -5,9 +5,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Edit3, Save, Loader2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addCentralBeamAlignmentForFixedRadioFluro,
-  getCentralBeamAlignmentByServiceIdForFixedRadioFluro,
-  updateCentralBeamAlignmentForFixedRadioFluro,
+  addCentralBeamAlignmentForRadiographyFixed,
+  getCentralBeamAlignmentByServiceIdForRadiographyFixed,
+  updateCentralBeamAlignmentForRadiographyFixed,
 } from '../../../../../../api';
 
 interface TechniqueRow {
@@ -83,7 +83,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         return;
       }
       try {
-        const res = await getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId);
+        const res = await getCentralBeamAlignmentByServiceIdForRadiographyFixed(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -127,7 +127,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         return;
       }
       try {
-        const res = await getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId);
+        const res = await getCentralBeamAlignmentByServiceIdForRadiographyFixed(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -193,10 +193,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
     try {
       let res;
       if (testId) {
-        res = await updateCentralBeamAlignmentForFixedRadioFluro(testId, payload);
+        res = await updateCentralBeamAlignmentForRadiographyFixed(testId, payload);
         toast.success('Updated successfully!');
       } else {
-        res = await addCentralBeamAlignmentForFixedRadioFluro(serviceId, payload);
+        res = await addCentralBeamAlignmentForRadiographyFixed(serviceId, payload);
         const newId = res?.data?._id || res?.data?.data?._id;
         if (newId) {
           setTestId(newId);

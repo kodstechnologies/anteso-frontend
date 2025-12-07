@@ -4,6 +4,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  addLinearityOfTimeForDentalIntra,
+  getLinearityOfTimeByServiceIdForDentalIntra,
+  updateLinearityOfTimeForDentalIntra,
+} from "../../../../../../api";
 
 interface Table1Row {
   fcd: string;
@@ -157,18 +162,95 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
     );
   }, [serviceId, table1Row, table2Rows]);
 
+  // Load existing test data
+  useEffect(() => {
+    if (!serviceId) return;
+    
+    const loadTest = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getLinearityOfTimeByServiceIdForDentalIntra(serviceId);
+        if (data?.data) {
+          const testData = data.data;
+          setTestId(testData._id);
+          if (testData.table1) {
+            setTable1Row({
+              fcd: testData.table1.fcd || '',
+              kv: testData.table1.kv || '',
+              ma: testData.table1.ma || '',
+            });
+          }
+          if (testData.table2 && testData.table2.length > 0) {
+            setTable2Rows(testData.table2.map((r: any) => ({
+              id: r.id || Date.now().toString() + Math.random(),
+              time: r.time || '',
+              measuredOutputs: r.measuredOutputs || [],
+              average: r.average || '',
+              x: r.x || '',
+              xMax: r.xMax || '',
+              xMin: r.xMin || '',
+              col: r.col || '',
+              remarks: r.remarks || '',
+            })));
+          }
+          if (testData.tolerance) {
+            setTolerance(testData.tolerance);
+          }
+          setHasSaved(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error("Failed to load test data");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadTest();
+  }, [serviceId]);
+
   const handleSave = async () => {
     if (!isFormValid) {
       toast.error('Please fill all required fields');
       return;
     }
     setIsSaving(true);
-    await new Promise(r => setTimeout(r, 1000));
-    toast.success('Linearity of Time saved successfully!');
-    setHasSaved(true);
-    setIsEditing(false);
-    setIsSaving(false);
-    onRefresh?.();
+    try {
+      const payload = {
+        table1: table1Row,
+        table2: processedTable2.map(r => ({
+          time: r.time,
+          measuredOutputs: r.measuredOutputs,
+          average: r.average,
+          x: r.x,
+          xMax: r.xMax,
+          xMin: r.xMin,
+          col: r.col,
+          remarks: r.remarks,
+        })),
+        tolerance,
+      };
+
+      let result;
+      if (testId) {
+        result = await updateLinearityOfTimeForDentalIntra(testId, payload);
+      } else {
+        result = await addLinearityOfTimeForDentalIntra(serviceId, payload);
+        if (result?.data?._id) {
+          setTestId(result.data._id);
+        }
+      }
+
+      setHasSaved(true);
+      setIsEditing(false);
+      toast.success(testId ? "Updated successfully" : "Saved successfully");
+      onRefresh?.();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleEdit = () => setIsEditing(true);

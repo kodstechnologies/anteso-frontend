@@ -5,9 +5,9 @@ import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Loader2, Edit3, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  addRadiationProtectionSurveyForFixedRadioFluro,
-  getRadiationProtectionSurveyByServiceIdForFixedRadioFluro,
-  updateRadiationProtectionSurveyForFixedRadioFluro,
+  addRadiationProtectionSurveyForRadiographyFixed,
+  getRadiationProtectionSurveyByServiceIdForRadiographyFixed,
+  updateRadiationProtectionSurveyForRadiographyFixed,
 } from "../../../../../../api";
 
 interface LocationData {
@@ -104,7 +104,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
         return;
       }
       try {
-        const res = await getRadiationProtectionSurveyByServiceIdForFixedRadioFluro(serviceId);
+        const res = await getRadiationProtectionSurveyByServiceIdForRadiographyFixed(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -177,10 +177,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     try {
       let res;
       if (testId) {
-        res = await updateRadiationProtectionSurveyForFixedRadioFluro(testId, payload);
+        res = await updateRadiationProtectionSurveyForRadiographyFixed(testId, payload);
         toast.success("Updated successfully");
       } else {
-        res = await addRadiationProtectionSurveyForFixedRadioFluro(serviceId, payload);
+        res = await addRadiationProtectionSurveyForRadiographyFixed(serviceId, payload);
         const newId = res?.data?._id || res?.data?.data?._id;
         if (newId) setTestId(newId);
         toast.success("Saved successfully");

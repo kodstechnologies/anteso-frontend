@@ -3,8 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeader } from "../../../../../../api";
-import { getDetails, getTools } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyFixed } from "../../../../../../api";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -394,7 +393,7 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
           {saving ? "Saving..." : "Save Report Header"}
         </button>
         <button
-          onClick={() => navigate(`/admin/orders/view-service-report-fixed-radio-flouro?serviceId=${serviceId}`)}
+          onClick={() => navigate(`/admin/orders/view-service-report-radiography-fixed?serviceId=${serviceId}`)}
           className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
         >
           View Generated Report
@@ -410,8 +409,6 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             component: (
               <CongruenceOfRadiation
                 serviceId={serviceId}
-                testId={radiationProfileTest?._id || null}
-                onTestSaved={(id: any) => console.log("Radiation Profile saved:", id)}
               />
             ),
           },

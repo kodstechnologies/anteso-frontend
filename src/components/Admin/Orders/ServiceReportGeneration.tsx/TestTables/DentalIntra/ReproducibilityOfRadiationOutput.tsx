@@ -2,7 +2,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit3, Save } from 'lucide-react';
+import { Plus, Trash2, Edit3, Save, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import {
+  addReproducibilityOfRadiationOutputForDentalIntra,
+  getReproducibilityOfRadiationOutputByServiceIdForDentalIntra,
+  updateReproducibilityOfRadiationOutputForDentalIntra,
+} from "../../../../../../api";
 
 interface OutputMeasurement {
   value: string;
@@ -22,7 +28,20 @@ interface Tolerance {
   value: string;
 }
 
-const ReproducibilityOfRadiationOutput: React.FC = () => {
+interface Props {
+  serviceId: string;
+  testId?: string;
+  onTestSaved?: (testId: string) => void;
+}
+
+const ReproducibilityOfRadiationOutput: React.FC<Props> = ({ 
+  serviceId, 
+  testId: propTestId,
+  onTestSaved 
+}) => {
+  const [testId, setTestId] = useState<string | null>(propTestId || null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
     {
       id: '1',
@@ -39,7 +58,47 @@ const ReproducibilityOfRadiationOutput: React.FC = () => {
   ]);
 
   const [tolerance, setTolerance] = useState<Tolerance>({ operator: '<=', value: '5.0' });
-  const [isEditing, setIsEditing] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Load existing test data
+  useEffect(() => {
+    if (!serviceId) return;
+    
+    const loadTest = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getReproducibilityOfRadiationOutputByServiceIdForDentalIntra(serviceId);
+        if (data?.data) {
+          const testData = data.data;
+          setTestId(testData._id);
+          if (testData.outputRows && testData.outputRows.length > 0) {
+            setOutputRows(testData.outputRows.map((r: any) => ({
+              id: r.id || Date.now().toString() + Math.random(),
+              kv: r.kv || '',
+              mas: r.mas || '',
+              outputs: r.outputs || [],
+              avg: r.avg || '',
+              remark: r.remark || '',
+            })));
+          }
+          if (testData.tolerance) {
+            setTolerance(testData.tolerance);
+          }
+          setIsSaved(true);
+          setIsEditing(false);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error("Failed to load test data");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadTest();
+  }, [serviceId]);
 
   const outputColumnsCount = outputHeaders.length;
 
@@ -127,7 +186,60 @@ const ReproducibilityOfRadiationOutput: React.FC = () => {
     );
   };
 
-  const toggleEdit = () => setIsEditing(prev => !prev);
+  const toggleEdit = () => {
+    setIsEditing(true);
+    setIsSaved(false);
+  };
+
+  const handleSave = async () => {
+    if (!serviceId) {
+      toast.error("Service ID is missing");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        outputRows: outputRows.map(r => ({
+          kv: r.kv,
+          mas: r.mas,
+          outputs: r.outputs,
+          avg: r.avg,
+          remark: r.remark,
+        })),
+        tolerance,
+      };
+
+      let result;
+      if (testId) {
+        result = await updateReproducibilityOfRadiationOutputForDentalIntra(testId, payload);
+      } else {
+        result = await addReproducibilityOfRadiationOutputForDentalIntra(serviceId, payload);
+        if (result?.data?._id) {
+          setTestId(result.data._id);
+          onTestSaved?.(result.data._id);
+        }
+      }
+
+      setIsSaved(true);
+      setIsEditing(false);
+      toast.success(testId ? "Updated successfully" : "Saved successfully");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isViewMode = isSaved && !isEditing;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-full overflow-x-auto space-y-8">
@@ -139,16 +251,30 @@ const ReproducibilityOfRadiationOutput: React.FC = () => {
 
         <div className="flex items-center gap-4">
           <button
-            onClick={toggleEdit}
-            className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition"
+            onClick={isViewMode ? toggleEdit : handleSave}
+            disabled={isSaving}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg transition ${
+              isViewMode
+                ? "bg-orange-600 text-white hover:bg-orange-700"
+                : isSaved
+                ? "bg-gray-400 text-white"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            } disabled:opacity-50`}
           >
-            {isEditing ? (
+            {isSaving ? (
               <>
-                <Save className="w-4 h-4" /> Save & Lock
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : isViewMode ? (
+              <>
+                <Edit3 className="w-4 h-4" />
+                Edit
               </>
             ) : (
               <>
-                <Edit3 className="w-4 h-4" /> Edit
+                <Save className="w-4 h-4" />
+                {testId ? "Update" : "Save"} Test
               </>
             )}
           </button>
@@ -170,7 +296,7 @@ const ReproducibilityOfRadiationOutput: React.FC = () => {
                 <th colSpan={outputColumnsCount} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
-                    {isEditing && (
+                    {!isViewMode && (
                       <button onClick={addOutputColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
                         <Plus className="w-4 h-4" />
                       </button>
@@ -192,7 +318,7 @@ const ReproducibilityOfRadiationOutput: React.FC = () => {
                         readOnly={!isEditing}
                         className="w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                       />
-                      {isEditing && outputColumnsCount > 3 && (
+                      {!isViewMode && outputColumnsCount > 3 && (
                         <button onClick={() => removeOutputColumn(i)} className="text-red-600">
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -210,8 +336,8 @@ const ReproducibilityOfRadiationOutput: React.FC = () => {
                       type="text"
                       value={row.kv}
                       onChange={e => updateCell(row.id, 'kv', e.target.value)}
-                      readOnly={!isEditing}
-                      className="w-full px-3 py-2 text-center border rounded text-sm bg-white"
+                      disabled={isViewMode}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                       placeholder="28"
                     />
                   </td>
@@ -220,8 +346,8 @@ const ReproducibilityOfRadiationOutput: React.FC = () => {
                       type="text"
                       value={row.mas}
                       onChange={e => updateCell(row.id, 'mas', e.target.value)}
-                      readOnly={!isEditing}
-                      className="w-full px-3 py-2 text-center border rounded text-sm bg-white"
+                      disabled={isViewMode}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                       placeholder="100"
                     />
                   </td>
@@ -246,7 +372,7 @@ const ReproducibilityOfRadiationOutput: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-2 text-center">
-                    {isEditing && outputRows.length > 1 && (
+                    {!isViewMode && outputRows.length > 1 && (
                       <button onClick={() => removeOutputRow(row.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -259,7 +385,7 @@ const ReproducibilityOfRadiationOutput: React.FC = () => {
         </div>
 
         <div className="px-6 py-4 bg-gray-50 border-t flex justify-start">
-          {isEditing && (
+          {!isViewMode && (
             <button onClick={addOutputRow} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Plus className="w-5 h-5" /> Add Technique
             </button>

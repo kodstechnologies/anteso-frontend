@@ -3,9 +3,9 @@ import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Save, Loader2, Edit3 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  addAccuracyOfOperatingPotentialAndTimeForBMD,
-  getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD,
-  updateAccuracyOfOperatingPotentialAndTimeForBMD,
+  addAccuracyOfOperatingPotentialAndTimeForDentalIntra,
+  getAccuracyOfOperatingPotentialAndTimeByServiceIdForDentalIntra,
+  updateAccuracyOfOperatingPotentialAndTimeForDentalIntra,
 } from "../../../../../../api";
 
 interface MAStationData {
@@ -170,7 +170,7 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
     const loadTest = async () => {
       setIsLoading(true);
       try {
-        const data = await getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD(serviceId);
+        const data = await getAccuracyOfOperatingPotentialAndTimeByServiceIdForDentalIntra(serviceId);
         if (data?.data) {
           const testData = data.data;
           setTestId(testData._id);
@@ -234,9 +234,9 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
 
       let result;
       if (testId) {
-        result = await updateAccuracyOfOperatingPotentialAndTimeForBMD(testId, payload);
+        result = await updateAccuracyOfOperatingPotentialAndTimeForDentalIntra(testId, payload);
       } else {
-        result = await addAccuracyOfOperatingPotentialAndTimeForBMD(serviceId, payload);
+        result = await addAccuracyOfOperatingPotentialAndTimeForDentalIntra(serviceId, payload);
         if (result?.data?._id) {
           setTestId(result.data._id);
           onTestSaved?.(result.data._id);

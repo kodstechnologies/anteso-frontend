@@ -125,7 +125,13 @@ import GenericServiceTable from "../components/Admin/Orders/ServiceReportGenerat
 
 import ViewServiceReportFixedRadioFluoro from "../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/FixedRadioFluro/ViewServiceReport"
 import ViewServiceReportDentalConeBeamCT from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/DentalConeBeamCT/ViewServiceReport';
-
+import ViewServiceReportDentalIntra from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/DentalIntra/ViewServiceReport';
+import ViewServiceReportDentalHandHeld from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/DentalHandHeld/ViewServiceReport';
+import ViewServiceReportRadiographyFixed from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyFixed/ViewServiceReport';
+import ViewServiceReportRadiographyMobileHT from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyMobileHT/ViewServiceReport';
+import ViewServiceReportRadiographyPortable from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyPortable/ViewServiceReport';
+import ViewServiceReportRadiographyMobile from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyMobile/ViewServiceReport';
+import ViewServiceReportCArm from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CArm/ViewServiceReport';
 
 import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
@@ -776,6 +782,62 @@ const routes = [
         ),
     },
     {
+        path: '/admin/orders/view-service-report-dental-intra',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportDentalIntra />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-dental-hand-held',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportDentalHandHeld />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-radiography-fixed',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportRadiographyFixed />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-radiography-mobile-ht',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportRadiographyMobileHT />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-radiography-portable',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportRadiographyPortable />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-radiography-mobile',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportRadiographyMobile />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-c-arm',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportCArm />
+            </AdminProtected>
+        ),
+    },
+    {
         path: '/admin/orders/view-service-report-dental-cone-beam-ct',
         element: (
             <AdminProtected>
@@ -783,6 +845,7 @@ const routes = [
             </AdminProtected>
         ),
     },
+
     {
         path: '/admin/payments',
         element: (

@@ -4,9 +4,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addTubeHousingLeakageForFixedRadioFluro,
-  getTubeHousingLeakageByServiceIdForFixedRadioFluro,
-  updateTubeHousingLeakageForFixedRadioFluro,
+  addRadiationLeakageLevelForRadiographyFixed,
+  getRadiationLeakageLevelByServiceIdForRadiographyFixed,
+  updateRadiationLeakageLevelForRadiographyFixed,
 } from '../../../../../../api';
 
 interface SettingsRow {
@@ -145,11 +145,11 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         return;
       }
       try {
-        const res = await getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId);
+        const res = await getRadiationLeakageLevelByServiceIdForRadiographyFixed(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          if (data.fcd) setSettings({ fcd: data.fcd, kv: data.kv, ma: data.ma, time: data.time });
+          if (data.fcd) setSettings({ fcd: data.fcd, kv: data.kv || '', ma: data.ma || '', time: data.time || '' });
           if (data.workload) setWorkload(data.workload);
           if (data.toleranceValue) setToleranceValue(data.toleranceValue);
           if (data.toleranceOperator) setToleranceOperator(data.toleranceOperator);
@@ -230,7 +230,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       // If no testId, try to get existing data by serviceId first
       if (!currentTestId) {
         try {
-          const existing = await getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId);
+          const existing = await getRadiationLeakageLevelByServiceIdForRadiographyFixed(serviceId);
           if (existing?.data?._id) {
             currentTestId = existing.data._id;
             setTestId(currentTestId);
@@ -242,11 +242,11 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
       if (currentTestId) {
         // Update existing
-        result = await updateTubeHousingLeakageForFixedRadioFluro(currentTestId, payload);
+        result = await updateRadiationLeakageLevelForRadiographyFixed(currentTestId, payload);
         toast.success('Updated successfully!');
       } else {
         // Create new
-        result = await addTubeHousingLeakageForFixedRadioFluro(serviceId, payload);
+        result = await addRadiationLeakageLevelForRadiographyFixed(serviceId, payload);
         const newId = result?.data?._id || result?.data?.data?._id || result?._id;
         if (newId) {
           setTestId(newId);
