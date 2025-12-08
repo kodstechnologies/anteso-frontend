@@ -29,9 +29,9 @@ interface ReportData {
   customerName?: string;
   address?: string;
   srfNumber?: string;
-  srfDate?: string;
+  srfDate?: any;
   testReportNumber?: string;
-  issueDate?: string;
+  issueDate?: any;
   nomenclature?: string;
   make?: string;
   model?: string;
@@ -39,7 +39,7 @@ interface ReportData {
   condition?: string;
   testingProcedureNumber?: string;
   engineerNameRPId?: string;
-  testDate?: string;
+  testDate?: any;
   testDueDate?: string;
   location?: string;
   temperature?: string;
