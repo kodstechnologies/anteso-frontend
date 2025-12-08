@@ -131,7 +131,8 @@ import ViewServiceReportRadiographyFixed from '../components/Admin/Orders/Servic
 import ViewServiceReportRadiographyMobileHT from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyMobileHT/ViewServiceReport';
 import ViewServiceReportRadiographyPortable from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyPortable/ViewServiceReport';
 import ViewServiceReportRadiographyMobile from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyMobile/ViewServiceReport';
-import ViewServiceReportCArm from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CArm/ViewServiceReport';
+import ViewServiceReportCArm from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CArm/ViewServiceReport';import ViewServiceReportLeadApron from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/LeadApron/ViewServiceReport';
+
 
 import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
@@ -845,7 +846,14 @@ const routes = [
             </AdminProtected>
         ),
     },
-
+    {
+        path: '/admin/orders/view-service-report-lead-apron',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportLeadApron />
+            </AdminProtected>
+        ),
+    },
     {
         path: '/admin/payments',
         element: (

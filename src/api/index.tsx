@@ -7968,3 +7968,80 @@ export const updateRadiationLeakageLevelForRadiographyMobile = async (testId: st
     );
     return res.data;
 };
+
+// ==================== Lead Apron APIs ====================
+
+// Lead Apron Test
+export const addLeadApronTest = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/lead-apron/lead-apron-test/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLeadApronTestByServiceId = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/lead-apron/lead-apron-test-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getLeadApronTestByTestId = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/lead-apron/lead-apron-test/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateLeadApronTest = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/lead-apron/lead-apron-test/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Get Report Header for Lead Apron
+export const getReportHeaderForLeadApron = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/lead-apron/report-header/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.status === 500) {
+            // Return the error response data if it has exists: false
+            if (error.response?.data?.exists === false) {
+                return error.response.data;
+            }
+            return { exists: false };
+        }
+        throw error;
+    }
+};
+
+// Save Report Header for Lead Apron
+export const saveReportHeaderForLeadApron = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/lead-apron/report-header/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
