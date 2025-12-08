@@ -133,6 +133,8 @@ import ViewServiceReportRadiographyPortable from '../components/Admin/Orders/Ser
 import ViewServiceReportRadiographyMobile from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyMobile/ViewServiceReport';
 import ViewServiceReportCArm from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CArm/ViewServiceReport';import ViewServiceReportLeadApron from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/LeadApron/ViewServiceReport';
 
+import ViewServiceReportOArm from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/OArm/ViewServiceReport';
+import ViewServiceReportCTScan from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CTScan/ViewServiceReport';
 
 import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
@@ -839,6 +841,14 @@ const routes = [
         ),
     },
     {
+        path: '/admin/orders/view-service-report-o-arm',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportOArm />
+            </AdminProtected>
+        ),
+    },
+    {
         path: '/admin/orders/view-service-report-dental-cone-beam-ct',
         element: (
             <AdminProtected>
@@ -847,6 +857,13 @@ const routes = [
         ),
     },
     {
+        path: '/admin/orders/view-service-report-ct-scan',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportCTScan />
+            </AdminProtected>
+        ),
+    },    {
         path: '/admin/orders/view-service-report-lead-apron',
         element: (
             <AdminProtected>

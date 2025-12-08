@@ -3,6 +3,7 @@ import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import {
   addOutputConsistency,
   getOutputConsistencyByTestId,
+  getOutputConsistencyByServiceId,
   updateOutputConsistency,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
@@ -113,31 +114,54 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, onR
 
   // Load existing data
   useEffect(() => {
-    if (!testId) {
-      setIsLoading(false);
-      return;
-    }
-
     const load = async () => {
-      try {
-        console.log("-----------------------entered otput consistency")
-        const { data } = await getOutputConsistencyByTestId(testId);
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
 
-        setParameters(data.parameters || { id: '1', mas: '', sliceThickness: '', time: '' });
-        setOutputRows(data.outputRows || []);
-        setHeaders(data.measurementHeaders || headers);
-        setTolerance(data.tolerance || '');
-        setHasSaved(true);
-        setIsEditing(false);
+      try {
+        setIsLoading(true);
+        let data = null;
+
+        if (propTestId) {
+          const response = await getOutputConsistencyByTestId(propTestId);
+          data = response;
+        } else {
+          data = await getOutputConsistencyByServiceId(serviceId);
+        }
+
+        if (data) {
+          setTestId(data._id || propTestId);
+          setParameters(data.parameters || { id: '1', mas: '', sliceThickness: '', time: '' });
+          setOutputRows(
+            data.outputRows?.map((row: any) => ({
+              id: Date.now().toString() + Math.random(),
+              kvp: row.kvp || '',
+              outputs: row.outputs || Array(headers.length).fill(''),
+              mean: row.mean || '',
+              cov: row.cov || '',
+            })) || []
+          );
+          setHeaders(data.measurementHeaders || headers);
+          setTolerance(data.tolerance || '');
+          setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setHasSaved(false);
+          setIsEditing(true);
+        }
       } catch (e: any) {
         if (e.response?.status !== 404) toast.error('Failed to load test data');
+        setHasSaved(false);
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     load();
-  }, [testId]);
+  }, [serviceId, propTestId]);
 
   // Save / Update
   const handleSave = async () => {
@@ -171,7 +195,10 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, onR
         toast.success('Updated successfully!');
       } else {
         res = await addOutputConsistency(serviceId, payload);
-        setTestId(res.data.testId);
+        const newId = res.data?.testId || res.data?.data?.testId || res.data?._id;
+        if (newId) {
+          setTestId(newId);
+        }
         toast.success('Saved successfully!');
       }
       setHasSaved(true);

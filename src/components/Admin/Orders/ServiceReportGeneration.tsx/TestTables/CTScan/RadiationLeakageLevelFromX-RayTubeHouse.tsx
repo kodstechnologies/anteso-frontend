@@ -5,6 +5,7 @@ import { Loader2, Edit3, Save } from 'lucide-react';
 import {
   addRadiationLeakage,
   getRadiationLeakageByTestId,
+  getRadiationLeakageByServiceId,
   updateRadiationLeakage,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
@@ -130,15 +131,25 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
   // === Load Data ===
   useEffect(() => {
-    if (!testId) {
-      setIsLoading(false);
-      return;
-    }
-
     const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const { data } = await getRadiationLeakageByTestId(testId);
-        const rec = data;
+        setIsLoading(true);
+        let rec = null;
+
+        if (propTestId) {
+          const response = await getRadiationLeakageByTestId(propTestId);
+          rec = response.data || response;
+        } else {
+          rec = await getRadiationLeakageByServiceId(serviceId);
+        }
+
+        if (rec) {
+          setTestId(rec._id || propTestId);
 
         if (rec.measurementSettings?.[0]) {
           setSettings({
@@ -169,17 +180,23 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
         setToleranceTime(rec.toleranceTime || '1');
 
-        setHasSaved(true);
-        setIsEditing(false);
+          setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setHasSaved(false);
+          setIsEditing(true);
+        }
       } catch (e: any) {
         if (e.response?.status !== 404) toast.error('Failed to load data');
+        setHasSaved(false);
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     load();
-  }, [testId]);
+  }, [serviceId, propTestId]);
 
   // === Save / Update ===
   const handleSave = async () => {
@@ -216,7 +233,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         toast.success('Updated successfully!');
       } else {
         res = await addRadiationLeakage(serviceId, payload);
-        setTestId(res.data.testId);
+        const newId = res.data?.testId || res.data?.data?.testId || res.data?._id;
+        if (newId) {
+          setTestId(newId);
+        }
         toast.success('Saved successfully!');
       }
       setHasSaved(true);

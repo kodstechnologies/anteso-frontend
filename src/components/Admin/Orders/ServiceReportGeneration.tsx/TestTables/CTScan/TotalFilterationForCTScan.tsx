@@ -4,6 +4,7 @@ import { Loader2, Edit3, Save } from 'lucide-react';
 import {
     addTotalFilteration,
     getTotalFilterationByTestId,
+    getTotalFilterationByServiceId,
     updateTotalFilteration,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
@@ -48,12 +49,16 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
 
     // === Update Row Field ===
     const updateField = (field: keyof Row, value: string) => {
-        if (field === 'measuredTF') {
-            const num = parseFloat(value);
-            const rounded = isNaN(num) ? '' : num.toFixed(2);
-            setRow(prev => ({ ...prev, [field]: rounded }));
-        } else {
-            setRow(prev => ({ ...prev, [field]: value }));
+        setRow(prev => ({ ...prev, [field]: value }));
+    };
+
+    // === Handle blur for measuredTF to round to 2 decimals ===
+    const handleMeasuredTFBlur = () => {
+        const num = parseFloat(row.measuredTF);
+        if (!isNaN(num)) {
+            setRow(prev => ({ ...prev, measuredTF: num.toFixed(2) }));
+        } else if (row.measuredTF.trim() === '') {
+            setRow(prev => ({ ...prev, measuredTF: '' }));
         }
     };
 
@@ -71,38 +76,52 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
 
     // === Load Data ===
     useEffect(() => {
-        if (!testId) {
-            setIsLoading(false);
-            return;
-        }
-
         const load = async () => {
-            try {
-                const { data } = await getTotalFilterationByTestId(testId);
-                const rec = data;
+            if (!serviceId) {
+                setIsLoading(false);
+                return;
+            }
 
-                if (rec.rows?.[0]) {
-                    const r = rec.rows[0];
-                    setRow({
-                        appliedKV: String(r.appliedKV),
-                        appliedMA: String(r.appliedMA),
-                        time: String(r.time),
-                        sliceThickness: String(r.sliceThickness),
-                        measuredTF: r.measuredTF ? parseFloat(r.measuredTF).toFixed(2) : '',
-                    });
+            try {
+                setIsLoading(true);
+                let rec = null;
+
+                if (propTestId) {
+                    const response = await getTotalFilterationByTestId(propTestId);
+                    rec = response.data || response;
+                } else {
+                    rec = await getTotalFilterationByServiceId(serviceId);
                 }
 
-                setHasSaved(true);
-                setIsEditing(false);
+                if (rec) {
+                    setTestId(rec._id || propTestId);
+                    if (rec.rows?.[0]) {
+                        const r = rec.rows[0];
+                        setRow({
+                            appliedKV: String(r.appliedKV || ''),
+                            appliedMA: String(r.appliedMA || ''),
+                            time: String(r.time || ''),
+                            sliceThickness: String(r.sliceThickness || ''),
+                            measuredTF: r.measuredTF ? parseFloat(r.measuredTF).toFixed(2) : '',
+                        });
+                    }
+                    setHasSaved(true);
+                    setIsEditing(false);
+                } else {
+                    setHasSaved(false);
+                    setIsEditing(true);
+                }
             } catch (e: any) {
                 if (e.response?.status !== 404) toast.error('Failed to load data');
+                setHasSaved(false);
+                setIsEditing(true);
             } finally {
                 setIsLoading(false);
             }
         };
 
         load();
-    }, [testId]);
+    }, [serviceId, propTestId]);
 
     // === Save / Update ===
     const handleSave = async () => {
@@ -125,7 +144,10 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
                 toast.success('Updated successfully!');
             } else {
                 res = await addTotalFilteration(serviceId, payload);
-                setTestId(res.data.testId);
+                const newId = res.data?.testId || res.data?.data?.testId || res.data?._id;
+                if (newId) {
+                    setTestId(newId);
+                }
                 toast.success('Saved successfully!');
             }
             setHasSaved(true);
@@ -239,9 +261,11 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
                                 </td>
                                 <td className="px-4 py-2 border-r">
                                     <input
-                                        type="text"
+                                        type="number"
+                                        step="0.01"
                                         value={row.measuredTF}
                                         onChange={e => updateField('measuredTF', e.target.value)}
+                                        onBlur={handleMeasuredTFBlur}
                                         disabled={isViewMode}
                                         className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
                                             }`}

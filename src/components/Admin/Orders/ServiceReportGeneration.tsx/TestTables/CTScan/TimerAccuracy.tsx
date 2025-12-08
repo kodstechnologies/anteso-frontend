@@ -4,6 +4,7 @@ import { Plus, Trash2, CheckCircle, XCircle, Loader2, Edit3, Save } from 'lucide
 import {
   addTimerAccuracy,
   getTimerAccuracyByTestId,
+  getTimerAccuracyByServiceId,
   updateTimerAccuracy,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
@@ -103,45 +104,60 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
 
   // === Load Data ===
   useEffect(() => {
-    if (!testId) {
-      setIsLoading(false);
-      return;
-    }
-
     const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const { data } = await getTimerAccuracyByTestId(testId);
-        const rec = data;
+        setIsLoading(true);
+        let rec = null;
 
-        if (rec.table1?.[0]) {
-          setTable1Row(rec.table1[0]);
+        if (propTestId) {
+          const response = await getTimerAccuracyByTestId(propTestId);
+          rec = response.data || response;
+        } else {
+          rec = await getTimerAccuracyByServiceId(serviceId);
         }
 
-        if (Array.isArray(rec.table2) && rec.table2.length > 0) {
-          setTable2Rows(
-            rec.table2.map((r: any) => ({
-              id: Date.now().toString() + Math.random(),
-              setTime: String(r.setTime),
-              observedTime: String(r.observedTime),
-              percentError: '',
-              remarks: String(r.remarks || ''),
-            }))
-          );
+        if (rec) {
+          setTestId(rec._id || propTestId);
+          if (rec.table1?.[0]) {
+            setTable1Row(rec.table1[0]);
+          }
+
+          if (Array.isArray(rec.table2) && rec.table2.length > 0) {
+            setTable2Rows(
+              rec.table2.map((r: any) => ({
+                id: Date.now().toString() + Math.random(),
+                setTime: String(r.setTime || ''),
+                observedTime: String(r.observedTime || ''),
+                percentError: '',
+                remarks: String(r.remarks || ''),
+              }))
+            );
+          }
+
+          if (rec.tolerance) setTolerance(rec.tolerance);
+
+          setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setHasSaved(false);
+          setIsEditing(true);
         }
-
-        if (rec.tolerance) setTolerance(rec.tolerance);
-
-        setHasSaved(true);
-        setIsEditing(false);
       } catch (e: any) {
         if (e.response?.status !== 404) toast.error('Failed to load data');
+        setHasSaved(false);
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     load();
-  }, [testId]);
+  }, [serviceId, propTestId]);
 
   // === Save / Update ===
   const handleSave = async () => {
@@ -165,7 +181,10 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
         toast.success('Updated successfully!');
       } else {
         res = await addTimerAccuracy(serviceId, payload);
-        setTestId(res.data.testId);
+        const newId = res.data?.testId || res.data?.data?.testId || res.data?._id;
+        if (newId) {
+          setTestId(newId);
+        }
         toast.success('Saved successfully!');
       }
       setHasSaved(true);

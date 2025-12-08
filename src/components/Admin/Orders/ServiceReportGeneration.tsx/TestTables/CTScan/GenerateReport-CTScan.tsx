@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeader } from "../../../../../../api";
+import { getRadiationProfileWidthByServiceIdForCTScan, saveReportHeader, getReportHeaderForCTScan } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 
 import Standards from "../../Standards";
@@ -18,14 +18,10 @@ import MeasurementOfCTDI from "./MeasurementOfCTDI";
 import TotalFilterationForCTScan from "./TotalFilterationForCTScan";
 import RadiationLeakageLeveFromXRayTube from "./RadiationLeakageLevelFromX-RayTubeHouse";
 import MeasureMaxRadiationLevel from "./MeasureMaxRadiationLevel";
-import ConsisitencyOfRadiationOutput from "../CTScan/OutputConsistency";
-import HighContrastResolutionForCT from "../CTScan/HighContrastResolutionForCTScan";
-import LowContrastResolutionForCT from "../CTScan/LowContrastResolutionForCTScan";
-import CentralBeamAlignment from "../Inventional-Radiology/CentralBeamAlignment";
-import ExposureRateTableTop from "../Inventional-Radiology/ExposureRateTableTop";
-import HighContrastResolutionForCTScan from "../CTScan/HighContrastResolutionForCTScan";
-import RadiationProtectionSurvey from "./DetailsOfRadiationProtection"
-import EquipementSetting from "./EquipementSetting";
+import ConsisitencyOfRadiationOutput from "./OutputConsistency";
+import HighContrastResolutionForCTScan from "./HighContrastResolutionForCTScan";
+import LowContrastResolutionForCT from "./LowContrastResolutionForCTScan";
+// import MeasureMaxRadiationLevel from "./MeasureMaxRadiationLevel";
 interface Standard {
     slNumber: string;
     nomenclature: string;
@@ -194,11 +190,38 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         }
     };
     useEffect(() => {
-        const load = async () => {
-            const data = await getRadiationProfileWidthByServiceId(serviceId);
-            setRadiationProfileTest(data);
+        const loadReportHeader = async () => {
+            if (!serviceId) return;
+            try {
+                const res = await getReportHeaderForCTScan(serviceId);
+                if (res?.exists && res?.data) {
+                    setFormData(prev => ({
+                        ...prev,
+                        customerName: res.data.customerName || prev.customerName,
+                        address: res.data.address || prev.address,
+                        srfNumber: res.data.srfNumber || prev.srfNumber,
+                        srfDate: res.data.srfDate || prev.srfDate,
+                        testReportNumber: res.data.testReportNumber || prev.testReportNumber,
+                        issueDate: res.data.issueDate || prev.issueDate,
+                        nomenclature: res.data.nomenclature || prev.nomenclature,
+                        make: res.data.make || prev.make,
+                        model: res.data.model || prev.model,
+                        slNumber: res.data.slNumber || prev.slNumber,
+                        condition: res.data.condition || prev.condition,
+                        testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
+                        testDate: res.data.testDate || prev.testDate,
+                        testDueDate: res.data.testDueDate || prev.testDueDate,
+                        location: res.data.location || prev.location,
+                        temperature: res.data.temperature || prev.temperature,
+                        humidity: res.data.humidity || prev.humidity,
+                        engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
+                    }));
+                }
+            } catch (err) {
+                console.log("No report header found or failed to load:", err);
+            }
         };
-        if (serviceId) load();
+        loadReportHeader();
     }, [serviceId]);
     if (loading) {
         return (
@@ -318,7 +341,7 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     {saving ? "Saving..." : "Save Report Header"}
                 </button>
                 <button
-                    onClick={() => navigate(`/admin/orders/view-service-report?serviceId=${serviceId}`)}
+                    onClick={() => navigate(`/admin/orders/view-service-report-ct-scan?serviceId=${serviceId}`)}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report
@@ -346,15 +369,10 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     { title: "Measurement of CTDI", component: <MeasurementOfCTDI serviceId={serviceId} /> },
                     { title: "Total Filtration", component: <TotalFilterationForCTScan serviceId={serviceId} /> },
                     { title: "Radiation Leakage Level", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} /> },
-
-                    // { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
-                    // { title: "Equipement Setting", component: <EquipementSetting serviceId={serviceId} /> },
-                    // { title: "Maximum Radiation Level", component: <MeasureMaxRadiationLevel serviceId={serviceId} /> },
-                    // { title: "Consisitency Of RadiationOutput", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
-                    // { title: "Low Contrast Resolution", component: <LowContrastResolutionForCT serviceId={serviceId} /> },
-                    // { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} /> },
-                    // { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
-                    // { title: "Exposure Rate Table Top", component: <ExposureRateTableTop serviceId={serviceId} /> },
+                    { title: "Output Consistency", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
+                    { title: "Low Contrast Resolution", component: <LowContrastResolutionForCT serviceId={serviceId} /> },
+                    { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} /> },
+                    { title: "Maximum Radiation Level", component: <MeasureMaxRadiationLevel serviceId={serviceId} /> },
 
 
 

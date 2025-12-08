@@ -4,6 +4,7 @@ import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import {
     addMeasurementOfMaLinearity,
     getMeasurementOfMaLinearityByTestId,
+    getMeasurementOfMaLinearityByServiceId,
     updateMeasurementOfMaLinearity,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
@@ -170,52 +171,68 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
 
     // === Load Data ===
     useEffect(() => {
-        if (!testId) {
-            setIsLoading(false);
-            return;
-        }
         const load = async () => {
+            if (!serviceId) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                const { data } = await getMeasurementOfMaLinearityByTestId(testId);
-                const rec = data;
+                setIsLoading(true);
+                let rec = null;
 
-                if (rec.table1?.[0]) {
-                    setTable1Row(rec.table1[0]);
+                if (propTestId) {
+                    const response = await getMeasurementOfMaLinearityByTestId(propTestId);
+                    rec = response.data || response;
+                } else {
+                    rec = await getMeasurementOfMaLinearityByServiceId(serviceId);
                 }
 
-                if (Array.isArray(rec.table2) && rec.table2.length > 0) {
-                    const headers = rec.table2[0].measuredOutputs?.length > 0
-                        ? Array.from({ length: rec.table2[0].measuredOutputs.length }, (_, i) => `Meas ${i + 1}`)
-                        : measHeaders;
-                    setMeasHeaders(headers);
+                if (rec) {
+                    setTestId(rec._id || propTestId);
+                    if (rec.table1?.[0]) {
+                        setTable1Row(rec.table1[0]);
+                    }
 
-                    setTable2Rows(
-                        rec.table2.map((r: any) => ({
-                            id: Date.now().toString() + Math.random(),
-                            mAsApplied: String(r.mAsApplied),
-                            measuredOutputs: r.measuredOutputs.map(String),
-                            average: '',
-                            x: '',
-                            xMax: '',
-                            xMin: '',
-                            col: '',
-                            remarks: '',
-                        }))
-                    );
+                    if (Array.isArray(rec.table2) && rec.table2.length > 0) {
+                        const headers = rec.table2[0].measuredOutputs?.length > 0
+                            ? Array.from({ length: rec.table2[0].measuredOutputs.length }, (_, i) => `Meas ${i + 1}`)
+                            : measHeaders;
+                        setMeasHeaders(headers);
+
+                        setTable2Rows(
+                            rec.table2.map((r: any) => ({
+                                id: Date.now().toString() + Math.random(),
+                                mAsApplied: String(r.mAsApplied || ''),
+                                measuredOutputs: (r.measuredOutputs || []).map(String),
+                                average: '',
+                                x: '',
+                                xMax: '',
+                                xMin: '',
+                                col: '',
+                                remarks: '',
+                            }))
+                        );
+                    }
+
+                    if (rec.tolerance) setTolerance(rec.tolerance);
+
+                    setHasSaved(true);
+                    setIsEditing(false);
+                } else {
+                    setHasSaved(false);
+                    setIsEditing(true);
                 }
-
-                if (rec.tolerance) setTolerance(rec.tolerance);
-
-                setHasSaved(true);
-                setIsEditing(false);
             } catch (e: any) {
                 if (e.response?.status !== 404) toast.error('Failed to load data');
+                setHasSaved(false);
+                setIsEditing(true);
             } finally {
                 setIsLoading(false);
             }
         };
         load();
-    }, [testId]);
+    }, [serviceId, propTestId]);
 
     // === Save / Update ===
     // === Save / Update ===
@@ -246,7 +263,10 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                 toast.success('Updated successfully!');
             } else {
                 res = await addMeasurementOfMaLinearity(serviceId, payload);
-                setTestId(res.data.testId);
+                const newId = res.data?.testId || res.data?.data?.testId || res.data?._id;
+                if (newId) {
+                    setTestId(newId);
+                }
                 toast.success('Saved successfully!');
             }
             setHasSaved(true);

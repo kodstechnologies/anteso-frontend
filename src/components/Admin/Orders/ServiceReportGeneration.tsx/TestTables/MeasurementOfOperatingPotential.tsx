@@ -4,6 +4,7 @@ import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
     addMeasurementOfOperatingPotential,
     getMeasurementOfOperatingPotentialByTestId,
+    getMeasurementOfOperatingPotentialByServiceId,
     updateMeasurementOfOperatingPotential,
 } from '../../../../../api';
 import toast from 'react-hot-toast';
@@ -131,55 +132,71 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
 
     // === Load Existing Data ===
     useEffect(() => {
-        if (!testId) {
-            setIsLoading(false);
-            return;
-        }
         const load = async () => {
+            if (!serviceId) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                const { data } = await getMeasurementOfOperatingPotentialByTestId(testId);
-                const rec = data;
+                setIsLoading(true);
+                let rec = null;
 
-                // Table 1
-                if (rec.table1?.[0]) {
-                    setTable1Row({
-                        time: rec.table1[0].time,
-                        sliceThickness: rec.table1[0].sliceThickness,
-                    });
+                if (propTestId) {
+                    const response = await getMeasurementOfOperatingPotentialByTestId(propTestId);
+                    rec = response.data || response;
+                } else {
+                    rec = await getMeasurementOfOperatingPotentialByServiceId(serviceId);
                 }
 
-                // Table 2
-                if (Array.isArray(rec.table2) && rec.table2.length > 0) {
-                    setTable2Rows(
-                        rec.table2.map((r: any) => ({
-                            id: Date.now().toString() + Math.random(),
-                            setKV: String(r.setKV),
-                            ma10: String(r.ma10),
-                            ma100: String(r.ma100),
-                            ma200: String(r.ma200),
-                            avgKvp: '',
-                            remarks: r.remarks,
-                        }))
-                    );
-                }
+                if (rec) {
+                    setTestId(rec._id || propTestId);
+                    // Table 1
+                    if (rec.table1?.[0]) {
+                        setTable1Row({
+                            time: String(rec.table1[0].time || ''),
+                            sliceThickness: String(rec.table1[0].sliceThickness || ''),
+                        });
+                    }
 
-                // Tolerance
-                if (rec.tolerance) {
-                    setToleranceValue(rec.tolerance.value);
-                    setToleranceType(rec.tolerance.type);
-                    setToleranceSign(rec.tolerance.sign);
-                }
+                    // Table 2
+                    if (Array.isArray(rec.table2) && rec.table2.length > 0) {
+                        setTable2Rows(
+                            rec.table2.map((r: any) => ({
+                                id: Date.now().toString() + Math.random(),
+                                setKV: String(r.setKV || ''),
+                                ma10: String(r.ma10 || ''),
+                                ma100: String(r.ma100 || ''),
+                                ma200: String(r.ma200 || ''),
+                                avgKvp: '',
+                                remarks: r.remarks || '',
+                            }))
+                        );
+                    }
 
-                setHasSaved(true);
-                setIsEditing(false);
+                    // Tolerance
+                    if (rec.tolerance) {
+                        setToleranceValue(rec.tolerance.value || rec.tolerance);
+                        setToleranceType(rec.tolerance.type || 'percent');
+                        setToleranceSign(rec.tolerance.sign || 'both');
+                    }
+
+                    setHasSaved(true);
+                    setIsEditing(false);
+                } else {
+                    setHasSaved(false);
+                    setIsEditing(true);
+                }
             } catch (e: any) {
                 if (e.response?.status !== 404) toast.error('Failed to load data');
+                setHasSaved(false);
+                setIsEditing(true);
             } finally {
                 setIsLoading(false);
             }
         };
         load();
-    }, [testId]);
+    }, [serviceId, propTestId]);
 
     // === Save / Update ===
     const handleSave = async () => {
@@ -225,7 +242,10 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                 toast.success('Updated successfully!');
             } else {
                 res = await addMeasurementOfOperatingPotential(serviceId, payload);
-                setTestId(res.data.testId);
+                const newId = res.data?.testId || res.data?.data?.testId || res.data?._id;
+                if (newId) {
+                    setTestId(newId);
+                }
                 toast.success('Saved successfully!');
             }
             setHasSaved(true);

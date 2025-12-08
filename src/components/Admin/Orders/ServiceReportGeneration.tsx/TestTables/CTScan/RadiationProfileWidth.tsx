@@ -3,6 +3,7 @@ import { Loader2, Edit3, Save } from 'lucide-react';
 import {
     addRadiationProfileWidth,
     getRadiationProfileWidthByTestId,
+    getRadiationProfileWidthByServiceIdForCTScan,
     updateRadiationProfileWidth,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
@@ -30,6 +31,9 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId 
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false); // ← NEW: controls edit mode
     const [hasSaved, setHasSaved] = useState(false);   // ← NEW: track if saved once
+
+    // Fixed tolerance values to display
+    const FIXED_TOLERANCE_VALUES = ['0.5 mm', '±50%', '±1.0 mm'];
 
     const TOLERANCE_RULES = [
         { label: 'a. Less than 1.0 mm', type: 'fixed' as const, value: 0.5 },
@@ -69,38 +73,56 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId 
 
     // ---- load existing data ----
     useEffect(() => {
-        if (!testId) {
-            setIsLoading(false);
-            return;
-        }
         const load = async () => {
+            if (!serviceId) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                const { data } = await getRadiationProfileWidthByTestId(testId);
-                const rec = data;
-                if (rec.table1?.[0]) {
-                    setTable1Row({ kvp: rec.table1[0].kvp, ma: rec.table1[0].ma });
+                setIsLoading(true);
+                let rec = null;
+
+                if (propTestId) {
+                    const response = await getRadiationProfileWidthByTestId(propTestId);
+                    rec = response.data || response;
+                } else {
+                    rec = await getRadiationProfileWidthByServiceIdForCTScan(serviceId);
                 }
-                if (Array.isArray(rec.table2) && rec.table2.length === 3) {
-                    setTable2Rows(prev =>
-                        prev.map((r, i) => ({
-                            ...r,
-                            applied: String(rec.table2[i].applied),
-                            measured: String(rec.table2[i].measured),
-                            toleranceValue: rec.table2[i].tolerance || '',
-                            remarks: rec.table2[i].remarks || '',
-                        }))
-                    );
+
+                if (rec) {
+                    setTestId(rec._id || propTestId);
+                    if (rec.table1?.[0]) {
+                        setTable1Row({ kvp: rec.table1[0].kvp, ma: rec.table1[0].ma });
+                    }
+                    if (Array.isArray(rec.table2) && rec.table2.length === 3) {
+                        setTable2Rows(prev =>
+                            prev.map((r, i) => ({
+                                ...r,
+                                applied: String(rec.table2[i].applied || ''),
+                                measured: String(rec.table2[i].measured || ''),
+                                toleranceValue: rec.table2[i].tolerance || '',
+                                criteriaValue: FIXED_TOLERANCE_VALUES[i] || prev[i].criteriaValue,
+                                remarks: rec.table2[i].remarks || '',
+                            }))
+                        );
+                    }
+                    setHasSaved(true);
+                    setIsEditing(false);
+                } else {
+                    setHasSaved(false);
+                    setIsEditing(true);
                 }
-                setHasSaved(true);
-                setIsEditing(false); // start in view mode
             } catch (e: any) {
                 if (e.response?.status !== 404) toast.error('Failed to load data');
+                setHasSaved(false);
+                setIsEditing(true);
             } finally {
                 setIsLoading(false);
             }
         };
         load();
-    }, [testId]);
+    }, [serviceId, propTestId]);
 
     // ---- handle save / update ----
     const handleSave = async () => {
@@ -124,7 +146,11 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId 
                 toast.success('Updated successfully!');
             } else {
                 res = await addRadiationProfileWidth(serviceId, payload);
-                setTestId(res.data.testId);
+                const newId = res.data?.testId || res.data?.data?.testId || res.data?._id;
+                if (newId) {
+                    setTestId(newId);
+                    onTestSaved?.(newId);
+                }
                 toast.success('Saved successfully!');
             }
             setHasSaved(true);
@@ -216,7 +242,7 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId 
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Applied (mm)</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Measured (mm)</th>
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Criteria</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Tolerance (± mm)</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Tolerance</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
                         </tr>
                     </thead>
@@ -255,7 +281,7 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId 
                                     </td>
                                     <td className="px-4 py-2 border-r text-center text-xs">{rule.label}</td>
                                     <td className="px-4 py-2 border-r text-center text-xs">
-                                        <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">{row.toleranceValue || '—'}</span>
+                                        <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">{FIXED_TOLERANCE_VALUES[row.id - 1] || row.criteriaValue || '—'}</span>
                                     </td>
                                     <td className="px-4 py-2 text-center">
                                         <span

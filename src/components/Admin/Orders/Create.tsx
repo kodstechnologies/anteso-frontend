@@ -153,9 +153,7 @@ const machineOptions: OptionType[] = [
     "Bone Densitometer (BMD)",
     "KV Imaging (OBI)",
     "Radiography (Mobile) with HT",
-    "Lead Apron",
-    "Thyroid Shield",
-    "Gonald Shield",
+    "Lead Apron/Thyroid Shield/Gonad Shield",
     "Others",
 ].map((label) => ({ label, value: label }))
 

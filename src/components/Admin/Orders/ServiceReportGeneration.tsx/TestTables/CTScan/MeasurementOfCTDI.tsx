@@ -4,6 +4,7 @@ import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import {
     addMeasurementOfCTDI,
     getMeasurementOfCTDIByTestId,
+    getMeasurementOfCTDIByServiceId,
     updateMeasurementOfCTDI,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
@@ -207,66 +208,81 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, onR
 
     // === Load Data ===
     useEffect(() => {
-        if (!testId) {
-            setIsLoading(false);
-            return;
-        }
-
         const load = async () => {
-            try {
-                const { data } = await getMeasurementOfCTDIByTestId(testId);
-                const rec = data;
+            if (!serviceId) {
+                setIsLoading(false);
+                return;
+            }
 
-                if (rec.table1?.[0]) {
-                    setTable1Row(rec.table1[0]);
+            try {
+                setIsLoading(true);
+                let rec = null;
+
+                if (propTestId) {
+                    const response = await getMeasurementOfCTDIByTestId(propTestId);
+                    rec = response.data || response;
+                } else {
+                    rec = await getMeasurementOfCTDIByServiceId(serviceId);
                 }
 
-                if (Array.isArray(rec.table2)) {
-                    const peripheralRow = rec.table2.find((r: any) => r.id === 'peripheral');
-                    if (peripheralRow?.readings) {
-                        setPeripheralLabels(peripheralRow.readings.map((r: any) => r.label));
+                if (rec) {
+                    setTestId(rec._id || propTestId);
+                    if (rec.table1?.[0]) {
+                        setTable1Row(rec.table1[0]);
                     }
 
-                    setTable2Rows(
-                        rec.table2.map((r: any) => {
-                            if (r.id === 'peripheral') {
+                    if (Array.isArray(rec.table2)) {
+                        const peripheralRow = rec.table2.find((r: any) => r.id === 'peripheral');
+                        if (peripheralRow?.readings) {
+                            setPeripheralLabels(peripheralRow.readings.map((r: any) => r.label));
+                        }
+
+                        setTable2Rows(
+                            rec.table2.map((r: any) => {
+                                if (r.id === 'peripheral') {
+                                    return {
+                                        ...r,
+                                        readings: r.readings?.map((rd: any) => ({
+                                            id: Date.now().toString() + rd.label,
+                                            label: rd.label,
+                                            head: String(rd.head || ''),
+                                            body: String(rd.body || ''),
+                                        })) || [],
+                                    };
+                                }
                                 return {
                                     ...r,
-                                    readings: r.readings?.map((rd: any) => ({
-                                        id: Date.now().toString() + rd.label,
-                                        label: rd.label,
-                                        head: String(rd.head),
-                                        body: String(rd.body),
-                                    })) || [],
+                                    head: String(r.head || ''),
+                                    body: String(r.body || ''),
                                 };
-                            }
-                            return {
-                                ...r,
-                                head: String(r.head),
-                                body: String(r.body),
-                            };
-                        })
-                    );
-                }
+                            })
+                        );
+                    }
 
-                if (rec.tolerance) {
-                    setTolerance({
-                        expected: { value: rec.tolerance.expected?.value || '', quote: rec.tolerance.expected?.quote || '' },
-                        maximum: { value: rec.tolerance.maximum?.value || '', quote: rec.tolerance.maximum?.quote || '' },
-                    });
-                }
+                    if (rec.tolerance) {
+                        setTolerance({
+                            expected: { value: rec.tolerance.expected?.value || '', quote: rec.tolerance.expected?.quote || '' },
+                            maximum: { value: rec.tolerance.maximum?.value || '', quote: rec.tolerance.maximum?.quote || '' },
+                        });
+                    }
 
-                setHasSaved(true);
-                setIsEditing(false);
+                    setHasSaved(true);
+                    setIsEditing(false);
+                } else {
+                    setHasSaved(false);
+                    setIsEditing(true);
+                }
             } catch (e: any) {
                 if (e.response?.status !== 404) toast.error('Failed to load data');
+                setHasSaved(false);
+                setIsEditing(true);
             } finally {
                 setIsLoading(false);
             }
         };
 
         load();
-    }, [testId]);
+    }, [serviceId, propTestId]);
 
     // === Save / Update ===
     const handleSave = async () => {
@@ -304,7 +320,10 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, onR
                 toast.success('Updated successfully!');
             } else {
                 res = await addMeasurementOfCTDI(serviceId, payload);
-                setTestId(res.data.testId);
+                const newId = res.data?.testId || res.data?.data?.testId || res.data?._id;
+                if (newId) {
+                    setTestId(newId);
+                }
                 toast.success('Saved successfully!');
             }
             setHasSaved(true);

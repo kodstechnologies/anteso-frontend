@@ -3505,6 +3505,24 @@ export const getRadiationProfileWidthByServiceId = async (serviceId: string) => 
     }
 };
 
+// GET BY SERVICE ID - Radiation Profile Width for CT Scan
+export const getRadiationProfileWidthByServiceIdForCTScan = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/ct-scan/radiation-profile-width/service/${serviceId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404 || !error.response) return null;
+        console.error("Failed to load Radiation Profile Width test for CT Scan:", error);
+        throw error;
+    }
+};
+
 // UPDATE BY TEST ID
 export const updateMeasurementOfOperatingPotential = async (testId: string, payload: any) => {
     const token = Cookies.get('accessToken');
@@ -3810,6 +3828,292 @@ export const updateOutputConsistency = async (testId: string, payload: any) => {
     }
 };
 
+// GET BY SERVICE ID
+export const getOutputConsistencyByServiceId = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/output-consistency/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('OutputConsistency getByServiceId failed:', error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID - Measurement of Operating Potential
+export const getMeasurementOfOperatingPotentialByServiceId = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/measurement-of-operating-potential/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getMeasurementOfOperatingPotentialByServiceId failed:', error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID - Timer Accuracy
+export const getTimerAccuracyByServiceId = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/timer-accuracy/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getTimerAccuracyByServiceId failed:', error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID - Measurement of CTDI
+export const getMeasurementOfCTDIByServiceId = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/measurement-of-CTDI/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getMeasurementOfCTDIByServiceId failed:', error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID - Total Filtration
+export const getTotalFilterationByServiceId = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/total-filteration/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getTotalFilterationByServiceId failed:', error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID - Measurement of mA Linearity
+export const getMeasurementOfMaLinearityByServiceId = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/measurement-of-ma-linearity/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getMeasurementOfMaLinearityByServiceId failed:', error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID - Radiation Leakage
+export const getRadiationLeakageByServiceId = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/radiation-leakage/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getRadiationLeakageByServiceId failed:', error);
+        throw error;
+    }
+};
+
+// Measure Max Radiation Level for CT Scan
+export const createMeasureMaxRadiationLevelForCTScan = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.post(`/service-report/ct-scan/measure-max-radiation-level/${serviceId}`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error('createMeasureMaxRadiationLevelForCTScan failed:', error);
+        throw error;
+    }
+};
+
+export const getMeasureMaxRadiationLevelForCTScan = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/measure-max-radiation-level/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getMeasureMaxRadiationLevelForCTScan failed:', error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID - Measure Max Radiation Level
+export const getMeasureMaxRadiationLevelByServiceId = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/measure-max-radiation-level/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getMeasureMaxRadiationLevelByServiceId failed:', error);
+        throw error;
+    }
+};
+
+export const updateMeasureMaxRadiationLevelForCTScan = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.put(`/service-report/ct-scan/measure-max-radiation-level/${testId}`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error('updateMeasureMaxRadiationLevelForCTScan failed:', error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID - Low Contrast Resolution
+export const getLowContrastResolutionByServiceIdForCTScan = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/low-contrast-resolution/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getLowContrastResolutionByServiceIdForCTScan failed:', error);
+        throw error;
+    }
+};
+
+// Get Report Header for CT Scan
+export const getReportHeaderForCTScan = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/ct-scan/report-header/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return { exists: false };
+        console.error("Error fetching CT Scan report:", error);
+        throw error;
+    }
+};
+
+// High Contrast Resolution for CT Scan
+export const createHighContrastResolutionForCTScan = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.post(`/service-report/ct-scan/high-contrast-resolution/${serviceId}`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error('createHighContrastResolutionForCTScan failed:', error);
+        throw error;
+    }
+};
+
+export const getHighContrastResolutionForCTScan = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/high-contrast-resolution/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getHighContrastResolutionForCTScan failed:', error);
+        throw error;
+    }
+};
+
+export const getHighContrastResolutionByServiceIdForCTScan = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/high-contrast-resolution/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getHighContrastResolutionByServiceIdForCTScan failed:', error);
+        throw error;
+    }
+};
+
+export const updateHighContrastResolutionForCTScan = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.put(`/service-report/ct-scan/high-contrast-resolution/${testId}`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error('updateHighContrastResolutionForCTScan failed:', error);
+        throw error;
+    }
+};
+
+// Low Contrast Resolution for CT Scan
+export const createLowContrastResolutionForCTScan = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.post(`/service-report/ct-scan/low-contrast-resolution/${serviceId}`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error('createLowContrastResolutionForCTScan failed:', error);
+        throw error;
+    }
+};
+
+export const getLowContrastResolutionForCTScan = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/ct-scan/low-contrast-resolution/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        console.error('getLowContrastResolutionForCTScan failed:', error);
+        throw error;
+    }
+};
+
+export const updateLowContrastResolutionForCTScan = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.put(`/service-report/ct-scan/low-contrast-resolution/${testId}`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error('updateLowContrastResolutionForCTScan failed:', error);
+        throw error;
+    }
+};
 
 //inventional radilogy/Cath lab
 //accuracy of irradiation time
@@ -5191,6 +5495,362 @@ export const getTubeHousingLeakageByServiceId = async (serviceId: string) => {
 export const updateTubeHousingLeakage = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(`/service-report/c-arm/tube-housing/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//O-Arm
+export const getReportHeaderForOArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/report-header/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return { exists: false };
+        console.error("Error fetching O-Arm report:", error);
+        throw error;
+    }
+};
+
+export const createTotalFilterationForOArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/o-arm/total-filteration/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (main way when editing existing test)
+export const getTotalFilterationForOArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/total-filteration/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getTotalFilterationForOArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — ideal for first load)
+export const getTotalFilterationByServiceIdForOArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/total-filteration-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // returns null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getTotalFilterationByServiceIdForOArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateTotalFilterationForOArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/o-arm/total-filteration/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//output consistency
+export const createOutputConsistencyForOArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/o-arm/output-consistency/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (used when editing existing test)
+export const getOutputConsistencyForOArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/output-consistency/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getOutputConsistencyForOArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — perfect for first load)
+export const getOutputConsistencyByServiceIdForOArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/output-consistency-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // will be null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getOutputConsistencyByServiceIdForOArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateOutputConsistencyForOArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/o-arm/output-consistency/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//high contrast resolution
+export const createHighContrastResolutionForOArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/o-arm/high-contrast-resolution/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (main way when editing existing test)
+export const getHighContrastResolutionForOArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/high-contrast-resolution/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getHighContrastResolutionForOArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — ideal for first load)
+export const getHighContrastResolutionByServiceIdForOArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/high-contrast-resolution-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // returns null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getHighContrastResolutionByServiceIdForOArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateHighContrastResolutionForOArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/o-arm/high-contrast-resolution/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//Low Contrast Resolution
+export const createLowContrastResolutionForOArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/o-arm/low-contrast-resolution/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (used when editing existing test)
+export const getLowContrastResolutionForOArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/low-contrast-resolution/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getLowContrastResolutionForOArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — perfect for first load)
+export const getLowContrastResolutionByServiceIdForOArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/low-contrast-resolution-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // will be null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getLowContrastResolutionByServiceIdForOArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateLowContrastResolutionForOArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/o-arm/low-contrast-resolution/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+//exposure rate
+export const createExposureRateForOArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/o-arm/exposure-rate/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (used when editing existing test)
+export const getExposureRateForOArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/exposure-rate/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getExposureRateForOArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — perfect for first load)
+export const getExposureRateByServiceIdForOArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/exposure-rate-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // will be null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getExposureRateByServiceIdForOArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateExposureRateForOArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/o-arm/exposure-rate/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+export const createTubeHousingLeakageForOArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/o-arm/tube-housing/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId (when opening existing saved test)
+export const getTubeHousingLeakageByIdForOArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/tube-housing/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getTubeHousingLeakageByIdForOArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId (returns null if not created yet — perfect for first load)
+export const getTubeHousingLeakageByServiceIdForOArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/tube-housing-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data; // will be null if no test exists
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getTubeHousingLeakageByServiceIdForOArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateTubeHousingLeakageForOArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/o-arm/tube-housing/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// Linearity of mAs Loading Station
+export const createLinearityOfMasLoadingStationForOArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/o-arm/linearity-of-mas-loading-station/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+// READ - Get by testId
+export const getLinearityOfMasLoadingStationForOArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/linearity-of-mas-loading-station/${testId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("getLinearityOfMasLoadingStationForOArm failed:", error);
+        throw error;
+    }
+};
+
+// READ - Get by serviceId
+export const getLinearityOfMasLoadingStationByServiceIdForOArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/o-arm/linearity-of-mas-loading-station-by-service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getLinearityOfMasLoadingStationByServiceIdForOArm failed:", error);
+        throw error;
+    }
+};
+
+// UPDATE - Update existing test
+export const updateLinearityOfMasLoadingStationForOArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/o-arm/linearity-of-mas-loading-station/${testId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
