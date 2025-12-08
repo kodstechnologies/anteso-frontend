@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyFixed } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyFixed, getRadiationProfileWidthByServiceId } from "../../../../../../api";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";

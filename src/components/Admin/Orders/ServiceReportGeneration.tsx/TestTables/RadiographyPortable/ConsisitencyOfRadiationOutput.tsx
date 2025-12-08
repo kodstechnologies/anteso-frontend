@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import {
   addConsistencyOfRadiationOutputForRadiographyPortable,
   getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable,
+  getReproducibilityOfRadiationOutputByServiceIdForBmd,
   updateConsistencyOfRadiationOutputForRadiographyPortable,
 } from '../../../../../../api';
 
