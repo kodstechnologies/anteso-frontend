@@ -75,7 +75,9 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
+    category: "",
   });
+  const [notes, setNotes] = useState<string[]>([]);
 
   const handleTimerChoice = (choice: boolean) => {
     setHasTimer(choice);
@@ -118,6 +120,7 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
+          category: data.category || "",
         });
 
         const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
@@ -155,6 +158,7 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             customerName: res.data.customerName || prev.customerName,
             address: res.data.address || prev.address,
             srfNumber: res.data.srfNumber || prev.srfNumber,
+            category: res.data.category || prev.category,
             srfDate: res.data.srfDate || prev.srfDate,
             testReportNumber: res.data.testReportNumber || prev.testReportNumber,
             issueDate: res.data.issueDate || prev.issueDate,
@@ -171,6 +175,12 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
           }));
+
+          // Load existing notes
+          if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
+            const notesTexts = res.data.notes.map((n: any) => n.text || n);
+            setNotes(notesTexts);
+          }
         }
       } catch (err) {
         console.log("No report header found or failed to load:", err);
@@ -204,7 +214,10 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
           certificate: t.certificate,
           uncertainity: t.uncertainity,
         })),
-        notes: [
+        notes: notes.length > 0 ? notes.map((note, index) => ({
+          slNo: `5.${index + 1}`,
+          text: note,
+        })) : [
           { slNo: "5.1", text: "The Test Report relates only to the above item only." },
           {
             slNo: "5.2",
@@ -356,6 +369,7 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             { label: "Make", name: "make" },
             { label: "Model", name: "model", readOnly: true },
             { label: "Serial Number", name: "slNumber", readOnly: true },
+            { label: "Category", name: "category" },
             { label: "Condition of Test Item", name: "condition" },
             { label: "Testing Procedure Number", name: "testingProcedureNumber" },
             { label: "No. of Pages", name: "pages" },
@@ -381,7 +395,7 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
       </section>
 
       <Standards standards={tools} />
-      <Notes />
+      <Notes initialNotes={notes} onChange={setNotes} />
 
       <div className="my-10 flex justify-end gap-6">
         {saveSuccess && (

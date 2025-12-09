@@ -284,7 +284,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
         <button
           type="button"
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          onClick={() => navigate("/admin/orders/view-service-report")}
+          onClick={() => navigate(`/admin/orders/view-service-report-bmd?serviceId=${serviceId}`)}
         >
           View Generated Report
         </button>

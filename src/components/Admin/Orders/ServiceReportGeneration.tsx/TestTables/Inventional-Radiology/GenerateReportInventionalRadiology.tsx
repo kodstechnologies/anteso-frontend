@@ -1,22 +1,21 @@
 // GenerateReport-InventionalRadiology.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Disclosure } from "@headlessui/react";           // ← Added
-import { ChevronDownIcon } from "@heroicons/react/24/outline"; // ← Added
+import { Disclosure } from "@headlessui/react";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForInventionalRadiology } from "../../../../../../api";
 
-// Test-table imports (unchanged)
+// Test-table imports
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
 import CentralBeamAlignment from "./CentralBeamAlignment";
 import EffectiveFocalspotMeasurement from "./EffectiveFocalspotMeasurement";
-import AccuracyOfOperatingPotential from "../AccuracyOfOperatingPotential";
-import TotalFilteration from "../Inventional-Radiology/TotalFilterationForInventionalRadiology";
-import LinearityOfmAsLoading from "../LinearityOfmAsLoading";
-import ConsisitencyOfRadiationOutput from "../CTScan/ConsisitencyOfRadiationOutput";
+import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
+import TotalFilteration from "./TotalFilterationForInventionalRadiology";
 import LowContrastResolution from "./LowContrastResolutionInventionalRadiology";
 import HighContrastResolution from "./HighContrastResolutionForInventionalRadiology";
 import ExposureRateTableTop from "./ExposureRateTableTop";
@@ -81,8 +80,36 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
   const [tools, setTools] = useState<Standard[]>([]);
+  const [originalTools, setOriginalTools] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    customerName: "",
+    address: "",
+    srfNumber: "",
+    srfDate: "",
+    testReportNumber: "",
+    issueDate: "",
+    nomenclature: "",
+    make: "",
+    model: "",
+    slNumber: "",
+    condition: "OK",
+    testingProcedureNumber: "",
+    pages: "",
+    testDate: "",
+    testDueDate: "",
+    location: "",
+    temperature: "",
+    humidity: "",
+    engineerNameRPId: "",
+    category: "",
+  });
+  const [notes, setNotes] = useState<string[]>([]);
 
   useEffect(() => {
     if (!serviceId) return;
@@ -95,7 +122,34 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
           getTools(serviceId),
         ]);
 
-        setDetails(detRes.data);
+        const data = detRes.data;
+        const firstTest = data.qaTests?.[0];
+        setDetails(data);
+
+        // Pre-fill form from service details
+        setFormData({
+          customerName: data.hospitalName,
+          address: data.hospitalAddress,
+          srfNumber: data.srfNumber,
+          srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          testReportNumber: firstTest?.qaTestReportNumber || "",
+          issueDate: new Date().toISOString().split("T")[0],
+          nomenclature: data.machineType,
+          make: "",
+          model: data.machineModel,
+          slNumber: data.serialNumber,
+          condition: "OK",
+          testingProcedureNumber: "",
+          pages: "",
+          testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          testDueDate: "",
+          location: data.hospitalAddress,
+          temperature: "",
+          humidity: "",
+          engineerNameRPId: data.engineerAssigned?.name || "",
+          category: "",
+        });
+
         const mapped: Standard[] = toolRes.data.toolsAssigned.map(
           (t: any, idx: number) => ({
             slNumber: String(idx + 1),
@@ -111,6 +165,48 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
           })
         );
         setTools(mapped);
+        setOriginalTools(toolRes.data.toolsAssigned || []);
+
+        // Load existing report header data if available
+        try {
+          const reportRes = await getReportHeaderForInventionalRadiology(serviceId);
+          if (reportRes.exists && reportRes.data) {
+            const reportData = reportRes.data;
+            // Update formData with existing report data
+            setFormData((prev) => ({
+              ...prev,
+              customerName: reportData.customerName || prev.customerName,
+              address: reportData.address || prev.address,
+              srfNumber: reportData.srfNumber || prev.srfNumber,
+              srfDate: reportData.srfDate || prev.srfDate,
+              testReportNumber: reportData.testReportNumber || prev.testReportNumber,
+              issueDate: reportData.issueDate || prev.issueDate,
+              nomenclature: reportData.nomenclature || prev.nomenclature,
+              make: reportData.make || prev.make,
+              model: reportData.model || prev.model,
+              slNumber: reportData.slNumber || prev.slNumber,
+              category: reportData.category || prev.category,
+              condition: reportData.condition || prev.condition,
+              testingProcedureNumber: reportData.testingProcedureNumber || prev.testingProcedureNumber,
+              pages: reportData.pages || prev.pages,
+              testDate: reportData.testDate || prev.testDate,
+              testDueDate: reportData.testDueDate || prev.testDueDate,
+              location: reportData.location || prev.location,
+              temperature: reportData.temperature || prev.temperature,
+              humidity: reportData.humidity || prev.humidity,
+              engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
+            }));
+
+            // Load existing notes
+            if (reportData.notes && Array.isArray(reportData.notes) && reportData.notes.length > 0) {
+              const notesTexts = reportData.notes.map((n: any) => n.text || n);
+              setNotes(notesTexts);
+            }
+          }
+        } catch (reportErr) {
+          console.error("Failed to load existing report:", reportErr);
+          // Continue without existing report data
+        }
       } catch (err: any) {
         console.error(err);
         setError(err?.message ?? "Failed to load report data");
@@ -131,6 +227,58 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
       ...prev,
       [testName]: testId
     }));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveHeader = async () => {
+    setSaving(true);
+    setSaveSuccess(false);
+    setSaveError(null);
+
+    try {
+      const payload = {
+        ...formData,
+        toolsUsed: originalTools.map((t: any, idx: number) => ({
+          toolId: t._id || t.toolId || null,
+          SrNo: t.SrNo,
+          nomenclature: t.nomenclature,
+          make: t.manufacturer,
+          model: t.model,
+          range: t.range,
+          calibrationCertificateNo: t.calibrationCertificateNo,
+          calibrationValidTill: t.calibrationValidTill,
+          certificate: t.certificate,
+          uncertainity: "",
+        })),
+        notes: notes.length > 0 ? notes.map((note, index) => ({
+          slNo: `5.${index + 1}`,
+          text: note,
+        })) : [
+          { slNo: "5.1", text: "The Test Report relates only to the above item only." },
+          { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
+          { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
+          { slNo: "5.4", text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats." },
+          { slNo: "5.5", text: "Any error in this Report should be brought to our knowledge within 30 days from the date of this report." },
+          { slNo: "5.6", text: "Results reported are valid at the time of and under the stated conditions of measurements." },
+          { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
+        ],
+      };
+
+      await saveReportHeader(serviceId, payload);
+      setSaveSuccess(true);
+      toast.success("Report header saved successfully!");
+      setTimeout(() => setSaveSuccess(false), 4000);
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message || "Failed to save report header";
+      setSaveError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setSaving(false);
+    }
   };
   if (loading) {
     return (
@@ -176,8 +324,10 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
             </label>
             <input
               type="text"
-              defaultValue={details.hospitalName}
-              className="border p-2 rounded-md w-full"
+              name="customerName"
+              value={formData.customerName}
+              onChange={handleInputChange}
+              className="border p-2 rounded-md w-full bg-gray-100"
               readOnly
             />
           </div>
@@ -187,8 +337,10 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
             </label>
             <input
               type="text"
-              defaultValue={details.hospitalAddress}
-              className="border p-2 rounded-md w-full"
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              className="border p-2 rounded-md w-full bg-gray-100"
               readOnly
             />
           </div>
@@ -207,18 +359,22 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
             </label>
             <input
               type="text"
-              defaultValue={details.srfNumber}
-              className="border p-2 rounded-md w-full"
+              name="srfNumber"
+              value={formData.srfNumber}
+              onChange={handleInputChange}
+              className="border p-2 rounded-md w-full bg-gray-100"
               readOnly
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Dated
+              SRF Date
             </label>
             <input
               type="date"
-              defaultValue={formatDate(details.qaTests[0]?.createdAt ?? "")}
+              name="srfDate"
+              value={formData.srfDate}
+              onChange={handleInputChange}
               className="border p-2 rounded-md w-full"
             />
           </div>
@@ -231,7 +387,9 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
             </label>
             <input
               type="text"
-              defaultValue={details.qaTests[0]?.qaTestReportNumber ?? "N/A"}
+              name="testReportNumber"
+              value={formData.testReportNumber}
+              onChange={handleInputChange}
               className="border p-2 rounded-md w-full"
             />
           </div>
@@ -239,7 +397,13 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Issue Date
             </label>
-            <input type="date" className="border p-2 rounded-md w-full" />
+            <input
+              type="date"
+              name="issueDate"
+              value={formData.issueDate}
+              onChange={handleInputChange}
+              className="border p-2 rounded-md w-full"
+            />
           </div>
         </div>
       </section>
@@ -251,28 +415,31 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { label: "Nomenclature", value: details.machineType },
-            { label: "Make", value: "" },
-            { label: "Model", value: details.machineModel },
-            { label: "Serial Number", value: details.serialNumber },
-            { label: "Condition of Test Item", value: "" },
-            { label: "Testing Procedure Number", value: "" },
-            { label: "No. of Pages", value: "" },
-            { label: "QA Test Date", value: formatDate(details.qaTests[0]?.createdAt ?? ""), type: "date" },
-            { label: "QA Test Due Date", value: "", type: "date" },
-            { label: "Testing Done At Location", value: details.hospitalAddress },
-            { label: "Temperature (°C)", value: "", type: "number" },
-            { label: "Humidity (RH %)", value: "", type: "number" },
-          ].map((field, i) => (
-            <div key={i}>
+            { label: "Nomenclature", name: "nomenclature", readOnly: true },
+            { label: "Make", name: "make" },
+            { label: "Model", name: "model", readOnly: true },
+            { label: "Serial Number", name: "slNumber", readOnly: true },
+            { label: "Category", name: "category" },
+            { label: "Condition of Test Item", name: "condition" },
+            { label: "Testing Procedure Number", name: "testingProcedureNumber" },
+            { label: "No. of Pages", name: "pages" },
+            { label: "QA Test Date", name: "testDate", type: "date" },
+            { label: "QA Test Due Date", name: "testDueDate", type: "date" },
+            { label: "Testing Done At Location", name: "location" },
+            { label: "Temperature (°C)", name: "temperature", type: "number" },
+            { label: "Humidity (RH %)", name: "humidity", type: "number" },
+          ].map((field) => (
+            <div key={field.name}>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {field.label}
               </label>
               <input
                 type={field.type ?? "text"}
-                defaultValue={field.value}
-                className="border p-2 rounded-md w-full"
-                readOnly={field.label === "Nomenclature" || field.label === "Model" || field.label === "Serial Number"}
+                name={field.name}
+                value={(formData as any)[field.name]}
+                onChange={handleInputChange}
+                className={`border p-2 rounded-md w-full ${field.readOnly ? "bg-gray-100" : ""}`}
+                readOnly={field.readOnly}
               />
             </div>
           ))}
@@ -280,14 +447,32 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
       </section>
 
       <Standards standards={tools} />
-      <Notes />
+      <Notes initialNotes={notes} onChange={setNotes} />
 
-      {/* View Report Button */}
+      {/* Save & View Buttons */}
       <div className="mt-8 flex justify-end gap-4">
+        {saveSuccess && (
+          <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+            Report Header Saved Successfully!
+          </div>
+        )}
+        {saveError && (
+          <div className="text-red-600 bg-red-50 px-4 py-3 rounded-lg border border-red-300">
+            {saveError}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleSaveHeader}
+          disabled={saving}
+          className={`px-8 py-3 rounded-lg font-bold text-white transition ${saving ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"}`}
+        >
+          {saving ? "Saving..." : "Save Report Header"}
+        </button>
         <button
           type="button"
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          onClick={() => navigate("/admin/orders/view-service-report")}
+          onClick={() => navigate(`/admin/orders/view-service-report-inventional-radiology?serviceId=${serviceId}`)}
         >
           View Generated Report
         </button>
@@ -310,21 +495,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
           // { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
           {
             title: "Exposure Rate Table Top",
-            component: (
-              <ExposureRateTableTop
-                serviceId={serviceId}
-                testId={
-                  details.qaTests.find(test =>
-                    test.qaTestReportNumber?.toLowerCase().includes("exposure rate") ||
-                    test.qaTestReportNumber?.toLowerCase().includes("table top")
-                  )?.qaTestId || null
-                }
-                onTestSaved={(newTestId) => {
-                  console.log("Exposure Rate saved with testId:", newTestId);
-                  // Optional: refresh details if needed
-                }}
-              />
-            ),
+            component: <ExposureRateTableTop serviceId={serviceId} />,
           },
           { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
           // { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} /> },

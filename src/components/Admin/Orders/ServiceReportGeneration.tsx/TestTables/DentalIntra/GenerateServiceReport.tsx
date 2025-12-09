@@ -98,7 +98,9 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+        category: "",
     });
+    const [notes, setNotes] = useState<string[]>([]);
 
     useEffect(() => {
         if (!serviceId) return;
@@ -136,6 +138,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
+                    category: data.category || "",
                 });
 
                 const mapped: Standard[] = toolRes.data.toolsAssigned.map(
@@ -195,6 +198,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         make: res.data.make || prev.make,
                         model: res.data.model || prev.model,
                         slNumber: res.data.slNumber || prev.slNumber,
+                        category: res.data.category || prev.category,
                         condition: res.data.condition || prev.condition,
                         testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
                         testDate: res.data.testDate || prev.testDate,
@@ -204,6 +208,12 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
                     }));
+
+                    // Load existing notes
+                    if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
+                        const notesTexts = res.data.notes.map((n: any) => n.text || n);
+                        setNotes(notesTexts);
+                    }
 
                     // Save test IDs
                     setSavedTestIds({
@@ -245,7 +255,10 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                     certificate: t.certificate,
                     uncertainity: t.uncertainity || "",
                 })),
-                notes: [
+                notes: notes.length > 0 ? notes.map((note, index) => ({
+                    slNo: `5.${index + 1}`,
+                    text: note,
+                })) : [
                     { slNo: "5.1", text: "The Test Report relates only to the above item only." },
                     { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
                     { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
@@ -404,6 +417,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         { label: "Make", name: "make" },
                         { label: "Model", name: "model", readOnly: true },
                         { label: "Serial Number", name: "slNumber", readOnly: true },
+                        { label: "Category", name: "category" },
                         { label: "Condition of Test Item", name: "condition" },
                         { label: "Testing Procedure Number", name: "testingProcedureNumber" },
                         { label: "No. of Pages", name: "pages" },
@@ -431,7 +445,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
             </section>
 
             <Standards standards={tools} />
-            <Notes />
+            <Notes initialNotes={notes} onChange={setNotes} />
 
             {/* Save & View Buttons */}
             <div className="mt-8 flex justify-end gap-4">

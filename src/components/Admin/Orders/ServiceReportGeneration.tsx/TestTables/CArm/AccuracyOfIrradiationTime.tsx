@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import {
-  createAccuracyOfIrradiationTime,
-  getAccuracyOfIrradiationTime,
-  updateAccuracyOfIrradiationTime,
-} from "../../../../../../api"; // adjust path
+  createAccuracyOfIrradiationTimeForCArm,
+  getAccuracyOfIrradiationTimeForCArm,
+  getAccuracyOfIrradiationTimeByServiceIdForCArm,
+  updateAccuracyOfIrradiationTimeForCArm,
+} from "../../../../../../api";
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
@@ -100,16 +101,16 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       if (!serviceId) return;
       setLoading(true);
       try {
-        const data = await getAccuracyOfIrradiationTime(serviceId);
+        const data = await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId);
         if (data) {
           setTestId(data._id);
           setTable1Row(data.testConditions || { fcd: "", kv: "", ma: "" });
           setTable2Rows(
-            data.irradiationTimes.length > 0
+            data.irradiationTimes && data.irradiationTimes.length > 0
               ? data.irradiationTimes.map((t: any, i: number) => ({
                   id: String(i + 1),
-                  setTime: t.setTime,
-                  measuredTime: t.measuredTime,
+                  setTime: t.setTime || "",
+                  measuredTime: t.measuredTime || "",
                 }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
@@ -149,10 +150,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     setSaving(true);
     try {
       if (testId) {
-        await updateAccuracyOfIrradiationTime(testId, payload);
+        await updateAccuracyOfIrradiationTimeForCArm(testId, payload);
       } else {
-        const res = await createAccuracyOfIrradiationTime(serviceId, payload);
-        setTestId(res.data._id); // save the returned _id
+        const res = await createAccuracyOfIrradiationTimeForCArm(serviceId, payload);
+        const newId = res.data?._id || res.data?.testId;
+        if (newId) {
+          setTestId(newId);
+        }
       }
       alert("Saved successfully!");
     } catch (err) {

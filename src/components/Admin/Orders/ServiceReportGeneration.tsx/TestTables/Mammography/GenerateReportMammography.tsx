@@ -7,7 +7,7 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForMammography } from "../../../../../../api";
 
 // Mammography Test Components
 import AccuracyOfOperatingPotential from "../Mammography/AccuracyOfOperatingPotential";
@@ -75,7 +75,9 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+        category: "",
     });
+    const [notes, setNotes] = useState<string[]>([]);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -113,6 +115,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
+                    category: data.category || "",
                 });
 
                 const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
@@ -129,6 +132,47 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                 console.log("🚀 ~ fetchInitialData ~ mappedTools:", mappedTools)
 
                 setTools(mappedTools);
+
+                // Load existing report header data if available
+                try {
+                    const reportRes = await getReportHeaderForMammography(serviceId);
+                    if (reportRes.exists && reportRes.data) {
+                        const reportData = reportRes.data;
+                        // Update formData with existing report data
+                        setFormData((prev) => ({
+                            ...prev,
+                            customerName: reportData.customerName || prev.customerName,
+                            address: reportData.address || prev.address,
+                            srfNumber: reportData.srfNumber || prev.srfNumber,
+                            srfDate: reportData.srfDate || prev.srfDate,
+                            testReportNumber: reportData.testReportNumber || prev.testReportNumber,
+                            issueDate: reportData.issueDate || prev.issueDate,
+                            nomenclature: reportData.nomenclature || prev.nomenclature,
+                            make: reportData.make || prev.make,
+                            model: reportData.model || prev.model,
+                            slNumber: reportData.slNumber || prev.slNumber,
+                            category: reportData.category || prev.category,
+                            condition: reportData.condition || prev.condition,
+                            testingProcedureNumber: reportData.testingProcedureNumber || prev.testingProcedureNumber,
+                            pages: reportData.pages || prev.pages,
+                            testDate: reportData.testDate || prev.testDate,
+                            testDueDate: reportData.testDueDate || prev.testDueDate,
+                            location: reportData.location || prev.location,
+                            temperature: reportData.temperature || prev.temperature,
+                            humidity: reportData.humidity || prev.humidity,
+                            engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
+                        }));
+
+                        // Load existing notes
+                        if (reportData.notes && Array.isArray(reportData.notes) && reportData.notes.length > 0) {
+                            const notesTexts = reportData.notes.map((n: any) => n.text || n);
+                            setNotes(notesTexts);
+                        }
+                    }
+                } catch (reportErr) {
+                    console.error("Failed to load existing report:", reportErr);
+                    // Continue without existing report data
+                }
             } catch (err: any) {
                 console.error("Failed to load data:", err);
             } finally {
@@ -162,7 +206,10 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                     calibrationValidTill: t.calibrationValidTill,
                     certificate: t.certificate,
                 })),
-                notes: [
+                notes: notes.length > 0 ? notes.map((note, index) => ({
+                    slNo: `5.${index + 1}`,
+                    text: note,
+                })) : [
                     { slNo: "5.1", text: "The Test Report relates only to the above item tested." },
                     { slNo: "5.2", text: "Partial reproduction of this report is not allowed without written approval." },
                     { slNo: "5.3", text: "Any discrepancies must be reported within 15 days of receipt." },
@@ -275,7 +322,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
             </section>
 
             {/* <Standards standards={tools} /> */}
-            <Notes />
+            <Notes initialNotes={notes} onChange={setNotes} />
 
             {/* Save & View Buttons */}
             <div className="my-10 flex justify-end gap-6">
@@ -300,7 +347,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                 </button>
 
                 <button
-                    onClick={() => navigate(`/admin/orders/view-service-report?serviceId=${serviceId}`)}
+                    onClick={() => navigate(`/admin/orders/view-service-report-mammography?serviceId=${serviceId}`)}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report

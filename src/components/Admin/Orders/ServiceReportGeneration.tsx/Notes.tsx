@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface NotesProps {
     initialNotes?: string[];
+    onChange?: (notes: string[]) => void;
 }
 
 const Notes: React.FC<NotesProps> = ({
@@ -13,13 +14,22 @@ const Notes: React.FC<NotesProps> = ({
         "Results reported are valid at the time of and under the stated conditions of measurements.",
         "Name, Address & Contact detail is provided by Customer.",
     ],
+    onChange,
 }) => {
     const [notes, setNotes] = useState<string[]>(initialNotes);
     const [newNote, setNewNote] = useState("");
 
+    // Notify parent when notes change
+    useEffect(() => {
+        if (onChange) {
+            onChange(notes);
+        }
+    }, [notes, onChange]);
+
     const handleAddNote = () => {
         if (!newNote.trim()) return;
-        setNotes([...notes, newNote.trim()]);
+        const updated = [...notes, newNote.trim()];
+        setNotes(updated);
         setNewNote("");
     };
 

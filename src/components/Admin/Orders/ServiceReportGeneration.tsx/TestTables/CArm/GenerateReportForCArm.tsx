@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader, getReportHeaderForCArm } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForCArm, getAccuracyOfIrradiationTimeByServiceIdForCArm } from "../../../../../../api";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -82,7 +82,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
   const [tools, setTools] = useState<Standard[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showTimerModal, setShowTimerModal] = useState(true);
+  const [showTimerModal, setShowTimerModal] = useState(false);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -198,9 +198,44 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
           }));
+
+          // Check if AccuracyOfIrradiationTimeCArm exists
+          const hasIrradiationTimeTest = res.data.AccuracyOfIrradiationTimeCArm?._id || res.data.AccuracyOfIrradiationTimeCArm;
+          if (hasIrradiationTimeTest) {
+            setHasTimer(true);
+            setShowTimerModal(false);
+          } else {
+            // Check localStorage for saved choice
+            const savedChoice = localStorage.getItem(`carm_timer_choice_${serviceId}`);
+            if (savedChoice !== null) {
+              setHasTimer(JSON.parse(savedChoice));
+              setShowTimerModal(false);
+            } else {
+              // Only show modal if no saved choice and no existing test
+              setShowTimerModal(true);
+            }
+          }
+        } else {
+          // No report header exists, check localStorage
+          const savedChoice = localStorage.getItem(`carm_timer_choice_${serviceId}`);
+          if (savedChoice !== null) {
+            setHasTimer(JSON.parse(savedChoice));
+            setShowTimerModal(false);
+          } else {
+            // Show modal only if no saved choice
+            setShowTimerModal(true);
+          }
         }
       } catch (err) {
         console.log("No report header found or failed to load:", err);
+        // On error, check localStorage
+        const savedChoice = localStorage.getItem(`carm_timer_choice_${serviceId}`);
+        if (savedChoice !== null) {
+          setHasTimer(JSON.parse(savedChoice));
+          setShowTimerModal(false);
+        } else {
+          setShowTimerModal(true);
+        }
       }
     };
     loadReportHeader();
@@ -293,9 +328,12 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
     );
   }
   
+  // Close modal and set timer choice
   const handleTimerChoice = (choice: boolean) => {
     setHasTimer(choice);
     setShowTimerModal(false);
+    // Persist choice in localStorage
+    localStorage.setItem(`carm_timer_choice_${serviceId}`, JSON.stringify(choice));
   };
   if (!details) {
     return <div className="max-w-6xl mx-auto p-8">No data received.</div>;

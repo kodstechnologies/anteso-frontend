@@ -24,7 +24,7 @@ interface Props {
 }
 
 const MeasureMaxRadiationLevel: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
-    const [testId, setTestId] = useState<string | null>(propTestId);
+    const [testId, setTestId] = useState<any>(propTestId);
     const [isSaved, setIsSaved] = useState(!!propTestId);
     const [isEditing, setIsEditing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);

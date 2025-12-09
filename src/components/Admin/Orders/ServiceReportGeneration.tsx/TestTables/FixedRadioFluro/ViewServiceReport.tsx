@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeader } from "../../../../../../api";
 import FixedRadioFlouroResultTable from "./FixedRadioFluoroResultTable";
+import MainTestTableForFixedRadioFluro from "./MainTestTableForFixedRadioFluro";
 import logo from "../../../../../../assets/logo/logo-sm.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
@@ -47,7 +48,7 @@ interface ReportData {
   humidity: string;
   toolsUsed?: Tool[];
   notes?: Note[];
-
+  category: string;
   // Test documents
   accuracyOfOperatingPotentialFixedRadioFluoro?: any;
   OutputConsistencyForFixedRadioFlouro?: any;
@@ -201,6 +202,22 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
         </button>
       </div>
 
+      <style>{`
+        @media print {
+          .test-section {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          table {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          th, td {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+        }
+      `}</style>
       <div id="report-content" className="bg-white">
         {/* PAGE 1 - MAIN REPORT */}
         <div className="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0">
@@ -261,6 +278,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                     ["Make", report.make || "-"],
                     ["Model", report.model],
                     ["Serial No.", report.slNumber],
+                    ["Category", report.category || "-"],
                     ["Condition", report.condition],
                     ["Testing Procedure No.", report.testingProcedureNumber || "-"],
                     ["Engineer Name & RP ID", report.engineerNameRPId],
@@ -342,16 +360,26 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
         </div>
 
         {/* PAGE BREAK */}
-        <div className="print:break-before-page"></div>
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
 
-        {/* PAGE 2+ - DETAILED TEST RESULTS */}
-        <div className="bg-white px-8 py-12 print:p-8">
+        {/* PAGE 2+ - SUMMARY TABLE */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
+          <div className="max-w-5xl mx-auto print:max-w-none">
+            <MainTestTableForFixedRadioFluro testData={testData} />
+          </div>
+        </div>
+
+        {/* PAGE BREAK */}
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
+
+        {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
           <div className="max-w-5xl mx-auto print:max-w-none">
             <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
 
             {/* 1. Accuracy of Operating Potential */}
             {testData.accuracyOfOperatingPotential?.table2?.length > 0 && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">1. Accuracy of Operating Potential (kVp)</h3>
 
                 {/* Test Conditions */}
@@ -369,25 +397,25 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                   </div>
                 )}
 
-                <div className="overflow-x-auto">
-                  <table className="w-full border-2 border-black text-sm">
+                <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                  <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="border border-black p-3">Set kVp</th>
-                        <th className="border border-black p-3">Measured kVp</th>
-                        <th className="border border-black p-3">% Deviation</th>
-                        <th className="border border-black p-3 bg-blue-100">Tolerance</th>
-                        <th className="border border-black p-3 bg-green-100">Remarks</th>
+                        <th className="border border-black p-3 print:p-2">Set kVp</th>
+                        <th className="border border-black p-3 print:p-2">Measured kVp</th>
+                        <th className="border border-black p-3 print:p-2">% Deviation</th>
+                        <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                        <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
                       {testData.accuracyOfOperatingPotential.table2.map((row: any, i: number) => (
                         <tr key={i} className="text-center">
-                          <td className="border p-3 font-semibold">{row.setKvp || row.setKVp || "-"}</td>
-                          <td className="border p-3">{row.measuredKvp || row.measuredKVp || "-"}</td>
-                          <td className="border p-3">{row.deviation != null ? row.deviation.toFixed(2) + "%" : "-"}</td>
-                          <td className="border p-3">±10%</td>
-                          <td className="border p-3 font-bold">
+                          <td className="border border-black p-3 print:p-2 font-semibold">{row.setKvp || row.setKVp || "-"}</td>
+                          <td className="border border-black p-3 print:p-2">{row.measuredKvp || row.measuredKVp || "-"}</td>
+                          <td className="border border-black p-3 print:p-2">{row.deviation != null ? row.deviation.toFixed(2) + "%" : "-"}</td>
+                          <td className="border border-black p-3 print:p-2">±10%</td>
+                          <td className="border border-black p-3 print:p-2 font-bold">
                             <span className={Math.abs(row.deviation || 0) <= 10 ? "text-green-600" : "text-red-600"}>
                               {Math.abs(row.deviation || 0) <= 10 ? "PASS" : "FAIL"}
                             </span>
@@ -402,144 +430,404 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 2. Output Consistency */}
             {testData.outputConsistency && (
-              <div className="mb-16 print:mb-12">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">2. Output Consistency</h3>
-                <div className="bg-gray-50 p-8 p-8 rounded-lg border text-center">
-                  <p className="text-xl"><strong>Coefficient of Variation (COV):</strong> {testData.outputConsistency.cov?.toFixed(3) || "N/A"}</p>
-                  <p className="text-lg mt-3"><strong>Tolerance:</strong> ≤ 0.05</p>
-                  <p className="text-4xl font-bold mt-6">
-                    <span className={testData.outputConsistency.cov <= 0.05 ? "text-green-600" : "text-red-600"}>
-                      {testData.outputConsistency.cov <= 0.05 ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
-                </div>
+                {testData.outputConsistency.outputRows && Array.isArray(testData.outputConsistency.outputRows) && testData.outputConsistency.outputRows.length > 0 ? (
+                  <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                    <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3 print:p-2">FFD (cm)</th>
+                          <th className="border border-black p-3 print:p-2">Mean</th>
+                          <th className="border border-black p-3 print:p-2">COV</th>
+                          <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                          <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.outputConsistency.outputRows.map((row: any, i: number) => {
+                          const cov = row.cov ? parseFloat(row.cov) : null;
+                          const tolerance = testData.outputConsistency.tolerance ? parseFloat(testData.outputConsistency.tolerance) : 0.05;
+                          const toleranceNum = tolerance > 1 ? tolerance / 100 : tolerance;
+                          const isPass = cov != null ? cov <= toleranceNum : false;
+                          return (
+                            <tr key={i} className="text-center">
+                              <td className="border border-black p-3 print:p-2 font-semibold">{row.ffd || "-"}</td>
+                              <td className="border border-black p-3 print:p-2">{row.mean || "-"}</td>
+                              <td className="border border-black p-3 print:p-2">{cov != null ? cov.toFixed(3) : "-"}</td>
+                              <td className="border border-black p-3 print:p-2">≤ {tolerance > 1 ? tolerance : tolerance * 100}%</td>
+                              <td className="border border-black p-3 print:p-2 font-bold">
+                                <span className={isPass ? "text-green-600" : "text-red-600"}>
+                                  {isPass ? "PASS" : "FAIL"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : testData.outputConsistency.cov != null ? (
+                  <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                    <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3 print:p-2">Parameter</th>
+                          <th className="border border-black p-3 print:p-2">Measured Value</th>
+                          <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                          <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="text-center">
+                          <td className="border border-black p-3 print:p-2 font-semibold">Coefficient of Variation (COV)</td>
+                          <td className="border border-black p-3 print:p-2">{testData.outputConsistency.cov.toFixed(3)}</td>
+                          <td className="border border-black p-3 print:p-2">≤ 0.05</td>
+                          <td className="border border-black p-3 print:p-2 font-bold">
+                            <span className={testData.outputConsistency.cov <= 0.05 ? "text-green-600" : "text-red-600"}>
+                              {testData.outputConsistency.cov <= 0.05 ? "PASS" : "FAIL"}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
               </div>
             )}
 
             {/* 3. Low Contrast Resolution */}
             {testData.lowContrastResolution && (
-              <div className="mb-16 print:mb-12">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">3. Low Contrast Resolution</h3>
-                <div className="bg-gray-50 p-8 rounded-lg border text-center">
-                  <p className="text-xl"><strong>Smallest Visible Hole Size:</strong> {testData.lowContrastResolution.smallestHoleSize} mm</p>
-                  <p className="text-lg mt-3"><strong>Recommended:</strong> ≤ {testData.lowContrastResolution.recommendedStandard} mm</p>
-                  <p className="text-4xl font-bold mt-6">
-                    <span className={Number(testData.lowContrastResolution.smallestHoleSize) <= Number(testData.lowContrastResolution.recommendedStandard) ? "text-green-600" : "text-red-600"}>
-                      {Number(testData.lowContrastResolution.smallestHoleSize) <= Number(testData.lowContrastResolution.recommendedStandard) ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
+                <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                  <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-3 print:p-2">Parameter</th>
+                        <th className="border border-black p-3 print:p-2">Measured Value</th>
+                        <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                        <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="text-center">
+                        <td className="border border-black p-3 print:p-2 font-semibold">Smallest Visible Hole Size</td>
+                        <td className="border border-black p-3 print:p-2">{testData.lowContrastResolution.smallestHoleSize} mm</td>
+                        <td className="border border-black p-3 print:p-2">≤ {testData.lowContrastResolution.recommendedStandard} mm</td>
+                        <td className="border border-black p-3 print:p-2 font-bold">
+                          <span className={Number(testData.lowContrastResolution.smallestHoleSize) <= Number(testData.lowContrastResolution.recommendedStandard) ? "text-green-600" : "text-red-600"}>
+                            {Number(testData.lowContrastResolution.smallestHoleSize) <= Number(testData.lowContrastResolution.recommendedStandard) ? "PASS" : "FAIL"}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
 
             {/* 4. High Contrast Resolution */}
             {testData.highContrastResolution && (
-              <div className="mb-16 print:mb-12">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">4. High Contrast Resolution</h3>
-                <div className="bg-gray-50 p-8 rounded-lg border text-center">
-                  <p className="text-xl"><strong>Measured:</strong> {testData.highContrastResolution.measuredLpPerMm} lp/mm</p>
-                  <p className="text-lg mt-3"><strong>Recommended:</strong> ≥ {testData.highContrastResolution.recommendedStandard} lp/mm</p>
-                  <p className="text-4xl font-bold mt-6">
-                    <span className={Number(testData.highContrastResolution.measuredLpPerMm) >= Number(testData.highContrastResolution.recommendedStandard) ? "text-green-600" : "text-red-600"}>
-                      {Number(testData.highContrastResolution.measuredLpPerMm) >= Number(testData.highContrastResolution.recommendedStandard) ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
+                <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                  <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-3 print:p-2">Parameter</th>
+                        <th className="border border-black p-3 print:p-2">Measured Value</th>
+                        <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                        <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="text-center">
+                        <td className="border border-black p-3 print:p-2 font-semibold">Line Pairs per mm</td>
+                        <td className="border border-black p-3 print:p-2">{testData.highContrastResolution.measuredLpPerMm} lp/mm</td>
+                        <td className="border border-black p-3 print:p-2">≥ {testData.highContrastResolution.recommendedStandard} lp/mm</td>
+                        <td className="border border-black p-3 print:p-2 font-bold">
+                          <span className={Number(testData.highContrastResolution.measuredLpPerMm) >= Number(testData.highContrastResolution.recommendedStandard) ? "text-green-600" : "text-red-600"}>
+                            {Number(testData.highContrastResolution.measuredLpPerMm) >= Number(testData.highContrastResolution.recommendedStandard) ? "PASS" : "FAIL"}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
 
             {/* 5. Exposure Rate at Table Top */}
             {testData.exposureRate && (
-              <div className="mb-16 print:mb-12">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">5. Exposure Rate at Table Top</h3>
-                <div className="bg-gray-50 p-8 rounded-lg border text-center">
-                  <p className="text-xl"><strong>Measured Value:</strong> {testData.exposureRate.measuredValue || "N/A"} mGy/min</p>
-                  <p className="text-lg mt-3"><strong>Limit:</strong> ≤ 5 mGy/min</p>
-                  <p className="text-4xl font-bold mt-6">
-                    <span className={(testData.exposureRate.measuredValue || 0) <= 5 ? "text-green-600" : "text-red-600"}>
-                      {(testData.exposureRate.measuredValue || 0) <= 5 ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
+                <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                  <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-3 print:p-2">Parameter</th>
+                        <th className="border border-black p-3 print:p-2">Measured Value</th>
+                        <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                        <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="text-center">
+                        <td className="border border-black p-3 print:p-2 font-semibold">Exposure Rate</td>
+                        <td className="border border-black p-3 print:p-2">{testData.exposureRate.measuredValue || "N/A"} mGy/min</td>
+                        <td className="border border-black p-3 print:p-2">≤ 5 mGy/min</td>
+                        <td className="border border-black p-3 print:p-2 font-bold">
+                          <span className={(testData.exposureRate.measuredValue || 0) <= 5 ? "text-green-600" : "text-red-600"}>
+                            {(testData.exposureRate.measuredValue || 0) <= 5 ? "PASS" : "FAIL"}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
 
             {/* 6. Tube Housing Leakage */}
             {testData.tubeHousingLeakage && (
-              <div className="mb-16 print:mb-12">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">6. Radiation Leakage from Tube Housing</h3>
-                <div className="bg-gray-50 p-8 rounded-lg border text-center">
-                  <p className="text-xl"><strong>Measured Leakage:</strong> {testData.tubeHousingLeakage.leakageRate || "N/A"} mGy/hr</p>
-                  <p className="text-lg mt-3"><strong>Limit:</strong> ≤ 1 mGy/hr at 1m</p>
-                  <p className="text-4xl font-bold mt-6">
-                    <span className={(testData.tubeHousingLeakage.leakageRate || 0) <= 1 ? "text-green-600" : "text-red-600"}>
-                      {(testData.tubeHousingLeakage.leakageRate || 0) <= 1 ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
+                <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                  <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-3 print:p-2">Parameter</th>
+                        <th className="border border-black p-3 print:p-2">Measured Value</th>
+                        <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                        <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="text-center">
+                        <td className="border border-black p-3 print:p-2 font-semibold">Radiation Leakage (at 1m distance)</td>
+                        <td className="border border-black p-3 print:p-2">{testData.tubeHousingLeakage.leakageRate || "N/A"} mGy/hr</td>
+                        <td className="border border-black p-3 print:p-2">≤ 1 mGy/hr</td>
+                        <td className="border border-black p-3 print:p-2 font-bold">
+                          <span className={(testData.tubeHousingLeakage.leakageRate || 0) <= 1 ? "text-green-600" : "text-red-600"}>
+                            {(testData.tubeHousingLeakage.leakageRate || 0) <= 1 ? "PASS" : "FAIL"}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
 
             {/* 7. Linearity of mAs Loading */}
             {testData.linearityOfmAsLoading && (
-              <div className="mb-16 print:mb-12">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">7. Linearity of mAs Loading</h3>
-                <div className="bg-gray-50 p-8 rounded-lg border text-center">
-                  <p className="text-xl"><strong>Coefficient of Linearity:</strong> {testData.linearityOfmAsLoading.col?.toFixed(3) || "N/A"}</p>
-                  <p className="text-lg mt-3"><strong>Tolerance:</strong> ≤ 0.1</p>
-                  <p className="text-4xl font-bold mt-6">
-                    <span className={(testData.linearityOfmAsLoading.col || 0) <= 0.1 ? "text-green-600" : "text-red-600"}>
-                      {(testData.linearityOfmAsLoading.col || 0) <= 0.1 ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
-                </div>
+                {testData.linearityOfmAsLoading.table2 && Array.isArray(testData.linearityOfmAsLoading.table2) && testData.linearityOfmAsLoading.table2.length > 0 ? (
+                  <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                    <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3 print:p-2">mAs</th>
+                          <th className="border border-black p-3 print:p-2">Measured Values</th>
+                          <th className="border border-black p-3 print:p-2">Coefficient of Linearity</th>
+                          <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                          <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.linearityOfmAsLoading.table2.map((row: any, i: number) => {
+                          const col = row.col ? parseFloat(row.col) : null;
+                          const isPass = col != null ? col <= 0.1 : false;
+                          return (
+                            <tr key={i} className="text-center">
+                              <td className="border border-black p-3 print:p-2 font-semibold">{row.mAs || "-"}</td>
+                              <td className="border border-black p-3 print:p-2">{row.measuredValues || "-"}</td>
+                              <td className="border border-black p-3 print:p-2">{col != null ? col.toFixed(3) : "-"}</td>
+                              <td className="border border-black p-3 print:p-2">≤ 0.1</td>
+                              <td className="border border-black p-3 print:p-2 font-bold">
+                                <span className={isPass ? "text-green-600" : "text-red-600"}>
+                                  {isPass ? "PASS" : "FAIL"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : testData.linearityOfmAsLoading.col != null ? (
+                  <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                    <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3 print:p-2">Parameter</th>
+                          <th className="border border-black p-3 print:p-2">Measured Value</th>
+                          <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                          <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="text-center">
+                          <td className="border border-black p-3 print:p-2 font-semibold">Coefficient of Linearity</td>
+                          <td className="border border-black p-3 print:p-2">{testData.linearityOfmAsLoading.col.toFixed(3)}</td>
+                          <td className="border border-black p-3 print:p-2">≤ 0.1</td>
+                          <td className="border border-black p-3 print:p-2 font-bold">
+                            <span className={(testData.linearityOfmAsLoading.col || 0) <= 0.1 ? "text-green-600" : "text-red-600"}>
+                              {(testData.linearityOfmAsLoading.col || 0) <= 0.1 ? "PASS" : "FAIL"}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
               </div>
             )}
 
             {/* 8. Accuracy of Irradiation Time */}
             {testData.accuracyOfIrradiationTime && (
-              <div className="mb-16 print:mb-12">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">8. Accuracy of Irradiation Time</h3>
-                <div className="bg-gray-50 p-8 rounded-lg border text-center">
-                  <p className="text-xl"><strong>Maximum Deviation:</strong> {testData.accuracyOfIrradiationTime.maxDeviation?.toFixed(1)}%</p>
-                  <p className="text-lg mt-3"><strong>Tolerance:</strong> ±5%</p>
-                  <p className="text-4xl font-bold mt-6">
-                    <span className={Math.abs(testData.accuracyOfIrradiationTime.maxDeviation || 0) <= 5 ? "text-green-600" : "text-red-600"}>
-                      {Math.abs(testData.accuracyOfIrradiationTime.maxDeviation || 0) <= 5 ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
-                </div>
+                {testData.accuracyOfIrradiationTime.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes) && testData.accuracyOfIrradiationTime.irradiationTimes.length > 0 ? (
+                  <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                    <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3 print:p-2">Set Time (ms)</th>
+                          <th className="border border-black p-3 print:p-2">Measured Time (ms)</th>
+                          <th className="border border-black p-3 print:p-2">% Error</th>
+                          <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                          <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
+                          const setTime = parseFloat(row.setTime);
+                          const measuredTime = parseFloat(row.measuredTime);
+                          const toleranceOperator = testData.accuracyOfIrradiationTime.tolerance?.operator || "<=";
+                          const toleranceValue = parseFloat(testData.accuracyOfIrradiationTime.tolerance?.value || "5");
+                          let error = "-";
+                          let isPass = false;
+                          
+                          if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
+                            error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
+                            const errorVal = parseFloat(error);
+                            
+                            if (toleranceOperator === "<=") {
+                              isPass = errorVal <= toleranceValue;
+                            } else if (toleranceOperator === ">=") {
+                              isPass = errorVal >= toleranceValue;
+                            } else if (toleranceOperator === "=") {
+                              isPass = Math.abs(errorVal - toleranceValue) < 0.01;
+                            }
+                          }
+                          
+                          return (
+                            <tr key={i} className="text-center">
+                              <td className="border border-black p-3 print:p-2 font-semibold">{row.setTime || "-"}</td>
+                              <td className="border border-black p-3 print:p-2">{row.measuredTime || "-"}</td>
+                              <td className="border border-black p-3 print:p-2">{error}</td>
+                              <td className="border border-black p-3 print:p-2">{toleranceOperator} {toleranceValue}%</td>
+                              <td className="border border-black p-3 print:p-2 font-bold">
+                                <span className={isPass ? "text-green-600" : "text-red-600"}>
+                                  {isPass ? "PASS" : "FAIL"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : testData.accuracyOfIrradiationTime.maxDeviation != null ? (
+                  <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                    <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3 print:p-2">Parameter</th>
+                          <th className="border border-black p-3 print:p-2">Measured Value</th>
+                          <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                          <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="text-center">
+                          <td className="border border-black p-3 print:p-2 font-semibold">Maximum Deviation</td>
+                          <td className="border border-black p-3 print:p-2">{testData.accuracyOfIrradiationTime.maxDeviation.toFixed(1)}%</td>
+                          <td className="border border-black p-3 print:p-2">±5%</td>
+                          <td className="border border-black p-3 print:p-2 font-bold">
+                            <span className={Math.abs(testData.accuracyOfIrradiationTime.maxDeviation || 0) <= 5 ? "text-green-600" : "text-red-600"}>
+                              {Math.abs(testData.accuracyOfIrradiationTime.maxDeviation || 0) <= 5 ? "PASS" : "FAIL"}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
               </div>
             )}
 
             {/* 9. Congruence of Radiation Field */}
             {testData.congruenceOfRadiation && (
-              <div className="mb-16 print:mb-12">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">9. Congruence of Radiation and Light Field</h3>
-                <div className="bg-gray-50 p-8 rounded-lg border text-center">
-                  <p className="text-xl"><strong>Max Misalignment:</strong> {testData.congruenceOfRadiation.maxMisalignment} cm</p>
-                  <p className="text-lg mt-3"><strong>Tolerance:</strong> ≤ 2 cm</p>
-                  <p className="text-4xl font-bold mt-6">
-                    <span className={(testData.congruenceOfRadiation.maxMisalignment || 0) <= 2 ? "text-green-600" : "text-red-600"}>
-                      {(testData.congruenceOfRadiation.maxMisalignment || 0) <= 2 ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
+                <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                  <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-3 print:p-2">Parameter</th>
+                        <th className="border border-black p-3 print:p-2">Measured Value</th>
+                        <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                        <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="text-center">
+                        <td className="border border-black p-3 print:p-2 font-semibold">Max Misalignment</td>
+                        <td className="border border-black p-3 print:p-2">{testData.congruenceOfRadiation.maxMisalignment} cm</td>
+                        <td className="border border-black p-3 print:p-2">≤ 2 cm</td>
+                        <td className="border border-black p-3 print:p-2 font-bold">
+                          <span className={(testData.congruenceOfRadiation.maxMisalignment || 0) <= 2 ? "text-green-600" : "text-red-600"}>
+                            {(testData.congruenceOfRadiation.maxMisalignment || 0) <= 2 ? "PASS" : "FAIL"}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
 
             {/* 10. Central Beam Alignment */}
             {testData.centralBeamAlignment && (
-              <div className="mb-16 print:mb-12">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">10. Central Beam Alignment</h3>
-                <div className="bg-gray-50 p-8 rounded-lg border text-center">
-                  <p className="text-xl"><strong>Deviation:</strong> {testData.centralBeamAlignment.deviation} mm</p>
-                  <p className="text-lg mt-3"><strong>Limit:</strong> ≤ 1% of SID</p>
-                  <p className="text-4xl font-bold mt-6">
-                    <span className={(testData.centralBeamAlignment.deviation || 0) <= (0.01 * (testData.centralBeamAlignment.sid || 100)) ? "text-green-600" : "text-red-600"}>
-                      {(testData.centralBeamAlignment.deviation || 0) <= (0.01 * (testData.centralBeamAlignment.sid || 100)) ? "PASS" : "FAIL"}
-                    </span>
-                  </p>
+                <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+                  <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-3 print:p-2">Parameter</th>
+                        <th className="border border-black p-3 print:p-2">Measured Value</th>
+                        <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
+                        <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="text-center">
+                        <td className="border border-black p-3 print:p-2 font-semibold">Deviation</td>
+                        <td className="border border-black p-3 print:p-2">{testData.centralBeamAlignment.deviation} mm</td>
+                        <td className="border border-black p-3 print:p-2">≤ 1% of SID ({testData.centralBeamAlignment.sid || 100} mm)</td>
+                        <td className="border border-black p-3 print:p-2 font-bold">
+                          <span className={(testData.centralBeamAlignment.deviation || 0) <= (0.01 * (testData.centralBeamAlignment.sid || 100)) ? "text-green-600" : "text-red-600"}>
+                            {(testData.centralBeamAlignment.deviation || 0) <= (0.01 * (testData.centralBeamAlignment.sid || 100)) ? "PASS" : "FAIL"}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}

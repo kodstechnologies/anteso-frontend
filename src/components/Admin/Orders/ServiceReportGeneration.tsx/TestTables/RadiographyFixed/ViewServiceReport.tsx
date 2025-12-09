@@ -8,6 +8,7 @@ import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import MainTestTableForRadiographyFixed from "./MainTestTableForRadiographyFixed";
 
 interface Tool {
   slNumber: string;
@@ -46,7 +47,7 @@ interface ReportData {
   humidity: string;
   toolsUsed?: Tool[];
   notes?: Note[];
-
+  category: string;
   // Test documents
   AccuracyOfIrradiationTimeRadiographyFixed?: any;
   accuracyOfOperatingPotentialRadigraphyFixed?: any;
@@ -113,6 +114,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             humidity: data.humidity || "",
             toolsUsed: data.toolsUsed || [],
             notes: data.notes || defaultNotes,
+            category: data.category || "",
           });
 
           // Extract test data from populated response
@@ -278,6 +280,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     ["Make", report.make || "-"],
                     ["Model", report.model],
                     ["Serial No.", report.slNumber],
+                    ["Category", report.category || "-"],
                     ["Condition", report.condition],
                     ["Testing Procedure No.", report.testingProcedureNumber || "-"],
                     ["Engineer Name & RP ID", report.engineerNameRPId],
@@ -359,16 +362,26 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         </div>
 
         {/* PAGE BREAK */}
-        <div className="print:break-before-page"></div>
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
 
-        {/* PAGE 2+ - DETAILED TEST RESULTS */}
-        <div className="bg-white px-8 py-12 print:p-8">
+        {/* PAGE 2+ - SUMMARY TABLE */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
+          <div className="max-w-5xl mx-auto print:max-w-none">
+            <MainTestTableForRadiographyFixed testData={testData} />
+          </div>
+        </div>
+
+        {/* PAGE BREAK */}
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
+
+        {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
           <div className="max-w-5xl mx-auto print:max-w-none">
             <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
 
             {/* 1. Accuracy of Irradiation Time */}
             {testData.accuracyOfIrradiationTime && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">1. Accuracy of Irradiation Time</h3>
                 {testData.accuracyOfIrradiationTime.testConditions && (
                   <div className="mb-6 bg-gray-50 p-4 rounded border">
@@ -412,7 +425,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
             {/* 2. Accuracy of Operating Potential */}
             {testData.accuracyOfOperatingPotential && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">2. Accuracy of Operating Potential</h3>
                 {testData.accuracyOfOperatingPotential.table2?.length > 0 && (
                   <div className="overflow-x-auto mb-6">
@@ -480,7 +493,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
             {/* 4. Congruence */}
             {testData.congruence && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">4. Congruence of Radiation & Optical Field</h3>
                 {testData.congruence.congruenceMeasurements?.length > 0 && (
                   <div className="overflow-x-auto mb-6">
@@ -559,7 +572,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
             {/* 6. Linearity of mAs Loading */}
             {testData.linearityOfMasLoading && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">6. Linearity of mAs Loading</h3>
                 {testData.linearityOfMasLoading.table2?.length > 0 && (
                   <div className="overflow-x-auto mb-6">
@@ -649,7 +662,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
             {/* 8. Radiation Leakage Level */}
             {testData.radiationLeakageLevel && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">8. Radiation Leakage Level</h3>
                 {testData.radiationLeakageLevel.leakageMeasurements?.length > 0 && (
                   <div className="overflow-x-auto mb-6">
@@ -684,7 +697,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
             {/* 9. Radiation Protection Survey */}
             {testData.radiationProtectionSurvey && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">9. Details of Radiation Protection Survey</h3>
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (
                   <div className="overflow-x-auto mb-6">
@@ -733,9 +746,17 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         @media print {
           body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           .print\\:break-before-page { page-break-before: always; }
+          .print\\:break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
+          .test-section { page-break-inside: avoid; break-inside: avoid; }
           @page { margin: 1cm; size: A4; }
-          table, tr, td, th { page-break-inside: avoid; }
-          h1,h2,h3,h4,h5,h6 { page-break-after: avoid; }
+          table, tr, td, th { 
+            page-break-inside: avoid; 
+            break-inside: avoid;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          thead { display: table-header-group; }
+          h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
         }
       `}</style>
     </>

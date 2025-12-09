@@ -2,250 +2,363 @@
 import React from "react";
 
 interface MainTestTableProps {
-    testData: any;
+  testData: any;
 }
 
 const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData }) => {
-    const rows: any[] = [];
-    let srNo = 1;
+  const rows: any[] = [];
+  let srNo = 1;
 
-    const addRow = (
-        parameter: string,
-        specified: string | number,
-        measured: string | number,
-        tolerance: string,
-        remarks: "Pass" | "Fail"
-    ) => {
-        rows.push({ srNo: srNo++, parameter, specified, measured, tolerance, remarks });
-    };
+  const addRowsForTest = (
+    parameter: string,
+    testRows: Array<{
+      specified: string | number;
+      measured: string | number;
+      tolerance: string;
+      remarks: "Pass" | "Fail";
+    }>,
+    toleranceRowSpan: boolean = false
+  ) => {
+    if (testRows.length === 0) return;
+    
+    const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
+    
+    testRows.forEach((testRow, idx) => {
+      rows.push({
+        srNo: idx === 0 ? srNo++ : null,
+        parameter: idx === 0 ? parameter : null,
+        rowSpan: idx === 0 ? testRows.length : 0,
+        specified: testRow.specified,
+        measured: testRow.measured,
+        tolerance: toleranceRowSpan ? (idx === 0 ? sharedTolerance : null) : testRow.tolerance,
+        toleranceRowSpan: toleranceRowSpan ? (idx === 0 ? testRows.length : 0) : 0,
+        hasToleranceRowSpan: toleranceRowSpan,
+        remarks: testRow.remarks,
+        isFirstRow: idx === 0,
+      });
+    });
+  };
 
-    // 1. Accuracy of Operating Potential (kVp Accuracy)
-    if (testData.accuracyOfOperatingPotential?.table2?.length > 0) {
-        const worstRow = testData.accuracyOfOperatingPotential.table2.reduce((worst: any, curr: any) => {
-            const currDev = Math.abs(parseFloat(curr.deviation || "0"));
-            const worstDev = Math.abs(parseFloat(worst.deviation || "0"));
-            return currDev > worstDev ? curr : worst;
-        });
-
-        const deviation = parseFloat(worstRow.deviation || "0").toFixed(2);
-        const isPass = Math.abs(parseFloat(deviation)) <= 5; // ±5% as per AERB
-
-        addRow(
-            "Accuracy of Operating Potential (kVp)",
-            worstRow.setKV || "-",
-            `${worstRow.measuredKVP || "-"} kVp (±${deviation}%)`,
-            "±5%",
-            isPass ? "Pass" : "Fail"
-        );
-    }
-
-    // 2. Linearity of mAs Loading
-    if (testData.linearityOfMasLLoading?.table2?.length > 0) {
-        const worst = testData.linearityOfMasLLoading.table2.reduce((max: any, curr: any) => {
-            const val = Math.abs(parseFloat(curr.linearity || "0"));
-            const maxVal = Math.abs(parseFloat(max.linearity || "0"));
-            return val > maxVal ? curr : max;
-        });
-
-        const linearity = parseFloat(worst.linearity || "0").toFixed(3);
-        const isPass = Math.abs(parseFloat(linearity)) <= 0.1;
-
-        addRow(
-            "Linearity of mAs Loading (Coefficient of Linearity)",
-            "Varies",
-            linearity,
-            "≤ ±0.1",
-            isPass ? "Pass" : "Fail"
-        );
-    }
-
-    // 3. Total Filtration & Aluminium Equivalence
-    if (testData.totalFiltrationAndAluminium?.rows?.[0]) {
-        const row = testData.totalFiltrationAndAluminium.rows[0];
-        const measured = parseFloat(row.measuredHVL || "0");
-        const alEq = row.aluminiumEquivalence || "-";
-        const isPass = measured >= 0.3; // ≥0.3 mm Al @ 30 kVp typical
-
-        addRow(
-            "Total Filtration (HVL)",
-            "30 kVp",
-            `${measured.toFixed(2)} mm Al`,
-            "≥ 0.3 mm Al",
-            isPass ? "Pass" : "Fail"
-        );
-
-        if (alEq !== "-") {
-            addRow(
-                "Aluminium Equivalence of Compression Paddle",
-                "-",
-                alEq,
-                "≤ 0.1 mm Al",
-                parseFloat(alEq) <= 0.1 ? "Pass" : "Fail"
-            );
+  // 1. Accuracy of Irradiation Time (Timer Test) - Following Dental Cone Beam CT pattern
+  if (testData.irradiationTime?.irradiationTimes && Array.isArray(testData.irradiationTime.irradiationTimes)) {
+    const validRows = testData.irradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
+    if (validRows.length > 0) {
+      const toleranceOperator = testData.irradiationTime.tolerance?.operator || "<=";
+      const toleranceValue = testData.irradiationTime.tolerance?.value || "5";
+      const testRows = validRows.map((row: any) => {
+        const setTime = parseFloat(row.setTime);
+        const measuredTime = parseFloat(row.measuredTime);
+        let error = "-";
+        let isPass = false;
+        
+        if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
+          error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
+          const errorVal = parseFloat(error);
+          const tol = parseFloat(toleranceValue);
+          
+          if (toleranceOperator === "<=") {
+            isPass = errorVal <= tol;
+          } else if (toleranceOperator === ">=") {
+            isPass = errorVal >= tol;
+          } else if (toleranceOperator === "=") {
+            isPass = Math.abs(errorVal - tol) < 0.01;
+          }
         }
-    }
-
-    // 4. Reproducibility of Radiation Output
-    if (testData.reproducibilityOfOutput?.outputRows?.length > 0) {
-        const cov = testData.reproducibilityOfOutput.cov
-            ? parseFloat(testData.reproducibilityOfOutput.cov).toFixed(2)
-            : "0.00";
-
-        const isPass = parseFloat(cov) <= 5.0; // ≤5% as per AERB
-
-        addRow(
-            "Reproducibility of Radiation Output (COV)",
-            "28-30 kVp, 50-100 mAs",
-            `${cov}%`,
-            "≤ 5%",
-            isPass ? "Pass" : "Fail"
-        );
-    }
-
-    // 5. Radiation Leakage Level
-    if (testData.radiationLeakageLevel?.leakageMeasurements?.[0]) {
-        const item = testData.radiationLeakageLevel.leakageMeasurements[0];
-        const values = [item.front, item.back, item.left, item.right, item.top, item.bottom]
-            .map(v => parseFloat(v || "0"))
-            .filter(v => !isNaN(v));
-
-        const maxMRh = values.length > 0 ? Math.max(...values) : 0;
-        const maxmGyh = (maxMRh * 0.00877).toFixed(3);
-        const isPass = parseFloat(maxmGyh) < 0.1; // < 0.1 mGy/h at 5 cm
-
-        addRow(
-            "Radiation Leakage from Tube Housing",
-            "Max Load",
-            `${maxmGyh} mGy/h at 5 cm`,
-            "< 0.1 mGy/h (11.4 mR/h)",
-            isPass ? "Pass" : "Fail"
-        );
-    }
-
-    // 6. Imaging Performance (Phantom)
-    if (testData.imagingPhantom) {
-        const { fibers, specks, masses } = testData.imagingPhantom;
-
-        const fiberScore = fibers?.visible || 0;
-        const speckScore = specks?.visible || 0;
-        const massScore = masses?.visible || 0;
-
-        const minRequired = {
-            fibers: 4,
-            specks: 4,
-            masses: 3,
+        
+        return {
+          specified: row.setTime || "-",
+          measured: row.measuredTime || "-",
+          tolerance: `${toleranceOperator} ${toleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
-
-        addRow("Fibers Visible", "≥4", fiberScore, `≥${minRequired.fibers}`, fiberScore >= minRequired.fibers ? "Pass" : "Fail");
-        addRow("Microcalcification Specks Visible", "≥4", speckScore, `≥${minRequired.specks}`, speckScore >= minRequired.specks ? "Pass" : "Fail");
-        addRow("Masses Visible", "≥3", massScore, `≥${minRequired.masses}`, massScore >= minRequired.masses ? "Pass" : "Fail");
+      });
+      addRowsForTest("Accuracy of Irradiation Time", testRows);
     }
+  }
 
-    // 7. Radiation Protection Survey
-    if (testData.radiationProtectionSurvey?.maxRadiationLevel) {
-        const maxLevel = parseFloat(testData.radiationProtectionSurvey.maxRadiationLevel);
-        const isPass = maxLevel <= 0.02; // ≤ 2 µSv/h (0.2 mR/h) in controlled areas typical
-
-        addRow(
-            "Maximum Scatter Radiation (Control Room/Door)",
-            "≤ 0.02 µSv/h",
-            `${maxLevel.toFixed(3)} µSv/h`,
-            "≤ 0.02 µSv/h",
-            isPass ? "Pass" : "Fail"
-        );
-    }
-
-    // 8. Equipment Settings Verification
-    if (testData.equipementSetting?.verified === true) {
-        addRow("Equipment Settings & Indicators", "Functional", "Verified", "All functional", "Pass");
-    } else if (testData.equipementSetting?.verified === false) {
-        addRow("Equipment Settings & Indicators", "Functional", "Not Verified", "All functional", "Fail");
-    }
-
-    // 9. Maximum Radiation Levels at Locations
-    if (testData.maximumRadiationLevel?.locations?.length > 0) {
-        const highest = testData.maximumRadiationLevel.locations.reduce((max: any, loc: any) => {
-            return parseFloat(loc.level) > parseFloat(max.level || "0") ? loc : max;
-        }, { level: "0" });
-
-        const level = parseFloat(highest.level || "0").toFixed(3);
-        // const isPass = level <= 0.01; // Example limit
-                const isPass = 0.01; // Example limit
-
-
-        addRow(
-            "Highest Radiation Level Outside Room",
-            "≤ 0.01 µSv/h",
-            `${level} µSv/h (${highest.location})`,
-            "≤ 0.01 µSv/h",
-            isPass ? "Pass" : "Fail"
-        );
-    }
-
-    if (rows.length === 0) {
-        return <div className="text-center text-gray-500 py-10">No test results available.</div>;
-    }
-
-    return (
-        <div className="mt-20 print:mt-12">
-            <h2 className="text-2xl font-bold text-center underline mb-8 print:mb-6">
-                SUMMARY OF QA TEST RESULTS - MAMMOGRAPHY
-            </h2>
-
-            <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-                <table className="w-full border-2 border-black text-xs print:text-xxs print:min-w-full">
-                    <thead className="bg-gray-200">
-                        <tr>
-                            <th className="border border-black px-3 py-3 w-12 text-center">Sr. No.</th>
-                            <th className="border border-black px-4 py-3 text-left w-80">Parameters Tested</th>
-                            <th className="border border-black px-4 py-3 text-center w-32">Specified</th>
-                            <th className="border border-black px-4 py-3 text-center w-32">Measured</th>
-                            <th className="border border-black px-4 py-3 text-center w-40">Tolerance Limit</th>
-                            <th className="border border-black px-4 py-3 text-center bg-green-100 w-24">Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row, index) => (
-                            <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                                <td className="border border-black px-3 py-3 text-center font-bold">{row.srNo}</td>
-                                <td className="border border-black px-4 py-3 text-left font-medium leading-tight">
-                                    {row.parameter}
-                                </td>
-                                <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
-                                <td className="border border-black px-4 py-3 text-center font-semibold">{row.measured}</td>
-                                <td className="border border-black px-4 py-3 text-center text-xs leading-tight">
-                                    {row.tolerance}
-                                </td>
-                                <td className="border border-black px-4 py-4 text-center text-lg font-bold">
-                                    <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>
-                                        {row.remarks}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Print Optimization */}
-            {/* <style jsx>{`
-        @media print {
-          table {
-            font-size: 9px !important;
-            width: 100% !important;
+  // 2. Accuracy of Operating Potential (kVp)
+  if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
+    const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
+    if (validRows.length > 0) {
+      const toleranceSign = testData.accuracyOfOperatingPotential.tolerance?.sign || "±";
+      const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "5";
+      const testRows = validRows.map((row: any) => {
+        let isPass = false;
+        if (row.remarks === "PASS" || row.remarks === "Pass") {
+          isPass = true;
+        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
+          isPass = false;
+        } else {
+          const appliedKvp = parseFloat(row.appliedKvp);
+          const avgKvp = parseFloat(row.averageKvp);
+          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
+            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
+            const tol = parseFloat(toleranceValue);
+            isPass = deviation <= tol;
           }
-          th, td {
-            padding: 4px 3px !important;
-          }
-          .w-80 { width: 220px !important; }
-          .w-40 { width: 100px !important; }
-          .w-32 { width: 80px !important; }
-          .itsa24 { width: 60px !important; }
-          .w-12 { width: 30px !important; }
         }
-      `}</style> */}
-        </div>
-    );
+        return {
+          specified: row.appliedKvp || "-",
+          measured: row.averageKvp || "-",
+          tolerance: `${toleranceSign}${toleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Operating Potential (kVp)", testRows);
+    }
+  }
+
+  // 2. Linearity of mAs Loading
+  if (testData.linearityOfMasLLoading?.measurements && Array.isArray(testData.linearityOfMasLLoading.measurements)) {
+    const validRows = testData.linearityOfMasLLoading.measurements.filter((row: any) => row.mAsRange || row.col);
+    if (validRows.length > 0) {
+      const tolerance = testData.linearityOfMasLLoading.tolerance || "0.1";
+      const testRows = validRows.map((row: any) => {
+        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
+        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
+        return {
+          specified: row.mAsRange || "-",
+          measured: col,
+          tolerance: `≤ ${tolerance}`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Linearity of mAs Loading (Coefficient of Linearity)", testRows);
+    }
+  }
+
+  // 4. Total Filtration & Aluminium Equivalence
+  if (testData.totalFiltrationAndAluminium?.table && Array.isArray(testData.totalFiltrationAndAluminium.table)) {
+    const validRows = testData.totalFiltrationAndAluminium.table.filter((row: any) => row.kvp || row.hvt);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
+        const hvt = row.hvt ? parseFloat(row.hvt).toFixed(2) : "-";
+        const kvp = row.kvp || "-";
+        // Check against tolerance - typically ≥ 0.3 mm Al at 30 kVp
+        const isPass = row.hvt ? parseFloat(row.hvt) >= 0.3 : false;
+        return {
+          specified: kvp !== "-" ? `${kvp} kVp` : "-",
+          measured: hvt !== "-" ? `${hvt} mm Al` : "-",
+          tolerance: "≥ 0.3 mm Al",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Total Filtration & Aluminium Equivalence (HVT)", testRows);
+    }
+  }
+
+  // 5. Reproducibility of Radiation Output
+  if (testData.reproducibilityOfOutput?.outputRows && Array.isArray(testData.reproducibilityOfOutput.outputRows)) {
+    const validRows = testData.reproducibilityOfOutput.outputRows.filter((row: any) => row.kv || row.avg || row.remark);
+    if (validRows.length > 0) {
+      const toleranceOperator = testData.reproducibilityOfOutput.tolerance?.operator || "<=";
+      const toleranceValue = testData.reproducibilityOfOutput.tolerance?.value || "5.0";
+      const testRows = validRows.map((row: any) => {
+        // Extract CV from remark if available
+        let cvValue = "-";
+        let isPass = false;
+        
+        if (row.remark) {
+          const cvMatch = row.remark.match(/CV:\s*([\d.]+)%/i);
+          if (cvMatch) {
+            cvValue = cvMatch[1];
+          }
+          
+          if (row.remark.includes("Pass") || row.remark.includes("PASS")) {
+            isPass = true;
+          } else if (row.remark.includes("Fail") || row.remark.includes("FAIL")) {
+            isPass = false;
+          } else if (cvValue !== "-") {
+            const cv = parseFloat(cvValue);
+            const tol = parseFloat(toleranceValue);
+            
+            if (toleranceOperator === "<=") {
+              isPass = cv <= tol;
+            } else if (toleranceOperator === ">=") {
+              isPass = cv >= tol;
+            } else if (toleranceOperator === "=") {
+              isPass = Math.abs(cv - tol) < 0.01;
+            }
+          }
+        }
+        
+        return {
+          specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "Varies",
+          measured: cvValue !== "-" ? `${cvValue}%` : "-",
+          tolerance: `${toleranceOperator} ${toleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Reproducibility of Radiation Output (CV)", testRows, true);
+    }
+  }
+
+  // 5. Radiation Leakage Level
+  if (testData.radiationLeakageLevel?.leakageLocations && Array.isArray(testData.radiationLeakageLevel.leakageLocations)) {
+    const validRows = testData.radiationLeakageLevel.leakageLocations.filter((location: any) => location.location || location.max);
+    if (validRows.length > 0) {
+      const toleranceValue = testData.radiationLeakageLevel.toleranceLimit || "0.1";
+      const testRows = validRows.map((location: any) => {
+        const max = location.max || "-";
+        const result = location.resultMR || location.resultMGy || "-";
+        const isPass = result === "Pass" || (max !== "-" && parseFloat(max) < parseFloat(toleranceValue));
+        return {
+          specified: location.location || "-",
+          measured: max !== "-" ? `${max} ${location.unit || "mGy/h"}` : "-",
+          tolerance: `≤ ${toleranceValue} mGy/h`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Radiation Leakage Level (5 cm from Tube Housing)", testRows);
+    }
+  }
+
+  // 7. Imaging Performance Evaluation (Phantom)
+  if (testData.imagingPhantom?.rows && Array.isArray(testData.imagingPhantom.rows)) {
+    const validRows = testData.imagingPhantom.rows.filter((row: any) => row.name || row.visibleCount);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
+        const visibleCount = row.visibleCount || 0;
+        const toleranceValue = row.tolerance?.value || 0;
+        const toleranceOperator = row.tolerance?.operator || ">=";
+        let isPass = false;
+        
+        if (toleranceOperator === ">=") {
+          isPass = visibleCount >= toleranceValue;
+        } else if (toleranceOperator === ">") {
+          isPass = visibleCount > toleranceValue;
+        } else if (toleranceOperator === "<=") {
+          isPass = visibleCount <= toleranceValue;
+        } else if (toleranceOperator === "<") {
+          isPass = visibleCount < toleranceValue;
+        } else if (toleranceOperator === "=") {
+          isPass = visibleCount === toleranceValue;
+        }
+        
+        return {
+          specified: row.name || "-",
+          measured: visibleCount.toString(),
+          tolerance: `${toleranceOperator} ${toleranceValue}`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Imaging Performance Evaluation (Phantom)", testRows);
+    }
+  }
+
+  // 8. Radiation Protection Survey
+  if (testData.radiationProtectionSurvey) {
+    const surveyDate = testData.radiationProtectionSurvey.surveyDate ? new Date(testData.radiationProtectionSurvey.surveyDate).toLocaleDateString("en-GB") : "-";
+    const hasValidCalibration = testData.radiationProtectionSurvey.hasValidCalibration || "-";
+    const isPass = hasValidCalibration.toLowerCase().includes("yes") || hasValidCalibration.toLowerCase().includes("valid");
+    addRowsForTest("Radiation Protection Survey", [{
+      specified: "Survey Date",
+      measured: surveyDate,
+      tolerance: "As per standard",
+      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+    }]);
+  }
+
+  // 9. Equipment Settings Verification
+  if (testData.equipmentSetting) {
+    const hasSettings = testData.equipmentSetting.appliedCurrent || testData.equipmentSetting.appliedVoltage || testData.equipmentSetting.exposureTime;
+    if (hasSettings) {
+      addRowsForTest("Equipment Settings Verification", [{
+        specified: "All Settings",
+        measured: "Verified",
+        tolerance: "As per standard",
+        remarks: "Pass" as "Pass" | "Fail",
+      }]);
+    }
+  }
+
+  // 10. Maximum Radiation Levels at Different Locations
+  if (testData.maximumRadiationLevel?.readings && Array.isArray(testData.maximumRadiationLevel.readings)) {
+    const validRows = testData.maximumRadiationLevel.readings.filter((reading: any) => reading.location || reading.mRPerHr);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((reading: any) => {
+        const mRPerHr = reading.mRPerHr || "-";
+        const result = reading.result || "-";
+        // Determine limit based on location
+        const isWorkerArea = reading.location?.includes("Control Console") || reading.location?.includes("Behind Lead Glass");
+        const limit = isWorkerArea ? 2 : 0.2;
+        const isPass = result === "Pass" || (mRPerHr !== "-" && parseFloat(mRPerHr) <= limit);
+        return {
+          specified: reading.location || "-",
+          measured: mRPerHr !== "-" ? `${mRPerHr} mR/hr` : "-",
+          tolerance: isWorkerArea ? "≤ 2 mR/hr" : "≤ 0.2 mR/hr",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Maximum Radiation Levels at Different Locations", testRows);
+    }
+  }
+
+  if (rows.length === 0) {
+    return <div className="text-center text-gray-500 py-10">No test results available.</div>;
+  }
+
+  return (
+    <div className="mt-20 print:mt-12">
+      <h2 className="text-2xl font-bold text-center underline mb-8 print:mb-6">
+        SUMMARY OF QA TEST RESULTS
+      </h2>
+
+      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+        <table className="w-full border-2 border-black text-xs print:text-xxs print:min-w-full" style={{ width: 'auto' }}>
+          <thead className="bg-gray-200">
+            <tr>
+              <th className="border border-black px-3 py-3 w-12 text-center">Sr. No.</th>
+              <th className="border border-black px-4 py-3 text-left w-72">Parameters Used</th>
+              <th className="border border-black px-4 py-3 text-center w-32">Specified Values</th>
+              <th className="border border-black px-4 py-3 text-center w-32">Measured Values</th>
+              <th className="border border-black px-4 py-3 text-center w-40">Tolerance</th>
+              <th className="border border-black px-4 py-3 text-center bg-green-100 w-24">Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => {
+              const shouldRenderTolerance = 
+                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) || 
+                (row.hasToleranceRowSpan && row.isFirstRow);
+              
+              return (
+                <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  {row.isFirstRow && (
+                    <td rowSpan={row.rowSpan} className="border border-black px-3 py-3 text-center font-bold">
+                      {row.srNo}
+                    </td>
+                  )}
+                  {row.isFirstRow && (
+                    <td rowSpan={row.rowSpan} className="border border-black px-4 py-3 text-left font-medium leading-tight">
+                      {row.parameter}
+                    </td>
+                  )}
+                  <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
+                  <td className="border border-black px-4 py-3 text-center font-semibold">{row.measured}</td>
+                  {shouldRenderTolerance && (
+                    <td 
+                      {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
+                      className="border border-black px-4 py-3 text-center text-xs leading-tight"
+                    >
+                      {row.tolerance}
+                    </td>
+                  )}
+                  <td className="border border-black px-4 py-3 text-center">
+                    <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${
+                      row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}>
+                      {row.remarks}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 };
 
 export default MainTestTableForMammography;

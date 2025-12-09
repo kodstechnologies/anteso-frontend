@@ -2,22 +2,13 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  getReportHeader,
-  getAccuracyOfOperatingPotentialByTestIdForMammography,
-  getLinearityOfMasLLoadingByTestIdForMammography,
-  getTotalFilterationByTestIdForMammography,
-  getReproducibilityOfOutputForMammography,
-  getRadiationProtectionSurveyForMammography,
-  getImagingPhantomForMammography,
-  // getRadiationProtectionSurveyByTestId,
-  getEquipmentSettingForMammography,
-  // getMaximumRadiationLevelByTestId,
+  getReportHeaderForMammography,
 } from "../../../../../../api";
 import MainTestTableForMammography from "../../TestTables/Mammography/MainTestTableForMammogaphy";
-import logo from "../../../../assets/logo/logo-sm.png";
-import logoA from "../../../../assets/quotationImg/NABLlogo.png";
-import AntesoQRCode from "../../../../assets/quotationImg/qrcode.png";
-import Signature from "../../../../assets/quotationImg/signature.png";
+import logo from "../../../../../../assets/logo/logo-sm.png";
+import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
+import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
+import Signature from "../../../../../../assets/quotationImg/signature.png";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
@@ -53,7 +44,7 @@ interface ReportData {
   humidity: string;
   toolsUsed: Tool[];
   notes: { slNo: string; text: string }[];
-
+  category: string;
   // Mammography test IDs
   accuracyOfOperatingPotentialId?: string | null;
   linearityOfMasLLoadingId?: string | null;
@@ -73,7 +64,6 @@ const ViewServiceReportMammography: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [testsLoading, setTestsLoading] = useState(false);
 
   const [testData, setTestData] = useState<any>({
     accuracyOfOperatingPotential: null,
@@ -97,9 +87,55 @@ const ViewServiceReportMammography: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await getReportHeader(serviceId);
+        const response = await getReportHeaderForMammography(serviceId);
         if (response.exists && response.data) {
-          setReport(response.data);
+          const data = response.data;
+          setReport({
+            customerName: data.customerName || "N/A",
+            address: data.address || "N/A",
+            srfNumber: data.srfNumber || "N/A",
+            srfDate: data.srfDate || "",
+            testReportNumber: data.testReportNumber || "N/A",
+            issueDate: data.issueDate || "",
+            nomenclature: data.nomenclature || "Mammography Unit",
+            make: data.make || "N/A",
+            model: data.model || "N/A",
+            slNumber: data.slNumber || "N/A",
+            condition: data.condition || "OK",
+            testingProcedureNumber: data.testingProcedureNumber || "N/A",
+            engineerNameRPId: data.engineerNameRPId || "N/A",
+            testDate: data.testDate || "",
+            testDueDate: data.testDueDate || "",
+            location: data.location || "N/A",
+            temperature: data.temperature || "",
+            humidity: data.humidity || "",
+            toolsUsed: data.toolsUsed || [],
+            notes: data.notes || [],
+            category: data.category || "N/A",
+            // Extract test IDs from populated objects
+            accuracyOfOperatingPotentialId: data.AccuracyOfOperatingPotentialMammography?._id || null,
+            linearityOfMasLLoadingId: data.LinearityOfMasLoadingMammography?._id || null,
+            totalFiltrationAndAluminiumId: data.TotalFilterationAndAlluminiumMammography?._id || null,
+            reproducibilityOfOutputId: data.ReproducibilityOfRadiationOutputMammography?._id || null,
+            radiationLeakageLevelId: data.RadiationLeakageLevelMammography?._id || null,
+            imagingPhantomId: data.ImagingPhantomMammography?._id || null,
+            radiationProtectionSurveyId: data.DetailsOfRadiationProtectionMammography?._id || null,
+            equipmentSettingId: data.EquipmentSettingMammography?._id || null,
+            maximumRadiationLevelId: data.MaximumRadiationLevelMammography?._id || null,
+          });
+          
+          // Set test data directly from populated objects
+          setTestData({
+            accuracyOfOperatingPotential: data.AccuracyOfOperatingPotentialMammography || null,
+            linearityOfMasLLoading: data.LinearityOfMasLoadingMammography || null,
+            totalFiltrationAndAluminium: data.TotalFilterationAndAlluminiumMammography || null,
+            reproducibilityOfOutput: data.ReproducibilityOfRadiationOutputMammography || null,
+            radiationLeakageLevel: data.RadiationLeakageLevelMammography || null,
+            imagingPhantom: data.ImagingPhantomMammography || null,
+            radiationProtectionSurvey: data.DetailsOfRadiationProtectionMammography || null,
+            equipmentSetting: data.EquipmentSettingMammography || null,
+            maximumRadiationLevel: data.MaximumRadiationLevelMammography || null,
+          });
         } else {
           setNotFound(true);
         }
@@ -114,52 +150,8 @@ const ViewServiceReportMammography: React.FC = () => {
     fetchReport();
   }, [serviceId]);
 
-  useEffect(() => {
-    if (!report) return;
-
-    const fetchTests = async () => {
-      setTestsLoading(true);
-
-      const safeFetch = async (fn: () => Promise<any>) => {
-        try {
-          const res = await fn();
-          return res?.data?.data || res?.data || res || null;
-        } catch (err) {
-          console.warn("Test fetch error:", err);
-          return null;
-        }
-      };
-
-      const results = await Promise.all([
-        report.accuracyOfOperatingPotentialId ? safeFetch(() => getAccuracyOfOperatingPotentialByTestIdForMammography(report.accuracyOfOperatingPotentialId!)) : null,
-        report.linearityOfMasLLoadingId ? safeFetch(() => getLinearityOfMasLLoadingByTestIdForMammography(report.linearityOfMasLLoadingId!)) : null,
-        report.totalFiltrationAndAluminiumId ? safeFetch(() => getTotalFilterationByTestIdForMammography(report.totalFiltrationAndAluminiumId!)) : null,
-        report.reproducibilityOfOutputId ? safeFetch(() => getReproducibilityOfOutputForMammography(report.reproducibilityOfOutputId!)) : null,
-        report.radiationLeakageLevelId ? safeFetch(() => getRadiationProtectionSurveyForMammography(report.radiationLeakageLevelId!)) : null,
-        report.imagingPhantomId ? safeFetch(() => getImagingPhantomForMammography(report.imagingPhantomId!)) : null,
-        // report.radiationProtectionSurveyId ? safeFetch(() => getRadiationProtectionSurveyByTestId(report.radiationProtectionSurveyId!)) : null,
-        report.equipmentSettingId ? safeFetch(() => getEquipmentSettingForMammography(report.equipmentSettingId!)) : null,
-        // report.maximumRadiationLevelId ? safeFetch(() => getMaximumRadiationLevelByTestId(report.maximumRadiationLevelId!)) : null,
-      ]);
-      console.log("🚀 ~ fetchTests ~ results:", results)
-
-      setTestData({
-        accuracyOfOperatingPotential: results[0],
-        linearityOfMasLLoading: results[1],
-        totalFiltrationAndAluminium: results[2],
-        reproducibilityOfOutput: results[3],
-        radiationLeakageLevel: results[4],
-        imagingPhantom: results[5],
-        radiationProtectionSurvey: results[6],
-        // equipmentSetting: results[7],
-        // maximumRadiationLevel: results[8],
-      });
-
-      setTestsLoading(false);
-    };
-
-    fetchTests();
-  }, [report]);
+  // Test data is now loaded directly from getReportHeaderForMammography
+  // No need for separate fetch calls
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "-";
@@ -286,6 +278,7 @@ const ViewServiceReportMammography: React.FC = () => {
                     ["Make", report.make],
                     ["Model", report.model],
                     ["Serial No.", report.slNumber],
+                    ["Category", report.category || "-"],
                     ["Condition", report.condition],
                     ["Testing Procedure No.", report.testingProcedureNumber],
                     ["Engineer Name & RP ID", report.engineerNameRPId],
@@ -358,96 +351,486 @@ const ViewServiceReportMammography: React.FC = () => {
           </div>
         </div>
 
-        <div className="print:break-before-page"></div>
+        {/* PAGE BREAK */}
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
 
-        <div className="bg-white px-8 py-12 print:p-8">
+        {/* PAGE 2+ - SUMMARY TABLE */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
           <div className="max-w-5xl mx-auto print:max-w-none">
-            <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
-
-            {testsLoading ? (
-              <p className="text-center text-xl">Loading test results...</p>
-            ) : (
-              <>
-                {testData.accuracyOfOperatingPotential && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">1. Accuracy of Operating Potential (kVp)</h3>
-                    <p className="text-sm text-gray-600">Table data available</p>
-                  </div>
-                )}
-
-                {testData.linearityOfMasLLoading && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">2. Linearity of mAs Loading</h3>
-                    <p className="text-sm text-gray-600">Table data available</p>
-                  </div>
-                )}
-
-                {testData.totalFiltrationAndAluminium && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">3. Total Filtration & Aluminium Equivalence</h3>
-                    <p className="text-sm text-gray-600">Table data available</p>
-                  </div>
-                )}
-
-                {testData.reproducibilityOfOutput && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">4. Reproducibility of Radiation Output</h3>
-                    <p className="text-sm text-gray-600">Table data available</p>
-                  </div>
-                )}
-
-                {testData.radiationLeakageLevel && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">5. Radiation Leakage Level</h3>
-                    <p className="text-sm text-gray-600">Table data available</p>
-                  </div>
-                )}
-
-                {testData.imagingPhantom && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">6. Imaging Performance Evaluation</h3>
-                    <p className="text-sm text-gray-600">Phantom image results</p>
-                  </div>
-                )}
-
-                {testData.radiationProtectionSurvey && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">7. Radiation Protection Survey</h3>
-                    <p className="text-sm text-gray-600">Survey results</p>
-                  </div>
-                )}
-
-                {testData.equipmentSetting && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">8. Equipment Settings</h3>
-                    <p className="text-sm text-gray-600">Settings verified</p>
-                  </div>
-                )}
-
-                {testData.maximumRadiationLevel && (
-                  <div className="mb-16 print:mb-12">
-                    <h3 className="text-xl font-bold mb-4">9. Maximum Radiation Levels at Different Locations</h3>
-                    <p className="text-sm text-gray-600">Leakage levels recorded</p>
-                  </div>
-                )}
-              </>
-            )}
+            <MainTestTableForMammography testData={testData} />
           </div>
         </div>
 
-        <div className="px-8 py-12 print:p-8">
+        {/* PAGE BREAK */}
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
+
+        {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
           <div className="max-w-5xl mx-auto print:max-w-none">
-            <MainTestTableForMammography testData={testData} />
+            <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
+
+            {/* 1. Accuracy of Operating Potential (kVp) */}
+            {testData.accuracyOfOperatingPotential && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">1. Accuracy of Operating Potential (kVp)</h3>
+                
+                {testData.accuracyOfOperatingPotential.mAStations && testData.accuracyOfOperatingPotential.mAStations.length > 0 && (
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th rowSpan={2} className="border border-black p-3">Applied kVp</th>
+                          <th colSpan={testData.accuracyOfOperatingPotential.mAStations.length} className="border border-black p-3">
+                            Measured kVp
+                          </th>
+                          <th rowSpan={2} className="border border-black p-3">Average kVp</th>
+                          <th rowSpan={2} className="border border-black p-3">Remarks</th>
+                        </tr>
+                        <tr>
+                          {testData.accuracyOfOperatingPotential.mAStations.map((station: string, idx: number) => (
+                            <th key={idx} className="border border-black p-2">{station}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.accuracyOfOperatingPotential.measurements?.map((row: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border border-black p-3 font-semibold">{row.appliedKvp || "-"}</td>
+                            {testData.accuracyOfOperatingPotential.mAStations.map((_: string, idx: number) => (
+                              <td key={idx} className="border border-black p-3">
+                                {row.measuredValues?.[idx] || "-"}
+                              </td>
+                            ))}
+                            <td className="border border-black p-3 font-bold bg-blue-50">{row.averageKvp || "-"}</td>
+                            <td className="border border-black p-3 font-bold">
+                              <span className={row.remarks === "PASS" || row.remarks === "Pass" ? "text-green-600" : row.remarks === "FAIL" || row.remarks === "Fail" ? "text-red-600" : ""}>
+                                {row.remarks || "-"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {testData.accuracyOfOperatingPotential.tolerance && (
+                  <div className="bg-gray-50 p-4 rounded border">
+                    <p className="text-sm">
+                      <strong>Tolerance:</strong> {testData.accuracyOfOperatingPotential.tolerance.sign || "±"} {testData.accuracyOfOperatingPotential.tolerance.value || "-"}%
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. Linearity of mAs Loading */}
+            {testData.linearityOfMasLLoading && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">2. Linearity of mAs Loading</h3>
+                
+                {testData.linearityOfMasLLoading.exposureCondition && (
+                  <div className="mb-6 bg-gray-50 p-4 rounded border">
+                    <p className="font-semibold mb-2">Test Conditions:</p>
+                    <div className="text-sm">
+                      FCD: {testData.linearityOfMasLLoading.exposureCondition.fcd || "-"} cm | 
+                      kV: {testData.linearityOfMasLLoading.exposureCondition.kv || "-"}
+                    </div>
+                  </div>
+                )}
+
+                {testData.linearityOfMasLLoading.measurementHeaders && testData.linearityOfMasLLoading.measurements && (
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3">mAs Range</th>
+                          {testData.linearityOfMasLLoading.measurementHeaders.map((header: string, idx: number) => (
+                            <th key={idx} className="border border-black p-3">{header}</th>
+                          ))}
+                          <th className="border border-black p-3 bg-blue-100">Average</th>
+                          <th className="border border-black p-3 bg-yellow-100">X (mGy/mAs)</th>
+                          <th className="border border-black p-3">X Max</th>
+                          <th className="border border-black p-3">X Min</th>
+                          <th className="border border-black p-3">CoL</th>
+                          <th className="border border-black p-3 bg-green-100">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.linearityOfMasLLoading.measurements.map((row: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border border-black p-3 font-semibold">{row.mAsRange || "-"}</td>
+                            {testData.linearityOfMasLLoading.measurementHeaders.map((_: string, idx: number) => (
+                              <td key={idx} className="border border-black p-3">
+                                {row.measuredOutputs?.[idx] || "-"}
+                              </td>
+                            ))}
+                            <td className="border border-black p-3 font-bold bg-blue-50">{row.average || "-"}</td>
+                            <td className="border border-black p-3">{row.x || "-"}</td>
+                            <td className="border border-black p-3">{row.xMax || "-"}</td>
+                            <td className="border border-black p-3">{row.xMin || "-"}</td>
+                            <td className="border border-black p-3 font-semibold">{row.col || "-"}</td>
+                            <td className="border border-black p-3 font-bold">
+                              <span className={row.remarks === "Pass" || row.remarks === "PASS" ? "text-green-600" : row.remarks === "Fail" || row.remarks === "FAIL" ? "text-red-600" : ""}>
+                                {row.remarks || "-"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {testData.linearityOfMasLLoading.tolerance && (
+                  <div className="bg-gray-50 p-4 rounded border">
+                    <p className="text-sm">
+                      <strong>Tolerance (CoL):</strong> ≤ {testData.linearityOfMasLLoading.tolerance || "0.1"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 3. Total Filtration & Aluminium Equivalence */}
+            {testData.totalFiltrationAndAluminium && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">3. Total Filtration & Aluminium Equivalence</h3>
+                
+                {(testData.totalFiltrationAndAluminium.targetWindow || testData.totalFiltrationAndAluminium.addedFilterThickness) && (
+                  <div className="mb-6 bg-gray-50 p-4 rounded border">
+                    <p className="font-semibold mb-2">Anode/Filter & Added Filtration:</p>
+                    <div className="text-sm">
+                      <p><strong>Target/Window:</strong> {testData.totalFiltrationAndAluminium.targetWindow || "-"}</p>
+                      {testData.totalFiltrationAndAluminium.addedFilterThickness && (
+                        <p><strong>Added Filter Thickness:</strong> {testData.totalFiltrationAndAluminium.addedFilterThickness}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {testData.totalFiltrationAndAluminium.table && testData.totalFiltrationAndAluminium.table.length > 0 && (
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3">kVp</th>
+                          <th className="border border-black p-3">mAs</th>
+                          <th className="border border-black p-3">Al Equivalence (mm Al)</th>
+                          <th className="border border-black p-3">HVT (mm Al)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.totalFiltrationAndAluminium.table.map((row: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border border-black p-3">{row.kvp || "-"}</td>
+                            <td className="border border-black p-3">{row.mAs || "-"}</td>
+                            <td className="border border-black p-3">{row.alEquivalence || "-"}</td>
+                            <td className="border border-black p-3">{row.hvt || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {testData.totalFiltrationAndAluminium.resultHVT28kVp && (
+                  <div className="bg-gray-50 p-4 rounded border mb-4">
+                    <p className="text-sm">
+                      <strong>Result HVT at 28 kVp:</strong> {testData.totalFiltrationAndAluminium.resultHVT28kVp} mm Al
+                    </p>
+                  </div>
+                )}
+
+                {testData.totalFiltrationAndAluminium.hvlTolerances && (
+                  <div className="bg-gray-50 p-4 rounded border">
+                    <p className="text-sm font-semibold mb-2">Recommended HVL Tolerances:</p>
+                    <div className="text-sm space-y-1">
+                      <p>At 30 kVp: {testData.totalFiltrationAndAluminium.hvlTolerances.at30?.operator || ">="} {testData.totalFiltrationAndAluminium.hvlTolerances.at30?.value || "-"} mm Al</p>
+                      <p>At 40 kVp: {testData.totalFiltrationAndAluminium.hvlTolerances.at40?.operator || ">="} {testData.totalFiltrationAndAluminium.hvlTolerances.at40?.value || "-"} mm Al</p>
+                      <p>At 50 kVp: {testData.totalFiltrationAndAluminium.hvlTolerances.at50?.operator || ">="} {testData.totalFiltrationAndAluminium.hvlTolerances.at50?.value || "-"} mm Al</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 4. Reproducibility of Radiation Output */}
+            {testData.reproducibilityOfOutput && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">4. Reproducibility of Radiation Output</h3>
+                
+                {testData.reproducibilityOfOutput.outputRows && testData.reproducibilityOfOutput.outputRows.length > 0 && (
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3">kV</th>
+                          <th className="border border-black p-3">mAs</th>
+                          {testData.reproducibilityOfOutput.outputRows[0]?.outputs && testData.reproducibilityOfOutput.outputRows[0].outputs.length > 0 && (
+                            <>
+                              {testData.reproducibilityOfOutput.outputRows[0].outputs.map((_: any, idx: number) => (
+                                <th key={idx} className="border border-black p-3">Meas {idx + 1}</th>
+                              ))}
+                            </>
+                          )}
+                          <th className="border border-black p-3 bg-blue-100">Average</th>
+                          <th className="border border-black p-3 bg-green-100">CV % / Remark</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.reproducibilityOfOutput.outputRows.map((row: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border border-black p-3 font-semibold">{row.kv || "-"}</td>
+                            <td className="border border-black p-3">{row.mas || "-"}</td>
+                            {row.outputs && row.outputs.map((output: any, idx: number) => (
+                              <td key={idx} className="border border-black p-3">{output.value || "-"}</td>
+                            ))}
+                            <td className="border border-black p-3 font-bold bg-blue-50">{row.avg || "-"}</td>
+                            <td className="border border-black p-3 font-bold">
+                              <span className={row.remark?.includes("Pass") || row.remark?.includes("PASS") ? "text-green-600" : row.remark?.includes("Fail") || row.remark?.includes("FAIL") ? "text-red-600" : ""}>
+                                {row.remark || "-"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {testData.reproducibilityOfOutput.tolerance && (
+                  <div className="bg-gray-50 p-4 rounded border">
+                    <p className="text-sm">
+                      <strong>Acceptance Criteria:</strong> CV {testData.reproducibilityOfOutput.tolerance.operator || "<="} {testData.reproducibilityOfOutput.tolerance.value || "5.0"}%
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 5. Radiation Leakage Level */}
+            {testData.radiationLeakageLevel && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">5. Radiation Leakage Level (5 cm from Tube Housing)</h3>
+                
+                {(testData.radiationLeakageLevel.distanceFromFocus || testData.radiationLeakageLevel.kv || testData.radiationLeakageLevel.ma || testData.radiationLeakageLevel.time) && (
+                  <div className="mb-6 bg-gray-50 p-4 rounded border">
+                    <p className="font-semibold mb-2">Test Conditions:</p>
+                    <div className="text-sm grid grid-cols-4 gap-4">
+                      <p><strong>Distance:</strong> {testData.radiationLeakageLevel.distanceFromFocus || "-"} cm</p>
+                      <p><strong>kV:</strong> {testData.radiationLeakageLevel.kv || "-"}</p>
+                      <p><strong>mA:</strong> {testData.radiationLeakageLevel.ma || "-"}</p>
+                      <p><strong>Time:</strong> {testData.radiationLeakageLevel.time || "-"} s</p>
+                    </div>
+                  </div>
+                )}
+
+                {testData.radiationLeakageLevel.leakageLocations && testData.radiationLeakageLevel.leakageLocations.length > 0 && (
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3">Location</th>
+                          <th className="border border-black p-3">Left</th>
+                          <th className="border border-black p-3">Right</th>
+                          <th className="border border-black p-3">Front</th>
+                          <th className="border border-black p-3">Back</th>
+                          <th className="border border-black p-3">Top</th>
+                          <th className="border border-black p-3">Max</th>
+                          <th className="border border-black p-3">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.radiationLeakageLevel.leakageLocations.map((location: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border border-black p-3 font-semibold">{location.location || "-"}</td>
+                            {location.measurements && location.measurements.map((meas: any, idx: number) => (
+                              <td key={idx} className="border border-black p-3">{meas.value || "-"}</td>
+                            ))}
+                            <td className="border border-black p-3 font-bold">{location.max || "-"}</td>
+                            <td className="border border-black p-3 font-bold">
+                              <span className={location.resultMR === "Pass" || location.resultMGy === "Pass" ? "text-green-600" : location.resultMR === "Fail" || location.resultMGy === "Fail" ? "text-red-600" : ""}>
+                                {location.resultMR || location.resultMGy || "-"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {(testData.radiationLeakageLevel.highestLeakageMR || testData.radiationLeakageLevel.highestLeakageMGy) && (
+                  <div className="bg-gray-50 p-4 rounded border mb-4">
+                    <p className="text-sm">
+                      <strong>Highest Leakage:</strong> {testData.radiationLeakageLevel.highestLeakageMR || testData.radiationLeakageLevel.highestLeakageMGy || "-"}
+                    </p>
+                  </div>
+                )}
+
+                {testData.radiationLeakageLevel.finalRemark && (
+                  <div className="bg-gray-50 p-4 rounded border">
+                    <p className="text-sm font-bold">
+                      <strong>Final Remark:</strong> 
+                      <span className={testData.radiationLeakageLevel.finalRemark === "Pass" ? "text-green-600 ml-2" : testData.radiationLeakageLevel.finalRemark === "Fail" ? "text-red-600 ml-2" : ""}>
+                        {testData.radiationLeakageLevel.finalRemark}
+                      </span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 6. Imaging Performance Evaluation */}
+            {testData.imagingPhantom && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">6. Imaging Performance Evaluation (Phantom)</h3>
+                
+                {testData.imagingPhantom.rows && testData.imagingPhantom.rows.length > 0 && (
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3">Phantom Element</th>
+                          <th className="border border-black p-3">Visible Count</th>
+                          <th className="border border-black p-3">Tolerance</th>
+                          <th className="border border-black p-3 bg-green-100">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.imagingPhantom.rows.map((row: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border border-black p-3 font-semibold">{row.name || "-"}</td>
+                            <td className="border border-black p-3">{row.visibleCount || "-"}</td>
+                            <td className="border border-black p-3">
+                              {row.tolerance?.operator || ">="} {row.tolerance?.value || "-"}
+                            </td>
+                            <td className="border border-black p-3 font-bold">
+                              <span className={testData.imagingPhantom.remark === "Pass" ? "text-green-600" : "text-red-600"}>
+                                {testData.imagingPhantom.remark || "-"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 7. Radiation Protection Survey */}
+            {testData.radiationProtectionSurvey && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">7. Radiation Protection Survey</h3>
+                
+                <div className="overflow-x-auto mb-6">
+                  <table className="w-full border-2 border-black text-sm">
+                    <tbody>
+                      <tr>
+                        <td className="border border-black p-3 font-medium w-1/2">Survey Date</td>
+                        <td className="border border-black p-3">{testData.radiationProtectionSurvey.surveyDate ? formatDate(testData.radiationProtectionSurvey.surveyDate) : "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black p-3 font-medium">Valid Calibration Certificate</td>
+                        <td className="border border-black p-3">{testData.radiationProtectionSurvey.hasValidCalibration || "-"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 8. Equipment Settings */}
+            {testData.equipmentSetting && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">8. Equipment Settings Verification</h3>
+                
+                <div className="overflow-x-auto mb-6">
+                  <table className="w-full border-2 border-black text-sm">
+                    <tbody>
+                      {[
+                        ["Applied Current", testData.equipmentSetting.appliedCurrent],
+                        ["Applied Voltage", testData.equipmentSetting.appliedVoltage],
+                        ["Exposure Time", testData.equipmentSetting.exposureTime],
+                        ["Focal Spot Size", testData.equipmentSetting.focalSpotSize],
+                        ["Filtration", testData.equipmentSetting.filtration],
+                        ["Collimation", testData.equipmentSetting.collimation],
+                        ["Frame Rate", testData.equipmentSetting.frameRate],
+                        ["Pulse Width", testData.equipmentSetting.pulseWidth],
+                      ].map(([label, value]) => (
+                        <tr key={label}>
+                          <td className="border border-black p-3 font-medium w-1/2">{label}</td>
+                          <td className="border border-black p-3">{value || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 9. Maximum Radiation Levels */}
+            {testData.maximumRadiationLevel && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">9. Maximum Radiation Levels at Different Locations</h3>
+                
+                {testData.maximumRadiationLevel.readings && testData.maximumRadiationLevel.readings.length > 0 && (
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3">Location</th>
+                          <th className="border border-black p-3">Measured Radiation Level (mR/hr)</th>
+                          <th className="border border-black p-3 bg-green-100">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.maximumRadiationLevel.readings.map((reading: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border border-black p-3 font-semibold text-left">{reading.location || "-"}</td>
+                            <td className="border border-black p-3">{reading.mRPerHr || "-"}</td>
+                            <td className="border border-black p-3 font-bold">
+                              <span className={reading.result === "Pass" ? "text-green-600" : reading.result === "Fail" ? "text-red-600" : ""}>
+                                {reading.result || "-"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {testData.maximumRadiationLevel.maxWeeklyDose && (
+                  <div className="bg-gray-50 p-4 rounded border">
+                    <p className="text-sm">
+                      <strong>Maximum Radiation Level/week:</strong> {testData.maximumRadiationLevel.maxWeeklyDose} mR/wk
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <style>{`
         @media print {
-          body { -webkit-print-color-adjust: exact; margin: 0; }
+          body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           .print\\:break-before-page { page-break-before: always; }
+          .print\\:break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
+          .test-section { page-break-inside: avoid; break-inside: avoid; }
           @page { margin: 1cm; size: A4; }
-          table, tr { page-break-inside: avoid; }
+          table, tr, td, th { 
+            page-break-inside: avoid; 
+            break-inside: avoid;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          thead { display: table-header-group; }
+          h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
         }
       `}</style>
     </>

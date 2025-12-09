@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Edit3, Save, Loader2 } from 'lucide-react';
+import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addLeadApronTest,
@@ -48,12 +48,10 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
     mas: '',
   });
 
-  // Dose Measurements
+  // Dose Measurements - positions as array (initialize with one empty position)
   const [doseMeasurements, setDoseMeasurements] = useState({
     neutral: '',
-    position1: '',
-    position2: '',
-    position3: '',
+    positions: [{ position: 'Position 1', value: '' }] as Array<{ position: string; value: string }>,
     averageValue: '',
     percentReduction: '',
     remark: '',
@@ -72,17 +70,20 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
   // Auto-calculate Average Value and % Reduction
   const calculations = useMemo(() => {
     const neutral = parseFloat(doseMeasurements.neutral) || 0;
-    const pos1 = parseFloat(doseMeasurements.position1) || 0;
-    const pos2 = parseFloat(doseMeasurements.position2) || 0;
-    const pos3 = parseFloat(doseMeasurements.position3) || 0;
+    const positionValues = doseMeasurements.positions
+      .map(p => parseFloat(p.value))
+      .filter(v => !isNaN(v) && v > 0);
 
-    const positions = [pos1, pos2, pos3].filter(v => v > 0);
-    const avg = positions.length > 0
-      ? (positions.reduce((a, b) => a + b, 0) / positions.length).toFixed(4)
-      : '';
+    // Calculate average value
+    const averageValue = positionValues.length > 0
+      ? positionValues.reduce((a, b) => a + b, 0) / positionValues.length
+      : 0;
 
-    const percentReduction = neutral > 0 && avg
-      ? (((neutral - parseFloat(avg)) / neutral) * 100).toFixed(2)
+    const avg = averageValue > 0 ? averageValue.toFixed(4) : '';
+
+    // % reduction formula = (neutral value - average value) / neutral value * 100
+    const percentReduction = neutral > 0 && averageValue > 0
+      ? (((neutral - averageValue) / neutral) * 100).toFixed(2)
       : '';
 
     // Determine remark based on % reduction (typically >= 99% is Pass)
@@ -93,7 +94,7 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
     }
 
     return { avg, percentReduction, remark };
-  }, [doseMeasurements.neutral, doseMeasurements.position1, doseMeasurements.position2, doseMeasurements.position3]);
+  }, [doseMeasurements.neutral, doseMeasurements.positions]);
 
   // Update calculations when values change
   useEffect(() => {
@@ -132,14 +133,30 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
             kv: '',
             mas: '',
           });
-          setDoseMeasurements(data.doseMeasurements || {
-            neutral: '',
-            position1: '',
-            position2: '',
-            position3: '',
-            averageValue: '',
-            percentReduction: '',
-            remark: '',
+          // Handle backward compatibility: convert old position1/2/3 to positions array
+          const doseData = data.doseMeasurements || {};
+          let positions: Array<{ position: string; value: string }> = [];
+          
+          if (doseData.positions && Array.isArray(doseData.positions) && doseData.positions.length > 0) {
+            // New format: positions array
+            positions = doseData.positions;
+          } else {
+            // Old format: position1, position2, position3 - convert to array
+            if (doseData.position1) positions.push({ position: 'Position 1', value: doseData.position1 });
+            if (doseData.position2) positions.push({ position: 'Position 2', value: doseData.position2 });
+            if (doseData.position3) positions.push({ position: 'Position 3', value: doseData.position3 });
+            // If no positions exist, initialize with one empty position
+            if (positions.length === 0) {
+              positions = [{ position: 'Position 1', value: '' }];
+            }
+          }
+          
+          setDoseMeasurements({
+            neutral: doseData.neutral || '',
+            positions: positions,
+            averageValue: doseData.averageValue || '',
+            percentReduction: doseData.percentReduction || '',
+            remark: doseData.remark || '',
           });
           setFooter({
             place: data.footer?.place || '',
@@ -152,6 +169,11 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
           setIsSaved(true);
           setIsEditing(false);
         } else {
+          // Initialize with at least one empty position when no data exists
+          setDoseMeasurements(prev => ({
+            ...prev,
+            positions: prev.positions.length === 0 ? [{ position: 'Position 1', value: '' }] : prev.positions,
+          }));
           setIsSaved(false);
           setIsEditing(true);
         }
@@ -180,7 +202,8 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
       },
       operatingParameters,
       doseMeasurements: {
-        ...doseMeasurements,
+        neutral: doseMeasurements.neutral,
+        positions: doseMeasurements.positions,
         averageValue: calculations.avg,
         percentReduction: calculations.percentReduction,
         remark: calculations.remark,
@@ -427,48 +450,81 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
                 />
               </td>
             </tr>
-            <tr className="hover:bg-gray-50">
-              <td className="px-4 py-3 font-medium">Position 1</td>
-              <td className="px-4 py-3">
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={doseMeasurements.position1}
-                  onChange={(e) => setDoseMeasurements({ ...doseMeasurements, position1: e.target.value })}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-                  placeholder="0.00042"
-                />
-              </td>
-            </tr>
-            <tr className="hover:bg-gray-50">
-              <td className="px-4 py-3 font-medium">Position 2</td>
-              <td className="px-4 py-3">
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={doseMeasurements.position2}
-                  onChange={(e) => setDoseMeasurements({ ...doseMeasurements, position2: e.target.value })}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-                  placeholder="0.00053"
-                />
-              </td>
-            </tr>
-            <tr className="hover:bg-gray-50">
-              <td className="px-4 py-3 font-medium">Position 3</td>
-              <td className="px-4 py-3">
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={doseMeasurements.position3}
-                  onChange={(e) => setDoseMeasurements({ ...doseMeasurements, position3: e.target.value })}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-                  placeholder="0.00061"
-                />
-              </td>
-            </tr>
+            {/* Dynamic Positions */}
+            {doseMeasurements.positions.map((pos, index) => (
+              <tr key={index} className="hover:bg-gray-50">
+                <td className="px-4 py-3">
+                  <input
+                    type="text"
+                    value={pos.position}
+                    onChange={(e) => {
+                      const newPositions = [...doseMeasurements.positions];
+                      newPositions[index].position = e.target.value;
+                      setDoseMeasurements({ ...doseMeasurements, positions: newPositions });
+                    }}
+                    disabled={isViewMode}
+                    className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                    placeholder={`Position ${index + 1}`}
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={pos.value}
+                      onChange={(e) => {
+                        const newPositions = [...doseMeasurements.positions];
+                        newPositions[index].value = e.target.value;
+                        setDoseMeasurements({ ...doseMeasurements, positions: newPositions });
+                      }}
+                      disabled={isViewMode}
+                      className={`flex-1 px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                      placeholder="0.00042"
+                    />
+                    {!isViewMode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newPositions = doseMeasurements.positions.filter((_, i) => i !== index);
+                          setDoseMeasurements({ ...doseMeasurements, positions: newPositions });
+                        }}
+                        className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                        title="Remove position"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {/* Show message if no positions */}
+            {doseMeasurements.positions.length === 0 && (
+              <tr>
+                <td colSpan={2} className="px-4 py-3 text-center text-gray-500">
+                  No positions added. Click "Add Position" to add one.
+                </td>
+              </tr>
+            )}
+            {/* Add Position Button */}
+            {!isViewMode && (
+              <tr>
+                <td colSpan={2} className="px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newPositions = [...doseMeasurements.positions, { position: `Position ${doseMeasurements.positions.length + 1}`, value: '' }];
+                      setDoseMeasurements({ ...doseMeasurements, positions: newPositions });
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Position
+                  </button>
+                </td>
+              </tr>
+            )}
             <tr className="bg-gray-50 font-semibold">
               <td className="px-4 py-3">Average Value</td>
               <td className="px-4 py-3 text-center">{calculations.avg || '—'}</td>

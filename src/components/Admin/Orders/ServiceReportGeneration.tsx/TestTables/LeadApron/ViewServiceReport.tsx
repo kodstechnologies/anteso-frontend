@@ -90,7 +90,7 @@ const ViewServiceReportLeadApron: React.FC = () => {
         setLoading(true);
         const response = await getReportHeaderForLeadApron(serviceId);
         console.log("Lead Apron Report Header Response:", response);
-        
+
         if (response?.exists && response?.data) {
           const data = response.data;
           const processedData: ReportData = {
@@ -277,101 +277,7 @@ const ViewServiceReportLeadApron: React.FC = () => {
         </div>
 
         {/* Lead Apron Test Data */}
-        {testData && (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">Lead Apron Test Results</h2>
-            
-            {/* Report Details */}
-            {testData.reportDetails && (
-              <div className="mb-4 border p-4 rounded">
-                <h3 className="font-semibold mb-2">Report Details</h3>
-                <p><strong>Institution Name:</strong> {testData.reportDetails.institutionName || "—"}</p>
-                <p><strong>Institution City:</strong> {testData.reportDetails.institutionCity || "—"}</p>
-                <p><strong>Equipment Type:</strong> {testData.reportDetails.equipmentType || "—"}</p>
-                <p><strong>Equipment ID:</strong> {testData.reportDetails.equipmentId || "—"}</p>
-                <p><strong>Person Testing:</strong> {testData.reportDetails.personTesting || "—"}</p>
-                <p><strong>Service Agency:</strong> {testData.reportDetails.serviceAgency || "—"}</p>
-                <p><strong>Test Date:</strong> {formatDate(testData.reportDetails.testDate) || "—"}</p>
-                <p><strong>Test Duration:</strong> {testData.reportDetails.testDuration || "—"}</p>
-              </div>
-            )}
 
-            {/* Operating Parameters */}
-            {testData.operatingParameters && (
-              <div className="mb-4 border p-4 rounded">
-                <h3 className="font-semibold mb-2">Operating Parameters</h3>
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border p-2">FFD (cm)</th>
-                      <th className="border p-2">kV</th>
-                      <th className="border p-2">mAs</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border p-2 text-center">{testData.operatingParameters.ffd || "—"}</td>
-                      <td className="border p-2 text-center">{testData.operatingParameters.kv || "—"}</td>
-                      <td className="border p-2 text-center">{testData.operatingParameters.mas || "—"}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Dose Measurements */}
-            {testData.doseMeasurements && (
-              <div className="mb-4 border p-4 rounded">
-                <h3 className="font-semibold mb-2">Dose Value and Reading</h3>
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border p-2">Dose Value</th>
-                      <th className="border p-2">Reading</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border p-2 font-medium">Neutral</td>
-                      <td className="border p-2 text-center">{testData.doseMeasurements.neutral || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium">Position 1</td>
-                      <td className="border p-2 text-center">{testData.doseMeasurements.position1 || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium">Position 2</td>
-                      <td className="border p-2 text-center">{testData.doseMeasurements.position2 || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium">Position 3</td>
-                      <td className="border p-2 text-center">{testData.doseMeasurements.position3 || "—"}</td>
-                    </tr>
-                    <tr className="bg-gray-50 font-semibold">
-                      <td className="border p-2">Average Value</td>
-                      <td className="border p-2 text-center">{testData.doseMeasurements.averageValue || "—"}</td>
-                    </tr>
-                    <tr className="bg-gray-50 font-semibold">
-                      <td className="border p-2">% Reduction in Dose (Remark)</td>
-                      <td className="border p-2 text-center">
-                        {testData.doseMeasurements.percentReduction || "—"}
-                        {testData.doseMeasurements.remark && (
-                          <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                            testData.doseMeasurements.remark.includes('Pass') 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {testData.doseMeasurements.remark}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Tools Used */}
         {report.toolsUsed && report.toolsUsed.length > 0 && (
@@ -419,7 +325,149 @@ const ViewServiceReportLeadApron: React.FC = () => {
             ))}
           </ul>
         </div>
+        {/* Lead Apron Test Results */}
+        {testData && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4">6. Lead Apron Test Results</h2>
+            
+            {/* Report Details Table */}
+            {testData.reportDetails && (
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-2">6.1 Report Details</h3>
+                <table className="w-full border-collapse border mb-4">
+                  <tbody>
+                    <tr>
+                      <td className="border p-2 font-medium bg-gray-50 w-1/3">Institution Name</td>
+                      <td className="border p-2">{testData.reportDetails.institutionName || "—"}</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2 font-medium bg-gray-50">Institution City</td>
+                      <td className="border p-2">{testData.reportDetails.institutionCity || "—"}</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2 font-medium bg-gray-50">Equipment Type</td>
+                      <td className="border p-2">{testData.reportDetails.equipmentType || "—"}</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2 font-medium bg-gray-50">Equipment ID</td>
+                      <td className="border p-2">{testData.reportDetails.equipmentId || "—"}</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2 font-medium bg-gray-50">Person Testing</td>
+                      <td className="border p-2">{testData.reportDetails.personTesting || "—"}</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2 font-medium bg-gray-50">Service Agency</td>
+                      <td className="border p-2">{testData.reportDetails.serviceAgency || "—"}</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2 font-medium bg-gray-50">Test Date</td>
+                      <td className="border p-2">{formatDate(testData.reportDetails.testDate) || "—"}</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2 font-medium bg-gray-50">Test Duration</td>
+                      <td className="border p-2">{testData.reportDetails.testDuration || "—"}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
 
+            {/* Operating Parameters Table */}
+            {testData.operatingParameters && (
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-2">6.2 Operating Parameters: Tested on Direct Radiation</h3>
+                <table className="w-full border-collapse border mb-4">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border p-2 text-left">FFD (cm)</th>
+                      <th className="border p-2 text-left">kV</th>
+                      <th className="border p-2 text-left">mAs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border p-2 text-center">{testData.operatingParameters.ffd || "—"}</td>
+                      <td className="border p-2 text-center">{testData.operatingParameters.kv || "—"}</td>
+                      <td className="border p-2 text-center">{testData.operatingParameters.mas || "—"}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Dose Measurements Table */}
+            {testData.doseMeasurements && (
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-2">6.3 Dose Value and Reading</h3>
+                <table className="w-full border-collapse border">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border p-2 text-left">Dose Value</th>
+                      <th className="border p-2 text-center">Reading</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border p-2 font-medium">Neutral</td>
+                      <td className="border p-2 text-center">{testData.doseMeasurements.neutral || "—"}</td>
+                    </tr>
+                    {/* Dynamic Positions - handle both old format (position1/2/3) and new format (positions array) */}
+                    {testData.doseMeasurements.positions && Array.isArray(testData.doseMeasurements.positions) && testData.doseMeasurements.positions.length > 0 ? (
+                      // New format: positions array
+                      testData.doseMeasurements.positions.map((pos: any, index: number) => (
+                        <tr key={index}>
+                          <td className="border p-2 font-medium">{pos.position || `Position ${index + 1}`}</td>
+                          <td className="border p-2 text-center">{pos.value || "—"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      // Old format: position1, position2, position3 (backward compatibility)
+                      <>
+                        {testData.doseMeasurements.position1 && (
+                          <tr>
+                            <td className="border p-2 font-medium">Position 1</td>
+                            <td className="border p-2 text-center">{testData.doseMeasurements.position1}</td>
+                          </tr>
+                        )}
+                        {testData.doseMeasurements.position2 && (
+                          <tr>
+                            <td className="border p-2 font-medium">Position 2</td>
+                            <td className="border p-2 text-center">{testData.doseMeasurements.position2}</td>
+                          </tr>
+                        )}
+                        {testData.doseMeasurements.position3 && (
+                          <tr>
+                            <td className="border p-2 font-medium">Position 3</td>
+                            <td className="border p-2 text-center">{testData.doseMeasurements.position3}</td>
+                          </tr>
+                        )}
+                      </>
+                    )}
+                    <tr className="bg-gray-50">
+                      <td className="border p-2 font-semibold">Average Value</td>
+                      <td className="border p-2 text-center font-semibold">{testData.doseMeasurements.averageValue || "—"}</td>
+                    </tr>
+                    <tr className="bg-gray-50">
+                      <td className="border p-2 font-semibold">% Reduction in Dose (Remark)</td>
+                      <td className="border p-2 text-center">
+                        <span className="font-semibold">{testData.doseMeasurements.percentReduction ? `${testData.doseMeasurements.percentReduction}%` : "—"}</span>
+                        {testData.doseMeasurements.remark && (
+                          <span className={`ml-2 px-2 py-1 rounded text-xs ${testData.doseMeasurements.remark.includes('Pass')
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                            }`}>
+                            {testData.doseMeasurements.remark}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
         {/* Footer */}
         <div className="mt-12 flex justify-between items-end">
           <div className="text-center">

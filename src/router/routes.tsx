@@ -131,10 +131,12 @@ import ViewServiceReportRadiographyFixed from '../components/Admin/Orders/Servic
 import ViewServiceReportRadiographyMobileHT from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyMobileHT/ViewServiceReport';
 import ViewServiceReportRadiographyPortable from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyPortable/ViewServiceReport';
 import ViewServiceReportRadiographyMobile from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyMobile/ViewServiceReport';
-import ViewServiceReportCArm from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CArm/ViewServiceReport';import ViewServiceReportLeadApron from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/LeadApron/ViewServiceReport';
-
+import ViewServiceReportCArm from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CArm/ViewServiceReport'; import ViewServiceReportLeadApron from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/LeadApron/ViewServiceReport';
+import ViewServiceReportOPG from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/OPG/ViewServiceReport';
 import ViewServiceReportOArm from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/OArm/ViewServiceReport';
 import ViewServiceReportCTScan from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CTScan/ViewServiceReport';
+import ViewServiceReportMammography from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/Mammography/ViewServiceReport';
+import ViewServiceReportBMD from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/BMD/ViewServiceReport';
 
 import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
@@ -777,6 +779,30 @@ const routes = [
         ),
     },
     {
+        path: '/admin/orders/view-service-report-mammography',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportMammography />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-bmd',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportBMD />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-for-opg',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportOPG />
+            </AdminProtected>
+        ),
+    },
+    {
         path: '/admin/orders/view-service-report-fixed-radio-flouro',
         element: (
             <AdminProtected>
@@ -863,7 +889,7 @@ const routes = [
                 <ViewServiceReportCTScan />
             </AdminProtected>
         ),
-    },    {
+    }, {
         path: '/admin/orders/view-service-report-lead-apron',
         element: (
             <AdminProtected>

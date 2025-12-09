@@ -1,13 +1,18 @@
 // src/components/TestTables/AccuracyOfIrradiationTime.tsx
 import React, { useState, useEffect } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Edit3, Save, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   createAccuracyOfIrradiationTimeForFixedRadioFluro,
   getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro,
+  updateAccuracyOfIrradiationTimeForFixedRadioFluro,
 } from "../../../../../../api";
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
+  testId?: string | null;
+  onTestSaved?: (testId: string) => void;
 }
 
 interface Table1Row {
@@ -25,10 +30,16 @@ interface Table2Row {
 
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
+  testId: initialTestId = null,
+  onTestSaved,
 }) => {
-  const [testId, setTestId] = useState<string | null>(null); // Mongo _id (optional, not strictly needed)
-  const [loading, setLoading] = useState(false);
+  const [testId, setTestId] = useState<string | null>(initialTestId);
+  const [loading, setLoading] = useState(!!initialTestId);
   const [saving, setSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(!!initialTestId);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  const isViewMode = isSaved && !isEditing;
 
   // Test Conditions (Single Row)
   const [table1Row, setTable1Row] = useState<Table1Row>({
@@ -85,11 +96,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">": return err > tol ? "FAIL" : "PASS";
-      case "<": return err < tol ? "PASS" : "FAIL";
+      case ">":  return err > tol ? "FAIL" : "PASS";
+      case "<":  return err < tol ? "PASS" : "FAIL";
       case ">=": return err >= tol ? "FAIL" : "PASS";
       case "<=": return err <= tol ? "PASS" : "FAIL";
-      default: return "-";
+      default:   return "-";
     }
   };
 
@@ -103,21 +114,27 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setTable1Row(data.testConditions || { fcd: "", kv: "", ma: "" });
+          setTable1Row(data.testConditions || { id: "1", fcd: "", kv: "", ma: "" });
           setTable2Rows(
-            data.irradiationTimes.length > 0
+            data.irradiationTimes && data.irradiationTimes.length > 0
               ? data.irradiationTimes.map((t: any, i: number) => ({
-                id: String(i + 1),
-                setTime: t.setTime,
-                measuredTime: t.measuredTime,
-              }))
+                  id: String(i + 1),
+                  setTime: t.setTime || "",
+                  measuredTime: t.measuredTime || "",
+                }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
-          setToleranceOperator(data.tolerance?.operator || "<=");
+          setToleranceOperator(data.tolerance?.operator || "");
           setToleranceValue(data.tolerance?.value || "");
+          setIsSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsSaved(false);
+          setIsEditing(true);
         }
       } catch (err) {
         console.log("No saved data or failed to load:", err);
+        setIsSaved(false);
       } finally {
         setLoading(false);
       }
@@ -128,7 +145,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
   // Save / Update
   const handleSave = async () => {
-    if (!serviceId) return;
+    if (!serviceId) {
+      toast.error("Service ID is missing");
+      return;
+    }
 
     const payload = {
       testConditions: {
@@ -148,21 +168,72 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
     setSaving(true);
     try {
-      // Backend upserts by serviceId; single create call is enough
-      const res = await createAccuracyOfIrradiationTimeForFixedRadioFluro(serviceId, payload);
-      if (res?.data?._id) setTestId(res.data._id);
-      alert("Saved successfully!");
-    } catch (err) {
-      alert("Failed to save");
+      let result;
+      if (testId) {
+        result = await updateAccuracyOfIrradiationTimeForFixedRadioFluro(testId, payload);
+        toast.success("Updated successfully!");
+      } else {
+        result = await createAccuracyOfIrradiationTimeForFixedRadioFluro(serviceId, payload);
+        const newTestId = result?.data?.testId || result?.data?._id;
+        if (newTestId) {
+          setTestId(newTestId);
+          onTestSaved?.(newTestId);
+        }
+        toast.success("Saved successfully!");
+      }
+      setIsSaved(true);
+      setIsEditing(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save");
       console.error(err);
     } finally {
       setSaving(false);
     }
   };
 
+  const startEditing = () => {
+    setIsEditing(true);
+    setIsSaved(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-6">
-      {loading && <p className="text-blue-600">Loading saved data...</p>}
+      {/* Header with Edit/Save Button */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Accuracy of Irradiation Time</h2>
+        <button
+          onClick={isViewMode ? startEditing : handleSave}
+          disabled={saving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
+            saving
+              ? 'bg-gray-400 cursor-not-allowed'
+              : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300'
+          }`}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Test Conditions */}
       <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
@@ -182,13 +253,34 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           <tbody className="bg-white">
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-3">
-                <input type="text" value={table1Row.fcd} onChange={(e) => updateTable1("fcd", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" placeholder="100" />
+                <input 
+                  type="text" 
+                  value={table1Row.fcd} 
+                  onChange={(e) => updateTable1("fcd", e.target.value)} 
+                  disabled={isViewMode}
+                  className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                  placeholder="100" 
+                />
               </td>
               <td className="px-4 py-3">
-                <input type="text" value={table1Row.kv} onChange={(e) => updateTable1("kv", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" placeholder="80" />
+                <input 
+                  type="text" 
+                  value={table1Row.kv} 
+                  onChange={(e) => updateTable1("kv", e.target.value)} 
+                  disabled={isViewMode}
+                  className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                  placeholder="80" 
+                />
               </td>
               <td className="px-4 py-3">
-                <input type="text" value={table1Row.ma} onChange={(e) => updateTable1("ma", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" placeholder="100" />
+                <input 
+                  type="text" 
+                  value={table1Row.ma} 
+                  onChange={(e) => updateTable1("ma", e.target.value)} 
+                  disabled={isViewMode}
+                  className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                  placeholder="100" 
+                />
               </td>
             </tr>
           </tbody>
@@ -218,8 +310,26 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
               const remark = getRemark(error);
               return (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3"><input type="number" step="0.1" value={row.setTime} onChange={(e) => updateTable2(row.id, "setTime", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" /></td>
-                  <td className="px-4 py-3"><input type="number" step="0.1" value={row.measuredTime} onChange={(e) => updateTable2(row.id, "measuredTime", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" /></td>
+                  <td className="px-4 py-3">
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      value={row.setTime} 
+                      onChange={(e) => updateTable2(row.id, "setTime", e.target.value)} 
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      value={row.measuredTime} 
+                      onChange={(e) => updateTable2(row.id, "measuredTime", e.target.value)} 
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-center font-medium">{error}%</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${remark === "PASS" ? "bg-green-100 text-green-800" : remark === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"}`}>
@@ -227,7 +337,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {table2Rows.length > 1 && (
+                    {table2Rows.length > 1 && !isViewMode && (
                       <button onClick={() => deleteTable2Row(row.id)} className="text-red-600 hover:text-red-800">
                         <XMarkIcon className="h-5 w-5" />
                       </button>
@@ -238,11 +348,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             })}
           </tbody>
         </table>
-        <div className="px-4 py-3 bg-gray-50 border-t border-gray-300 flex justify-start">
-          <button onClick={addTable2Row} className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium">
-            <PlusIcon className="h-4 w-4" /> Add Row
-          </button>
-        </div>
+        {!isViewMode && (
+          <div className="px-4 py-3 bg-gray-50 border-t border-gray-300 flex justify-start">
+            <button onClick={addTable2Row} className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium">
+              <PlusIcon className="h-4 w-4" /> Add Row
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tolerance */}
@@ -250,26 +362,28 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <h4 className="text-sm font-semibold text-indigo-900 mb-2">Tolerance Setting</h4>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium text-indigo-800">Error should be</span>
-          <select value={toleranceOperator} onChange={(e) => setToleranceOperator(e.target.value)} className="px-3 py-1 border border-indigo-300 rounded bg-white text-indigo-900">
+          <select 
+            value={toleranceOperator} 
+            onChange={(e) => setToleranceOperator(e.target.value)} 
+            disabled={isViewMode}
+            className={`px-3 py-1 border border-indigo-300 rounded text-indigo-900 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
+          >
             <option value=">">greater than</option>
             <option value="<">less than</option>
             <option value=">=">greater than or equal to</option>
             <option value="<=">less than or equal to</option>
           </select>
-          <input type="number" step="0.1" value={toleranceValue} onChange={(e) => setToleranceValue(e.target.value)} className="w-20 px-2 py-1 text-center border border-indigo-300 rounded bg-white" placeholder="5.0" />
+          <input 
+            type="number" 
+            step="0.1" 
+            value={toleranceValue} 
+            onChange={(e) => setToleranceValue(e.target.value)} 
+            disabled={isViewMode}
+            className={`w-20 px-2 py-1 text-center border border-indigo-300 rounded ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
+            placeholder="5.0" 
+          />
           <span className="font-medium text-indigo-800">%</span>
         </div>
-      </div>
-
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={saving || loading}
-          className={`px-6 py-2 rounded-lg text-white font-medium ${saving ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"}`}
-        >
-          {saving ? "Saving..." : "Save Test Data"}
-        </button>
       </div>
 
       {/* Formula Info */}

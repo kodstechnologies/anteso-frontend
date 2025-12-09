@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import {
   createAccuracyOfIrradiationTime,
-  getAccuracyOfIrradiationTime,
+  getAccuracyOfIrradiationTimeByServiceId,
   updateAccuracyOfIrradiationTime,
 } from "../../../../../../api"; // adjust path
 
@@ -100,7 +100,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       if (!serviceId) return;
       setLoading(true);
       try {
-        const data = await getAccuracyOfIrradiationTime(serviceId);
+        const data = await getAccuracyOfIrradiationTimeByServiceId(serviceId);
         if (data) {
           setTestId(data._id);
           setTable1Row(data.testConditions || { fcd: "", kv: "", ma: "" });
@@ -152,7 +152,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         await updateAccuracyOfIrradiationTime(testId, payload);
       } else {
         const res = await createAccuracyOfIrradiationTime(serviceId, payload);
-        setTestId(res.data._id); // save the returned _id
+        if (res.data && res.data._id) {
+          setTestId(res.data._id); // save the returned _id
+        } else if (res._id) {
+          setTestId(res._id);
+        }
       }
       alert("Saved successfully!");
     } catch (err) {

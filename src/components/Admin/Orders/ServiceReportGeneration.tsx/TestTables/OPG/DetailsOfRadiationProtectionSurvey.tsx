@@ -17,6 +17,7 @@ interface LocationData {
   mRPerHr: string;
   mRPerWeek: string;
   result: string;
+  calculatedResult: string; // New field for: max radiation level × Workload / (60 × Applied Current)
   category: "worker" | "public";
 }
 interface Props {
@@ -40,15 +41,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
   const [workload, setWorkload] = useState<string>("5000");
 
   const [locations, setLocations] = useState<LocationData[]>([
-    { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
-    { id: "2", location: "Outside Lead Glass / View Window", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
-    { id: "3", location: "Technician Entrance Door (Service Door)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
-    { id: "4", location: "Wall D (Console Wall)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
-    { id: "5", location: "Wall C", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
-    { id: "6", location: "Wall B", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
-    { id: "7", location: "Wall A", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
-    { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
-    { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
+    { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "2", location: "Outside Lead Glass / View Window", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "3", location: "Technician Entrance Door (Service Door)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "4", location: "Wall D (Console Wall)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "5", location: "Wall C", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "6", location: "Wall B", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "7", location: "Wall A", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
   ]);
 
   // Formula: mR/week = (Workload × mR/hr) / (60 × mA used)
@@ -60,14 +61,24 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
     return ((wl * hr) / (60 * mA)).toFixed(3);
   };
 
+  // Formula: Result = max radiation level × Workload / (60 × Applied Current (mA))
+  const calculateResult = (mRPerHr: string) => {
+    const maxRadiationLevel = parseFloat(mRPerHr) || 0;
+    const wl = parseFloat(workload) || 0;
+    const mA = parseFloat(appliedCurrent) || 1;
+    if (maxRadiationLevel <= 0 || wl <= 0 || mA <= 0) return "";
+    return ((maxRadiationLevel * wl) / (60 * mA)).toFixed(3);
+  };
+
   useEffect(() => {
     setLocations(prev =>
       prev.map(item => {
         const mRPerWeek = calculateMRPerWeek(item.mRPerHr);
+        const calculatedResult = calculateResult(item.mRPerHr);
         const weekly = parseFloat(mRPerWeek) || 0;
         const limit = item.category === "worker" ? 40 : 2;
         const result = weekly > 0 ? (weekly <= limit ? "PASS" : "FAIL") : "";
-        return { ...item, mRPerWeek, result };
+        return { ...item, mRPerWeek, calculatedResult, result };
       })
     );
   }, [locations.map(l => l.mRPerHr).join(), appliedCurrent, workload]);
@@ -79,6 +90,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
       mRPerHr: "",
       mRPerWeek: "",
       result: "",
+      calculatedResult: "",
       category
     };
     setLocations(prev => [...prev, newRow]);
@@ -125,6 +137,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                 mRPerHr: l.mRPerHr || "",
                 mRPerWeek: l.mRPerWeek || "",
                 result: l.result || "",
+                calculatedResult: l.calculatedResult || "",
                 category: l.category || "worker",
               }))
             );
@@ -172,6 +185,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
         mRPerHr: l.mRPerHr,
         mRPerWeek: l.mRPerWeek,
         result: l.result,
+        calculatedResult: l.calculatedResult,
         category: l.category,
       })),
     };
@@ -308,6 +322,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                   <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Max. Radiation Level (mR/hr)</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">mR/week</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Result</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Status</th>
                   <th className="w-32"></th>
                 </tr>
               </thead>
@@ -337,6 +352,9 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                     </td>
                     <td className="px-6 py-4 text-center font-medium text-gray-800">
                       {row.mRPerWeek || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.calculatedResult || "—"}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
@@ -389,6 +407,9 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                     </td>
                     <td className="px-6 py-4 text-center font-medium text-gray-800">
                       {row.mRPerWeek || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.calculatedResult || "—"}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :

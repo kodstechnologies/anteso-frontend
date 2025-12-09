@@ -11,17 +11,19 @@ import {
 import toast from 'react-hot-toast';
 
 interface SettingsRow {
-  kv: string;
+  ffd: string;
+  kvp: string;
   ma: string;
   time: string;
 }
 
 interface LeakageRow {
   location: string;
-  front: string;
-  back: string;
   left: string;
   right: string;
+  top: string;
+  up: string;
+  down: string;
   max: string;
   unit: string;
   remark: string;
@@ -37,14 +39,15 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Fixed rows
-  const [settings, setSettings] = useState<SettingsRow>({ kv: '', ma: '', time: '' });
+  const [settings, setSettings] = useState<SettingsRow>({ ffd: '', kvp: '', ma: '', time: '' });
   const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
     {
       location: 'Tube',
-      front: '',
-      back: '',
       left: '',
       right: '',
+      top: '',
+      up: '',
+      down: '',
       max: '',
       unit: 'mGy/h',
       remark: '',
@@ -65,7 +68,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   // === Auto Max per row ===
   const processedLeakage = useMemo(() => {
     return leakageRows.map((row) => {
-      const values = [row.front, row.back, row.left, row.right]
+      const values = [row.left, row.right, row.top, row.up, row.down]
         .map((v) => parseFloat(v) || 0)
         .filter((v) => v > 0);
       const max = values.length > 0 ? Math.max(...values).toFixed(3) : '';
@@ -104,7 +107,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   }, [maxRadiationLeakage, toleranceValue, toleranceOperator]);
 
   // === Update Handlers ===
-  const updateSettings = (field: 'kv' | 'ma' | 'time', value: string) => {
+  const updateSettings = (field: 'ffd' | 'kvp' | 'ma' | 'time', value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
@@ -118,11 +121,12 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
-      settings.kv.trim() &&
+      settings.ffd.trim() &&
+      settings.kvp.trim() &&
       settings.ma.trim() &&
       settings.time.trim() &&
       leakageRows.every(r =>
-        r.front.trim() && r.back.trim() && r.left.trim() && r.right.trim()
+        r.left.trim() && r.right.trim() && r.top.trim() && r.up.trim() && r.down.trim()
       ) &&
       workload.trim() &&
       toleranceValue.trim()
@@ -147,8 +151,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
         setTestId(rec._id || null);
         if (rec.settings?.[0]) {
+          // Handle backward compatibility: kv -> kvp, add ffd if missing
           setSettings({
-            kv: String(rec.settings[0].kv || ''),
+            ffd: String(rec.settings[0].ffd || ''),
+            kvp: String(rec.settings[0].kvp || rec.settings[0].kv || ''),
             ma: String(rec.settings[0].ma || ''),
             time: String(rec.settings[0].time || ''),
           });
@@ -158,10 +164,12 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           setLeakageRows(
             rec.leakageMeasurements.map((r: any) => ({
               location: r.location || '',
-              front: String(r.front || ''),
-              back: String(r.back || ''),
+              // Handle backward compatibility: front/back -> top/up/down
               left: String(r.left || ''),
               right: String(r.right || ''),
+              top: String(r.top || r.front || ''),
+              up: String(r.up || r.back || ''),
+              down: String(r.down || ''),
               max: String(r.max || ''),
               unit: r.unit || '',
               remark: r.remark || '',
@@ -196,17 +204,19 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     const payload = {
       settings: [
         {
-          kv: settings.kv,
+          ffd: settings.ffd,
+          kvp: settings.kvp,
           ma: settings.ma,
           time: settings.time,
         },
       ],
       leakageMeasurements: leakageRows.map(r => ({
         location: r.location,
-        front: r.front,
-        back: r.back,
         left: r.left,
         right: r.right,
+        top: r.top,
+        up: r.up,
+        down: r.down,
         max: r.max,
         unit: r.unit,
         remark: r.remark,
@@ -263,7 +273,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     <div className="p-6 max-w-full overflow-x-auto space-y-8">
       <h2 className="text-2xl font-bold mb-6">Radiation Leakage Level from X-Ray</h2>
 
-      {/* ==================== Table 1: kV, mA, Time (Fixed) ==================== */}
+      {/* ==================== Table 1: FFD, kVp, mA, Time (Fixed) ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
           Measurement Settings
@@ -272,13 +282,16 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                kV
+                FFD (cm)
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+                kVp
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
                 mA
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Time (sec)
+                Time (Sec)
               </th>
             </tr>
           </thead>
@@ -287,8 +300,19 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
               <td className="px-4 py-2 border-r">
                 <input
                   type="text"
-                  value={settings.kv}
-                  onChange={(e) => updateSettings('kv', e.target.value)}
+                  value={settings.ffd}
+                  onChange={(e) => updateSettings('ffd', e.target.value)}
+                  disabled={isViewMode}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                    }`}
+                  placeholder="100"
+                />
+              </td>
+              <td className="px-4 py-2 border-r">
+                <input
+                  type="text"
+                  value={settings.kvp}
+                  onChange={(e) => updateSettings('kvp', e.target.value)}
                   disabled={isViewMode}
                   className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
                     }`}
@@ -358,7 +382,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
                 Location
               </th>
-              <th colSpan={4} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+              <th colSpan={5} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
                 Exposure Level (mGy)
               </th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
@@ -372,7 +396,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
               </th>
             </tr>
             <tr>
-              {['Front', 'Back', 'Left', 'Right'].map((dir) => (
+              {['Left', 'Right', 'Top', 'Up', 'Down'].map((dir) => (
                 <th
                   key={dir}
                   className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
@@ -396,7 +420,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                     placeholder="Tube"
                   />
                 </td>
-                {(['front', 'back', 'left', 'right'] as const).map((field) => (
+                {(['left', 'right', 'top', 'up', 'down'] as const).map((field) => (
                   <td key={field} className="px-2 py-2 border-r">
                     <input
                       type="text"

@@ -8,6 +8,7 @@ import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import MainTestTableForDentalConeBeamCT from "./MainTestTableForDentalConeBeamCT";
 
 interface Tool {
   slNumber: string;
@@ -46,6 +47,7 @@ interface ReportData {
   humidity?: string;
   toolsUsed?: Tool[];
   notes?: Note[];
+  category?: string;
 
   // All CBCT Tests
   AccuracyOfIrradiationTimeCBCT?: any;
@@ -272,6 +274,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                     ["Make", report.make],
                     ["Model", report.model],
                     ["Serial No.", report.slNumber],
+                    ["Category", report.category || "-"],
                     ["Location", report.location],
                     ["Test Date", formatDate(report.testDate)],
                   ].map(([label, value]) => (
@@ -349,7 +352,17 @@ const ViewServiceReportCBCT: React.FC = () => {
         {/* PAGE BREAK */}
         <div className="print:break-before-page"></div>
 
-        {/* PAGE 2+ - DETAILED TEST RESULTS */}
+        {/* PAGE 2+ - SUMMARY TABLE */}
+        <div className="bg-white px-8 py-12 print:p-8">
+          <div className="max-w-5xl mx-auto print:max-w-none">
+            <MainTestTableForDentalConeBeamCT testData={testData} />
+          </div>
+        </div>
+
+        {/* PAGE BREAK */}
+        <div className="print:break-before-page"></div>
+
+        {/* PAGE 3+ - DETAILED TEST RESULTS */}
         <div className="bg-white px-8 py-12 print:p-8">
           <div className="max-w-5xl mx-auto print:max-w-none">
             <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
@@ -357,39 +370,49 @@ const ViewServiceReportCBCT: React.FC = () => {
             {/* 1. Accuracy of Irradiation Time */}
             {testData.irradiationTime?.irradiationTimes?.length > 0 && (
               <div className="mb-16 print:mb-12 print:break-inside-avoid">
-                <h3 className="text-xl font-bold mb-6">1. Accuracy of Irradiation Time</h3>
-                <div className="mb-6 bg-gray-50 p-4 rounded border">
-                  <p className="font-semibold">Test Conditions:</p>
-                  <p className="text-sm">
-                    FCD: {testData.irradiationTime.testConditions?.fcd} cm | kV: {testData.irradiationTime.testConditions?.kv} | mA: {testData.irradiationTime.testConditions?.ma}
-                  </p>
+                <h3 className="text-xl font-bold uppercase mb-4">1. ACCURACY OF IRRADIATION TIME</h3>
+                {/* Operating Parameters */}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="text-sm">Operating parameters:</span>
+                  <table className="inline-block border border-black" style={{ width: 'auto' }}>
+                    <tbody>
+                      <tr>
+                        <td className="border border-black px-3 py-1 text-center text-sm">FCD (cm)</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.irradiationTime.testConditions?.fcd || "-"}</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">kV</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.irradiationTime.testConditions?.kv || "-"}</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">mA</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.irradiationTime.testConditions?.ma || "-"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-2 border-black text-sm">
-                    <thead className="bg-gray-100">
+                  <table className="w-full border border-black text-sm">
+                    <thead>
                       <tr>
-                        <th className="border border-black p-3">Set Time (s)</th>
-                        <th className="border border-black p-3">Measured Time (s)</th>
-                        <th className="border border-black p-3">% Deviation</th>
-                        <th className="border border-black p-3 bg-blue-100">Tolerance</th>
-                        <th className="border border-black p-3 bg-green-100">Remarks</th>
+                        <th className="border border-black p-2 text-left">Set Time (Sec.)</th>
+                        <th className="border border-black p-2 text-center">Measured Time</th>
+                        <th className="border border-black p-2 text-center">% Error</th>
+                        <th className="border border-black p-2 text-center">Tolerance</th>
+                        <th className="border border-black p-2 text-center">Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
                       {testData.irradiationTime.irradiationTimes.map((row: any, i: number) => {
                         const deviation = row.setTime && row.measuredTime
-                          ? ((Math.abs(row.measuredTime - row.setTime) / row.setTime) * 100).toFixed(1)
+                          ? ((Math.abs(row.measuredTime - row.setTime) / row.setTime) * 100).toFixed(2)
                           : "N/A";
                         const pass = deviation !== "N/A" && Number(deviation) <= 5;
+                        const toleranceOperator = testData.irradiationTime.tolerance?.operator || "<=";
+                        const toleranceValue = testData.irradiationTime.tolerance?.value || "5";
                         return (
-                          <tr key={i} className="text-center">
-                            <td className="border p-3 font-semibold">{row.setTime}</td>
-                            <td className="border p-3">{row.measuredTime}</td>
-                            <td className="border p-3">{deviation}%</td>
-                            <td className="border p-3">±5%</td>
-                            <td className="border p-3 font-bold">
-                              <span className={pass ? "text-green-600" : "text-red-600"}>{pass ? "PASS" : "FAIL"}</span>
-                            </td>
+                          <tr key={i}>
+                            <td className="border border-black p-2 text-left">{row.setTime || "-"}</td>
+                            <td className="border border-black p-2 text-center">{row.measuredTime || "-"}</td>
+                            <td className="border border-black p-2 text-center">{deviation !== "N/A" ? `${deviation}%` : "-"}</td>
+                            <td className="border border-black p-2 text-center">{toleranceOperator} {toleranceValue}%</td>
+                            <td className="border border-black p-2 text-center">{pass ? "PASS" : "FAIL"}</td>
                           </tr>
                         );
                       })}
@@ -400,32 +423,30 @@ const ViewServiceReportCBCT: React.FC = () => {
             )}
             
             {/* 2. Accuracy of Operating Potential */}
-            {testData.operatingPotential?.measurements?.length > 0 && (
+            {testData.operatingPotential?.rows?.length > 0 && (
               <div className="mb-16 print:mb-12 print:break-inside-avoid">
-                <h3 className="text-xl font-bold mb-6">2. Accuracy of Operating Potential (kVp)</h3>
+                <h3 className="text-xl font-bold uppercase mb-4">2. ACCURACY OF OPERATING POTENTIAL (KVP)</h3>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-2 border-black text-sm">
-                    <thead className="bg-gray-100">
+                  <table className="w-full border border-black text-sm">
+                    <thead>
                       <tr>
-                        <th className="border border-black p-3">Applied kVp</th>
+                        <th className="border border-black p-2 text-left">Applied kVp</th>
                         {testData.operatingPotential.mAStations?.map((s: string) => (
-                          <th key={s} className="border border-black p-3">{s}</th>
+                          <th key={s} className="border border-black p-2 text-center">{s}</th>
                         ))}
-                        <th className="border border-black p-3 bg-blue-100">Average kVp</th>
-                        <th className="border border-black p-3 bg-green-100">Remarks</th>
+                        <th className="border border-black p-2 text-center">Average kVp</th>
+                        <th className="border border-black p-2 text-center">Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {testData.operatingPotential.measurements.map((row: any, i: number) => (
-                        <tr key={i} className="text-center">
-                          <td className="border p-3 font-semibold">{row.appliedKvp}</td>
-                          {row.measuredValues.map((val: string, idx: number) => (
-                            <td key={idx} className="border p-3">{val}</td>
+                      {testData.operatingPotential.rows.map((row: any, i: number) => (
+                        <tr key={i}>
+                          <td className="border border-black p-2 text-left">{row.appliedKvp || "-"}</td>
+                          {row.measuredValues?.map((val: string, idx: number) => (
+                            <td key={idx} className="border border-black p-2 text-center">{val || "-"}</td>
                           ))}
-                          <td className="border p-3 font-bold bg-blue-50">{row.averageKvp}</td>
-                          <td className="border p-3 font-bold">
-                            <span className={row.remarks === "PASS" ? "text-green-600" : "text-red-600"}>{row.remarks}</span>
-                          </td>
+                          <td className="border border-black p-2 text-center">{row.averageKvp || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.remarks || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -437,172 +458,247 @@ const ViewServiceReportCBCT: React.FC = () => {
             {/* 3. Output Consistency */}
             {testData.outputConsistency?.outputRows?.length > 0 && (
               <div className="mb-16 print:mb-12">
-                <h3 className="text-xl font-bold mb-6">3. Output Consistency</h3>
-                <div className="mb-6 bg-gray-50 p-4 rounded border">
-                  <p className="font-semibold">Test Conditions:</p>
-                  <p className="text-sm">FFD: {testData.outputConsistency.ffd} cm</p>
+                <h3 className="text-xl font-bold uppercase mb-4">3. OUTPUT CONSISTENCY</h3>
+                {/* Operating Parameters */}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="text-sm">Operating parameters:</span>
+                  <table className="inline-block border border-black" style={{ width: 'auto' }}>
+                    <tbody>
+                      <tr>
+                        <td className="border border-black px-3 py-1 text-center text-sm">FFD (cm)</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.outputConsistency.ffd || "-"}</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">kV</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">-</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">mA</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">-</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-2 border-black text-sm">
-                    <thead className="bg-gray-100">
+                  <table className="w-full border border-black text-sm">
+                    <thead>
                       <tr>
-                        <th className="border border-black p-3">kVp</th>
-                        <th className="border border-black p-3">mAs</th>
-                        {testData.outputConsistency.measurementHeaders?.map((h: string) => (
-                          <th key={h} className="border border-black p-3">{h}</th>
+                        <th rowSpan={2} className="border border-black p-2 text-left">Applied kV</th>
+                        <th rowSpan={2} className="border border-black p-2 text-center">mAs</th>
+                        <th colSpan={testData.outputConsistency.measurementHeaders?.length || testData.outputConsistency.outputRows[0]?.outputs?.length || 3} className="border border-black p-2 text-center">
+                          Radiation Output mGy
+                        </th>
+                        <th rowSpan={2} className="border border-black p-2 text-center">Avg. (X)</th>
+                        <th rowSpan={2} className="border border-black p-2 text-center">Coefficient of Variation CoV</th>
+                        <th rowSpan={2} className="border border-black p-2 text-center">Remarks</th>
+                      </tr>
+                      <tr>
+                        {(testData.outputConsistency.measurementHeaders || 
+                          Array.from({ length: testData.outputConsistency.outputRows[0]?.outputs?.length || 3 }, (_, i) => i + 1)
+                        ).map((h: string | number, idx: number) => (
+                          <th key={idx} className="border border-black p-1 text-center text-xs">
+                            {typeof h === 'number' ? h : idx + 1}
+                          </th>
                         ))}
-                        <th className="border border-black p-3 bg-blue-100">Mean</th>
-                        <th className="border border-black p-3 bg-yellow-100">COV</th>
-                        <th className="border border-black p-3 bg-green-100">Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
                       {testData.outputConsistency.outputRows.map((row: any, i: number) => (
-                        <tr key={i} className="text-center">
-                          <td className="border p-3 font-semibold">{row.kvp}</td>
-                          <td className="border p-3">{row.mas}</td>
+                        <tr key={i}>
+                          <td className="border border-black p-2 text-left">{row.kvp}</td>
+                          <td className="border border-black p-2 text-center">{row.mas}</td>
                           {row.outputs.map((val: string, idx: number) => (
-                            <td key={idx} className="border p-3">{val}</td>
+                            <td key={idx} className="border border-black p-2 text-center">{val}</td>
                           ))}
-                          <td className="border p-3 font-bold bg-blue-50">{row.mean}</td>
-                          <td className="border p-3 font-bold bg-yellow-50">{row.cov}</td>
-                          <td className="border p-3 font-bold">
-                            <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>{row.remarks}</span>
-                          </td>
+                          <td className="border border-black p-2 text-center">{row.mean || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.cov || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.remarks || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+                {/* Tolerance Statement */}
+                <div className="mt-4">
+                  <p className="text-sm">Tolerance : CoV &lt; {testData.outputConsistency.tolerance || "0.05"}</p>
                 </div>
               </div>
             )}
 
             {/* 4. Linearity of mA Loading */}
-            {testData.linearityOfMaLoading?.table2?.length > 0 && (
+            {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (
               <div className="mb-16 print:mb-12">
-                <h3 className="text-xl font-bold mb-6">4. Linearity of mA Loading</h3>
-                <div className="mb-6 bg-gray-50 p-4 rounded border">
-                  <p className="font-semibold">Test Conditions:</p>
-                  <p className="text-sm">
-                    FCD: {testData.linearityOfMaLoading.table1?.fcd} cm | kV: {testData.linearityOfMaLoading.table1?.kv} | Time: {testData.linearityOfMaLoading.table1?.time} s
-                  </p>
+                <h3 className="text-xl font-bold uppercase mb-4">4. LINEARITY OF MA LOADING</h3>
+                {/* Operating Parameters */}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="text-sm">Operating parameters:</span>
+                  <table className="inline-block border border-black" style={{ width: 'auto' }}>
+                    <tbody>
+                      <tr>
+                        <td className="border border-black px-3 py-1 text-center text-sm">FCD (cm)</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.linearityOfMaLoading.table1?.fcd || "-"}</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">kV</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.linearityOfMaLoading.table1?.kv || "-"}</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">Time (s)</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.linearityOfMaLoading.table1?.time || "-"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-2 border-black text-sm">
-                    <thead className="bg-gray-100">
+                  <table className="w-full border border-black text-sm">
+                    <thead>
                       <tr>
-                        <th className="border border-black p-3">mA</th>
-                        <th className="border border-black p-3">Meas 1</th>
-                        <th className="border border-black p-3">Meas 2</th>
-                        <th className="border border-black p-3">Meas 3</th>
-                        <th className="border border-black p-3 bg-blue-100">Average</th>
-                        <th className="border border-black p-3 bg-yellow-100">Coefficient of Linearity</th>
-                        <th className="border border-black p-3 bg-green-100">Remarks</th>
+                        <th className="border border-black p-2 text-left">mA</th>
+                        <th className="border border-black p-2 text-center">Meas 1</th>
+                        <th className="border border-black p-2 text-center">Meas 2</th>
+                        <th className="border border-black p-2 text-center">Meas 3</th>
+                        <th className="border border-black p-2 text-center">Average</th>
+                        <th className="border border-black p-2 text-center">Coefficient of Linearity</th>
+                        <th className="border border-black p-2 text-center">Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {testData.linearityOfMaLoading.table2.map((row: any, i: number) => (
-                        <tr key={i} className="text-center">
-                          <td className="border p-3 font-semibold">{row.ma}</td>
-                          {row.measuredOutputs.map((val: string, idx: number) => (
-                            <td key={idx} className="border p-3">{val}</td>
+                      {testData.linearityOfMaLoading.table2Rows.map((row: any, i: number) => (
+                        <tr key={i}>
+                          <td className="border border-black p-2 text-left">{row.ma || "-"}</td>
+                          {row.measuredOutputs?.map((val: string, idx: number) => (
+                            <td key={idx} className="border border-black p-2 text-center">{val || "-"}</td>
                           ))}
-                          <td className="border p-3 font-bold bg-blue-50">{row.average}</td>
-                          <td className="border p-3 font-bold bg-yellow-50">{row.col}</td>
-                          <td className="border p-3 font-bold">
-                            <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>
-                              {row.remarks}
-                            </span>
-                          </td>
+                          <td className="border border-black p-2 text-center">{row.average || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.col || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.remarks || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+                {/* Tolerance Statement */}
+                <div className="mt-4">
+                  <p className="text-sm">Tolerance : Coefficient of Linearity ≤ {testData.linearityOfMaLoading.tolerance || "0.1"}</p>
                 </div>
               </div>
             )}
 
             {/* 5. Radiation Leakage Test */}
-            {testData.radiationLeakage && (
+            {testData.radiationLeakage?.leakageRows?.length > 0 && (
               <div className="mb-16 print:mb-12 print:break-inside-avoid">
-                <h3 className="text-xl font-bold mb-6">5. Radiation Leakage Test</h3>
-                <div className="mb-6 bg-gray-50 p-4 rounded border">
-                  <p className="font-semibold">Test Parameters:</p>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <p><strong>Applied kV:</strong> {testData.radiationLeakage.appliedVoltage}</p>
-                    <p><strong>Applied mA:</strong> {testData.radiationLeakage.appliedCurrent}</p>
-                    <p><strong>Exposure Time:</strong> {testData.radiationLeakage.exposureTime} s</p>
-                  </div>
+                <h3 className="text-xl font-bold uppercase mb-4">5. RADIATION LEAKAGE TEST</h3>
+                {/* Operating Parameters */}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="text-sm">Operating parameters:</span>
+                  <table className="inline-block border border-black" style={{ width: 'auto' }}>
+                    <tbody>
+                      <tr>
+                        <td className="border border-black px-3 py-1 text-center text-sm">FFD (cm)</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.radiationLeakage.settings?.[0]?.ffd || "-"}</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">kVp</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.radiationLeakage.settings?.[0]?.kvp || "-"}</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">mA</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.radiationLeakage.settings?.[0]?.ma || "-"}</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">Time (s)</td>
+                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.radiationLeakage.settings?.[0]?.time || "-"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-2 border-black text-sm">
-                    <thead className="bg-gray-100">
+                  <table className="w-full border border-black text-sm">
+                    <thead>
                       <tr>
-                        <th className="border border-black p-3">Location</th>
-                        <th className="border border-black p-3">Measured Leakage (mR/hr)</th>
-                        <th className="border border-black p-3 bg-green-100">Result</th>
+                        <th className="border border-black p-2 text-left">Location</th>
+                        <th className="border border-black p-2 text-center">Left</th>
+                        <th className="border border-black p-2 text-center">Right</th>
+                        <th className="border border-black p-2 text-center">Top</th>
+                        <th className="border border-black p-2 text-center">Up</th>
+                        <th className="border border-black p-2 text-center">Down</th>
+                        <th className="border border-black p-2 text-center">Max</th>
+                        <th className="border border-black p-2 text-center">Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {testData.radiationLeakage.locations?.map((loc: any, i: number) => (
+                      {testData.radiationLeakage.leakageRows.map((row: any, i: number) => (
                         <tr key={i}>
-                          <td className="border p-3">{loc.location}</td>
-                          <td className="border p-3 text-center">{loc.mRPerHr || "-"}</td>
-                          <td className="border p-3 text-center font-bold">
-                            <span className={Number(loc.mRPerHr || 0) <= 100 ? "text-green-600" : "text-red-600"}>
-                              {Number(loc.mRPerHr || 0) <= 100 ? "PASS" : "FAIL"}
-                            </span>
-                          </td>
+                          <td className="border border-black p-2 text-left">{row.location || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.left || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.right || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.top || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.up || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.down || "-"}</td>
+                          <td className="border border-black p-2 text-center">{row.max || "-"} {row.unit || "mGy/h"}</td>
+                          <td className="border border-black p-2 text-center">{row.remark || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                <div className="mt-4 p-4 bg-amber-50 border-2 border-amber-400 rounded">
-                  <p className="font-medium">
-                    AERB Limit: Maximum leakage radiation ≤ 1 mGy (114 mR) in one hour at 1 meter from focus.
+                {/* Tolerance Statement */}
+                <div className="mt-4">
+                  <p className="text-sm">
+                    Tolerance : Maximum leakage radiation ≤ {testData.radiationLeakage.toleranceValue || "1"} mGy/h ({testData.radiationLeakage.toleranceTime || "1"} hour)
                   </p>
                 </div>
               </div>
             )}
 
             {/* 6. Radiation Protection Survey */}
-            {testData.radiationSurvey && (
+            {testData.radiationSurvey?.locations?.length > 0 && (
               <div className="mb-16 print:mb-12 print:break-inside-avoid">
-                <h3 className="text-xl font-bold mb-6">6. Radiation Protection Survey</h3>
-                <div className="mb-6 bg-gray-50 p-4 rounded border">
-                  <p className="font-semibold">Survey Details:</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm mt-2">
-                    <p><strong>Survey Date:</strong> {formatDate(testData.radiationSurvey.surveyDate)}</p>
-                    <p><strong>Workload:</strong> {testData.radiationSurvey.workload} mA-min/week</p>
-                    <p><strong>Calibration Valid:</strong> {testData.radiationSurvey.hasValidCalibration}</p>
+                <h3 className="text-xl font-bold uppercase mb-4">6. RADIATION PROTECTION SURVEY</h3>
+                
+                {/* Survey Details Table */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-semibold mb-2">Survey Details</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border border-black text-sm">
+                      <thead>
+                        <tr>
+                          <th className="border border-black p-2 text-left">Survey Date</th>
+                          <th className="border border-black p-2 text-center">Applied Current (mA)</th>
+                          <th className="border border-black p-2 text-center">Applied Voltage (kV)</th>
+                          <th className="border border-black p-2 text-center">Exposure Time (s)</th>
+                          <th className="border border-black p-2 text-center">Workload (mA·min/week)</th>
+                          <th className="border border-black p-2 text-center">Valid Calibration Certificate</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-black p-2 text-left">{formatDate(testData.radiationSurvey.surveyDate) || "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.appliedCurrent || "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.appliedVoltage || "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.exposureTime || "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.workload || "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.hasValidCalibration || "-"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-2 border-black text-sm">
-                    <thead className="bg-gray-100">
+                  <table className="w-full border border-black text-sm">
+                    <thead>
                       <tr>
-                        <th className="border border-black p-3">Location</th>
-                        <th className="border border-black p-3">Measured (mR/hr)</th>
-                        <th className="border border-black p-3">Weekly Dose (mR/week)</th>
-                        <th className="border border-black p-3 bg-green-100">Result</th>
+                        <th className="border border-black p-2 text-left">Location</th>
+                        <th className="border border-black p-2 text-center">Max. Radiation Level (mR/hr)</th>
+                        <th className="border border-black p-2 text-center">mR/week</th>
+                        <th className="border border-black p-2 text-center">Result</th>
+                        <th className="border border-black p-2 text-center">Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {testData.radiationSurvey.locations?.map((loc: any, i: number) => (
+                      {testData.radiationSurvey.locations.map((loc: any, i: number) => (
                         <tr key={i}>
-                          <td className="border p-3">{loc.location}</td>
-                          <td className="border p-3 text-center">{loc.mRPerHr || "-"}</td>
-                          <td className="border p-3 text-center">{loc.mRPerWeek || "-"}</td>
-                          <td className="border p-3 text-center font-bold">
-                            <span className={loc.result === "PASS" || loc.result?.toLowerCase().includes("safe") ? "text-green-600" : "text-red-600"}>
-                              {loc.result || "N/A"}
-                            </span>
-                          </td>
+                          <td className="border border-black p-2 text-left">{loc.location || "-"}</td>
+                          <td className="border border-black p-2 text-center">{loc.mRPerHr || "-"}</td>
+                          <td className="border border-black p-2 text-center">{loc.mRPerWeek || "-"}</td>
+                          <td className="border border-black p-2 text-center">{loc.result || "-"}</td>
+                          <td className="border border-black p-2 text-center">{loc.calculatedResult || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+                {/* Tolerance Statement */}
+                <div className="mt-4">
+                  <p className="text-sm">
+                    Tolerance : For Radiation Worker ≤ 40 mR/week | For Public ≤ 2 mR/week
+                  </p>
                 </div>
               </div>
             )}

@@ -79,7 +79,9 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
+    category: "",
   });
+  const [notes, setNotes] = useState<string[]>([]);
 
   // Close modal and set timer choice
   const handleTimerChoice = (choice: boolean) => {
@@ -125,6 +127,7 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
+          category: data.category || "",
         });
 
         // Map tools
@@ -142,6 +145,47 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         }));
 
         setTools(mappedTools);
+
+        // Load existing report header data if available
+        try {
+          const reportRes = await getReportHeaderForRadiographyFixed(serviceId);
+          if (reportRes.exists && reportRes.data) {
+            const reportData = reportRes.data;
+            // Update formData with existing report data
+            setFormData((prev) => ({
+              ...prev,
+              customerName: reportData.customerName || prev.customerName,
+              address: reportData.address || prev.address,
+              srfNumber: reportData.srfNumber || prev.srfNumber,
+              srfDate: reportData.srfDate || prev.srfDate,
+              testReportNumber: reportData.testReportNumber || prev.testReportNumber,
+              issueDate: reportData.issueDate || prev.issueDate,
+              nomenclature: reportData.nomenclature || prev.nomenclature,
+              make: reportData.make || prev.make,
+              model: reportData.model || prev.model,
+              slNumber: reportData.slNumber || prev.slNumber,
+              category: reportData.category || prev.category,
+              condition: reportData.condition || prev.condition,
+              testingProcedureNumber: reportData.testingProcedureNumber || prev.testingProcedureNumber,
+              pages: reportData.pages || prev.pages,
+              testDate: reportData.testDate || prev.testDate,
+              testDueDate: reportData.testDueDate || prev.testDueDate,
+              location: reportData.location || prev.location,
+              temperature: reportData.temperature || prev.temperature,
+              humidity: reportData.humidity || prev.humidity,
+              engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
+            }));
+
+            // Load existing notes
+            if (reportData.notes && Array.isArray(reportData.notes) && reportData.notes.length > 0) {
+              const notesTexts = reportData.notes.map((n: any) => n.text || n);
+              setNotes(notesTexts);
+            }
+          }
+        } catch (reportErr) {
+          console.error("Failed to load existing report:", reportErr);
+          // Continue without existing report data
+        }
       } catch (err: any) {
         console.error("Failed to load initial data:", err);
       } finally {
@@ -187,7 +231,10 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
           certificate: t.certificate,
           uncertainity: t.uncertainity,
         })),
-        notes: [  // Make sure this is included
+        notes: notes.length > 0 ? notes.map((note, index) => ({
+          slNo: `5.${index + 1}`,
+          text: note,
+        })) : [
           { slNo: "5.1", text: "The Test Report relates only to the above item only." },
           {
             slNo: "5.2",
@@ -369,7 +416,7 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
       </section>
 
       <Standards standards={tools} />
-      <Notes />
+      <Notes initialNotes={notes} onChange={setNotes} />
 
       {/* Save & View */}
       <div className="my-10 flex justify-end gap-6">
@@ -446,7 +493,7 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
               : []),
 
           { title: "Output Consistency", component: <ConsistencyOfRadiationOutput serviceId={serviceId} /> },
-   
+
           { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} /> },
           {
             title: "Details Of Radiation Protection Survey of the Installation",

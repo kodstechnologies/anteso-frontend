@@ -8,6 +8,7 @@ import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import MainTestTableForDentalIntra from "./MainTestTableForDentalIntra";
 
 interface Tool {
   slNumber: string;
@@ -46,6 +47,7 @@ interface ReportData {
   humidity: string;
   toolsUsed?: Tool[];
   notes?: Note[];
+  category: string;
 
   AccuracyOfOperatingPotentialAndTimeDentalIntra?: any;
   LinearityOfTimeDentalIntra?: any;
@@ -110,6 +112,7 @@ const ViewServiceReportDentalIntra: React.FC = () => {
           humidity: data.humidity || "",
           toolsUsed: data.toolsUsed || [],
           notes: data.notes || defaultNotes,
+          category: data.category || "",
         });
 
         // Now safely extract test data
@@ -270,6 +273,7 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                     ["Make", report.make || "-"],
                     ["Model", report.model],
                     ["Serial No.", report.slNumber],
+                    ["Category", report.category || "-"],
                     ["Condition", report.condition],
                     ["Testing Procedure No.", report.testingProcedureNumber || "-"],
                     ["Engineer Name & RP ID", report.engineerNameRPId],
@@ -351,16 +355,26 @@ const ViewServiceReportDentalIntra: React.FC = () => {
         </div>
 
         {/* PAGE BREAK */}
-        <div className="print:break-before-page"></div>
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
 
-        {/* PAGE 2+ - DETAILED TEST RESULTS */}
-        <div className="bg-white px-8 py-12 print:p-8">
+        {/* PAGE 2+ - SUMMARY TABLE */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
+          <div className="max-w-5xl mx-auto print:max-w-none">
+            <MainTestTableForDentalIntra testData={testData} />
+          </div>
+        </div>
+
+        {/* PAGE BREAK */}
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
+
+        {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
           <div className="max-w-5xl mx-auto print:max-w-none">
             <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
 
             {/* 1. Accuracy of Operating Potential and Time */}
             {testData.accuracyOfOperatingPotentialAndTime?.rows?.length > 0 && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">1. Accuracy of Operating Potential (kVp) and Irradiation Time</h3>
 
                 <div className="overflow-x-auto mb-6">
@@ -422,7 +436,7 @@ const ViewServiceReportDentalIntra: React.FC = () => {
 
             {/* 2. Linearity of Time */}
             {testData.linearityOfTime?.table2?.length > 0 && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">2. Linearity of Time</h3>
 
                 {testData.linearityOfTime?.table1 && (
@@ -483,7 +497,7 @@ const ViewServiceReportDentalIntra: React.FC = () => {
 
             {/* 3. Reproducibility of Radiation Output */}
             {testData.reproducibilityOfRadiationOutput?.outputRows?.length > 0 && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">3. Reproducibility of Radiation Output</h3>
 
                 <div className="overflow-x-auto">
@@ -523,7 +537,7 @@ const ViewServiceReportDentalIntra: React.FC = () => {
 
             {/* 4. Tube Housing Leakage */}
             {testData.tubeHousingLeakage?.leakageMeasurements?.length > 0 && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">4. Radiation Leakage from Tube Housing</h3>
 
                 {testData.tubeHousingLeakage?.measurementSettings && (
@@ -606,9 +620,17 @@ const ViewServiceReportDentalIntra: React.FC = () => {
         @media print {
           body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           .print\\:break-before-page { page-break-before: always; }
+          .print\\:break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
+          .test-section { page-break-inside: avoid; break-inside: avoid; }
           @page { margin: 1cm; size: A4; }
-          table, tr, td, th { page-break-inside: avoid; }
-          h1,h2,h3,h4,h5,h6 { page-break-after: avoid; }
+          table, tr, td, th { 
+            page-break-inside: avoid; 
+            break-inside: avoid;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          thead { display: table-header-group; }
+          h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
         }
       `}</style>
     </>

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeader } from "../../../../../../api";
+import { getRadiationProfileWidthByServiceId, saveReportHeader, getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro, getReportHeader } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 
 import Standards from "../../Standards";
@@ -61,7 +61,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
     const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
-    const [showTimerModal, setShowTimerModal] = useState(true); // Show on load
+    const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
 
     const [formData, setFormData] = useState({
@@ -84,12 +84,16 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+        category: "",
     });
+    const [notes, setNotes] = useState<string[]>([]);
 
     // Close modal and set timer choice
     const handleTimerChoice = (choice: boolean) => {
         setHasTimer(choice);
         setShowTimerModal(false);
+        // Persist choice in localStorage
+        localStorage.setItem(`fixedradiofluro_timer_choice_${serviceId}`, JSON.stringify(choice));
     };
 
     // Fetch initial data
@@ -130,6 +134,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
+                    category: data.category || "",
                 });
 
                 // Map tools
@@ -166,6 +171,43 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         if (serviceId) load();
     }, [serviceId]);
 
+    // Check for existing timer test and localStorage choice
+    useEffect(() => {
+        const checkTimerTest = async () => {
+            if (!serviceId) return;
+            try {
+                const res = await getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro(serviceId);
+                if (res?.data) {
+                    // Timer test exists, set hasTimer to true
+                    setHasTimer(true);
+                    setShowTimerModal(false);
+                    localStorage.setItem(`fixedradiofluro_timer_choice_${serviceId}`, JSON.stringify(true));
+                } else {
+                    // Check localStorage for saved choice
+                    const savedChoice = localStorage.getItem(`fixedradiofluro_timer_choice_${serviceId}`);
+                    if (savedChoice !== null) {
+                        setHasTimer(JSON.parse(savedChoice));
+                        setShowTimerModal(false);
+                    } else {
+                        // Only show modal if no saved choice and no existing test
+                        setShowTimerModal(true);
+                    }
+                }
+            } catch (err) {
+                // No timer test found, check localStorage
+                const savedChoice = localStorage.getItem(`fixedradiofluro_timer_choice_${serviceId}`);
+                if (savedChoice !== null) {
+                    setHasTimer(JSON.parse(savedChoice));
+                    setShowTimerModal(false);
+                } else {
+                    // Show modal only if no saved choice
+                    setShowTimerModal(true);
+                }
+            }
+        };
+        checkTimerTest();
+    }, [serviceId]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
@@ -192,7 +234,10 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     certificate: t.certificate,
                     uncertainity: t.uncertainity,
                 })),
-                notes: [  // Make sure this is included
+                notes: notes.length > 0 ? notes.map((note, index) => ({
+                    slNo: `5.${index + 1}`,
+                    text: note,
+                })) : [
                     { slNo: "5.1", text: "The Test Report relates only to the above item only." },
                     {
                         slNo: "5.2",
@@ -349,6 +394,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                         { label: "Make", name: "make" },
                         { label: "Model", name: "model", readOnly: true },
                         { label: "Serial Number", name: "slNumber", readOnly: true },
+                        { label: "Category", name: "category" },
                         { label: "Condition of Test Item", name: "condition" },
                         { label: "Testing Procedure Number", name: "testingProcedureNumber" },
                         { label: "No. of Pages", name: "pages" },
@@ -374,7 +420,7 @@ const RadioFluro: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             </section>
 
             <Standards standards={tools} />
-            <Notes />
+            <Notes initialNotes={notes} onChange={setNotes} />
 
             {/* Save & View */}
             <div className="my-10 flex justify-end gap-6">

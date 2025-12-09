@@ -54,7 +54,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
     const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
-    const [showTimerModal, setShowTimerModal] = useState(true); // Show on load
+    const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
     const [savedTestIds, setSavedTestIds] = useState<{
         AccuracyOfIrradiationTimeCBCT?: string;
@@ -84,7 +84,9 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+        category: "",
     });
+    const [notes, setNotes] = useState<string[]>([]);
 
     // Only fetch initial service details and tools — NOT saved report
     useEffect(() => {
@@ -124,6 +126,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
+                    category: data.category || "",
                 });
 
                 // Map tools
@@ -155,6 +158,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     const handleTimerChoice = (choice: boolean) => {
         setHasTimer(choice);
         setShowTimerModal(false);
+        // Persist choice in localStorage
+        localStorage.setItem(`cbct_timer_choice_${serviceId}`, JSON.stringify(choice));
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,6 +227,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                         make: res.data.make || prev.make,
                         model: res.data.model || prev.model,
                         slNumber: res.data.slNumber || prev.slNumber,
+                        category: res.data.category || prev.category,
                         condition: res.data.condition || prev.condition,
                         testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
                         testDate: res.data.testDate || prev.testDate,
@@ -232,18 +238,59 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
                     }));
 
+                    // Load existing notes
+                    if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
+                        const notesTexts = res.data.notes.map((n: any) => n.text || n);
+                        setNotes(notesTexts);
+                    }
+
                     // Save test IDs
-                    setSavedTestIds({
+                    const testIds = {
                         AccuracyOfIrradiationTimeCBCT: res.data.AccuracyOfIrradiationTimeCBCT?._id || res.data.AccuracyOfIrradiationTimeCBCT,
                         AccuracyOfOperatingPotentialCBCT: res.data.AccuracyOfOperatingPotentialCBCT?._id || res.data.AccuracyOfOperatingPotentialCBCT,
                         OutputConsistencyForCBCT: res.data.OutputConsistencyForCBCT?._id || res.data.OutputConsistencyForCBCT,
                         LinearityOfMaLoadingCBCT: res.data.LinearityOfMaLoadingCBCT?._id || res.data.LinearityOfMaLoadingCBCT,
                         RadiationLeakageTestCBCT: res.data.RadiationLeakageTestCBCT?._id || res.data.RadiationLeakageTestCBCT,
                         RadiationProtectionSurveyCBCT: res.data.RadiationProtectionSurveyCBCT?._id || res.data.RadiationProtectionSurveyCBCT,
-                    });
+                    };
+                    setSavedTestIds(testIds);
+
+                    // If AccuracyOfIrradiationTimeCBCT exists, set hasTimer to true
+                    if (testIds.AccuracyOfIrradiationTimeCBCT) {
+                        setHasTimer(true);
+                        setShowTimerModal(false);
+                    } else {
+                        // Check localStorage for saved choice
+                        const savedChoice = localStorage.getItem(`cbct_timer_choice_${serviceId}`);
+                        if (savedChoice !== null) {
+                            setHasTimer(JSON.parse(savedChoice));
+                            setShowTimerModal(false);
+                        } else {
+                            // Only show modal if no saved choice and no existing test
+                            setShowTimerModal(true);
+                        }
+                    }
+                } else {
+                    // No report header exists, check localStorage
+                    const savedChoice = localStorage.getItem(`cbct_timer_choice_${serviceId}`);
+                    if (savedChoice !== null) {
+                        setHasTimer(JSON.parse(savedChoice));
+                        setShowTimerModal(false);
+                    } else {
+                        // Show modal only if no saved choice
+                        setShowTimerModal(true);
+                    }
                 }
             } catch (err) {
                 console.log("No report header found or failed to load:", err);
+                // On error, check localStorage
+                const savedChoice = localStorage.getItem(`cbct_timer_choice_${serviceId}`);
+                if (savedChoice !== null) {
+                    setHasTimer(JSON.parse(savedChoice));
+                    setShowTimerModal(false);
+                } else {
+                    setShowTimerModal(true);
+                }
             }
         };
         loadReportHeader();
@@ -379,7 +426,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             </section>
 
             <Standards standards={tools} />
-            <Notes />
+            <Notes initialNotes={notes} onChange={setNotes} />
 
             {/* Save & View */}
             <div className="my-10 flex justify-end gap-6">
@@ -422,7 +469,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialCBCT: id }))}
                         /> 
                     },
-                    { title: "Total Filteration", component: <TotalFilteration /> },
+                    // { title: "Total Filteration", component: <TotalFilteration /> },
 
                     // Timer Test — Only if user said YES
                     ...(hasTimer === true

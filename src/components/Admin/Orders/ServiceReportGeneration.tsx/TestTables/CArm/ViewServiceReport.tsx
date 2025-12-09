@@ -8,6 +8,7 @@ import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import MainTestTableForCArm from "./MainTestTableForCArm";
 
 interface Tool {
   slNumber: string;
@@ -355,10 +356,20 @@ const ViewServiceReportCArm: React.FC = () => {
         </div>
 
         {/* PAGE BREAK */}
-        <div className="print:break-before-page"></div>
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
 
-        {/* PAGE 2+ - DETAILED TEST RESULTS */}
-        <div className="bg-white px-8 py-12 print:p-8">
+        {/* PAGE 2+ - SUMMARY TABLE */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
+          <div className="max-w-5xl mx-auto print:max-w-none">
+            <MainTestTableForCArm testData={testData} />
+          </div>
+        </div>
+
+        {/* PAGE BREAK */}
+        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
+
+        {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        <div className="bg-white px-8 py-12 print:p-8 test-section">
           <div className="max-w-5xl mx-auto print:max-w-none">
             <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
 
@@ -645,9 +656,17 @@ const ViewServiceReportCArm: React.FC = () => {
         @media print {
           body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           .print\\:break-before-page { page-break-before: always; }
+          .print\\:break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
+          .test-section { page-break-inside: avoid; break-inside: avoid; }
           @page { margin: 1cm; size: A4; }
-          table, tr, td, th { page-break-inside: avoid; }
-          h1,h2,h3,h4,h5,h6 { page-break-after: avoid; }
+          table, tr, td, th { 
+            page-break-inside: avoid; 
+            break-inside: avoid;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          thead { display: table-header-group; }
+          h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
         }
       `}</style>
     </>
