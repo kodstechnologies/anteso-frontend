@@ -57,6 +57,7 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
     'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
   ]);
 
+  const [ffd, setFfd] = useState<string>('');
   const [tolerance, setTolerance] = useState<Tolerance>({ operator: '<=', value: '5.0' });
   const [isEditing, setIsEditing] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -73,6 +74,16 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
           const testData = data.data;
           setTestId(testData._id);
           if (testData.outputRows && testData.outputRows.length > 0) {
+            // Determine the number of output columns from the first row
+            const firstRow = testData.outputRows[0];
+            const numOutputs = firstRow?.outputs?.length || 5;
+            
+            // Set output headers based on the number of outputs
+            if (numOutputs > 0) {
+              const headers = Array.from({ length: numOutputs }, (_, i) => `Meas ${i + 1}`);
+              setOutputHeaders(headers);
+            }
+            
             setOutputRows(testData.outputRows.map((r: any) => ({
               id: r.id || Date.now().toString() + Math.random(),
               kv: r.kv || '',
@@ -81,6 +92,9 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
               avg: r.avg || '',
               remark: r.remark || '',
             })));
+          }
+          if (testData.ffd) {
+            setFfd(testData.ffd);
           }
           if (testData.tolerance) {
             setTolerance(testData.tolerance);
@@ -105,6 +119,7 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
   // Auto calculate average, CV, and remark
   useEffect(() => {
     const toleranceValue = parseFloat(tolerance.value) || 5.0;
+    const operator = tolerance.operator || '<=';
 
     setOutputRows(prev =>
       prev.map(row => {
@@ -119,17 +134,40 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
         const avg = values.reduce((a, b) => a + b, 0) / values.length;
         const avgStr = avg.toFixed(3);
 
-        const variance = values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
+        // Calculate sample standard deviation (using n-1 for sample variance)
+        const n = values.length;
+        const variance = n > 1 
+          ? values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / (n - 1)
+          : 0;
         const stdDev = Math.sqrt(variance);
-        const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
-        const cvStr = cv.toFixed(2);
+        // Store CV as decimal (not percentage)
+        // CV = (Standard Deviation / Mean)
+        const cv = avg > 0 ? (stdDev / avg) : 0;
+        const cvStr = cv.toFixed(4);
 
-        const remark = cv <= toleranceValue ? 'Pass' : 'Fail';
+        // Compare CV (as decimal) with tolerance
+        // If tolerance >= 1, assume it's percentage and convert to decimal
+        // If tolerance < 1, assume it's already in decimal format
+        const toleranceDecimal = toleranceValue >= 1 ? toleranceValue / 100 : toleranceValue;
+        let isPass = false;
+        if (operator === '<') {
+          isPass = cv < toleranceDecimal;
+        } else if (operator === '>') {
+          isPass = cv > toleranceDecimal;
+        } else if (operator === '<=') {
+          isPass = cv <= toleranceDecimal;
+        } else if (operator === '>=') {
+          isPass = cv >= toleranceDecimal;
+        } else if (operator === '=') {
+          isPass = Math.abs(cv - toleranceDecimal) < 0.0001;
+        }
 
-        return { ...row, avg: avgStr, remark: `${cvStr}% → ${remark}` };
+        const remark = isPass ? 'Pass' : 'Fail';
+
+        return { ...row, avg: avgStr, remark: `${cvStr} → ${remark}` };
       })
     );
-  }, [outputRows.map(r => r.outputs.map(o => o.value).join()).join(), tolerance.value]);
+  }, [outputRows.map(r => r.outputs.map(o => o.value).join('|')).join('||'), tolerance.value, tolerance.operator]);
 
   // Column handlers
   const addOutputColumn = () => {
@@ -200,6 +238,7 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
     setIsSaving(true);
     try {
       const payload = {
+        ffd,
         outputRows: outputRows.map(r => ({
           kv: r.kv,
           mas: r.mas,
@@ -281,6 +320,21 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* FFD Input */}
+      <div className="bg-white shadow-md rounded-lg p-6 border border-gray-200">
+        <label className="block text-lg font-semibold text-gray-800 mb-3">
+          FFD (cm)
+        </label>
+        <input
+          type="text"
+          value={ffd}
+          onChange={e => setFfd(e.target.value)}
+          disabled={isViewMode}
+          className={`w-48 px-4 py-2 border-2 rounded-lg text-lg font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}`}
+          placeholder="Enter FFD in cm"
+        />
+      </div>
+
       {/* Table */}
       <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
         <h3 className="px-6 py-4 text-lg font-semibold bg-blue-50 text-blue-900 border-b">
@@ -304,7 +358,7 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
                   </div>
                 </th>
                 <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">Avg (X̄)</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">CV % / Remark</th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">CoV  / Remark</th>
                 <th rowSpan={2} className="w-10" />
               </tr>
               <tr>
@@ -315,8 +369,8 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
                         type="text"
                         value={h}
                         onChange={(e) => updateHeader(i, e.target.value)}
-                        readOnly={!isEditing}
-                        className="w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        disabled={isViewMode}
+                        className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                       />
                       {!isViewMode && outputColumnsCount > 3 && (
                         <button onClick={() => removeOutputColumn(i)} className="text-red-600">
@@ -351,14 +405,14 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
                       placeholder="100"
                     />
                   </td>
-                  {row.outputs.map((measurement, i) => (
+                  {outputHeaders.map((header, i) => (
                     <td key={i} className="px-2 py-2 border-r">
                       <input
                         type="text"
-                        value={measurement.value}
+                        value={row.outputs[i]?.value || ''}
                         onChange={e => updateCell(row.id, i, e.target.value)}
-                        readOnly={!isEditing}
-                        className="w-full px-3 py-2 text-center border rounded text-sm bg-white"
+                        disabled={isViewMode}
+                        className={`w-full px-3 py-2 text-center border rounded text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                         placeholder="0.00"
                       />
                     </td>
@@ -367,7 +421,7 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
                     {row.avg || '—'}
                   </td>
                   <td className="px-4 py-2 text-center">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${row.remark.includes('Pass') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${row.remark?.includes('Pass') ? 'bg-green-100 text-green-800' : row.remark?.includes('Fail') ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'}`}>
                       {row.remark || '—'}
                     </span>
                   </td>
@@ -396,19 +450,30 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
       {/* Tolerance */}
       <div className="bg-gradient-to-r from-blue-50 to-teal-50 border-2 border-blue-200 rounded-xl p-6 max-w-md">
         <label className="block text-lg font-semibold text-gray-800 mb-3">
-          Acceptance Criteria (CV {tolerance.operator} {tolerance.value}%)
+          Acceptance Criteria (CoV {tolerance.operator} {tolerance.value})
         </label>
         <div className="flex items-center gap-4">
           <span className="text-lg">CV</span>
-          <span className="text-3xl font-bold">{tolerance.operator}</span>
+          <select
+            value={tolerance.operator}
+            onChange={e => setTolerance(prev => ({ ...prev, operator: e.target.value as any }))}
+            disabled={isViewMode}
+            className={`text-2xl font-bold text-center border-4 border-blue-400 rounded-lg px-3 py-2 focus:ring-4 focus:ring-blue-300 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : 'bg-white cursor-pointer'}`}
+          >
+            <option value="<">&lt;</option>
+            <option value=">">&gt;</option>
+            <option value="<=">&lt;=</option>
+            <option value=">=">&gt;=</option>
+            <option value="=">=</option>
+          </select>
           <input
             type="text"
             value={tolerance.value}
             onChange={e => setTolerance(prev => ({ ...prev, value: e.target.value }))}
-            readOnly={!isEditing}
-            className="w-32 px-4 py-3 text-xl font-bold text-center border-4 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-300 bg-white"
+            disabled={isViewMode}
+            className={`w-32 px-4 py-3 text-xl font-bold text-center border-4 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-300 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
           />
-          <span className="text-lg">%</span>
+          {/* <span className="text-lg">%</span> */}
         </div>
         <p className="text-sm text-gray-600 mt-3">
           IEC 61223-3-1 & AERB: Coefficient of Variation should be {tolerance.operator} {tolerance.value}%

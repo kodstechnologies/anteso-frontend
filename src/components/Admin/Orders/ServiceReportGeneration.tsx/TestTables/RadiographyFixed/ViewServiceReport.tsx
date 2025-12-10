@@ -113,13 +113,14 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             humidity: data.humidity || "",
             toolsUsed: data.toolsUsed || [],
             notes: data.notes || defaultNotes,
-            category: data.category || "",
+            category: data.category || "N/A",
           });
 
           // Extract test data from populated response
           setTestData({
             accuracyOfIrradiationTime: data.AccuracyOfIrradiationTimeRadiographyFixed || null,
             accuracyOfOperatingPotential: data.accuracyOfOperatingPotentialRadigraphyFixed || null,
+            totalFilteration: data.TotalFilterationRadiographyFixed || null,
             centralBeamAlignment: data.CentralBeamAlignmentRadiographyFixed || null,
             congruence: data.CongruenceOfRadiationRadioGraphyFixed || null,
             effectiveFocalSpot: data.EffectiveFocalSpotRadiographyFixed || null,
@@ -426,32 +427,137 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
               </div>
             )}
 
+            {/* 2.5. Total Filtration */}
+            {testData.totalFilteration && (
+              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">2.5. Total Filtration</h3>
+                
+                {/* Accuracy of Operating Potential Table */}
+                {testData.totalFilteration.measurements?.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold mb-4">Accuracy of Operating Potential</h4>
+                    <div className="overflow-x-auto mb-6">
+                      <table className="w-full border-2 border-black text-sm">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black p-3">Applied kVp</th>
+                            {testData.totalFilteration.mAStations?.map((ma: string, idx: number) => (
+                              <th key={idx} className="border border-black p-3">{ma}</th>
+                            ))}
+                            <th className="border border-black p-3">Average kVp</th>
+                            <th className="border border-black p-3">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {testData.totalFilteration.measurements.map((row: any, i: number) => (
+                            <tr key={i} className="text-center">
+                              <td className="border p-3">{row.appliedKvp || "-"}</td>
+                              {testData.totalFilteration.mAStations?.map((_: string, idx: number) => (
+                                <td key={idx} className="border p-3">{row.measuredValues?.[idx] || "-"}</td>
+                              ))}
+                              <td className="border p-3 font-semibold">{row.averageKvp || "-"}</td>
+                              <td className="border p-3">
+                                <span className={row.remarks === "PASS" || row.remarks === "Pass" ? "text-green-600 font-semibold" : row.remarks === "FAIL" || row.remarks === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                  {row.remarks || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Tolerance */}
+                    {testData.totalFilteration.tolerance && (
+                      <div className="mb-6 bg-gray-50 p-4 rounded border">
+                        <p className="text-sm">
+                          <strong>Tolerance:</strong> {testData.totalFilteration.tolerance.sign || "±"} {testData.totalFilteration.tolerance.value || "-"}%
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Total Filtration Result */}
+                {testData.totalFilteration.totalFiltration && (
+                  <div className="bg-gray-50 p-6 rounded-lg border">
+                    <h4 className="text-lg font-semibold mb-4">Total Filtration</h4>
+                    <div className="space-y-2">
+                      <p className="text-base">
+                        <strong>Measured:</strong> {testData.totalFilteration.totalFiltration.measured || "-"} mm Al
+                      </p>
+                      <p className="text-base">
+                        <strong>Required:</strong> {testData.totalFilteration.totalFiltration.required || "-"} mm Al
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 3. Central Beam Alignment */}
             {testData.centralBeamAlignment && (
               <div className="mb-16 print:mb-12 print:break-inside-avoid">
                 <h3 className="text-xl font-bold mb-6">3. Central Beam Alignment</h3>
+                
+                {/* Operating parameters */}
                 {testData.centralBeamAlignment.techniqueFactors && (
-                  <div className="mb-6 bg-gray-50 p-4 rounded border">
-                    <p className="font-semibold mb-2">Technique Factors:</p>
-                    <div className="text-sm">
-                      FCD: {testData.centralBeamAlignment.techniqueFactors.fcd || "-"} cm | 
-                      kV: {testData.centralBeamAlignment.techniqueFactors.kv || "-"} | 
-                      mAs: {testData.centralBeamAlignment.techniqueFactors.mas || "-"}
+                  <div className="mb-6">
+                    <p className="font-semibold mb-2 text-sm">Operating parameters:</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-2 border-black text-sm mb-4">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black p-3">FFD (cm)</th>
+                            <th className="border border-black p-3">kV</th>
+                            <th className="border border-black p-3">mAs</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="text-center">
+                            <td className="border border-black p-3">{testData.centralBeamAlignment.techniqueFactors.fcd || "-"}</td>
+                            <td className="border border-black p-3">{testData.centralBeamAlignment.techniqueFactors.kv || "-"}</td>
+                            <td className="border border-black p-3">{testData.centralBeamAlignment.techniqueFactors.mas || "-"}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
-                {testData.centralBeamAlignment.observedTilt && (
-                  <div className="bg-gray-50 p-4 rounded border mb-4">
-                    <p className="text-sm">
-                      <strong>Observed Tilt:</strong> {testData.centralBeamAlignment.observedTilt.value || "-"} degrees
-                      {testData.centralBeamAlignment.observedTilt.remark && (
-                        <span className={`ml-2 ${testData.centralBeamAlignment.observedTilt.remark === "Pass" ? "text-green-600" : "text-red-600"}`}>
-                          ({testData.centralBeamAlignment.observedTilt.remark})
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                )}
+
+                {/* Central Beam Alignment Evaluation */}
+                <div className="mb-4">
+                  <p className="text-sm mb-3">
+                    Observe the images of the two steel balls on the radiograph and evaluate tilt in the central beam
+                  </p>
+                  {testData.centralBeamAlignment.observedTilt && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-2 border-black text-sm">
+                        <tbody>
+                          <tr>
+                            <td className="border border-black p-3 font-medium w-1/2">Observed tilt</td>
+                            <td className="border border-black p-3 text-center">
+                              {testData.centralBeamAlignment.observedTilt.value || "-"}
+                              {testData.centralBeamAlignment.observedTilt.remark && (
+                                <span className={`ml-2 ${testData.centralBeamAlignment.observedTilt.remark === "Pass" ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}`}>
+                                  {testData.centralBeamAlignment.observedTilt.remark}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="border border-black p-3 font-medium">Tolerance: Central Beam Alignment</td>
+                            <td className="border border-black p-3 text-center">
+                              {testData.centralBeamAlignment.tolerance && typeof testData.centralBeamAlignment.tolerance === 'object' 
+                                ? `${testData.centralBeamAlignment.tolerance.operator || "<"} ${testData.centralBeamAlignment.tolerance.value || "1.5"}°`
+                                : (testData.centralBeamAlignment.tolerance || "< 1.5°")}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -515,18 +621,34 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {testData.effectiveFocalSpot.focalSpots.map((spot: any, i: number) => (
-                          <tr key={i} className="text-center">
-                            <td className="border p-3">{spot.focusType || "-"}</td>
-                            <td className="border p-3">{spot.statedWidth || "-"} × {spot.statedHeight || "-"}</td>
-                            <td className="border p-3">{spot.measuredWidth || "-"} × {spot.measuredHeight || "-"}</td>
-                            <td className="border p-3">
-                              <span className={spot.remark === "Pass" ? "text-green-600" : spot.remark === "Fail" ? "text-red-600" : ""}>
-                                {spot.remark || "-"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {testData.effectiveFocalSpot.focalSpots.map((spot: any, i: number) => {
+                          // Format values to always show one decimal place (e.g., 1.0, 2.0)
+                          const formatValue = (val: any) => {
+                            if (val === undefined || val === null || val === "") return "-";
+                            const numVal = typeof val === 'number' ? val : parseFloat(val);
+                            if (isNaN(numVal)) return "-";
+                            // Always show one decimal place for consistency
+                            return numVal.toFixed(1);
+                          };
+                          
+                          const statedWidth = formatValue(spot.statedWidth);
+                          const statedHeight = formatValue(spot.statedHeight);
+                          const measuredWidth = formatValue(spot.measuredWidth);
+                          const measuredHeight = formatValue(spot.measuredHeight);
+                          
+                          return (
+                            <tr key={i} className="text-center">
+                              <td className="border p-3">{spot.focusType || "-"}</td>
+                              <td className="border p-3">{statedWidth} × {statedHeight}</td>
+                              <td className="border p-3">{measuredWidth} × {measuredHeight}</td>
+                              <td className="border p-3">
+                                <span className={spot.remark === "Pass" ? "text-green-600" : spot.remark === "Fail" ? "text-red-600" : ""}>
+                                  {spot.remark || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -668,27 +790,63 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <table className="w-full border-2 border-black text-sm">
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black p-3">Location</th>
-                          <th className="border border-black p-3">mR/h</th>
-                          <th className="border border-black p-3">mR/week</th>
-                          <th className="border border-black p-3">Result</th>
-                          <th className="border border-black p-3">Category</th>
+                          <th className="border border-black p-3">LOCATION</th>
+                          <th className="border border-black p-3">MAX. RADIATION LEVEL (MR/HR)</th>
+                          <th className="border border-black p-3">MR/WEEK</th>
+                          <th className="border border-black p-3">RESULT</th>
+                          <th className="w-32"></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {testData.radiationProtectionSurvey.locations.map((loc: any, i: number) => (
-                          <tr key={i} className="text-center">
-                            <td className="border p-3">{loc.location || "-"}</td>
-                            <td className="border p-3">{loc.mRPerHr || "-"}</td>
-                            <td className="border p-3">{loc.mRPerWeek || "-"}</td>
-                            <td className="border p-3">
-                              <span className={loc.result === "PASS" ? "text-green-600" : loc.result === "FAIL" ? "text-red-600" : ""}>
-                                {loc.result || "-"}
-                              </span>
-                            </td>
-                            <td className="border p-3">{loc.category || "-"}</td>
-                          </tr>
-                        ))}
+                        {(() => {
+                          const workerLocs = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.category === "worker");
+                          const publicLocs = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.category === "public");
+                          
+                          return (
+                            <>
+                              {/* Worker Rows */}
+                              {workerLocs.map((loc: any, i: number) => (
+                                <tr key={`worker-${i}`} className="text-center">
+                                  <td className="border p-3 text-left">{loc.location || "-"}</td>
+                                  <td className="border p-3">{loc.mRPerHr || "0.000"}</td>
+                                  <td className="border p-3">{loc.mRPerWeek || "—"}</td>
+                                  <td className="border p-3">
+                                    <span className={loc.result === "PASS" ? "text-green-600 font-bold" : loc.result === "FAIL" ? "text-red-600 font-bold" : ""}>
+                                      {loc.result || "—"}
+                                    </span>
+                                  </td>
+                                  {i === 0 && (
+                                    <td rowSpan={workerLocs.length} className="text-center align-middle border border-black">
+                                      <div className="text-sm font-bold tracking-wider">
+                                        FOR RADIATION WORKER
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              ))}
+                              {/* Public Rows */}
+                              {publicLocs.map((loc: any, i: number) => (
+                                <tr key={`public-${i}`} className="text-center">
+                                  <td className="border p-3 text-left">{loc.location || "-"}</td>
+                                  <td className="border p-3">{loc.mRPerHr || "0.000"}</td>
+                                  <td className="border p-3">{loc.mRPerWeek || "—"}</td>
+                                  <td className="border p-3">
+                                    <span className={loc.result === "PASS" ? "text-green-600 font-bold" : loc.result === "FAIL" ? "text-red-600 font-bold" : ""}>
+                                      {loc.result || "—"}
+                                    </span>
+                                  </td>
+                                  {i === 0 && (
+                                    <td rowSpan={publicLocs.length} className="text-center align-middle border border-black">
+                                      <div className="text-sm font-bold tracking-wider">
+                                        FOR PUBLIC
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              ))}
+                            </>
+                          );
+                        })()}
                       </tbody>
                     </table>
                   </div>

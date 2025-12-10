@@ -102,19 +102,21 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
 
   // 2. Linearity of Time
   if (testData.linearityOfTime?.table2 && Array.isArray(testData.linearityOfTime.table2)) {
-    const validRows = testData.linearityOfTime.table2.filter((row: any) => row.time || row.col);
+    const validRows = testData.linearityOfTime.table2.filter((row: any) => row.time);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfTime.tolerance || "0.1";
-      const testRows = validRows.map((row: any) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
-        return {
-          specified: row.time ? `${row.time} s` : "-",
-          measured: col,
-          tolerance: `≤ ${tolerance}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
+      // Get col and remarks from top level (not from rows)
+      const col = testData.linearityOfTime.col ? parseFloat(testData.linearityOfTime.col).toFixed(3) : "-";
+      const remarks = testData.linearityOfTime.remarks || "";
+      const isPass = remarks === "Pass" || remarks === "PASS" || (col !== "-" ? parseFloat(col) <= parseFloat(tolerance) : false);
+      
+      // Create a single row for Coefficient of Linearity (it's calculated from all rows, not per row)
+      const testRows = [{
+        specified: "-",
+        measured: col,
+        tolerance: `≤ ${tolerance}`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }];
       addRowsForTest("Linearity of Time (Coefficient of Linearity)", testRows);
     }
   }
@@ -126,23 +128,35 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const toleranceOperator = testData.reproducibilityOfRadiationOutput.tolerance?.operator || "<=";
       const toleranceValue = testData.reproducibilityOfRadiationOutput.tolerance?.value || "5.0";
       const testRows = validRows.map((row: any) => {
-        // Extract CV from remark if available (format: "CV: X.XX% Pass" or "CV: X.XX% Fail")
+        // Extract CV from remark (format: "X.XXXX → Pass" or "X.XXXX → Fail" - CV is stored as decimal)
         let cvValue = "-";
         let isPass = false;
         
         if (row.remark) {
-          const cvMatch = row.remark.match(/CV:\s*([\d.]+)%/i);
+          // Match format: "X.XXXX → Pass" or "X.XXXX → Fail" (CV is stored as decimal)
+          const cvMatch = row.remark.match(/^([\d.]+)\s*→/);
           if (cvMatch) {
-            cvValue = cvMatch[1];
-            const cv = parseFloat(cvValue);
-            const tol = parseFloat(toleranceValue);
+            const cvDecimal = parseFloat(cvMatch[1]);
+            // Display CV as decimal (not percentage)
+            cvValue = cvDecimal.toFixed(4);
             
-            if (toleranceOperator === "<=") {
-              isPass = cv <= tol;
+            // Convert tolerance to decimal for comparison
+            // If tolerance >= 1, assume it's percentage and convert to decimal
+            // If tolerance < 1, assume it's already in decimal format
+            const tol = parseFloat(toleranceValue);
+            const toleranceDecimal = tol >= 1 ? tol / 100 : tol;
+            
+            // Compare using the selected operator (both values in decimal)
+            if (toleranceOperator === "<") {
+              isPass = cvDecimal < toleranceDecimal;
+            } else if (toleranceOperator === ">") {
+              isPass = cvDecimal > toleranceDecimal;
+            } else if (toleranceOperator === "<=") {
+              isPass = cvDecimal <= toleranceDecimal;
             } else if (toleranceOperator === ">=") {
-              isPass = cv >= tol;
+              isPass = cvDecimal >= toleranceDecimal;
             } else if (toleranceOperator === "=") {
-              isPass = Math.abs(cv - tol) < 0.01;
+              isPass = Math.abs(cvDecimal - toleranceDecimal) < 0.0001;
             }
           }
           
@@ -156,8 +170,8 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
         
         return {
           specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "-",
-          measured: cvValue !== "-" ? `${cvValue}%` : "-",
-          tolerance: `${toleranceOperator} ${toleranceValue}%`,
+          measured: cvValue !== "-" ? cvValue : "-",
+          tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -195,8 +209,8 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
         SUMMARY OF QA TEST RESULTS
       </h2>
 
-      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-        <table className="w-full border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
+      <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
+        <table className="border-2 border-black text-xs print:text-[9px] print:min-w-full mx-auto" style={{ width: 'auto' }}>
           <thead className="bg-gray-200">
             <tr>
               <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center print:text-[9px]">Sr. No.</th>

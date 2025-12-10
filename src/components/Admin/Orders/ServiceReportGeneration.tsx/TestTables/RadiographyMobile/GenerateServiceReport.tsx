@@ -52,8 +52,8 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
   const [tools, setTools] = useState<Standard[]>([]);
-  const [showTimerModal, setShowTimerModal] = useState(true);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
+  const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
 
   const [formData, setFormData] = useState({
     customerName: "",
@@ -77,11 +77,38 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     engineerNameRPId: "",
     category: "",
   });
-  const [notes, setNotes] = useState<string[]>([]);
+  const defaultNotes = [
+    "The Test Report relates only to the above item only.",
+    "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
+    "Corrections/erasing invalidates the Test Report.",
+    "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
+    "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
+    "Results reported are valid at the time of and under the stated conditions of measurements.",
+    "Name, Address & Contact detail is provided by Customer.",
+  ];
+  const [notes, setNotes] = useState<string[]>(defaultNotes);
 
+  // Check localStorage for timer preference on mount
+  useEffect(() => {
+    if (serviceId) {
+      const stored = localStorage.getItem(`radiography-mobile-timer-${serviceId}`);
+      if (stored !== null) {
+        setHasTimer(stored === 'true');
+        setShowTimerModal(false);
+      } else {
+        setShowTimerModal(true);
+      }
+    }
+  }, [serviceId]);
+
+  // Close modal and set timer choice
   const handleTimerChoice = (choice: boolean) => {
     setHasTimer(choice);
     setShowTimerModal(false);
+    // Store in localStorage so it persists across refreshes
+    if (serviceId) {
+      localStorage.setItem(`radiography-mobile-timer-${serviceId}`, String(choice));
+    }
   };
 
   useEffect(() => {
@@ -176,10 +203,12 @@ const RadiographyMobile: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
           }));
 
-          // Load existing notes
+          // Load existing notes, or use default if none exist
           if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
             const notesTexts = res.data.notes.map((n: any) => n.text || n);
             setNotes(notesTexts);
+          } else {
+            setNotes(defaultNotes);
           }
         }
       } catch (err) {

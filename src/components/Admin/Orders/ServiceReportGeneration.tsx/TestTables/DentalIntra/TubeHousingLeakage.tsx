@@ -60,6 +60,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
   const [workload, setWorkload] = useState<string>('');
   const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
+  const [workloadInput, setWorkloadInput] = useState<string>(''); // Input value for max leakage calculation
   const [toleranceValue, setToleranceValue] = useState<string>('');
   const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
@@ -80,15 +81,21 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     });
   }, [leakageRows]);
 
-  // Max Leakage Calculation
+  // Max Leakage Calculation: Input value × max value / (60 × ma × time)
   const maxLeakageResult = useMemo(() => {
-    const workloadVal = parseFloat(workload) || 0;
-    const maxLeakage = Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0));
-    if (workloadVal > 0 && maxLeakage > 0) {
-      return ((workloadVal * maxLeakage) / (60 * 100)).toFixed(3);
+    const maVal = parseFloat(settings.ma) || 0;
+    const timeVal = parseFloat(settings.time) || 0;
+    const workloadInputVal = parseFloat(workloadInput) || 0;
+    
+    if (processedLeakage.length > 0 && workloadInputVal > 0 && maVal > 0 && timeVal > 0) {
+      const maxValue = Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0));
+      if (maxValue > 0) {
+        const result = (workloadInputVal * maxValue) / (60 * maVal * timeVal);
+        return result > 0 ? result.toFixed(3) : '';
+      }
     }
     return '';
-  }, [workload, processedLeakage]);
+  }, [workloadInput, processedLeakage, settings.ma, settings.time]);
 
   const finalLeakageRate = useMemo(() => {
     const result = parseFloat(maxLeakageResult) || 0;
@@ -178,6 +185,11 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
             setWorkloadUnit(testData.workload.unit || 'mA·min/week');
           }
           
+          // Load workloadInput for max leakage calculation
+          if (testData.workloadInput) {
+            setWorkloadInput(testData.workloadInput);
+          }
+          
           // Map tolerance (backend has {value, operator, time}) to separate state
           if (testData.tolerance) {
             setToleranceValue(testData.tolerance.value || '');
@@ -234,6 +246,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           value: workload,
           unit: workloadUnit,
         },
+        workloadInput: workloadInput,
         tolerance: {
           value: toleranceValue,
           operator: toleranceOperator,
@@ -377,6 +390,26 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         </div>
       </div>
 
+      {/* ==================== Workload Input for Max Leakage Calculation ==================== */}
+      <div className="bg-white shadow-md rounded-lg p-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Input Value for Max Leakage Calculation
+        </label>
+        <div className="flex items-center gap-2 max-w-xs">
+          <input
+            type="text"
+            value={workloadInput}
+            onChange={(e) => setWorkloadInput(e.target.value)}
+            disabled={isViewMode}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+            placeholder="Enter value"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          This value will be multiplied with max among rows and divided by (60 × mA × Time)
+        </p>
+      </div>
+
       {/* ==================== Table 2: 5 Directions + Top ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
@@ -475,23 +508,40 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       {/* ==================== Max Leakage Calculation ==================== */}
       <div className="bg-white shadow-md rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-3">Max Leakage Calculation</h3>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="font-medium">{workload || '—'}</span>
-          <span>×</span>
-          <span className="font-medium">
-            {Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0)).toFixed(3) || '—'}
-          </span>
-          <span>÷</span>
-          <span className="font-medium">60</span>
-          <span>×</span>
-          <span className="font-medium">100</span>
-          <span>=</span>
-          <input
-            type="text"
-            value={maxLeakageResult}
-            readOnly
-            className="w-24 px-2 py-1 bg-gray-100 text-sm font-medium text-center rounded"
-          />
+        <div className="space-y-2 text-sm">
+          {/* Input value × max value / (60 × ma × time) */}
+          {processedLeakage.length > 0 && workloadInput && settings.ma && settings.time && (
+            <div className="flex items-center gap-3">
+              <span className="text-gray-600">Input value × max value:</span>
+              <span className="font-medium">{workloadInput || '—'}</span>
+              <span>×</span>
+              <span className="font-medium">
+                {Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0)).toFixed(3) || '—'}
+              </span>
+              <span>÷</span>
+              <span className="font-medium">(60</span>
+              <span>×</span>
+              <span className="font-medium">{settings.ma || '—'}</span>
+              <span>×</span>
+              <span className="font-medium">{settings.time || '—'}</span>
+              <span className="font-medium">)</span>
+              <span>=</span>
+              <span className="font-medium">
+                {maxLeakageResult || '—'}
+              </span>
+            </div>
+          )}
+          
+          {/* Final result */}
+          <div className="flex items-center gap-3 pt-2 border-t">
+            <span className="font-semibold">Max Leakage Result:</span>
+            <input
+              type="text"
+              value={maxLeakageResult}
+              readOnly
+              className="w-24 px-2 py-1 bg-gray-100 text-sm font-medium text-center rounded"
+            />
+          </div>
         </div>
       </div>
 

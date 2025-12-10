@@ -252,6 +252,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
             { label: "Make", value: "" },
             { label: "Model", value: details.machineModel },
             { label: "Serial Number", value: details.serialNumber },
+            { label: "Category", value: "" },
             { label: "Condition of Test Item", value: "" },
             { label: "Testing Procedure Number", value: "" },
             { label: "No. of Pages", value: "" },

@@ -14,6 +14,7 @@ import AccuracyOfOperatingPotentialAndTime from "./AccuracyOfOperatingPotentialA
 import LinearityOfTime from "./LinearityOfTime";
 import ReproducibilityOfRadiationOutput from "./ReproducibilityOfRadiationOutput";
 import TubeHousingLeakage from "./TubeHousingLeakage";
+import RadiationLeakageLevel from "./RadiationLeakageLevel";
 
 
 export interface Standard {
@@ -100,7 +101,16 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
         engineerNameRPId: "",
         category: "",
     });
-    const [notes, setNotes] = useState<string[]>([]);
+    const defaultNotes = [
+      "The Test Report relates only to the above item only.",
+      "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
+      "Corrections/erasing invalidates the Test Report.",
+      "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
+      "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
+      "Results reported are valid at the time of and under the stated conditions of measurements.",
+      "Name, Address & Contact detail is provided by Customer.",
+    ];
+    const [notes, setNotes] = useState<string[]>(defaultNotes);
 
     useEffect(() => {
         if (!serviceId) return;
@@ -209,10 +219,12 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
                     }));
 
-                    // Load existing notes
+                    // Load existing notes, or use default if none exist
                     if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
                         const notesTexts = res.data.notes.map((n: any) => n.text || n);
                         setNotes(notesTexts);
+                    } else {
+                        setNotes(defaultNotes);
                     }
 
                     // Save test IDs
@@ -221,6 +233,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         LinearityOfTimeDentalIntra: res.data.LinearityOfTimeDentalIntra?._id || res.data.LinearityOfTimeDentalIntra,
                         ReproducibilityOfRadiationOutputDentalIntra: res.data.ReproducibilityOfRadiationOutputDentalIntra?._id || res.data.ReproducibilityOfRadiationOutputDentalIntra,
                         TubeHousingLeakageDentalIntra: res.data.TubeHousingLeakageDentalIntra?._id || res.data.TubeHousingLeakageDentalIntra,
+                        RadiationLeakageTestDentalIntra: res.data.RadiationLeakageTestDentalIntra?._id || res.data.RadiationLeakageTestDentalIntra,
                     });
                 }
             } catch (err) {
@@ -487,6 +500,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                     { title: "Linearity Of Time", component: <LinearityOfTime serviceId={serviceId} /> },
                     { title: "Reproducibility Of Radiation Output", component: <ReproducibilityOfRadiationOutput serviceId={serviceId} /> },
                     { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
+                    // { title: "Radiation Leakage Level", component: <RadiationLeakageLevel serviceId={serviceId} /> },
 
 
 

@@ -17,11 +17,13 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
       tolerance: string;
       remarks: "Pass" | "Fail";
     }>,
-    toleranceRowSpan: boolean = false
+    toleranceRowSpan: boolean = false,
+    measuredRowSpan: boolean = false
   ) => {
     if (testRows.length === 0) return;
     
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
+    const sharedMeasured = measuredRowSpan ? testRows[0]?.measured : null;
     
     testRows.forEach((testRow, idx) => {
       rows.push({
@@ -29,7 +31,9 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
         parameter: idx === 0 ? parameter : null,
         rowSpan: idx === 0 ? testRows.length : 0,
         specified: testRow.specified,
-        measured: testRow.measured,
+        measured: measuredRowSpan ? (idx === 0 ? sharedMeasured : null) : testRow.measured,
+        measuredRowSpan: measuredRowSpan ? (idx === 0 ? testRows.length : 0) : 0,
+        hasMeasuredRowSpan: measuredRowSpan,
         tolerance: toleranceRowSpan ? (idx === 0 ? sharedTolerance : null) : testRow.tolerance,
         toleranceRowSpan: toleranceRowSpan ? (idx === 0 ? testRows.length : 0) : 0,
         hasToleranceRowSpan: toleranceRowSpan,
@@ -108,15 +112,96 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
     }
   }
 
+  // 2.5. Total Filtration - Accuracy of Operating Potential
+  if (testData.totalFilteration?.measurements && Array.isArray(testData.totalFilteration.measurements)) {
+    const validRows = testData.totalFilteration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
+    if (validRows.length > 0) {
+      const toleranceSign = testData.totalFilteration.tolerance?.sign || "±";
+      const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
+      const testRows = validRows.map((row: any) => {
+        let isPass = false;
+        if (row.remarks === "PASS" || row.remarks === "Pass") {
+          isPass = true;
+        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
+          isPass = false;
+        } else {
+          const appliedKvp = parseFloat(row.appliedKvp);
+          const avgKvp = parseFloat(row.averageKvp);
+          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
+            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
+            const tol = parseFloat(toleranceValue);
+            isPass = deviation <= tol;
+          }
+        }
+        return {
+          specified: row.appliedKvp || "-",
+          measured: row.averageKvp || "-",
+          tolerance: `${toleranceSign}${toleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Operating Potential (Total Filtration)", testRows);
+    }
+  }
+
+  // 2.6. Total Filtration Result
+  if (testData.totalFilteration?.totalFiltration) {
+    const measured = testData.totalFilteration.totalFiltration.measured || "-";
+    const required = testData.totalFilteration.totalFiltration.required || "-";
+    const measuredVal = parseFloat(measured);
+    const requiredVal = parseFloat(required);
+    const isPass = !isNaN(measuredVal) && !isNaN(requiredVal) && measuredVal >= requiredVal;
+    
+    // Build tolerance string - show all ranges as per standard
+    const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+    
+    addRowsForTest("Total Filtration", [{
+      specified: required !== "-" ? `${required} mm Al` : "-",
+      measured: measured !== "-" ? `${measured} mm Al` : "-",
+      tolerance: toleranceStr,
+      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+    }]);
+  }
+
   // 3. Central Beam Alignment
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const isPass = testData.centralBeamAlignment.observedTilt.remark === "Pass" || 
-                   (tiltValue !== "-" && parseFloat(tiltValue) <= 5);
+    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
+    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "5";
+    
+    // Determine pass/fail based on tolerance
+    let isPass = false;
+    if (testData.centralBeamAlignment.observedTilt.remark === "Pass" || testData.centralBeamAlignment.observedTilt.remark === "PASS") {
+      isPass = true;
+    } else if (testData.centralBeamAlignment.observedTilt.remark === "Fail" || testData.centralBeamAlignment.observedTilt.remark === "FAIL") {
+      isPass = false;
+    } else if (tiltValue !== "-") {
+      const observed = parseFloat(tiltValue);
+      const tol = parseFloat(toleranceValue);
+      if (!isNaN(observed) && !isNaN(tol)) {
+        if (toleranceOperator === "<") {
+          isPass = observed < tol;
+        } else if (toleranceOperator === ">") {
+          isPass = observed > tol;
+        } else if (toleranceOperator === "<=") {
+          isPass = observed <= tol;
+        } else if (toleranceOperator === ">=") {
+          isPass = observed >= tol;
+        } else if (toleranceOperator === "=") {
+          isPass = Math.abs(observed - tol) < 0.01;
+        }
+      }
+    }
+    
+    // Format specified value (use tolerance value as specified)
+    const specifiedValue = `${toleranceOperator} ${toleranceValue} degrees`;
+    // Format tolerance display
+    const toleranceDisplay = `${toleranceOperator} ${toleranceValue} degrees`;
+    
     addRowsForTest("Central Beam Alignment", [{
-      specified: "≤ 5 degrees",
+      specified: specifiedValue,
       measured: tiltValue !== "-" ? `${tiltValue} degrees` : "-",
-      tolerance: "≤ 5 degrees",
+      tolerance: toleranceDisplay,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -144,35 +229,90 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
     const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
     if (validRows.length > 0) {
+      // Format values to always show one decimal place (e.g., 1.0, 2.0)
+      const formatValue = (val: any) => {
+        if (val === undefined || val === null || val === "") return null;
+        const numVal = typeof val === 'number' ? val : parseFloat(val);
+        if (isNaN(numVal)) return null;
+        return numVal.toFixed(1);
+      };
+      
+      const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
+      
+      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 ≤ F ≤ 1.5 MM, +0.3 F FOR F > 1.5 MM
+      const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
+      const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
+      const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
+      const mediumLower = parseFloat(toleranceCriteria.medium?.lowerLimit || "0.8");
+      const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
+      const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
+      
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} MM; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} MM; +${largeMultiplier} F FOR F > ${mediumUpper} MM`;
+      
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
+        
+        const statedWidth = formatValue(spot.statedWidth);
+        const statedHeight = formatValue(spot.statedHeight);
+        const measuredWidth = formatValue(spot.measuredWidth);
+        const measuredHeight = formatValue(spot.measuredHeight);
+        
         return {
-          specified: spot.statedWidth && spot.statedHeight ? `${spot.statedWidth} × ${spot.statedHeight} mm` : "-",
-          measured: spot.measuredWidth && spot.measuredHeight ? `${spot.measuredWidth} × ${spot.measuredHeight} mm` : "-",
-          tolerance: "As per standard",
+          specified: statedWidth !== null && statedHeight !== null ? `${statedWidth} × ${statedHeight} mm` : "-",
+          measured: measuredWidth !== null && measuredHeight !== null ? `${measuredWidth} × ${measuredHeight} mm` : "-",
+          tolerance: toleranceStr,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Effective Focal Spot Size", testRows);
+      addRowsForTest("Effective Focal Spot Size", testRows, true); // Use toleranceRowSpan since all rows share the same tolerance
     }
   }
 
   // 6. Linearity of mAs Loading
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
-    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.col);
+    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
+      const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "<=";
+      // COL is stored at the top level, not per row
+      const colValue = testData.linearityOfMasLoading.col;
+      const col = colValue !== undefined && colValue !== null && colValue !== "" && colValue !== "—" 
+        ? parseFloat(String(colValue)).toFixed(3) 
+        : "-";
+      
+      // Calculate pass/fail based on COL value vs tolerance
+      let isPass = false;
+      if (testData.linearityOfMasLoading.remarks === "Pass" || testData.linearityOfMasLoading.remarks === "PASS") {
+        isPass = true;
+      } else if (testData.linearityOfMasLoading.remarks === "Fail" || testData.linearityOfMasLoading.remarks === "FAIL") {
+        isPass = false;
+      } else if (col !== "-") {
+        const colVal = parseFloat(col);
+        const tol = parseFloat(tolerance);
+        if (!isNaN(colVal) && !isNaN(tol)) {
+          if (toleranceOperator === "<") {
+            isPass = colVal < tol;
+          } else if (toleranceOperator === ">") {
+            isPass = colVal > tol;
+          } else if (toleranceOperator === "<=") {
+            isPass = colVal <= tol;
+          } else if (toleranceOperator === ">=") {
+            isPass = colVal >= tol;
+          } else if (toleranceOperator === "=") {
+            isPass = Math.abs(colVal - tol) < 0.0001;
+          }
+        }
+      }
+      
       const testRows = validRows.map((row: any) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
         return {
           specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
           measured: col,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Linearity of mAs Loading (Coefficient of Linearity)", testRows);
+      addRowsForTest("Linearity of mA/mAs Loading (Coefficient of Linearity)", testRows, false, true);
     }
   }
 
@@ -183,25 +323,26 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
       const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
       const toleranceValue = testData.outputConsistency.tolerance?.value || "5.0";
       const testRows = validRows.map((row: any) => {
-        // Extract CV from remark if available
+        // Use CV value directly from row.cv
         let cvValue = row.cv || "-";
         let isPass = false;
         
-        if (row.remark) {
-          const cvMatch = row.remark.match(/CV:\s*([\d.]+)%/i);
-          if (cvMatch) {
-            cvValue = cvMatch[1];
-          }
+        // Check if remark indicates pass/fail
+        if (row.remark === "Pass" || row.remark === "PASS") {
+          isPass = true;
+        } else if (row.remark === "Fail" || row.remark === "FAIL") {
+          isPass = false;
+        } else if (cvValue !== "-") {
+          // Calculate pass/fail based on CV vs tolerance
+          const cv = parseFloat(String(cvValue));
+          const tol = parseFloat(toleranceValue);
           
-          if (row.remark.includes("Pass") || row.remark.includes("PASS")) {
-            isPass = true;
-          } else if (row.remark.includes("Fail") || row.remark.includes("FAIL")) {
-            isPass = false;
-          } else if (cvValue !== "-") {
-            const cv = parseFloat(cvValue);
-            const tol = parseFloat(toleranceValue);
-            
-            if (toleranceOperator === "<=") {
+          if (!isNaN(cv) && !isNaN(tol)) {
+            if (toleranceOperator === "<") {
+              isPass = cv < tol;
+            } else if (toleranceOperator === ">") {
+              isPass = cv > tol;
+            } else if (toleranceOperator === "<=") {
               isPass = cv <= tol;
             } else if (toleranceOperator === ">=") {
               isPass = cv >= tol;
@@ -211,9 +352,14 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
           }
         }
         
+        // Format CV value for display
+        const formattedCv = cvValue !== "-" && cvValue !== undefined && cvValue !== null && cvValue !== ""
+          ? (typeof cvValue === 'number' ? cvValue.toFixed(2) : parseFloat(String(cvValue)).toFixed(2)) + "%"
+          : "-";
+        
         return {
           specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "Varies",
-          measured: cvValue !== "-" ? `${cvValue}%` : "-",
+          measured: formattedCv,
           tolerance: `${toleranceOperator} ${toleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -222,25 +368,76 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
     }
   }
 
-  // 8. Radiation Leakage Level
+  // 8. Tube Housing Leakage (Radiation Leakage Level)
   if (testData.radiationLeakageLevel?.leakageMeasurements && Array.isArray(testData.radiationLeakageLevel.leakageMeasurements)) {
-    const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter((row: any) => row.location || row.front || row.back);
+    const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter((row: any) => row.location && (row.max || row.result || row.front || row.back));
     if (validRows.length > 0) {
       const toleranceValue = testData.radiationLeakageLevel.toleranceValue || "1";
+      const toleranceTime = testData.radiationLeakageLevel.toleranceTime || "1";
+      const toleranceUnit = testData.radiationLeakageLevel.leakageMeasurements[0]?.unit || "mGy/h";
+      
       const testRows = validRows.map((row: any) => {
-        // Find max value from all directions
-        const values = [row.front, row.back, row.left, row.right, row.top].map(v => parseFloat(v) || 0);
-        const max = Math.max(...values);
-        const maxStr = max > 0 ? max.toFixed(2) : "-";
-        const isPass = maxStr !== "-" && parseFloat(maxStr) < parseFloat(toleranceValue);
+        // Use the result field if available (calculated mR/week), otherwise use max (mR/h)
+        let measuredValue = "-";
+        let isPass = false;
+        
+        if (row.result) {
+          // result is in mR/week, convert to mGy/h if needed
+          const resultValue = parseFloat(row.result);
+          if (!isNaN(resultValue)) {
+            if (toleranceUnit === "mGy/h") {
+              measuredValue = `${(resultValue / 114).toFixed(4)} mGy/h`;
+              isPass = (resultValue / 114) < parseFloat(toleranceValue);
+            } else {
+              measuredValue = `${resultValue.toFixed(4)} ${toleranceUnit}`;
+              isPass = resultValue < parseFloat(toleranceValue);
+            }
+          }
+        } else if (row.max) {
+          // Use max value (mR/h)
+          const maxValue = parseFloat(row.max);
+          if (!isNaN(maxValue) && maxValue > 0) {
+            if (toleranceUnit === "mGy/h") {
+              measuredValue = `${(maxValue / 114).toFixed(4)} mGy/h`;
+              isPass = (maxValue / 114) < parseFloat(toleranceValue);
+            } else {
+              measuredValue = `${maxValue.toFixed(2)} ${toleranceUnit}`;
+              isPass = maxValue < parseFloat(toleranceValue);
+            }
+          }
+        } else {
+          // Fallback: calculate max from all directions
+          const values = [row.front, row.back, row.left, row.right, row.top].map(v => parseFloat(v) || 0).filter(v => v > 0);
+          if (values.length > 0) {
+            const max = Math.max(...values);
+            if (toleranceUnit === "mGy/h") {
+              measuredValue = `${(max / 114).toFixed(4)} mGy/h`;
+              isPass = (max / 114) < parseFloat(toleranceValue);
+            } else {
+              measuredValue = `${max.toFixed(2)} ${toleranceUnit}`;
+              isPass = max < parseFloat(toleranceValue);
+            }
+          }
+        }
+        
+        // Check if there's a remark field that indicates pass/fail
+        if (row.remark || testData.radiationLeakageLevel.remark) {
+          const remark = row.remark || testData.radiationLeakageLevel.remark;
+          if (remark === "PASS" || remark === "Pass") {
+            isPass = true;
+          } else if (remark === "FAIL" || remark === "Fail") {
+            isPass = false;
+          }
+        }
+        
         return {
           specified: row.location || "-",
-          measured: maxStr !== "-" ? `${maxStr} mGy/h` : "-",
-          tolerance: `≤ ${toleranceValue} mGy/h`,
+          measured: measuredValue,
+          tolerance: `≤ ${toleranceValue} ${toleranceUnit}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation Leakage Level", testRows);
+      addRowsForTest("Tube Housing Leakage", testRows);
     }
   }
 
@@ -273,8 +470,8 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
         SUMMARY OF QA TEST RESULTS
       </h2>
 
-      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-        <table className="w-full border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
+      <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
+        <table className="border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
           <thead className="bg-gray-200">
             <tr>
               <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center print:text-[9px]">Sr. No.</th>
@@ -291,6 +488,10 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
                 (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) || 
                 (row.hasToleranceRowSpan && row.isFirstRow);
               
+              const shouldRenderMeasured = 
+                (!row.hasMeasuredRowSpan && row.measuredRowSpan === 0) || 
+                (row.hasMeasuredRowSpan && row.isFirstRow);
+              
               return (
                 <tr key={index}>
                   {row.isFirstRow && (
@@ -303,8 +504,15 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
                       {row.parameter}
                     </td>
                   )}
-                  <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.specified}</td>
-                  <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.measured}</td>
+                  <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
+                  {shouldRenderMeasured && (
+                    <td 
+                      {...(row.measuredRowSpan > 0 ? { rowSpan: row.measuredRowSpan } : {})}
+                      className="border border-black px-4 py-3 text-center font-semibold"
+                    >
+                      {row.measured}
+                    </td>
+                  )}
                   {shouldRenderTolerance && (
                     <td 
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}

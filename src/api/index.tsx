@@ -6422,6 +6422,104 @@ export const updateRadiationLeakageLevelForCBCT = async (testId: string, payload
     return res.data;
 };
 
+// DentalIntra - Radiation Leakage Level
+export const addRadiationLeakageLevelForDentalIntra = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-intra/radiation-leakage-level/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationLeakageLevelByServiceIdForDentalIntra = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-intra/radiation-leakage-level-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationLeakageLevelByTestIdForDentalIntra = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-intra/radiation-leakage-level/${testId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateRadiationLeakageLevelForDentalIntra = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-intra/radiation-leakage-level/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// DentalHandHeld - Radiation Leakage Level
+export const addRadiationLeakageLevelForDentalHandHeld = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-hand-held/radiation-leakage-level/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationLeakageLevelByServiceIdForDentalHandHeld = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-hand-held/radiation-leakage-level-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationLeakageLevelByTestIdForDentalHandHeld = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-hand-held/radiation-leakage-level/${testId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateRadiationLeakageLevelForDentalHandHeld = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-hand-held/radiation-leakage-level/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 // Radiation Protection Survey - CBCT
 export const addRadiationProtectionSurveyForCBCT = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
@@ -7245,6 +7343,50 @@ export const updateAccuracyOfOperatingPotentialForRadiographyFixed = async (test
     const token = Cookies.get("accessToken");
     const res = await api.put(
         `/service-report/radiography-fixed/accuracy-of-operating-potential/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Total Filtration - Radiography Fixed
+export const addTotalFiltrationForRadiographyFixed = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/radiography-fixed/total-filtration/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getTotalFiltrationByServiceIdForRadiographyFixed = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/radiography-fixed/total-filtration-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return { success: true, data: null };
+        throw error;
+    }
+};
+
+export const getTotalFiltrationByTestIdForRadiographyFixed = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/radiography-fixed/total-filtration/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateTotalFiltrationForRadiographyFixed = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/radiography-fixed/total-filtration/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );

@@ -50,6 +50,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   const addMeasColumn = () => {
     setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
@@ -114,16 +115,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                 id: Date.now().toString() + Math.random(),
                 mAsRange: r.mAsApplied || r.mAsRange || '',
                 measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
-                average: r.average || '',
-                x: r.x || '',
-                xMax: r.xMax || '',
-                xMin: r.xMin || '',
-                col: r.col || '',
-                remarks: r.remarks || '',
+                // Don't load average and x - they will be recalculated by processedTable2
               }))
             );
           }
           setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -151,7 +148,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
     try {
       const payload = {
         table1: [exposureCondition],
-        table2: processedTable2.map(r => ({
+        table2: processedTable2.rows.map(r => ({
           mAsApplied: r.mAsRange,
           measuredOutputs: r.measuredOutputs.map(v => {
             const val = v.trim();
@@ -159,13 +156,14 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           }),
           average: r.average || '',
           x: r.x || '',
-          xMax: r.xMax || '',
-          xMin: r.xMin || '',
-          col: r.col || '',
-          remarks: r.remarks || '',
         })),
         measHeaders,
         tolerance,
+        toleranceOperator,
+        xMax: processedTable2.summary.xMax,
+        xMin: processedTable2.summary.xMin,
+        col: processedTable2.summary.col,
+        remarks: processedTable2.summary.remarks,
       };
 
       let result;
@@ -234,18 +232,45 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
     const hasData = xValues.length > 0;
     const xMax = hasData ? Math.max(...xValues).toFixed(4) : '—';
     const xMin = hasData ? Math.min(...xValues).toFixed(4) : '—';
-    const colNum = hasData
+    
+    // Calculate COL: |xMax - xMin| / (xMax + xMin)
+    const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : 0;
-    const col = hasData ? colNum.toFixed(3) : '—';
-    const pass = hasData && colNum <= tol;
+    const col = hasData && colNum > 0 ? colNum.toFixed(3) : '—';
+    
+    // Determine pass/fail based on tolerance operator
+    let pass = false;
+    if (hasData && col !== '—') {
+      const colVal = parseFloat(col);
+      switch (toleranceOperator) {
+        case '<':
+          pass = colVal < tol;
+          break;
+        case '>':
+          pass = colVal > tol;
+          break;
+        case '<=':
+          pass = colVal <= tol;
+          break;
+        case '>=':
+          pass = colVal >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colVal - tol) < 0.0001; // Allow small floating point differences
+          break;
+        default:
+          pass = colVal <= tol;
+      }
+    }
 
-    return rowsWithX.map(row => ({
-      ...row,
-      col,
-      remarks: hasData ? (pass ? 'Pass' : 'Fail') : '—',
-    }));
-  }, [table2Rows, tolerance]);
+    const remarks = hasData && col !== '—' ? (pass ? 'Pass' : 'Fail') : '—';
+
+    return {
+      rows: rowsWithX,
+      summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
+    };
+  }, [table2Rows, tolerance, toleranceOperator]);
 
   if (isLoading) {
     return (
@@ -344,6 +369,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                 </th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">Avg Output</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X (mGy/mAs)</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X MAX</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X MIN</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">CoL</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Remarks</th>
                 <th rowSpan={2} className="w-12"></th>
@@ -377,7 +404,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {processedTable2.map(p => (
+              {processedTable2.rows.map((p, index) => (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 border-r">
                     <input
@@ -405,15 +432,27 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                   ))}
                   <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.average}</td>
                   <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.x}</td>
-                  <td className="px-6 py-4 text-center font-bold border-r bg-yellow-50">{p.col}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${p.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
-                        p.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-600'
-                      }`}>
-                      {p.remarks}
-                    </span>
-                  </td>
+                  {index === 0 && (
+                    <>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">
+                        {processedTable2.summary.xMax}
+                      </td>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">
+                        {processedTable2.summary.xMin}
+                      </td>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">
+                        {processedTable2.summary.col}
+                      </td>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center align-middle">
+                        <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${processedTable2.summary.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
+                            processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-600'
+                          }`}>
+                          {processedTable2.summary.remarks || '—'}
+                        </span>
+                      </td>
+                    </>
+                  )}
                   <td className="px-3 py-4 text-center">
                     {table2Rows.length > 1 && !isViewMode && (
                       <button onClick={() => removeTable2Row(p.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
@@ -434,7 +473,20 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
             </button>
           )}
           <div className="flex items-center gap-3 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) ≤</span>
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2.5 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                }`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"

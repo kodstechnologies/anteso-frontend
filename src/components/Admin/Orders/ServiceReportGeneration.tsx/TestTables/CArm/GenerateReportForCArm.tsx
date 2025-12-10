@@ -82,8 +82,8 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
   const [tools, setTools] = useState<Standard[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showTimerModal, setShowTimerModal] = useState(false);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
+  const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -99,6 +99,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
     make: "",
     model: "",
     slNumber: "",
+    category: "",
     condition: "OK",
     testingProcedureNumber: "",
     pages: "",
@@ -134,6 +135,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
           make: "",
           model: detRes.data.machineModel,
           slNumber: detRes.data.serialNumber,
+          category: "",
           condition: "OK",
           testingProcedureNumber: "",
           pages: "",
@@ -171,6 +173,17 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
     fetchAll();
   }, [serviceId]);
 
+  // Check localStorage for timer preference on mount
+  useEffect(() => {
+    if (serviceId) {
+      const stored = localStorage.getItem(`carm_timer_choice_${serviceId}`);
+      if (stored !== null) {
+        setHasTimer(JSON.parse(stored));
+        setShowTimerModal(false);
+      }
+    }
+  }, [serviceId]);
+
   useEffect(() => {
     const loadReportHeader = async () => {
       if (!serviceId) return;
@@ -189,6 +202,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
             make: res.data.make || prev.make,
             model: res.data.model || prev.model,
             slNumber: res.data.slNumber || prev.slNumber,
+            category: res.data.category || prev.category,
             condition: res.data.condition || prev.condition,
             testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
             testDate: res.data.testDate || prev.testDate,
@@ -465,6 +479,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
             { label: "Make", name: "make", value: formData.make, readOnly: false },
             { label: "Model", name: "model", value: formData.model, readOnly: true },
             { label: "Serial Number", name: "slNumber", value: formData.slNumber, readOnly: true },
+            { label: "Category", name: "category", value: formData.category, readOnly: false },
             { label: "Condition of Test Item", name: "condition", value: formData.condition, readOnly: false },
             { label: "Testing Procedure Number", name: "testingProcedureNumber", value: formData.testingProcedureNumber, readOnly: false },
             { label: "No. of Pages", name: "pages", value: formData.pages, readOnly: false },

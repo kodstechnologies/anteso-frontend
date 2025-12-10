@@ -77,7 +77,16 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
         engineerNameRPId: "",
         category: "",
     });
-    const [notes, setNotes] = useState<string[]>([]);
+    const defaultNotes = [
+      "The Test Report relates only to the above item only.",
+      "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
+      "Corrections/erasing invalidates the Test Report.",
+      "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
+      "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
+      "Results reported are valid at the time of and under the stated conditions of measurements.",
+      "Name, Address & Contact detail is provided by Customer.",
+    ];
+    const [notes, setNotes] = useState<string[]>(defaultNotes);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -163,10 +172,12 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                             engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
                         }));
 
-                        // Load existing notes
+                        // Load existing notes, or use default if none exist
                         if (reportData.notes && Array.isArray(reportData.notes) && reportData.notes.length > 0) {
                             const notesTexts = reportData.notes.map((n: any) => n.text || n);
                             setNotes(notesTexts);
+                        } else {
+                            setNotes(defaultNotes);
                         }
                     }
                 } catch (reportErr) {
@@ -297,6 +308,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                         { label: "Make", name: "make" },
                         { label: "Model", name: "model", readOnly: true },
                         { label: "Serial Number", name: "slNumber", readOnly: true },
+                        { label: "Category", name: "category" },
                         { label: "Condition", name: "condition" },
                         { label: "Testing Procedure No.", name: "testingProcedureNumber" },
                         { label: "No. of Pages", name: "pages" },

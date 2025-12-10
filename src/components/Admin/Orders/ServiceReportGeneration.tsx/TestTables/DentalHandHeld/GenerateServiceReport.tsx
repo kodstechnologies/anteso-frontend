@@ -14,6 +14,7 @@ import AccuracyOfOperatingPotentialAndTime from "./AccuracyOfOperatingPotentialA
 import LinearityOfTime from "./LinearityOfTime";
 import ReproducibilityOfRadiationOutput from "./ReproducibilityOfRadiationOutput";
 import TubeHousingLeakage from "./TubeHousingLeakage";
+import RadiationLeakageLevel from "./RadiationLeakageLevel";
 
 
 export interface Standard {
@@ -89,6 +90,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
         make: "",
         model: "",
         slNumber: "",
+        category: "",
         condition: "OK",
         testingProcedureNumber: "",
         pages: "",
@@ -127,6 +129,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
                     make: "",
                     model: data.machineModel,
                     slNumber: data.serialNumber,
+                    category: "",
                     condition: "OK",
                     testingProcedureNumber: "",
                     pages: "",
@@ -195,6 +198,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
                         make: res.data.make || prev.make,
                         model: res.data.model || prev.model,
                         slNumber: res.data.slNumber || prev.slNumber,
+                        category: res.data.category || prev.category,
                         condition: res.data.condition || prev.condition,
                         testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
                         testDate: res.data.testDate || prev.testDate,
@@ -211,6 +215,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
                         LinearityOfTimeDentalHandHeld: res.data.LinearityOfTimeDentalHandHeld?._id || res.data.LinearityOfTimeDentalHandHeld,
                         ReproducibilityOfRadiationOutputDentalHandHeld: res.data.ReproducibilityOfRadiationOutputDentalHandHeld?._id || res.data.ReproducibilityOfRadiationOutputDentalHandHeld,
                         TubeHousingLeakageDentalHandHeld: res.data.TubeHousingLeakageDentalHandHeld?._id || res.data.TubeHousingLeakageDentalHandHeld,
+                        RadiationLeakageTestDentalHandHeld: res.data.RadiationLeakageTestDentalHandHeld?._id || res.data.RadiationLeakageTestDentalHandHeld,
                     });
                 }
             } catch (err) {
@@ -404,6 +409,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
                         { label: "Make", name: "make" },
                         { label: "Model", name: "model", readOnly: true },
                         { label: "Serial Number", name: "slNumber", readOnly: true },
+                        { label: "Category", name: "category" },
                         { label: "Condition of Test Item", name: "condition" },
                         { label: "Testing Procedure Number", name: "testingProcedureNumber" },
                         { label: "No. of Pages", name: "pages" },
@@ -473,6 +479,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
                     { title: "Linearity Of Time", component: <LinearityOfTime serviceId={serviceId} /> },
                     { title: "Reproducibility Of Radiation Output", component: <ReproducibilityOfRadiationOutput serviceId={serviceId} /> },
                     { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
+                    // { title: "Radiation Leakage Level", component: <RadiationLeakageLevel serviceId={serviceId} /> },
                 ].map((item, idx) => (
                     <Disclosure key={idx} defaultOpen={idx === 0}>
                         {({ open }) => (
