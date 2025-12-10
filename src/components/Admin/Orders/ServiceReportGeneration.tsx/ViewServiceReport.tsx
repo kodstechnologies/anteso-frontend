@@ -17,8 +17,7 @@ import logo from "../../../../assets/logo/logo-sm.png";
 import logoA from "../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../assets/quotationImg/signature.png";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { generatePDF } from "../../../../utils/generatePDF";
 
 interface Tool {
   slNumber: string;
@@ -162,65 +161,15 @@ const ViewServiceReport: React.FC = () => {
   };
 
   const downloadPDF = async () => {
-    const element = document.getElementById('report-content');
-    if (!element) return;
-
     try {
-      const originalButton = document.querySelector('.download-pdf-btn') as HTMLButtonElement;
-      if (originalButton) {
-        originalButton.textContent = 'Generating PDF...';
-        originalButton.disabled = true;
-      }
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.getElementById('report-content');
-          if (clonedElement) {
-            clonedElement.style.width = '100%';
-            clonedElement.style.maxWidth = 'none';
-          }
-        }
+      await generatePDF({
+        elementId: 'report-content',
+        filename: `Test-Report-${report?.testReportNumber || 'report'}.pdf`,
+        buttonSelector: '.download-pdf-btn',
       });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`Test-Report-${report?.testReportNumber || 'report'}.pdf`);
-
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
-    } finally {
-      const originalButton = document.querySelector('.download-pdf-btn') as HTMLButtonElement;
-      if (originalButton) {
-        originalButton.textContent = 'Download PDF';
-        originalButton.disabled = false;
-      }
     }
   };
 
@@ -265,10 +214,19 @@ const ViewServiceReport: React.FC = () => {
       </div>
 
       {/* Main Report Content */}
-      <div id="report-content" className="bg-white">
+      <div 
+        id="report-content" 
+        className="bg-white"
+        style={{
+          width: '100%',
+          maxWidth: '210mm',
+          margin: '0 auto',
+          breakInside: 'avoid'
+        }}
+      >
         {/* PAGE 1 - MAIN REPORT */}
-        <div className="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0 print:px-0">
-          <div className="max-w-5xl mx-auto bg-white shadow-2xl print:shadow-none border print:border-0 p-10 print:p-8 print:max-w-none print:mx-0">
+        <div className="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0 print:px-0" style={{ pageBreakAfter: 'always' }}>
+          <div className="max-w-5xl mx-auto bg-white shadow-2xl print:shadow-none border print:border-0 p-10 print:p-8 print:max-w-none print:mx-0" style={{ width: '100%', maxWidth: 'none' }}>
 
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
@@ -348,8 +306,8 @@ const ViewServiceReport: React.FC = () => {
             {/* Tools Used */}
             <section className="mb-8">
               <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
-              <div className="overflow-x-auto print:overflow-visible">
-                <table className="w-full border-2 border-gray-600 text-xs print:text-xxs print:min-w-full">
+              <div className="overflow-x-auto print:overflow-visible" style={{ overflowX: 'visible' }}>
+                <table className="w-full border-2 border-gray-600 text-xs print:text-xxs" style={{ tableLayout: 'fixed', width: '100%', maxWidth: '100%' }}>
                   <thead className="bg-gray-200">
                     <tr>
                       <th className="border p-2">Sl No.</th>
@@ -411,8 +369,8 @@ const ViewServiceReport: React.FC = () => {
         <div className="print:break-before-page"></div>
 
         {/* PAGE 2+ - ALL TEST RESULTS */}
-        <div className="bg-white px-8 py-12 print:p-8 print:px-4">
-          <div className="max-w-5xl mx-auto print:max-w-none print:mx-0">
+        <div className="bg-white px-8 py-12 print:p-8 print:px-4" style={{ pageBreakAfter: 'always' }}>
+          <div className="max-w-5xl mx-auto print:max-w-none print:mx-0" style={{ width: '100%', maxWidth: 'none' }}>
             <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
 
             {testsLoading ? (
@@ -1032,7 +990,7 @@ const ViewServiceReport: React.FC = () => {
 
         {/* MAIN SUMMARY TABLE */}
         <div className="px-8 py-12 print:p-8 print:px-4">
-          <div className="max-w-5xl mx-auto print:max-w-none print:mx-0">
+          <div className="max-w-5xl mx-auto print:max-w-none print:mx-0" style={{ width: '100%', maxWidth: 'none' }}>
             <MainTestTableForCTScan testData={testData} />
           </div>
         </div>

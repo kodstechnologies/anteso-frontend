@@ -258,8 +258,8 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
   }
 
   return (
-    <div className="mt-20 print:mt-12">
-      <h2 className="text-2xl font-bold text-center underline mb-8 print:mb-6">
+    <div className="mt-4 print:mt-4">
+      <h2 className="text-2xl font-bold text-center underline mb-4 print:mb-4">
         SUMMARY OF QA TEST RESULTS
       </h2>
 
@@ -282,28 +282,28 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
                 (row.hasToleranceRowSpan && row.isFirstRow);
               
               return (
-                <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                <tr key={index}>
                   {row.isFirstRow && (
-                    <td rowSpan={row.rowSpan} className="border border-black px-3 py-3 text-center font-bold">
+                    <td rowSpan={row.rowSpan} className="border border-black px-3 py-3 text-center font-bold bg-transparent print:bg-transparent">
                       {row.srNo}
                     </td>
                   )}
                   {row.isFirstRow && (
-                    <td rowSpan={row.rowSpan} className="border border-black px-4 py-3 text-left font-medium leading-tight">
+                    <td rowSpan={row.rowSpan} className="border border-black px-4 py-3 text-left font-medium leading-tight bg-transparent print:bg-transparent">
                       {row.parameter}
                     </td>
                   )}
-                  <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
-                  <td className="border border-black px-4 py-3 text-center font-semibold">{row.measured}</td>
+                  <td className="border border-black px-4 py-3 text-center bg-transparent print:bg-transparent">{row.specified}</td>
+                  <td className="border border-black px-4 py-3 text-center font-semibold bg-transparent print:bg-transparent">{row.measured}</td>
                   {shouldRenderTolerance && (
                     <td 
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
-                      className="border border-black px-4 py-3 text-center text-xs leading-tight"
+                      className="border border-black px-4 py-3 text-center text-xs leading-tight bg-transparent print:bg-transparent"
                     >
                       {row.tolerance}
                     </td>
                   )}
-                  <td className="border border-black px-4 py-3 text-center">
+                  <td className="border border-black px-4 py-3 text-center bg-transparent print:bg-transparent">
                     <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${
                       row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                     }`}>

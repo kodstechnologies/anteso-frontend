@@ -139,33 +139,101 @@ const ViewServiceReportLeadApron: React.FC = () => {
     }
 
     try {
+      // Wait a bit to ensure DOM is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5, // Reduced from 3 to 1.5 - still good quality but much smaller file size
         useCORS: true,
         logging: false,
-      });
-      const imgData = canvas.toDataURL("image/png");
+        backgroundColor: '#ffffff',
+        allowTaint: false,
+        removeContainer: true,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.getElementById("report-content");
+          if (clonedElement) {
+            // Remove all padding and margins from parent containers
+            clonedElement.style.width = '210mm';
+            clonedElement.style.maxWidth = 'none';
+            clonedElement.style.margin = '0';
+            clonedElement.style.padding = '20px';
+            
+            // Fix nested containers
+            const nestedContainers = clonedElement.querySelectorAll('div');
+            nestedContainers.forEach((div: HTMLElement) => {
+              // Remove max-width constraints that cause issues
+              if (div.style.maxWidth || div.classList.contains('max-w-5xl') || div.classList.contains('max-w-7xl')) {
+                div.style.maxWidth = 'none';
+                div.style.width = '100%';
+              }
+              // Remove excessive padding that causes misalignment
+              if (div.classList.contains('p-8') || div.classList.contains('p-10')) {
+                div.style.padding = '20px';
+              }
+            });
 
+            // Fix tables - prevent breaks and ensure proper alignment
+            const tables = clonedElement.querySelectorAll('table');
+            tables.forEach((table) => {
+              (table as HTMLElement).style.breakInside = 'avoid';
+              (table as HTMLElement).style.width = '100%';
+              (table as HTMLElement).style.borderCollapse = 'collapse';
+              (table as HTMLElement).style.tableLayout = 'auto';
+              
+              // Ensure table cells don't break and align properly
+              const cells = table.querySelectorAll('td, th');
+              cells.forEach((cell) => {
+                (cell as HTMLElement).style.breakInside = 'avoid';
+                (cell as HTMLElement).style.wordWrap = 'break-word';
+                (cell as HTMLElement).style.overflowWrap = 'break-word';
+                (cell as HTMLElement).style.verticalAlign = 'top';
+              });
+            });
+
+            // Fix sections to prevent breaks
+            const sections = clonedElement.querySelectorAll('section, div.mb-6, div.mb-8');
+            sections.forEach((section) => {
+              (section as HTMLElement).style.breakInside = 'avoid';
+            });
+
+            // Hide print buttons and other UI elements
+            const buttons = clonedElement.querySelectorAll('button, .print\\:hidden');
+            buttons.forEach((btn) => {
+              (btn as HTMLElement).style.display = 'none';
+            });
+          }
+        }
+      });
+
+      // Convert to JPEG with compression for much smaller file size
+      const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG at 85% quality - good balance
       const pdf = new jsPDF("p", "mm", "a4");
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
       let heightLeft = imgHeight;
       let position = 0;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      // Add first page
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
 
+      // Add additional pages if needed
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
       }
 
       pdf.save(`Lead_Apron_Report_${report?.testReportNumber || "Report"}.pdf`);
     } catch (error) {
       console.error("PDF generation error:", error);
+      alert("Failed to generate PDF. Please try again.");
     } finally {
       if (originalButton) {
         originalButton.disabled = false;
@@ -221,7 +289,13 @@ const ViewServiceReportLeadApron: React.FC = () => {
       </div>
 
       {/* Main Report Content */}
-      <div id="report-content" className="bg-white p-8 max-w-7xl mx-auto">
+      <div 
+        id="report-content" 
+        className="bg-white p-8 max-w-7xl mx-auto"
+        style={{
+          breakInside: 'avoid'
+        }}
+      >
         {/* Header */}
         <div className="flex justify-between items-start mb-8 border-b-2 pb-4">
           <div>

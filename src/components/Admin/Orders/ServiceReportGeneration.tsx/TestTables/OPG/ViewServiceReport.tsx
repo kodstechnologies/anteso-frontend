@@ -228,38 +228,98 @@ const ViewServiceReportOPG: React.FC = () => {
     const element = document.getElementById("report-content");
     if (!element) return;
 
-    try {
-      const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
-      if (btn) {
-        btn.textContent = "Generating PDF...";
-        btn.disabled = true;
-      }
+    const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
+    if (btn) {
+      btn.textContent = "Generating PDF...";
+      btn.disabled = true;
+    }
 
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false });
-      const imgData = canvas.toDataURL("image/png");
+    try {
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const canvas = await html2canvas(element, {
+        scale: 1.5, // Reduced from 3 to 1.5 - still good quality but much smaller file size
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        allowTaint: false,
+        removeContainer: true,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.getElementById("report-content");
+          if (clonedElement) {
+            clonedElement.style.width = '210mm';
+            clonedElement.style.maxWidth = 'none';
+            clonedElement.style.margin = '0';
+            clonedElement.style.padding = '20px';
+            
+            const nestedContainers = clonedElement.querySelectorAll('div');
+            nestedContainers.forEach((div: HTMLElement) => {
+              if (div.style.maxWidth || div.classList.contains('max-w-5xl') || div.classList.contains('max-w-7xl')) {
+                div.style.maxWidth = 'none';
+                div.style.width = '100%';
+              }
+              if (div.classList.contains('p-8') || div.classList.contains('p-10')) {
+                div.style.padding = '20px';
+              }
+            });
+
+            const tables = clonedElement.querySelectorAll('table');
+            tables.forEach((table: HTMLElement) => {
+              table.style.breakInside = 'avoid';
+              table.style.width = '100%';
+              table.style.borderCollapse = 'collapse';
+              table.style.tableLayout = 'auto';
+              
+              const cells = table.querySelectorAll('td, th');
+              cells.forEach((cell: HTMLElement) => {
+                cell.style.breakInside = 'avoid';
+                cell.style.wordWrap = 'break-word';
+                cell.style.overflowWrap = 'break-word';
+                cell.style.verticalAlign = 'top';
+              });
+            });
+
+            const sections = clonedElement.querySelectorAll('section, div.mb-6, div.mb-8');
+            sections.forEach((section: HTMLElement) => {
+              section.style.breakInside = 'avoid';
+            });
+
+            const buttons = clonedElement.querySelectorAll('button, .print\\:hidden');
+            buttons.forEach((btn) => {
+              (btn as HTMLElement).style.display = 'none';
+            });
+          }
+        }
+      });
+
+      // Convert to JPEG with compression for much smaller file size
+      const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG at 85% quality - good balance
       const pdf = new jsPDF("p", "mm", "a4");
-      const imgWidth = 210;
-      const pageHeight = 295;
-      let imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
       let heightLeft = imgHeight;
       let position = 0;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
 
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
       }
 
       pdf.save(`OPG-Report-${report?.testReportNumber || "report"}.pdf`);
     } catch (error) {
       console.error("PDF Error:", error);
-      alert("Failed to generate PDF");
+      alert("Failed to generate PDF. Please try again.");
     } finally {
-      const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
       if (btn) {
         btn.textContent = "Download PDF";
         btn.disabled = false;

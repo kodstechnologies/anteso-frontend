@@ -39,8 +39,8 @@ const InvoiceDealer = () => {
         const opt: any = {
             margin: 0.2,
             filename: `Invoice_${invoice.invoiceId}.pdf`,
-            image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { scale: 2 },
+            image: { type: "jpeg", quality: 0.85 }, // Reduced from 0.98 to 0.85 for smaller file size
+            html2canvas: { scale: 1.5 }, // Reduced from 2 to 1.5 for smaller file size
             jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
         };
         html2pdf().set(opt).from(element).save();
@@ -56,8 +56,8 @@ const InvoiceDealer = () => {
             const opt: any = {
                 margin: 0.2,
                 filename: `Invoice_${invoice.invoiceId}.pdf`,
-                image: { type: "jpeg", quality: 0.98 },
-                html2canvas: { scale: 2 },
+                image: { type: "jpeg", quality: 0.85 }, // Reduced from 0.98 to 0.85 for smaller file size
+                html2canvas: { scale: 1.5 }, // Reduced from 2 to 1.5 for smaller file size
                 jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
             };
 

@@ -269,58 +269,98 @@ const ViewServiceReportOBI: React.FC = () => {
     const element = document.getElementById("report-content");
     if (!element) return;
 
+    const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
+    if (btn) {
+      btn.textContent = "Generating PDF...";
+      btn.disabled = true;
+    }
+
     try {
-      const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
-      if (btn) {
-        btn.textContent = "Generating PDF...";
-        btn.disabled = true;
-      }
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Set element width to fit PDF page
-      const contentWidth = 210; // A4 width in mm
-      const contentWidthPx = (contentWidth * 96) / 25.4; // Convert mm to px
-      const originalMaxWidth = element.style.maxWidth;
-      const originalWidth = element.style.width;
-      element.style.maxWidth = `${contentWidthPx}px`;
-      element.style.width = 'auto';
-
-      const canvas = await html2canvas(element, { 
-        scale: 2, 
-        useCORS: true, 
+      const canvas = await html2canvas(element, {
+        scale: 1.5, // Reduced from 3 to 1.5 - still good quality but much smaller file size
+        useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
-      });
-      
-      // Restore original styles
-      element.style.maxWidth = originalMaxWidth;
-      element.style.width = originalWidth;
+        backgroundColor: '#ffffff',
+        allowTaint: false,
+        removeContainer: true,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.getElementById("report-content");
+          if (clonedElement) {
+            clonedElement.style.width = '210mm';
+            clonedElement.style.maxWidth = 'none';
+            clonedElement.style.margin = '0';
+            clonedElement.style.padding = '20px';
+            
+            const nestedContainers = clonedElement.querySelectorAll('div');
+            nestedContainers.forEach((div: HTMLElement) => {
+              if (div.style.maxWidth || div.classList.contains('max-w-5xl') || div.classList.contains('max-w-7xl')) {
+                div.style.maxWidth = 'none';
+                div.style.width = '100%';
+              }
+              if (div.classList.contains('p-8') || div.classList.contains('p-10')) {
+                div.style.padding = '20px';
+              }
+            });
 
-      const imgData = canvas.toDataURL("image/png");
+            const tables = clonedElement.querySelectorAll('table');
+            tables.forEach((table) => {
+              (table as HTMLElement).style.breakInside = 'avoid';
+              (table as HTMLElement).style.width = '100%';
+              (table as HTMLElement).style.borderCollapse = 'collapse';
+              (table as HTMLElement).style.tableLayout = 'auto';
+              
+              const cells = table.querySelectorAll('td, th');
+              cells.forEach((cell) => {
+                (cell as HTMLElement).style.breakInside = 'avoid';
+                (cell as HTMLElement).style.wordWrap = 'break-word';
+                (cell as HTMLElement).style.overflowWrap = 'break-word';
+                (cell as HTMLElement).style.verticalAlign = 'top';
+              });
+            });
+
+            const sections = clonedElement.querySelectorAll('section, div.mb-6, div.mb-8');
+            sections.forEach((section) => {
+              (section as HTMLElement).style.breakInside = 'avoid';
+            });
+
+            const buttons = clonedElement.querySelectorAll('button, .print\\:hidden');
+            buttons.forEach((btn) => {
+              (btn as HTMLElement).style.display = 'none';
+            });
+          }
+        }
+      });
+
+      // Convert to JPEG with compression for much smaller file size
+      const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG at 85% quality - good balance
       const pdf = new jsPDF("p", "mm", "a4");
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
       let heightLeft = imgHeight;
       let position = 0;
 
-      // Add first page
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
 
-      // Split into pages
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
       }
 
       pdf.save(`OBI-Report-${report?.testReportNumber || "report"}.pdf`);
     } catch (error) {
       console.error("PDF Error:", error);
-      alert("Failed to generate PDF");
+      alert("Failed to generate PDF. Please try again.");
     } finally {
-      const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
       if (btn) {
         btn.textContent = "Download PDF";
         btn.disabled = false;

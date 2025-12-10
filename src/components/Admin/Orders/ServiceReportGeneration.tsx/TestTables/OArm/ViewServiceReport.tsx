@@ -151,23 +151,30 @@ const ViewServiceReportOArm: React.FC = () => {
         btn.disabled = true;
       }
 
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false });
-      const imgData = canvas.toDataURL("image/png");
+      const canvas = await html2canvas(element, { 
+        scale: 1.5, // Optimized for smaller file size
+        useCORS: true, 
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      // Convert to JPEG with compression for much smaller file size
+      const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG at 85% quality - good balance
       const pdf = new jsPDF("p", "mm", "a4");
-      const imgWidth = 210;
-      const pageHeight = 295;
-      let imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
 
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
       }
 
       pdf.save(`OArm-Report-${report?.testReportNumber || "report"}.pdf`);

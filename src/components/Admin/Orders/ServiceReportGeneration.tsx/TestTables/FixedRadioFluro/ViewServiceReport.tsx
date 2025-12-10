@@ -8,8 +8,7 @@ import logo from "../../../../../../assets/logo/logo-sm.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { generatePDF } from "../../../../../../utils/generatePDF";
 
 interface Tool {
   slNumber: string;
@@ -130,45 +129,15 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
 
   const downloadPDF = async () => {
-    const element = document.getElementById("report-content");
-    if (!element) return;
-
     try {
-      const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
-      if (btn) {
-        btn.textContent = "Generating PDF...";
-        btn.disabled = true;
-      }
-
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const imgWidth = 210;
-      const pageHeight = 295;
-      let imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`FixedRadioFluro-Report-${report?.testReportNumber || "report"}.pdf`);
+      await generatePDF({
+        elementId: "report-content",
+        filename: `FixedRadioFluro-Report-${report?.testReportNumber || "report"}.pdf`,
+        buttonSelector: ".download-pdf-btn",
+      });
     } catch (error) {
       console.error("PDF Error:", error);
-      alert("Failed to generate PDF");
-    } finally {
-      const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
-      if (btn) {
-        btn.textContent = "Download PDF";
-        btn.disabled = false;
-      }
+      alert("Failed to generate PDF. Please try again.");
     }
   };
 
@@ -218,12 +187,11 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
           }
         }
       `}</style>
-      <div id="report-content" className="bg-white">
+      <div id="report-content">
         {/* PAGE 1 - MAIN REPORT */}
-        <div className="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0">
-          <div className="max-w-5xl mx-auto bg-white shadow-2xl print:shadow-none border print:border-0 p-10 print:p-8">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-8">
+        <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
+          {/* Header */}
+          <div className="flex justify-between items-center mb-4">
               <img src={logoA} alt="NABL" className="h-28" />
               <div className="text-right">
                 <table className="text-xs border border-gray-600">
@@ -237,39 +205,39 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
               <img src={logo} alt="Logo" className="h-28" />
             </div>
 
-            <div className="text-center mb-6">
-              <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
-              <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
+          <div className="text-center mb-4">
+            <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
+            <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
+          </div>
+
+          <h1 className="text-center text-2xl font-bold underline mb-4">
+            QA TEST REPORT FOR FIXED RADIOGRAPHY & FLUOROSCOPY EQUIPMENT
+          </h1>
+          <p className="text-center italic text-sm mb-6">
+            (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
+          </p>
+
+          {/* Customer & Reference */}
+          <section className="mb-4">
+            <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
+            <div className="border-2 border-gray-600 p-5 text-lg">
+              <p><strong>Customer:</strong> {report.customerName}</p>
+              <p><strong>Address:</strong> {report.address}</p>
             </div>
+          </section>
 
-            <h1 className="text-center text-2xl font-bold underline mb-4">
-              QA TEST REPORT FOR FIXED RADIOGRAPHY & FLUOROSCOPY EQUIPMENT
-            </h1>
-            <p className="text-center italic text-sm mb-10">
-              (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
-            </p>
+          <section className="mb-4">
+            <h2 className="font-bold text-lg mb-3">2. Reference</h2>
+            <table className="w-full border-2 border-gray-600 text-sm">
+              <tbody>
+                <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
+                <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+              </tbody>
+            </table>
+          </section>
 
-            {/* Customer & Reference */}
-            <section className="mb-8">
-              <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
-              <div className="border-2 border-gray-600 p-5 text-lg">
-                <p><strong>Customer:</strong> {report.customerName}</p>
-                <p><strong>Address:</strong> {report.address}</p>
-              </div>
-            </section>
-
-            <section className="mb-8">
-              <h2 className="font-bold text-lg mb-3">2. Reference</h2>
-              <table className="w-full border-2 border-gray-600 text-sm">
-                <tbody>
-                  <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
-                  <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
-                </tbody>
-              </table>
-            </section>
-
-            {/* Equipment Details */}
-            <section className="mb-8">
+          {/* Equipment Details */}
+          <section className="mb-4">
               <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
               <table className="w-full border-2 border-gray-600 text-sm">
                 <tbody>
@@ -297,74 +265,70 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
               </table>
             </section>
 
-            {/* Tools Used */}
-            <section className="mb-8">
-              <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full border-2 border-gray-600 text-xs">
-                  <thead className="bg-gray-200">
-                    <tr>
-                      <th className="border p-2">Sl No.</th>
-                      <th className="border p-2">Nomenclature</th>
-                      <th className="border p-2">Make / Model</th>
-                      <th className="border p-2">Sr. No.</th>
-                      <th className="border p-2">Range</th>
-                      <th className="border p-2">Certificate No.</th>
-                      <th className="border p-2">Valid Till</th>
+          {/* Tools Used */}
+          <section className="mb-4">
+            <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
+            <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+              <table className="w-full border-2 border-gray-600 text-xs" style={{ tableLayout: 'fixed', width: '100%' }}>
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="border p-2" style={{ width: '6%' }}>Sl No.</th>
+                    <th className="border p-2" style={{ width: '16%' }}>Nomenclature</th>
+                    <th className="border p-2" style={{ width: '14%' }}>Make / Model</th>
+                    <th className="border p-2" style={{ width: '14%' }}>Sr. No.</th>
+                    <th className="border p-2" style={{ width: '14%' }}>Range</th>
+                    <th className="border p-2" style={{ width: '18%' }}>Certificate No.</th>
+                    <th className="border p-2" style={{ width: '18%' }}>Valid Till</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
+                    <tr key={i}>
+                      <td className="border p-2 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{i + 1}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.nomenclature}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.make} / {tool.model}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.SrNo}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.range}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.calibrationCertificateNo}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
-                      <tr key={i}>
-                        <td className="border p-2 text-center">{i + 1}</td>
-                        <td className="border p-2">{tool.nomenclature}</td>
-                        <td className="border p-2">{tool.make} / {tool.model}</td>
-                        <td className="border p-2">{tool.SrNo}</td>
-                        <td className="border p-2">{tool.range}</td>
-                        <td className="border p-2">{tool.calibrationCertificateNo}</td>
-                        <td className="border p-2">{formatDate(tool.calibrationValidTill)}</td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={7} className="text-center py-4">No tools recorded</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* Notes */}
-            <section className="mb-12">
-              <h2 className="font-bold text-lg mb-3">5. Notes</h2>
-              <div className="ml-8 text-sm">
-                {notesArray.map(n => (
-                  <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
-                ))}
-              </div>
-            </section>
-
-            {/* Signature */}
-            <div className="flex justify-between items-end mt-20">
-              <img src={AntesoQRCode} alt="QR" className="h-24" />
-              <div className="text-center">
-                <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
-                <p className="font-bold">Authorized Signatory</p>
-              </div>
+                  )) : (
+                    <tr><td colSpan={7} className="text-center py-4">No tools recorded</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+          </section>
 
-            <footer className="text-center text-xs text-gray-600 mt-12">
-              <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-              <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
-              <p>Email: info@antesobiomedicalengg.com</p>
-            </footer>
+          {/* Notes */}
+          <section className="mb-6">
+            <h2 className="font-bold text-lg mb-3">5. Notes</h2>
+            <div className="ml-8 text-sm">
+              {notesArray.map(n => (
+                <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
+              ))}
+            </div>
+          </section>
+
+          {/* Signature */}
+          <div className="flex justify-between items-end mt-8">
+            <img src={AntesoQRCode} alt="QR" className="h-24" />
+            <div className="text-center">
+              <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
+              <p className="font-bold">Authorized Signatory</p>
+            </div>
           </div>
+
+          <footer className="text-center text-xs text-gray-600 mt-6">
+            <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
+            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+            <p>Email: info@antesobiomedicalengg.com</p>
+          </footer>
         </div>
 
-        {/* PAGE BREAK */}
-        <div className="print:break-before-page print:break-inside-avoid test-section"></div>
-
         {/* PAGE 2+ - SUMMARY TABLE */}
-        <div className="bg-white px-8 py-12 print:p-8 test-section">
-          <div className="max-w-5xl mx-auto print:max-w-none">
+        <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section" style={{ pageBreakAfter: 'always' }}>
+          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
             <MainTestTableForFixedRadioFluro testData={testData} />
           </div>
         </div>
@@ -373,13 +337,13 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
         <div className="print:break-before-page print:break-inside-avoid test-section"></div>
 
         {/* PAGE 3+ - DETAILED TEST RESULTS */}
-        <div className="bg-white px-8 py-12 print:p-8 test-section">
-          <div className="max-w-5xl mx-auto print:max-w-none">
-            <h2 className="text-3xl font-bold text-center underline mb-16">DETAILED TEST RESULTS</h2>
+        <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section">
+          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+            <h2 className="text-3xl font-bold text-center underline mb-6 print:mb-4">DETAILED TEST RESULTS</h2>
 
             {/* 1. Accuracy of Operating Potential */}
             {testData.accuracyOfOperatingPotential?.table2?.length > 0 && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">1. Accuracy of Operating Potential (kVp)</h3>
 
                 {/* Test Conditions */}
@@ -430,7 +394,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 2. Output Consistency */}
             {testData.outputConsistency && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">2. Output Consistency</h3>
                 {testData.outputConsistency.outputRows && Array.isArray(testData.outputConsistency.outputRows) && testData.outputConsistency.outputRows.length > 0 ? (
                   <div className="overflow-x-auto print:overflow-visible print:max-w-none">
@@ -498,7 +462,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 3. Low Contrast Resolution */}
             {testData.lowContrastResolution && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">3. Low Contrast Resolution</h3>
                 <div className="overflow-x-auto print:overflow-visible print:max-w-none">
                   <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
@@ -529,7 +493,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 4. High Contrast Resolution */}
             {testData.highContrastResolution && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">4. High Contrast Resolution</h3>
                 <div className="overflow-x-auto print:overflow-visible print:max-w-none">
                   <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
@@ -560,7 +524,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 5. Exposure Rate at Table Top */}
             {testData.exposureRate && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">5. Exposure Rate at Table Top</h3>
                 <div className="overflow-x-auto print:overflow-visible print:max-w-none">
                   <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
@@ -591,7 +555,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 6. Tube Housing Leakage */}
             {testData.tubeHousingLeakage && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">6. Radiation Leakage from Tube Housing</h3>
                 <div className="overflow-x-auto print:overflow-visible print:max-w-none">
                   <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
@@ -622,7 +586,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 7. Linearity of mAs Loading */}
             {testData.linearityOfmAsLoading && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">7. Linearity of mAs Loading</h3>
                 {testData.linearityOfmAsLoading.table2 && Array.isArray(testData.linearityOfmAsLoading.table2) && testData.linearityOfmAsLoading.table2.length > 0 ? (
                   <div className="overflow-x-auto print:overflow-visible print:max-w-none">
@@ -688,7 +652,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 8. Accuracy of Irradiation Time */}
             {testData.accuracyOfIrradiationTime && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">8. Accuracy of Irradiation Time</h3>
                 {testData.accuracyOfIrradiationTime.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes) && testData.accuracyOfIrradiationTime.irradiationTimes.length > 0 ? (
                   <div className="overflow-x-auto print:overflow-visible print:max-w-none">
@@ -772,7 +736,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 9. Congruence of Radiation Field */}
             {testData.congruenceOfRadiation && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">9. Congruence of Radiation and Light Field</h3>
                 <div className="overflow-x-auto print:overflow-visible print:max-w-none">
                   <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
@@ -803,7 +767,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
             {/* 10. Central Beam Alignment */}
             {testData.centralBeamAlignment && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">10. Central Beam Alignment</h3>
                 <div className="overflow-x-auto print:overflow-visible print:max-w-none">
                   <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
