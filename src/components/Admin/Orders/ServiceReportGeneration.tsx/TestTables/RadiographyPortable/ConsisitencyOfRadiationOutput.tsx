@@ -184,6 +184,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     );
     setIsSaved(false);
   };
+  
 
   const updateMeasurement = (rowId: string, index: number, value: string) => {
     setOutputRows(prev =>
