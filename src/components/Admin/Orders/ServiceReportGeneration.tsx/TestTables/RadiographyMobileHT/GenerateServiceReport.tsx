@@ -55,7 +55,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string }> = ({ serviceId }) => 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
   const [tools, setTools] = useState<Standard[]>([]);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
-  const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
+  const [showTimerModal, setShowTimerModal] = useState(true); // Will be set based on localStorage
 
   const [formData, setFormData] = useState({
     customerName: "",
@@ -98,8 +98,14 @@ const RadiographyMobileHT: React.FC<{ serviceId: string }> = ({ serviceId }) => 
         setHasTimer(stored === 'true');
         setShowTimerModal(false);
       } else {
+        // No stored preference - show modal
         setShowTimerModal(true);
+        setHasTimer(null); // Ensure it's null
       }
+    } else {
+      // No serviceId yet - keep modal ready to show
+      setShowTimerModal(true);
+      setHasTimer(null);
     }
   }, [serviceId]);
 
@@ -281,24 +287,8 @@ const RadiographyMobileHT: React.FC<{ serviceId: string }> = ({ serviceId }) => 
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl font-medium text-gray-700">Loading report form...</div>
-      </div>
-    );
-  }
-
-  if (!details) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-red-600">
-        Failed to load service details. Please try again.
-      </div>
-    );
-  }
-
-  // MODAL POPUP
-  if (showTimerModal && hasTimer === null) {
+  // MODAL POPUP - Check this FIRST before any other returns
+  if (showTimerModal && hasTimer === null && serviceId) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105 animate-in fade-in duration-300">
@@ -322,6 +312,22 @@ const RadiographyMobileHT: React.FC<{ serviceId: string }> = ({ serviceId }) => 
           </div>
 
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl font-medium text-gray-700">Loading report form...</div>
+      </div>
+    );
+  }
+
+  if (!details) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-red-600">
+        Failed to load service details. Please try again.
       </div>
     );
   }

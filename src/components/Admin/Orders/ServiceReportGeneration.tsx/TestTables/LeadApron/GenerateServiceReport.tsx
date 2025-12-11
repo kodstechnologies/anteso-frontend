@@ -60,6 +60,7 @@ const LeadApron: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         make: "",
         model: "",
         slNumber: "",
+        category: "",
         condition: "OK",
         testingProcedureNumber: "",
         pages: "",

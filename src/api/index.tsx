@@ -8113,6 +8113,50 @@ export const updateRadiationProtectionSurveyForRadiographyMobileHT = async (test
     return res.data;
 };
 
+// Total Filtration - Radiography Mobile HT
+export const addTotalFiltrationForRadiographyMobileHT = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/radiography-mobile-ht/total-filtration/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getTotalFiltrationByServiceIdForRadiographyMobileHT = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/radiography-mobile-ht/total-filtration-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return { success: true, data: null };
+        throw error;
+    }
+};
+
+export const getTotalFiltrationByTestIdForRadiographyMobileHT = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/radiography-mobile-ht/total-filtration/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateTotalFiltrationForRadiographyMobileHT = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/radiography-mobile-ht/total-filtration/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 // ==================== Radiography Portable APIs ====================
 
 export const getReportHeaderForRadiographyPortable = async (serviceId: string) => {

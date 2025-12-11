@@ -210,7 +210,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
         SUMMARY OF QA TEST RESULTS
       </h2>
 
-      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+      <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
         <table className="w-full border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
           <thead className="bg-gray-200">
             <tr>

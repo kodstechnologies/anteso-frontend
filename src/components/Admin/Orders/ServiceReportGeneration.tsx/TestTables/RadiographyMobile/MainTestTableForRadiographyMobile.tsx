@@ -111,12 +111,42 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
   // 3. Central Beam Alignment
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const isPass = testData.centralBeamAlignment.observedTilt.remark === "Pass" || 
-                   (tiltValue !== "-" && parseFloat(tiltValue) <= 5);
+    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
+    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "5";
+    
+    // Determine pass/fail based on tolerance
+    let isPass = false;
+    if (testData.centralBeamAlignment.observedTilt.remark === "Pass" || testData.centralBeamAlignment.observedTilt.remark === "PASS") {
+      isPass = true;
+    } else if (testData.centralBeamAlignment.observedTilt.remark === "Fail" || testData.centralBeamAlignment.observedTilt.remark === "FAIL") {
+      isPass = false;
+    } else if (tiltValue !== "-") {
+      const observed = parseFloat(tiltValue);
+      const tol = parseFloat(toleranceValue);
+      if (!isNaN(observed) && !isNaN(tol)) {
+        if (toleranceOperator === "<") {
+          isPass = observed < tol;
+        } else if (toleranceOperator === ">") {
+          isPass = observed > tol;
+        } else if (toleranceOperator === "<=") {
+          isPass = observed <= tol;
+        } else if (toleranceOperator === ">=") {
+          isPass = observed >= tol;
+        } else if (toleranceOperator === "=") {
+          isPass = Math.abs(observed - tol) < 0.01;
+        }
+      }
+    }
+    
+    // Format specified value (use tolerance value as specified)
+    const specifiedValue = `${toleranceOperator} ${toleranceValue} degrees`;
+    // Format tolerance display
+    const toleranceDisplay = `${toleranceOperator} ${toleranceValue} degrees`;
+    
     addRowsForTest("Central Beam Alignment", [{
-      specified: "≤ 5 degrees",
+      specified: specifiedValue,
       measured: tiltValue !== "-" ? `${tiltValue} degrees` : "-",
-      tolerance: "≤ 5 degrees",
+      tolerance: toleranceDisplay,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -144,16 +174,42 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
     const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
     if (validRows.length > 0) {
+      // Format values to always show one decimal place (e.g., 1.0, 2.0)
+      const formatValue = (val: any) => {
+        if (val === undefined || val === null || val === "") return null;
+        const numVal = typeof val === 'number' ? val : parseFloat(val);
+        if (isNaN(numVal)) return null;
+        return numVal.toFixed(1);
+      };
+      
+      const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
+      
+      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 ≤ F ≤ 1.5 MM, +0.3 F FOR F > 1.5 MM
+      const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
+      const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
+      const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
+      const mediumLower = parseFloat(toleranceCriteria.medium?.lowerLimit || "0.8");
+      const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
+      const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
+      
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} MM; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} MM; +${largeMultiplier} F FOR F > ${mediumUpper} MM`;
+      
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
+        
+        const statedWidth = formatValue(spot.statedWidth);
+        const statedHeight = formatValue(spot.statedHeight);
+        const measuredWidth = formatValue(spot.measuredWidth);
+        const measuredHeight = formatValue(spot.measuredHeight);
+        
         return {
-          specified: spot.statedWidth && spot.statedHeight ? `${spot.statedWidth} × ${spot.statedHeight} mm` : "-",
-          measured: spot.measuredWidth && spot.measuredHeight ? `${spot.measuredWidth} × ${spot.measuredHeight} mm` : "-",
-          tolerance: "As per standard",
+          specified: statedWidth !== null && statedHeight !== null ? `${statedWidth} × ${statedHeight} mm` : "-",
+          measured: measuredWidth !== null && measuredHeight !== null ? `${measuredWidth} × ${measuredHeight} mm` : "-",
+          tolerance: toleranceStr,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Effective Focal Spot Size", testRows);
+      addRowsForTest("Effective Focal Spot Size", testRows, true); // Use toleranceRowSpan since all rows share the same tolerance
     }
   }
 
@@ -183,25 +239,26 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
       const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
       const toleranceValue = testData.outputConsistency.tolerance?.value || "5.0";
       const testRows = validRows.map((row: any) => {
-        // Extract CV from remark if available
+        // Use CV value directly from row.cv
         let cvValue = row.cv || "-";
         let isPass = false;
         
-        if (row.remark) {
-          const cvMatch = row.remark.match(/CV:\s*([\d.]+)%/i);
-          if (cvMatch) {
-            cvValue = cvMatch[1];
-          }
+        // Check if remark indicates pass/fail
+        if (row.remark === "Pass" || row.remark === "PASS") {
+          isPass = true;
+        } else if (row.remark === "Fail" || row.remark === "FAIL") {
+          isPass = false;
+        } else if (cvValue !== "-") {
+          // Calculate pass/fail based on CV vs tolerance
+          const cv = parseFloat(String(cvValue));
+          const tol = parseFloat(toleranceValue);
           
-          if (row.remark.includes("Pass") || row.remark.includes("PASS")) {
-            isPass = true;
-          } else if (row.remark.includes("Fail") || row.remark.includes("FAIL")) {
-            isPass = false;
-          } else if (cvValue !== "-") {
-            const cv = parseFloat(cvValue);
-            const tol = parseFloat(toleranceValue);
-            
-            if (toleranceOperator === "<=") {
+          if (!isNaN(cv) && !isNaN(tol)) {
+            if (toleranceOperator === "<") {
+              isPass = cv < tol;
+            } else if (toleranceOperator === ">") {
+              isPass = cv > tol;
+            } else if (toleranceOperator === "<=") {
               isPass = cv <= tol;
             } else if (toleranceOperator === ">=") {
               isPass = cv >= tol;
@@ -211,9 +268,14 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
           }
         }
         
+        // Format CV value for display
+        const formattedCv = cvValue !== "-" && cvValue !== undefined && cvValue !== null && cvValue !== ""
+          ? (typeof cvValue === 'number' ? cvValue.toFixed(2) : parseFloat(String(cvValue)).toFixed(2)) + "%"
+          : "-";
+        
         return {
           specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "Varies",
-          measured: cvValue !== "-" ? `${cvValue}%` : "-",
+          measured: formattedCv,
           tolerance: `${toleranceOperator} ${toleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -254,8 +316,8 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         SUMMARY OF QA TEST RESULTS
       </h2>
 
-      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-        <table className="w-full border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
+      <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
+        <table className="border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
           <thead className="bg-gray-200">
             <tr>
               <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center print:text-[9px]">Sr. No.</th>

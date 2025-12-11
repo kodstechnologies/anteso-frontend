@@ -20,10 +20,10 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
     toleranceRowSpan: boolean = false // Optional parameter to control tolerance rowSpan
   ) => {
     if (testRows.length === 0) return;
-    
+
     // Get shared tolerance value if toleranceRowSpan is enabled
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
-    
+
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null, // Only first row gets serial number
@@ -51,21 +51,28 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
         const measuredTime = parseFloat(row.measuredTime);
         let error = "-";
         let isPass = false;
-        
+
         if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
           error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
           const errorVal = parseFloat(error);
           const tol = parseFloat(toleranceValue);
-          
+
           if (toleranceOperator === "<=") {
             isPass = errorVal <= tol;
           } else if (toleranceOperator === ">=") {
             isPass = errorVal >= tol;
+          } else if (toleranceOperator === "<") {
+            isPass = errorVal < tol;
+          } else if (toleranceOperator === ">") {
+            isPass = errorVal > tol;
           } else if (toleranceOperator === "=") {
             isPass = Math.abs(errorVal - tol) < 0.01;
+          } else {
+            // Default to <=
+            isPass = errorVal <= tol;
           }
         }
-        
+
         return {
           specified: row.setTime || "-",
           measured: row.measuredTime || "-",
@@ -130,8 +137,10 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
   }
 
   // 4. Linearity of mA Loading (or mAs Loading)
-  if (testData.linearityOfMaLoading?.table2Rows && Array.isArray(testData.linearityOfMaLoading.table2Rows)) {
-    const validRows = testData.linearityOfMaLoading.table2Rows.filter((row: any) => row.ma || row.mAsRange || row.col);
+  // Backend may return table2 or table2Rows
+  const linearityRows = testData.linearityOfMaLoading?.table2Rows || testData.linearityOfMaLoading?.table2;
+  if (linearityRows && Array.isArray(linearityRows)) {
+    const validRows = linearityRows.filter((row: any) => row.ma || row.mAsRange || row.col || row.mAsApplied);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
       const testRows = validRows.map((row: any) => {
@@ -148,24 +157,78 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 5. Radiation Leakage Level
+  // 5. Maximum Radiation Leakage from Tube Housing
   if (testData.radiationLeakage?.leakageRows && Array.isArray(testData.radiationLeakage.leakageRows)) {
     const validRows = testData.radiationLeakage.leakageRows.filter((row: any) => row.location || row.max);
     if (validRows.length > 0) {
       const toleranceValue = testData.radiationLeakage.toleranceValue || "1";
       const toleranceTime = testData.radiationLeakage.toleranceTime || "1";
-      const toleranceOperator = testData.radiationLeakage.toleranceOperator || "less than or equal to";
-      const testRows = validRows.map((row: any) => {
-        const max = row.max || "-";
-        const isPass = row.remark === "Pass" || (max !== "-" && parseFloat(max) < parseFloat(toleranceValue));
-        return {
-          specified: row.location || "-",
-          measured: max !== "-" ? `${max} ${row.unit || "mGy/h"}` : "-",
-          tolerance: `${toleranceOperator === "less than or equal to" ? "≤" : toleranceOperator === "greater than or equal to" ? "≥" : "="} ${toleranceValue} mGy/h`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Radiation Leakage Level", testRows);
+      const toleranceOperator = testData.radiationLeakage.toleranceOperator || "<=";
+
+      // Use maxRadiationLeakage from the data, or calculate it
+      let measuredValue = testData.radiationLeakage.maxRadiationLeakage || "";
+      let measuredNum = parseFloat(measuredValue) || 0;
+
+      // If maxRadiationLeakage is not available, calculate from maxLeakageResult
+      if (!measuredValue || measuredValue === "" || measuredValue === "-") {
+        const maxLeakageResult = testData.radiationLeakage.maxLeakageResult || "";
+        const maxLeakageResultNum = parseFloat(maxLeakageResult) || 0;
+        if (maxLeakageResultNum > 0) {
+          measuredNum = maxLeakageResultNum / 114;
+          measuredValue = measuredNum.toFixed(3);
+        } else {
+          measuredValue = "-";
+        }
+      } else {
+        measuredValue = String(measuredValue);
+        measuredNum = parseFloat(measuredValue) || 0;
+      }
+
+      // Calculate remark based on maxRadiationLeakage
+      let remark = "";
+      if (measuredValue !== "-" && measuredValue !== "") {
+        const tol = parseFloat(toleranceValue);
+        if (!isNaN(measuredNum) && !isNaN(tol) && tol > 0) {
+          if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
+            remark = measuredNum <= tol ? "Pass" : "Fail";
+          } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
+            remark = measuredNum >= tol ? "Pass" : "Fail";
+          } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
+            remark = measuredNum < tol ? "Pass" : "Fail";
+          } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
+            remark = measuredNum > tol ? "Pass" : "Fail";
+          } else if (toleranceOperator === "=" || toleranceOperator === "equal to") {
+            remark = Math.abs(measuredNum - tol) < 0.001 ? "Pass" : "Fail";
+          } else {
+            remark = "-";
+          }
+        } else {
+          remark = "-";
+        }
+      } else {
+        remark = "-";
+      }
+
+      // Format tolerance operator for display
+      let toleranceDisplay = "";
+      if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
+        toleranceDisplay = "≤";
+      } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
+        toleranceDisplay = "≥";
+      } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
+        toleranceDisplay = "<";
+      } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
+        toleranceDisplay = ">";
+      } else {
+        toleranceDisplay = "=";
+      }
+
+      addRowsForTest("Maximum Radiation Leakage from Tube Housing", [{
+        specified: "Tube Housing",
+        measured: measuredValue !== "-" && measuredValue !== "" ? `${measuredValue} mGy/h` : "-",
+        tolerance: `${toleranceDisplay} ${toleranceValue} mGy/h`,
+        remarks: (remark === "Pass" || remark === "PASS" ? "Pass" : remark === "Fail" || remark === "FAIL" ? "Fail" : "-") as "Pass" | "Fail",
+      }]);
     }
   }
 
@@ -207,67 +270,68 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
   }
 
   return (
-    <div className="mt-20 print:mt-12">
-      <h2 className="text-2xl font-bold text-center underline mb-8 print:mb-6">
-        SUMMARY OF QA TEST RESULTS
-      </h2>
+    <div className="mt-20 print:mt-12 flex justify-center">
+      <div className="w-full max-w-full">
+        <h2 className="text-2xl font-bold text-center underline mb-8 print:mb-6">
+          SUMMARY OF QA TEST RESULTS
+        </h2>
 
-      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-        <table className="w-full border-2 border-black text-xs print:text-xxs print:min-w-full">
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="border border-black px-3 py-3 w-12 text-center">Sr. No.</th>
-              <th className="border border-black px-4 py-3 text-left w-72">Parameters Used</th>
-              <th className="border border-black px-4 py-3 text-center w-32">Specified Values</th>
-              <th className="border border-black px-4 py-3 text-center w-32">Measured Values</th>
-              <th className="border border-black px-4 py-3 text-center w-40">Tolerance</th>
-              <th className="border border-black px-4 py-3 text-center bg-green-100 w-24">Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => {
-              // Determine if we should render tolerance cell
-              // Render tolerance if: 
-              // 1. No rowSpan case (toleranceRowSpan === 0 and hasToleranceRowSpan is false), OR
-              // 2. RowSpan case AND it's the first row
-              const shouldRenderTolerance = 
-                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) || 
-                (row.hasToleranceRowSpan && row.isFirstRow);
-              
-              return (
-                <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  {row.isFirstRow && (
-                    <td rowSpan={row.rowSpan} className="border border-black px-3 py-3 text-center font-bold">
-                      {row.srNo}
+        <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
+          <table className="w-full border-2 border-black text-xs print:text-xxs print:min-w-full">
+            <thead className="bg-gray-200">
+              <tr>
+                <th className="border border-black px-3 py-3 w-12 text-center">Sr. No.</th>
+                <th className="border border-black px-4 py-3 text-left w-72">Parameters Used</th>
+                <th className="border border-black px-4 py-3 text-center w-32">Specified Values</th>
+                <th className="border border-black px-4 py-3 text-center w-32">Measured Values</th>
+                <th className="border border-black px-4 py-3 text-center w-40">Tolerance</th>
+                <th className="border border-black px-4 py-3 text-center bg-green-100 w-24">Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => {
+                // Determine if we should render tolerance cell
+                // Render tolerance if: 
+                // 1. No rowSpan case (toleranceRowSpan === 0 and hasToleranceRowSpan is false), OR
+                // 2. RowSpan case AND it's the first row
+                const shouldRenderTolerance =
+                  (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) ||
+                  (row.hasToleranceRowSpan && row.isFirstRow);
+
+                return (
+                  <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    {row.isFirstRow && (
+                      <td rowSpan={row.rowSpan} className="border border-black px-3 py-3 text-center font-bold">
+                        {row.srNo}
+                      </td>
+                    )}
+                    {row.isFirstRow && (
+                      <td rowSpan={row.rowSpan} className="border border-black px-4 py-3 text-left font-medium leading-tight">
+                        {row.parameter}
+                      </td>
+                    )}
+                    <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
+                    <td className="border border-black px-4 py-3 text-center font-semibold">{row.measured}</td>
+                    {shouldRenderTolerance && (
+                      <td
+                        {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
+                        className="border border-black px-4 py-3 text-center text-xs leading-tight"
+                      >
+                        {row.tolerance}
+                      </td>
+                    )}
+                    <td className="border border-black px-4 py-3 text-center">
+                      <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                        }`}>
+                        {row.remarks}
+                      </span>
                     </td>
-                  )}
-                  {row.isFirstRow && (
-                    <td rowSpan={row.rowSpan} className="border border-black px-4 py-3 text-left font-medium leading-tight">
-                      {row.parameter}
-                    </td>
-                  )}
-                  <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
-                  <td className="border border-black px-4 py-3 text-center font-semibold">{row.measured}</td>
-                  {shouldRenderTolerance && (
-                    <td 
-                      {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
-                      className="border border-black px-4 py-3 text-center text-xs leading-tight"
-                    >
-                      {row.tolerance}
-                    </td>
-                  )}
-                  <td className="border border-black px-4 py-3 text-center">
-                    <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${
-                      row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}>
-                      {row.remarks}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

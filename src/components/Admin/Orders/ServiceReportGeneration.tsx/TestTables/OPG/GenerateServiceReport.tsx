@@ -295,10 +295,10 @@ const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             onClick={() => handleTimerChoice(false)}
                             className="px-8 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition transform hover:scale-105"
                         >
-                            No Timer 
+                            No Timer
                         </button>
                     </div>
-                   
+
                 </div>
             </div>
         );
@@ -418,23 +418,23 @@ const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
                 {[
-                    { 
-                        title: "Accuracy Of Operating Potential", 
-                        component: <AccuracyOfOperatingPotential 
-                            serviceId={serviceId} 
+                    {
+                        title: "Accuracy Of Operating Potential",
+                        component: <AccuracyOfOperatingPotential
+                            serviceId={serviceId}
                             testId={savedTestIds.AccuracyOfOperatingPotentialOPG || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialOPG: id }))}
-                        /> 
+                        />
                     },
-                    { title: "Total Filteration", component: <TotalFilteration /> },
+                    // { title: "Total Filteration", component: <TotalFilteration /> },
 
                     // Timer Test — Only if user said YES
                     ...(hasTimer === true
                         ? [
                             {
                                 title: "Accuracy Of Irradiation Time",
-                                component: <AccuracyOfIrradiationTime 
-                                    serviceId={serviceId} 
+                                component: <AccuracyOfIrradiationTime
+                                    serviceId={serviceId}
                                     testId={savedTestIds.AccuracyOfIrradiationTimeOPG || null}
                                     onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfIrradiationTimeOPG: id }))}
                                 />,
@@ -447,8 +447,8 @@ const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                         ? [
                             {
                                 title: "Linearity Of mA Loading",
-                                component: <LinearityOfmALoading 
-                                    serviceId={serviceId} 
+                                component: <LinearityOfmALoading
+                                    serviceId={serviceId}
                                     testId={savedTestIds.LinearityOfMaLoadingOPG || undefined}
                                 />,
                             },
@@ -457,8 +457,8 @@ const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             ? [
                                 {
                                     title: "Linearity Of mAs Loading",
-                                    component: <LinearityOfMasLoading 
-                                        serviceId={serviceId} 
+                                    component: <LinearityOfMasLoading
+                                        serviceId={serviceId}
                                         testId={savedTestIds.LinearityOfMaLoadingOPG || null}
                                         onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMaLoadingOPG: id }))}
                                     />,
@@ -466,30 +466,30 @@ const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             ]
                             : []),
 
-                    { 
-                        title: "Consistency Of Radiation Output", 
-                        component: <ConsistencyOfRadiationOutput 
-                            serviceId={serviceId} 
+                    {
+                        title: "Consistency Of Radiation Output",
+                        component: <ConsistencyOfRadiationOutput
+                            serviceId={serviceId}
                             testId={savedTestIds.OutputConsistencyForOPG || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, OutputConsistencyForOPG: id }))}
-                        /> 
+                        />
                     },
-                    { 
-                        title: "Radiation Leakage Level", 
-                        component: <RadiationLeakageLevel 
-                            serviceId={serviceId} 
+                    {
+                        title: "Radiation Leakage Level",
+                        component: <RadiationLeakageLevel
+                            serviceId={serviceId}
                             testId={savedTestIds.RadiationLeakageTestOPG || undefined}
-                        /> 
+                        />
                     },
                     // { title: "Equipment Setting", component: <EquipmentSetting /> },
                     // { title: "Maximum Radiation Level", component: <MaximumRadiationLevel /> },
-                    { 
-                        title: "Details Of Radiation Protection", 
-                        component: <DetailsOfRadiationProtection 
+                    {
+                        title: "Details Of Radiation Protection",
+                        component: <DetailsOfRadiationProtection
                             serviceId={serviceId}
                             testId={savedTestIds.RadiationProtectionSurveyOPG || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, RadiationProtectionSurveyOPG: id }))}
-                        /> 
+                        />
                     },
 
                 ].map((item, i) => (

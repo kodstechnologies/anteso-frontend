@@ -119,7 +119,7 @@ const ViewServiceReportOPG: React.FC = () => {
             if (!opData || typeof opData !== 'object') return null;
             // Skip if it's just an ObjectId string (not populated)
             if (typeof opData === 'string') return null;
-            
+
             // Handle both cases: if measurements exists, use it; otherwise use rows if it exists
             const rows = opData.measurements || opData.rows || [];
             // Only return if we have actual data (rows or mAStations)
@@ -129,7 +129,7 @@ const ViewServiceReportOPG: React.FC = () => {
                 return null;
               }
             }
-            
+
             return {
               ...opData,
               rows: Array.isArray(rows) ? rows : [],
@@ -168,7 +168,8 @@ const ViewServiceReportOPG: React.FC = () => {
           const transformLinearity = (linData: any) => {
             if (!linData || typeof linData !== 'object') return null;
             if (typeof linData === 'string') return null;
-            const table2Rows = Array.isArray(linData.table2Rows) ? linData.table2Rows : [];
+            // Backend returns table2, but we normalize to table2Rows
+            const table2Rows = Array.isArray(linData.table2Rows) ? linData.table2Rows : (Array.isArray(linData.table2) ? linData.table2 : []);
             if (table2Rows.length === 0) return null;
             return {
               ...linData,
@@ -180,12 +181,90 @@ const ViewServiceReportOPG: React.FC = () => {
           const transformRadiationLeakage = (rlData: any) => {
             if (!rlData || typeof rlData !== 'object') return null;
             if (typeof rlData === 'string') return null;
-            const leakageRows = Array.isArray(rlData.leakageRows) ? rlData.leakageRows : [];
+
+            // Transform leakageMeasurements array to leakageRows array
+            const leakageMeasurements = rlData.leakageMeasurements || rlData.leakageRows || [];
+            const toleranceValue = parseFloat(rlData.toleranceValue || "1");
+            const toleranceOperator = rlData.toleranceOperator || "<=";
+
+            const leakageRows = Array.isArray(leakageMeasurements) ? leakageMeasurements.map((measurement: any) => {
+              // Calculate max if not provided
+              let maxValue = measurement.max;
+              if (!maxValue || maxValue === "" || maxValue === "-") {
+                const values = [
+                  measurement.left,
+                  measurement.right,
+                  measurement.top || measurement.front,
+                  measurement.up || measurement.back,
+                  measurement.down
+                ]
+                  .map((v: any) => parseFloat(v) || 0)
+                  .filter((v: number) => v > 0);
+                maxValue = values.length > 0 ? Math.max(...values).toFixed(3) : "-";
+              } else {
+                maxValue = String(maxValue);
+              }
+
+              // Calculate remark if not provided
+              let remark = measurement.remark || measurement.remarks || "";
+              if (!remark || remark === "" || remark === "-") {
+                const maxNum = parseFloat(maxValue);
+                if (!isNaN(maxNum) && !isNaN(toleranceValue) && toleranceValue > 0) {
+                  if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
+                    remark = maxNum <= toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
+                    remark = maxNum >= toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
+                    remark = maxNum < toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
+                    remark = maxNum > toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === "=" || toleranceOperator === "equal to") {
+                    remark = Math.abs(maxNum - toleranceValue) < 0.001 ? "Pass" : "Fail";
+                  } else {
+                    remark = "-";
+                  }
+                } else {
+                  remark = "-";
+                }
+              }
+
+              return {
+                location: measurement.location || "-",
+                left: measurement.left || "-",
+                right: measurement.right || "-",
+                top: measurement.top || measurement.front || "-",
+                up: measurement.up || measurement.back || "-",
+                down: measurement.down || "-",
+                max: maxValue,
+                unit: measurement.unit || "mGy/h",
+                remark: remark,
+              };
+            }) : [];
+
             if (leakageRows.length === 0) return null;
+
+            // Handle settings - could be array or single object
+            let settingsArray = [];
+            if (Array.isArray(rlData.settings) && rlData.settings.length > 0) {
+              settingsArray = rlData.settings;
+            } else if (rlData.settings && typeof rlData.settings === 'object') {
+              settingsArray = [rlData.settings];
+            } else if (rlData.ffd || rlData.kvp || rlData.ma || rlData.time) {
+              // Fallback: create settings array from top-level fields
+              settingsArray = [{
+                ffd: rlData.ffd || "",
+                kvp: rlData.kvp || rlData.kv || "",
+                ma: rlData.ma || "",
+                time: rlData.time || "",
+              }];
+            }
+
             return {
               ...rlData,
               leakageRows,
-              settings: Array.isArray(rlData.settings) ? rlData.settings : [],
+              settings: settingsArray,
+              maxLeakageResult: rlData.maxLeakageResult || '',
+              maxRadiationLeakage: rlData.maxRadiationLeakage || '',
             };
           };
 
@@ -253,9 +332,9 @@ const ViewServiceReportOPG: React.FC = () => {
             clonedElement.style.maxWidth = 'none';
             clonedElement.style.margin = '0';
             clonedElement.style.padding = '20px';
-            
-            const nestedContainers = clonedElement.querySelectorAll('div');
-            nestedContainers.forEach((div: HTMLElement) => {
+
+            const nestedContainers = clonedElement.querySelectorAll<HTMLElement>('div');
+            nestedContainers.forEach((div) => {
               if (div.style.maxWidth || div.classList.contains('max-w-5xl') || div.classList.contains('max-w-7xl')) {
                 div.style.maxWidth = 'none';
                 div.style.width = '100%';
@@ -271,9 +350,9 @@ const ViewServiceReportOPG: React.FC = () => {
               table.style.width = '100%';
               table.style.borderCollapse = 'collapse';
               table.style.tableLayout = 'auto';
-              
-              const cells = table.querySelectorAll('td, th');
-              cells.forEach((cell: HTMLElement) => {
+
+              const cells = table.querySelectorAll<HTMLElement>('td, th');
+              cells.forEach((cell) => {
                 cell.style.breakInside = 'avoid';
                 cell.style.wordWrap = 'break-word';
                 cell.style.overflowWrap = 'break-word';
@@ -281,8 +360,8 @@ const ViewServiceReportOPG: React.FC = () => {
               });
             });
 
-            const sections = clonedElement.querySelectorAll('section, div.mb-6, div.mb-8');
-            sections.forEach((section: HTMLElement) => {
+            const sections = clonedElement.querySelectorAll<HTMLElement>('section, div.mb-6, div.mb-8');
+            sections.forEach((section) => {
               section.style.breakInside = 'avoid';
             });
 
@@ -518,7 +597,7 @@ const ViewServiceReportOPG: React.FC = () => {
                 {/* Operating Parameters */}
                 <div className="mb-4 flex items-center gap-2">
                   <span className="text-sm">Operating parameters:</span>
-                  <table className="inline-block border border-black" style={{ width: 'auto' }}>
+                  <table className="w-full border border-black">
                     <tbody>
                       <tr>
                         <td className="border border-black px-3 py-1 text-center text-sm">FCD (cm)</td>
@@ -532,7 +611,7 @@ const ViewServiceReportOPG: React.FC = () => {
                   </table>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="border border-black text-sm" style={{ width: 'auto' }}>
+                  <table className="w-full border border-black text-sm">
                     <thead>
                       <tr>
                         <th className="border border-black p-2 text-left">Set Time (Sec.)</th>
@@ -544,19 +623,44 @@ const ViewServiceReportOPG: React.FC = () => {
                     </thead>
                     <tbody>
                       {testData.irradiationTime.irradiationTimes.map((row: any, i: number) => {
-                        const deviation = row.setTime && row.measuredTime
-                          ? ((Math.abs(row.measuredTime - row.setTime) / row.setTime) * 100).toFixed(2)
-                          : "N/A";
-                        const pass = deviation !== "N/A" && Number(deviation) <= 5;
+                        const setTime = parseFloat(row.setTime);
+                        const measuredTime = parseFloat(row.measuredTime);
                         const toleranceOperator = testData.irradiationTime.tolerance?.operator || "<=";
-                        const toleranceValue = testData.irradiationTime.tolerance?.value || "5";
+                        const toleranceValue = parseFloat(testData.irradiationTime.tolerance?.value || "5");
+
+                        let deviation = "N/A";
+                        let pass = false;
+
+                        if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
+                          deviation = ((Math.abs(measuredTime - setTime) / setTime) * 100).toFixed(2);
+                          const errorVal = parseFloat(deviation);
+
+                          // Apply tolerance based on operator
+                          switch (toleranceOperator) {
+                            case "<=":
+                              pass = errorVal <= toleranceValue;
+                              break;
+                            case ">=":
+                              pass = errorVal >= toleranceValue;
+                              break;
+                            case "<":
+                              pass = errorVal < toleranceValue;
+                              break;
+                            case ">":
+                              pass = errorVal > toleranceValue;
+                              break;
+                            default:
+                              pass = errorVal <= toleranceValue; // Default to <=
+                          }
+                        }
+
                         return (
                           <tr key={i}>
                             <td className="border border-black p-2 text-left">{row.setTime || "-"}</td>
                             <td className="border border-black p-2 text-center">{row.measuredTime || "-"}</td>
                             <td className="border border-black p-2 text-center">{deviation !== "N/A" ? `${deviation}%` : "-"}</td>
                             <td className="border border-black p-2 text-center">{toleranceOperator} {toleranceValue}%</td>
-                            <td className="border border-black p-2 text-center">{pass ? "PASS" : "FAIL"}</td>
+                            <td className="border border-black p-2 text-center">{deviation !== "N/A" ? (pass ? "PASS" : "FAIL") : "-"}</td>
                           </tr>
                         );
                       })}
@@ -565,7 +669,7 @@ const ViewServiceReportOPG: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* 2. Accuracy of Operating Potential */}
             {testData.operatingPotential?.rows?.length > 0 && (
               <div className="mb-16 print:mb-12 print:break-inside-avoid">
@@ -606,7 +710,7 @@ const ViewServiceReportOPG: React.FC = () => {
                 {/* Operating Parameters */}
                 <div className="mb-4 flex items-center gap-2">
                   <span className="text-sm">Operating parameters:</span>
-                  <table className="inline-block border border-black" style={{ width: 'auto' }}>
+                  <table className="inline-block border border-black w-full" >
                     <tbody>
                       <tr>
                         <td className="border border-black px-3 py-1 text-center text-sm">FFD (cm)</td>
@@ -620,7 +724,7 @@ const ViewServiceReportOPG: React.FC = () => {
                   </table>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="border border-black text-sm" style={{ width: 'auto' }}>
+                  <table className="border border-black text-sm w-full">
                     <thead>
                       <tr>
                         <th rowSpan={2} className="border border-black p-2 text-left">Applied kV</th>
@@ -633,7 +737,7 @@ const ViewServiceReportOPG: React.FC = () => {
                         <th rowSpan={2} className="border border-black p-2 text-center">Remarks</th>
                       </tr>
                       <tr>
-                        {(testData.outputConsistency.measurementHeaders || 
+                        {(testData.outputConsistency.measurementHeaders ||
                           Array.from({ length: testData.outputConsistency.outputRows[0]?.outputs?.length || 3 }, (_, i) => i + 1)
                         ).map((h: string | number, idx: number) => (
                           <th key={idx} className="border border-black p-1 text-center text-xs">
@@ -662,200 +766,332 @@ const ViewServiceReportOPG: React.FC = () => {
                 <div className="mt-4">
                   <p className="text-sm">Tolerance : CoV &lt; {testData.outputConsistency.tolerance || "0.05"}</p>
                 </div>
-              </div>
+              </div >
             )}
 
             {/* 4. Linearity of mA Loading */}
-            {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (
-              <div className="mb-16 print:mb-12">
-                <h3 className="text-xl font-bold uppercase mb-4">4. LINEARITY OF MA LOADING</h3>
-                {/* Operating Parameters */}
-                <div className="mb-4 flex items-center gap-2">
-                  <span className="text-sm">Operating parameters:</span>
-                  <table className="inline-block border border-black" style={{ width: 'auto' }}>
-                    <tbody>
-                      <tr>
-                        <td className="border border-black px-3 py-1 text-center text-sm">FCD (cm)</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.linearityOfMaLoading.table1?.fcd || "-"}</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">kV</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.linearityOfMaLoading.table1?.kv || "-"}</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">Time (s)</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.linearityOfMaLoading.table1?.time || "-"}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="border border-black text-sm" style={{ width: 'auto' }}>
-                    <thead>
-                      <tr>
-                        <th className="border border-black p-2 text-left">{testData.linearityOfMaLoading.table2Rows[0]?.ma ? "mA" : "mAs Range"}</th>
-                        <th className="border border-black p-2 text-center">Meas 1</th>
-                        <th className="border border-black p-2 text-center">Meas 2</th>
-                        <th className="border border-black p-2 text-center">Meas 3</th>
-                        <th className="border border-black p-2 text-center">Average</th>
-                        <th className="border border-black p-2 text-center">Coefficient of Linearity</th>
-                        <th className="border border-black p-2 text-center">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {testData.linearityOfMaLoading.table2Rows.map((row: any, i: number) => (
-                        <tr key={i}>
-                          <td className="border border-black p-2 text-left">{row.ma || row.mAsRange || "-"}</td>
-                          {row.measuredOutputs?.map((val: string, idx: number) => (
-                            <td key={idx} className="border border-black p-2 text-center">{val || "-"}</td>
-                          ))}
-                          <td className="border border-black p-2 text-center">{row.average || "-"}</td>
-                          <td className="border border-black p-2 text-center">{row.col || "-"}</td>
-                          <td className="border border-black p-2 text-center">{row.remarks || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {/* Tolerance Statement */}
-                <div className="mt-4">
-                  <p className="text-sm">Tolerance : Coefficient of Linearity ≤ {testData.linearityOfMaLoading.tolerance || "0.1"}</p>
-                </div>
-              </div>
-            )}
-
-            {/* 5. Radiation Leakage Test */}
-            {testData.radiationLeakage?.leakageRows?.length > 0 && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
-                <h3 className="text-xl font-bold uppercase mb-4">5. RADIATION LEAKAGE TEST</h3>
-                {/* Operating Parameters */}
-                <div className="mb-4 flex items-center gap-2">
-                  <span className="text-sm">Operating parameters:</span>
-                  <table className="inline-block border border-black" style={{ width: 'auto' }}>
-                    <tbody>
-                      <tr>
-                        <td className="border border-black px-3 py-1 text-center text-sm">FFD (cm)</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.radiationLeakage.settings?.[0]?.ffd || "-"}</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">kVp</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.radiationLeakage.settings?.[0]?.kvp || "-"}</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">mA</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.radiationLeakage.settings?.[0]?.ma || "-"}</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">Time (s)</td>
-                        <td className="border border-black px-3 py-1 text-center text-sm">{testData.radiationLeakage.settings?.[0]?.time || "-"}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="border border-black text-sm" style={{ width: 'auto' }}>
-                    <thead>
-                      <tr>
-                        <th className="border border-black p-2 text-left">Location</th>
-                        <th className="border border-black p-2 text-center">Left</th>
-                        <th className="border border-black p-2 text-center">Right</th>
-                        <th className="border border-black p-2 text-center">Top</th>
-                        <th className="border border-black p-2 text-center">Up</th>
-                        <th className="border border-black p-2 text-center">Down</th>
-                        <th className="border border-black p-2 text-center">Max</th>
-                        <th className="border border-black p-2 text-center">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {testData.radiationLeakage.leakageRows.map((row: any, i: number) => (
-                        <tr key={i}>
-                          <td className="border border-black p-2 text-left">{row.location || "-"}</td>
-                          <td className="border border-black p-2 text-center">{row.left || "-"}</td>
-                          <td className="border border-black p-2 text-center">{row.right || "-"}</td>
-                          <td className="border border-black p-2 text-center">{row.top || "-"}</td>
-                          <td className="border border-black p-2 text-center">{row.up || "-"}</td>
-                          <td className="border border-black p-2 text-center">{row.down || "-"}</td>
-                          <td className="border border-black p-2 text-center">{row.max || "-"} {row.unit || "mGy/h"}</td>
-                          <td className="border border-black p-2 text-center">{row.remark || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {/* Tolerance Statement */}
-                <div className="mt-4">
-                  <p className="text-sm">
-                    Tolerance : Maximum leakage radiation ≤ {testData.radiationLeakage.toleranceValue || "1"} mGy/h ({testData.radiationLeakage.toleranceTime || "1"} hour)
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* 6. Radiation Protection Survey */}
-            {testData.radiationSurvey?.locations?.length > 0 && (
-              <div className="mb-16 print:mb-12 print:break-inside-avoid">
-                <h3 className="text-xl font-bold uppercase mb-4">6. RADIATION PROTECTION SURVEY</h3>
-                
-                {/* Survey Details Table */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-semibold mb-2">Survey Details</h4>
-                  <div className="overflow-x-auto">
-                    <table className="border border-black text-sm" style={{ width: 'auto' }}>
-                      <thead>
-                        <tr>
-                          <th className="border border-black p-2 text-left">Survey Date</th>
-                          <th className="border border-black p-2 text-center">Applied Current (mA)</th>
-                          <th className="border border-black p-2 text-center">Applied Voltage (kV)</th>
-                          <th className="border border-black p-2 text-center">Exposure Time (s)</th>
-                          <th className="border border-black p-2 text-center">Workload (mA·min/week)</th>
-                          <th className="border border-black p-2 text-center">Valid Calibration Certificate</th>
-                        </tr>
-                      </thead>
+            {
+              testData.linearityOfMaLoading?.table2Rows?.length > 0 && (
+                <div className="mb-16 print:mb-12">
+                  <h3 className="text-xl font-bold uppercase mb-4">4. LINEARITY OF MA LOADING</h3>
+                  {/* Operating Parameters */}
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="text-sm">Operating parameters:</span>
+                    <table className="w-full border border-black">
                       <tbody>
                         <tr>
-                          <td className="border border-black p-2 text-left">{formatDate(testData.radiationSurvey.surveyDate) || "-"}</td>
-                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.appliedCurrent || "-"}</td>
-                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.appliedVoltage || "-"}</td>
-                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.exposureTime || "-"}</td>
-                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.workload || "-"}</td>
-                          <td className="border border-black p-2 text-center">{testData.radiationSurvey.hasValidCalibration || "-"}</td>
+                          <td className="border border-black px-3 py-1 text-center text-sm">FCD (cm)</td>
+                          <td className="border border-black px-3 py-1 text-center text-sm">{testData.linearityOfMaLoading.table1?.fcd || "-"}</td>
+                          <td className="border border-black px-3 py-1 text-center text-sm">kV</td>
+                          <td className="border border-black px-3 py-1 text-center text-sm">{testData.linearityOfMaLoading.table1?.kv || "-"}</td>
+                          <td className="border border-black px-3 py-1 text-center text-sm">Time (s)</td>
+                          <td className="border border-black px-3 py-1 text-center text-sm">{testData.linearityOfMaLoading.table1?.time || "-"}</td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="border border-black text-sm" style={{ width: 'auto' }}>
-                    <thead>
-                      <tr>
-                        <th className="border border-black p-2 text-left">Location</th>
-                        <th className="border border-black p-2 text-center">Max. Radiation Level (mR/hr)</th>
-                        <th className="border border-black p-2 text-center">mR/week</th>
-                        <th className="border border-black p-2 text-center">Result</th>
-                        <th className="border border-black p-2 text-center">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {testData.radiationSurvey.locations.map((loc: any, i: number) => (
-                        <tr key={i}>
-                          <td className="border border-black p-2 text-left">{loc.location || "-"}</td>
-                          <td className="border border-black p-2 text-center">{loc.mRPerHr || "-"}</td>
-                          <td className="border border-black p-2 text-center">{loc.mRPerWeek || "-"}</td>
-                          <td className="border border-black p-2 text-center">{loc.result || "-"}</td>
-                          <td className="border border-black p-2 text-center">{loc.calculatedResult || "-"}</td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border border-black text-sm">
+                      <thead>
+                        <tr>
+                          <th className="border border-black p-2 text-left">{testData.linearityOfMaLoading.table2Rows[0]?.ma ? "mA" : "mAs Range"}</th>
+                          <th className="border border-black p-2 text-center">Meas 1</th>
+                          <th className="border border-black p-2 text-center">Meas 2</th>
+                          <th className="border border-black p-2 text-center">Meas 3</th>
+                          <th className="border border-black p-2 text-center">Average</th>
+                          <th className="border border-black p-2 text-center">Coefficient of Linearity</th>
+                          <th className="border border-black p-2 text-center">Remarks</th>
                         </tr>
-                      ))}
+                      </thead>
+                      <tbody>
+                        {testData.linearityOfMaLoading.table2Rows.map((row: any, i: number) => (
+                          <tr key={i}>
+                            <td className="border border-black p-2 text-left">{row.ma || row.mAsRange || "-"}</td>
+                            {row.measuredOutputs?.map((val: string, idx: number) => (
+                              <td key={idx} className="border border-black p-2 text-center">{val || "-"}</td>
+                            ))}
+                            <td className="border border-black p-2 text-center">{row.average || "-"}</td>
+                            <td className="border border-black p-2 text-center">{row.col || "-"}</td>
+                            <td className="border border-black p-2 text-center">{row.remarks || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Tolerance Statement */}
+                  <div className="mt-4">
+                    <p className="text-sm">Tolerance : Coefficient of Linearity ≤ {testData.linearityOfMaLoading.tolerance || "0.1"}</p>
+                  </div>
+                </div>
+              )
+            }
+
+            {/* 5. Tube Housing Leakage */}
+            {
+              testData.radiationLeakage?.leakageRows?.length > 0 && (
+                <div className="mb-16 print:mb-12 print:break-inside-avoid">
+                  <h3 className="text-xl font-bold uppercase mb-2">5. TUBE HOUSING LEAKAGE</h3>
+
+                  {/* Combined Table */}
+                  <table className="w-full border-2 border-black text-sm">
+                    <tbody>
+                      {/* Operating Parameters Row */}
+                      <tr>
+                        <td colSpan={2} className="border border-black p-2 font-semibold">Operating parameters:</td>
+                        <td className="border border-black p-2 text-center">FDD (cm)</td>
+                        <td className="border border-black p-2 text-center">{testData.radiationLeakage.settings?.[0]?.ffd || "-"}</td>
+                        <td className="border border-black p-2 text-center">kVp</td>
+                        <td className="border border-black p-2 text-center">{testData.radiationLeakage.settings?.[0]?.kvp || "-"}</td>
+                        <td className="border border-black p-2 text-center">mA</td>
+                        <td className="border border-black p-2 text-center">{testData.radiationLeakage.settings?.[0]?.ma || "-"}</td>
+                        <td className="border border-black p-2 text-center">Time (Sec)</td>
+                        <td className="border border-black p-2 text-center">{testData.radiationLeakage.settings?.[0]?.time || "-"}</td>
+                      </tr>
+
+                      {/* Header Row 1 */}
+                      <tr className="bg-gray-50">
+                        <td rowSpan={2} className="border border-black p-2 font-semibold text-center">Location (at 1.0 m from the focus)</td>
+                        <td colSpan={5} className="border border-black p-2 font-semibold text-center">Exposure Level (mR/hr)</td>
+                        <td rowSpan={2} colSpan={2} className="border border-black p-2 font-semibold text-center">Result</td>
+                        <td rowSpan={2} colSpan={2} className="border border-black p-2 font-semibold text-center">Remarks</td>
+                      </tr>
+
+                      {/* Header Row 2 - Sub-headers */}
+                      <tr className="bg-gray-50">
+                        <td className="border border-black p-2 font-semibold text-center">Left</td>
+                        <td className="border border-black p-2 font-semibold text-center">Right</td>
+                        <td className="border border-black p-2 font-semibold text-center">Top</td>
+                        <td className="border border-black p-2 font-semibold text-center">Up</td>
+                        <td className="border border-black p-2 font-semibold text-center">Down</td>
+                      </tr>
+
+                      {/* Data Rows */}
+                      {testData.radiationLeakage.leakageRows.map((row: any, i: number) => {
+                        // Use saved remark, or calculate based on maxRadiationLeakage vs tolerance
+                        let remarkText = row.remark || "";
+                        if (!remarkText) {
+                          const tol = parseFloat(testData.radiationLeakage.toleranceValue) || 1;
+                          const maxRadLeak = parseFloat(testData.radiationLeakage.maxRadiationLeakage) || 0;
+                          remarkText = maxRadLeak <= tol ? "Pass" : "Fail";
+                        }
+
+                        return (
+                          <tr key={i}>
+                            <td className="border border-black p-2 text-center">{row.location || "Tube"}</td>
+                            <td className="border border-black p-2 text-center">{row.left || "-"}</td>
+                            <td className="border border-black p-2 text-center">{row.right || "-"}</td>
+                            <td className="border border-black p-2 text-center">{row.top || "-"}</td>
+                            <td className="border border-black p-2 text-center">{row.up || "-"}</td>
+                            <td className="border border-black p-2 text-center">{row.down || "-"}</td>
+                            <td colSpan={2} className="border border-black p-2 text-center font-medium">{row.max || "-"} mR in one hour</td>
+                            <td colSpan={2} className="border border-black p-2 text-center font-medium">{remarkText}</td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* Work Load Row */}
+                      <tr>
+                        <td colSpan={10} className="border border-black p-2">
+                          <span className="font-semibold">Work Load</span> {testData.radiationLeakage.workload || "-"} mAmin in one hr
+                        </td>
+                      </tr>
+
+                      {/* Max Leakage Calculation */}
+                      <tr>
+                        <td rowSpan={2} className="border border-black p-2 font-semibold text-center">Max Leakage</td>
+                        <td colSpan={4} className="border border-black p-2 text-center">
+                          {testData.radiationLeakage.workload || "-"} mAmin in 1 hr X {Math.max(...testData.radiationLeakage.leakageRows.map((r: any) => parseFloat(r.max) || 0)).toFixed(1)}
+                        </td>
+                        <td colSpan={3} className="border border-black p-2 text-center">max Exposure Level (mR/hr)</td>
+                        <td colSpan={2} rowSpan={2} className="border border-black p-2 text-center font-medium">
+                          {testData.radiationLeakage.maxLeakageResult || Math.max(...testData.radiationLeakage.leakageRows.map((r: any) => parseFloat(r.max) || 0)).toFixed(3)} mR in one hour
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} className="border border-black p-2 text-center">
+                          60 X {testData.radiationLeakage.settings?.[0]?.ma || "-"}
+                        </td>
+                        <td colSpan={3} className="border border-black p-2 text-center">mA used for measurement</td>
+                      </tr>
+
+                      {/* Maximum Radiation Leakage from Tube Housing */}
+                      <tr className="bg-gray-50">
+                        <td colSpan={8} className="border border-black p-2 font-semibold">Maximum Radiation Leakage from Tube Housing</td>
+                        <td colSpan={2} className="border border-black p-2 text-center font-medium">{testData.radiationLeakage.maxRadiationLeakage || "-"} mGy in one hour</td>
+                      </tr>
+
+                      {/* Tolerance Row */}
+                      <tr>
+                        <td colSpan={10} className="border border-black p-2">
+                          <span className="font-semibold">Tolerance:</span> Maximum Leakage Radiation Level at 1 meter from the Focus should be {testData.radiationLeakage.toleranceOperator || "<"} {testData.radiationLeakage.toleranceValue || "1"} mGy (114 mR) in one hour.
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
-                {/* Tolerance Statement */}
-                <div className="mt-4">
-                  <p className="text-sm">
-                    Tolerance : For Radiation Worker ≤ 40 mR/week | For Public ≤ 2 mR/week
-                  </p>
+              )
+            }
+            {/* 6. Radiation Protection Survey */}
+            {
+              testData.radiationSurvey?.locations?.length > 0 && (
+                <div className="mb-16 print:mb-12 print:break-inside-avoid">
+                  <h3 className="text-xl font-bold uppercase mb-4">6. RADIATION PROTECTION SURVEY</h3>
+
+                  {/* Survey Details Table */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold mb-2">Survey Details</h4>
+                    <div className="overflow-x-auto">
+                      <table className="border border-black text-sm" style={{ width: 'auto' }}>
+                        <thead>
+                          <tr>
+                            <th className="border border-black p-2 text-left">Survey Date</th>
+                            <th className="border border-black p-2 text-center">Applied Current (mA)</th>
+                            <th className="border border-black p-2 text-center">Applied Voltage (kV)</th>
+                            <th className="border border-black p-2 text-center">Exposure Time (s)</th>
+                            <th className="border border-black p-2 text-center">Workload (mA·min/week)</th>
+                            <th className="border border-black p-2 text-center">Valid Calibration Certificate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td className="border border-black p-2 text-left">{formatDate(testData.radiationSurvey.surveyDate) || "-"}</td>
+                            <td className="border border-black p-2 text-center">{testData.radiationSurvey.appliedCurrent || "-"}</td>
+                            <td className="border border-black p-2 text-center">{testData.radiationSurvey.appliedVoltage || "-"}</td>
+                            <td className="border border-black p-2 text-center">{testData.radiationSurvey.exposureTime || "-"}</td>
+                            <td className="border border-black p-2 text-center">{testData.radiationSurvey.workload || "-"}</td>
+                            <td className="border border-black p-2 text-center">{testData.radiationSurvey.hasValidCalibration || "-"}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  {/* 3. Measured Maximum Radiation Levels */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold mb-4">3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
+                    <div className="overflow-x-auto mb-6">
+                      <table className="w-full border-2 border-black text-sm">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black p-3 text-left">Location</th>
+                            <th className="border border-black p-3">Max. Radiation Level</th>
+                            <th className="border border-black p-3">Result</th>
+                            <th className="border border-black p-3">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {testData.radiationSurvey.locations.map((loc: any, i: number) => (
+                            <tr key={i} className="text-center">
+                              <td className="border p-3 text-left">{loc.location || "-"}</td>
+                              <td className="border p-3">{loc.mRPerHr ? `${loc.mRPerHr} mR/hr` : "-"}</td>
+                              <td className="border p-3">{loc.mRPerWeek ? `${loc.mRPerWeek} mR/week` : "-"}</td>
+                              <td className="border p-3">
+                                <span className={loc.result === "PASS" || loc.result === "Pass" ? "text-green-600 font-semibold" : loc.result === "FAIL" || loc.result === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                  {loc.result || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 4. Calculation Formula */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold mb-4">4. Calculation Formula</h4>
+                    <div className="overflow-x-auto mb-6">
+                      <table className="w-full border-2 border-black text-sm">
+                        <tbody>
+                          <tr>
+                            <td className="border border-black p-3 bg-gray-50">
+                              <strong>Maximum Radiation level/week (mR/wk) = Work Load X Max. Radiation Level (mR/hr) / (60 X mA used for measurement)</strong>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 5. Summary of Maximum Radiation Level/week */}
+                  {testData.radiationSurvey.locations?.length > 0 && (() => {
+                    const workerLocs = testData.radiationSurvey.locations.filter((loc: any) => loc.category === "worker");
+                    const publicLocs = testData.radiationSurvey.locations.filter((loc: any) => loc.category === "public");
+                    const maxWorkerWeekly = Math.max(...workerLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
+                    const maxPublicWeekly = Math.max(...publicLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
+                    const workerResult = parseFloat(maxWorkerWeekly) > 0 && parseFloat(maxWorkerWeekly) <= 40 ? "Pass" : parseFloat(maxWorkerWeekly) > 40 ? "Fail" : "";
+                    const publicResult = parseFloat(maxPublicWeekly) > 0 && parseFloat(maxPublicWeekly) <= 2 ? "Pass" : parseFloat(maxPublicWeekly) > 2 ? "Fail" : "";
+
+                    return (
+                      <div className="mb-6">
+                        <h4 className="text-lg font-semibold mb-4">5. Summary of Maximum Radiation Level/week (mR/wk)</h4>
+                        <div className="overflow-x-auto mb-6">
+                          <table className="w-full border-2 border-black text-sm">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="border border-black p-3">Category</th>
+                                <th className="border border-black p-3">Result</th>
+                                <th className="border border-black p-3">Remarks</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="text-center">
+                                <td className="border border-black p-3 font-semibold">For Radiation Worker</td>
+                                <td className="border border-black p-3">{maxWorkerWeekly || "0.000"} mR/week</td>
+                                <td className="border border-black p-3">
+                                  <span className={workerResult === "Pass" ? "text-green-600 font-semibold" : workerResult === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                    {workerResult || "-"}
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr className="text-center">
+                                <td className="border border-black p-3 font-semibold">For Public</td>
+                                <td className="border border-black p-3">{maxPublicWeekly || "0.000"} mR/week</td>
+                                <td className="border border-black p-3">
+                                  <span className={publicResult === "Pass" ? "text-green-600 font-semibold" : publicResult === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                    {publicResult || "-"}
+                                  </span>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 6. Permissible Limit */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold mb-4">6. Permissible Limit</h4>
+                    <div className="overflow-x-auto mb-6">
+                      <table className="w-full border-2 border-black text-sm">
+                        <tbody>
+                          <tr>
+                            <td className="border border-black p-3 font-semibold w-1/2">For location of Radiation Worker</td>
+                            <td className="border border-black p-3">20 mSv in a year (40 mR/week)</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-black p-3 font-semibold">For Location of Member of Public</td>
+                            <td className="border border-black p-3">1 mSv in a year (2mR/week)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            }
 
             {/* No data fallback */}
-            {Object.values(testData).every(v => !v) && (
-              <p className="text-center text-xl text-gray-500 mt-32">
-                No test results available yet.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
+            {
+              Object.values(testData).every(v => !v) && (
+                <p className="text-center text-xl text-gray-500 mt-32">
+                  No test results available yet.
+                </p>
+              )
+            }
+          </div >
+        </div >
+      </div >
 
       <style>{`
         @media print {

@@ -2,13 +2,11 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-// Note: TotalFilteration APIs for RadiographyMobileHT may need to be created in backend
-// For now, using placeholder structure - update imports when APIs are available
 import {
-    addTotalFiltrationForFixedRadioFluro,
-    getTotalFiltrationByTestIdForFixedRadioFluro,
-    getTotalFiltrationByServiceIdForFixedRadioFluro,
-    updateTotalFiltrationForFixedRadioFluro,
+    addTotalFiltrationForRadiographyMobileHT,
+    getTotalFiltrationByTestIdForRadiographyMobileHT,
+    getTotalFiltrationByServiceIdForRadiographyMobileHT,
+    updateTotalFiltrationForRadiographyMobileHT,
 } from "../../../../../../api"; 
 interface RowData {
     id: string;
@@ -60,13 +58,13 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 
                 // Try loading by testId first if available
                 if (initialTestId) {
-                    const result = await getTotalFiltrationByTestIdForFixedRadioFluro(initialTestId);
+                    const result = await getTotalFiltrationByTestIdForRadiographyMobileHT(initialTestId);
                     if (result?.data) {
                         data = result.data;
                     }
                 } else {
                     // Try loading by serviceId
-                    const result = await getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId);
+                    const result = await getTotalFiltrationByServiceIdForRadiographyMobileHT(serviceId);
                     if (result?.data) {
                         data = result.data;
                     }
@@ -135,7 +133,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             // If no testId, try to get existing data by serviceId first
             if (!currentTestId) {
                 try {
-                    const existing = await getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId);
+                    const existing = await getTotalFiltrationByServiceIdForRadiographyMobileHT(serviceId);
                     if (existing?.data?._id) {
                         currentTestId = existing.data._id;
                         setTestId(currentTestId);
@@ -147,11 +145,11 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
             if (currentTestId) {
                 // Update existing
-                result = await updateTotalFiltrationForFixedRadioFluro(currentTestId, payload);
+                result = await updateTotalFiltrationForRadiographyMobileHT(currentTestId, payload);
                 toast.success("Updated successfully");
             } else {
                 // Create new
-                result = await addTotalFiltrationForFixedRadioFluro(serviceId, payload);
+                result = await addTotalFiltrationForRadiographyMobileHT(serviceId, payload);
                 const newId = result?.data?._id || result?.data?.data?._id || result?._id;
                 if (newId) {
                     setTestId(newId);

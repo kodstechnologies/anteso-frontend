@@ -143,6 +143,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
           return;
         }
         const rec = res.data;
+        if (rec._id) setTestId(rec._id);
 
         // Table 1
         if (rec.table1?.[0]) {
@@ -212,8 +213,8 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
           ma10: parseFloat(r.ma10) || null,
           ma100: parseFloat(r.ma100) || null,
           ma200: parseFloat(r.ma200) || null,
-          avgKvp: avgKvp ? parseFloat(avgKvp) : null,
-          deviation: deviation ? parseFloat(deviation) : null,
+          avgKvp: avgKvp ? parseFloat(avgKvp) : null,        // ← NOW SAVED
+          deviation: deviation ? parseFloat(deviation) : null, // ← Optional: useful for PDF
           remarks: r.remarks,
         };
       }),

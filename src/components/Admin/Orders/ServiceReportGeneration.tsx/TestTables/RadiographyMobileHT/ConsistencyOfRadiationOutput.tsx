@@ -39,10 +39,10 @@ interface Props {
   onTestSaved?: (testId: string) => void;
 }
 
-const ConsistencyOfRadiationOutput: React.FC<Props> = ({ 
-  serviceId, 
+const ConsistencyOfRadiationOutput: React.FC<Props> = ({
+  serviceId,
   testId: propTestId,
-  onTestSaved 
+  onTestSaved
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -54,7 +54,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
   const [tolerance, setTolerance] = useState<Tolerance>({
     operator: '<=',
-    value: '5.0',
+    value: '0.05',
   });
 
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
@@ -71,7 +71,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
   // Calculate avg, CV and remark – pure calculation, no state mutation needed
   const rowsWithCalc = useMemo(() => {
-    const tolValue = parseFloat(tolerance.value) || 5.0;
+    const tolValue = parseFloat(tolerance.value) || 0.05;
 
     return outputRows.map((row): OutputRow => {
       const values = row.outputs
@@ -86,7 +86,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const variance =
         values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
       const stdDev = Math.sqrt(variance);
-      const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
+      const cv = avg > 0 ? (stdDev / avg) : 0;
 
       const passes =
         tolerance.operator === '<=' || tolerance.operator === '<'
@@ -128,6 +128,42 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         }
         return row;
       })
+    );
+    setIsSaved(false);
+  };
+
+  const addMeasurementColumn = (afterIndex: number) => {
+    if (measurementCount >= 10) {
+      toast.error('Maximum 10 measurements allowed');
+      return;
+    }
+    const newCount = measurementCount + 1;
+    setMeasurementCount(newCount);
+    setOutputRows(prev =>
+      prev.map(row => {
+        const newOutputs = [...row.outputs];
+        newOutputs.splice(afterIndex + 1, 0, { value: '' });
+        return {
+          ...row,
+          outputs: newOutputs,
+        };
+      })
+    );
+    setIsSaved(false);
+  };
+
+  const removeMeasurementColumn = (index: number) => {
+    if (measurementCount <= 3) {
+      toast.error('Minimum 3 measurements required');
+      return;
+    }
+    const newCount = measurementCount - 1;
+    setMeasurementCount(newCount);
+    setOutputRows(prev =>
+      prev.map(row => ({
+        ...row,
+        outputs: row.outputs.filter((_, i) => i !== index),
+      }))
     );
     setIsSaved(false);
   };
@@ -207,7 +243,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           if (testData.tolerance) {
             setTolerance({
               operator: testData.tolerance.operator || '<=',
-              value: testData.tolerance.value || '5.0',
+              value: testData.tolerance.value || '0.05',
             });
           }
           setIsSaved(true);
@@ -290,10 +326,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -317,7 +353,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       {/* FCD */}
       <div className="bg-white rounded-lg border shadow-sm">
-        
+
         <div className="p-6 flex items-center gap-4">
           <label className="w-48 text-sm font-medium text-gray-700">FCD:</label>
           <input
@@ -334,22 +370,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       {/* Main Table */}
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+        <div className="bg-gray-50 px-6 py-4 border-b">
           <h3 className="font-semibold text-gray-700">
             Radiation Output Measurements (mGy)
           </h3>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-gray-600">Measurements per row:</span>
-            <input
-              type="number"
-              min="3"
-              max="10"
-              value={measurementCount}
-              onChange={e => updateMeasurementCount(Number(e.target.value))}
-              disabled={isViewMode}
-              className={`w-16 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-            />
-          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -365,16 +389,38 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 {Array.from({ length: measurementCount }, (_, i) => (
                   <th
                     key={i}
-                    className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r"
+                    className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r relative"
                   >
-                    Meas {i + 1}
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-1">
+                        <span>Meas {i + 1}</span>
+                        {!isViewMode && measurementCount < 10 && (
+                          <button
+                            onClick={() => addMeasurementColumn(i)}
+                            className="text-green-600 hover:bg-green-100 p-0.5 rounded transition"
+                            title="Add column after this"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      {!isViewMode && measurementCount > 3 && (
+                        <button
+                          onClick={() => removeMeasurementColumn(i)}
+                          className="text-red-600 hover:bg-red-100 p-1 rounded transition"
+                          title="Remove this column"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </th>
                 ))}
                 <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
                   Average
                 </th>
                 <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase">
-                  CV (%) / Result
+                  CV / Result
                 </th>
                 <th className="w-12" />
               </tr>
@@ -419,22 +465,22 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   </td>
                   <td className="px-5 py-4 text-center">
                     <span
-                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${
-                        row.remark === 'Pass'
-                          ? 'bg-green-100 text-green-800'
-                          : row.remark === 'Fail'
+                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${row.remark === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : row.remark === 'Fail'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-600'
-                      }`}
+                        }`}
                     >
-                      {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
+                      {row.cv ? `${row.cv} → ${row.remark}` : '—'}
                     </span>
                   </td>
                   <td className="px-3 text-center">
                     {outputRows.length > 1 && (
                       <button
                         onClick={() => removeRow(row.id)}
-                        className="text-red-600 hover:bg-red-50 p-2 rounded transition"
+                        disabled={isViewMode}
+                        className="text-red-600 hover:bg-red-50 p-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

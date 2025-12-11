@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import {
   addConsistencyOfRadiationOutputForRadiographyPortable,
   getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable,
-  getReproducibilityOfRadiationOutputByServiceIdForBmd,
   updateConsistencyOfRadiationOutputForRadiographyPortable,
 } from '../../../../../../api';
 
@@ -38,10 +37,10 @@ interface Props {
   onTestSaved?: (testId: string) => void;
 }
 
-const ConsistencyOfRadiationOutput: React.FC<Props> = ({ 
-  serviceId, 
+const ConsistencyOfRadiationOutput: React.FC<Props> = ({
+  serviceId,
   testId: propTestId,
-  onTestSaved 
+  onTestSaved
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -131,6 +130,32 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     setIsSaved(false);
   };
 
+  const addColumn = () => {
+    if (measurementCount >= 10) return;
+    const newCount = measurementCount + 1;
+    setMeasurementCount(newCount);
+    setOutputRows(prev =>
+      prev.map(row => ({
+        ...row,
+        outputs: [...row.outputs, { value: '' }],
+      }))
+    );
+    setIsSaved(false);
+  };
+
+  const removeColumn = (columnIndex: number) => {
+    if (measurementCount <= 3) return;
+    const newCount = measurementCount - 1;
+    setMeasurementCount(newCount);
+    setOutputRows(prev =>
+      prev.map(row => ({
+        ...row,
+        outputs: row.outputs.filter((_, i) => i !== columnIndex),
+      }))
+    );
+    setIsSaved(false);
+  };
+
   const addRow = () => {
     setOutputRows(prev => [
       ...prev,
@@ -182,7 +207,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     const loadTest = async () => {
       setIsLoading(true);
       try {
-        const data = await getReproducibilityOfRadiationOutputByServiceIdForBmd(serviceId);
+        const data = await getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable(serviceId);
         if (data?.data) {
           const testData = data.data;
           setTestId(testData._id);
@@ -289,10 +314,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -316,7 +341,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       {/* FCD */}
       <div className="bg-white rounded-lg border shadow-sm">
-        
+
         <div className="p-6 flex items-center gap-4">
           <label className="w-48 text-sm font-medium text-gray-700">FCD:</label>
           <input
@@ -338,16 +363,20 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             Radiation Output Measurements (mGy)
           </h3>
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-gray-600">Measurements per row:</span>
-            <input
-              type="number"
-              min="3"
-              max="10"
-              value={measurementCount}
-              onChange={e => updateMeasurementCount(Number(e.target.value))}
-              disabled={isViewMode}
-              className={`w-16 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-            />
+            <span className="text-gray-600">Columns: {measurementCount}</span>
+            {!isViewMode && (
+              <button
+                onClick={addColumn}
+                disabled={measurementCount >= 10}
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition ${measurementCount >= 10
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+              >
+                <Plus className="w-3 h-3" />
+                Add Column
+              </button>
+            )}
           </div>
         </div>
 
@@ -366,7 +395,18 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     key={i}
                     className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r"
                   >
-                    Meas {i + 1}
+                    <div className="flex items-center justify-center gap-1">
+                      <span>Meas {i + 1}</span>
+                      {!isViewMode && measurementCount > 3 && (
+                        <button
+                          onClick={() => removeColumn(i)}
+                          className="ml-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-0.5 transition"
+                          title={`Remove Meas ${i + 1}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </th>
                 ))}
                 <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
@@ -418,22 +458,21 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   </td>
                   <td className="px-5 py-4 text-center">
                     <span
-                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${
-                        row.remark === 'Pass'
-                          ? 'bg-green-100 text-green-800'
-                          : row.remark === 'Fail'
+                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${row.remark === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : row.remark === 'Fail'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-600'
-                      }`}
+                        }`}
                     >
-                      {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
+                      {row.cv ? `${row.cv} → ${row.remark}` : '—'}
                     </span>
                   </td>
                   <td className="px-3 text-center">
-                    {outputRows.length > 1 && (
+                    {!isViewMode && outputRows.length > 1 && (
                       <button
                         onClick={() => removeRow(row.id)}
-                        className="textMY-red-600 hover:bg-red-50 p-2 rounded transition"
+                        className="text-red-600 hover:bg-red-50 p-2 rounded transition"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

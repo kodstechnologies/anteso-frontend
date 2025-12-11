@@ -140,19 +140,23 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       return { ...row, average: avg, x };
     });
 
+    // Calculate summary values once for all rows
     const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
     const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
     const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-      ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
-      : '—';
-    const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+      ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+      : 0;
+    const col = colVal > 0 ? colVal.toFixed(3) : '—';
+    const pass = col !== '—' && parseFloat(col) <= tol;
+    const remarks = col !== '—' ? (pass ? 'Pass' : 'Fail') : '—';
 
+    // Return rows with summary values (same for all rows)
     return rowsWithX.map(row => ({
       ...row,
       xMax,
       xMin,
-      col: colVal,
-      remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
+      col,
+      remarks,
     }));
   }, [table2Rows, tolerance]);
 
@@ -435,63 +439,80 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {processedTable2.map((p) => (
-              <tr key={p.id} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-r">
-                  <input
-                    type="text"
-                    value={p.ma}
-                    onChange={e => updateTable2Cell(p.id, 'ma', e.target.value)}
-                    disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                    placeholder="100"
-                  />
-                </td>
-
-                {p.measuredOutputs.map((val, colIdx) => (
-                  <td key={colIdx} className="px-2 py-2 border-r">
+            {processedTable2.map((p, index) => {
+              const isFirstRow = index === 0;
+              const rowSpan = processedTable2.length;
+              return (
+                <tr key={p.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 border-r">
                     <input
-                      type="number"
-                      step="any"
-                      value={val}
-                      onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
+                      type="text"
+                      value={p.ma}
+                      onChange={e => updateTable2Cell(p.id, 'ma', e.target.value)}
                       disabled={isViewMode}
                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      placeholder="100"
                     />
                   </td>
-                ))}
 
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.average}</td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.x}</td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50">{p.xMax}</td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50">{p.xMin}</td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50">{p.col}</td>
+                  {p.measuredOutputs.map((val, colIdx) => (
+                    <td key={colIdx} className="px-2 py-2 border-r">
+                      <input
+                        type="number"
+                        step="any"
+                        value={val}
+                        onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      />
+                    </td>
+                  ))}
 
-                <td className="px-4 py-2 text-center">
-                  <span
-                    className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${p.remarks === 'Pass'
-                      ? 'bg-green-100 text-green-800'
-                      : p.remarks === 'Fail'
-                        ? 'bg-red-100 text-red-800'
-                        : 'text-gray-400'
-                      }`}
-                  >
-                    {p.remarks || '—'}
-                  </span>
-                </td>
-
-                <td className="px-2 py-2 text-center">
-                  {table2Rows.length > 1 && !isViewMode && (
-                    <button
-                      onClick={() => window.confirm('Delete this row?') && removeTable2Row(p.id)}
-                      className="text-red-600 hover:bg-red-100 p-1 rounded transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.average}</td>
+                  <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.x}</td>
+                  {isFirstRow && (
+                    <td rowSpan={rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                      {p.xMax}
+                    </td>
                   )}
-                </td>
-              </tr>
-            ))}
+                  {isFirstRow && (
+                    <td rowSpan={rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                      {p.xMin}
+                    </td>
+                  )}
+                  {isFirstRow && (
+                    <td rowSpan={rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                      {p.col}
+                    </td>
+                  )}
+                  {isFirstRow && (
+                    <td rowSpan={rowSpan} className="px-4 py-2 text-center align-middle">
+                      <span
+                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${p.remarks === 'Pass'
+                          ? 'bg-green-100 text-green-800'
+                          : p.remarks === 'Fail'
+                            ? 'bg-red-100 text-red-800'
+                            : 'text-gray-400'
+                          }`}
+                      >
+                        {p.remarks || '—'}
+                      </span>
+                    </td>
+                  )}
+
+                  <td className="px-2 py-2 text-center">
+                    {table2Rows.length > 1 && !isViewMode && (
+                      <button
+                        onClick={() => window.confirm('Delete this row?') && removeTable2Row(p.id)}
+                        className="text-red-600 hover:bg-red-100 p-1 rounded transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 

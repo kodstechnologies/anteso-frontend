@@ -148,24 +148,78 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
     }
   }
 
-  // 5. Radiation Leakage Level
+  // 5. Maximum Radiation Leakage from Tube Housing
   if (testData.radiationLeakage?.leakageRows && Array.isArray(testData.radiationLeakage.leakageRows)) {
     const validRows = testData.radiationLeakage.leakageRows.filter((row: any) => row.location || row.max);
     if (validRows.length > 0) {
       const toleranceValue = testData.radiationLeakage.toleranceValue || "1";
       const toleranceTime = testData.radiationLeakage.toleranceTime || "1";
-      const toleranceOperator = testData.radiationLeakage.toleranceOperator || "less than or equal to";
-      const testRows = validRows.map((row: any) => {
-        const max = row.max || "-";
-        const isPass = row.remark === "Pass" || (max !== "-" && parseFloat(max) < parseFloat(toleranceValue));
-        return {
-          specified: row.location || "-",
-          measured: max !== "-" ? `${max} ${row.unit || "mGy/h"}` : "-",
-          tolerance: `${toleranceOperator === "less than or equal to" ? "≤" : toleranceOperator === "greater than or equal to" ? "≥" : "="} ${toleranceValue} mGy/h`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Radiation Leakage Level", testRows);
+      const toleranceOperator = testData.radiationLeakage.toleranceOperator || "<=";
+      
+      // Use maxRadiationLeakage from the data, or calculate it
+      let measuredValue = testData.radiationLeakage.maxRadiationLeakage || "";
+      let measuredNum = parseFloat(measuredValue) || 0;
+      
+      // If maxRadiationLeakage is not available, calculate from maxLeakageResult
+      if (!measuredValue || measuredValue === "" || measuredValue === "-") {
+        const maxLeakageResult = testData.radiationLeakage.maxLeakageResult || "";
+        const maxLeakageResultNum = parseFloat(maxLeakageResult) || 0;
+        if (maxLeakageResultNum > 0) {
+          measuredNum = maxLeakageResultNum / 114;
+          measuredValue = measuredNum.toFixed(3);
+        } else {
+          measuredValue = "-";
+        }
+      } else {
+        measuredValue = String(measuredValue);
+        measuredNum = parseFloat(measuredValue) || 0;
+      }
+      
+      // Calculate remark based on maxRadiationLeakage
+      let remark = "";
+      if (measuredValue !== "-" && measuredValue !== "") {
+        const tol = parseFloat(toleranceValue);
+        if (!isNaN(measuredNum) && !isNaN(tol) && tol > 0) {
+          if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
+            remark = measuredNum <= tol ? "Pass" : "Fail";
+          } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
+            remark = measuredNum >= tol ? "Pass" : "Fail";
+          } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
+            remark = measuredNum < tol ? "Pass" : "Fail";
+          } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
+            remark = measuredNum > tol ? "Pass" : "Fail";
+          } else if (toleranceOperator === "=" || toleranceOperator === "equal to") {
+            remark = Math.abs(measuredNum - tol) < 0.001 ? "Pass" : "Fail";
+          } else {
+            remark = "-";
+          }
+        } else {
+          remark = "-";
+        }
+      } else {
+        remark = "-";
+      }
+      
+      // Format tolerance operator for display
+      let toleranceDisplay = "";
+      if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
+        toleranceDisplay = "≤";
+      } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
+        toleranceDisplay = "≥";
+      } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
+        toleranceDisplay = "<";
+      } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
+        toleranceDisplay = ">";
+      } else {
+        toleranceDisplay = "=";
+      }
+      
+      addRowsForTest("Maximum Radiation Leakage from Tube Housing", [{
+        specified: "Tube Housing",
+        measured: measuredValue !== "-" && measuredValue !== "" ? `${measuredValue} mGy/h` : "-",
+        tolerance: `${toleranceDisplay} ${toleranceValue} mGy/h`,
+        remarks: (remark === "Pass" || remark === "PASS" ? "Pass" : remark === "Fail" || remark === "FAIL" ? "Fail" : "-") as "Pass" | "Fail",
+      }]);
     }
   }
 
@@ -207,12 +261,13 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
   }
 
   return (
-    <div className="mt-4 print:mt-2">
-      <h2 className="text-2xl font-bold text-center underline mb-4 print:mb-2 print:text-xl">
-        SUMMARY OF QA TEST RESULTS
-      </h2>
+    <div className="mt-4 print:mt-2 flex justify-center">
+      <div className="w-full max-w-full">
+        <h2 className="text-2xl font-bold text-center underline mb-4 print:mb-2 print:text-xl">
+          SUMMARY OF QA TEST RESULTS
+        </h2>
 
-      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+        <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
         <table className="w-full border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
           <thead className="bg-gray-200">
             <tr>
@@ -266,6 +321,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

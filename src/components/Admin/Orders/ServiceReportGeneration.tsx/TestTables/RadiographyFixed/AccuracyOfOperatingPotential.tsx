@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
-  addAccuracyOfOperatingPotentialForRadiographyMobileHT,
-  getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobileHT,
-  updateAccuracyOfOperatingPotentialForRadiographyMobileHT,
+  addAccuracyOfOperatingPotentialForRadiographyFixed,
+  getAccuracyOfOperatingPotentialByServiceIdForRadiographyFixed,
+  updateAccuracyOfOperatingPotentialForRadiographyFixed,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
 
@@ -137,7 +137,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
     }
     const load = async () => {
       try {
-        const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobileHT(serviceId);
+        const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyFixed(serviceId);
         if (!res?.data) {
           setIsLoading(false);
           return;
@@ -226,10 +226,10 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
     try {
       let res;
       if (testId) {
-        res = await updateAccuracyOfOperatingPotentialForRadiographyMobileHT(testId, payload);
+        res = await updateAccuracyOfOperatingPotentialForRadiographyFixed(testId, payload);
         toast.success('Updated successfully!');
       } else {
-        res = await addAccuracyOfOperatingPotentialForRadiographyMobileHT(serviceId, payload);
+        res = await addAccuracyOfOperatingPotentialForRadiographyFixed(serviceId, payload);
         if (res?.data?._id) setTestId(res.data._id);
         toast.success('Saved successfully!');
       }

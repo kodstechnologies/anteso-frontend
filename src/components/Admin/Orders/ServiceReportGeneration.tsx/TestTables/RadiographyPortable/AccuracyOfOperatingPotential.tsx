@@ -143,6 +143,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
           return;
         }
         const rec = res.data;
+        if (rec._id) setTestId(rec._id);
 
         // Table 1
         if (rec.table1?.[0]) {

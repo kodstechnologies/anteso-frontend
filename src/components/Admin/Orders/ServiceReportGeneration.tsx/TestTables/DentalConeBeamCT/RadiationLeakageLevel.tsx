@@ -57,7 +57,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [workload, setWorkload] = useState<string>('');
   const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
   const [toleranceValue, setToleranceValue] = useState<string>('');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '<=' | '>=' | '='>('<=');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -65,26 +65,48 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // === Auto Max per row ===
+  // === Auto Max and Remark per row ===
   const processedLeakage = useMemo(() => {
     return leakageRows.map((row) => {
       const values = [row.left, row.right, row.top, row.up, row.down]
         .map((v) => parseFloat(v) || 0)
         .filter((v) => v > 0);
       const max = values.length > 0 ? Math.max(...values).toFixed(3) : '';
-      return { ...row, max };
+
+      // Calculate remark per row if not already set
+      let remark = row.remark || '';
+      if (!remark && max && toleranceValue) {
+        const maxNum = parseFloat(max);
+        const tol = parseFloat(toleranceValue);
+        if (!isNaN(maxNum) && !isNaN(tol) && tol > 0) {
+          if (toleranceOperator === '<=') {
+            remark = maxNum <= tol ? 'Pass' : 'Fail';
+          } else if (toleranceOperator === '>=') {
+            remark = maxNum >= tol ? 'Pass' : 'Fail';
+          } else if (toleranceOperator === '<') {
+            remark = maxNum < tol ? 'Pass' : 'Fail';
+          } else if (toleranceOperator === '>') {
+            remark = maxNum > tol ? 'Pass' : 'Fail';
+          } else if (toleranceOperator === '=') {
+            remark = Math.abs(maxNum - tol) < 0.001 ? 'Pass' : 'Fail';
+          }
+        }
+      }
+
+      return { ...row, max, remark };
     });
-  }, [leakageRows]);
+  }, [leakageRows, toleranceValue, toleranceOperator]);
 
   // === Max Leakage Result ===
   const maxLeakageResult = useMemo(() => {
     const workloadVal = parseFloat(workload) || 0;
     const maxLeakage = Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0));
-    if (workloadVal > 0 && maxLeakage > 0) {
-      return ((workloadVal * maxLeakage) / (60 * 100)).toFixed(3);
+    const maValue = parseFloat(settings.ma) || 0;
+    if (workloadVal > 0 && maxLeakage > 0 && maValue > 0) {
+      return ((workloadVal * maxLeakage) / (60 * maValue)).toFixed(3);
     }
     return '';
-  }, [workload, processedLeakage]);
+  }, [workload, processedLeakage, settings.ma]);
 
   const maxRadiationLeakage = useMemo(() => {
     const result = parseFloat(maxLeakageResult) || 0;
@@ -99,9 +121,11 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     if (!toleranceValue || !maxRadiationLeakage) return '';
 
     let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = maxLeak <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = maxLeak >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(maxLeak - tol) < 0.001;
+    if (toleranceOperator === '<=') pass = maxLeak <= tol;
+    else if (toleranceOperator === '>=') pass = maxLeak >= tol;
+    else if (toleranceOperator === '<') pass = maxLeak < tol;
+    else if (toleranceOperator === '>') pass = maxLeak > tol;
+    else if (toleranceOperator === '=') pass = Math.abs(maxLeak - tol) < 0.001;
 
     return pass ? 'Pass' : 'Fail';
   }, [maxRadiationLeakage, toleranceValue, toleranceOperator]);
@@ -180,7 +204,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         setWorkload(rec.workload || '');
         setWorkloadUnit(rec.workloadUnit || '');
         setToleranceValue(rec.toleranceValue || '');
-        setToleranceOperator(rec.toleranceOperator || '');
+        setToleranceOperator(rec.toleranceOperator || '<=');
         setToleranceTime(rec.toleranceTime || '');
 
         setHasSaved(true);
@@ -201,6 +225,26 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     if (!isFormValid) return;
     setIsSaving(true);
 
+    // Calculate maxLeakageResult and maxRadiationLeakage if not already calculated
+    let calculatedMaxLeakageResult = maxLeakageResult;
+    let calculatedMaxRadiationLeakage = maxRadiationLeakage;
+
+    if (!calculatedMaxLeakageResult || calculatedMaxLeakageResult === '') {
+      const workloadVal = parseFloat(workload) || 0;
+      const maxLeakage = Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0));
+      const maValue = parseFloat(settings.ma) || 0;
+      if (workloadVal > 0 && maxLeakage > 0 && maValue > 0) {
+        calculatedMaxLeakageResult = ((workloadVal * maxLeakage) / (60 * maValue)).toFixed(3);
+      }
+    }
+
+    if (!calculatedMaxRadiationLeakage || calculatedMaxRadiationLeakage === '') {
+      const result = parseFloat(calculatedMaxLeakageResult) || 0;
+      if (result > 0) {
+        calculatedMaxRadiationLeakage = (result / 114).toFixed(3);
+      }
+    }
+
     const payload = {
       settings: [
         {
@@ -210,7 +254,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           time: settings.time,
         },
       ],
-      leakageMeasurements: leakageRows.map(r => ({
+      leakageMeasurements: processedLeakage.map(r => ({
         location: r.location,
         left: r.left,
         right: r.right,
@@ -219,14 +263,24 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         down: r.down,
         max: r.max,
         unit: r.unit,
-        remark: r.remark,
+        remark: r.remark || '',
       })),
       workload: workload,
       workloadUnit,
       toleranceValue: toleranceValue.trim(),
       toleranceOperator,
       toleranceTime: toleranceTime.trim(),
+      maxLeakageResult: calculatedMaxLeakageResult || '',
+      maxRadiationLeakage: calculatedMaxRadiationLeakage || '',
     };
+
+    // Debug: Log payload to verify values are included
+    console.log('Saving Radiation Leakage with payload:', {
+      maxLeakageResult: payload.maxLeakageResult,
+      maxRadiationLeakage: payload.maxRadiationLeakage,
+      workload: payload.workload,
+      ma: payload.settings[0]?.ma,
+    });
 
     try {
       let res;
@@ -453,14 +507,14 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                 </td>
                 <td className="px-4 py-2">
                   <span
-                    className={`inline-block w-full px-2 py-1 text-sm text-center font-medium rounded ${finalRemark === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : finalRemark === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100'
+                    className={`inline-block w-full px-2 py-1 text-sm text-center font-medium rounded ${row.remark === 'Pass'
+                      ? 'bg-green-100 text-green-800'
+                      : row.remark === 'Fail'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100'
                       }`}
                   >
-                    {finalRemark || '—'}
+                    {row.remark || '—'}
                   </span>
                 </td>
               </tr>
@@ -480,7 +534,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           <span>÷</span>
           <span className="font-medium">60</span>
           <span>×</span>
-          <span className="font-medium">100</span>
+          <span className="font-medium">{settings.ma || '—'}</span>
           <span>=</span>
           <input
             type="text"
@@ -528,8 +582,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
               }`}
           >
-            <option value="less than or equal to">less than or equal to</option>
-            <option value="greater than or equal to">greater than or equal to</option>
+            <option value="<">&lt;</option>
+            <option value=">">&gt;</option>
+            <option value="<=">&lt;=</option>
+            <option value=">=">&gt;=</option>
             <option value="=">=</option>
           </select>
           <span className="text-sm text-gray-600">in</span>
@@ -552,10 +608,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving || (!isViewMode && !isFormValid)}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (

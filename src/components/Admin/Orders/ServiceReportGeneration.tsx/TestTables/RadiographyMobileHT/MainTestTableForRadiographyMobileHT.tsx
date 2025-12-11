@@ -184,8 +184,13 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
         const percentFED = row.percentFED || "-";
         const tolerance = row.tolerance || "2";
         const isPass = row.remark === "Pass" || (percentFED !== "-" && parseFloat(percentFED) <= parseFloat(tolerance));
+        // Format dimension for specified value - ensure it's properly displayed
+        const dimension = row.dimension || "-";
+        const formattedDimension = dimension !== "-" && dimension !== undefined && dimension !== null && String(dimension).trim() !== "" 
+          ? String(dimension).trim() 
+          : "-";
         return {
-          specified: row.dimension || "-",
+          specified: formattedDimension,
           measured: percentFED !== "-" ? `${percentFED}%` : "-",
           tolerance: `≤ ${tolerance}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -424,7 +429,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
                       {row.parameter}
                     </td>
                   )}
-                   z<td className="border border-black px-4 py-3 text-center">{row.specified}</td>
+                  <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px]">{row.specified}</td>
                   {shouldRenderMeasured && (
                     <td 
                       {...(row.measuredRowSpan > 0 ? { rowSpan: row.measuredRowSpan } : {})}

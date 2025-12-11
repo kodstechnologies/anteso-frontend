@@ -318,11 +318,11 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
             <table className="min-w-full divide-y divide-gray-300">
               <thead className="bg-purple-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Max. Radiation Level (mR/hr)</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">mR/week</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Result</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">LOCATION</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MAX. RADIATION LEVEL (MR/HR)</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MR/WEEK</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">RESULT</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">STATUS</th>
                   <th className="w-32"></th>
                 </tr>
               </thead>
@@ -365,15 +365,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                     </td>
                     {/* RowSpan for Worker */}
                     {index === 0 && (
-                      <td rowSpan={workerLocations.length} className="text-center align-middle bg-blue-100 border-l-4 border-blue-600">
-                        <div className="transform -rotate-90 whitespace-nowrap text-lg font-bold text-blue-900 tracking-wider">
+                      <td rowSpan={workerLocations.length} className="text-center align-middle bg-blue-100 border-l-4 border-blue-600 relative">
+                        <div className="text-sm font-bold text-blue-900 tracking-wider">
                           FOR RADIATION WORKER
                         </div>
                       </td>
                     )}
                     {/* Delete button */}
                     {!isViewMode && (
-                      <td className="px-3 py-4 text-center">
+                      <td className="px-3 py-4 text-center bg-blue-100">
                         <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -420,15 +420,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                     </td>
                     {/* RowSpan for Public */}
                     {index === 0 && (
-                      <td rowSpan={publicLocations.length} className="text-center align-middle bg-purple-100 border-l-4 border-purple-600">
-                        <div className="transform -rotate-90 whitespace-nowrap text-lg font-bold text-purple-900 tracking-wider">
+                      <td rowSpan={publicLocations.length} className="text-center align-middle bg-purple-100 border-l-4 border-purple-600 relative">
+                        <div className="text-sm font-bold text-purple-900 tracking-wider">
                           FOR PUBLIC
                         </div>
                       </td>
                     )}
                     {/* Delete button */}
                     {!isViewMode && (
-                      <td className="px-3 py-4 text-center">
+                      <td className="px-3 py-4 text-center bg-purple-100">
                         <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
                           <Trash2 className="w-5 h-5" />
                         </button>

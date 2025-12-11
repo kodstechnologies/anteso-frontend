@@ -190,150 +190,150 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
       </div>
 
       <div id="report-content">
-         {/* PAGE 1 - MAIN REPORT */}
+        {/* PAGE 1 - MAIN REPORT */}
         <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
-            {/* Header */}
-            <div className="flex justify-between items-center mb-8">
-              <img src={logoA} alt="NABL" className="h-28" />
-              <div className="text-right">
-                <table className="text-xs border border-gray-600">
-                  <tbody>
-                    <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <img src={logo} alt="Logo" className="h-28" />
-            </div>
-
-            <div className="text-center mb-6">
-              <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
-              <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
-            </div>
-
-            <h1 className="text-center text-2xl font-bold underline mb-4">
-              QA TEST REPORT FOR RADIOGRAPHY (MOBILE) WITH HT X-RAY EQUIPMENT
-            </h1>
-            <p className="text-center italic text-sm mb-10">
-              (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
-            </p>
-
-            {/* Customer Details */}
-            <section className="mb-8">
-              <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
-              <div className="border-2 border-gray-600 p-5 text-lg">
-                <p><strong>Customer:</strong> {report.customerName}</p>
-                <p><strong>Address:</strong> {report.address}</p>
-              </div>
-            </section>
-
-            {/* Reference */}
-            <section className="mb-8">
-              <h2 className="font-bold text-lg mb-3">2. Reference</h2>
-              <table className="w-full border-2 border-gray-600 text-sm">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <img src={logoA} alt="NABL" className="h-28" />
+            <div className="text-right">
+              <table className="text-xs border border-gray-600">
                 <tbody>
-                  <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
-                  <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
                 </tbody>
               </table>
-            </section>
+            </div>
+            <img src={logo} alt="Logo" className="h-28" />
+          </div>
 
-            {/* Equipment Details */}
-            <section className="mb-8">
-              <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
-              <table className="w-full border-2 border-gray-600 text-sm">
-                <tbody>
-                  {[
-                    ["Nomenclature", report.nomenclature],
-                    ["Make", report.make || "-"],
-                    ["Model", report.model],
-                    ["Serial No.", report.slNumber],
-                    ["Category", report.category || "-"],
-                    ["Condition", report.condition],
-                    ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                    ["Engineer Name & RP ID", report.engineerNameRPId],
-                    ["Test Date", formatDate(report.testDate)],
-                    ["Due Date", formatDate(report.testDueDate)],
-                    ["Location", report.location],
-                    ["Temperature (°C)", report.temperature || "-"],
-                    ["Humidity (%)", report.humidity || "-"],
-                  ].map(([label, value]) => (
-                    <tr key={label}>
-                      <td className="border p-3 font-medium w-1/2">{label}</td>
-                      <td className="border p-3">{value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
+          <div className="text-center mb-6">
+            <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
+            <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
+          </div>
 
-            {/* Tools Used */}
-            <section className="mb-8">
-              <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
-              <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-                <table className="w-full border-2 border-gray-600 text-xs" style={{ tableLayout: 'fixed', width: '100%' }}>
-                  <thead className="bg-gray-200">
-                    <tr>
-                      <th className="border p-2" style={{ width: '6%' }}>Sl No.</th>
-                      <th className="border p-2" style={{ width: '16%' }}>Nomenclature</th>
-                      <th className="border p-2" style={{ width: '14%' }}>Make / Model</th>
-                      <th className="border p-2" style={{ width: '14%' }}>Sr. No.</th>
-                      <th className="border p-2" style={{ width: '14%' }}>Range</th>
-                      <th className="border p-2" style={{ width: '18%' }}>Certificate No.</th>
-                      <th className="border p-2" style={{ width: '18%' }}>Valid Till</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
-                      <tr key={i}>
-                        <td className="border p-2 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{i + 1}</td>
-                        <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.nomenclature}</td>
-                        <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.make} / {tool.model}</td>
-                        <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.SrNo}</td>
-                        <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.range}</td>
-                        <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.calibrationCertificateNo}</td>
-                        <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{formatDate(tool.calibrationValidTill)}</td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={7} className="text-center py-4">No tools recorded</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+          <h1 className="text-center text-2xl font-bold underline mb-4">
+            QA TEST REPORT FOR RADIOGRAPHY (MOBILE) WITH HT X-RAY EQUIPMENT
+          </h1>
+          <p className="text-center italic text-sm mb-10">
+            (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
+          </p>
 
-            {/* Notes */}
-            <section className="mb-6 print:mb-4">
-              <h2 className="font-bold text-lg mb-3">5. Notes</h2>
-              <div className="ml-8 text-sm">
-                {notesArray.map(n => (
-                  <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
+          {/* Customer Details */}
+          <section className="mb-8">
+            <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
+            <div className="border-2 border-gray-600 p-5 text-lg">
+              <p><strong>Customer:</strong> {report.customerName}</p>
+              <p><strong>Address:</strong> {report.address}</p>
+            </div>
+          </section>
+
+          {/* Reference */}
+          <section className="mb-8">
+            <h2 className="font-bold text-lg mb-3">2. Reference</h2>
+            <table className="w-full border-2 border-gray-600 text-sm">
+              <tbody>
+                <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
+                <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          {/* Equipment Details */}
+          <section className="mb-8">
+            <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
+            <table className="w-full border-2 border-gray-600 text-sm">
+              <tbody>
+                {[
+                  ["Nomenclature", report.nomenclature],
+                  ["Make", report.make || "-"],
+                  ["Model", report.model],
+                  ["Serial No.", report.slNumber],
+                  ["Category", report.category || "-"],
+                  ["Condition", report.condition],
+                  ["Testing Procedure No.", report.testingProcedureNumber || "-"],
+                  ["Engineer Name & RP ID", report.engineerNameRPId],
+                  ["Test Date", formatDate(report.testDate)],
+                  ["Due Date", formatDate(report.testDueDate)],
+                  ["Location", report.location],
+                  ["Temperature (°C)", report.temperature || "-"],
+                  ["Humidity (%)", report.humidity || "-"],
+                ].map(([label, value]) => (
+                  <tr key={label}>
+                    <td className="border p-3 font-medium w-1/2">{label}</td>
+                    <td className="border p-3">{value}</td>
+                  </tr>
                 ))}
-              </div>
-            </section>
+              </tbody>
+            </table>
+          </section>
 
-            {/* Signature */}
-            <div className="flex justify-between items-end mt-8 print:mt-6">
-              <img src={AntesoQRCode} alt="QR" className="h-24" />
-              <div className="text-center">
-                <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
-                <p className="font-bold">Authorized Signatory</p>
-              </div>
+          {/* Tools Used */}
+          <section className="mb-8">
+            <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
+            <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+              <table className="w-full border-2 border-gray-600 text-xs" style={{ tableLayout: 'fixed', width: '100%' }}>
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="border p-2" style={{ width: '6%' }}>Sl No.</th>
+                    <th className="border p-2" style={{ width: '16%' }}>Nomenclature</th>
+                    <th className="border p-2" style={{ width: '14%' }}>Make / Model</th>
+                    <th className="border p-2" style={{ width: '14%' }}>Sr. No.</th>
+                    <th className="border p-2" style={{ width: '14%' }}>Range</th>
+                    <th className="border p-2" style={{ width: '18%' }}>Certificate No.</th>
+                    <th className="border p-2" style={{ width: '18%' }}>Valid Till</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
+                    <tr key={i}>
+                      <td className="border p-2 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{i + 1}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.nomenclature}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.make} / {tool.model}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.SrNo}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.range}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.calibrationCertificateNo}</td>
+                      <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{formatDate(tool.calibrationValidTill)}</td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={7} className="text-center py-4">No tools recorded</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+          </section>
 
-            <footer className="text-center text-xs text-gray-600 mt-6 print:mt-4">
-              <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-              <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
-              <p>Email: info@antesobiomedicalengg.com</p>
-            </footer>
+          {/* Notes */}
+          <section className="mb-6 print:mb-4">
+            <h2 className="font-bold text-lg mb-3">5. Notes</h2>
+            <div className="ml-8 text-sm">
+              {notesArray.map(n => (
+                <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
+              ))}
+            </div>
+          </section>
+
+          {/* Signature */}
+          <div className="flex justify-between items-end mt-8 print:mt-6">
+            <img src={AntesoQRCode} alt="QR" className="h-24" />
+            <div className="text-center">
+              <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
+              <p className="font-bold">Authorized Signatory</p>
+            </div>
+          </div>
+
+          <footer className="text-center text-xs text-gray-600 mt-6 print:mt-4">
+            <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
+            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+            <p>Email: info@antesobiomedicalengg.com</p>
+          </footer>
         </div>
 
         {/* PAGE BREAK */}
         <div className="print:break-before-page print:break-inside-avoid test-section"></div>
 
-         {/* PAGE 2+ - SUMMARY TABLE */}
-         <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section" style={{ pageBreakAfter: 'always' }}>
+        {/* PAGE 2+ - SUMMARY TABLE */}
+        <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section" style={{ pageBreakAfter: 'always' }}>
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
             <MainTestTableForRadiographyMobileHT testData={testData} />
           </div>
@@ -342,8 +342,8 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
         {/* PAGE BREAK */}
         <div className="print:break-before-page print:break-inside-avoid test-section"></div>
 
-         {/* PAGE 3+ - DETAILED TEST RESULTS */}
-         <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section">
+        {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section">
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
             <h2 className="text-3xl font-bold text-center underline mb-6 print:mb-4">DETAILED TEST RESULTS</h2>
 
@@ -447,7 +447,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
             {testData.totalFilteration && (
               <div className="mb-16 print:mb-12 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">2.5. Total Filtration</h3>
-                
+
                 {/* Accuracy of Operating Potential Table */}
                 {testData.totalFilteration.measurements?.length > 0 && (
                   <div className="mb-6">
@@ -482,7 +482,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
-                    
+
                     {/* Tolerance */}
                     {testData.totalFilteration.tolerance && (
                       <div className="mb-6 bg-gray-50 p-4 rounded border">
@@ -515,7 +515,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
             {testData.centralBeamAlignment && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">3. Central Beam Alignment</h3>
-                
+
                 {/* Operating parameters */}
                 {testData.centralBeamAlignment.techniqueFactors && (
                   <div className="mb-6">
@@ -642,12 +642,12 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                             // Always show one decimal place for consistency
                             return numVal.toFixed(1);
                           };
-                          
+
                           const statedWidth = formatValue(spot.statedWidth);
                           const statedHeight = formatValue(spot.statedHeight);
                           const measuredWidth = formatValue(spot.measuredWidth);
                           const measuredHeight = formatValue(spot.measuredHeight);
-                          
+
                           return (
                             <tr key={i} className="text-center">
                               <td className="border p-3">{spot.focusType || "-"}</td>
@@ -677,8 +677,8 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                   <div className="mb-6 bg-gray-50 p-4 rounded border">
                     <p className="font-semibold mb-2 text-sm">Test Conditions:</p>
                     <div className="text-sm">
-                      FCD: {testData.linearityOfMasLoading.table1[0]?.fcd || "-"} cm | 
-                      kV: {testData.linearityOfMasLoading.table1[0]?.kv || "-"} | 
+                      FCD: {testData.linearityOfMasLoading.table1[0]?.fcd || "-"} cm |
+                      kV: {testData.linearityOfMasLoading.table1[0]?.kv || "-"} |
                       Time: {testData.linearityOfMasLoading.table1[0]?.time || "-"} sec
                     </div>
                   </div>
@@ -717,14 +717,14 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                           const rowSpan = testData.linearityOfMasLoading.table2.length;
                           const measHeaders = testData.linearityOfMasLoading?.measHeaders || [];
                           const measuredOutputs = row.measuredOutputs || [];
-                          
+
                           // Format values - ensure they display properly
                           const formatValue = (val: any) => {
                             if (val === undefined || val === null) return "-";
                             const str = String(val).trim();
                             return str === "" || str === "—" || str === "undefined" || str === "null" ? "-" : str;
                           };
-                          
+
                           return (
                             <tr key={i} className="text-center">
                               <td className="border p-3">{row.mAsApplied || "-"}</td>
@@ -786,7 +786,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                           <th className="border border-black p-3">kV</th>
                           <th className="border border-black p-3">mAs</th>
                           <th className="border border-black p-3">Avg (X̄)</th>
-                          <th className="border border-black p-3">CV % / Remark</th>
+                          <th className="border border-black p-3">CV / Remark</th>
                         </tr>
                       </thead>
                       <tbody>

@@ -114,13 +114,124 @@ const ViewServiceReportCBCT: React.FC = () => {
             notes: data.notes || defaultNotes,
           });
 
+          // Transform API data to match component expectations
+          const operatingPotentialData = data.AccuracyOfOperatingPotentialCBCT;
+          let transformedOperatingPotential = null;
+          
+          if (operatingPotentialData) {
+            // Transform measurements array to rows array
+            const rows = operatingPotentialData.measurements?.map((measurement: any) => ({
+              appliedKvp: measurement.appliedKvp || measurement.appliedKVp || "-",
+              averageKvp: measurement.averageKvp || measurement.averageKVp || "-",
+              measuredValues: measurement.measuredValues || measurement.measured || [],
+              remarks: measurement.remarks || measurement.remark || "-",
+            })) || [];
+            
+            transformedOperatingPotential = {
+              ...operatingPotentialData,
+              rows: rows,
+              toleranceSign: operatingPotentialData.tolerance?.sign || "±",
+              toleranceValue: operatingPotentialData.tolerance?.value || "2.0",
+              mAStations: operatingPotentialData.mAStations || [],
+            };
+          }
+
+          // Transform RadiationLeakageTestCBCT data to match component expectations
+          const radiationLeakageData = data.RadiationLeakageTestCBCT;
+          let transformedRadiationLeakage = null;
+          
+          if (radiationLeakageData) {
+            // Transform leakageMeasurements array to leakageRows array
+            const toleranceValue = parseFloat(radiationLeakageData.toleranceValue || "1");
+            const toleranceOperator = radiationLeakageData.toleranceOperator || "<=";
+            
+            const leakageRows = radiationLeakageData.leakageMeasurements?.map((measurement: any) => {
+              // Calculate max if not provided
+              let maxValue = measurement.max;
+              if (!maxValue || maxValue === "" || maxValue === "-") {
+                const values = [
+                  measurement.left,
+                  measurement.right,
+                  measurement.top || measurement.front,
+                  measurement.up || measurement.back,
+                  measurement.down
+                ]
+                  .map((v: any) => parseFloat(v) || 0)
+                  .filter((v: number) => v > 0);
+                maxValue = values.length > 0 ? Math.max(...values).toFixed(3) : "-";
+              } else {
+                maxValue = String(maxValue);
+              }
+              
+              // Calculate remark if not provided
+              let remark = measurement.remark || measurement.remarks || "";
+              if (!remark || remark === "" || remark === "-") {
+                const maxNum = parseFloat(maxValue);
+                if (!isNaN(maxNum) && !isNaN(toleranceValue) && toleranceValue > 0) {
+                  if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
+                    remark = maxNum <= toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
+                    remark = maxNum >= toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
+                    remark = maxNum < toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
+                    remark = maxNum > toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === "=" || toleranceOperator === "equal to") {
+                    remark = Math.abs(maxNum - toleranceValue) < 0.001 ? "Pass" : "Fail";
+                  } else {
+                    remark = "-";
+                  }
+                } else {
+                  remark = "-";
+                }
+              }
+              
+              return {
+                location: measurement.location || "-",
+                left: measurement.left || "-",
+                right: measurement.right || "-",
+                top: measurement.top || measurement.front || "-",
+                up: measurement.up || measurement.back || "-",
+                down: measurement.down || "-",
+                max: maxValue,
+                unit: measurement.unit || "mGy/h",
+                remark: remark,
+              };
+            }) || [];
+            
+            // Handle settings - could be array or single object
+            let settingsArray = [];
+            if (Array.isArray(radiationLeakageData.settings) && radiationLeakageData.settings.length > 0) {
+              settingsArray = radiationLeakageData.settings;
+            } else if (radiationLeakageData.settings && typeof radiationLeakageData.settings === 'object') {
+              settingsArray = [radiationLeakageData.settings];
+            } else if (radiationLeakageData.ffd || radiationLeakageData.kvp || radiationLeakageData.ma || radiationLeakageData.time) {
+              // Fallback: create settings array from top-level fields
+              settingsArray = [{
+                ffd: radiationLeakageData.ffd || "",
+                kvp: radiationLeakageData.kvp || radiationLeakageData.kv || "",
+                ma: radiationLeakageData.ma || "",
+                time: radiationLeakageData.time || "",
+              }];
+            }
+            
+            transformedRadiationLeakage = {
+              ...radiationLeakageData,
+              leakageRows: leakageRows,
+              settings: settingsArray,
+              maxLeakageResult: radiationLeakageData.maxLeakageResult || '',
+              maxRadiationLeakage: radiationLeakageData.maxRadiationLeakage || '',
+            };
+          }
+
           setTestData({
             irradiationTime: data.AccuracyOfIrradiationTimeCBCT || null,
-            operatingPotential: data.AccuracyOfOperatingPotentialCBCT || null,
+            operatingPotential: transformedOperatingPotential,
             outputConsistency: data.OutputConsistencyForCBCT || null,
             linearityOfMaLoading: data.LinearityOfMaLoadingCBCT || null,
-            radiationLeakage: data.RadiationLeakageTestCBCT || null,
+            radiationLeakage: transformedRadiationLeakage,
             radiationSurvey: data.RadiationProtectionSurveyCBCT || null,
+            totalFiltration: operatingPotentialData?.totalFiltration || null,
           });
         } else {
           setNotFound(true);
@@ -598,6 +709,70 @@ const ViewServiceReportCBCT: React.FC = () => {
                     Tolerance : Maximum leakage radiation ≤ {testData.radiationLeakage.toleranceValue || "1"} mGy/h ({testData.radiationLeakage.toleranceTime || "1"} hour)
                   </p>
                 </div>
+                
+                {/* Max Leakage Calculation */}
+                {testData.radiationLeakage.workload && testData.radiationLeakage.settings?.[0]?.ma && (
+                  <div className="mt-6 bg-gray-50 p-4 rounded">
+                    <h4 className="text-sm font-semibold mb-3">Max Leakage Calculation</h4>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium">{testData.radiationLeakage.workload || "—"}</span>
+                      <span>×</span>
+                      <span className="font-medium">
+                        {Math.max(...testData.radiationLeakage.leakageRows.map((r: any) => parseFloat(r.max) || 0)).toFixed(3) || "—"}
+                      </span>
+                      <span>÷</span>
+                      <span className="font-medium">60</span>
+                      <span>×</span>
+                      <span className="font-medium">{testData.radiationLeakage.settings?.[0]?.ma || "—"}</span>
+                      <span>=</span>
+                      <span className="font-medium">{testData.radiationLeakage.maxLeakageResult || "—"}</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Maximum Radiation Leakage from Tube Housing */}
+                <div className="mt-4 bg-gray-50 p-4 rounded">
+                  <h4 className="text-sm font-semibold mb-2">Maximum Radiation Leakage from Tube Housing</h4>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{testData.radiationLeakage.maxRadiationLeakage || "—"}</span>
+                    <span className="text-sm text-gray-600">mGy/h</span>
+                  </div>
+                  
+                  {/* Overall Pass/Fail Status */}
+                  {testData.radiationLeakage.maxRadiationLeakage && testData.radiationLeakage.toleranceValue && (
+                    <div className="mt-3 pt-3 border-t border-gray-300">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Test Status:</span>
+                        {(() => {
+                          const maxRadLeak = parseFloat(testData.radiationLeakage.maxRadiationLeakage) || 0;
+                          const tol = parseFloat(testData.radiationLeakage.toleranceValue) || 0;
+                          const tolOp = testData.radiationLeakage.toleranceOperator || "<=";
+                          
+                          let isPass = false;
+                          if (tolOp === "<=" || tolOp === "less than or equal to") {
+                            isPass = maxRadLeak <= tol;
+                          } else if (tolOp === ">=" || tolOp === "greater than or equal to") {
+                            isPass = maxRadLeak >= tol;
+                          } else if (tolOp === "<" || tolOp === "less than") {
+                            isPass = maxRadLeak < tol;
+                          } else if (tolOp === ">" || tolOp === "greater than") {
+                            isPass = maxRadLeak > tol;
+                          } else if (tolOp === "=" || tolOp === "equal to") {
+                            isPass = Math.abs(maxRadLeak - tol) < 0.001;
+                          }
+                          
+                          return (
+                            <span className={`px-3 py-1 rounded text-sm font-medium ${
+                              isPass ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                            }`}>
+                              {isPass ? "PASS" : "FAIL"}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -634,35 +809,117 @@ const ViewServiceReportCBCT: React.FC = () => {
                     </table>
                   </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full border border-black text-sm">
-                    <thead>
-                      <tr>
-                        <th className="border border-black p-2 text-left">Location</th>
-                        <th className="border border-black p-2 text-center">Max. Radiation Level (mR/hr)</th>
-                        <th className="border border-black p-2 text-center">mR/week</th>
-                        <th className="border border-black p-2 text-center">Result</th>
-                        <th className="border border-black p-2 text-center">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {testData.radiationSurvey.locations.map((loc: any, i: number) => (
-                        <tr key={i}>
-                          <td className="border border-black p-2 text-left">{loc.location || "-"}</td>
-                          <td className="border border-black p-2 text-center">{loc.mRPerHr || "-"}</td>
-                          <td className="border border-black p-2 text-center">{loc.mRPerWeek || "-"}</td>
-                          <td className="border border-black p-2 text-center">{loc.result || "-"}</td>
-                          <td className="border border-black p-2 text-center">{loc.calculatedResult || "-"}</td>
+                {/* 3. Measured Maximum Radiation Levels */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold mb-4">3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3 text-left">Location</th>
+                          <th className="border border-black p-3">Max. Radiation Level</th>
+                          <th className="border border-black p-3">Result</th>
+                          <th className="border border-black p-3">Remarks</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {testData.radiationSurvey.locations.map((loc: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border p-3 text-left">{loc.location || "-"}</td>
+                            <td className="border p-3">{loc.mRPerHr ? `${loc.mRPerHr} mR/hr` : "-"}</td>
+                            <td className="border p-3">{loc.mRPerWeek ? `${loc.mRPerWeek} mR/week` : "-"}</td>
+                            <td className="border p-3">
+                              <span className={loc.result === "PASS" || loc.result === "Pass" ? "text-green-600 font-semibold" : loc.result === "FAIL" || loc.result === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                {loc.result || "-"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                {/* Tolerance Statement */}
-                <div className="mt-4">
-                  <p className="text-sm">
-                    Tolerance : For Radiation Worker ≤ 40 mR/week | For Public ≤ 2 mR/week
-                  </p>
+
+                {/* 4. Calculation Formula */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold mb-4">4. Calculation Formula</h4>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <tbody>
+                        <tr>
+                          <td className="border border-black p-3 bg-gray-50">
+                            <strong>Maximum Radiation level/week (mR/wk) = Work Load X Max. Radiation Level (mR/hr) / (60 X mA used for measurement)</strong>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 5. Summary of Maximum Radiation Level/week */}
+                {testData.radiationSurvey.locations?.length > 0 && (() => {
+                  const workerLocs = testData.radiationSurvey.locations.filter((loc: any) => loc.category === "worker");
+                  const publicLocs = testData.radiationSurvey.locations.filter((loc: any) => loc.category === "public");
+                  const maxWorkerWeekly = Math.max(...workerLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
+                  const maxPublicWeekly = Math.max(...publicLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
+                  const workerResult = parseFloat(maxWorkerWeekly) > 0 && parseFloat(maxWorkerWeekly) <= 40 ? "Pass" : parseFloat(maxWorkerWeekly) > 40 ? "Fail" : "";
+                  const publicResult = parseFloat(maxPublicWeekly) > 0 && parseFloat(maxPublicWeekly) <= 2 ? "Pass" : parseFloat(maxPublicWeekly) > 2 ? "Fail" : "";
+                  
+                  return (
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold mb-4">5. Summary of Maximum Radiation Level/week (mR/wk)</h4>
+                      <div className="overflow-x-auto mb-6">
+                        <table className="w-full border-2 border-black text-sm">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="border border-black p-3">Category</th>
+                              <th className="border border-black p-3">Result</th>
+                              <th className="border border-black p-3">Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="text-center">
+                              <td className="border border-black p-3 font-semibold">For Radiation Worker</td>
+                              <td className="border border-black p-3">{maxWorkerWeekly || "0.000"} mR/week</td>
+                              <td className="border border-black p-3">
+                                <span className={workerResult === "Pass" ? "text-green-600 font-semibold" : workerResult === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                  {workerResult || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                            <tr className="text-center">
+                              <td className="border border-black p-3 font-semibold">For Public</td>
+                              <td className="border border-black p-3">{maxPublicWeekly || "0.000"} mR/week</td>
+                              <td className="border border-black p-3">
+                                <span className={publicResult === "Pass" ? "text-green-600 font-semibold" : publicResult === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                  {publicResult || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 6. Permissible Limit */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold mb-4">6. Permissible Limit</h4>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <tbody>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold w-1/2">For location of Radiation Worker</td>
+                          <td className="border border-black p-3">20 mSv in a year (40 mR/week)</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold">For Location of Member of Public</td>
+                          <td className="border border-black p-3">1 mSv in a year (2mR/week)</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}

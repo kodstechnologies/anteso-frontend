@@ -5,7 +5,7 @@ import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addRadiationLeakageLevelForRadiographyPortable,
-  getTubeHousingLeakageByServiceIdForFixedRadioFluro,
+  getRadiationLeakageLevelByServiceIdForRadiographyPortable,
   updateRadiationLeakageLevelForRadiographyPortable,
 } from '../../../../../../api';
 
@@ -145,7 +145,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         return;
       }
       try {
-        const res = await getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId);
+        const res = await getRadiationLeakageLevelByServiceIdForRadiographyPortable(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -222,6 +222,13 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         toleranceOperator,
         toleranceTime,
         remark: finalRemark,
+        // Max Leakage Results
+        maxLeakageTubeMR: tubeResultMR.toFixed(4),
+        maxLeakageTubeMGy: tubeResultMGy,
+        maxLeakageCollimatorMR: collimatorResultMR.toFixed(4),
+        maxLeakageCollimatorMGy: collimatorResultMGy,
+        highestLeakageMR: globalMaxResultMR.toFixed(4),
+        highestLeakageMGy: globalMaxResultMGy,
       };
 
       let result;
@@ -230,7 +237,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       // If no testId, try to get existing data by serviceId first
       if (!currentTestId) {
         try {
-          const existing = await getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId);
+          const existing = await getRadiationLeakageLevelByServiceIdForRadiographyPortable(serviceId);
           if (existing?.data?._id) {
             currentTestId = existing.data._id;
             setTestId(currentTestId);

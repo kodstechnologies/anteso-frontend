@@ -215,6 +215,13 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         toleranceOperator,
         toleranceTime,
         remark: finalRemark,
+        // Max Leakage Results
+        maxLeakageTubeMR: tubeResultMR.toFixed(4),
+        maxLeakageTubeMGy: tubeResultMGy,
+        maxLeakageCollimatorMR: collimatorResultMR.toFixed(4),
+        maxLeakageCollimatorMGy: collimatorResultMGy,
+        highestLeakageMR: globalMaxResultMR.toFixed(4),
+        highestLeakageMGy: globalMaxResultMGy,
       };
 
       let result;
