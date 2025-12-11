@@ -154,8 +154,8 @@ export const generatePDF = async ({
               htmlEl.style.width = '100%';
               htmlEl.style.boxSizing = 'border-box';
             }
-            });
-            
+          });
+
             // Fix overflow containers - remove overflow-x-auto and make content fit
             const overflowContainers = clonedElement.querySelectorAll('.overflow-x-auto, [class*="overflow"]');
           overflowContainers.forEach((container) => {
@@ -186,6 +186,7 @@ export const generatePDF = async ({
             // Remove alternating row backgrounds that can cause overlap issues
             // This MUST be done before processing cells to ensure cell backgrounds show through
             const tableRows = table.querySelectorAll('tr');
+            const isCompact = htmlTable.classList.contains('compact-table');
             tableRows.forEach((row) => {
               const htmlRow = row as HTMLElement;
               // Remove bg-white and bg-gray-50 classes completely
@@ -196,6 +197,14 @@ export const generatePDF = async ({
               htmlRow.style.setProperty('background-image', 'none', 'important');
               // Remove any pseudo-elements that might create white overlays
               htmlRow.style.setProperty('position', 'relative', 'important');
+              // Reduce row height aggressively for compact tables
+              if (isCompact) {
+                htmlRow.style.height = 'auto';
+                htmlRow.style.minHeight = '0';
+                htmlRow.style.lineHeight = '1.0';
+                htmlRow.style.padding = '0';
+                htmlRow.style.margin = '0';
+              }
               // Also remove any inline or computed white backgrounds
               const rowBg = window.getComputedStyle(htmlRow).backgroundColor;
               if (rowBg === 'white' || rowBg === 'rgb(255, 255, 255)' || rowBg === 'rgba(255, 255, 255, 1)' || 
@@ -210,15 +219,20 @@ export const generatePDF = async ({
             const headerCells = table.querySelectorAll('thead th, thead td');
             const columnCount = headerCells.length || table.querySelectorAll('tr:first-child td').length;
             
+            // Check if table has compact-table class for extra aggressive sizing
+            const isCompactTable = htmlTable.classList.contains('compact-table');
+            
             // More aggressive font sizing for wide tables
-            if (columnCount >= 7) {
-              htmlTable.style.fontSize = '8px'; // Very small font for 7+ column tables
+            if (isCompactTable) {
+              htmlTable.style.fontSize = '11px'; // Increased for better readability while keeping height tight
+            } else if (columnCount >= 7) {
+              htmlTable.style.fontSize = '10px'; // Very small font for 7+ column tables
             } else if (columnCount >= 6) {
-              htmlTable.style.fontSize = '9px'; // Small font for 6 column tables
+              htmlTable.style.fontSize = '11px'; // Small font for 6 column tables
             } else if (columnCount >= 5) {
-              htmlTable.style.fontSize = '10px'; // Small font for 5 column tables
+              htmlTable.style.fontSize = '12px'; // Small font for 5 column tables
             } else {
-              htmlTable.style.fontSize = '11px'; // Normal font for smaller tables
+              htmlTable.style.fontSize = '13px'; // Normal font for smaller tables
             }
             
             // Ensure table cells wrap text properly and fit within columns
@@ -228,17 +242,23 @@ export const generatePDF = async ({
               htmlCell.style.wordWrap = 'break-word';
               htmlCell.style.overflowWrap = 'break-word';
               htmlCell.style.whiteSpace = 'normal';
-              htmlCell.style.verticalAlign = 'top';
+              htmlCell.style.verticalAlign = 'middle';
               htmlCell.style.overflow = 'hidden';
               htmlCell.style.boxSizing = 'border-box';
               htmlCell.style.maxWidth = '100%';
               htmlCell.style.minWidth = '0'; // Allow columns to shrink below content width
               
+              // Center align text in table cells for DETAILED TEST RESULTS section
+              if (isCompactTable || table.closest('.test-section')) {
+                htmlCell.style.textAlign = 'center';
+              }
+              
               // Remove rounded corners that can cause white overlap
               htmlCell.style.borderRadius = '0';
-              // Ensure borders are properly rendered
+              // Ensure borders are properly rendered and black
               htmlCell.style.borderStyle = 'solid';
               htmlCell.style.borderWidth = '1px';
+              htmlCell.style.borderColor = '#000000';
               
               // First, remove any white/gray background classes that might interfere
               htmlCell.classList.remove('bg-white', 'bg-gray-50');
@@ -309,14 +329,31 @@ export const generatePDF = async ({
               });
               
               // More aggressive padding reduction for wide tables
-              if (columnCount >= 7) {
-                htmlCell.style.padding = '1px 2px'; // Minimal padding for 7+ column tables
+              if (isCompactTable) {
+                htmlCell.style.padding = '0px 1px'; // Minimal padding for compact tables
+                htmlCell.style.lineHeight = '1.0'; // Tight line height - keep at 1.0 to maintain height
+                htmlCell.style.minHeight = '0'; // Remove min-height
+                htmlCell.style.height = 'auto'; // Auto height
+              } else if (columnCount >= 7) {
+                htmlCell.style.padding = '0px 1px'; // Minimal padding for 7+ column tables
+                htmlCell.style.lineHeight = '1.0';
               } else if (columnCount >= 6) {
-                htmlCell.style.padding = '2px 2px';
+                htmlCell.style.padding = '1px 2px';
+                htmlCell.style.lineHeight = '1.1';
               } else if (columnCount >= 5) {
-                htmlCell.style.padding = '2px 3px';
+                htmlCell.style.padding = '1px 2px';
+                htmlCell.style.lineHeight = '1.1';
               } else {
-                htmlCell.style.padding = '3px 4px'; // Normal padding for smaller tables
+                htmlCell.style.padding = '2px 3px'; // Normal padding for smaller tables
+                htmlCell.style.lineHeight = '1.2';
+              }
+              
+              // Force remove any min-height or height constraints - keep height tight
+              htmlCell.style.minHeight = '0';
+              htmlCell.style.maxHeight = 'none';
+              // Ensure font size is applied but line-height stays tight
+              if (isCompactTable && !htmlCell.style.fontSize) {
+                htmlCell.style.fontSize = '11px';
               }
             });
             
@@ -492,8 +529,8 @@ export const generatePDFAsBlob = async ({
               htmlEl.style.width = '100%';
               htmlEl.style.boxSizing = 'border-box';
             }
-            });
-            
+          });
+
             // Fix overflow containers - remove overflow-x-auto and make content fit
             const overflowContainers = clonedElement.querySelectorAll('.overflow-x-auto, [class*="overflow"]');
           overflowContainers.forEach((container) => {

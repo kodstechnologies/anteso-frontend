@@ -210,31 +210,31 @@ const ViewServiceReportMammography: React.FC = () => {
             </div>
 
           <div className="text-center mb-4">
-            <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
-            <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
-          </div>
-
-          <h1 className="text-center text-2xl font-bold underline mb-4">
-            QA TEST REPORT FOR MAMMOGRAPHY EQUIPMENT
-          </h1>
-
-          <section className="mb-4">
-            <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
-            <div className="border-2 border-gray-600 p-5 text-lg">
-              <p><strong>Customer:</strong> {report.customerName}</p>
-              <p><strong>Address:</strong> {report.address}</p>
+              <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
+              <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
             </div>
-          </section>
+
+            <h1 className="text-center text-2xl font-bold underline mb-4">
+              QA TEST REPORT FOR MAMMOGRAPHY EQUIPMENT
+            </h1>
 
           <section className="mb-4">
-            <h2 className="font-bold text-lg mb-3">2. Reference</h2>
-            <table className="w-full border-2 border-gray-600 text-sm">
-              <tbody>
-                <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
-                <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
-              </tbody>
-            </table>
-          </section>
+              <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
+              <div className="border-2 border-gray-600 p-5 text-lg">
+                <p><strong>Customer:</strong> {report.customerName}</p>
+                <p><strong>Address:</strong> {report.address}</p>
+              </div>
+            </section>
+
+          <section className="mb-4">
+              <h2 className="font-bold text-lg mb-3">2. Reference</h2>
+              <table className="w-full border-2 border-gray-600 text-sm">
+                <tbody>
+                  <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
+                  <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+                </tbody>
+              </table>
+            </section>
 
           <section className="mb-4">
               <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
@@ -262,7 +262,7 @@ const ViewServiceReportMammography: React.FC = () => {
             </section>
 
           <section className="mb-4">
-            <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
+              <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
             <div className="overflow-x-auto print:overflow-visible print:max-w-none">
               <table className="w-full border-2 border-gray-600 text-xs" style={{ tableLayout: 'fixed', width: '100%' }}>
                 <thead className="bg-gray-200">
@@ -293,31 +293,31 @@ const ViewServiceReportMammography: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          </section>
+            </section>
 
           <section className="mb-6">
-            <h2 className="font-bold text-lg mb-3">5. Notes</h2>
-            <div className="ml-8 text-sm">
-              {report.notes.length > 0 ? report.notes.map(n => (
-                <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
-              )) : <p>No notes added.</p>}
-            </div>
-          </section>
+              <h2 className="font-bold text-lg mb-3">5. Notes</h2>
+              <div className="ml-8 text-sm">
+                {report.notes.length > 0 ? report.notes.map(n => (
+                  <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
+                )) : <p>No notes added.</p>}
+              </div>
+            </section>
 
           <div className="flex justify-between items-end mt-8">
-            <img src={AntesoQRCode} alt="QR" className="h-24" />
-            <div className="text-center">
-              <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
-              <p className="font-bold">Authorized Signatory</p>
+              <img src={AntesoQRCode} alt="QR" className="h-24" />
+              <div className="text-center">
+                <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
+                <p className="font-bold">Authorized Signatory</p>
+              </div>
             </div>
-          </div>
 
           <footer className="text-center text-xs text-gray-600 mt-6">
-            <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
-            <p>Email: info@antesobiomedicalengg.com</p>
-          </footer>
-        </div>
+              <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
+              <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+              <p>Email: info@antesobiomedicalengg.com</p>
+            </footer>
+          </div>
 
         {/* PAGE 2+ - SUMMARY TABLE */}
         <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section" style={{ pageBreakAfter: 'always' }}>

@@ -358,9 +358,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                       <table className="w-full border-2 border-black text-sm">
                         <thead className="bg-gray-100">
                           <tr>
-                            <th rowSpan={2} className="border border-black p-3">Applied kVp</th>
-                            <th rowSpan={2} className="border border-black p-3">Set Time (s)</th>
-                            <th colSpan={maxStations * 2} className="border border-black p-3 text-center">Measured Values at mA Stations</th>
+                            <th rowSpan={2} className="border border-black p-3 bg-transparent print:bg-transparent">Applied kVp</th>
+                            <th rowSpan={2} className="border border-black p-3 bg-transparent print:bg-transparent">Set Time (s)</th>
+                            <th colSpan={maxStations * 2} className="border border-black p-3 text-center bg-transparent print:bg-transparent">Measured Values at mA Stations</th>
                             <th rowSpan={2} className="border border-black p-3 bg-blue-100">Avg kVp</th>
                             <th rowSpan={2} className="border border-black p-3 bg-blue-100">Avg Time (s)</th>
                             <th rowSpan={2} className="border border-black p-3 bg-green-100">Remarks</th>
@@ -368,8 +368,8 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                           <tr>
                             {Array.from({ length: maxStations }).map((_, idx) => (
                               <React.Fragment key={idx}>
-                                <th className="border border-black p-2">mA Station {idx + 1} - kVp</th>
-                                <th className="border border-black p-2">mA Station {idx + 1} - Time</th>
+                                <th className="border border-black p-2 bg-transparent print:bg-transparent">mA Station {idx + 1} - kVp</th>
+                                <th className="border border-black p-2 bg-transparent print:bg-transparent">mA Station {idx + 1} - Time</th>
                               </React.Fragment>
                             ))}
                           </tr>
@@ -404,25 +404,27 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
 
                           return (
                             <tr key={i} className="text-center">
-                              <td className="border p-3 font-semibold">{row.appliedKvp || row.appliedkVp || "-"}</td>
-                              <td className="border p-3 font-semibold">{row.setTime || "-"}</td>
+                              <td className="border p-3 font-semibold bg-transparent print:bg-transparent">{row.appliedKvp || row.appliedkVp || "-"}</td>
+                              <td className="border p-3 font-semibold bg-transparent print:bg-transparent">{row.setTime || "-"}</td>
                               {stations.map((station: any, stationIdx: number) => {
                                 // Handle both object format {kvp: "", time: ""} and direct values
                                 const kvpValue = typeof station === 'object' ? (station?.kvp || "") : "";
                                 const timeValue = typeof station === 'object' ? (station?.time || "") : "";
                                 return (
                                   <React.Fragment key={stationIdx}>
-                                    <td className="border p-3">{kvpValue || "-"}</td>
-                                    <td className="border p-3">{timeValue || "-"}</td>
+                                    <td className="border p-3 bg-transparent print:bg-transparent">{kvpValue || "-"}</td>
+                                    <td className="border p-3 bg-transparent print:bg-transparent">{timeValue || "-"}</td>
                                   </React.Fragment>
                                 );
                               })}
                               <td className="border p-3 font-bold bg-blue-50">{row.avgKvp || "-"}</td>
                               <td className="border p-3 font-bold bg-blue-50">{row.avgTime || "-"}</td>
-                              <td className="border p-3 font-bold">
-                                <span className={row.remark === "PASS" ? "text-green-600" : row.remark === "FAIL" ? "text-red-600" : "text-gray-600"}>
-                                  {row.remark || "-"}
-                                </span>
+                              <td className={`border p-3 font-bold ${
+                                row.remark === "PASS" || row.remark === "Pass" ? "bg-green-100 text-green-800" : 
+                                row.remark === "FAIL" || row.remark === "Fail" ? "bg-red-100 text-red-800" : 
+                                "bg-transparent print:bg-transparent"
+                              }`}>
+                                {row.remark || "-"}
                               </td>
                             </tr>
                           );
@@ -476,12 +478,12 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                   <table className="w-full border-2 border-black text-sm">
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="border border-black p-3">Time (sec)</th>
-                        <th className="border border-black p-3">Avg Output</th>
-                        <th className="border border-black p-3">X (mGy/sec)</th>
-                        <th className="border border-black p-3">X MAX</th>
-                        <th className="border border-black p-3">X MIN</th>
-                        <th className="border border-black p-3">CoL</th>
+                        <th className="border border-black p-3 bg-transparent print:bg-transparent">Time (sec)</th>
+                        <th className="border border-black p-3 bg-transparent print:bg-transparent">Avg Output</th>
+                        <th className="border border-black p-3 bg-transparent print:bg-transparent">X (mGy/sec)</th>
+                        <th className="border border-black p-3 bg-transparent print:bg-transparent">X MAX</th>
+                        <th className="border border-black p-3 bg-transparent print:bg-transparent">X MIN</th>
+                        <th className="border border-black p-3 bg-transparent print:bg-transparent">CoL</th>
                         <th className="border border-black p-3 bg-green-100">Remarks</th>
                       </tr>
                     </thead>
@@ -500,24 +502,26 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                         
                         return (
                           <tr key={i} className="text-center">
-                            <td className="border p-3 font-semibold">{row.time || "-"}</td>
-                            <td className="border p-3">{row.average || "-"}</td>
-                            <td className="border p-3">{x || "-"}</td>
+                            <td className="border p-3 font-semibold bg-transparent print:bg-transparent">{row.time || "-"}</td>
+                            <td className="border p-3 bg-transparent print:bg-transparent">{row.average || "-"}</td>
+                            <td className="border p-3 bg-transparent print:bg-transparent">{x || "-"}</td>
                             {i === 0 && (
                               <>
-                                <td rowSpan={testData.linearityOfTime.table2.length} className="border p-3 align-middle">
+                                <td rowSpan={testData.linearityOfTime.table2.length} className="border p-3 align-middle bg-transparent print:bg-transparent">
                                   {testData.linearityOfTime.xMax || "-"}
                                 </td>
-                                <td rowSpan={testData.linearityOfTime.table2.length} className="border p-3 align-middle">
+                                <td rowSpan={testData.linearityOfTime.table2.length} className="border p-3 align-middle bg-transparent print:bg-transparent">
                                   {testData.linearityOfTime.xMin || "-"}
                                 </td>
-                                <td rowSpan={testData.linearityOfTime.table2.length} className="border p-3 font-semibold align-middle">
+                                <td rowSpan={testData.linearityOfTime.table2.length} className="border p-3 font-semibold align-middle bg-transparent print:bg-transparent">
                                   {testData.linearityOfTime.col || "-"}
                                 </td>
-                                <td rowSpan={testData.linearityOfTime.table2.length} className="border p-3 font-bold align-middle">
-                                  <span className={testData.linearityOfTime.remarks === "Pass" ? "text-green-600" : testData.linearityOfTime.remarks === "Fail" ? "text-red-600" : "text-gray-600"}>
-                                    {testData.linearityOfTime.remarks || "-"}
-                                  </span>
+                                <td rowSpan={testData.linearityOfTime.table2.length} className={`border p-3 font-bold align-middle ${
+                                  testData.linearityOfTime.remarks === "Pass" || testData.linearityOfTime.remarks === "PASS" ? "bg-green-100 text-green-800" : 
+                                  testData.linearityOfTime.remarks === "Fail" || testData.linearityOfTime.remarks === "FAIL" ? "bg-red-100 text-red-800" : 
+                                  "bg-transparent print:bg-transparent"
+                                }`}>
+                                  {testData.linearityOfTime.remarks || "-"}
                                 </td>
                               </>
                             )}
@@ -553,9 +557,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                   <table className="w-full border-2 border-black text-sm">
                     <thead className="bg-gray-100">
                       <tr>
-                        <th rowSpan={2} className="border border-black p-3">kV</th>
-                        <th rowSpan={2} className="border border-black p-3">mAs</th>
-                        <th colSpan={testData.reproducibilityOfRadiationOutput?.outputRows?.[0]?.outputs?.length || 0} className="border border-black p-3">
+                        <th rowSpan={2} className="border border-black p-3 bg-transparent print:bg-transparent">kV</th>
+                        <th rowSpan={2} className="border border-black p-3 bg-transparent print:bg-transparent">mAs</th>
+                        <th colSpan={testData.reproducibilityOfRadiationOutput?.outputRows?.[0]?.outputs?.length || 0} className="border border-black p-3 bg-transparent print:bg-transparent">
                           Radiation Output (mGy)
                         </th>
                         <th rowSpan={2} className="border border-black p-3 bg-blue-100">Avg (X̄)</th>
@@ -563,23 +567,25 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                       </tr>
                       <tr>
                         {testData.reproducibilityOfRadiationOutput?.outputRows?.[0]?.outputs?.map((_: any, idx: number) => (
-                          <th key={idx} className="border border-black p-3">Meas {idx + 1}</th>
+                          <th key={idx} className="border border-black p-3 bg-transparent print:bg-transparent">Meas {idx + 1}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {testData.reproducibilityOfRadiationOutput?.outputRows?.map((row: any, i: number) => (
                         <tr key={i} className="text-center">
-                          <td className="border p-3 font-semibold">{row.kv || "-"}</td>
-                          <td className="border p-3">{row.mas || "-"}</td>
+                          <td className="border p-3 font-semibold bg-transparent print:bg-transparent">{row.kv || "-"}</td>
+                          <td className="border p-3 bg-transparent print:bg-transparent">{row.mas || "-"}</td>
                           {(row.outputs || []).map((output: any, idx: number) => (
-                            <td key={idx} className="border p-3">{output?.value || "-"}</td>
+                            <td key={idx} className="border p-3 bg-transparent print:bg-transparent">{output?.value || "-"}</td>
                           ))}
                           <td className="border p-3 font-semibold bg-blue-50">{row.avg || "-"}</td>
-                          <td className="border p-3 font-bold">
-                            <span className={row.remark?.includes("Pass") ? "text-green-600" : row.remark?.includes("Fail") ? "text-red-600" : "text-gray-600"}>
-                              {row.remark || "-"}
-                            </span>
+                          <td className={`border p-3 font-bold ${
+                            row.remark?.includes("Pass") || row.remark?.includes("PASS") ? "bg-green-100 text-green-800" : 
+                            row.remark?.includes("Fail") || row.remark?.includes("FAIL") ? "bg-red-100 text-red-800" : 
+                            "bg-transparent print:bg-transparent"
+                          }`}>
+                            {row.remark || "-"}
                           </td>
                         </tr>
                       ))}
@@ -628,33 +634,37 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                     <table className="w-full border-2 border-black text-sm">
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black p-3 text-left">Location (at 1.0 m from the focus)</th>
-                          <th colSpan={5} className="border border-black p-3 text-center">Exposure Level (mR/hr)</th>
-                          <th className="border border-black p-3">Result</th>
-                          <th className="border border-black p-3">Remarks</th>
+                          <th className="border border-black p-3 text-left bg-transparent print:bg-transparent">Location (at 1.0 m from the focus)</th>
+                          <th colSpan={5} className="border border-black p-3 text-center bg-transparent print:bg-transparent">Exposure Level (mR/hr)</th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent">Result</th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent">Remarks</th>
                         </tr>
                         <tr>
-                          <th className="border border-black p-3"></th>
-                          <th className="border border-black p-3">Left</th>
-                          <th className="border border-black p-3">Right</th>
-                          <th className="border border-black p-3">Front</th>
-                          <th className="border border-black p-3">Back</th>
-                          <th className="border border-black p-3">Top</th>
-                          <th className="border border-black p-3"></th>
-                          <th className="border border-black p-3"></th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent"></th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent">Left</th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent">Right</th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent">Front</th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent">Back</th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent">Top</th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent"></th>
+                          <th className="border border-black p-3 bg-transparent print:bg-transparent"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {leakageData.leakageMeasurements.map((row: any, i: number) => (
                           <tr key={i} className="text-center">
-                            <td className="border border-black p-3 text-left">{row.location || "Tube"}</td>
-                            <td className="border border-black p-3">{row.left || "-"}</td>
-                            <td className="border border-black p-3">{row.right || "-"}</td>
-                            <td className="border border-black p-3">{row.front || "-"}</td>
-                            <td className="border border-black p-3">{row.back || "-"}</td>
-                            <td className="border border-black p-3">{row.top || "-"}</td>
-                            <td className="border border-black p-3 font-semibold">{maxLeakageResultMR} mR in one hour</td>
-                            <td className={`border border-black p-3 font-semibold ${remark === "Pass" ? "text-green-600" : remark === "Fail" ? "text-red-600" : ""}`}>
+                            <td className="border border-black p-3 text-left bg-transparent print:bg-transparent">{row.location || "Tube"}</td>
+                            <td className="border border-black p-3 bg-transparent print:bg-transparent">{row.left || "-"}</td>
+                            <td className="border border-black p-3 bg-transparent print:bg-transparent">{row.right || "-"}</td>
+                            <td className="border border-black p-3 bg-transparent print:bg-transparent">{row.front || "-"}</td>
+                            <td className="border border-black p-3 bg-transparent print:bg-transparent">{row.back || "-"}</td>
+                            <td className="border border-black p-3 bg-transparent print:bg-transparent">{row.top || "-"}</td>
+                            <td className="border border-black p-3 font-semibold bg-transparent print:bg-transparent">{maxLeakageResultMR} mR in one hour</td>
+                            <td className={`border border-black p-3 font-semibold ${
+                              remark === "Pass" || remark === "PASS" ? "bg-green-100 text-green-800" : 
+                              remark === "Fail" || remark === "FAIL" ? "bg-red-100 text-red-800" : 
+                              "bg-transparent print:bg-transparent"
+                            }`}>
                               {remark || "-"}
                             </td>
                           </tr>
