@@ -339,10 +339,10 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span className={`inline-block px-12 py-4 rounded-full text-xl font-bold min-w-36 ${row.remark === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : row.remark === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-600'
+                      ? 'bg-green-100 text-green-800'
+                      : row.remark === 'Fail'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-600'
                       }`}>
                       {row.remark || '—'}
                     </span>
@@ -355,7 +355,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       </div>
 
       {/* Final Result */}
-   
+
     </div>
   );
 };
