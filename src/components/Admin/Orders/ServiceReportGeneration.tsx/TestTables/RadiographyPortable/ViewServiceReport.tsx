@@ -189,7 +189,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
       <div id="report-content">
         {/* PAGE 1 - MAIN REPORT */}
         <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
-            {/* Header */}
+          {/* Header */}
           <div className="flex justify-between items-center mb-4">
               <img src={logoA} alt="NABL" className="h-28" />
               <div className="text-right">
@@ -205,18 +205,18 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             </div>
 
           <div className="text-center mb-4">
-              <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
-              <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
-            </div>
+            <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
+            <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
+          </div>
 
-            <h1 className="text-center text-2xl font-bold underline mb-4">
-              QA TEST REPORT FOR RADIOGRAPHY (PORTABLE) X-RAY EQUIPMENT
-            </h1>
+          <h1 className="text-center text-2xl font-bold underline mb-4">
+            QA TEST REPORT FOR RADIOGRAPHY (PORTABLE) X-RAY EQUIPMENT
+          </h1>
           <p className="text-center italic text-sm mb-6">
-              (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
-            </p>
+            (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
+          </p>
 
-            {/* Customer Details */}
+          {/* Customer Details */}
           <section className="mb-4">
               <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
               <div className="border-2 border-gray-600 p-5 text-lg">
@@ -225,18 +225,18 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
               </div>
             </section>
 
-            {/* Reference */}
+          {/* Reference */}
           <section className="mb-4">
-              <h2 className="font-bold text-lg mb-3">2. Reference</h2>
-              <table className="w-full border-2 border-gray-600 text-sm">
-                <tbody>
-                  <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
-                  <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
-                </tbody>
-              </table>
-            </section>
+            <h2 className="font-bold text-lg mb-3">2. Reference</h2>
+            <table className="w-full border-2 border-gray-600 text-sm">
+              <tbody>
+                <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
+                <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+              </tbody>
+            </table>
+          </section>
 
-            {/* Equipment Details */}
+          {/* Equipment Details */}
           <section className="mb-4">
               <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
               <table className="w-full border-2 border-gray-600 text-sm">
@@ -265,13 +265,13 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
               </table>
             </section>
 
-            {/* Tools Used */}
+          {/* Tools Used */}
           <section className="mb-4">
-              <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
+            <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
             <div className="overflow-x-auto print:overflow-visible print:max-w-none">
               <table className="w-full border-2 border-gray-600 text-xs" style={{ tableLayout: 'fixed', width: '100%' }}>
-                  <thead className="bg-gray-200">
-                    <tr>
+                <thead className="bg-gray-200">
+                  <tr>
                     <th className="border p-2" style={{ width: '6%' }}>Sl No.</th>
                     <th className="border p-2" style={{ width: '16%' }}>Nomenclature</th>
                     <th className="border p-2" style={{ width: '14%' }}>Make / Model</th>
@@ -279,11 +279,11 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                     <th className="border p-2" style={{ width: '14%' }}>Range</th>
                     <th className="border p-2" style={{ width: '18%' }}>Certificate No.</th>
                     <th className="border p-2" style={{ width: '18%' }}>Valid Till</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
-                      <tr key={i}>
+                  </tr>
+                </thead>
+                <tbody>
+                  {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
+                    <tr key={i}>
                       <td className="border p-2 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{i + 1}</td>
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.nomenclature}</td>
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.make} / {tool.model}</td>
@@ -291,39 +291,39 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.range}</td>
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.calibrationCertificateNo}</td>
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{formatDate(tool.calibrationValidTill)}</td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={7} className="text-center py-4">No tools recorded</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* Notes */}
-          <section className="mb-6">
-              <h2 className="font-bold text-lg mb-3">5. Notes</h2>
-              <div className="ml-8 text-sm">
-                {notesArray.map(n => (
-                  <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
-                ))}
-              </div>
-            </section>
-
-            {/* Signature */}
-          <div className="flex justify-between items-end mt-8">
-              <img src={AntesoQRCode} alt="QR" className="h-24" />
-              <div className="text-center">
-                <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
-                <p className="font-bold">Authorized Signatory</p>
-              </div>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={7} className="text-center py-4">No tools recorded</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+          </section>
+
+          {/* Notes */}
+          <section className="mb-6">
+            <h2 className="font-bold text-lg mb-3">5. Notes</h2>
+            <div className="ml-8 text-sm">
+              {notesArray.map(n => (
+                <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
+              ))}
+            </div>
+          </section>
+
+          {/* Signature */}
+          <div className="flex justify-between items-end mt-8">
+            <img src={AntesoQRCode} alt="QR" className="h-24" />
+            <div className="text-center">
+              <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
+              <p className="font-bold">Authorized Signatory</p>
+            </div>
+          </div>
 
           <footer className="text-center text-xs text-gray-600 mt-6">
-              <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-              <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
-              <p>Email: info@antesobiomedicalengg.com</p>
-            </footer>
+            <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
+            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+            <p>Email: info@antesobiomedicalengg.com</p>
+          </footer>
         </div>
 
         {/* PAGE BREAK */}

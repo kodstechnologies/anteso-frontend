@@ -117,7 +117,7 @@ const ViewServiceReportCBCT: React.FC = () => {
           // Transform API data to match component expectations
           const operatingPotentialData = data.AccuracyOfOperatingPotentialCBCT;
           let transformedOperatingPotential = null;
-          
+
           if (operatingPotentialData) {
             // Transform measurements array to rows array
             const rows = operatingPotentialData.measurements?.map((measurement: any) => ({
@@ -126,7 +126,7 @@ const ViewServiceReportCBCT: React.FC = () => {
               measuredValues: measurement.measuredValues || measurement.measured || [],
               remarks: measurement.remarks || measurement.remark || "-",
             })) || [];
-            
+
             transformedOperatingPotential = {
               ...operatingPotentialData,
               rows: rows,
@@ -139,12 +139,12 @@ const ViewServiceReportCBCT: React.FC = () => {
           // Transform RadiationLeakageTestCBCT data to match component expectations
           const radiationLeakageData = data.RadiationLeakageTestCBCT;
           let transformedRadiationLeakage = null;
-          
+
           if (radiationLeakageData) {
             // Transform leakageMeasurements array to leakageRows array
             const toleranceValue = parseFloat(radiationLeakageData.toleranceValue || "1");
             const toleranceOperator = radiationLeakageData.toleranceOperator || "<=";
-            
+
             const leakageRows = radiationLeakageData.leakageMeasurements?.map((measurement: any) => {
               // Calculate max if not provided
               let maxValue = measurement.max;
@@ -162,7 +162,7 @@ const ViewServiceReportCBCT: React.FC = () => {
               } else {
                 maxValue = String(maxValue);
               }
-              
+
               // Calculate remark if not provided
               let remark = measurement.remark || measurement.remarks || "";
               if (!remark || remark === "" || remark === "-") {
@@ -185,7 +185,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                   remark = "-";
                 }
               }
-              
+
               return {
                 location: measurement.location || "-",
                 left: measurement.left || "-",
@@ -198,7 +198,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                 remark: remark,
               };
             }) || [];
-            
+
             // Handle settings - could be array or single object
             let settingsArray = [];
             if (Array.isArray(radiationLeakageData.settings) && radiationLeakageData.settings.length > 0) {
@@ -214,7 +214,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                 time: radiationLeakageData.time || "",
               }];
             }
-            
+
             transformedRadiationLeakage = {
               ...radiationLeakageData,
               leakageRows: leakageRows,
@@ -296,83 +296,83 @@ const ViewServiceReportCBCT: React.FC = () => {
       <div id="report-content">
         {/* PAGE 1 - MAIN REPORT */}
         <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
-            {/* Header */}
+          {/* Header */}
           <div className="flex justify-between items-center mb-4">
-              <img src={logoA} alt="NABL" className="h-28" />
-              <div className="text-right">
-                <table className="text-xs border border-gray-600">
-                  <tbody>
-                    <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <img src={logo} alt="Logo" className="h-28" />
+            <img src={logoA} alt="NABL" className="h-28" />
+            <div className="text-right">
+              <table className="text-xs border border-gray-600">
+                <tbody>
+                  <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
+                </tbody>
+              </table>
             </div>
+            <img src={logo} alt="Logo" className="h-28" />
+          </div>
 
           <div className="text-center mb-4">
-              <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
-              <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
-            </div>
+            <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
+            <p className="text-sm">Radiological Safety Division, Mumbai-400094</p>
+          </div>
 
-            <h1 className="text-center text-2xl font-bold underline mb-4">
-              QA TEST REPORT FOR DENTAL CONE BEAM CT (CBCT)
-            </h1>
+          <h1 className="text-center text-2xl font-bold underline mb-4">
+            QA TEST REPORT FOR DENTAL CONE BEAM CT (CBCT)
+          </h1>
           <p className="text-center italic text-sm mb-6">
-              (Periodic Quality Assurance as per AERB Guidelines)
-            </p>
+            (Periodic Quality Assurance as per AERB Guidelines)
+          </p>
 
-            {/* Customer Details */}
+          {/* Customer Details */}
           <section className="mb-4">
-              <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
-              <div className="border-2 border-gray-600 p-5 text-lg">
-                <p><strong>Customer:</strong> {report.customerName}</p>
-                <p><strong>Address:</strong> {report.address}</p>
-              </div>
-            </section>
+            <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
+            <div className="border-2 border-gray-600 p-5 text-lg">
+              <p><strong>Customer:</strong> {report.customerName}</p>
+              <p><strong>Address:</strong> {report.address}</p>
+            </div>
+          </section>
 
-            {/* Reference */}
+          {/* Reference */}
           <section className="mb-4">
-              <h2 className="font-bold text-lg mb-3">2. Reference</h2>
-              <table className="w-full border-2 border-gray-600 text-sm">
-                <tbody>
-                  <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
-                  <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
-                </tbody>
-              </table>
-            </section>
+            <h2 className="font-bold text-lg mb-3">2. Reference</h2>
+            <table className="w-full border-2 border-gray-600 text-sm">
+              <tbody>
+                <tr><td className="border p-3 font-medium w-1/2">SRF No. & Date</td><td className="border p-3">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
+                <tr><td className="border p-3 font-medium">Test Report No. & Issue Date</td><td className="border p-3">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+              </tbody>
+            </table>
+          </section>
 
-            {/* Equipment Details */}
+          {/* Equipment Details */}
           <section className="mb-4">
-              <h2 className="font-bold text-lg mb-3">3. Equipment Details</h2>
-              <table className="w-full border-2 border-gray-600 text-sm">
-                <tbody>
-                  {[
-                    ["Nomenclature", report.nomenclature],
-                    ["Make", report.make],
-                    ["Model", report.model],
-                    ["Serial No.", report.slNumber],
-                    ["Category", report.category || "-"],
-                    ["Location", report.location],
-                    ["Test Date", formatDate(report.testDate)],
-                  ].map(([label, value]) => (
-                    <tr key={label}>
-                      <td className="border p-3 font-medium w-1/2">{label}</td>
-                      <td className="border p-3">{value || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
+            <h2 className="font-bold text-lg mb-3">3. Equipment Details</h2>
+            <table className="w-full border-2 border-gray-600 text-sm">
+              <tbody>
+                {[
+                  ["Nomenclature", report.nomenclature],
+                  ["Make", report.make],
+                  ["Model", report.model],
+                  ["Serial No.", report.slNumber],
+                  ["Category", report.category || "-"],
+                  ["Location", report.location],
+                  ["Test Date", formatDate(report.testDate)],
+                ].map(([label, value]) => (
+                  <tr key={label}>
+                    <td className="border p-3 font-medium w-1/2">{label}</td>
+                    <td className="border p-3">{value || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
 
-            {/* Tools Used */}
+          {/* Tools Used */}
           <section className="mb-4">
-              <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
+            <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
             <div className="overflow-x-auto print:overflow-visible print:max-w-none">
               <table className="w-full border-2 border-gray-600 text-xs" style={{ tableLayout: 'fixed', width: '100%' }}>
-                  <thead className="bg-gray-200">
-                    <tr>
+                <thead className="bg-gray-200">
+                  <tr>
                     <th className="border p-2" style={{ width: '6%' }}>Sl No.</th>
                     <th className="border p-2" style={{ width: '16%' }}>Nomenclature</th>
                     <th className="border p-2" style={{ width: '14%' }}>Make / Model</th>
@@ -380,11 +380,11 @@ const ViewServiceReportCBCT: React.FC = () => {
                     <th className="border p-2" style={{ width: '14%' }}>Range</th>
                     <th className="border p-2" style={{ width: '18%' }}>Certificate No.</th>
                     <th className="border p-2" style={{ width: '18%' }}>Valid Till</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
-                      <tr key={i}>
+                  </tr>
+                </thead>
+                <tbody>
+                  {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
+                    <tr key={i}>
                       <td className="border p-2 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{i + 1}</td>
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.nomenclature}</td>
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.make} / {tool.model}</td>
@@ -392,40 +392,40 @@ const ViewServiceReportCBCT: React.FC = () => {
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.range}</td>
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{tool.calibrationCertificateNo}</td>
                       <td className="border p-2" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>{formatDate(tool.calibrationValidTill)}</td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={7} className="text-center py-4">No tools recorded</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* Notes */}
-          <section className="mb-6">
-              <h2 className="font-bold text-lg mb-3">5. Notes</h2>
-              <div className="ml-8 text-sm">
-                {notesArray.map(n => (
-                  <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
-                ))}
-              </div>
-            </section>
-
-            {/* Signature */}
-          <div className="flex justify-between items-end mt-8">
-              <img src={AntesoQRCode} alt="QR" className="h-24" />
-              <div className="text-center">
-                <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
-                <p className="font-bold">Authorized Signatory</p>
-              </div>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={7} className="text-center py-4">No tools recorded</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+          </section>
+
+          {/* Notes */}
+          <section className="mb-6">
+            <h2 className="font-bold text-lg mb-3">5. Notes</h2>
+            <div className="ml-8 text-sm">
+              {notesArray.map(n => (
+                <p key={n.slNo}><strong>{n.slNo}.</strong> {n.text}</p>
+              ))}
+            </div>
+          </section>
+
+          {/* Signature */}
+          <div className="flex justify-between items-end mt-8">
+            <img src={AntesoQRCode} alt="QR" className="h-24" />
+            <div className="text-center">
+              <img src={Signature} alt="Signature" className="h-20 mx-auto mb-2" />
+              <p className="font-bold">Authorized Signatory</p>
+            </div>
+          </div>
 
           <footer className="text-center text-xs text-gray-600 mt-6">
-              <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-              <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
-              <p>Email: info@antesobiomedicalengg.com</p>
-            </footer>
-          </div>
+            <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
+            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+            <p>Email: info@antesobiomedicalengg.com</p>
+          </footer>
+        </div>
 
         {/* PAGE 2+ - SUMMARY TABLE */}
         <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section" style={{ pageBreakAfter: 'always' }}>
@@ -496,7 +496,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {/* 2. Accuracy of Operating Potential */}
             {testData.operatingPotential?.rows?.length > 0 && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid">
@@ -564,7 +564,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                         <th rowSpan={2} className="border border-black p-2 text-center">Remarks</th>
                       </tr>
                       <tr>
-                        {(testData.outputConsistency.measurementHeaders || 
+                        {(testData.outputConsistency.measurementHeaders ||
                           Array.from({ length: testData.outputConsistency.outputRows[0]?.outputs?.length || 3 }, (_, i) => i + 1)
                         ).map((h: string | number, idx: number) => (
                           <th key={idx} className="border border-black p-1 text-center text-xs">
@@ -709,7 +709,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                     Tolerance : Maximum leakage radiation ≤ {testData.radiationLeakage.toleranceValue || "1"} mGy/h ({testData.radiationLeakage.toleranceTime || "1"} hour)
                   </p>
                 </div>
-                
+
                 {/* Max Leakage Calculation */}
                 {testData.radiationLeakage.workload && testData.radiationLeakage.settings?.[0]?.ma && (
                   <div className="mt-6 bg-gray-50 p-4 rounded">
@@ -729,7 +729,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Maximum Radiation Leakage from Tube Housing */}
                 <div className="mt-4 bg-gray-50 p-4 rounded">
                   <h4 className="text-sm font-semibold mb-2">Maximum Radiation Leakage from Tube Housing</h4>
@@ -737,7 +737,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                     <span className="font-medium">{testData.radiationLeakage.maxRadiationLeakage || "—"}</span>
                     <span className="text-sm text-gray-600">mGy/h</span>
                   </div>
-                  
+
                   {/* Overall Pass/Fail Status */}
                   {testData.radiationLeakage.maxRadiationLeakage && testData.radiationLeakage.toleranceValue && (
                     <div className="mt-3 pt-3 border-t border-gray-300">
@@ -747,7 +747,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                           const maxRadLeak = parseFloat(testData.radiationLeakage.maxRadiationLeakage) || 0;
                           const tol = parseFloat(testData.radiationLeakage.toleranceValue) || 0;
                           const tolOp = testData.radiationLeakage.toleranceOperator || "<=";
-                          
+
                           let isPass = false;
                           if (tolOp === "<=" || tolOp === "less than or equal to") {
                             isPass = maxRadLeak <= tol;
@@ -760,11 +760,10 @@ const ViewServiceReportCBCT: React.FC = () => {
                           } else if (tolOp === "=" || tolOp === "equal to") {
                             isPass = Math.abs(maxRadLeak - tol) < 0.001;
                           }
-                          
+
                           return (
-                            <span className={`px-3 py-1 rounded text-sm font-medium ${
-                              isPass ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                            }`}>
+                            <span className={`px-3 py-1 rounded text-sm font-medium ${isPass ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                              }`}>
                               {isPass ? "PASS" : "FAIL"}
                             </span>
                           );
@@ -780,7 +779,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             {testData.radiationSurvey?.locations?.length > 0 && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid">
                 <h3 className="text-xl font-bold uppercase mb-4">6. RADIATION PROTECTION SURVEY</h3>
-                
+
                 {/* Survey Details Table */}
                 <div className="mb-4">
                   <h4 className="text-sm font-semibold mb-2">Survey Details</h4>
@@ -864,7 +863,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                   const maxPublicWeekly = Math.max(...publicLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
                   const workerResult = parseFloat(maxWorkerWeekly) > 0 && parseFloat(maxWorkerWeekly) <= 40 ? "Pass" : parseFloat(maxWorkerWeekly) > 40 ? "Fail" : "";
                   const publicResult = parseFloat(maxPublicWeekly) > 0 && parseFloat(maxPublicWeekly) <= 2 ? "Pass" : parseFloat(maxPublicWeekly) > 2 ? "Fail" : "";
-                  
+
                   return (
                     <div className="mb-6">
                       <h4 className="text-lg font-semibold mb-4">5. Summary of Maximum Radiation Level/week (mR/wk)</h4>

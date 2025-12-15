@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 
 // ---- 1. Import every report component (create them in separate files) ----
+
 import CTScanReport from '../ServiceReportGeneration.tsx/TestTables/CTScan/GenerateReport-CTScan';
 import InventionalRadiology from './TestTables/Inventional-Radiology/GenerateReportInventionalRadiology';
 import MammographyReport from "./TestTables/Mammography/GenerateReportMammography"
@@ -66,6 +67,7 @@ const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   'KV Imaging (OBI)': KVImagingReport,
   // 'Radiation Survey of Radiation Facility': RadiationSurveyReport,
   // Others: OthersReport,
+  'KV Imaging (OBI)': KVImagingReport
 
 };
 

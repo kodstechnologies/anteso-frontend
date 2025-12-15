@@ -84,13 +84,13 @@ export const generatePDF = async ({
         const clonedElement = clonedDoc.getElementById(elementId);
         if (clonedElement) {
             // Set A4 width constraint
-            // A4 width is 210mm, with 5mm margins on each side = 200mm content width
-            // 200mm * 3.779527559 px/mm = ~756px at 96 DPI
-            const CONTENT_WIDTH_PX = 756; // 200mm in pixels (accounting for 5mm margins)
+            // A4 width is 210mm, with 10mm margins on each side = 190mm content width
+            // 190mm * 3.779527559 px/mm = ~718px at 96 DPI
+            const CONTENT_WIDTH_PX = 718; // 190mm in pixels (accounting for 10mm margins)
             clonedElement.style.width = `${CONTENT_WIDTH_PX}px`;
             clonedElement.style.maxWidth = `${CONTENT_WIDTH_PX}px`;
-          clonedElement.style.margin = '0';
-            clonedElement.style.padding = '0';
+          clonedElement.style.margin = '0 auto';
+            clonedElement.style.padding = '10mm';
           clonedElement.style.boxSizing = 'border-box';
 
             // Hide buttons and fixed elements
@@ -182,6 +182,10 @@ export const generatePDF = async ({
             htmlTable.style.borderSpacing = '0'; // Remove spacing between borders
             htmlTable.style.overflow = 'hidden'; // Prevent table overflow
             htmlTable.style.boxSizing = 'border-box';
+            // Reduce border thickness for PDF - force 1px borders
+            htmlTable.style.borderWidth = '1px';
+            htmlTable.style.borderStyle = 'solid';
+            htmlTable.style.borderColor = '#000000';
             
             // Remove alternating row backgrounds that can cause overlap issues
             // This MUST be done before processing cells to ensure cell backgrounds show through
@@ -386,7 +390,8 @@ export const generatePDF = async ({
       jsPDF: { 
         unit: 'mm', 
         format: 'a4', 
-        orientation: 'portrait' as const
+        orientation: 'portrait' as const,
+        margin: [10, 10, 10, 10] // [top, right, bottom, left] margins in mm - consistent margins
       },
       pagebreak: { 
         mode: ['avoid-all', 'css', 'legacy'],
@@ -553,6 +558,10 @@ export const generatePDFAsBlob = async ({
               htmlTable.style.tableLayout = 'fixed';
               htmlTable.style.wordWrap = 'break-word';
             htmlTable.style.borderCollapse = 'collapse';
+            // Reduce border thickness for PDF - force 1px borders
+            htmlTable.style.borderWidth = '1px';
+            htmlTable.style.borderStyle = 'solid';
+            htmlTable.style.borderColor = '#000000';
               htmlTable.style.fontSize = '10px'; // Slightly smaller font for wide tables
               
               // Ensure table cells wrap text properly and fit within columns
@@ -567,6 +576,10 @@ export const generatePDFAsBlob = async ({
                 // Minimal padding for wide tables
                 htmlCell.style.padding = '2px 3px';
               htmlCell.style.boxSizing = 'border-box';
+              // Reduce border thickness for PDF - force 1px borders
+              htmlCell.style.borderWidth = '1px';
+              htmlCell.style.borderStyle = 'solid';
+              htmlCell.style.borderColor = '#000000';
             });
           });
           }
@@ -575,7 +588,8 @@ export const generatePDFAsBlob = async ({
       jsPDF: { 
         unit: 'mm', 
         format: 'a4', 
-        orientation: 'portrait' as const
+        orientation: 'portrait' as const,
+        margin: [10, 10, 10, 10] // [top, right, bottom, left] margins in mm - consistent margins
       },
       pagebreak: { 
         mode: ['avoid-all', 'css', 'legacy'],

@@ -603,12 +603,12 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             {/* 6. Linearity of mAs Loading */}
             {testData.linearityOfMasLoading && (
               <div className="mb-16 print:mb-12 test-section">
-                <h3 className="text-xl font-bold mb-6">6. Linearity of mAs Loading</h3>
+                <h3 className="text-lg font-bold mb-4" style={{ fontSize: '14px' }}>6. Linearity of mAs Loading</h3>
                 {/* Test Conditions */}
                 {testData.linearityOfMasLoading.table1 && testData.linearityOfMasLoading.table1.length > 0 && (
                   <div className="mb-6 bg-gray-50 p-4 rounded border">
-                    <p className="font-semibold mb-2 text-sm">Test Conditions:</p>
-                    <div className="text-sm">
+                    <p className="font-semibold mb-2 text-sm" style={{ fontSize: '11px' }}>Test Conditions:</p>
+                    <div className="text-sm" style={{ fontSize: '11px' }}>
                       FCD: {testData.linearityOfMasLoading.table1[0]?.fcd || "-"} cm |
                       kV: {testData.linearityOfMasLoading.table1[0]?.kv || "-"} |
                       Time: {testData.linearityOfMasLoading.table1[0]?.time || "-"} sec
@@ -617,35 +617,35 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                 )}
                 {testData.linearityOfMasLoading.table2?.length > 0 && (
                   <div className="overflow-x-auto mb-6 print:mb-1 print:overflow-visible" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed' }}>
+                    <table className="w-full border-2 border-black compact-table force-small-text" style={{ fontSize: '10px', tableLayout: 'fixed', width: '100%' }}>
                       <thead className="bg-gray-100">
                         <tr>
                           {/* Row 1: Top half of "rowspans" and the main "colspans" */}
-                          <th className="border border-black border-b-0 p-2 print:p-1 text-center">mA</th>
-                          <th colSpan={testData.linearityOfMasLoading.measHeaders?.length || 0} className="border border-black p-3">
+                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>mA</th>
+                          <th colSpan={testData.linearityOfMasLoading.measHeaders?.length || 0} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
                             Output (mGy)
                           </th>
-                          <th className="border border-black border-b-0 p-2 print:p-1 text-center">Avg Output</th>
-                          <th className="border border-black border-b-0 p-2 print:p-1 text-center">X (mGy/mA)</th>
-                          <th className="border border-black border-b-0 p-2 print:p-1 text-center">X MAX</th>
-                          <th className="border border-black border-b-0 p-2 print:p-1 text-center">X MIN</th>
-                          <th className="border border-black border-b-0 p-2 print:p-1 text-center">CoL</th>
-                          <th className="border border-black border-b-0 p-2 print:p-1 text-center">Remarks</th>
+                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Avg Output</th>
+                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X (mGy/mA)</th>
+                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MAX</th>
+                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MIN</th>
+                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>CoL</th>
+                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Remarks</th>
                         </tr>
                         <tr>
                           {/* Row 2: Bottom half of "rowspans" (empty) and sub-headers */}
-                          <th className="border border-black border-t-0 p-2 print:p-1 text-center"></th>
+                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
                           {testData.linearityOfMasLoading.measHeaders?.map((header: string, idx: number) => (
-                            <th key={idx} className="border border-black p-2 text-xs">
+                            <th key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
                               {header || `Meas ${idx + 1}`}
                             </th>
                           ))}
-                          <th className="border border-black border-t-0 p-2 print:p-1 text-center"></th>
-                          <th className="border border-black border-t-0 p-2 print:p-1 text-center"></th>
-                          <th className="border border-black border-t-0 p-2 print:p-1 text-center"></th>
-                          <th className="border border-black border-t-0 p-2 print:p-1 text-center"></th>
-                          <th className="border border-black border-t-0 p-2 print:p-1 text-center"></th>
-                          <th className="border border-black border-t-0 p-2 print:p-1 text-center"></th>
+                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
+                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
+                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
+                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
+                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
+                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -657,39 +657,41 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                           };
 
                           return (
-                            <tr key={i} className="text-center">
-                              <td className="border p-3">{row.mAsApplied || "-"}</td>
+                            <tr key={i} className="text-center" style={{ fontSize: '10px' }}>
+                              <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>{row.mAsApplied || "-"}</td>
                               {testData.linearityOfMasLoading.measHeaders?.map((_: string, idx: number) => (
-                                <td key={idx} className="border p-3">
+                                <td key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
                                   {formatValue(row.measuredOutputs?.[idx])}
                                 </td>
                               ))}
-                              <td className="border p-3 font-medium">{row.average || "-"}</td>
-                              <td className="border p-3 font-medium">{row.x || "-"}</td>
-                              {/* REMOVED ROWSPAN - Display values in every row */}
-                              <td className="border p-3 font-medium">
-                                {i === 0 ? formatValue(testData.linearityOfMasLoading?.xMax) : ""}
-                              </td>
-                              <td className="border p-3 font-medium">
-                                {i === 0 ? formatValue(testData.linearityOfMasLoading?.xMin) : ""}
-                              </td>
-                              <td className="border p-3 font-medium">
-                                {i === 0 ? formatValue(testData.linearityOfMasLoading?.col) : ""}
-                              </td>
-                              <td className="border p-3">
-                                {i === 0 ? (
-                                  <span className={
-                                    testData.linearityOfMasLoading?.remarks === "Pass" ||
-                                      testData.linearityOfMasLoading?.remarks === "PASS" ?
-                                      "text-green-600 font-semibold" :
-                                      testData.linearityOfMasLoading?.remarks === "Fail" ||
-                                        testData.linearityOfMasLoading?.remarks === "FAIL" ?
-                                        "text-red-600 font-semibold" : ""
-                                  }>
-                                    {formatValue(testData.linearityOfMasLoading?.remarks)}
-                                  </span>
-                                ) : ""}
-                              </td>
+                              <td className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: '10px', padding: '5px' }}>{row.average || "-"}</td>
+                              <td className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: '10px', padding: '5px' }}>{row.x || "-"}</td>
+                              {/* Add rowspan for X MAX, X MIN, CoL, and Remarks columns */}
+                              {i === 0 ? (
+                                <>
+                                  <td rowSpan={testData.linearityOfMasLoading.table2.length} className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>
+                                    {formatValue(testData.linearityOfMasLoading?.xMax)}
+                                  </td>
+                                  <td rowSpan={testData.linearityOfMasLoading.table2.length} className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>
+                                    {formatValue(testData.linearityOfMasLoading?.xMin)}
+                                  </td>
+                                  <td rowSpan={testData.linearityOfMasLoading.table2.length} className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>
+                                    {formatValue(testData.linearityOfMasLoading?.col)}
+                                  </td>
+                                  <td rowSpan={testData.linearityOfMasLoading.table2.length} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>
+                                    <span className={
+                                      testData.linearityOfMasLoading?.remarks === "Pass" ||
+                                        testData.linearityOfMasLoading?.remarks === "PASS" ?
+                                        "text-green-600 font-semibold" :
+                                        testData.linearityOfMasLoading?.remarks === "Fail" ||
+                                          testData.linearityOfMasLoading?.remarks === "FAIL" ?
+                                          "text-red-600 font-semibold" : ""
+                                    } style={{ fontSize: '10px' }}>
+                                      {formatValue(testData.linearityOfMasLoading?.remarks)}
+                                    </span>
+                                  </td>
+                                </>
+                              ) : null}
                             </tr>
                           );
                         })}
@@ -699,7 +701,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                 )}
                 {testData.linearityOfMasLoading.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border">
-                    <p className="text-sm print:text-[9px]">
+                    <p className="text-sm print:text-[10px]" style={{ fontSize: '10px' }}>
                       <strong>Tolerance (CoL):</strong> {testData.linearityOfMasLoading.toleranceOperator || "≤"} {testData.linearityOfMasLoading.tolerance || "0.1"}
                     </p>
                   </div>
@@ -979,6 +981,14 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
           table td, table th {
             text-align: center !important;
           }
+          .force-small-text {
+            font-size: 7px !important;
+          }
+          .force-small-text td, .force-small-text th {
+            font-size: 7px !important;
+            padding: 0px 1px !important;
+            line-height: 1.0 !important;
+          }
           .compact-table tr {
             height: auto !important;
             min-height: 0 !important;
@@ -988,7 +998,25 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
           }
           thead { display: table-header-group; }
           h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
-          table { border-collapse: collapse; border-spacing: 0; }
+          table { 
+            border-collapse: collapse; 
+            border-spacing: 0;
+            border-width: 1px !important;
+            border-style: solid !important;
+            border-color: #000000 !important;
+          }
+          table td, table th {
+            border-width: 1px !important;
+            border-style: solid !important;
+            border-color: #000000 !important;
+          }
+          table.border-2, table[class*="border-2"] {
+            border-width: 1px !important;
+          }
+          table td.border-2, table th.border-2,
+          table td[class*="border-2"], table th[class*="border-2"] {
+            border-width: 1px !important;
+          }
         }
       `}</style>
     </>
