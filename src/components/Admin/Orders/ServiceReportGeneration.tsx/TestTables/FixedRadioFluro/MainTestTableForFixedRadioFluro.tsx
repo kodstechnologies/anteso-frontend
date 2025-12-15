@@ -36,9 +36,9 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
     toleranceRowSpan: boolean = false
   ) => {
     if (testRows.length === 0) return;
-    
+
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
-    
+
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null,
@@ -68,12 +68,12 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
           const measuredTime = parseFloat(row.measuredTime);
           let error = "-";
           let isPass = false;
-          
+
           if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
             error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
             const errorVal = parseFloat(error);
             const tol = parseFloat(toleranceValue);
-            
+
             if (toleranceOperator === "<=") {
               isPass = errorVal <= tol;
             } else if (toleranceOperator === ">=") {
@@ -82,7 +82,7 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
               isPass = Math.abs(errorVal - tol) < 0.01;
             }
           }
-          
+
           return {
             specified: row.setTime || "-",
             measured: row.measuredTime || "-",
@@ -377,10 +377,10 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
           </thead>
           <tbody>
             {rows.map((row, index) => {
-              const shouldRenderTolerance = 
-                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) || 
+              const shouldRenderTolerance =
+                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) ||
                 (row.hasToleranceRowSpan && row.isFirstRow);
-              
+
               return (
                 <tr key={index}>
                   {row.isFirstRow && (
@@ -396,16 +396,15 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
                   <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.specified}</td>
                   <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.measured}</td>
                   {shouldRenderTolerance && (
-                    <td 
+                    <td
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
                       className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent"
                     >
                       {row.tolerance}
                     </td>
                   )}
-                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px] print:leading-tight ${
-                    row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                  }`}>
+                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px] print:leading-tight ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}>
                     {row.remarks}
                   </td>
                 </tr>

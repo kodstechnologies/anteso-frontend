@@ -122,7 +122,7 @@ const ViewServiceReportMammography: React.FC = () => {
             equipmentSettingId: data.EquipmentSettingMammography?._id || null,
             maximumRadiationLevelId: data.MaximumRadiationLevelMammography?._id || null,
           });
-          
+
           // Set test data directly from populated objects
           setTestData({
             accuracyOfOperatingPotential: data.AccuracyOfOperatingPotentialMammography || null,
@@ -196,18 +196,18 @@ const ViewServiceReportMammography: React.FC = () => {
         {/* Page 1 - Header */}
         <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
           <div className="flex justify-between items-center mb-4">
-              <img src={logoA} alt="NABL" className="h-28" />
-              <div className="text-right">
-                <table className="text-xs border border-gray-600">
-                  <tbody>
-                    <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <img src={logo} alt="Logo" className="h-28" />
+            <img src={logoA} alt="NABL" className="h-28" />
+            <div className="text-right">
+              <table className="text-xs border border-gray-600">
+                <tbody>
+                  <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
+                </tbody>
+              </table>
             </div>
+            <img src={logo} alt="Logo" className="h-28" />
+          </div>
 
           <div className="text-center mb-4">
               <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
@@ -237,29 +237,29 @@ const ViewServiceReportMammography: React.FC = () => {
             </section>
 
           <section className="mb-4">
-              <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
-              <table className="w-full border-2 border-gray-600 text-sm">
-                <tbody>
-                  {[
-                    ["Nomenclature", report.nomenclature],
-                    ["Make", report.make],
-                    ["Model", report.model],
-                    ["Serial No.", report.slNumber],
-                    ["Category", report.category || "-"],
-                    ["Condition", report.condition],
-                    ["Testing Procedure No.", report.testingProcedureNumber],
-                    ["Engineer Name & RP ID", report.engineerNameRPId],
-                    ["Test Date", formatDate(report.testDate)],
-                    ["Due Date", formatDate(report.testDueDate)],
-                    ["Location", report.location],
-                    ["Temperature (°C)", report.temperature],
-                    ["Humidity (%)", report.humidity],
-                  ].map(([l, v]) => (
-                    <tr key={l}><td className="border p-3 font-medium w-1/2">{l}</td><td className="border p-3">{v || "-"}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
+            <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
+            <table className="w-full border-2 border-gray-600 text-sm">
+              <tbody>
+                {[
+                  ["Nomenclature", report.nomenclature],
+                  ["Make", report.make],
+                  ["Model", report.model],
+                  ["Serial No.", report.slNumber],
+                  ["Category", report.category || "-"],
+                  ["Condition", report.condition],
+                  ["Testing Procedure No.", report.testingProcedureNumber],
+                  ["Engineer Name & RP ID", report.engineerNameRPId],
+                  ["Test Date", formatDate(report.testDate)],
+                  ["Due Date", formatDate(report.testDueDate)],
+                  ["Location", report.location],
+                  ["Temperature (°C)", report.temperature],
+                  ["Humidity (%)", report.humidity],
+                ].map(([l, v]) => (
+                  <tr key={l}><td className="border p-3 font-medium w-1/2">{l}</td><td className="border p-3">{v || "-"}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
 
           <section className="mb-4">
               <h2 className="font-bold text-lg mb-3">4. Standards / Tools Used</h2>
@@ -338,7 +338,7 @@ const ViewServiceReportMammography: React.FC = () => {
             {testData.accuracyOfOperatingPotential && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">1. Accuracy of Operating Potential (kVp)</h3>
-                
+
                 {testData.accuracyOfOperatingPotential.mAStations && testData.accuracyOfOperatingPotential.mAStations.length > 0 && (
                   <div className="overflow-x-auto mb-6">
                     <table className="w-full border-2 border-black text-sm">
@@ -393,12 +393,12 @@ const ViewServiceReportMammography: React.FC = () => {
             {testData.linearityOfMasLLoading && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">2. Linearity of mAs Loading</h3>
-                
+
                 {testData.linearityOfMasLLoading.exposureCondition && (
                   <div className="mb-6 bg-gray-50 p-4 rounded border">
                     <p className="font-semibold mb-2">Test Conditions:</p>
                     <div className="text-sm">
-                      FCD: {testData.linearityOfMasLLoading.exposureCondition.fcd || "-"} cm | 
+                      FCD: {testData.linearityOfMasLLoading.exposureCondition.fcd || "-"} cm |
                       kV: {testData.linearityOfMasLLoading.exposureCondition.kv || "-"}
                     </div>
                   </div>
@@ -461,7 +461,7 @@ const ViewServiceReportMammography: React.FC = () => {
             {testData.totalFiltrationAndAluminium && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">3. Total Filtration & Aluminium Equivalence</h3>
-                
+
                 {(testData.totalFiltrationAndAluminium.targetWindow || testData.totalFiltrationAndAluminium.addedFilterThickness) && (
                   <div className="mb-6 bg-gray-50 p-4 rounded border">
                     <p className="font-semibold mb-2">Anode/Filter & Added Filtration:</p>
@@ -524,7 +524,7 @@ const ViewServiceReportMammography: React.FC = () => {
             {testData.reproducibilityOfOutput && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">4. Reproducibility of Radiation Output</h3>
-                
+
                 {testData.reproducibilityOfOutput.outputRows && testData.reproducibilityOfOutput.outputRows.length > 0 && (
                   <div className="overflow-x-auto mb-6">
                     <table className="w-full border-2 border-black text-sm">
@@ -578,7 +578,7 @@ const ViewServiceReportMammography: React.FC = () => {
             {testData.radiationLeakageLevel && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">5. Radiation Leakage Level (5 cm from Tube Housing)</h3>
-                
+
                 {(testData.radiationLeakageLevel.distanceFromFocus || testData.radiationLeakageLevel.kv || testData.radiationLeakageLevel.ma || testData.radiationLeakageLevel.time) && (
                   <div className="mb-6 bg-gray-50 p-4 rounded border">
                     <p className="font-semibold mb-2">Test Conditions:</p>
@@ -637,7 +637,7 @@ const ViewServiceReportMammography: React.FC = () => {
                 {testData.radiationLeakageLevel.finalRemark && (
                   <div className="bg-gray-50 p-4 rounded border">
                     <p className="text-sm font-bold">
-                      <strong>Final Remark:</strong> 
+                      <strong>Final Remark:</strong>
                       <span className={testData.radiationLeakageLevel.finalRemark === "Pass" ? "text-green-600 ml-2" : testData.radiationLeakageLevel.finalRemark === "Fail" ? "text-red-600 ml-2" : ""}>
                         {testData.radiationLeakageLevel.finalRemark}
                       </span>
@@ -651,7 +651,7 @@ const ViewServiceReportMammography: React.FC = () => {
             {testData.imagingPhantom && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">6. Imaging Performance Evaluation (Phantom)</h3>
-                
+
                 {testData.imagingPhantom.rows && testData.imagingPhantom.rows.length > 0 && (
                   <div className="overflow-x-auto mb-6">
                     <table className="w-full border-2 border-black text-sm">
@@ -689,20 +689,151 @@ const ViewServiceReportMammography: React.FC = () => {
             {testData.radiationProtectionSurvey && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">7. Radiation Protection Survey</h3>
-                
-                <div className="overflow-x-auto mb-6">
-                  <table className="w-full border-2 border-black text-sm">
-                    <tbody>
-                      <tr>
-                        <td className="border border-black p-3 font-medium w-1/2">Survey Date</td>
-                        <td className="border border-black p-3">{testData.radiationProtectionSurvey.surveyDate ? formatDate(testData.radiationProtectionSurvey.surveyDate) : "-"}</td>
-                      </tr>
-                      <tr>
-                        <td className="border border-black p-3 font-medium">Valid Calibration Certificate</td>
-                        <td className="border border-black p-3">{testData.radiationProtectionSurvey.hasValidCalibration || "-"}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+
+                {/* Survey Details Table */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-semibold mb-2">Survey Details</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border border-black text-sm">
+                      <thead>
+                        <tr>
+                          <th className="border border-black p-2 text-left">Survey Date</th>
+                          <th className="border border-black p-2 text-center">Applied Current (mA)</th>
+                          <th className="border border-black p-2 text-center">Applied Voltage (kV)</th>
+                          <th className="border border-black p-2 text-center">Exposure Time (s)</th>
+                          <th className="border border-black p-2 text-center">Workload (mA·min/week)</th>
+                          <th className="border border-black p-2 text-center">Valid Calibration Certificate</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-black p-2 text-left">{testData.radiationProtectionSurvey.surveyDate ? formatDate(testData.radiationProtectionSurvey.surveyDate) : "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationProtectionSurvey.appliedCurrent || "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationProtectionSurvey.appliedVoltage || "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationProtectionSurvey.exposureTime || "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationProtectionSurvey.workload || "-"}</td>
+                          <td className="border border-black p-2 text-center">{testData.radiationProtectionSurvey.hasValidCalibration || "-"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Measured Maximum Radiation Levels */}
+                {testData.radiationProtectionSurvey.locations && testData.radiationProtectionSurvey.locations.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold mb-4">Measured Maximum Radiation Levels (mR/hr) at Different Locations</h4>
+                    <div className="overflow-x-auto mb-6">
+                      <table className="w-full border-2 border-black text-sm">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black p-3 text-left">Location</th>
+                            <th className="border border-black p-3">Max. Radiation Level (mR/hr)</th>
+                            <th className="border border-black p-3">mR/week</th>
+                            <th className="border border-black p-3">Category</th>
+                            <th className="border border-black p-3">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {testData.radiationProtectionSurvey.locations.map((loc: any, i: number) => (
+                            <tr key={i} className="text-center">
+                              <td className="border p-3 text-left">{loc.location || "-"}</td>
+                              <td className="border p-3">{loc.mRPerHr || "-"}</td>
+                              <td className="border p-3">{loc.mRPerWeek || "-"}</td>
+                              <td className="border p-3">{loc.category === "worker" ? "Radiation Worker" : "Public"}</td>
+                              <td className="border p-3">
+                                <span className={loc.result === "PASS" || loc.result === "Pass" ? "text-green-600 font-semibold" : loc.result === "FAIL" || loc.result === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                  {loc.result || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Calculation Formula */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold mb-4">Calculation Formula</h4>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <tbody>
+                        <tr>
+                          <td className="border border-black p-3 bg-gray-50">
+                            <strong>Maximum Radiation level/week (mR/wk) = Work Load × Max. Radiation Level (mR/hr) / (60 × mA used for measurement)</strong>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Summary of Maximum Radiation Level/week */}
+                {testData.radiationProtectionSurvey.locations?.length > 0 && (() => {
+                  const workerLocs = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.category === "worker");
+                  const publicLocs = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.category === "public");
+                  const maxWorkerWeekly = Math.max(...workerLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
+                  const maxPublicWeekly = Math.max(...publicLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
+                  const workerResult = parseFloat(maxWorkerWeekly) > 0 && parseFloat(maxWorkerWeekly) <= 40 ? "Pass" : parseFloat(maxWorkerWeekly) > 40 ? "Fail" : "";
+                  const publicResult = parseFloat(maxPublicWeekly) > 0 && parseFloat(maxPublicWeekly) <= 2 ? "Pass" : parseFloat(maxPublicWeekly) > 2 ? "Fail" : "";
+
+                  return (
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold mb-4">Summary of Maximum Radiation Level/week (mR/wk)</h4>
+                      <div className="overflow-x-auto mb-6">
+                        <table className="w-full border-2 border-black text-sm">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="border border-black p-3">Category</th>
+                              <th className="border border-black p-3">Result</th>
+                              <th className="border border-black p-3">Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="text-center">
+                              <td className="border border-black p-3 font-semibold">For Radiation Worker</td>
+                              <td className="border border-black p-3">{maxWorkerWeekly || "0.000"} mR/week</td>
+                              <td className="border border-black p-3">
+                                <span className={workerResult === "Pass" ? "text-green-600 font-semibold" : workerResult === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                  {workerResult || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                            <tr className="text-center">
+                              <td className="border border-black p-3 font-semibold">For Public</td>
+                              <td className="border border-black p-3">{maxPublicWeekly || "0.000"} mR/week</td>
+                              <td className="border border-black p-3">
+                                <span className={publicResult === "Pass" ? "text-green-600 font-semibold" : publicResult === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                  {publicResult || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Permissible Limit */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold mb-4">Permissible Limit</h4>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <tbody>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold w-1/2">For location of Radiation Worker</td>
+                          <td className="border border-black p-3">20 mSv in a year (40 mR/week)</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold">For Location of Member of Public</td>
+                          <td className="border border-black p-3">1 mSv in a year (2 mR/week)</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -711,7 +842,7 @@ const ViewServiceReportMammography: React.FC = () => {
             {testData.equipmentSetting && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">8. Equipment Settings Verification</h3>
-                
+
                 <div className="overflow-x-auto mb-6">
                   <table className="w-full border-2 border-black text-sm">
                     <tbody>
@@ -740,7 +871,7 @@ const ViewServiceReportMammography: React.FC = () => {
             {testData.maximumRadiationLevel && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
                 <h3 className="text-xl font-bold mb-6">9. Maximum Radiation Levels at Different Locations</h3>
-                
+
                 {testData.maximumRadiationLevel.readings && testData.maximumRadiationLevel.readings.length > 0 && (
                   <div className="overflow-x-auto mb-6">
                     <table className="w-full border-2 border-black text-sm">

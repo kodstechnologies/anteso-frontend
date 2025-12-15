@@ -87,13 +87,13 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         category: "",
     });
     const defaultNotes = [
-      "The Test Report relates only to the above item only.",
-      "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
-      "Corrections/erasing invalidates the Test Report.",
-      "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
-      "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
-      "Results reported are valid at the time of and under the stated conditions of measurements.",
-      "Name, Address & Contact detail is provided by Customer.",
+        "The Test Report relates only to the above item only.",
+        "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
+        "Corrections/erasing invalidates the Test Report.",
+        "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
+        "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
+        "Results reported are valid at the time of and under the stated conditions of measurements.",
+        "Name, Address & Contact detail is provided by Customer.",
     ];
     const [notes, setNotes] = useState<string[]>(defaultNotes);
 
@@ -350,10 +350,10 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             onClick={() => handleTimerChoice(false)}
                             className="px-8 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition transform hover:scale-105"
                         >
-                            No Timer 
+                            No Timer
                         </button>
                     </div>
-                   
+
                 </div>
             </div>
         );
@@ -473,13 +473,13 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
                 {[
-                    { 
-                        title: "Accuracy Of Operating Potential", 
-                        component: <AccuracyOfOperatingPotential 
-                            serviceId={serviceId} 
+                    {
+                        title: "Accuracy Of Operating Potential",
+                        component: <AccuracyOfOperatingPotential
+                            serviceId={serviceId}
                             testId={savedTestIds.AccuracyOfOperatingPotentialCBCT || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialCBCT: id }))}
-                        /> 
+                        />
                     },
                     // { title: "Total Filteration", component: <TotalFilteration /> },
 
@@ -488,8 +488,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                         ? [
                             {
                                 title: "Accuracy Of Irradiation Time",
-                                component: <AccuracyOfIrradiationTime 
-                                    serviceId={serviceId} 
+                                component: <AccuracyOfIrradiationTime
+                                    serviceId={serviceId}
                                     testId={savedTestIds.AccuracyOfIrradiationTimeCBCT || null}
                                     onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfIrradiationTimeCBCT: id }))}
                                 />,
@@ -502,8 +502,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                         ? [
                             {
                                 title: "Linearity Of mA Loading",
-                                component: <LinearityOfmALoading 
-                                    serviceId={serviceId} 
+                                component: <LinearityOfmALoading
+                                    serviceId={serviceId}
                                     testId={savedTestIds.LinearityOfMaLoadingCBCT || undefined}
                                 />,
                             },
@@ -512,8 +512,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             ? [
                                 {
                                     title: "Linearity Of mAs Loading",
-                                    component: <LinearityOfMasLoading 
-                                        serviceId={serviceId} 
+                                    component: <LinearityOfMasLoading
+                                        serviceId={serviceId}
                                         testId={savedTestIds.LinearityOfMaLoadingCBCT || null}
                                         onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMaLoadingCBCT: id }))}
                                     />,
@@ -521,28 +521,28 @@ const DentalConeBeamCT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             ]
                             : []),
 
-                    { 
-                        title: "Consistency Of Radiation Output", 
-                        component: <ConsistencyOfRadiationOutput 
-                            serviceId={serviceId} 
+                    {
+                        title: "Consistency Of Radiation Output",
+                        component: <ConsistencyOfRadiationOutput
+                            serviceId={serviceId}
                             testId={savedTestIds.OutputConsistencyForCBCT || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, OutputConsistencyForCBCT: id }))}
-                        /> 
+                        />
                     },
-                    { 
-                        title: "Radiation Leakage Level", 
-                        component: <RadiationLeakageLevel 
-                            serviceId={serviceId} 
+                    {
+                        title: "Radiation Leakage Level",
+                        component: <RadiationLeakageLevel
+                            serviceId={serviceId}
                             testId={savedTestIds.RadiationLeakageTestCBCT || undefined}
-                        /> 
+                        />
                     },
                     // { title: "Equipment Setting", component: <EquipmentSetting /> },
                     // { title: "Maximum Radiation Level", component: <MaximumRadiationLevel /> },
-                    { 
-                        title: "Details Of Radiation Protection", 
-                        component: <DetailsOfRadiationProtection 
-                            serviceId={serviceId} 
-                        /> 
+                    {
+                        title: "Details Of Radiation Protection",
+                        component: <DetailsOfRadiationProtection
+                            serviceId={serviceId}
+                        />
                     },
 
                 ].map((item, i) => (

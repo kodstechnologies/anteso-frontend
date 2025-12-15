@@ -29,6 +29,7 @@ interface Tolerance {
 }
 
 interface SavedData {
+  ffd?: string;
   outputRows: {
     kv: string;
     mas: string;
@@ -55,6 +56,7 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
   const [outputHeaders, setOutputHeaders] = useState<string[]>([
     'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
   ]);
+  const [ffd, setFfd] = useState<string>('');
   const [tolerance, setTolerance] = useState<Tolerance>({ operator: '<=', value: '5.0' });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -108,6 +110,7 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
             avg: r.avg || '',
             remark: r.remark || '',
           })));
+          setFfd(data.ffd || '');
           setTolerance(data.tolerance || { operator: '<=', value: '5.0' });
           setTestId(data._id || null);
           setHasSaved(true);
@@ -129,6 +132,7 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
     setIsSaving(true);
 
     const payload = {
+      ffd,
       outputRows: outputRows.map(r => ({
         kv: r.kv,
         mas: r.mas,
@@ -262,8 +266,19 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
 
       {/* Table */}
       <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
-        <h3 className="px-6 py-4 text-lg font-semibold bg-blue-50 text-blue-900 border-b">
-          Radiation Output Measurements
+        <h3 className="px-6 py-4 text-lg font-semibold bg-blue-50 text-blue-900 border-b flex justify-between items-center">
+          <span>Radiation Output Measurements</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">FFD (cm)</span>
+            <input
+              type="text"
+              value={ffd}
+              onChange={(e) => setFfd(e.target.value)}
+              readOnly={!isEditing}
+              className={`w-24 px-3 py-1.5 text-center border rounded-md text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-100 cursor-not-allowed'}`}
+              placeholder="60"
+            />
+          </div>
         </h3>
 
         <div className="overflow-x-auto">

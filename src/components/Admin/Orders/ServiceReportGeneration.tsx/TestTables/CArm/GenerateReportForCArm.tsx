@@ -123,7 +123,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
 
         setDetails(detRes.data);
         const firstTest = detRes.data.qaTests?.[0];
-        
+
         setFormData({
           customerName: detRes.data.hospitalName,
           address: detRes.data.hospitalAddress,
@@ -341,7 +341,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
       </div>
     );
   }
-  
+
   // Close modal and set timer choice
   const handleTimerChoice = (choice: boolean) => {
     setHasTimer(choice);
@@ -515,11 +515,10 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
           type="button"
           onClick={handleSaveHeader}
           disabled={saving}
-          className={`px-6 py-3 rounded-lg font-bold ${
-            saving
+          className={`px-6 py-3 rounded-lg font-bold ${saving
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-green-600 hover:bg-green-700"
-          } text-white`}
+            } text-white`}
         >
           {saving ? "Saving..." : "Save Report Header"}
         </button>
@@ -548,7 +547,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
 
         {[
           { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
-          { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} /> },
+          { title: "Accuracy Of Operating Potential", component: <TotalFilteration serviceId={serviceId} /> },
           { title: "Consistency Of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
           { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
           { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },

@@ -24,6 +24,11 @@ interface LeakageRow {
   front: string;
   back: string;
   top: string;
+  resultMGy?: any;
+
+  resultMR?: any;
+  max?: any;
+
 }
 
 interface ProcessedRow extends LeakageRow {
@@ -65,50 +70,76 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
   // Load data
   useEffect(() => {
     const load = async () => {
-      if (!serviceId) {
-        setIsLoading(false);
-        return;
-      }
       try {
         let data = null;
-        if (propTestId) {
+
+        // Priority 1: If we already have a testId in state (from create/update), use it
+        if (testId) {
+          data = await getTubeHousingLeakageByIdForOArm(testId);
+        }
+        // Priority 2: If parent passed a specific testId via prop
+        else if (propTestId) {
           data = await getTubeHousingLeakageByIdForOArm(propTestId);
-        } else {
+          if (data) setTestId(data._id); // sync state
+        }
+        // Priority 3: Fallback to service-wide lookup (may return latest or null)
+        else {
           data = await getTubeHousingLeakageByServiceIdForOArm(serviceId);
         }
 
         if (data) {
-          setTestId(data._id || null);
+          // If we found data, ensure we set the testId so subsequent saves are updates
+          if (data._id) setTestId(data._id);
+
           if (data.settings) {
+            // Handle array or object structure for settings (robustness)
+            const s = Array.isArray(data.settings) ? data.settings[0] : data.settings;
             setSettings({
-              fcd: data.settings.fcd || '100',
-              kv: data.settings.kv || '120',
-              ma: data.settings.ma || '21',
-              time: data.settings.time || '2.0',
+              fcd: s.fcd?.toString() || '100',
+              kv: s.kv?.toString() || '120',
+              ma: s.ma?.toString() || '21',
+              time: s.time?.toString() || '2.0',
             });
           }
-          if (data.leakageRows && Array.isArray(data.leakageRows)) {
+          if (data.leakageMeasurements && Array.isArray(data.leakageMeasurements)) {
+            // Handle leakageMeasurements key (backend often returns this)
+            setLeakageRows(data.leakageMeasurements.map((m: any) => ({
+              location: m.location,
+              left: m.left?.toString() || '',
+              right: m.right?.toString() || '',
+              front: m.front?.toString() || '',
+              back: m.back?.toString() || '',
+              top: m.top?.toString() || '',
+            })));
+          } else if (data.leakageRows && Array.isArray(data.leakageRows)) {
+            // Fallback to leakageRows key if used
             setLeakageRows(data.leakageRows);
           }
-          setWorkload(data.workload || '');
-          setToleranceValue(data.toleranceValue || '1.0');
+
+          setWorkload(data.workload?.toString() || '');
+          setToleranceValue(data.toleranceValue?.toString() || '1.0');
           setToleranceOperator(data.toleranceOperator || 'less than or equal to');
           setHasSaved(true);
           setIsEditing(false);
         } else {
+          // No data found -> New Mode
+          setTestId(null);
+          setHasSaved(false);
           setIsEditing(true);
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
           toast.error('Failed to load tube housing leakage data');
+          console.error("Load error:", err);
         }
+        // On error (e.g. 404), assume new form
         setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, propTestId, testId]);
 
   const maValue = parseFloat(settings.ma) || 0;
   const workloadValue = parseFloat(workload) || 0;
@@ -194,37 +225,41 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
     setIsSaving(true);
     try {
       const payload = {
-        settings,
-        leakageRows,
+        settings: [settings], // Save as array often safer for backend consistency
+        leakageMeasurements: processedLeakage.map(row => ({
+          location: row.location,
+          left: row.left,
+          right: row.right,
+          front: row.front,
+          back: row.back,
+          top: row.top,
+          // Calculate max, remarks for backend if needed, or backend can do it
+          max: row.max, // Using state values
+          unit: 'mGy/h',
+          remark: row.resultMR ? (parseFloat(row.resultMGy) <= parseFloat(toleranceValue) ? 'Pass' : 'Fail') : '',
+        })),
         workload,
         toleranceValue,
         toleranceOperator,
-        toleranceTime,
+        toleranceTime: toleranceTime[0], // it's a state array in original code, need value
+        maxLeakageResult: highestLeakageMGy,
+        maxRadiationLeakage: highestLeakageMGy,
+        finalRemark: finalRemark,
       };
 
       let result;
+      // Use locally scoped variable to avoid closure staleness, though we use current testId from state
       let currentTestId = testId;
-
-      if (!currentTestId) {
-        try {
-          const existing = await getTubeHousingLeakageByServiceIdForOArm(serviceId);
-          if (existing?._id) {
-            currentTestId = existing._id;
-            setTestId(currentTestId);
-          }
-        } catch (err) {
-          // No existing data, will create new
-        }
-      }
 
       if (currentTestId) {
         result = await updateTubeHousingLeakageForOArm(currentTestId, payload);
         toast.success('Updated successfully!');
       } else {
         result = await createTubeHousingLeakageForOArm(serviceId, payload);
-        const newId = result?.data?._id || result?._id;
+        const newId = result?.data?._id || result?.data?.testId || result?._id;
         if (newId) {
           setTestId(newId);
+          currentTestId = newId;
         }
         toast.success('Saved successfully!');
       }

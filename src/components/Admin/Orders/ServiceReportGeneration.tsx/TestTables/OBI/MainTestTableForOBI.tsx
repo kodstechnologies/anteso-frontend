@@ -14,15 +14,15 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     testRows: Array<{
       specified: string | number;
       measured: string | number;
-      tolerance: string;
+      tolerance: string | React.ReactNode;
       remarks: "Pass" | "Fail";
     }>,
     toleranceRowSpan: boolean = false
   ) => {
     if (testRows.length === 0) return;
-    
+
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
-    
+
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null,
@@ -57,35 +57,63 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
   }
 
   // 2. Accuracy of Operating Potential
-  if (testData.operatingPotential?.table2 && Array.isArray(testData.operatingPotential.table2)) {
-    const validRows = testData.operatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
-    if (validRows.length > 0) {
-      const toleranceSign = testData.operatingPotential.toleranceSign || "±";
-      const toleranceValue = testData.operatingPotential.toleranceValue || "2.0";
-      const testRows = validRows.map((row: any) => {
-        let isPass = false;
-        if (row.remarks === "PASS" || row.remarks === "Pass") {
-          isPass = true;
-        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
-          isPass = false;
-        } else {
-          const appliedKvp = parseFloat(row.setKV);
-          const avgKvp = parseFloat(row.avgKvp);
-          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-            const tol = parseFloat(toleranceValue);
-            isPass = deviation <= tol;
+
+  const opData = testData.operatingPotential;
+  if (opData && (opData.rows || opData.table2)) {
+    const rowsToProcess = opData.rows || opData.table2;
+    if (Array.isArray(rowsToProcess)) {
+      const validRows = rowsToProcess.filter((row: any) => row.appliedKvp || row.averageKvp || row.setKV || row.avgKvp);
+      if (validRows.length > 0) {
+        const toleranceSign = opData.toleranceSign || "±";
+        const toleranceValue = opData.toleranceValue || "2.0";
+        const testRows = validRows.map((row: any) => {
+          let isPass = false;
+          if (row.remarks === "PASS" || row.remarks === "Pass") {
+            isPass = true;
+          } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
+            isPass = false;
+          } else {
+            const applied = parseFloat(row.appliedKvp || row.setKV);
+            const measured = parseFloat(row.averageKvp || row.avgKvp);
+            if (!isNaN(applied) && !isNaN(measured) && applied > 0) {
+              const deviation = Math.abs(((measured - applied) / applied) * 100);
+              const tol = parseFloat(toleranceValue);
+              isPass = deviation <= tol;
+            }
           }
-        }
-        return {
-          specified: row.setKV || "-",
-          measured: row.avgKvp || "-",
-          tolerance: `${toleranceSign}${toleranceValue}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
+          return {
+            specified: row.appliedKvp || row.setKV || "-",
+            measured: row.averageKvp || row.avgKvp || "-",
+            tolerance: `${toleranceSign}${toleranceValue}%`,
+            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          };
+        });
+        addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
+      }
     }
+  }
+
+  // 2.1 Total Filtration (from Operating Potential)
+  if (opData?.totalFiltration) {
+    const tf = opData.totalFiltration;
+    const measured = tf.measured || "-";
+    const required = tf.required || "2.5";
+
+    // Determine pass/fail
+    let isPass = false;
+    const measVal = parseFloat(measured);
+    const reqVal = parseFloat(required);
+
+    if (!isNaN(measVal) && !isNaN(reqVal)) {
+      isPass = measVal >= reqVal;
+    }
+
+    addRowsForTest("Total Filtration", [{
+      specified: `Required >= ${required} mm Al`,
+      measured: measured !== "-" ? `${measured} mm Al` : "-",
+      tolerance: `≥ ${required} mm Al`,
+      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+    }]);
   }
 
   // 3. Timer Test
@@ -99,12 +127,12 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
         const measuredTime = parseFloat(row.measuredTime);
         let error = "-";
         let isPass = false;
-        
+
         if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
           error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
           const errorVal = parseFloat(error);
           const tol = parseFloat(toleranceValue);
-          
+
           if (toleranceOperator === "<=") {
             isPass = errorVal <= tol;
           } else if (toleranceOperator === ">=") {
@@ -113,7 +141,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
             isPass = Math.abs(errorVal - tol) < 0.01;
           }
         }
-        
+
         return {
           specified: row.setTime || "-",
           measured: row.measuredTime || "-",
@@ -166,7 +194,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
       const tol = parseFloat(tolerance.value);
       const operator = observedTilt.operator || "<=";
       let isPass = false;
-      
+
       if (!isNaN(observed) && !isNaN(tol)) {
         if (operator === "<=") isPass = observed <= tol;
         else if (operator === ">=") isPass = observed >= tol;
@@ -174,7 +202,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
         else if (operator === "<") isPass = observed < tol;
         else if (operator === ">") isPass = observed > tol;
       }
-      
+
       addRowsForTest("Central Beam Alignment", [{
         specified: "Observed Tilt",
         measured: observedTilt.value ? `${observedTilt.value}°` : "-",
@@ -205,16 +233,36 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
     const validRows = testData.effectiveFocalSpot.focalSpots.filter((row: any) => row.focusType || row.measuredWidth);
     if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => {
+      const testRows: Array<{
+        specified: string | number;
+        measured: string | number;
+        tolerance: string | React.ReactNode;
+        remarks: "Pass" | "Fail";
+      }> = [];
+
+      // Determine the tolerance string based on logic
+      // + 0.5 f for f < 0.8 mm
+      // + 0.4 f for 0.8 <= f <= 1.5 mm
+      // + 0.3 f for f > 1.5 mm
+      const toleranceDisplay = (
+        <div className="flex flex-col gap-1 text-left text-xs">
+          <span>+ 0.5 f for f &lt; 0.8 mm</span>
+          <span>+ 0.4 f for 0.8 &le; f &le; 1.5 mm</span>
+          <span>+ 0.3 f for f &gt; 1.5 mm</span>
+        </div>
+      );
+
+      validRows.forEach((row: any, index: number) => {
         const isPass = row.remark === "Pass" || row.remark === "PASS";
-        return {
+        testRows.push({
           specified: row.focusType || "-",
           measured: row.measuredWidth && row.measuredHeight ? `${row.measuredWidth} × ${row.measuredHeight} mm` : "-",
-          tolerance: "As per tolerance criteria",
+          tolerance: toleranceDisplay, // Render JSX
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
+        });
       });
-      addRowsForTest("Effective Focal Spot", testRows);
+
+      addRowsForTest("Effective Focal Spot", testRows, true); // Use shared tolerance row span
     }
   }
 
@@ -281,24 +329,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 11. Radiation Protection Survey
-  if (testData.radiationProtection?.locations && Array.isArray(testData.radiationProtection.locations)) {
-    const validRows = testData.radiationProtection.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((loc: any) => {
-        const mRPerWeek = loc.mRPerWeek || "-";
-        const limit = loc.category === "worker" ? 40 : 2;
-        const isPass = loc.result === "PASS" || (mRPerWeek !== "-" && parseFloat(mRPerWeek) <= limit);
-        return {
-          specified: loc.location || "-",
-          measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Radiation Protection Survey", testRows);
-    }
-  }
+
 
   if (rows.length === 0) {
     return <div className="text-center text-gray-500 py-10">No test results available.</div>;
@@ -311,7 +342,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
       </h2>
 
       <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-        <table className="w-full border-2 border-black text-xs print:text-xxs print:min-w-full" style={{ width: 'auto' }}>
+        <table className="w-full border-2 border-black text-xs print:text-xxs print:min-w-full">
           <thead className="bg-gray-200">
             <tr>
               <th className="border border-black px-3 py-3 w-12 text-center">Sr. No.</th>
@@ -324,10 +355,10 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
           </thead>
           <tbody>
             {rows.map((row, index) => {
-              const shouldRenderTolerance = 
-                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) || 
+              const shouldRenderTolerance =
+                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) ||
                 (row.hasToleranceRowSpan && row.isFirstRow);
-              
+
               return (
                 <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   {row.isFirstRow && (
@@ -343,7 +374,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
                   <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
                   <td className="border border-black px-4 py-3 text-center font-semibold">{row.measured}</td>
                   {shouldRenderTolerance && (
-                    <td 
+                    <td
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
                       className="border border-black px-4 py-3 text-center text-xs leading-tight"
                     >
@@ -351,9 +382,8 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
                     </td>
                   )}
                   <td className="border border-black px-4 py-3 text-center">
-                    <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${
-                      row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}>
+                    <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}>
                       {row.remarks}
                     </span>
                   </td>

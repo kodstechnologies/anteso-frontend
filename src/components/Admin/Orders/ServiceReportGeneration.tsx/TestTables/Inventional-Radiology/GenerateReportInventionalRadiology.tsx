@@ -16,13 +16,14 @@ import CentralBeamAlignment from "./CentralBeamAlignment";
 import EffectiveFocalspotMeasurement from "./EffectiveFocalspotMeasurement";
 import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
 import TotalFilteration from "./TotalFilterationForInventionalRadiology";
-import LowContrastResolution from "./LowContrastResolutionInventionalRadiology";
-import HighContrastResolution from "./HighContrastResolutionForInventionalRadiology";
-import ExposureRateTableTop from "./ExposureRateTableTop";
+import LowContrastResolution from "./LowContrastResolution";
+import HighContrastResolution from "./HighContrastResolution";
+import ExposureRateAtTableTop from "./ExposureRateAtTableTop";
 import TubeHousingLeakage from "./TubeHousingLeakageForInventionalRadiology";
 import RadiationProtectionInterventionalRadiology from "./RadiationProtectionInventionalRadiology";
-import EquipmentSettingForInterventionalRadiology from "./EquipmentSettingForInventionalRadiology";
-import MaxRadiationLevel from "./MaxRadiationLevel";
+import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
+// import EquipmentSettingForInterventionalRadiology from "./EquipmentSettingForInventionalRadiology";
+// import MaxRadiationLevel from "./MaxRadiationLevel";
 export interface Standard {
   slNumber: string;
   nomenclature: string;
@@ -494,22 +495,22 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          // { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
-          // { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement serviceId={serviceId} /> },
+          { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
+          { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement serviceId={serviceId} /> },
           { title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
 
           // { title: "Accuracy of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
           { title: "Total Filtration", component: <TotalFilteration serviceId={serviceId} /> },
           // { title: "Linearity of mAs Loading", component: <LinearityOfmAsLoading serviceId={serviceId} /> },
-          // { title: "Consistency of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
-          // { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
-          // { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
+          { title: "Consistency of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} /> },
+          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
+          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
           {
-            title: "Exposure Rate Table Top",
-            component: <ExposureRateTableTop serviceId={serviceId} />,
+            title: "Exposure Rate at Table Top",
+            component: <ExposureRateAtTableTop serviceId={serviceId} />,
           },
           { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
-          // { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} /> },
+          { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} /> },
           // { title: "Equipment Setting", component: <EquipmentSettingForInterventionalRadiology serviceId={serviceId} /> },
           // { title: "Max Radiation Level", component: <MaxRadiationLevel serviceId={serviceId} /> },
 

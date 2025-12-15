@@ -22,9 +22,9 @@ interface OutputRow {
     id: string;
     kv: string;
     mas: string;
-    outputs: OutputMeasurement[];
+    outputs: OutputMeasurement[]; // Keeping OBI structure but using it dynamically
     avg: string;
-    cv: string;
+    cv: string; // "CV" in OBI, "COV" in C-Arm. Keeping OBI naming for model compatibility if needed, distinct from C-Arm backend keys
     remark: 'Pass' | 'Fail' | '';
 }
 
@@ -50,11 +50,15 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [ffd, setFFD] = useState<FCDData>({ value: '' });
-    const [measurementCount, setMeasurementCount] = useState<number>(5);
+
+    // C-Arm Style: Track headers for dynamic columns
+    const [headers, setHeaders] = useState<string[]>([
+        'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+    ]);
 
     const [tolerance, setTolerance] = useState<Tolerance>({
         operator: '<=',
-        value: '5.0',
+        value: '0.05', // Default 0.05 to match typical OBI usage or C-Arm? C-Arm uses 0.02. Retaining 0.05 as per original OBI file.
     });
 
     const [outputRows, setOutputRows] = useState<OutputRow[]>([
@@ -69,9 +73,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         },
     ]);
 
-    // Calculate avg, CV and remark – pure calculation, no state mutation needed
+    // Calculate avg, CV and remark
     const rowsWithCalc = useMemo(() => {
-        const tolValue = parseFloat(tolerance.value) || 5.0;
+        const tolValue = parseFloat(tolerance.value) || 0.05;
 
         return outputRows.map((row): OutputRow => {
             const values = row.outputs
@@ -83,26 +87,41 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             }
 
             const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+            // Variance
             const variance =
-                values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
+                values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / (values.length > 1 ? values.length - 1 : 1);
+
             const stdDev = Math.sqrt(variance);
-            const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
+            const cvDecimal = avg > 0 ? (stdDev / avg) : 0;
+
+            // OBI typically displays basic decimal or %. 
+            // C-Arm implementation calculates cov as decimal.
+            // Let's formatting it to 4 decimals for display.
+            const cvDisplay = cvDecimal.toFixed(4);
 
             const passes =
-                tolerance.operator === '<=' || tolerance.operator === '<'
-                    ? cv <= tolValue
-                    : cv >= tolValue;
+                tolerance.operator === '<=' ? cvDecimal <= tolValue :
+                    tolerance.operator === '<' ? cvDecimal < tolValue :
+                        tolerance.operator === '>=' ? cvDecimal >= tolValue :
+                            cvDecimal > tolValue;
 
-            const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
+            const remark = passes ? 'Pass' : 'Fail';
 
             return {
                 ...row,
                 avg: avg.toFixed(3),
-                cv: cv.toFixed(2),
+                cv: cvDisplay,
                 remark,
             };
         });
     }, [outputRows, tolerance]);
+
+    // Final Remark
+    const finalRemark = useMemo(() => {
+        if (!isSaved || rowsWithCalc.length === 0) return '';
+        return rowsWithCalc.every(r => r.remark === 'Pass' || r.remark === '') ? 'Pass' : 'Fail';
+    }, [rowsWithCalc, isSaved]);
 
     // Handlers
     const updateFcd = (value: string) => {
@@ -110,25 +129,33 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         setIsSaved(false);
     };
 
-    const updateMeasurementCount = (count: number) => {
-        if (count < 3 || count > 10) return;
-        setMeasurementCount(count);
+    const addColumn = () => {
+        if (isSaved && !isEditing) return;
+        setHeaders(prev => [...prev, `Meas ${prev.length + 1}`]);
+        setOutputRows(prev => prev.map(row => ({
+            ...row,
+            outputs: [...row.outputs, { value: '' }]
+        })));
+        setIsSaved(false);
+    };
 
-        setOutputRows(prev =>
-            prev.map(row => {
-                const diff = count - row.outputs.length;
-                if (diff > 0) {
-                    return {
-                        ...row,
-                        outputs: [...row.outputs, ...Array(diff).fill({ value: '' })],
-                    };
-                }
-                if (diff < 0) {
-                    return { ...row, outputs: row.outputs.slice(0, count) };
-                }
-                return row;
-            })
-        );
+    const removeColumn = (index: number) => {
+        if ((isSaved && !isEditing) || headers.length <= 2) return;
+        setHeaders(prev => prev.filter((_, i) => i !== index));
+        setOutputRows(prev => prev.map(row => ({
+            ...row,
+            outputs: row.outputs.filter((_, i) => i !== index)
+        })));
+        setIsSaved(false);
+    };
+
+    const updateHeader = (index: number, value: string) => {
+        if (isSaved && !isEditing) return;
+        setHeaders(prev => {
+            const newHeaders = [...prev];
+            newHeaders[index] = value;
+            return newHeaders;
+        });
         setIsSaved(false);
     };
 
@@ -139,7 +166,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 id: Date.now().toString(),
                 kv: '',
                 mas: '',
-                outputs: Array(measurementCount).fill({ value: '' }),
+                outputs: Array(headers.length).fill({ value: '' }),
                 avg: '',
                 cv: '',
                 remark: '',
@@ -166,7 +193,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             prev.map(row => {
                 if (row.id !== rowId) return row;
                 const outputs = [...row.outputs];
-                outputs[index] = { value: value.replace(/[^0-9.-]/g, '') };
+                outputs[index] = { value: value };
                 return { ...row, outputs };
             })
         );
@@ -191,14 +218,23 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                         setFFD({ value: testData.ffd.value });
                     }
                     if (testData.outputRows && testData.outputRows.length > 0) {
-                        const firstRow = testData.outputRows[0];
-                        const numMeas = firstRow.outputs?.length || 5;
-                        setMeasurementCount(numMeas);
+                        // Determine headers from max outputs length
+                        const maxCols = Math.max(
+                            ...testData.outputRows.map((r: any) => r.outputs?.length || 0),
+                            5
+                        );
+                        // If headers were saved, we'd use them. But OBI model doesn't support headers yet.
+                        // We generated generic headers.
+                        const loadedHeaders = Array.from({ length: maxCols }, (_, i) => `Meas ${i + 1}`);
+                        setHeaders(loadedHeaders);
+
                         setOutputRows(testData.outputRows.map((r: any) => ({
                             id: Date.now().toString() + Math.random(),
                             kv: r.kv || '',
                             mas: r.mas || '',
-                            outputs: r.outputs?.map((o: any) => ({ value: o.value || '' })) || Array(numMeas).fill({ value: '' }),
+                            outputs: r.outputs && r.outputs.length > 0
+                                ? r.outputs.map((o: any) => ({ value: o.value || '' }))
+                                : Array(maxCols).fill({ value: '' }),
                             avg: r.avg || '',
                             cv: '',
                             remark: r.remark || '',
@@ -207,15 +243,14 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     if (testData.tolerance) {
                         setTolerance({
                             operator: testData.tolerance.operator || '<=',
-                            value: testData.tolerance.value || '5.0',
+                            value: testData.tolerance.value || '0.05',
                         });
                     }
                     setIsSaved(true);
+                    setIsEditing(false);
                 }
             } catch (err: any) {
-                if (err.response?.status !== 404) {
-                    toast.error('Failed to load test data');
-                }
+                // Ignore 404
             } finally {
                 setIsLoading(false);
             }
@@ -237,7 +272,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 outputRows: rowsWithCalc.map(r => ({
                     kv: r.kv,
                     mas: r.mas,
-                    outputs: r.outputs,
+                    outputs: r.outputs, // { value: string }[]
                     avg: r.avg,
                     remark: r.remark,
                 })),
@@ -317,9 +352,8 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
             {/* FCD */}
             <div className="bg-white rounded-lg border shadow-sm">
-
                 <div className="p-6 flex items-center gap-4">
-                    <label className="w-48 text-sm font-medium text-gray-700">FCD:</label>
+                    <label className="w-48 text-sm font-medium text-gray-700">FCD (cm):</label>
                     <input
                         type="text"
                         value={ffd.value}
@@ -328,7 +362,6 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                         className={`w-32 px-4 py-2 border rounded-lg text-center font-medium focus:border-blue-500 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         placeholder="100"
                     />
-                    <span className="text-gray-600">cm</span>
                 </div>
             </div>
 
@@ -339,16 +372,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                         Radiation Output Measurements (mGy)
                     </h3>
                     <div className="flex items-center gap-3 text-sm">
-                        <span className="text-gray-600">Measurements per row:</span>
-                        <input
-                            type="number"
-                            min="3"
-                            max="10"
-                            value={measurementCount}
-                            onChange={e => updateMeasurementCount(Number(e.target.value))}
-                            disabled={isViewMode}
-                            className={`w-16 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                        />
+                        {/* C-Arm style usually has global add column button here or inside table header. C-Arm had it in header. I'll reproduce that too. */}
                     </div>
                 </div>
 
@@ -356,27 +380,52 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
+                                <th rowSpan={2} className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
                                     kV
                                 </th>
-                                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
+                                <th rowSpan={2} className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
                                     mAs
                                 </th>
-                                {Array.from({ length: measurementCount }, (_, i) => (
-                                    <th
-                                        key={i}
-                                        className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r"
-                                    >
-                                        Meas {i + 1}
-                                    </th>
-                                ))}
-                                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
+                                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r relative">
+                                    <div className="flex items-center justify-between">
+                                        <span>Radiation Output (mGy)</span>
+                                        {!isViewMode && (
+                                            <button onClick={addColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </th>
+                                <th rowSpan={2} className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
                                     Average
                                 </th>
-                                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase">
-                                    CV (%) / Result
+                                <th rowSpan={2} className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
+                                    CV
                                 </th>
-                                <th className="w-12" />
+                                <th rowSpan={2} className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase">
+                                    Result
+                                </th>
+                                <th rowSpan={2} className="w-12" />
+                            </tr>
+                            <tr>
+                                {headers.map((h, i) => (
+                                    <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-600 border-r">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <input
+                                                type="text"
+                                                value={h}
+                                                onChange={(e) => updateHeader(i, e.target.value)}
+                                                disabled={isViewMode}
+                                                className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                                            />
+                                            {!isViewMode && headers.length > 1 && (
+                                                <button onClick={() => removeColumn(i)} className="text-red-600 hover:bg-red-50 p-0.5 rounded">
+                                                    <Trash2 className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -417,23 +466,26 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                                     <td className="px-5 py-4 text-center font-semibold border-r bg-blue-50">
                                         {row.avg || '—'}
                                     </td>
+                                    <td className="px-5 py-4 text-center border-r">
+                                        {row.cv || '—'}
+                                    </td>
                                     <td className="px-5 py-4 text-center">
                                         <span
                                             className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${row.remark === 'Pass'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : row.remark === 'Fail'
-                                                        ? 'bg-red-100 text-red-800'
-                                                        : 'bg-gray-100 text-gray-600'
+                                                ? 'bg-green-100 text-green-800'
+                                                : row.remark === 'Fail'
+                                                    ? 'bg-red-100 text-red-800'
+                                                    : 'bg-gray-100 text-gray-600'
                                                 }`}
                                         >
-                                            {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
+                                            {row.remark || '—'}
                                         </span>
                                     </td>
                                     <td className="px-3 text-center">
-                                        {outputRows.length > 1 && (
+                                        {!isViewMode && outputRows.length > 1 && (
                                             <button
                                                 onClick={() => removeRow(row.id)}
-                                                className="textMY-red-600 hover:bg-red-50 p-2 rounded transition"
+                                                className="text-red-600 hover:bg-red-50 p-2 rounded transition"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -490,10 +542,19 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                         disabled={isViewMode}
                         className={`w-24 px-4 py-2 text-center border-2 border-blue-500 rounded font-bold text-lg focus:outline-none focus:ring-2 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
-                    <span className="text-gray-700">%</span>
                 </div>
-                <p className="text-sm text-gray-500 mt-3">
-                    Reference: IEC 61223-3-1 & AERB Safety Code
+
+                <div className="flex items-center justify-between mt-6">
+                    <span className="text-sm font-medium text-gray-700">Final Result:</span>
+                    <span className={`inline-flex px-6 py-3 text-lg font-bold rounded-full ${finalRemark === 'Pass' ? 'bg-green-100 text-green-800' :
+                        finalRemark === 'Fail' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-500'
+                        }`}>
+                        {finalRemark || '—'}
+                    </span>
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                    Note: Typical tolerance is ≤ 0.05
                 </p>
             </div>
         </div>

@@ -18,6 +18,7 @@ import RadiographyPortableReport from "./TestTables/RadiographyPortable/Generate
 import RadiographyMobileReport from "./TestTables/RadiographyMobile/GenerateServiceReport"
 import OArmReport from "./TestTables/OArm/GenerateReportForOArm"
 import LeadApronReport from "./TestTables/LeadApron/GenerateServiceReport"
+import KVImagingReport from "./TestTables/OBI/GenerateServiceReport"
 // import RadioF
 // import CBCTReport from './reports/CBCTReport';
 // import FixedXRayReport from './reports/FixedXRayReport';
@@ -55,13 +56,14 @@ const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   // 'Dental IOPA': DentalIOPAreport,
   'Dental (Intra Oral)': DentalReport,
   'Dental (Hand-held)': DentalHandHeldReport,
-'Radiography (Mobile) with HT': RadiographyMobileHTReport,
-'Radiography (Portable)': RadiographyPortableReport,
+  'Radiography (Mobile) with HT': RadiographyMobileHTReport,
+  'Radiography (Portable)': RadiographyPortableReport,
   'Radiography (Mobile)': RadiographyMobileReport,
   'O-Arm': OArmReport,
   'Lead Apron': LeadApronReport,
   // 'Thyroid Shield Test': ThyroidShieldReport,
   'Radiography and Fluoroscopy': RadioFluro,
+  'KV Imaging (OBI)': KVImagingReport,
   // 'Radiation Survey of Radiation Facility': RadiationSurveyReport,
   // Others: OthersReport,
 

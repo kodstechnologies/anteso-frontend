@@ -137,6 +137,8 @@ import ViewServiceReportOArm from '../components/Admin/Orders/ServiceReportGener
 import ViewServiceReportCTScan from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CTScan/ViewServiceReport';
 import ViewServiceReportMammography from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/Mammography/ViewServiceReport';
 import ViewServiceReportBMD from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/BMD/ViewServiceReport';
+import ViewServiceReportOBI from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/OBI/ViewServiceReport';
+import ViewServiceReportInventionalRadiology from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/Inventional-Radiology/ViewServiceReport';
 
 import EditQuitation from '../components/Admin/Quotation/Edit'
 const ContactUsBoxed = lazy(() => import('../pages/Pages/ContactUsBoxed'));
@@ -894,6 +896,22 @@ const routes = [
         element: (
             <AdminProtected>
                 <ViewServiceReportLeadApron />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-inventional-radiology',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportInventionalRadiology />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/view-service-report-obi',
+        element: (
+            <AdminProtected>
+                <ViewServiceReportOBI />
             </AdminProtected>
         ),
     },

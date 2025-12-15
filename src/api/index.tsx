@@ -5334,6 +5334,94 @@ export const updateTotalFilterationForCArm = async (testId: string, payload: any
     return res.data;
 };
 
+// Linearity of mAs Loading Stations - C-Arm
+export const addLinearityOfMasLoadingStationsForCArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/c-arm/linearity-of-mas-loading-stations/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMasLoadingStationsByServiceIdForCArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/c-arm/linearity-of-mas-loading-stations-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return { data: null };
+        throw error;
+    }
+};
+
+export const getLinearityOfMasLoadingStationsByTestIdForCArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/c-arm/linearity-of-mas-loading-stations/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateLinearityOfMasLoadingStationsForCArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/c-arm/linearity-of-mas-loading-stations/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Linearity of mA Loading Stations - C-Arm
+export const addLinearityOfMaLoadingStationsForCArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/c-arm/linearity-of-ma-loading-stations/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMaLoadingStationsByServiceIdForCArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/c-arm/linearity-of-ma-loading-stations-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return { data: null };
+        throw error;
+    }
+};
+
+export const getLinearityOfMaLoadingStationsByTestIdForCArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/c-arm/linearity-of-ma-loading-stations/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateLinearityOfMaLoadingStationsForCArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/c-arm/linearity-of-ma-loading-stations/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 
 //output consistency
 export const createOutputConsistencyForCArm = async (serviceId: string, payload: any) => {
@@ -5530,7 +5618,7 @@ export const updateExposureRateForCArm = async (testId: string, payload: any) =>
     });
     return res.data;
 };
-export const createTubeHousingLeakage = async (serviceId: string, payload: any) => {
+export const createTubeHousingLeakageForCArm = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(`/service-report/c-arm/tube-housing/${serviceId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
@@ -5539,7 +5627,7 @@ export const createTubeHousingLeakage = async (serviceId: string, payload: any) 
 };
 
 // READ - Get by testId (when opening existing saved test)
-export const getTubeHousingLeakageById = async (testId: string) => {
+export const getTubeHousingLeakageByIdCArm = async (testId: string) => {
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(`/service-report/c-arm/tube-housing/${testId}`, {
@@ -5553,7 +5641,7 @@ export const getTubeHousingLeakageById = async (testId: string) => {
 };
 
 // READ - Get by serviceId (returns null if not created yet — perfect for first load)
-export const getTubeHousingLeakageByServiceId = async (serviceId: string) => {
+export const getTubeHousingLeakageByServiceIdCArm = async (serviceId: string) => {
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(`/service-report/c-arm/tube-housing-by-service/${serviceId}`, {
@@ -5570,7 +5658,7 @@ export const getTubeHousingLeakageByServiceId = async (serviceId: string) => {
 };
 
 // UPDATE - Update existing test
-export const updateTubeHousingLeakage = async (testId: string, payload: any) => {
+export const updateTubeHousingLeakageForCArm = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(`/service-report/c-arm/tube-housing/${testId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
@@ -6003,6 +6091,30 @@ export const getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD = async (se
         if (error.response?.status === 404) return null;
         throw error;
     }
+};
+
+//BMD HEADER
+export const getReportHeaderForBMD = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(`/service-report/bmd/report-header/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const saveReportHeaderForBMD = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/bmd/report-header/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
 };
 
 export const getAccuracyOfOperatingPotentialAndTimeByTestIdForBMD = async (testId: string) => {
@@ -9582,4 +9694,136 @@ export const getReportHeaderForMammography = async (serviceId: string) => {
         }
         throw error;
     }
+};
+
+// ----------------------------------------------------------------------
+// Interventional Radiology API Functions
+// ----------------------------------------------------------------------
+export const addConsistencyOfRadiationOutputForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(`/service-report/inventional-radiology/consistency-of-radiation-output/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/consistency-of-radiation-output-by-service/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const updateConsistencyOfRadiationOutputForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(`/service-report/inventional-radiology/consistency-of-radiation-output/${testId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getConsistencyOfRadiationOutputByTestIdForInventionalRadiology = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/consistency-of-radiation-output/${testId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+
+export const addCentralBeamAlignmentForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    console.log("serviceId", serviceId);
+    console.log("payload", payload);
+    const res = await api.post(`/service-report/inventional-radiology/central-beam-alignment/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getCentralBeamAlignmentByServiceIdForInventionalRadiology = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/central-beam-alignment-by-service/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const updateCentralBeamAlignmentForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(`/service-report/inventional-radiology/central-beam-alignment/${testId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getCentralBeamAlignmentByTestIdForInventionalRadiology = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/central-beam-alignment/${testId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+
+export const addEffectiveFocalSpotForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(`/service-report/inventional-radiology/effective-focal-spot/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getEffectiveFocalSpotByServiceIdForInventionalRadiology = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/effective-focal-spot-by-service/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const updateEffectiveFocalSpotForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(`/service-report/inventional-radiology/effective-focal-spot/${testId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getEffectiveFocalSpotByTestIdForInventionalRadiology = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/effective-focal-spot/${testId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+
+export const addLinearityOfmAsLoadingForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(`/service-report/inventional-radiology/linearity-of-mas-loading/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getLinearityOfmAsLoadingByServiceIdForInventionalRadiology = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/linearity-of-mas-loading-by-service/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const updateLinearityOfmAsLoadingForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(`/service-report/inventional-radiology/linearity-of-mas-loading/${testId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getLinearityOfmAsLoadingByTestIdForInventionalRadiology = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/linearity-of-mas-loading/${testId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+
+export const addRadiationProtectionSurveyForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(`/service-report/inventional-radiology/radiation-protection-survey/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getRadiationProtectionSurveyByServiceIdForInventionalRadiology = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/radiation-protection-survey-by-service/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+
+export const addLowContrastResolutionForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(`/service-report/inventional-radiology/low-contrast-resolution/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getLowContrastResolutionByServiceIdForInventionalRadiology = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/low-contrast-resolution/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const updateLowContrastResolutionForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(`/service-report/inventional-radiology/low-contrast-resolution/${testId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+
+export const addHighContrastResolutionForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(`/service-report/inventional-radiology/high-contrast-resolution/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const getHighContrastResolutionByServiceIdForInventionalRadiology = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/high-contrast-resolution/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+export const updateHighContrastResolutionForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(`/service-report/inventional-radiology/high-contrast-resolution/${testId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
 };

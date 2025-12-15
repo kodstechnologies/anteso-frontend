@@ -185,8 +185,8 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
           onClick={isSaved && !isEditing ? startEditing : saveTest}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition shadow-md ${isSaved && !isEditing
-              ? "bg-orange-500 hover:bg-orange-600 text-white"
-              : "bg-green-600 hover:bg-green-700 text-white"
+            ? "bg-orange-500 hover:bg-orange-600 text-white"
+            : "bg-green-600 hover:bg-green-700 text-white"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {isSaving ? (
@@ -287,10 +287,10 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
                 <td className="px-6 py-3 text-center">
                   <span
                     className={`inline-flex px-5 py-2 rounded-full text-sm font-bold ${row.remark === "AEC Mode"
-                        ? "bg-green-100 text-green-800"
-                        : row.remark === "Manual Mode"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-gray-100 text-gray-600"
+                      ? "bg-green-100 text-green-800"
+                      : row.remark === "Manual Mode"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-gray-100 text-gray-600"
                       }`}
                   >
                     {row.remark || "-"}
@@ -327,8 +327,8 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
               onChange={(e) => setNonAecTolerance(e.target.value)}
               disabled={!isEditable}
               className={`w-24 px-3 py-2 text-center border-2 rounded-lg font-bold focus:ring-4 ${isEditable
-                  ? "border-indigo-400 text-indigo-900 bg-white focus:ring-indigo-300"
-                  : "border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
+                ? "border-indigo-400 text-indigo-900 bg-white focus:ring-indigo-300"
+                : "border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
                 }`}
             />
             <span>cGy/Min</span>
@@ -342,8 +342,8 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
               onChange={(e) => setAecTolerance(e.target.value)}
               disabled={!isEditable}
               className={`w-24 px-3 py-2 text-center border-2 rounded-lg font-bold focus:ring-4 ${isEditable
-                  ? "border-indigo-400 text-indigo-900 bg-white focus:ring-indigo-300"
-                  : "border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
+                ? "border-indigo-400 text-indigo-900 bg-white focus:ring-indigo-300"
+                : "border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
                 }`}
             />
             <span>cGy/Min</span>
@@ -357,8 +357,8 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
               onChange={(e) => setMinFocusDistance(e.target.value)}
               disabled={!isEditable}
               className={`w-20 px-3 py-2 text-center border-2 rounded-lg font-bold focus:ring-4 ${isEditable
-                  ? "border-purple-400 text-purple-900 bg-white focus:ring-purple-300"
-                  : "border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
+                ? "border-purple-400 text-purple-900 bg-white focus:ring-purple-300"
+                : "border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
                 }`}
             />
             <span className="font-bold text-purple-800">cm for fluoroscopy</span>

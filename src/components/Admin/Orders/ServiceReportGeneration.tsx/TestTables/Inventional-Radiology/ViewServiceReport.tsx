@@ -188,18 +188,18 @@ const ViewServiceReport: React.FC = () => {
         <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
             {/* Header */}
           <div className="flex justify-between items-center mb-4">
-              <img src={logoA} alt="NABL" className="h-28" />
-              <div className="text-right">
-                <table className="text-xs border border-gray-600">
-                  <tbody>
-                    <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <img src={logo} alt="Logo" className="h-28" />
+            <img src={logoA} alt="NABL" className="h-28" />
+            <div className="text-right">
+              <table className="text-xs border border-gray-600">
+                <tbody>
+                  <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
+                </tbody>
+              </table>
             </div>
+            <img src={logo} alt="Logo" className="h-28" />
+          </div>
 
           <div className="text-center mb-4">
               <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
@@ -235,32 +235,32 @@ const ViewServiceReport: React.FC = () => {
 
             {/* Equipment Details */}
           <section className="mb-4">
-              <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
-              <table className="w-full border-2 border-gray-600 text-sm">
-                <tbody>
-                  {[
-                    ["Nomenclature", report.nomenclature],
-                    ["Make", report.make || "-"],
-                    ["Model", report.model],
-                    ["Serial No.", report.slNumber],
-                    ["Category", report.category || "-"],
-                    ["Condition", report.condition],
-                    ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                    ["Engineer Name & RP ID", report.engineerNameRPId],
-                    ["Test Date", formatDate(report.testDate)],
-                    ["Due Date", formatDate(report.testDueDate)],
-                    ["Location", report.location],
-                    ["Temperature (°C)", report.temperature || "-"],
-                    ["Humidity (%)", report.humidity || "-"],
-                  ].map(([label, value]) => (
-                    <tr key={label}>
-                      <td className="border p-3 font-medium w-1/2">{label}</td>
-                      <td className="border p-3">{value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
+            <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
+            <table className="w-full border-2 border-gray-600 text-sm">
+              <tbody>
+                {[
+                  ["Nomenclature", report.nomenclature],
+                  ["Make", report.make || "-"],
+                  ["Model", report.model],
+                  ["Serial No.", report.slNumber],
+                  ["Category", report.category || "-"],
+                  ["Condition", report.condition],
+                  ["Testing Procedure No.", report.testingProcedureNumber || "-"],
+                  ["Engineer Name & RP ID", report.engineerNameRPId],
+                  ["Test Date", formatDate(report.testDate)],
+                  ["Due Date", formatDate(report.testDueDate)],
+                  ["Location", report.location],
+                  ["Temperature (°C)", report.temperature || "-"],
+                  ["Humidity (%)", report.humidity || "-"],
+                ].map(([label, value]) => (
+                  <tr key={label}>
+                    <td className="border p-3 font-medium w-1/2">{label}</td>
+                    <td className="border p-3">{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
 
             {/* Tools Used */}
           <section className="mb-4">
@@ -404,7 +404,7 @@ const ViewServiceReport: React.FC = () => {
                 {testData.totalFilteration.totalFiltration && (
                   <div className="bg-gray-50 p-4 rounded border">
                     <p className="text-sm">
-                      <strong>Total Filtration:</strong> Measured: {testData.totalFilteration.totalFiltration.measured || "-"} mm Al | 
+                      <strong>Total Filtration:</strong> Measured: {testData.totalFilteration.totalFiltration.measured || "-"} mm Al |
                       Required: {testData.totalFilteration.totalFiltration.required || "-"} mm Al
                     </p>
                   </div>

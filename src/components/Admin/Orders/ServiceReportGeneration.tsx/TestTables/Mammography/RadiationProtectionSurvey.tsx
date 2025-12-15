@@ -1,212 +1,476 @@
-// src/components/TestTables/DetailsOfRadiationProtection.tsx
+// components/TestTables/RadiationProtectionSurvey.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Edit3, Save, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { Plus, Trash2, Loader2, Edit3, Save } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   addRadiationProtectionSurveyForMammography,
   getRadiationProtectionSurveyByServiceIdForMammography,
   updateRadiationProtectionSurveyForMammography,
-} from '../../../../../../api';
+} from "../../../../../../api";
+
+interface LocationData {
+  id: string;
+  location: string;
+  mRPerHr: string;
+  mRPerWeek: string;
+  result: string;
+  calculatedResult: string;
+  category: "worker" | "public";
+}
 
 interface Props {
   serviceId: string;
   onRefresh?: () => void;
 }
 
-const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, onRefresh }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, onRefresh }) => {
   const [testId, setTestId] = useState<string | null>(null);
-  const [surveyDate, setSurveyDate] = useState<string>('');
-  const [hasValidCalibration, setHasValidCalibration] = useState<string>('');
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
-  const [hasSaved, setHasSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [surveyDate, setSurveyDate] = useState<string>("");
+  const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
-  const isViewMode = hasSaved && !isEditing;
+  const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
+  const [appliedVoltage, setAppliedVoltage] = useState<string>("28");
+  const [exposureTime, setExposureTime] = useState<string>("0.5");
+  const [workload, setWorkload] = useState<string>("5000");
 
-  // Load existing data
+  const [locations, setLocations] = useState<LocationData[]>([
+    { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "2", location: "Outside Lead Glass / View Window", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "3", location: "Technician Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "4", location: "Wall D (Console Wall)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "5", location: "Wall C", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "6", location: "Wall B", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "7", location: "Wall A", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+  ]);
+
+  // Formula: mR/week = (Workload × mR/hr) / (60 × mA used)
+  const calculateMRPerWeek = (mRPerHr: string) => {
+    const hr = parseFloat(mRPerHr) || 0;
+    const mA = parseFloat(appliedCurrent) || 1;
+    const wl = parseFloat(workload) || 0;
+    if (hr <= 0 || mA <= 0 || wl <= 0) return "";
+    return ((wl * hr) / (60 * mA)).toFixed(3);
+  };
+
+  // Formula: Result = max radiation level × Workload / (60 × Applied Current (mA))
+  const calculateResult = (mRPerHr: string) => {
+    const maxRadiationLevel = parseFloat(mRPerHr) || 0;
+    const wl = parseFloat(workload) || 0;
+    const mA = parseFloat(appliedCurrent) || 1;
+    if (maxRadiationLevel <= 0 || wl <= 0 || mA <= 0) return "";
+    return ((maxRadiationLevel * wl) / (60 * mA)).toFixed(3);
+  };
+
+  useEffect(() => {
+    setLocations(prev =>
+      prev.map(item => {
+        const mRPerWeek = calculateMRPerWeek(item.mRPerHr);
+        const calculatedResult = calculateResult(item.mRPerHr);
+        const weekly = parseFloat(mRPerWeek) || 0;
+        const limit = item.category === "worker" ? 40 : 2;
+        const result = weekly > 0 ? (weekly <= limit ? "PASS" : "FAIL") : "";
+        return { ...item, mRPerWeek, calculatedResult, result };
+      })
+    );
+  }, [locations.map(l => l.mRPerHr).join(), appliedCurrent, workload]);
+
+  const addRow = (category: "worker" | "public") => {
+    const newRow: LocationData = {
+      id: Date.now().toString(),
+      location: "New Location",
+      mRPerHr: "",
+      mRPerWeek: "",
+      result: "",
+      calculatedResult: "",
+      category
+    };
+    setLocations(prev => [...prev, newRow]);
+  };
+
+  const removeRow = (id: string) => {
+    setLocations(prev => prev.filter(r => r.id !== id));
+  };
+
+  const updateRow = (id: string, field: "location" | "mRPerHr", value: string) => {
+    setLocations(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
+
+  // Group locations
+  const workerLocations = locations.filter(l => l.category === "worker");
+  const publicLocations = locations.filter(l => l.category === "public");
+
+  const maxWorkerWeekly = Math.max(...workerLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
+  const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
+
+  // Load existing survey
   useEffect(() => {
     const load = async () => {
       if (!serviceId) {
         setIsLoading(false);
         return;
       }
-
       try {
         const data = await getRadiationProtectionSurveyByServiceIdForMammography(serviceId);
         if (data) {
-          setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : '');
-          setHasValidCalibration(data.hasValidCalibration || '');
-          setTestId(data._id);
-          setHasSaved(true);
+          setTestId(data._id || null);
+          setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+          setHasValidCalibration(data.hasValidCalibration || "");
+          setAppliedCurrent(data.appliedCurrent || "100");
+          setAppliedVoltage(data.appliedVoltage || "28");
+          setExposureTime(data.exposureTime || "0.5");
+          setWorkload(data.workload || "5000");
+          if (Array.isArray(data.locations) && data.locations.length > 0) {
+            setLocations(
+              data.locations.map((l: any, i: number) => ({
+                id: Date.now().toString() + i,
+                location: l.location || "",
+                mRPerHr: l.mRPerHr || "",
+                mRPerWeek: l.mRPerWeek || "",
+                result: l.result || "",
+                calculatedResult: l.calculatedResult || "",
+                category: l.category || "worker",
+              }))
+            );
+          }
+          setIsSaved(true);
           setIsEditing(false);
+        } else {
+          setIsEditing(true);
         }
-      } catch (err) {
-        console.error('Failed to load radiation protection survey:', err);
-        toast.error('Failed to load survey data');
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error("Failed to load radiation protection survey");
+        }
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
-
     load();
   }, [serviceId]);
 
   const handleSave = async () => {
+    if (!serviceId) {
+      toast.error("Service ID missing");
+      return;
+    }
     if (!surveyDate.trim()) {
-      toast.error('Please select a survey date');
+      toast.error("Please select a survey date");
       return;
     }
     if (!hasValidCalibration.trim()) {
-      toast.error('Please enter calibration status');
+      toast.error("Please select calibration status");
       return;
     }
 
-    setIsSaving(true);
-
     const payload = {
       surveyDate,
-      hasValidCalibration: hasValidCalibration.trim(),
+      hasValidCalibration,
+      appliedCurrent,
+      appliedVoltage,
+      exposureTime,
+      workload,
+      locations: locations.map(l => ({
+        location: l.location,
+        mRPerHr: l.mRPerHr,
+        mRPerWeek: l.mRPerWeek,
+        result: l.result,
+        calculatedResult: l.calculatedResult,
+        category: l.category,
+      })),
     };
 
+    setIsSaving(true);
     try {
+      let res;
       if (testId) {
-        await updateRadiationProtectionSurveyForMammography(testId, payload);
-        toast.success('Updated successfully!');
+        res = await updateRadiationProtectionSurveyForMammography(testId, payload);
+        toast.success("Updated successfully");
       } else {
-        const res = await addRadiationProtectionSurveyForMammography(serviceId, payload);
-        setTestId(res.data._id);
-        toast.success('Saved successfully!');
+        res = await addRadiationProtectionSurveyForMammography(serviceId, payload);
+        const newId = res?.data?._id || res?.data?.data?._id;
+        if (newId) setTestId(newId);
+        toast.success("Saved successfully");
       }
-      setHasSaved(true);
+      setIsSaved(true);
       setIsEditing(false);
       onRefresh?.();
     } catch (err: any) {
-      toast.error(err.message || 'Save failed');
+      toast.error(err?.response?.data?.message || "Save failed");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const toggleEdit = () => setIsEditing(true);
+  const isViewMode = isSaved && !isEditing;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-12 bg-white rounded-lg border">
-        <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-        <span className="ml-3 text-gray-600">Loading Radiation Protection Survey...</span>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-white rounded-lg border border-gray-300 overflow-hidden shadow-sm">
-      {/* Header with Title + Action Button */}
-      <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b">
-        <h2 className="text-xl font-bold text-blue-900">
-          Details of Radiation Protection Survey
-        </h2>
-
-        <div className="flex items-center gap-3">
-          {isSaving && <span className="text-sm text-gray-600">Saving...</span>}
-
-          {isViewMode && (
-            <button
-              onClick={toggleEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
-            >
-              <Edit3 className="w-4 h-4" />
-              Edit
-            </button>
+    <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-center text-gray-800">
+          Radiation Protection Survey Report
+        </h1>
+        <button
+          onClick={isViewMode ? () => setIsEditing(true) : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              {isViewMode ? <Edit3 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+              {isViewMode ? "Edit" : testId ? "Update" : "Save"} Survey
+            </>
           )}
+        </button>
+      </div>
 
-          {!isViewMode && (
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  {hasSaved ? 'Update' : 'Save'} Survey
-                </>
-              )}
-            </button>
-          )}
+      {/* 1. Survey Details */}
+      <section className="bg-white rounded-2xl shadow-lg border border-gray-200">
+        <div className="px-8 py-5 bg-gradient-to-r from-blue-600 to-blue-700">
+          <h2 className="text-2xl font-bold text-white">1. Survey Details</h2>
         </div>
-      </div>
+        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Survey</label>
+            <input type="date" value={surveyDate} onChange={e => setSurveyDate(e.target.value)}
+              disabled={isViewMode}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Valid Calibration Certificate?</label>
+            <select value={hasValidCalibration} onChange={e => setHasValidCalibration(e.target.value)}
+              disabled={isViewMode}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}>
+              <option value="">Select</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="N/A">N/A</option>
+            </select>
+          </div>
+        </div>
+      </section>
 
-      {/* Table Content */}
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-blue-50">
-          <tr>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">
-              Parameter
-            </th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">
-              Value
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {/* Date of Survey */}
-          <tr className="hover:bg-gray-50 transition">
-            <td className="px-6 py-5 text-sm font-medium text-gray-800 align-top">
-              Date of Radiation Protection Survey
-            </td>
-            <td className="px-6 py-5">
-              <input
-                type="date"
-                value={surveyDate}
-                onChange={(e) => setSurveyDate(e.target.value)}
-                readOnly={isViewMode}
-                className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                  }`}
-              />
-            </td>
-          </tr>
+      {/* 2. Equipment Settings */}
+      <section className="bg-white rounded-2xl shadow-lg border border-gray-200">
+        <div className="px-8 py-5 bg-gradient-to-r from-teal-600 to-teal-700">
+          <h2 className="text-2xl font-bold text-white">2. Equipment Settings Used</h2>
+        </div>
+        <div className="p-8 grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Applied Current (mA)</label>
+            <input type="number" value={appliedCurrent} onChange={e => setAppliedCurrent(e.target.value)}
+              disabled={isViewMode}
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="100" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Applied Voltage (kV)</label>
+            <input type="number" value={appliedVoltage} onChange={e => setAppliedVoltage(e.target.value)}
+              disabled={isViewMode}
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="28" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Exposure Time (s)</label>
+            <input type="number" step="0.001" value={exposureTime} onChange={e => setExposureTime(e.target.value)}
+              disabled={isViewMode}
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="0.5" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
+            <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
+              disabled={isViewMode}
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
+          </div>
+        </div>
+      </section>
 
-          {/* Calibration Certificate */}
-          <tr className="hover:bg-gray-50 transition">
-            <td className="px-6 py-5 text-sm font-medium text-gray-800 align-top">
-              Whether Radiation Survey Meter used for the Survey has Valid Calibration Certificate:
-            </td>
-            <td className="px-6 py-5">
-              <input
-                type="text"
-                value={hasValidCalibration}
-                onChange={(e) => setHasValidCalibration(e.target.value)}
-                readOnly={isViewMode}
-                placeholder="e.g. Yes, No, N/A"
-                className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                  }`}
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      {/* 3. Maximum Radiation Level Survey */}
+      <section className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="px-8 py-5 bg-gradient-to-r from-purple-600 to-purple-700">
+          <h2 className="text-2xl font-bold text-white">3. Maximum Radiation Level Survey</h2>
+        </div>
+        <div className="p-8">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-300">
+              <thead className="bg-purple-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">LOCATION</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MAX. RADIATION LEVEL (MR/HR)</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MR/WEEK</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">STATUS</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">RESULT</th>
+                  <th className="w-32"></th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {/* Worker Rows */}
+                {workerLocations.map((row, index) => (
+                  <tr key={row.id} className="hover:bg-blue-50">
+                    <td className="px-6 py-4">
+                      <input
+                        type="text"
+                        value={row.location}
+                        onChange={e => updateRow(row.id, "location", e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={row.mRPerHr}
+                        onChange={e => updateRow(row.id, "mRPerHr", e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                        placeholder="0.000"
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.mRPerWeek || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        }`}>
+                        {row.result || "—"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.calculatedResult || "—"}
+                    </td>
+                    {/* RowSpan for Worker */}
+                    {index === 0 && (
+                      <td rowSpan={workerLocations.length} className="text-center align-middle bg-blue-100 border-l-4 border-blue-600 relative">
+                        <div className="text-sm font-bold text-blue-900 tracking-wider">
+                          FOR RADIATION WORKER
+                        </div>
+                      </td>
+                    )}
+                    {/* Delete button */}
+                    {!isViewMode && (
+                      <td className="px-3 py-4 text-center bg-blue-100">
+                        <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
 
-      {/* Optional Footer Note */}
-      <div className="px-6 py-4 bg-amber-50 border-t text-sm text-amber-800">
-        <p className="font-medium">
-          Note: Ensure the survey meter has a valid calibration certificate from an AERB-accredited laboratory.
-        </p>
-      </div>
+                {/* Public Rows */}
+                {publicLocations.map((row, index) => (
+                  <tr key={row.id} className="hover:bg-purple-50">
+                    <td className="px-6 py-4">
+                      <input
+                        type="text"
+                        value={row.location}
+                        onChange={e => updateRow(row.id, "location", e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={row.mRPerHr}
+                        onChange={e => updateRow(row.id, "mRPerHr", e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                        placeholder="0.000"
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.mRPerWeek || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        }`}>
+                        {row.result || "—"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.calculatedResult || "—"}
+                    </td>
+                    {/* RowSpan for Public */}
+                    {index === 0 && (
+                      <td rowSpan={publicLocations.length} className="text-center align-middle bg-purple-100 border-l-4 border-purple-600 relative">
+                        <div className="text-sm font-bold text-purple-900 tracking-wider">
+                          FOR PUBLIC
+                        </div>
+                      </td>
+                    )}
+                    {/* Delete button */}
+                    {!isViewMode && (
+                      <td className="px-3 py-4 text-center bg-purple-100">
+                        <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Add Buttons */}
+          {!isViewMode && (
+            <div className="flex justify-center gap-8 mt-8">
+              <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <Plus className="w-5 h-5" /> Add Worker Location
+              </button>
+              <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <Plus className="w-5 h-5" /> Add Public Location
+              </button>
+            </div>
+          )}
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-4 border-blue-300 rounded-2xl p-8 text-center shadow-lg">
+              <h3 className="text-xl font-bold text-blue-900">Maximum Radiation Level/week</h3>
+              <p className="text-lg text-blue-700 mt-1">(For Radiation Worker)</p>
+              <p className="text-5xl font-extrabold text-blue-800 mt-4">
+                {maxWorkerWeekly} <span className="text-2xl font-normal">mR/week</span>
+              </p>
+              <p className="text-lg text-blue-700 mt-4 font-semibold">Limit: ≤ 40 mR/week</p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-4 border-purple-300 rounded-2xl p-8 text-center shadow-lg">
+              <h3 className="text-xl font-bold text-purple-900">Maximum Radiation Level/week</h3>
+              <p className="text-lg text-purple-700 mt-1">(For Public)</p>
+              <p className="text-5xl font-extrabold text-purple-800 mt-4">
+                {maxPublicWeekly} <span className="text-2xl font-normal">mR/week</span>
+              </p>
+              <p className="text-lg text-purple-700 mt-4 font-semibold">Limit: ≤ 2 mR/week</p>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
 
-export default DetailsOfRadiationProtection;
+export default RadiationProtectionSurvey;

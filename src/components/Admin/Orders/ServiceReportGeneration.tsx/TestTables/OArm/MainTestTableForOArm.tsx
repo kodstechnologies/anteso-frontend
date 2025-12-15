@@ -20,9 +20,9 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
     toleranceRowSpan: boolean = false
   ) => {
     if (testRows.length === 0) return;
-    
+
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
-    
+
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null,
@@ -39,17 +39,45 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
     });
   };
 
+  // 0. Accuracy of Operating Potential (New Section)
+  if (testData.operatingPotential?.measurements && Array.isArray(testData.operatingPotential.measurements)) {
+    const validRows = testData.operatingPotential.measurements.filter((m: any) => m.appliedKvp || m.averageKvp);
+    if (validRows.length > 0) {
+      // Use tolerance if available, else default
+      const toleranceValue = testData.operatingPotential.tolerance?.value || "2.0";
+      const toleranceSign = testData.operatingPotential.tolerance?.sign === "±" ? "±" : testData.operatingPotential.tolerance?.sign;
+
+      const testRows = validRows.map((row: any) => {
+        const isPass = row.remarks === "PASS" || row.remarks === "Pass";
+        return {
+          specified: row.appliedKvp ? `${row.appliedKvp} kVp` : "-",
+          measured: row.averageKvp ? `${row.averageKvp} kVp` : "-",
+          tolerance: `${toleranceSign}${toleranceValue} kVp`, // e.g., ±2.0 kVp
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Operating Potential", testRows, true); // true for RowSpan tolerance
+    }
+  }
+
   // 1. Total Filtration
   if (testData.totalFilteration?.totalFiltration) {
     const measuredTF = testData.totalFilteration.totalFiltration.measured || "-";
     const requiredTF = testData.totalFilteration.totalFiltration.required || "-";
     const measured = parseFloat(measuredTF);
     const required = parseFloat(requiredTF);
-    const isPass = !isNaN(measured) && !isNaN(required) && measured >= required;
+
+    // Check if we have explicit remarks from backend or calculate
+    let isPass = false;
+    // Some implementations save a separate 'remark' field for totalFiltration, but often it's implicit
+    if (!isNaN(measured) && !isNaN(required) && measured >= required) {
+      isPass = true;
+    }
+
     addRowsForTest("Total Filtration", [{
-      specified: requiredTF !== "-" ? `${requiredTF} mm Al` : "-",
+      specified: requiredTF !== "-" ? `≥ ${requiredTF} mm Al` : "-", // Explicitly show requirement
       measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
-      tolerance: "≥ Required value",
+      tolerance: requiredTF !== "-" ? `≥ ${requiredTF} mm Al` : "≥ Required",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -103,16 +131,22 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
     }]);
   }
 
-  // 5. Exposure Rate at Table Top
+  // 5. Exposure Rate at Table Top (Enhanced Logic)
   if (testData.exposureRateTableTop?.rows && Array.isArray(testData.exposureRateTableTop.rows)) {
     const validRows = testData.exposureRateTableTop.rows.filter((row: any) => row.distance || row.exposure);
     if (validRows.length > 0) {
+      const aecTol = testData.exposureRateTableTop.aecTolerance || "10";
+      const manualTol = testData.exposureRateTableTop.nonAecTolerance || "5"; // 'nonAecTolerance' matches OArm component state
+
       const testRows = validRows.map((row: any) => {
         const isPass = row.result === "PASS" || row.result === "Pass";
+        const isAEC = row.remark === "AEC Mode";
+        const toleranceVal = isAEC ? aecTol : manualTol;
+
         return {
           specified: row.distance ? `${row.distance} cm` : "-",
-          measured: row.exposure ? `${row.exposure} mGy/min` : "-",
-          tolerance: "As per standard",
+          measured: row.exposure ? `${row.exposure} cGy/min` : "-", // Updated unit to cGy/min
+          tolerance: `≤ ${toleranceVal} cGy/min`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -120,23 +154,34 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 6. Tube Housing Leakage
+  // 6. Tube Housing Leakage (Enhanced Logic)
   if (testData.tubeHousingLeakage?.leakageRows && Array.isArray(testData.tubeHousingLeakage.leakageRows)) {
     const validRows = testData.tubeHousingLeakage.leakageRows.filter((row: any) => row.location || row.max);
     if (validRows.length > 0) {
-      const toleranceValue = testData.tubeHousingLeakage.toleranceValue || "1";
+      const toleranceValue = testData.tubeHousingLeakage.toleranceValue || "1.0";
       const toleranceOperator = testData.tubeHousingLeakage.toleranceOperator || "less than or equal to";
+      const toleranceTime = testData.tubeHousingLeakage.toleranceTime === '1' ? '1 hour' : '1 hour';
+
+      // Map operator to symbol
+      let opSymbol = "≤";
+      if (toleranceOperator === "greater than or equal to") opSymbol = "≥";
+      if (toleranceOperator === "=") opSymbol = "=";
+
+      const toleranceDisplay = `${opSymbol} ${toleranceValue} mGy/h in ${toleranceTime}`;
+
       const testRows = validRows.map((row: any) => {
         const max = row.max || "-";
-        const isPass = row.remark === "Pass" || (max !== "-" && parseFloat(max) < parseFloat(toleranceValue));
+        // Remark logic handled in ViewServiceReport transformation mostly, specifically 'Pass' string vs 'PASS'
+        const isPass = row.remark === "Pass" || row.remark === "PASS";
+
         return {
           specified: row.location || "-",
-          measured: max !== "-" ? `${max} ${row.unit || "mGy/h"}` : "-",
-          tolerance: `${toleranceOperator === "less than or equal to" ? "≤" : toleranceOperator === "greater than or equal to" ? "≥" : "="} ${toleranceValue} mGy/h`,
+          measured: max !== "-" ? `${max} mGy/h` : "-", // Assuming formatted value
+          tolerance: toleranceDisplay,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Tube Housing Leakage", testRows);
+      addRowsForTest("Maximum Radiation Leakage from Tube Housing", testRows, true); // Use shared tolerance
     }
   }
 
@@ -183,10 +228,10 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
           </thead>
           <tbody>
             {rows.map((row, index) => {
-              const shouldRenderTolerance = 
-                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) || 
+              const shouldRenderTolerance =
+                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) ||
                 (row.hasToleranceRowSpan && row.isFirstRow);
-              
+
               return (
                 <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   {row.isFirstRow && (
@@ -202,7 +247,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
                   <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
                   <td className="border border-black px-4 py-3 text-center font-semibold">{row.measured}</td>
                   {shouldRenderTolerance && (
-                    <td 
+                    <td
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
                       className="border border-black px-4 py-3 text-center text-xs leading-tight"
                     >
@@ -210,9 +255,8 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
                     </td>
                   )}
                   <td className="border border-black px-4 py-3 text-center">
-                    <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${
-                      row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}>
+                    <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}>
                       {row.remarks}
                     </span>
                   </td>

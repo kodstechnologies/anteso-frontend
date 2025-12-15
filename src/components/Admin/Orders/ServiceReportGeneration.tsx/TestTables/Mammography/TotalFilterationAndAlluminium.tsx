@@ -206,24 +206,24 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
         <div className="flex items-center gap-4">
           {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
 
-          {hasSaved && (
+          {hasSaved && !isEditing && (
             <button
               onClick={toggleEdit}
               className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
             >
               <Edit3 className="w-4 h-4" />
-              {isEditing ? 'Cancel' : 'Edit'}
+              Edit
             </button>
           )}
 
-          {isEditing && (
+          {(isEditing || !hasSaved) && (
             <button
               onClick={saveData}
               disabled={isSaving}
               className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              {testId ? 'Update' : 'Save'} Test
+              {isSaving ? 'Saving...' : testId ? 'Update' : 'Save'} Test
             </button>
           )}
         </div>
@@ -241,8 +241,8 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
               type="text"
               value={targetWindow}
               onChange={(e) => setTargetWindow(e.target.value)}
-              readOnly={!isEditing}
-              className={`w-full px-4 py-2 border rounded-md font-medium ${isEditing ? 'border-gray-300 focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
+              readOnly={isViewMode}
+              className={`w-full px-4 py-2 border rounded-md font-medium ${!isViewMode ? 'border-gray-300 focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
             />
           </div>
           <div>
@@ -252,9 +252,9 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                 type="text"
                 value={addedFilterThickness}
                 onChange={(e) => setAddedFilterThickness(e.target.value)}
-                readOnly={!isEditing}
+                readOnly={isViewMode}
                 placeholder="0.03"
-                className={`w-32 px-4 py-2 border rounded-md text-center ${isEditing ? 'focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
+                className={`w-32 px-4 py-2 border rounded-md text-center ${!isViewMode ? 'focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
               />
               <span className="text-sm text-gray-600">mm Molybdenum</span>
             </div>
@@ -286,8 +286,8 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                       type="text"
                       value={row.kvp}
                       onChange={(e) => updateRow(row.id, 'kvp', e.target.value)}
-                      readOnly={!isEditing}
-                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
+                      readOnly={isViewMode}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${!isViewMode ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                       placeholder="28"
                     />
                   </td>
@@ -296,8 +296,8 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                       type="text"
                       value={row.mAs}
                       onChange={(e) => updateRow(row.id, 'mAs', e.target.value)}
-                      readOnly={!isEditing}
-                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
+                      readOnly={isViewMode}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${!isViewMode ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                     />
                   </td>
                   <td className="px-6 py-4 border-r">
@@ -305,8 +305,8 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                       type="text"
                       value={row.alEquivalence}
                       onChange={(e) => updateRow(row.id, 'alEquivalence', e.target.value)}
-                      readOnly={!isEditing}
-                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
+                      readOnly={isViewMode}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${!isViewMode ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                     />
                   </td>
                   <td className="px-6 py-4">
@@ -314,12 +314,12 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                       type="text"
                       value={row.hvt}
                       onChange={(e) => updateRow(row.id, 'hvt', e.target.value)}
-                      readOnly={!isEditing}
-                      className={`w-full px-3 py-2 text-center border rounded text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
+                      readOnly={isViewMode}
+                      className={`w-full px-3 py-2 text-center border rounded text-sm ${!isViewMode ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                     />
                   </td>
                   <td className="px-3 text-center">
-                    {isEditing && rows.length > 1 && (
+                    {!isViewMode && rows.length > 1 && (
                       <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -331,7 +331,7 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
           </table>
         </div>
         <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
-          {isEditing && (
+          {!isViewMode && (
             <button onClick={addRow} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Plus className="w-5 h-5" /> Add Row
             </button>
@@ -364,8 +364,8 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                   <select
                     value={t.operator}
                     onChange={(e) => updateTolerance(key, 'operator', e.target.value)}
-                    disabled={!isEditing}
-                    className={`px-4 py-2 border rounded-md font-medium ${isEditing ? 'cursor-pointer' : 'bg-gray-50 cursor-not-allowed'}`}
+                    disabled={isViewMode}
+                    className={`px-4 py-2 border rounded-md font-medium ${!isViewMode ? 'cursor-pointer' : 'bg-gray-50 cursor-not-allowed'}`}
                   >
                     {operators.map(op => <option key={op} value={op}>{op}</option>)}
                   </select>
@@ -373,8 +373,8 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                     type="text"
                     value={t.value}
                     onChange={(e) => updateTolerance(key, 'value', e.target.value)}
-                    disabled={!isEditing}
-                    className={`w-28 px-4 py-2 text-center border rounded-md font-medium ${isEditing ? 'focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
+                    disabled={isViewMode}
+                    className={`w-28 px-4 py-2 text-center border rounded-md font-medium ${!isViewMode ? 'focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
                   />
                   <span className="text-sm text-gray-600">mm Al</span>
                 </div>

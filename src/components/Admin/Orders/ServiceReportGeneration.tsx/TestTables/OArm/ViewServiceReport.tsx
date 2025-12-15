@@ -114,6 +114,51 @@ const ViewServiceReportOArm: React.FC = () => {
             notes: data.notes || defaultNotes,
           });
 
+          // Transform Tube Housing Leakage Data
+          const tubeHousingData = data.TubeHousingLeakageOArm;
+          let transformedRadiationLeakage = null;
+
+          if (tubeHousingData) {
+            const leakageRows = tubeHousingData.leakageMeasurements || tubeHousingData.leakageRows || [];
+            const toleranceValue = parseFloat(tubeHousingData.toleranceValue || "1.0");
+            const toleranceOperator = tubeHousingData.toleranceOperator || "less than or equal to";
+
+            const processedRows = leakageRows.map((row: any) => {
+              const values = [row.left, row.right, row.front, row.back, row.top]
+                .map((v: any) => parseFloat(v) || 0)
+                .filter((v: number) => v > 0);
+
+              const maxReading = values.length > 0 ? Math.max(...values) : 0;
+              const maxStr = maxReading > 0 ? maxReading.toFixed(2) : ""; // Raw max
+
+              // If backend doesn't provide remark, calculate it
+              let remark = row.remark;
+              if (!remark && maxReading > 0) {
+                // Note: true Pass/Fail deps on workload calculation (mGy/h), but if we only have raw values here we might skip
+                // However, usually we expect backend/component to save 'max' (mGy/h value hopefully calculated).
+                // For now, if 'max' is the mGy value:
+                const maxVal = parseFloat(row.max || maxStr); // Assuming row.max is the final calculated mGy/h if present
+                if (toleranceOperator === 'less than or equal to') {
+                  remark = maxVal <= toleranceValue ? 'Pass' : 'Fail';
+                } else if (toleranceOperator === 'greater than or equal to') {
+                  remark = maxVal >= toleranceValue ? 'Pass' : 'Fail';
+                }
+              }
+
+              return {
+                ...row,
+                max: row.max || maxStr, // Use saved max or calculated raw max
+                remark: remark || (maxReading === 0 ? "" : "Pass"), // Fallback if no tolerance check possible
+              };
+            });
+
+            transformedRadiationLeakage = {
+              ...tubeHousingData,
+              leakageRows: processedRows,
+              maxRadiationLeakage: tubeHousingData.maxRadiationLeakage || tubeHousingData.maxLeakageResult || "",
+            };
+          }
+
           // Extract test data from populated response
           setTestData({
             exposureRateTableTop: data.ExposureRateTableTopOArm || null,
@@ -121,7 +166,9 @@ const ViewServiceReportOArm: React.FC = () => {
             lowContrastResolution: data.LowContrastResolutionOArm || null,
             outputConsistency: data.OutputConsistencyForOArm || null,
             totalFilteration: data.TotalFilterationForOArm || null,
-            tubeHousingLeakage: data.TubeHousingLeakageOArm || null,
+            // Map TotalFilteration to operatingPotential for "Accuracy of Operating Potential" table
+            operatingPotential: data.TotalFilterationForOArm || null,
+            tubeHousingLeakage: transformedRadiationLeakage,
             linearityOfMasLoading: data.LinearityOfMasLoadingStationOArm || null,
           });
         } else {
@@ -151,9 +198,9 @@ const ViewServiceReportOArm: React.FC = () => {
         btn.disabled = true;
       }
 
-      const canvas = await html2canvas(element, { 
+      const canvas = await html2canvas(element, {
         scale: 1.5, // Optimized for smaller file size
-        useCORS: true, 
+        useCORS: true,
         logging: false,
         backgroundColor: '#ffffff'
       });
@@ -419,7 +466,7 @@ const ViewServiceReportOArm: React.FC = () => {
                 {testData.totalFilteration.totalFiltration && (
                   <div className="bg-gray-50 p-4 rounded border">
                     <p className="text-sm">
-                      <strong>Total Filtration:</strong> Measured: {testData.totalFilteration.totalFiltration.measured || "-"} mm Al | 
+                      <strong>Total Filtration:</strong> Measured: {testData.totalFilteration.totalFiltration.measured || "-"} mm Al |
                       Required: {testData.totalFilteration.totalFiltration.required || "-"} mm Al
                     </p>
                   </div>

@@ -342,7 +342,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                         {/* RowSpan for Worker */}
                                         {index === 0 && (
                                             <td rowSpan={workerLocations.length} className="text-center align-middle bg-blue-100 border-l-4 border-blue-600">
-                                                <div className="transform -rotate-90 whitespace-nowrap text-lg font-bold text-blue-900 tracking-wider">
+                                                <div className="text-lg font-bold text-blue-900 tracking-wider px-2">
                                                     FOR RADIATION WORKER
                                                 </div>
                                             </td>
@@ -394,7 +394,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                         {/* RowSpan for Public */}
                                         {index === 0 && (
                                             <td rowSpan={publicLocations.length} className="text-center align-middle bg-purple-100 border-l-4 border-purple-600">
-                                                <div className="transform -rotate-90 whitespace-nowrap text-lg font-bold text-purple-900 tracking-wider">
+                                                <div className="text-lg font-bold text-purple-900 tracking-wider px-2">
                                                     FOR PUBLIC
                                                 </div>
                                             </td>

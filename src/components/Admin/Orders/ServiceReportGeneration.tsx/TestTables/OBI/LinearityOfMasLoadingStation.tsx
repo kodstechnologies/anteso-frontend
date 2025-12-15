@@ -252,6 +252,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
         return rowsWithX.map(row => ({
             ...row,
+            xMax,
+            xMin,
             col,
             remarks: hasData ? (pass ? 'Pass' : 'Fail') : '—',
         }));
@@ -356,6 +358,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                                 </th>
                                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">Avg Output</th>
                                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X (mGy/mAs)</th>
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X Max</th>
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X Min</th>
                                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">CoL</th>
                                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Remarks</th>
                                 <th rowSpan={2} className="w-12"></th>
@@ -389,7 +393,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {processedTable2.map(p => (
+                            {processedTable2.map((p, rowIndex) => (
                                 <tr key={p.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 border-r">
                                         <input
@@ -417,15 +421,28 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                                     ))}
                                     <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.average}</td>
                                     <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.x}</td>
-                                    <td className="px-6 py-4 text-center font-bold border-r bg-yellow-50">{p.col}</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${p.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
-                                            p.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
-                                                'bg-gray-100 text-gray-600'
-                                            }`}>
-                                            {p.remarks}
-                                        </span>
-                                    </td>
+                                    {/* xMax, xMin, CoL, Remarks only on first row with rowSpan */}
+                                    {rowIndex === 0 && (
+                                        <>
+                                            <td rowSpan={processedTable2.length} className="px-6 py-4 text-center font-bold border-r bg-blue-50 align-middle">
+                                                {p.xMax}
+                                            </td>
+                                            <td rowSpan={processedTable2.length} className="px-6 py-4 text-center font-bold border-r bg-blue-50 align-middle">
+                                                {p.xMin}
+                                            </td>
+                                            <td rowSpan={processedTable2.length} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">
+                                                {p.col}
+                                            </td>
+                                            <td rowSpan={processedTable2.length} className="px-6 py-4 text-center align-middle">
+                                                <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${p.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
+                                                    p.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
+                                                        'bg-gray-100 text-gray-600'
+                                                    }`}>
+                                                    {p.remarks}
+                                                </span>
+                                            </td>
+                                        </>
+                                    )}
                                     <td className="px-3 py-4 text-center">
                                         {table2Rows.length > 1 && !isViewMode && (
                                             <button onClick={() => removeTable2Row(p.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">

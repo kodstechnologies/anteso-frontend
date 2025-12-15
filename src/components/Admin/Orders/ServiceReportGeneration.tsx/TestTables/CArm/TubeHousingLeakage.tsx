@@ -1,8 +1,14 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  getTubeHousingLeakageByServiceIdCArm,
+  createTubeHousingLeakageForCArm,
+  updateTubeHousingLeakageForCArm,
+  getTubeHousingLeakageByIdCArm,
+} from "../../../../../../api";
 
 interface SettingsRow {
   fcd: string;
@@ -130,21 +136,122 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     );
   }, [serviceId, settings, workload, toleranceValue, leakageRows]);
 
+  // Load data on mount
+  // Load data on mount or when serviceId/propTestId changes
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        let data = null;
+
+        // Priority 1: If we already have a testId in state (from create/update), use it
+        if (testId) {
+          data = await getTubeHousingLeakageByIdCArm(testId);
+        }
+        // Priority 2: If parent passed a specific testId via prop
+        else if (propTestId) {
+          data = await getTubeHousingLeakageByIdCArm(propTestId);
+          if (data) setTestId(data._id); // sync state
+        }
+        // Priority 3: Fallback to service-wide lookup (may return latest or null)
+        else {
+          data = await getTubeHousingLeakageByServiceIdCArm(serviceId);
+        }
+
+        if (data && data._id) {
+          const id = data._id;
+          setTestId(id);
+
+          // Populate settings
+          const s = Array.isArray(data.settings) ? data.settings[0] : data.settings || {};
+          setSettings({
+            fcd: s.fcd?.toString() || '100',
+            kv: s.kv?.toString() || s.kvp?.toString() || '120',
+            ma: s.ma?.toString() || '21',
+            time: s.time?.toString() || '2.0',
+          });
+
+          setWorkload(data.workload?.toString() || '');
+          setToleranceValue(data.toleranceValue?.toString() || '1.0');
+          setToleranceOperator(data.toleranceOperator || 'less than or equal to');
+
+          if (data.leakageMeasurements && Array.isArray(data.leakageMeasurements)) {
+            setLeakageRows(
+              data.leakageMeasurements.map((m: any) => ({
+                location: m.location,
+                left: m.left?.toString() || '',
+                right: m.right?.toString() || '',
+                front: m.front?.toString() || '',
+                back: m.back?.toString() || '',
+                top: m.top?.toString() || '',
+              }))
+            );
+          }
+
+          setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          // No existing data → new form
+          setHasSaved(false);
+          setIsEditing(true);
+        }
+      } catch (error) {
+        console.error("Error loading Tube Housing Leakage:", error);
+        toast.error("Failed to load test data");
+      }
+    };
+
+    loadData();
+  }, [serviceId, propTestId, testId]); // Add testId to dependencies!
+
   const handleSave = async () => {
     if (!isFormValid) {
       toast.error('Please fill all required fields');
       return;
     }
 
-    setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const payload = {
+      settings: [settings],
+      workload,
+      toleranceValue,
+      toleranceOperator,
+      toleranceTime,
+      leakageMeasurements: leakageRows.map(row => ({
+        location: row.location,
+        left: row.left,
+        right: row.right,
+        front: row.front,
+        back: row.back,
+        top: row.top,
+      })),
+      maxLeakageResult: highestLeakageMGy !== '—' ? highestLeakageMGy : '',
+      finalRemark: finalRemark,
+    };
 
-    toast.success('Tube Housing Leakage test saved successfully!');
-    setHasSaved(true);
-    setIsEditing(false);
-    setTestId('saved-test-id-123');
-    onRefresh?.();
-    setIsSaving(false);
+    setIsSaving(true);
+    try {
+      let newTestId = testId;
+
+      if (testId) {
+        await updateTubeHousingLeakageForCArm(testId, payload);
+        toast.success('Tube Housing Leakage test updated successfully!');
+      } else {
+        const res = await createTubeHousingLeakageForCArm(serviceId, payload);
+        // Extract testId properly
+        newTestId = res.data?._id || res.data?.testId || res._id;
+        if (newTestId) {
+          setTestId(newTestId);
+        }
+        toast.success('Tube Housing Leakage test saved successfully!');
+      }
+
+      setHasSaved(true);
+      setIsEditing(false);
+      onRefresh?.(); // This will now reload using the correct testId
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to save test');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleEdit = () => {

@@ -16,6 +16,7 @@ interface LocationData {
   mRPerHr: string;
   mRPerWeek: string;
   result: string;
+  calculatedResult: string; // New field for: max radiation level × Workload / (60 × Applied Current)
   category: "worker" | "public";
 }
 
@@ -25,10 +26,10 @@ interface Props {
   onTestSaved?: (testId: string) => void;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ 
-  serviceId, 
+const RadiationProtectionSurvey: React.FC<Props> = ({
+  serviceId,
   testId: propTestId,
-  onTestSaved 
+  onTestSaved
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -44,15 +45,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
   const [workload, setWorkload] = useState<string>("5000");
 
   const [locations, setLocations] = useState<LocationData[]>([
-    { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
-    { id: "2", location: "Outside Lead Glass / View Window", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
-    { id: "3", location: "Technician Entrance Door (Service Door)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
-    { id: "4", location: "Wall D (Console Wall)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
-    { id: "5", location: "Wall C", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
-    { id: "6", location: "Wall B", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
-    { id: "7", location: "Wall A", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
-    { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
-    { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
+    { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "2", location: "Outside Lead Glass / View Window", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "3", location: "Technician Entrance Door (Service Door)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "4", location: "Wall D (Console Wall)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
+    { id: "5", location: "Wall C", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "6", location: "Wall B", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "7", location: "Wall A", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
+    { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
   ]);
 
   // Formula: mR/week = (Workload × mR/hr) / (60 × mA)
@@ -64,14 +65,24 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
     return ((wl * hr) / (60 * mA)).toFixed(3);
   };
 
+  // Formula: Result = max radiation level × Workload / (60 × Applied Current (mA))
+  const calculateResult = (mRPerHr: string) => {
+    const maxRadiationLevel = parseFloat(mRPerHr) || 0;
+    const wl = parseFloat(workload) || 0;
+    const mA = parseFloat(appliedCurrent) || 1;
+    if (maxRadiationLevel <= 0 || wl <= 0 || mA <= 0) return "";
+    return ((maxRadiationLevel * wl) / (60 * mA)).toFixed(3);
+  };
+
   useEffect(() => {
     setLocations(prev =>
       prev.map(item => {
         const mRPerWeek = calculateMRPerWeek(item.mRPerHr);
+        const calculatedResult = calculateResult(item.mRPerHr);
         const weekly = parseFloat(mRPerWeek) || 0;
         const limit = item.category === "worker" ? 40 : 2;
         const result = weekly > 0 ? (weekly <= limit ? "PASS" : "FAIL") : "";
-        return { ...item, mRPerWeek, result };
+        return { ...item, mRPerWeek, calculatedResult, result };
       })
     );
   }, [locations.map(l => l.mRPerHr).join(), appliedCurrent, workload]);
@@ -83,6 +94,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
       mRPerHr: "",
       mRPerWeek: "",
       result: "",
+      calculatedResult: "",
       category
     };
     setLocations(prev => [...prev, newRow]);
@@ -105,7 +117,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
       return;
     }
 
-        const loadTest = async () => {
+    const loadTest = async () => {
       setIsLoading(true);
       try {
         const data = await getRadiationProtectionSurveyByServiceIdForBmd(serviceId);
@@ -119,12 +131,13 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
           if (testData.exposureTime) setExposureTime(testData.exposureTime);
           if (testData.workload) setWorkload(testData.workload);
           if (testData.locations && testData.locations.length > 0) {
-            setLocations(testData.locations.map((l: any) => ({
-              id: Date.now().toString() + Math.random(),
+            setLocations(testData.locations.map((l: any, i: number) => ({
+              id: Date.now().toString() + i + Math.random(),
               location: l.location || '',
               mRPerHr: l.mRPerHr || '',
               mRPerWeek: l.mRPerWeek || '',
               result: l.result || '',
+              calculatedResult: l.calculatedResult || '',
               category: l.category || 'worker',
             })));
           }
@@ -162,6 +175,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
           mRPerHr: l.mRPerHr,
           mRPerWeek: l.mRPerWeek,
           result: l.result,
+          calculatedResult: l.calculatedResult,
           category: l.category,
         })),
       };
@@ -220,28 +234,9 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
   const maxWorkerWeekly = Math.max(...workerLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
   const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
 
-  const hasAnyFail = locations.some(l => l.result === "FAIL");
-  const failedWorker = workerLocations.some(l => l.result === "FAIL");
-  const failedPublic = publicLocations.some(l => l.result === "FAIL");
-
-  // Smart Remark Generation
-  const generateRemark = () => {
-    if (!hasAnyFail) {
-      return "All measured radiation levels are within acceptable limits as per AERB and IEC guidelines. The X-ray room shielding is adequate and safe for occupational workers and the general public.";
-    }
-
-    const remarks = [];
-    if (failedWorker) {
-      remarks.push("Radiation levels exceed permissible limits for occupational workers (40 mR/week). Immediate corrective action required: increase shielding thickness, reduce workload, or relocate console.");
-    }
-    if (failedPublic) {
-      remarks.push("Radiation levels exceed permissible limits for public areas (2 mR/week). Urgent shielding improvement needed on affected walls/doors to protect patients and visitors.");
-    }
-    remarks.push("Re-survey recommended after corrective measures.");
-    remarks.push("Contact radiation safety officer immediately.");
-
-    return remarks.join(" ");
-  };
+  // const hasAnyFail = locations.some(l => l.result === "FAIL");
+  // const failedWorker = workerLocations.some(l => l.result === "FAIL");
+  // const failedPublic = publicLocations.some(l => l.result === "FAIL");
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12 print:space-y-8">
@@ -253,10 +248,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -347,11 +342,12 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
             <table className="min-w-full divide-y divide-gray-300">
               <thead className="bg-purple-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Max. Radiation Level (mR/hr)</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">mR/week</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Result</th>
-                  <th className="w-32"></th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">LOCATION</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MAX. RADIATION LEVEL (MR/HR)</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MR/WEEK</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">STATUS</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">RESULT</th>
+                  <th className="w-16"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -374,6 +370,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
                         onChange={e => updateRow(row.id, "mRPerHr", e.target.value)}
                         className="w-28 px-3 py-2 text-center border border-gray-300 rounded-md print:border-gray-400"
                         placeholder="0.000"
+                        disabled={isViewMode}
                       />
                     </td>
                     <td className="px-6 py-4 text-center font-medium text-gray-800">
@@ -386,21 +383,30 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
                         {row.result || "—"}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.calculatedResult || "—"}
+                    </td>
+
+                    {/* RowSpan for Worker */}
                     {index === 0 && (
-                      <td rowSpan={workerLocations.length} className="text-center align-middle bg-blue-100 border-l-4 border-blue-600 print:bg-blue-50">
-                        <div className="transform -rotate-90 whitespace-nowrap text-lg font-bold text-blue-900 tracking-wider print:text-blue-800">
+                      <td rowSpan={workerLocations.length} className="text-center align-middle bg-blue-100 border-l-4 border-blue-600 relative p-0">
+                        <div className="text-sm font-bold text-blue-900 tracking-wider w-full h-full flex items-center justify-center p-2">
                           FOR RADIATION WORKER
                         </div>
                       </td>
                     )}
+
                     <td className="px-3 py-4 text-center print:hidden">
-                      <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                      {(!isViewMode) && (
+                        <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
 
+                {/* Public Rows */}
                 {publicLocations.map((row, index) => (
                   <tr key={row.id} className="hover:bg-purple-50">
                     <td className="px-6 py-4">
@@ -433,17 +439,25 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
                         {row.result || "—"}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.calculatedResult || "—"}
+                    </td>
+
+                    {/* RowSpan for Public */}
                     {index === 0 && (
-                      <td rowSpan={publicLocations.length} className="text-center align-middle bg-purple-100 border-l-4 border-purple-600 print:bg-purple-50">
-                        <div className="transform -rotate-90 whitespace-nowrap text-lg font-bold text-purple-900 tracking-wider print:text-purple-800">
+                      <td rowSpan={publicLocations.length} className="text-center align-middle bg-purple-100 border-l-4 border-purple-600 relative p-0">
+                        <div className="text-sm font-bold text-purple-900 tracking-wider w-full h-full flex items-center justify-center p-2">
                           FOR PUBLIC
                         </div>
                       </td>
                     )}
+
                     <td className="px-3 py-4 text-center print:hidden">
-                      <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                      {(!isViewMode) && (
+                        <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

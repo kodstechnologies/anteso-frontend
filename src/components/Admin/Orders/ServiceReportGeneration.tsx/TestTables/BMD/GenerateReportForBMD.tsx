@@ -1,4 +1,4 @@
-// GenerateReport-InventionalRadiology.tsx
+// GenerateReportForBMD.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
@@ -7,7 +7,7 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForBMD } from "../../../../../../api";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -52,6 +52,8 @@ interface DetailsResponse {
     reportULRNumber: string;
     createdAt: string;
   }>;
+  category?: string;
+  [key: string]: any;
 }
 
 interface ToolsResponse {
@@ -80,6 +82,43 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
   const [tools, setTools] = useState<Standard[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    customerName: "",
+    address: "",
+    srfNumber: "",
+    srfDate: "",
+    testReportNumber: "",
+    issueDate: "",
+    nomenclature: "",
+    make: "",
+    model: "",
+    slNumber: "",
+    condition: "OK",
+    testingProcedureNumber: "",
+    pages: "",
+    testDate: "",
+    testDueDate: "",
+    location: "",
+    temperature: "",
+    humidity: "",
+    engineerNameRPId: "",
+    category: "",
+  });
+
+  const defaultNotes = [
+    "The Test Report relates only to the above item only.",
+    "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
+    "Corrections/erasing invalidates the Test Report.",
+    "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
+    "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
+    "Results reported are valid at the time of and under the stated conditions of measurements.",
+    "Name, Address & Contact detail is provided by Customer.",
+  ];
+  const [notes, setNotes] = useState<string[]>(defaultNotes);
 
   useEffect(() => {
     if (!serviceId) return;
@@ -92,12 +131,40 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
           getTools(serviceId),
         ]);
 
-        setDetails(detRes.data);
+        const data = detRes.data;
+        const firstTest = data.qaTests[0];
+
+        setDetails(data);
+
+        // Pre-fill form from service details
+        setFormData({
+          customerName: data.hospitalName,
+          address: data.hospitalAddress,
+          srfNumber: data.srfNumber,
+          srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          testReportNumber: firstTest?.qaTestReportNumber || "",
+          issueDate: new Date().toISOString().split("T")[0],
+          nomenclature: data.machineType,
+          make: "",
+          model: data.machineModel,
+          slNumber: data.serialNumber,
+          condition: "OK",
+          testingProcedureNumber: "",
+          pages: "",
+          testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          testDueDate: "",
+          location: data.hospitalAddress,
+          temperature: "",
+          humidity: "",
+          engineerNameRPId: data.engineerAssigned?.name || "",
+          category: data.category || "",
+        });
+
         const mapped: Standard[] = toolRes.data.toolsAssigned.map(
           (t: any, idx: number) => ({
             slNumber: String(idx + 1),
             nomenclature: t.nomenclature,
-            make: t.manufacturer,
+            make: t.manufacturer || t.make,
             model: t.model,
             SrNo: t.SrNo,
             range: t.range,
@@ -119,6 +186,62 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
     fetchAll();
   }, [serviceId]);
 
+  // Load report header and test IDs
+  useEffect(() => {
+    const loadReportHeader = async () => {
+      if (!serviceId) return;
+      try {
+        const res = await getReportHeaderForBMD(serviceId);
+        if (res?.exists && res?.data) {
+          // Update form data from report header
+          setFormData(prev => ({
+            ...prev,
+            customerName: res.data.customerName || prev.customerName,
+            address: res.data.address || prev.address,
+            srfNumber: res.data.srfNumber || prev.srfNumber,
+            srfDate: res.data.srfDate || prev.srfDate,
+            testReportNumber: res.data.testReportNumber || prev.testReportNumber,
+            issueDate: res.data.issueDate || prev.issueDate,
+            nomenclature: res.data.nomenclature || prev.nomenclature,
+            make: res.data.make || prev.make,
+            model: res.data.model || prev.model,
+            slNumber: res.data.slNumber || prev.slNumber,
+            category: res.data.category || prev.category,
+            condition: res.data.condition || prev.condition,
+            testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
+            testDate: res.data.testDate || prev.testDate,
+            testDueDate: res.data.testDueDate || prev.testDueDate,
+            location: res.data.location || prev.location,
+            temperature: res.data.temperature || prev.temperature,
+            humidity: res.data.humidity || prev.humidity,
+            engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
+          }));
+
+          // Load existing notes, or use default if none exist
+          if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
+            const notesTexts = res.data.notes.map((n: any) => n.text || n);
+            setNotes(notesTexts);
+          } else {
+            setNotes(defaultNotes);
+          }
+
+          // Save test IDs
+          const testIds = {
+            accuracy: res.data.accuracy?._id || res.data.accuracy,
+            linearity: res.data.linearity?._id || res.data.linearity,
+            reproducibility: res.data.reproducibility?._id || res.data.reproducibility,
+            leakage: res.data.leakage?._id || res.data.leakage,
+            protection: res.data.protection?._id || res.data.protection,
+          };
+          setSavedTestIds(testIds);
+        }
+      } catch (err) {
+        console.log("No report header found or failed to load:", err);
+      }
+    };
+    loadReportHeader();
+  }, [serviceId]);
+
   const formatDate = (iso: string) => iso.split("T")[0];
   const [savedTestIds, setSavedTestIds] = useState<Record<string, string>>({});
 
@@ -129,6 +252,45 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
       [testName]: testId
     }));
   };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveHeader = async () => {
+    setSaving(true);
+    setSaveSuccess(false);
+    setSaveError(null);
+
+    try {
+      const payload = {
+        ...formData,
+        toolsUsed: tools.map(t => ({
+          tool: t.certificate || null,
+          SrNo: t.SrNo,
+          nomenclature: t.nomenclature,
+          make: t.make,
+          model: t.model,
+          range: t.range,
+          calibrationCertificateNo: t.calibrationCertificateNo,
+          calibrationValidTill: t.calibrationValidTill,
+          certificate: t.certificate,
+          // uncertainity: t.uncertainity,
+        })),
+        notes: notes.map((text, index) => ({ slNo: `5.${index + 1}`, text })),
+      };
+
+      await saveReportHeader(serviceId, payload);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
+    } catch (err: any) {
+      setSaveError(err?.response?.data?.message || "Failed to save report header");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto p-8 text-center">
@@ -173,8 +335,10 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
             </label>
             <input
               type="text"
-              defaultValue={details.hospitalName}
-              className="border p-2 rounded-md w-full"
+              name="customerName"
+              value={formData.customerName}
+              onChange={handleInputChange}
+              className="border p-2 rounded-md w-full bg-gray-100"
               readOnly
             />
           </div>
@@ -184,8 +348,10 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
             </label>
             <input
               type="text"
-              defaultValue={details.hospitalAddress}
-              className="border p-2 rounded-md w-full"
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              className="border p-2 rounded-md w-full bg-gray-100"
               readOnly
             />
           </div>
@@ -204,8 +370,10 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
             </label>
             <input
               type="text"
-              defaultValue={details.srfNumber}
-              className="border p-2 rounded-md w-full"
+              name="srfNumber"
+              value={formData.srfNumber}
+              onChange={handleInputChange}
+              className="border p-2 rounded-md w-full bg-gray-100"
               readOnly
             />
           </div>
@@ -215,7 +383,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
             </label>
             <input
               type="date"
-              defaultValue={formatDate(details.qaTests[0]?.createdAt ?? "")}
+              name="srfDate"
+              value={formData.srfDate}
+              onChange={handleInputChange}
               className="border p-2 rounded-md w-full"
             />
           </div>
@@ -228,7 +398,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
             </label>
             <input
               type="text"
-              defaultValue={details.qaTests[0]?.qaTestReportNumber ?? "N/A"}
+              name="testReportNumber"
+              value={formData.testReportNumber}
+              onChange={handleInputChange}
               className="border p-2 rounded-md w-full"
             />
           </div>
@@ -236,7 +408,13 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Issue Date
             </label>
-            <input type="date" className="border p-2 rounded-md w-full" />
+            <input
+              type="date"
+              name="issueDate"
+              value={formData.issueDate}
+              onChange={handleInputChange}
+              className="border p-2 rounded-md w-full"
+            />
           </div>
         </div>
       </section>
@@ -248,19 +426,19 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { label: "Nomenclature", value: details.machineType },
-            { label: "Make", value: "" },
-            { label: "Model", value: details.machineModel },
-            { label: "Serial Number", value: details.serialNumber },
-            { label: "Category", value: "" },
-            { label: "Condition of Test Item", value: "" },
-            { label: "Testing Procedure Number", value: "" },
-            { label: "No. of Pages", value: "" },
-            { label: "QA Test Date", value: formatDate(details.qaTests[0]?.createdAt ?? ""), type: "date" },
-            { label: "QA Test Due Date", value: "", type: "date" },
-            { label: "Testing Done At Location", value: details.hospitalAddress },
-            { label: "Temperature (°C)", value: "", type: "number" },
-            { label: "Humidity (RH %)", value: "", type: "number" },
+            { label: "Nomenclature", name: "nomenclature", readOnly: true },
+            { label: "Make", name: "make" },
+            { label: "Model", name: "model", readOnly: true },
+            { label: "Serial Number", name: "slNumber", readOnly: true },
+            { label: "Category", name: "category" },
+            { label: "Condition of Test Item", name: "condition" },
+            { label: "Testing Procedure Number", name: "testingProcedureNumber" },
+            { label: "No. of Pages", name: "pages" },
+            { label: "QA Test Date", name: "testDate", type: "date" },
+            { label: "QA Test Due Date", name: "testDueDate", type: "date" },
+            { label: "Testing Done At Location", name: "location" },
+            { label: "Temperature (°C)", name: "temperature", type: "number" },
+            { label: "Humidity (RH %)", name: "humidity", type: "number" },
           ].map((field, i) => (
             <div key={i}>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -268,9 +446,11 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
               </label>
               <input
                 type={field.type ?? "text"}
-                defaultValue={field.value}
-                className="border p-2 rounded-md w-full"
-                readOnly={field.label === "Nomenclature" || field.label === "Model" || field.label === "Serial Number"}
+                name={field.name}
+                value={(formData as any)[field.name]}
+                onChange={handleInputChange}
+                className={`border p-2 rounded-md w-full ${field.readOnly ? "bg-gray-100" : ""}`}
+                readOnly={field.readOnly}
               />
             </div>
           ))}
@@ -278,10 +458,28 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
       </section>
 
       <Standards standards={tools} />
-      <Notes />
+      <Notes initialNotes={notes} onChange={setNotes} />
 
-      {/* View Report Button */}
-      <div className="mt-8 flex justify-end gap-4">
+      {/* Save & View Report Buttons */}
+      <div className="mt-8 flex justify-end gap-4 items-center">
+        {saveSuccess && (
+          <span className="text-green-600 font-medium animate-pulse">
+            Report Header Saved Successfully!
+          </span>
+        )}
+        {saveError && (
+          <span className="text-red-600 font-medium">
+            {saveError}
+          </span>
+        )}
+        <button
+          onClick={handleSaveHeader}
+          disabled={saving}
+          className={`px-4 py-2 rounded-md text-white ${saving ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+            }`}
+        >
+          {saving ? "Saving..." : "Save Report Header"}
+        </button>
         <button
           type="button"
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
@@ -299,9 +497,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId }) => {
           { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperaingPotential serviceId={serviceId} onTestSaved={(testId) => handleTestSaved('accuracy', testId)} /> },
           // Note: TotalFilteration is not in BMD backend routes - may need to be removed or handled separately
           // { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId}/> },
-          { title: "Linearity Of Ma Loading stations", component: <LinearityOfMaLoading serviceId={serviceId} testId={savedTestIds['linearity']} onRefresh={() => {}} /> },
+          { title: "Linearity Of Ma Loading stations", component: <LinearityOfMaLoading serviceId={serviceId} testId={savedTestIds['linearity']} onRefresh={() => { }} /> },
           { title: "Reproducibility Of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} testId={savedTestIds['reproducibility']} onTestSaved={(testId) => handleTestSaved('reproducibility', testId)} /> },
-          { title: "Radiation Leakage Level at 1m from tube housing and collimator", component: <TubeHousingLeakage serviceId={serviceId} testId={savedTestIds['leakage']} onRefresh={() => {}} /> },
+          { title: "Radiation Leakage Level at 1m from tube housing and collimator", component: <TubeHousingLeakage serviceId={serviceId} testId={savedTestIds['leakage']} onRefresh={() => { }} /> },
           { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey serviceId={serviceId} testId={savedTestIds['protection']} onTestSaved={(testId) => handleTestSaved('protection', testId)} /> },
           // { title: "Equipment Setting", component: <EquipmentSetting serviceId={serviceId} /> },
           // { title: "Maximum Radiation level", component: <MaxRadiationLevel serviceId={serviceId} /> },

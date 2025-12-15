@@ -191,18 +191,18 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
         <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
             {/* Header */}
           <div className="flex justify-between items-center mb-4">
-            <img src={logoA} alt="NABL" className="h-28" />
-            <div className="text-right">
-              <table className="text-xs border border-gray-600">
-                <tbody>
-                  <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
-                  <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
-                  <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
-                </tbody>
-              </table>
+              <img src={logoA} alt="NABL" className="h-28" />
+              <div className="text-right">
+                <table className="text-xs border border-gray-600">
+                  <tbody>
+                    <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
+                    <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
+                    <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <img src={logo} alt="Logo" className="h-28" />
             </div>
-            <img src={logo} alt="Logo" className="h-28" />
-          </div>
 
           <div className="text-center mb-4">
               <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
@@ -218,12 +218,12 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
 
             {/* Customer Details */}
           <section className="mb-4">
-            <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
-            <div className="border-2 border-gray-600 p-5 text-lg">
-              <p><strong>Customer:</strong> {report.customerName}</p>
-              <p><strong>Address:</strong> {report.address}</p>
-            </div>
-          </section>
+              <h2 className="font-bold text-lg mb-3">1. Customer Details</h2>
+              <div className="border-2 border-gray-600 p-5 text-lg">
+                <p><strong>Customer:</strong> {report.customerName}</p>
+                <p><strong>Address:</strong> {report.address}</p>
+              </div>
+            </section>
 
             {/* Reference */}
           <section className="mb-4">
@@ -238,32 +238,32 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
 
             {/* Equipment Details */}
           <section className="mb-4">
-            <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
-            <table className="w-full border-2 border-gray-600 text-sm">
-              <tbody>
-                {[
-                  ["Nomenclature", report.nomenclature],
-                  ["Make", report.make || "-"],
-                  ["Model", report.model],
-                  ["Serial No.", report.slNumber],
-                  ["Category", report.category || "-"],
-                  ["Condition", report.condition],
-                  ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                  ["Engineer Name & RP ID", report.engineerNameRPId],
-                  ["Test Date", formatDate(report.testDate)],
-                  ["Due Date", formatDate(report.testDueDate)],
-                  ["Location", report.location],
-                  ["Temperature (°C)", report.temperature || "-"],
-                  ["Humidity (%)", report.humidity || "-"],
-                ].map(([label, value]) => (
-                  <tr key={label}>
-                    <td className="border p-3 font-medium w-1/2">{label}</td>
-                    <td className="border p-3">{value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
+              <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
+              <table className="w-full border-2 border-gray-600 text-sm">
+                <tbody>
+                  {[
+                    ["Nomenclature", report.nomenclature],
+                    ["Make", report.make || "-"],
+                    ["Model", report.model],
+                    ["Serial No.", report.slNumber],
+                    ["Category", report.category || "-"],
+                    ["Condition", report.condition],
+                    ["Testing Procedure No.", report.testingProcedureNumber || "-"],
+                    ["Engineer Name & RP ID", report.engineerNameRPId],
+                    ["Test Date", formatDate(report.testDate)],
+                    ["Due Date", formatDate(report.testDueDate)],
+                    ["Location", report.location],
+                    ["Temperature (°C)", report.temperature || "-"],
+                    ["Humidity (%)", report.humidity || "-"],
+                  ].map(([label, value]) => (
+                    <tr key={label}>
+                      <td className="border p-3 font-medium w-1/2">{label}</td>
+                      <td className="border p-3">{value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
 
             {/* Tools Used */}
           <section className="mb-4">
@@ -352,8 +352,8 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   <div className="mb-6 bg-gray-50 p-4 rounded border">
                     <p className="font-semibold mb-2">Test Conditions:</p>
                     <div className="text-sm">
-                      FCD: {testData.accuracyOfIrradiationTime.testConditions.fcd || "-"} cm |
-                      kV: {testData.accuracyOfIrradiationTime.testConditions.kv || "-"} |
+                      FCD: {testData.accuracyOfIrradiationTime.testConditions.fcd || "-"} cm | 
+                      kV: {testData.accuracyOfIrradiationTime.testConditions.kv || "-"} | 
                       mA: {testData.accuracyOfIrradiationTime.testConditions.ma || "-"}
                     </div>
                   </div>
@@ -431,7 +431,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             {testData.centralBeamAlignment && (
               <div className="mb-16 print:mb-12 print:break-inside-avoid">
                 <h3 className="text-xl font-bold mb-6">3. Central Beam Alignment</h3>
-
+                
                 {/* Operating parameters */}
                 {testData.centralBeamAlignment.techniqueFactors && (
                   <div className="mb-6">
@@ -480,7 +480,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                           <tr>
                             <td className="border border-black p-3 font-medium">Tolerance: Central Beam Alignment</td>
                             <td className="border border-black p-3 text-center">
-                              {testData.centralBeamAlignment.tolerance && typeof testData.centralBeamAlignment.tolerance === 'object'
+                              {testData.centralBeamAlignment.tolerance && typeof testData.centralBeamAlignment.tolerance === 'object' 
                                 ? `${testData.centralBeamAlignment.tolerance.operator || "<"} ${testData.centralBeamAlignment.tolerance.value || "1.5"}°`
                                 : (testData.centralBeamAlignment.tolerance || "< 1.5°")}
                             </td>
@@ -581,8 +581,8 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   <div className="mb-6 bg-gray-50 p-4 rounded border">
                     <p className="font-semibold mb-2 text-sm">Test Conditions:</p>
                     <div className="text-sm">
-                      FCD: {testData.linearityOfMasLoading.table1[0]?.fcd || "-"} cm |
-                      kV: {testData.linearityOfMasLoading.table1[0]?.kv || "-"} |
+                      FCD: {testData.linearityOfMasLoading.table1[0]?.fcd || "-"} cm | 
+                      kV: {testData.linearityOfMasLoading.table1[0]?.kv || "-"} | 
                       Time: {testData.linearityOfMasLoading.table1[0]?.time || "-"} sec
                     </div>
                   </div>
@@ -621,14 +621,14 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                           const rowSpan = testData.linearityOfMasLoading.table2.length;
                           const measHeaders = testData.linearityOfMasLoading?.measHeaders || [];
                           const measuredOutputs = row.measuredOutputs || [];
-
+                          
                           // Format values - ensure they display properly
                           const formatValue = (val: any) => {
                             if (val === undefined || val === null) return "-";
                             const str = String(val).trim();
                             return str === "" || str === "—" || str === "undefined" || str === "null" ? "-" : str;
                           };
-
+                          
                           return (
                             <tr key={i} className="text-center">
                               <td className="border p-3">{row.mAsApplied || "-"}</td>
@@ -679,254 +679,81 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             )}
 
             {/* 7. Output Consistency */}
-            {testData.outputConsistency && (() => {
-              // Determine number of measurement columns from the first row
-              const maxMeasurements = testData.outputConsistency.outputRows?.reduce((max: number, row: any) => {
-                const count = row.outputs?.length || 0;
-                return Math.max(max, count);
-              }, 0) || 0;
-
-              return (
-                <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
-                  <h3 className="text-xl font-bold mb-6">7. Consistency of Radiation Output</h3>
-
-                  {/* FCD Info */}
-                  {testData.outputConsistency.ffd && (
-                    <div className="mb-4 bg-gray-50 p-3 rounded border">
-                      <p className="text-sm">
-                        <strong>FCD:</strong> {testData.outputConsistency.ffd.value || "-"} cm
-                      </p>
-                    </div>
-                  )}
-
-                  {testData.outputConsistency.outputRows?.length > 0 && (
-                    <div className="overflow-x-auto mb-6">
-                      <table className="w-full border-2 border-black text-sm">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="border border-black p-3">kV</th>
-                            <th className="border border-black p-3">mAs</th>
-                            {/* Dynamic measurement columns */}
-                            {maxMeasurements > 0 && Array.from({ length: maxMeasurements }, (_, i) => (
-                              <th key={i} className="border border-black p-3">Meas {i + 1}</th>
-                            ))}
-                            <th className="border border-black p-3">Avg (X̄)</th>
-                            <th className="border border-black p-3">CV / Remark</th>
+            {testData.outputConsistency && (
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">7. Consistency of Radiation Output</h3>
+                {testData.outputConsistency.outputRows?.length > 0 && (
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3">kV</th>
+                          <th className="border border-black p-3">mAs</th>
+                          <th className="border border-black p-3">Avg (X̄)</th>
+                          <th className="border border-black p-3">CV % / Remark</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.outputConsistency.outputRows.map((row: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border p-3">{row.kv || "-"}</td>
+                            <td className="border p-3">{row.mas || "-"}</td>
+                            <td className="border p-3 font-semibold">{row.avg || "-"}</td>
+                            <td className="border p-3">
+                              <span className={row.remark?.includes("Pass") ? "text-green-600" : row.remark?.includes("Fail") ? "text-red-600" : ""}>
+                                {row.remark || "-"}
+                              </span>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {testData.outputConsistency.outputRows.map((row: any, i: number) => (
-                            <tr key={i} className="text-center">
-                              <td className="border p-3">{row.kv || "-"}</td>
-                              <td className="border p-3">{row.mas || "-"}</td>
-                              {/* Individual measurement values */}
-                              {maxMeasurements > 0 && Array.from({ length: maxMeasurements }, (_, idx) => (
-                                <td key={idx} className="border p-3">
-                                  {row.outputs?.[idx]?.value || "-"}
-                                </td>
-                              ))}
-                              <td className="border p-3 font-semibold">{row.avg || "-"}</td>
-                              <td className="border p-3">
-                                <span className={row.remark?.includes("Pass") ? "text-green-600" : row.remark?.includes("Fail") ? "text-red-600" : ""}>
-                                  {row.remark || "-"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {testData.outputConsistency.tolerance && (
-                    <div className="bg-gray-50 p-4 rounded border">
-                      <p className="text-sm">
-                        <strong>Acceptance Criteria:</strong> CV {testData.outputConsistency.tolerance.operator || "<="} {testData.outputConsistency.tolerance.value || "5.0"}%
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* 8. Radiation Leakage Level */}
-            {testData.radiationLeakageLevel && (() => {
-              const data = testData.radiationLeakageLevel;
-              const tubeRow = data.leakageMeasurements?.find((m: any) => m.location === 'Tube');
-              const collimatorRow = data.leakageMeasurements?.find((m: any) => m.location === 'Collimator');
-
-              // Get the max exposure value between all measurements (for display in formula)
-              const tubeMax = parseFloat(tubeRow?.max) || 0;
-              const collimatorMax = parseFloat(collimatorRow?.max) || 0;
-              const overallMax = Math.max(tubeMax, collimatorMax);
-
-              // Use saved values from DB, fallback to calculated values for backward compatibility
-              const highestLeakageMR = data.highestLeakageMR || (() => {
-                const workloadValue = parseFloat(data.workload) || 0;
-                const maValue = parseFloat(data.ma) || 0;
-                return maValue > 0 && workloadValue > 0
-                  ? ((workloadValue * overallMax) / (60 * maValue)).toFixed(4)
-                  : "-";
-              })();
-
-              const maxLeakageTubeMGy = data.maxLeakageTubeMGy || tubeRow?.mgy || "-";
-              const maxLeakageCollimatorMGy = data.maxLeakageCollimatorMGy || collimatorRow?.mgy || "-";
-
-              return (
-                <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
-                  <h3 className="text-xl font-bold mb-6">8. Radiation Leakage Level</h3>
-
-                  {/* Settings Row: FDD, kV, mA, Time */}
-                  <div className="overflow-x-auto mb-4">
-                    <table className="w-full border-2 border-black text-sm">
-                      <tbody>
-                        <tr>
-                          <td className="border border-black p-2 font-medium bg-gray-50">FDD (cm)</td>
-                          <td className="border border-black p-2 text-center">{data.fcd || "-"}</td>
-                          <td className="border border-black p-2 font-medium bg-gray-50">kV</td>
-                          <td className="border border-black p-2 text-center">{data.kv || "-"}</td>
-                          <td className="border border-black p-2 font-medium bg-gray-50">mA</td>
-                          <td className="border border-black p-2 text-center">{data.ma || "-"}</td>
-                          <td className="border border-black p-2 font-medium bg-gray-50">Time (Sec)</td>
-                          <td className="border border-black p-2 text-center">{data.time || "-"}</td>
-                        </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
-
-                  {/* Leakage Measurements Table */}
-                  {data.leakageMeasurements?.length > 0 && (
-                    <div className="overflow-x-auto mb-4">
-                      <table className="w-full border-2 border-black text-sm">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th rowSpan={2} className="border border-black p-2 text-left">Location<br />(at 1.0 m<br />from the<br />focus)</th>
-                            <th colSpan={5} className="border border-black p-2 text-center">Exposure Level (mR/hr)</th>
-                            <th rowSpan={2} className="border border-black p-2 text-center">Result</th>
-                            <th rowSpan={2} className="border border-black p-2 text-center">Remarks</th>
-                          </tr>
-                          <tr>
-                            <th className="border border-black p-2 text-center">Left</th>
-                            <th className="border border-black p-2 text-center">Right</th>
-                            <th className="border border-black p-2 text-center">Front</th>
-                            <th className="border border-black p-2 text-center">Back</th>
-                            <th className="border border-black p-2 text-center">Top</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.leakageMeasurements.map((row: any, i: number) => {
-                            // Get the respective max leakage mGy value based on location
-                            const resultMGy = row.location === 'Tube'
-                              ? maxLeakageTubeMGy
-                              : row.location === 'Collimator'
-                                ? maxLeakageCollimatorMGy
-                                : row.mgy || "-";
-
-                            return (
-                              <tr key={i} className="text-center">
-                                <td className="border border-black p-2 text-left font-medium">{row.location || "-"}</td>
-                                <td className="border border-black p-2">{row.left || "-"}</td>
-                                <td className="border border-black p-2">{row.right || "-"}</td>
-                                <td className="border border-black p-2">{row.front || "-"}</td>
-                                <td className="border border-black p-2">{row.back || "-"}</td>
-                                <td className="border border-black p-2">{row.top || "-"}</td>
-                                <td className="border border-black p-2">{resultMGy} mGy in one hour</td>
-                                <td className="border border-black p-2">
-                                  <span className={data.remark === "Pass" ? "text-green-600 font-semibold" : data.remark === "Fail" ? "text-red-600 font-semibold" : ""}>
-                                    {data.remark || "-"}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {/* Workload Info */}
-                  <div className="mb-4">
-                    <table className="w-full border-2 border-black text-sm">
-                      <tbody>
-                        <tr>
-                          <td className="border border-black p-2" colSpan={6}>
-                            <strong>Work Load:</strong> {data.workload || "-"} mAmin in one hr
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Max Leakage Calculation */}
-                  <div className="mb-4">
-                    <table className="w-full border-2 border-black text-sm">
-                      <tbody>
-                        <tr>
-                          <td rowSpan={2} className="border border-black p-2 text-center font-medium" style={{ width: '80px' }}>
-                            Max<br />Leakage =
-                          </td>
-                          <td className="border border-black p-2 text-center">
-                            {data.workload || "-"} mAmin in 1 hr X {overallMax.toFixed(2)}
-                          </td>
-                          <td rowSpan={2} className="border border-black p-2 text-center" style={{ width: '180px' }}>
-                            max Exposure Level (mR/hr)<br />
-                            <span className="border-t border-black inline-block w-full mt-1 pt-1">mA used for measurement</span>
-                          </td>
-                          <td rowSpan={2} className="border border-black p-2 text-center font-semibold">
-                            {highestLeakageMR} mR in one hour
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="border border-black p-2 text-center">
-                            60 X {data.ma || "-"}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Maximum Radiation Leakage from Tube Housing */}
-                  <div className="mb-2">
-                    <table className="w-full border-2 border-black text-sm">
-                      <tbody>
-                        <tr>
-                          <td className="border border-black p-2" style={{ width: '70%' }}>
-                            <span className="underline">Maximum Radiation Leakage from Tube Housing</span>
-                          </td>
-                          <td className="border border-black p-2 text-center font-semibold">
-                            {maxLeakageTubeMGy} mGy in one hour
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Maximum Radiation Leakage from Tube Collimator */}
-                  <div className="mb-4">
-                    <table className="w-full border-2 border-black text-sm">
-                      <tbody>
-                        <tr>
-                          <td className="border border-black p-2" style={{ width: '70%' }}>
-                            <span className="underline">Maximum Radiation Leakage from Tube Collimator</span>
-                          </td>
-                          <td className="border border-black p-2 text-center font-semibold">
-                            {maxLeakageCollimatorMGy} mGy in one hour
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Tolerance */}
-                  <div className="bg-gray-50 p-3 rounded border">
+                )}
+                {testData.outputConsistency.tolerance && (
+                  <div className="bg-gray-50 p-4 rounded border">
                     <p className="text-sm">
-                      <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be {" "}
-                      {data.toleranceOperator === 'less than or equal to' ? '< ' : data.toleranceOperator === 'greater than or equal to' ? '≥ ' : ''}
-                      {data.toleranceValue || "1"} mGy (114 mR) in one hour.
+                      <strong>Acceptance Criteria:</strong> CV {testData.outputConsistency.tolerance.operator || "<="} {testData.outputConsistency.tolerance.value || "5.0"}%
                     </p>
                   </div>
-                </div>
-              );
-            })()}
+                )}
+              </div>
+            )}
+
+            {/* 8. Radiation Leakage Level */}
+            {testData.radiationLeakageLevel && (
+              <div className="mb-8 print:mb-6 print:break-inside-avoid test-section">
+                <h3 className="text-xl font-bold mb-6">8. Radiation Leakage Level</h3>
+                {testData.radiationLeakageLevel.leakageMeasurements?.length > 0 && (
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-3">Location</th>
+                          <th className="border border-black p-3">Front</th>
+                          <th className="border border-black p-3">Back</th>
+                          <th className="border border-black p-3">Left</th>
+                          <th className="border border-black p-3">Right</th>
+                          <th className="border border-black p-3">Top</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.radiationLeakageLevel.leakageMeasurements.map((row: any, i: number) => (
+                          <tr key={i} className="text-center">
+                            <td className="border p-3">{row.location || "-"}</td>
+                            <td className="border p-3">{row.front || "-"}</td>
+                            <td className="border p-3">{row.back || "-"}</td>
+                            <td className="border p-3">{row.left || "-"}</td>
+                            <td className="border p-3">{row.right || "-"}</td>
+                            <td className="border p-3">{row.top || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* No data fallback */}
             {Object.values(testData).every(v => !v) && (

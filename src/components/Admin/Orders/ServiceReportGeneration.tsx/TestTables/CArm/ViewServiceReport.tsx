@@ -113,6 +113,86 @@ const ViewServiceReportCArm: React.FC = () => {
             notes: data.notes || defaultNotes,
           });
 
+          // Transform RadiationLeakageTest (CArm) data to match component expectations
+          const radiationLeakageData = data.TubeHousingLeakageCArm;
+          let transformedRadiationLeakage = null;
+
+          if (radiationLeakageData) {
+            // Transform leakageMeasurements array to leakageRows array
+            const toleranceValue = parseFloat(radiationLeakageData.toleranceValue || "1");
+            const toleranceOperator = radiationLeakageData.toleranceOperator || "<=";
+
+            const leakageRows = radiationLeakageData.leakageMeasurements?.map((measurement: any) => {
+              // Calculate max if not provided
+              let maxValue = measurement.max;
+              if (!maxValue || maxValue === "" || maxValue === "-") {
+                const values = [
+                  measurement.left,
+                  measurement.right,
+                  measurement.top || measurement.front,
+                  measurement.up || measurement.back,
+                  measurement.down
+                ]
+                  .map((v: any) => parseFloat(v) || 0)
+                  .filter((v: number) => v > 0);
+                maxValue = values.length > 0 ? Math.max(...values).toFixed(3) : "-";
+              } else {
+                maxValue = String(maxValue);
+              }
+
+              // Calculate remark if not provided
+              let remark = measurement.remark || measurement.remarks || "";
+              if (!remark || remark === "" || remark === "-") {
+                const maxNum = parseFloat(maxValue);
+                if (!isNaN(maxNum) && !isNaN(toleranceValue) && toleranceValue > 0) {
+                  if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
+                    remark = maxNum <= toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
+                    remark = maxNum >= toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
+                    remark = maxNum < toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
+                    remark = maxNum > toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === "=" || toleranceOperator === "equal to") {
+                    remark = Math.abs(maxNum - toleranceValue) < 0.001 ? "Pass" : "Fail";
+                  } else {
+                    remark = "-";
+                  }
+                } else {
+                  remark = "-";
+                }
+              }
+
+              return {
+                location: measurement.location || "-",
+                left: measurement.left || "-",
+                right: measurement.right || "-",
+                top: measurement.top || measurement.front || "-",
+                up: measurement.up || measurement.back || "-",
+                down: measurement.down || "-",
+                max: maxValue,
+                unit: measurement.unit || "mGy/h",
+                remark: remark,
+              };
+            }) || [];
+
+            // Handle settings - could be array or single object
+            let settingsArray = [];
+            if (Array.isArray(radiationLeakageData.settings) && radiationLeakageData.settings.length > 0) {
+              settingsArray = radiationLeakageData.settings;
+            } else if (radiationLeakageData.settings && typeof radiationLeakageData.settings === 'object') {
+              settingsArray = [radiationLeakageData.settings];
+            }
+
+            transformedRadiationLeakage = {
+              ...radiationLeakageData,
+              leakageRows: leakageRows,
+              settings: settingsArray,
+              maxLeakageResult: radiationLeakageData.maxLeakageResult || '',
+              maxRadiationLeakage: radiationLeakageData.maxRadiationLeakage || '',
+            };
+          }
+
           // Extract test data from populated response
           setTestData({
             exposureRateTableTop: data.ExposureRateTableTopCArm || null,
@@ -120,7 +200,8 @@ const ViewServiceReportCArm: React.FC = () => {
             lowContrastResolution: data.LowContrastResolutionCArm || null,
             outputConsistency: data.OutputConsistencyForCArm || null,
             totalFilteration: data.TotalFilterationForCArm || null,
-            tubeHousingLeakage: data.TubeHousingLeakageCArm || null,
+            operatingPotential: data.TotalFilterationForCArm || null, // Map from TotalFiltration as it contains Accuracy data
+            tubeHousingLeakage: transformedRadiationLeakage,
             linearityOfMasLoading: data.LinearityOfmAsLoadingCArm || null,
           });
         } else {
@@ -188,18 +269,18 @@ const ViewServiceReportCArm: React.FC = () => {
         <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
             {/* Header */}
           <div className="flex justify-between items-center mb-4">
-              <img src={logoA} alt="NABL" className="h-28" />
-              <div className="text-right">
-                <table className="text-xs border border-gray-600">
-                  <tbody>
-                    <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <img src={logo} alt="Logo" className="h-28" />
+            <img src={logoA} alt="NABL" className="h-28" />
+            <div className="text-right">
+              <table className="text-xs border border-gray-600">
+                <tbody>
+                  <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
+                  <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
+                </tbody>
+              </table>
             </div>
+            <img src={logo} alt="Logo" className="h-28" />
+          </div>
 
           <div className="text-center mb-4">
               <p className="text-sm">Government of India, Atomic Energy Regulatory Board</p>
@@ -235,31 +316,31 @@ const ViewServiceReportCArm: React.FC = () => {
 
             {/* Equipment Details */}
           <section className="mb-4">
-              <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
-              <table className="w-full border-2 border-gray-600 text-sm">
-                <tbody>
-                  {[
-                    ["Nomenclature", report.nomenclature],
-                    ["Make", report.make || "-"],
-                    ["Model", report.model],
-                    ["Serial No.", report.slNumber],
-                    ["Condition", report.condition],
-                    ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                    ["Engineer Name & RP ID", report.engineerNameRPId],
-                    ["Test Date", formatDate(report.testDate)],
-                    ["Due Date", formatDate(report.testDueDate)],
-                    ["Location", report.location],
-                    ["Temperature (°C)", report.temperature || "-"],
-                    ["Humidity (%)", report.humidity || "-"],
-                  ].map(([label, value]) => (
-                    <tr key={label}>
-                      <td className="border p-3 font-medium w-1/2">{label}</td>
-                      <td className="border p-3">{value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
+            <h2 className="font-bold text-lg mb-3">3. Details of Equipment Under Test</h2>
+            <table className="w-full border-2 border-gray-600 text-sm">
+              <tbody>
+                {[
+                  ["Nomenclature", report.nomenclature],
+                  ["Make", report.make || "-"],
+                  ["Model", report.model],
+                  ["Serial No.", report.slNumber],
+                  ["Condition", report.condition],
+                  ["Testing Procedure No.", report.testingProcedureNumber || "-"],
+                  ["Engineer Name & RP ID", report.engineerNameRPId],
+                  ["Test Date", formatDate(report.testDate)],
+                  ["Due Date", formatDate(report.testDueDate)],
+                  ["Location", report.location],
+                  ["Temperature (°C)", report.temperature || "-"],
+                  ["Humidity (%)", report.humidity || "-"],
+                ].map(([label, value]) => (
+                  <tr key={label}>
+                    <td className="border p-3 font-medium w-1/2">{label}</td>
+                    <td className="border p-3">{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
 
             {/* Tools Used */}
           <section className="mb-4">
@@ -418,7 +499,7 @@ const ViewServiceReportCArm: React.FC = () => {
                 {testData.totalFilteration.totalFiltration && (
                   <div className="bg-gray-50 p-4 rounded border">
                     <p className="text-sm">
-                      <strong>Total Filtration:</strong> Measured: {testData.totalFilteration.totalFiltration.measured || "-"} mm Al | 
+                      <strong>Total Filtration:</strong> Measured: {testData.totalFilteration.totalFiltration.measured || "-"} mm Al |
                       Required: {testData.totalFilteration.totalFiltration.required || "-"} mm Al
                     </p>
                   </div>
@@ -464,10 +545,13 @@ const ViewServiceReportCArm: React.FC = () => {
             )}
 
             {/* 4. Low Contrast Resolution */}
+            {/* 4. Low Contrast Resolution */}
             {testData.lowContrastResolution && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid">
                 <h3 className="text-xl font-bold mb-6">4. Low Contrast Resolution</h3>
-                {testData.lowContrastResolution.resolutionRows?.length > 0 && (
+
+                {/* If it has resolutionRows (old format), render table */}
+                {testData.lowContrastResolution.resolutionRows?.length > 0 ? (
                   <div className="overflow-x-auto mb-6">
                     <table className="w-full border-2 border-black text-sm">
                       <thead className="bg-gray-100">
@@ -494,6 +578,36 @@ const ViewServiceReportCArm: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
+                ) : (
+                  /* New flat structure fallback */
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <tbody>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold bg-gray-100">Smallest Hole Size Visible (mm)</td>
+                          <td className="border border-black p-3 text-center">{testData.lowContrastResolution.smallestHoleSize || "-"}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold bg-gray-100">Recommended Standard (mm)</td>
+                          <td className="border border-black p-3 text-center">{testData.lowContrastResolution.recommendedStandard || "-"}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold bg-gray-100">Result</td>
+                          <td className="border border-black p-3 text-center">
+                            <span className={
+                              parseFloat(testData.lowContrastResolution.smallestHoleSize || "0") <=
+                                parseFloat(testData.lowContrastResolution.recommendedStandard || "999")
+                                ? "text-green-600 font-bold" : "text-red-600 font-bold"
+                            }>
+                              {parseFloat(testData.lowContrastResolution.smallestHoleSize || "0") <=
+                                parseFloat(testData.lowContrastResolution.recommendedStandard || "999")
+                                ? "PASS" : "FAIL"}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
@@ -502,7 +616,8 @@ const ViewServiceReportCArm: React.FC = () => {
             {testData.highContrastResolution && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid">
                 <h3 className="text-xl font-bold mb-6">5. High Contrast Resolution</h3>
-                {testData.highContrastResolution.resolutionRows?.length > 0 && (
+
+                {testData.highContrastResolution.resolutionRows?.length > 0 ? (
                   <div className="overflow-x-auto mb-6">
                     <table className="w-full border-2 border-black text-sm">
                       <thead className="bg-gray-100">
@@ -529,10 +644,39 @@ const ViewServiceReportCArm: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
+                ) : (
+                  /* Flat structure fallback */
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-2 border-black text-sm">
+                      <tbody>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold bg-gray-100">Measured Resolution (lp/mm)</td>
+                          <td className="border border-black p-3 text-center">{testData.highContrastResolution.measuredLpPerMm || "-"}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold bg-gray-100">Recommended Standard (lp/mm)</td>
+                          <td className="border border-black p-3 text-center">{testData.highContrastResolution.recommendedStandard || "-"}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-black p-3 font-semibold bg-gray-100">Result</td>
+                          <td className="border border-black p-3 text-center">
+                            <span className={
+                              parseFloat(testData.highContrastResolution.measuredLpPerMm || "0") >=
+                                parseFloat(testData.highContrastResolution.recommendedStandard || "0")
+                                ? "text-green-600 font-bold" : "text-red-600 font-bold"
+                            }>
+                              {parseFloat(testData.highContrastResolution.measuredLpPerMm || "0") >=
+                                parseFloat(testData.highContrastResolution.recommendedStandard || "0")
+                                ? "PASS" : "FAIL"}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
-
             {/* 6. Tube Housing Leakage */}
             {testData.tubeHousingLeakage && (
               <div className="mb-8 print:mb-6 print:break-inside-avoid">

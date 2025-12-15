@@ -107,6 +107,7 @@ const OBI: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                 ]);
 
                 const data = detailsRes.data;
+                console.log("data", data);
                 const firstTest = data.qaTests?.[0];
 
                 setDetails(data);
