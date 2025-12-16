@@ -17,7 +17,8 @@ interface RowData {
   id: string;
   appliedKvp: string;
   setTime: string;
-  maStations: MAStationData[];
+  maStation1: MAStationData;
+  maStation2: MAStationData;
   avgKvp: string;
   avgTime: string;
   remark: "PASS" | "FAIL" | "-";
@@ -40,16 +41,13 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
 
-  const [maStationCount, setMaStationCount] = useState<number>(2);
   const [rows, setRows] = useState<RowData[]>([
     {
       id: "1",
       appliedKvp: "80",
       setTime: "0.100",
-      maStations: [
-        { kvp: "", time: "" },
-        { kvp: "", time: "" },
-      ],
+      maStation1: { kvp: "", time: "" },
+      maStation2: { kvp: "", time: "" },
       avgKvp: "",
       avgTime: "",
       remark: "-",
@@ -86,13 +84,13 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
     const appliedKvp = parseFloat(row.appliedKvp) || 0;
     const setTime = parseFloat(row.setTime) || 0;
 
-    const stations = row.maStations || [];
-    const validKvps = stations
-      .map(s => parseFloat(s?.kvp || "0") || 0)
-      .filter(v => v > 0);
-    const validTimes = stations
-      .map(s => parseFloat(s?.time || "0") || 0)
-      .filter(v => v > 0);
+    const kvp1 = parseFloat(row.maStation1.kvp) || 0;
+    const kvp2 = parseFloat(row.maStation2.kvp) || 0;
+    const time1 = parseFloat(row.maStation1.time) || 0;
+    const time2 = parseFloat(row.maStation2.time) || 0;
+
+    const validKvps = [kvp1, kvp2].filter(v => v > 0);
+    const validTimes = [time1, time2].filter(v => v > 0);
 
     const avgKvp = validKvps.length > 0
       ? (validKvps.reduce((a, b) => a + b, 0) / validKvps.length).toFixed(1)
@@ -125,65 +123,19 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
     return { ...row, avgKvp, avgTime, remark };
   };
 
-  const updateRow = (id: string, field: string, value: string, stationIndex?: number, stationField?: 'kvp' | 'time') => {
+  const updateRow = (id: string, field: string, value: string) => {
     setRows(prev =>
       prev.map(row => {
         if (row.id !== id) return row;
         const updated: any = { ...row };
         if (field === "appliedKvp") updated.appliedKvp = value;
         else if (field === "setTime") updated.setTime = value;
-        else if (stationIndex !== undefined && stationField) {
-          if (!updated.maStations) updated.maStations = [];
-          if (!updated.maStations[stationIndex]) updated.maStations[stationIndex] = { kvp: "", time: "" };
-          updated.maStations[stationIndex][stationField] = value;
-        }
+        else if (field === "ma1_kvp") updated.maStation1.kvp = value;
+        else if (field === "ma1_time") updated.maStation1.time = value;
+        else if (field === "ma2_kvp") updated.maStation2.kvp = value;
+        else if (field === "ma2_time") updated.maStation2.time = value;
         return calculateRow(updated);
       })
-    );
-    setIsSaved(false);
-  };
-
-  const addMaStationColumn = (afterIndex: number) => {
-    if (maStationCount >= 10) {
-      toast.error('Maximum 10 mA stations allowed');
-      return;
-    }
-    const newCount = maStationCount + 1;
-    setMaStationCount(newCount);
-    setRows(prev =>
-      prev.map(row => {
-        // Ensure all rows have the same number of stations
-        const currentStations = row.maStations || [];
-        const paddedStations = [...currentStations];
-        // Pad with empty stations if needed
-        while (paddedStations.length < maStationCount) {
-          paddedStations.push({ kvp: "", time: "" });
-        }
-        return {
-          ...row,
-          maStations: [
-            ...paddedStations.slice(0, afterIndex + 1),
-            { kvp: "", time: "" },
-            ...paddedStations.slice(afterIndex + 1),
-          ],
-        };
-      })
-    );
-    setIsSaved(false);
-  };
-
-  const removeMaStationColumn = (index: number) => {
-    if (maStationCount <= 2) {
-      toast.error('Minimum 2 mA stations required');
-      return;
-    }
-    const newCount = maStationCount - 1;
-    setMaStationCount(newCount);
-    setRows(prev =>
-      prev.map(row => ({
-        ...row,
-        maStations: (row.maStations || []).filter((_, i) => i !== index),
-      }))
     );
     setIsSaved(false);
   };
@@ -195,7 +147,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
         id: Date.now().toString(),
         appliedKvp: "",
         setTime: "",
-        maStations: Array(maStationCount).fill(null).map(() => ({ kvp: "", time: "" })),
+        maStation1: { kvp: "", time: "" },
+        maStation2: { kvp: "", time: "" },
         avgKvp: "",
         avgTime: "",
         remark: "-",
@@ -222,32 +175,16 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
           const testData = data.data;
           setTestId(testData._id);
           if (testData.rows && testData.rows.length > 0) {
-            const loadedRows = testData.rows.map((r: any) => {
-              // Handle backward compatibility: convert maStation1/maStation2 to array
-              let maStations: MAStationData[] = [];
-              if (r.maStations && Array.isArray(r.maStations)) {
-                maStations = r.maStations;
-              } else {
-                // Legacy format: maStation1, maStation2
-                maStations = [
-                  r.maStation1 || { kvp: "", time: "" },
-                  r.maStation2 || { kvp: "", time: "" },
-                ];
-              }
-              return {
-                id: Date.now().toString() + Math.random(),
-                appliedKvp: r.appliedkVp || r.appliedKvp || "",
-                setTime: r.setTime || "",
-                maStations,
-                avgKvp: r.avgKvp || "",
-                avgTime: r.avgTime || "",
-                remark: r.remark || "-",
-              };
-            });
-            setRows(loadedRows);
-            // Set maStationCount based on loaded data
-            const maxStations = Math.max(...loadedRows.map((r: RowData) => r.maStations.length), 2);
-            setMaStationCount(maxStations);
+            setRows(testData.rows.map((r: any) => ({
+              id: Date.now().toString() + Math.random(),
+              appliedKvp: r.appliedkVp || r.appliedKvp || "",
+              setTime: r.setTime || "",
+              maStation1: r.maStation1 || { kvp: "", time: "" },
+              maStation2: r.maStation2 || { kvp: "", time: "" },
+              avgKvp: r.avgKvp || "",
+              avgTime: r.avgTime || "",
+              remark: r.remark || "-",
+            })));
           }
           if (testData.kvpToleranceSign) setKvpToleranceSign(testData.kvpToleranceSign);
           if (testData.kvpToleranceValue) setKvpToleranceValue(testData.kvpToleranceValue);
@@ -281,7 +218,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
         rows: rows.map(r => ({
           appliedKvp: r.appliedKvp,
           setTime: r.setTime,
-          maStations: r.maStations,
+          maStation1: r.maStation1,
+          maStation2: r.maStation2,
           avgKvp: r.avgKvp,
           avgTime: r.avgTime,
           remark: r.remark,
@@ -384,7 +322,7 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
                 <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
                   Set Time (s)
                 </th>
-                <th colSpan={maStationCount * 2} className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
+                <th colSpan={4} className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
                   Measured Values at mA Stations
                 </th>
                 <th rowSpan={2} className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
@@ -399,41 +337,16 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
                 <th rowSpan={2} className="w-10"></th>
               </tr>
               <tr className="bg-gray-100">
-                {Array.from({ length: maStationCount }).map((_, idx) => (
-                  <th key={idx} colSpan={2} className="px-3 py-2 text-xs font-medium text-gray-600 border-r relative">
-                    <div className="flex items-center justify-center gap-1">
-                      <span>mA Station {idx + 1}</span>
-                      {!isViewMode && maStationCount < 10 && (
-                        <button
-                          type="button"
-                          onClick={() => addMaStationColumn(idx)}
-                          className="text-green-600 hover:bg-green-100 p-0.5 rounded transition"
-                          title="Add column after this"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      )}
-                      {!isViewMode && maStationCount > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => removeMaStationColumn(idx)}
-                          className="text-red-600 hover:bg-red-100 p-0.5 rounded transition"
-                          title="Delete this column"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  </th>
-                ))}
+                <th colSpan={2} className="px-3 py-2 text-xs font-medium text-gray-600 border-r">mA Station 1</th>
+                <th colSpan={2} className="px-3 py-2 text-xs font-medium text-gray-600 border-r">mA Station 2</th>
               </tr>
               <tr className="bg-gray-50 text-xs">
-                {Array.from({ length: maStationCount }).map((_, idx) => (
-                  <React.Fragment key={idx}>
-                    <th className="px-3 py-2 font-medium text-gray-600 border-r">kVp</th>
-                    <th className="px-3 py-2 font-medium text-gray-600 border-r">Time</th>
-                  </React.Fragment>
-                ))}
+                <th className="px-3 py-2 font-medium text-gray-600 border-r">kVp</th>
+                <th className="px-3 py-2 font-medium text-gray-600 border-r">Time</th>
+                <th className="px-3 py-2 font-medium text-gray-600 border-r">kVp</th>
+                <th className="px-3 py-2 font-medium text-gray-600 border-r">Time</th>
+                <th className="px-3 py-2 font-medium text-gray-600 border-r">kVp</th>
+                <th className="px-3 py-2 font-medium text-gray-600 border-r">Time</th>
                 <th colSpan={3}></th>
               </tr>
             </thead>
@@ -462,33 +375,46 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
                       placeholder="0.100"
                     />
                   </td>
-                  {Array.from({ length: maStationCount }).map((_, stationIdx) => {
-                    const station = row.maStations[stationIdx] || { kvp: "", time: "" };
-                    return (
-                      <React.Fragment key={stationIdx}>
-                        <td className="px-3 py-3 border-r">
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={station.kvp}
-                            onChange={e => updateRow(row.id, "", e.target.value, stationIdx, 'kvp')}
-                            disabled={isViewMode}
-                            className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                          />
-                        </td>
-                        <td className="px-3 py-3 border-r">
-                          <input
-                            type="number"
-                            step="0.001"
-                            value={station.time}
-                            onChange={e => updateRow(row.id, "", e.target.value, stationIdx, 'time')}
-                            disabled={isViewMode}
-                            className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                          />
-                        </td>
-                      </React.Fragment>
-                    );
-                  })}
+                  <td className="px-3 py-3 border-r">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={row.maStation1.kvp}
+                      onChange={e => updateRow(row.id, "ma1_kvp", e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    />
+                  </td>
+                  <td className="px-3 py-3 border-r">
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={row.maStation1.time}
+                      onChange={e => updateRow(row.id, "ma1_time", e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    />
+                  </td>
+                  <td className="px-3 py-3 border-r">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={row.maStation2.kvp}
+                      onChange={e => updateRow(row.id, "ma2_kvp", e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    />
+                  </td>
+                  <td className="px-3 py-3 border-r">
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={row.maStation2.time}
+                      onChange={e => updateRow(row.id, "ma2_time", e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 text-center border rounded text-xs focus:border-blue-400 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-center font-medium border-r">{row.avgKvp || "-"}</td>
                   <td className="px-4 py-3 text-center font-medium border-r">{row.avgTime || "-"}</td>
                   <td className="px-4 py-3 text-center">

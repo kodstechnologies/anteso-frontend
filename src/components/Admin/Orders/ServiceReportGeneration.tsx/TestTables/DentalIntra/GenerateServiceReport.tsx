@@ -14,7 +14,6 @@ import AccuracyOfOperatingPotentialAndTime from "./AccuracyOfOperatingPotentialA
 import LinearityOfTime from "./LinearityOfTime";
 import ReproducibilityOfRadiationOutput from "./ReproducibilityOfRadiationOutput";
 import TubeHousingLeakage from "./TubeHousingLeakage";
-import RadiationLeakageLevel from "./RadiationLeakageLevel";
 
 
 export interface Standard {
@@ -99,18 +98,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
-        category: "",
     });
-    const defaultNotes = [
-      "The Test Report relates only to the above item only.",
-      "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
-      "Corrections/erasing invalidates the Test Report.",
-      "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
-      "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
-      "Results reported are valid at the time of and under the stated conditions of measurements.",
-      "Name, Address & Contact detail is provided by Customer.",
-    ];
-    const [notes, setNotes] = useState<string[]>(defaultNotes);
 
     useEffect(() => {
         if (!serviceId) return;
@@ -148,7 +136,6 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
-                    category: data.category || "",
                 });
 
                 const mapped: Standard[] = toolRes.data.toolsAssigned.map(
@@ -208,7 +195,6 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         make: res.data.make || prev.make,
                         model: res.data.model || prev.model,
                         slNumber: res.data.slNumber || prev.slNumber,
-                        category: res.data.category || prev.category,
                         condition: res.data.condition || prev.condition,
                         testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
                         testDate: res.data.testDate || prev.testDate,
@@ -219,21 +205,12 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
                     }));
 
-                    // Load existing notes, or use default if none exist
-                    if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
-                        const notesTexts = res.data.notes.map((n: any) => n.text || n);
-                        setNotes(notesTexts);
-                    } else {
-                        setNotes(defaultNotes);
-                    }
-
                     // Save test IDs
                     setSavedTestIds({
                         AccuracyOfOperatingPotentialAndTimeDentalIntra: res.data.AccuracyOfOperatingPotentialAndTimeDentalIntra?._id || res.data.AccuracyOfOperatingPotentialAndTimeDentalIntra,
                         LinearityOfTimeDentalIntra: res.data.LinearityOfTimeDentalIntra?._id || res.data.LinearityOfTimeDentalIntra,
                         ReproducibilityOfRadiationOutputDentalIntra: res.data.ReproducibilityOfRadiationOutputDentalIntra?._id || res.data.ReproducibilityOfRadiationOutputDentalIntra,
                         TubeHousingLeakageDentalIntra: res.data.TubeHousingLeakageDentalIntra?._id || res.data.TubeHousingLeakageDentalIntra,
-                        RadiationLeakageTestDentalIntra: res.data.RadiationLeakageTestDentalIntra?._id || res.data.RadiationLeakageTestDentalIntra,
                     });
                 }
             } catch (err) {
@@ -268,10 +245,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                     certificate: t.certificate,
                     uncertainity: t.uncertainity || "",
                 })),
-                notes: notes.length > 0 ? notes.map((note, index) => ({
-                    slNo: `5.${index + 1}`,
-                    text: note,
-                })) : [
+                notes: [
                     { slNo: "5.1", text: "The Test Report relates only to the above item only." },
                     { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
                     { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
@@ -430,7 +404,6 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                         { label: "Make", name: "make" },
                         { label: "Model", name: "model", readOnly: true },
                         { label: "Serial Number", name: "slNumber", readOnly: true },
-                        { label: "Category", name: "category" },
                         { label: "Condition of Test Item", name: "condition" },
                         { label: "Testing Procedure Number", name: "testingProcedureNumber" },
                         { label: "No. of Pages", name: "pages" },
@@ -458,7 +431,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
             </section>
 
             <Standards standards={tools} />
-            <Notes initialNotes={notes} onChange={setNotes} />
+            <Notes />
 
             {/* Save & View Buttons */}
             <div className="mt-8 flex justify-end gap-4">
@@ -486,7 +459,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                 <button
                     type="button"
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => navigate(`/admin/orders/view-service-report-dental-intra?serviceId=${serviceId}`)}
+                    onClick={() => navigate(`/admin/orders/view-service-report?serviceId=${serviceId}`)}
                 >
                     View Generated Report
                 </button>
@@ -500,7 +473,6 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                     { title: "Linearity Of Time", component: <LinearityOfTime serviceId={serviceId} /> },
                     { title: "Reproducibility Of Radiation Output", component: <ReproducibilityOfRadiationOutput serviceId={serviceId} /> },
                     { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
-                    // { title: "Radiation Leakage Level", component: <RadiationLeakageLevel serviceId={serviceId} /> },
 
 
 

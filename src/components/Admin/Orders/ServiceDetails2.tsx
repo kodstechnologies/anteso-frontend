@@ -2673,10 +2673,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                     <span className="text-gray-500">→</span>
                                                                                     <span
                                                                                         className={`px-2 py-0.5  rounded-full text-xs font-medium border ${hist.newStatus === "complete" || hist.newStatus === "generated"
-                                                                                                ? "bg-green-100 text-green-800 border-green-300"
-                                                                                                : hist.newStatus === "in progress"
-                                                                                                    ? "bg-blue-100 text-blue-800 border-blue-300"
-                                                                                                    : "bg-yellow-100 text-yellow-800 border-yellow-300"
+                                                                                            ? "bg-green-100 text-green-800 border-green-300"
+                                                                                            : hist.newStatus === "in progress"
+                                                                                                ? "bg-blue-100 text-blue-800 border-blue-300"
+                                                                                                : "bg-yellow-100 text-yellow-800 border-yellow-300"
                                                                                             }`}                                                                                    >
                                                                                         {/* {hist.oldStatus}  →  */}
                                                                                         {hist.newStatus}

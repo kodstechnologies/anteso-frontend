@@ -7025,6 +7025,7 @@ export const getReportHeaderForDentalIntra = async (serviceId: string) => {
         throw error;
     }
 };
+
 // ==================== Dental Intra APIs ====================
 
 // Accuracy of Operating Potential and Time - Dental Intra

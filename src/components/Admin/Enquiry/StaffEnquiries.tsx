@@ -13,6 +13,7 @@ import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrum
 import { getAllStaffEnquiries, deleteEnquiryById } from '../../../api';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import IconTrashLines from '../../../components/Icon/IconTrashLines';
+import IconCopy from '../../Icon/IconCopy';
 
 const StaffEnquiries = () => {
   const dispatch = useDispatch();
@@ -37,6 +38,7 @@ const StaffEnquiries = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<string | null>(null);
   const PAGE_SIZES = [10, 20, 30, 50, 100];
+  const [copied, setCopied] = useState(false);
 
   // 🧠 Fetch staff enquiries
   useEffect(() => {
@@ -145,7 +147,16 @@ const StaffEnquiries = () => {
       window.location.href = `/staff/quotation/add/${id}`;
     }
   };
-
+  const handleCopy = async () => {
+    try {
+      const link = `${window.location.origin}/enquiry_form`;
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
   // 🧭 Breadcrumb
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: 'Dashboard', to: '/', icon: <IconHome /> },
@@ -167,6 +178,12 @@ const StaffEnquiries = () => {
                   <IconPlus /> Add New
                 </Link>
               </div>
+              <div className="flex items-center gap-2">
+                <button onClick={handleCopy} className="btn btn-primary gap-2">
+                  <IconCopy />
+                  {copied ? ' Copied! ' : 'Copy Link'}
+                </button>
+              </div>
               <div className="ltr:ml-auto rtl:mr-auto">
                 <input
                   type="text"
@@ -177,6 +194,7 @@ const StaffEnquiries = () => {
                 />
               </div>
             </div>
+
 
             <div className="datatables pagination-padding">
               <DataTable

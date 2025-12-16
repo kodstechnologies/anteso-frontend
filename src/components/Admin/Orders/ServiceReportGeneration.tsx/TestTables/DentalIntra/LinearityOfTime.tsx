@@ -120,46 +120,37 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
     );
   };
 
-  // Auto-calculations: X = Output / (mA × Time) = Output / mAs
+  // Auto-calculations: X = Output / Time
   const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
-    const ma = parseFloat(table1Row.ma) || 0;
     const xValues: number[] = [];
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      // Calculate actual average of measurements
       const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
       const time = parseFloat(row.time);
-      
-      // Calculate mAs = mA × time, then X = avg / mAs
-      const mAs = ma > 0 && time > 0 ? ma * time : 0;
-      const x = avg !== '—' && mAs > 0 ? (parseFloat(avg) / mAs).toFixed(4) : '—';
+      const x = avg !== '—' && time > 0 ? (parseFloat(avg) / time).toFixed(4) : '—';
 
       if (x !== '—') xValues.push(parseFloat(x));
 
-      // Explicitly set average and x, ignoring any existing values in row
-      return { 
-        ...row, 
-        average: avg,  // This is the actual average of measurements
-        x: x           // This is the calculated X value (avg / mAs)
-      };
+      return { ...row, average: avg, x };
     });
 
-    // Calculate xMax, xMin, col, and remarks once for all rows
     const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
     const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
     const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
       : '—';
     const pass = colVal !== '—' && parseFloat(colVal) <= tol;
-    const remarks = pass ? 'Pass' : colVal === '—' ? '' : 'Fail';
 
-    return {
-      rows: rowsWithX,
-      summary: { xMax, xMin, col: colVal, remarks, rowSpan: rowsWithX.length }
-    };
-  }, [table2Rows, tolerance, table1Row.ma]);
+    return rowsWithX.map(row => ({
+      ...row,
+      xMax,
+      xMin,
+      col: colVal,
+      remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
+    }));
+  }, [table2Rows, tolerance]);
 
   const isFormValid = useMemo(() => {
     return (
@@ -194,7 +185,12 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
               id: r.id || Date.now().toString() + Math.random(),
               time: r.time || '',
               measuredOutputs: r.measuredOutputs || [],
-              // Don't load average and x - they will be recalculated by processedTable2
+              average: r.average || '',
+              x: r.x || '',
+              xMax: r.xMax || '',
+              xMin: r.xMin || '',
+              col: r.col || '',
+              remarks: r.remarks || '',
             })));
           }
           if (testData.tolerance) {
@@ -223,16 +219,16 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
     try {
       const payload = {
         table1: table1Row,
-        table2: processedTable2.rows.map(r => ({
+        table2: processedTable2.map(r => ({
           time: r.time,
           measuredOutputs: r.measuredOutputs,
           average: r.average,
           x: r.x,
+          xMax: r.xMax,
+          xMin: r.xMin,
+          col: r.col,
+          remarks: r.remarks,
         })),
-        xMax: processedTable2.summary.xMax,
-        xMin: processedTable2.summary.xMin,
-        col: processedTable2.summary.col,
-        remarks: processedTable2.summary.remarks,
         tolerance,
       };
 
@@ -294,8 +290,7 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
 
       {/* Table 2 */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
               <th rowSpan={2} className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r whitespace-nowrap">
@@ -313,7 +308,7 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MIN</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">CoL</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
-              <th rowSpan={2} className="w-12 px-0 text-center" />
+              <th rowSpan={2} className="w-10" />
             </tr>
             <tr>
               {measHeaders.map((header, idx) => (
@@ -327,7 +322,7 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {processedTable2.rows.map((p, index) => (
+            {processedTable2.map((p) => (
               <tr key={p.id} className="hover:bg-gray-50">
                 <td className="px-4 py-2 border-r min-w-28">
                   <input type="text" value={p.time} onChange={e => updateTable2Cell(p.id, 'time', e.target.value)} disabled={isViewMode} className={`w-full px-3 py-1.5 border rounded text-sm font-medium text-center ${isViewMode ? 'bg-gray-50' : ''}`} placeholder="50" />
@@ -339,27 +334,17 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
                 ))}
                 <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.average}</td>
                 <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.x}</td>
-                {index === 0 && (
-                  <>
-                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
-                      {processedTable2.summary.xMax}
-                    </td>
-                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
-                      {processedTable2.summary.xMin}
-                    </td>
-                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
-                      {processedTable2.summary.col}
-                    </td>
-                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center align-middle">
-                      <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedTable2.summary.remarks === 'Pass' ? 'bg-green-100 text-green-800' : processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' : 'text-gray-400'}`}>
-                        {processedTable2.summary.remarks || '—'}
-                      </span>
-                    </td>
-                  </>
-                )}
-                <td className="w-12 px-0 py-2 text-center align-middle">
+                <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50">{p.xMax}</td>
+                <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50">{p.xMin}</td>
+                <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50">{p.col}</td>
+                <td className="px-4 py-2 text-center">
+                  <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${p.remarks === 'Pass' ? 'bg-green-100 text-green-800' : p.remarks === 'Fail' ? 'bg-red-100 text-red-800' : 'text-gray-400'}`}>
+                    {p.remarks || '—'}
+                  </span>
+                </td>
+                <td className="px-2 py-2 text-center">
                   {table2Rows.length > 1 && !isViewMode && (
-                    <button onClick={() => removeTable2Row(p.id)} className="text-red-600 hover:bg-red-100 p-1.5 rounded inline-flex items-center justify-center">
+                    <button onClick={() => window.confirm('Delete this row?') && removeTable2Row(p.id)} className="text-red-600 hover:bg-red-100 p-1 rounded">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -368,7 +353,6 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
             ))}
           </tbody>
         </table>
-        </div>
 
         <div className="px-4 py-3 bg-gray-50 border-t flex justify-between items-center">
           {!isViewMode && (
