@@ -270,106 +270,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     }
     const navigate = useNavigate();
 
-    const fetchExistingAssignments = async (): Promise<MachineData[]> => {
-        try {
-            // If we already have assignments from localStorage or assignedStaffData, use them
-            const existingAssignments = loadFromLocalStorage(STORAGE_KEYS.assignments, {});
-            if (Object.keys(existingAssignments).length > 0) {
-                setAssignments(existingAssignments);
-                return machineData;
-            }
 
-            const assignmentPromises: Promise<any>[] = [];
-
-            machineData.forEach((service) => {
-                service.workTypes.forEach((workType) => {
-                    const serviceId = workType.id.split("-")[0];
-                    const workTypeName = service.workTypeName;
-
-                    if (workType.name === "QA Raw") {
-                        assignmentPromises.push(
-                            getAssignedTechnicianName(orderId, serviceId, workTypeName)
-                                .then((res) => ({
-                                    workTypeId: workType.id,
-                                    assignedTechnician: res.data.assignedTechnician,
-                                }))
-                                .catch((err) => {
-                                    console.error(`Technician fetch error (${workTypeName}):`, err);
-                                    return { workTypeId: workType.id, assignedTechnician: null };
-                                })
-                        );
-                    } else {
-                        assignmentPromises.push(
-                            getAssignedStaffName(orderId, serviceId, workTypeName)
-                                .then((res) => ({
-                                    workTypeId: workType.id,
-                                    assignedStaff: res.data.assignedStaff,
-                                }))
-                                .catch((err) => {
-                                    console.error(`Staff fetch error (${workTypeName}):`, err);
-                                    return { workTypeId: workType.id, assignedStaff: null };
-                                })
-                        );
-                    }
-                });
-            });
-
-            if (assignmentPromises.length === 0) return machineData;
-
-            const results = await Promise.all(assignmentPromises);
-            const freshAssignments: Record<string, any> = {};
-            const updatedMachineData = machineData.map((service) => ({
-                ...service,
-                workTypes: service.workTypes.map((workType) => {
-                    const apiResult = results.find((r) => r.workTypeId === workType.id);
-
-                    if (workType.name === "QA Raw" && apiResult?.assignedTechnician) {
-                        const tech = apiResult.assignedTechnician;
-                        freshAssignments[workType.id] = {
-                            isAssigned: true,
-                            employeeId: tech._id,
-                            technicianName: tech.name,
-                            assignmentStatus: tech.status,
-                        };
-                        return {
-                            ...workType,
-                            assignedTechnicianName: tech.name,
-                            assignedTechnicianId: tech._id,
-                            assignmentStatus: tech.status,
-                        };
-                    }
-
-                    if (apiResult?.assignedStaff) {
-                        const staff = apiResult.assignedStaff;
-                        // console.log("🚀 ~ fetchExistingAssignments ~ staff:", staff)
-                        freshAssignments[workType.id] = {
-                            isAssigned: true,
-                            staffId: staff._id,
-                            staffName: staff.name,
-                            status: staff.status,
-                        };
-                        return {
-                            ...workType,
-                            assignedStaffName: staff.name,
-                            assignedStaffId: staff._id,
-                            assignmentStatus: staff.status,
-                        };
-                    }
-
-                    return workType;
-                }),
-            }));
-
-            setAssignments(freshAssignments);
-            setMachineData(updatedMachineData);
-            saveToLocalStorage(STORAGE_KEYS.assignments, freshAssignments);
-            // console.log("[v0] Fresh assignments from API:", freshAssignments);
-            return updatedMachineData;
-        } catch (error) {
-            console.error("[v0] Unexpected error in fetchExistingAssignments:", error);
-            return machineData;
-        }
-    };
 
     // const fetchMachineData = async () => {
     //     if (!orderId) {
@@ -712,6 +613,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
             const allTransformedData: MachineData[] = [];
             const staffAssignments: Record<string, any> = {};
+            const initialAssignments: Record<string, any> = {};
+            const initialSelectedStatuses: Record<string, string> = {};
 
             machinesArray.forEach((machineData: any) => {
                 const workTypeDetails = machineData.workTypeDetails || [];
@@ -741,16 +644,26 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                         verificationRemark: workTypeDetail.QAtest?.remark || "",
                                     },
                                     serviceId: machineData._id,
-                                    assignedTechnicianId: workTypeDetail.engineer || undefined,
+                                    assignedTechnicianId: workTypeDetail.engineer?._id || workTypeDetail.engineer || undefined,
+                                    assignedTechnicianName: workTypeDetail.engineer?.name,
+                                    assignmentStatus: workTypeDetail.engineer?.status,
                                     assignedAtEngineer: workTypeDetail.assignedAt || undefined,
                                 });
 
                                 // ✅ Save assigned Technician
-                                if (workTypeDetail.engineer) {
+                                const eng = workTypeDetail.engineer;
+                                if (eng) {
                                     staffAssignments[`${cardId}-qa-raw`] = {
                                         type: "Technician",
-                                        id: workTypeDetail.engineer,
+                                        id: eng._id || eng,
                                     };
+                                    initialAssignments[`${cardId}-qa-raw`] = {
+                                        isAssigned: true,
+                                        employeeId: eng._id || eng,
+                                        technicianName: eng.name || "",
+                                        assignmentStatus: workTypeDetail.status
+                                    };
+                                    initialSelectedStatuses[`${cardId}-qa-raw`] = workTypeDetail.status || "pending";
                                 }
 
                                 // ---- QA Test ----
@@ -761,18 +674,28 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     reportNumber: "N/A",
                                     urlNumber: "N/A",
                                     serviceId: machineData._id,
-                                    assignedStaffId: workTypeDetail.QAtest?.officeStaff || undefined,
+                                    assignedStaffId: workTypeDetail.QAtest?.officeStaff?._id || workTypeDetail.QAtest?.officeStaff || undefined,
+                                    assignedStaffName: workTypeDetail.QAtest?.officeStaff?.name,
+                                    assignmentStatus: workTypeDetail.QAtest?.officeStaff?.status,
                                     assignedAtStaff: workTypeDetail.QAtest?.assignedAt,
                                     completedAt: workTypeDetail.completedAt || undefined,
                                     statusHistory: workTypeDetail.QAtest?.statusHistory || workTypeDetail.statusHistory || [],
                                 });
 
                                 // ✅ Save assigned Office Staff
-                                if (workTypeDetail.QAtest?.officeStaff) {
+                                const qaStaff = workTypeDetail.QAtest?.officeStaff;
+                                if (qaStaff) {
                                     staffAssignments[`${cardId}-qa-test`] = {
                                         type: "Office Staff",
-                                        id: workTypeDetail.QAtest?.officeStaff,
+                                        id: qaStaff._id || qaStaff,
                                     };
+                                    initialAssignments[`${cardId}-qa-test`] = {
+                                        isAssigned: true,
+                                        staffId: qaStaff._id || qaStaff,
+                                        staffName: qaStaff.name || "",
+                                        status: workTypeDetail.status
+                                    };
+                                    initialSelectedStatuses[`${cardId}-qa-test`] = workTypeDetail.status || "pending";
                                 }
                             } else {
                                 // ---- Other Work Types ----
@@ -788,14 +711,24 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     urlNumber: "N/A",
                                     serviceId: machineData._id,
                                     assignedStaffId: workTypeDetail.elora?.officeStaff?._id || undefined,
+                                    assignedStaffName: workTypeDetail.elora?.officeStaff?.name,
+                                    assignmentStatus: workTypeDetail.elora?.officeStaff?.status,
                                 });
 
-                                // ✅ Save Elora (or any other office staff) - FIXED THIS PART
-                                if (workTypeDetail.elora?.officeStaff?._id) {
+                                // ✅ Save Elora (or any other office staff)
+                                const eloraStaff = workTypeDetail.elora?.officeStaff;
+                                if (eloraStaff) {
                                     staffAssignments[`${cardId}-${customId}`] = {
                                         type: "Elora",
-                                        id: workTypeDetail.elora.officeStaff._id,
+                                        id: (eloraStaff && eloraStaff._id) || eloraStaff,
                                     };
+                                    initialAssignments[`${cardId}-${customId}`] = {
+                                        isAssigned: true,
+                                        staffId: (eloraStaff && eloraStaff._id) || eloraStaff,
+                                        staffName: (eloraStaff && eloraStaff.name) || "",
+                                        status: workTypeDetail.status
+                                    };
+                                    initialSelectedStatuses[`${cardId}-${customId}`] = workTypeDetail.status || "pending";
                                 }
                             }
                             return workTypes;
@@ -897,7 +830,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 return mergedReportNumbers;
             });
 
-            const updatedMachineDataWithAssignments = await fetchExistingAssignments();
+            const updatedMachineDataWithAssignments = allTransformedData;
 
             // ------------------------
             // Enhanced Report Numbers Fetch with better error handling
@@ -1012,10 +945,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
             await fetchAllReportNumbers();
 
-            // Force a refresh of assignments to ensure latest data
-            setTimeout(() => {
-                fetchExistingAssignments();
-            }, 1000);
+            // Save new assignments
+            setAssignments(initialAssignments);
+            saveToLocalStorage(STORAGE_KEYS.assignments, initialAssignments);
+
+            // Save new statuses
+            setSelectedStatuses(initialSelectedStatuses);
+            saveToLocalStorage(STORAGE_KEYS.selectedStatuses, initialSelectedStatuses);
 
         } catch (err: any) {
             console.error("Error fetching machine data:", err);

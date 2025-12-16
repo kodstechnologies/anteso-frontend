@@ -3402,7 +3402,7 @@ export const getActiveTechnicians = async () => {
         );
     }
 }
-export const getActiveStaffs= async () => {
+export const getActiveStaffs = async () => {
     try {
         const token = Cookies.get('accessToken')
         // console.log("hi from getAllTechnicianss");
