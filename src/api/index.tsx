@@ -3383,6 +3383,44 @@ export const getTools = async (serviceId: any) => {
     }
 }
 
+export const getActiveTechnicians = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        // console.log("hi from getAllTechnicianss");
+
+        const res = await api.get('/technician/all-active-engineers', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        // console.log("🚀 ~ getAllTechnicians ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ all  technicians ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch technician data"
+        );
+    }
+}
+export const getActiveStaffs= async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        // console.log("hi from getAllTechnicianss");
+
+        const res = await api.get('/technician/all-active-staffs', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        // console.log("🚀 ~ getAllTechnicians ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ all  technicians ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch technician data"
+        );
+    }
+}
 
 
 

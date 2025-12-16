@@ -20,8 +20,8 @@ import {
 } from "lucide-react"
 import { getAssignedStaffName, getMachineDetails } from "../../../api"
 import {
-    getAllTechnicians,
-    getAllOfficeStaff,
+    getActiveTechnicians,
+    getActiveStaffs,
     assignToTechnicianByQA,
     getAssignedTechnicianName,
     getMachineUpdates,
@@ -256,10 +256,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const fetchDropdownData = async () => {
         try {
             setLoadingDropdowns(true)
-            const [techniciansData, staffData] = await Promise.all([getAllTechnicians(), getAllOfficeStaff()])
+            const [techniciansData, staffData] = await Promise.all([getActiveTechnicians(), getActiveStaffs()])
 
             setTechnicians(techniciansData.data || [])
-            setOfficeStaff(staffData || [])
+            setOfficeStaff(staffData.data || [])
         } catch (error) {
             console.error("Error fetching dropdown data:", error)
             setTechnicians([])

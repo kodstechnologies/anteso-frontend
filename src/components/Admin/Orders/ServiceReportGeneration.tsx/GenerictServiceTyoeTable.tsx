@@ -61,13 +61,13 @@ const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
   'Radiography (Portable)': RadiographyPortableReport,
   'Radiography (Mobile)': RadiographyMobileReport,
   'O-Arm': OArmReport,
-  'Lead Apron': LeadApronReport,
+  'Lead Apron/Thyroid Shield/Gonad Shield': LeadApronReport,
   // 'Thyroid Shield Test': ThyroidShieldReport,
   'Radiography and Fluoroscopy': RadioFluro,
   'KV Imaging (OBI)': KVImagingReport,
   // 'Radiation Survey of Radiation Facility': RadiationSurveyReport,
   // Others: OthersReport,
-  'KV Imaging (OBI)': KVImagingReport
+  // 'KV Imaging (OBI)': KVImagingReport
 
 };
 

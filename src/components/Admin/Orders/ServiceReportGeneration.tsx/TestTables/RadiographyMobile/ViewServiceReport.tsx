@@ -212,19 +212,16 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             </div>
             <img src={logo} alt="Logo" className="h-28 print:h-20" />
           </div>
-
           <div className="text-center mb-4 print:mb-2">
             <p className="text-sm print:text-[9px]">Government of India, Atomic Energy Regulatory Board</p>
             <p className="text-sm print:text-[9px]">Radiological Safety Division, Mumbai-400094</p>
           </div>
-
           <h1 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-base" style={{ fontSize: '15px' }}>
             QA TEST REPORT FOR RADIOGRAPHY (MOBILE) X-RAY EQUIPMENT
           </h1>
           <p className="text-center italic text-sm mb-6 print:mb-2 print:text-[9px]">
             (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
           </p>
-
           {/* Customer Details */}
           <section className="mb-4 print:mb-2">
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">1. Customer Details</h2>
@@ -241,7 +238,6 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               </tbody>
             </table>
           </section>
-
           {/* Reference */}
           <section className="mb-4 print:mb-2">
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">2. Reference</h2>
@@ -252,7 +248,6 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               </tbody>
             </table>
           </section>
-
           {/* Equipment Details */}
           <section className="mb-4 print:mb-2">
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">3. Details of Equipment Under Test</h2>
@@ -281,7 +276,6 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               </tbody>
             </table>
           </section>
-
           {/* Tools Used */}
           <section className="mb-4 print:mb-2">
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">4. Standards / Tools Used</h2>
@@ -316,7 +310,6 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               </table>
             </div>
           </section>
-
           {/* Notes */}
           <section className="mb-6 print:mb-3">
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">5. Notes</h2>
@@ -326,7 +319,6 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               ))}
             </div>
           </section>
-
           {/* Signature */}
           <div className="flex justify-between items-end mt-8 print:mt-4">
             <img src={AntesoQRCode} alt="QR" className="h-24 print:h-16" />
@@ -335,7 +327,6 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               <p className="font-bold print:text-xs">Authorized Signatory</p>
             </div>
           </div>
-
           <footer className="text-center text-xs print:text-[8px] text-gray-600 mt-6 print:mt-3">
             <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
             <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
