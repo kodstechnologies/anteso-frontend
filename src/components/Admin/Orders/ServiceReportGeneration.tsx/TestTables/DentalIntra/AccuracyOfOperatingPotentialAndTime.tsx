@@ -17,10 +17,11 @@ interface RowData {
   id: string;
   appliedKvp: string;
   setTime: string;
-  maStations: MAStationData[];
   avgKvp: string;
   avgTime: string;
   remark: "PASS" | "FAIL" | "-";
+  maStation2: MAStationData;
+  maStation1: MAStationData;
 }
 
 interface Props {
@@ -29,10 +30,10 @@ interface Props {
   onTestSaved?: (testId: string) => void;
 }
 
-const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({ 
-  serviceId, 
+const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
+  serviceId,
   testId: propTestId,
-  onTestSaved 
+  onTestSaved
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -165,7 +166,7 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
   // Load existing test data
   useEffect(() => {
     if (!serviceId) return;
-    
+
     const loadTest = async () => {
       setIsLoading(true);
       try {
@@ -201,7 +202,7 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
         setIsLoading(false);
       }
     };
-    
+
     loadTest();
   }, [serviceId]);
 
@@ -278,8 +279,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
           onClick={isViewMode ? toggleEdit : saveTest}
           disabled={isSaving}
           className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${isViewMode
-              ? "bg-orange-600 text-white hover:bg-orange-700"
-              : isSaved
+            ? "bg-orange-600 text-white hover:bg-orange-700"
+            : isSaved
               ? "bg-gray-400 text-white"
               : "bg-blue-600 text-white hover:bg-blue-700"
             } disabled:opacity-50`}
@@ -418,8 +419,8 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
                   <td className="px-4 py-3 text-center font-medium border-r">{row.avgTime || "-"}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-block px-3 py-1 rounded text-xs font-medium ${row.remark === "PASS" ? "bg-green-100 text-green-700" :
-                        row.remark === "FAIL" ? "bg-red-100 text-red-700" :
-                          "bg-gray-100 text-gray-600"
+                      row.remark === "FAIL" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-600"
                       }`}>
                       {row.remark}
                     </span>
