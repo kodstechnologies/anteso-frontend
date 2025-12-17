@@ -95,6 +95,7 @@ interface MachineData {
             assignedAtStaff?: string | undefined    // For QA Test
         }
         reportUrl: any
+        qaTestSubmittedAt?: string
         reportNumber?: string
         urlNumber?: string
         assignedTechnicianName?: string
@@ -674,29 +675,19 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     reportNumber: "N/A",
                                     urlNumber: "N/A",
                                     serviceId: machineData._id,
-                                    assignedStaffId: workTypeDetail.QAtest?.officeStaff?._id || workTypeDetail.QAtest?.officeStaff || undefined,
-                                    assignedStaffName: workTypeDetail.QAtest?.officeStaff?.name,
-                                    assignmentStatus: workTypeDetail.QAtest?.officeStaff?.status,
+                                    // QA Test staff should be assigned explicitly from the staff dropdown,
+                                    // not auto-bound to the engineer or any existing officeStaff on QATest.
+                                    assignedStaffId: undefined,
+                                    assignedStaffName: undefined,
+                                    assignmentStatus: undefined,
                                     assignedAtStaff: workTypeDetail.QAtest?.assignedAt,
                                     completedAt: workTypeDetail.completedAt || undefined,
                                     statusHistory: workTypeDetail.QAtest?.statusHistory || workTypeDetail.statusHistory || [],
+                                    qaTestSubmittedAt: workTypeDetail.QAtest?.qatestSubmittedAt || undefined,
                                 });
 
-                                // ✅ Save assigned Office Staff
-                                const qaStaff = workTypeDetail.QAtest?.officeStaff;
-                                if (qaStaff) {
-                                    staffAssignments[`${cardId}-qa-test`] = {
-                                        type: "Office Staff",
-                                        id: qaStaff._id || qaStaff,
-                                    };
-                                    initialAssignments[`${cardId}-qa-test`] = {
-                                        isAssigned: true,
-                                        staffId: qaStaff._id || qaStaff,
-                                        staffName: qaStaff.name || "",
-                                        status: workTypeDetail.status
-                                    };
-                                    initialSelectedStatuses[`${cardId}-qa-test`] = workTypeDetail.status || "pending";
-                                }
+                                // ✅ Do NOT pre-assign QA Test staff from backend;
+                                // assignment should come only from staff dropdown interactions.
                             } else {
                                 // ---- Other Work Types ----
                                 const customId = workTypeDetail.workType
@@ -2511,6 +2502,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                             state: {
                                                                                                 serviceId: cleanId,
                                                                                                 machineType: service.machineType,
+                                                                                                qaTestDate: workType.qaTestSubmittedAt || null,
                                                                                             },
                                                                                         });
                                                                                     }}

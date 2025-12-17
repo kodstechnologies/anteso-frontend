@@ -17,8 +17,7 @@ interface RowData {
   id: string;
   appliedKvp: string;
   setTime: string;
-  maStation1: MAStationData;
-  maStation2: MAStationData;
+  maStations: MAStationData[];
   avgKvp: string;
   avgTime: string;
   remark: "PASS" | "FAIL" | "-";

@@ -43,7 +43,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serviceId, qaTestDate }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -87,6 +87,15 @@ const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         engineerNameRPId: "",
     });
 
+    const addYearsToDate = (dateStr: string, years: number): string => {
+        if (!dateStr) return "";
+        const base = dateStr.split("T")[0];
+        const d = new Date(base);
+        if (Number.isNaN(d.getTime())) return base;
+        d.setFullYear(d.getFullYear() + years);
+        return d.toISOString().split("T")[0];
+    };
+
     // Only fetch initial service details and tools — NOT saved report
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -104,12 +113,19 @@ const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
 
                 setDetails(data);
 
+                const rawTestDate =
+                    qaTestDate ||
+                    firstTest?.createdAt ||
+                    "";
+                const baseTestDate = rawTestDate ? rawTestDate.split("T")[0] : "";
+                const dueDate = baseTestDate ? addYearsToDate(baseTestDate, 5) : "";
+
                 // Pre-fill form from service details
                 setFormData({
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
-                    srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    srfDate: baseTestDate || "",
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
@@ -120,8 +136,8 @@ const OPG: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     condition: "OK",
                     testingProcedureNumber: "",
                     pages: "",
-                    testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-                    testDueDate: "",
+                    testDate: baseTestDate,
+                    testDueDate: dueDate,
                     location: data.hospitalAddress,
                     temperature: "",
                     humidity: "",

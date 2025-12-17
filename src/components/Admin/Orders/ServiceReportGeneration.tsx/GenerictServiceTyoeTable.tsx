@@ -41,8 +41,13 @@ import KVImagingReport from "./TestTables/OBI/GenerateServiceReport"
 // import RadiationSurveyReport from './reports/RadiationSurveyReport';
 // import OthersReport from './reports/OthersReport';
 
+type ReportComponentProps = {
+  serviceId: string;
+  qaTestDate?: string | null;
+};
+
 // ---- 2. Map machine → component ---------------------------------------
-const REPORT_MAP: Record<string, React.FC<{ serviceId: string }>> = {
+const REPORT_MAP: Record<string, React.ComponentType<ReportComponentProps>> = {
   // 'Fixed X-Ray': FixedXRayReport,
   // 'Mobile X-Ray': MobileXRayReport,
   'C-Arm': CArmReport,
@@ -77,7 +82,7 @@ const GenerateServiceReport: React.FC = () => {
   const location = useLocation();
   console.log("📦 Location state →", location.state);
 
-  const { state } = location as { state?: { serviceId?: string; machineType?: string } };
+  const { state } = location as { state?: { serviceId?: string; machineType?: string; qaTestDate?: string | null } };
 
   console.log("🧭 From location.state:", state);
 
@@ -89,7 +94,7 @@ const GenerateServiceReport: React.FC = () => {
     );
   }
 
-  const { serviceId, machineType } = state;
+  const { serviceId, machineType, qaTestDate } = state;
 
   // ---- 5. Find the correct component ------------------------------------
   const ReportComponent = REPORT_MAP[machineType];
@@ -103,7 +108,7 @@ const GenerateServiceReport: React.FC = () => {
   }
 
   // ---- 6. Render it with serviceId ---------------------------------------
-  return <ReportComponent serviceId={serviceId} />;
+  return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} />;
 };
 
 export default GenerateServiceReport;

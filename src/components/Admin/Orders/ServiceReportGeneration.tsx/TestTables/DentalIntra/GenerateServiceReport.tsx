@@ -66,9 +66,10 @@ interface ToolsResponse {
 
 interface DentalProps {
     serviceId: string;
+    qaTestDate?: string | null;
 }
 
-const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
+const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate }) => {
     const navigate = useNavigate();
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -100,6 +101,15 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
         engineerNameRPId: "",
     });
 
+    const addYearsToDate = (dateStr: string, years: number): string => {
+        if (!dateStr) return "";
+        const base = dateStr.split("T")[0];
+        const d = new Date(base);
+        if (Number.isNaN(d.getTime())) return base;
+        d.setFullYear(d.getFullYear() + years);
+        return d.toISOString().split("T")[0];
+    };
+
     useEffect(() => {
         if (!serviceId) return;
 
@@ -116,11 +126,19 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                 
                 // Pre-fill form from service details
                 const firstTest = data.qaTests[0];
+
+                const rawTestDate =
+                    qaTestDate ||
+                    firstTest?.createdAt ||
+                    "";
+                const baseTestDate = rawTestDate ? rawTestDate.split("T")[0] : "";
+                const dueDate = baseTestDate ? addYearsToDate(baseTestDate, 5) : "";
+
                 setFormData({
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
-                    srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    srfDate: baseTestDate || "",
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
@@ -130,8 +148,8 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
                     condition: "OK",
                     testingProcedureNumber: "",
                     pages: "",
-                    testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-                    testDueDate: "",
+                    testDate: baseTestDate,
+                    testDueDate: dueDate,
                     location: data.hospitalAddress,
                     temperature: "",
                     humidity: "",
@@ -162,7 +180,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId }) => {
         };
 
         fetchAll();
-    }, [serviceId]);
+    }, [serviceId, qaTestDate]);
 
     const formatDate = (iso: string) => iso.split("T")[0];
     const [savedTestIds, setSavedTestIds] = useState<Record<string, string>>({});
