@@ -11,7 +11,7 @@ import type { BreadcrumbItem } from "../../common/Breadcrumb"
 import IconHome from "../../Icon/IconHome"
 import IconBox from "../../Icon/IconBox"
 import IconBook from "../../Icon/IconBook"
-import { allEmployees, createOrder, getAllDealers, getAllEmployees, getAllManufacturer, getAllStates } from "../../../api"
+import { allEmployees, createOrder, getAllDealers, getAllEmployees, getAllManufacturer, getAllStates, getAllActiveEmployees } from "../../../api"
 import AnimatedTrashIcon from "../../common/AnimatedTrashIcon"
 
 interface OptionType {
@@ -191,7 +191,7 @@ const CreateOrder: React.FC = () => {
         const fetchData = async () => {
             try {
                 const [empResponse, dealerResponse, manufacturerResponse] = await Promise.all([
-                    getAllEmployees(), // ✅ replaced here
+                    getAllActiveEmployees(), // ✅ replaced here
                     getAllDealers(),
                     getAllManufacturer()
                 ]);

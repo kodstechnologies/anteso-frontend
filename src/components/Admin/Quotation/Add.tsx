@@ -7,7 +7,7 @@ import signature from "../../../assets/quotationImg/signature.png"
 import qrcode from "../../../assets/quotationImg/qrcode.png"
 import logo from "../../../assets/logo/logo-sm.png"
 import IconTrashLines from "../../Icon/IconTrashLines"
-import { getEnquiryById, createQuotationByEnquiryId, getAllDealers, getNextQuotationNumber, getAllEmployees, getAllManufacturer } from "../../../api"
+import { getEnquiryById, createQuotationByEnquiryId, getAllDealers, getNextQuotationNumber, getAllActiveEmployees, getAllManufacturer } from "../../../api"
 import { showMessage } from "../../common/ShowMessage"
 import ConfirmModal from "../../common/ConfirmModal"
 
@@ -524,7 +524,7 @@ const AddQuotation: React.FC = () => {
         const fetchData = async () => {
             try {
                 const [empRes, dealerRes, manufacturerRes] = await Promise.all([
-                    getAllEmployees(),
+                    getAllActiveEmployees(),
                     getAllDealers(),
                     getAllManufacturer()
                 ]);

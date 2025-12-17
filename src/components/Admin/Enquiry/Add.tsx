@@ -6,7 +6,7 @@ import { FieldArray, Field, Form, Formik, ErrorMessage, type FieldProps } from "
 import { Link, useNavigate } from "react-router-dom"
 import Select from "react-select"
 import { showMessage } from "../../common/ShowMessage"
-import { addEnquiryCreateDirectOrder, getAllDealers, getAllEmployees, getAllManufacturer, getAllStates } from "../../../api/index" // Update this path
+import { addEnquiryCreateDirectOrder, getAllDealers, getAllEmployees, getAllManufacturer, getAllStates, getAllActiveEmployees } from "../../../api/index" // Update this path
 import AnimatedTrashIcon from "../../common/AnimatedTrashIcon"
 
 // Define interfaces
@@ -185,7 +185,7 @@ const AddEnquiry: React.FC = () => {
     useEffect(() => {
         const fetchEmployees = async () => {
             try {
-                const res = await getAllEmployees(); // <-- Use your API function
+                const res = await getAllActiveEmployees(); // <-- Use your API function
                 console.log("🚀 ~ fetchEmployees ~ res:", res)
                 // If your API returns data in `res.data` (like `return res.data`), this will already be an array
                 const options = res.data.map((emp: any) => ({

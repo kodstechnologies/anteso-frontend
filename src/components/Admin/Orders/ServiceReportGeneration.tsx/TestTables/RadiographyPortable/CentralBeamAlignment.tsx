@@ -44,13 +44,13 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   });
 
   // Observed Tilt — only the measured value
-  const [observedTilt, setObservedTilt] = useState<string>('1.8');
+  const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
   // Tolerance (Acceptance Criteria)
-  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '<=' | '>=' | '='>('<=');
-  const [toleranceValue, setToleranceValue] = useState<string>('2');
+  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>'>('<');
+  const [toleranceValue, setToleranceValue] = useState<string>('1.5');
 
-  const operators = ['<', '>', '<=', '>=', '='] as const;
+  const operators = ['<', '>'] as const;
 
   // Auto-calculate Pass/Fail based on TOLERANCE
   const evaluation = useMemo(() => {
@@ -237,10 +237,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-white transition-all shadow-lg ${isSaving
-              ? "bg-gray-400 cursor-not-allowed"
-              : isViewOnly
-                ? "bg-orange-600 hover:bg-orange-700"
-                : "bg-teal-600 hover:bg-teal-700"
+            ? "bg-gray-400 cursor-not-allowed"
+            : isViewOnly
+              ? "bg-orange-600 hover:bg-orange-700"
+              : "bg-teal-600 hover:bg-teal-700"
             }`}
         >
           {isSaving ? (
@@ -329,10 +329,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
             <div className="mt-8">
               <span className={`px-16 py-8 rounded-full text-3xl font-bold shadow-lg border-4 ${evaluation.remark === 'Pass'
-                  ? 'bg-green-100 text-green-800 border-green-500'
-                  : evaluation.remark === 'Fail'
-                    ? 'bg-red-100 text-red-800 border-red-500'
-                    : 'bg-gray-100 text-gray-600 border-gray-300'
+                ? 'bg-green-100 text-green-800 border-green-500'
+                : evaluation.remark === 'Fail'
+                  ? 'bg-red-100 text-red-800 border-red-500'
+                  : 'bg-gray-100 text-gray-600 border-gray-300'
                 }`}>
                 {evaluation.remark || '—'}
               </span>
@@ -376,8 +376,8 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <div className="mt-12">
           <p className="text-2xl font-bold text-indigo-900">
             Final Result: <span className={`ml-4 px-8 py-4 rounded-full text-3xl ${finalResult === 'PASS' ? 'bg-green-500 text-white' :
-                finalResult === 'FAIL' ? 'bg-red-500 text-white' :
-                  'bg-gray-400 text-white'
+              finalResult === 'FAIL' ? 'bg-red-500 text-white' :
+                'bg-gray-400 text-white'
               }`}>
               {finalResult}
             </span>

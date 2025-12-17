@@ -75,6 +75,7 @@ const Employee = () => {
         fetchEmployees();
     }, []);
 
+
     // Pagination effect
     useEffect(() => {
         const from = (page - 1) * pageSize;
@@ -102,11 +103,11 @@ const Employee = () => {
     }, [search, items]);
 
     // Sorting effect
-    useEffect(() => {
-        const sorted = sortBy(initialRecords, sortStatus.columnAccessor as string);
-        setRecords(sortStatus.direction === 'desc' ? sorted.reverse() : sorted);
-        setPage(1);
-    }, [sortStatus, initialRecords]);
+    // useEffect(() => {
+    //     const sorted = sortBy(initialRecords, sortStatus.columnAccessor as string);
+    //     setRecords(sortStatus.direction === 'desc' ? sorted.reverse() : sorted);
+    //     setPage(1);
+    // }, [sortStatus, initialRecords]);
 
     const deleteRow = (id: string) => {
         setSelectedEmployeeId(id);
@@ -180,7 +181,7 @@ const Employee = () => {
 
                                 {
                                     accessor: 'status',
-                                    sortable: true,
+                                    sortable: false,
                                     render: ({ status }) => <span className={`text-${status.color}`}>{status.tooltip}</span>,
                                 },
                                 {

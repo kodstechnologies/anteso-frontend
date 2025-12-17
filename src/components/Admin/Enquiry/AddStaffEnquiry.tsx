@@ -6,7 +6,7 @@ import { FieldArray, Field, Form, Formik, ErrorMessage, type FieldProps } from "
 import { Link, useNavigate } from "react-router-dom"
 import Select from "react-select"
 import { showMessage } from "../../common/ShowMessage"
-import { addEnquiryCreateDirectOrder, allEmployees, getAllDealers, getAllStates } from "../../../api/index" // Update this path
+import { addEnquiryCreateDirectOrder, getAllActiveEmployees, getAllDealers, getAllManufacturer, getAllStates } from "../../../api/index" // Update this path
 import AnimatedTrashIcon from "../../common/AnimatedTrashIcon"
 
 // Define interfaces
@@ -162,6 +162,8 @@ const AddStaffEnquiry: React.FC = () => {
     const [dealerOptions, setDealerOptions] = useState<{ label: string; value: string }[]>([]);
     const [states, setStates] = useState<StateType[]>([]);
     const [loading, setLoading] = useState(true);
+    const [manufacturerOptions, setManufacturerOptions] = useState<{ label: string; value: string }[]>([]);
+
     useEffect(() => {
         const fetchStates = async () => {
             try {
@@ -179,8 +181,8 @@ const AddStaffEnquiry: React.FC = () => {
     useEffect(() => {
         const fetchEmployees = async () => {
             try {
-                const data = await allEmployees();
-                const options = data.map((emp: any) => ({
+                const data = await getAllActiveEmployees();
+                const options = data.data.map((emp: any) => ({
                     label: `${emp.name} - employee`,
                     value: emp._id,
                 }));
@@ -203,9 +205,27 @@ const AddStaffEnquiry: React.FC = () => {
                 console.error("Failed to load dealers", err);
             }
         };
+        const fetchManufacturers = async () => {
+            try {
+                const res = await getAllManufacturer(); // ✅ call your API
+                const data = res.data.data; // handle both response shapes
+                console.log("🚀 ~ fetchManufacturers ~ data:", data)
+                const options = data.map((m: any) => ({
+                    label: `${m.name} - manufacturer`,
+                    value: m._id,
+                }));
+                // ✅ Append them to the dropdown by merging with existing options
+                setManufacturerOptions(options);
+            } catch (err) {
+                console.error("Failed to load manufacturers", err);
+            }
+        };
+
 
         fetchEmployees();
         fetchDealers();
+        fetchManufacturers();
+
     }, []);
     // Yup validation schema
     const SubmittedForm = Yup.object().shape({
@@ -341,7 +361,7 @@ const AddStaffEnquiry: React.FC = () => {
                                     <label htmlFor="leadOwner">Lead Owner</label>
                                     <Field as="select" name="leadOwner" className="form-input">
                                         <option value="">Select Lead Owner</option>
-                                        {[...employeeOptions, ...dealerOptions].map((option) => (
+                                        {[...employeeOptions, ...dealerOptions, ...manufacturerOptions].map((option) => (
                                             <option key={option.value} value={option.value}>
                                                 {option.label}
                                             </option>

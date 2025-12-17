@@ -205,7 +205,7 @@ export const getClientById = async (clientId: any) => {
 export const updateClientById = async (clientId: any, updatedData: any) => {
     try {
         const token = Cookies.get('accessToken');
-        const res = await api.put(`/clients/update/${clientId}`, updatedData, {
+        const res = await api.patch(`/clients/update/${clientId}`, updatedData, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -3408,6 +3408,25 @@ export const getActiveStaffs = async () => {
         // console.log("hi from getAllTechnicianss");
 
         const res = await api.get('/technician/all-active-staffs', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        // console.log("🚀 ~ getAllTechnicians ~ res:", res)
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ all  technicians ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch technician data"
+        );
+    }
+}
+export const getAllActiveEmployees = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        // console.log("hi from getAllTechnicianss");
+
+        const res = await api.get('/technician/all-active-employees', {
             headers: {
                 Authorization: `Bearer ${token}`,
             },

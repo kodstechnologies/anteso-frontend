@@ -48,7 +48,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
   // Tolerance (Acceptance Criteria)
-  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '<=' | '>=' | '='>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>'>('<');
   const [toleranceValue, setToleranceValue] = useState<string>('1.5');
 
   const operators = ['<', '>',] as const;
