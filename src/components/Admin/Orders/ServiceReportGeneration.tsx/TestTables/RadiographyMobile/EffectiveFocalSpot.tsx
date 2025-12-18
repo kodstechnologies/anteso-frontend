@@ -2,18 +2,17 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Edit3, Save, Loader2 } from 'lucide-react';
+import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addEffectiveFocalSpotForRadiographyMobile,
   getEffectiveFocalSpotByServiceIdForRadiographyMobile,
-  getEffectiveFocalSpotByTestIdForRadiographyMobile,
   updateEffectiveFocalSpotForRadiographyMobile,
 } from '../../../../../../api';
 
 interface FocalSpotRow {
   id: string;
-  focusType: 'Large Focus' | 'Small Focus';
+  focusType: string;
   statedWidth: string;
   statedHeight: string;
   measuredWidth: string;
@@ -35,6 +34,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
   const [fcd, setFcd] = useState<string>('100');
 
+  // Editable tolerance values in header
   const [tolSmallMul, setTolSmallMul] = useState<string>('0.5');
   const [smallLimit, setSmallLimit] = useState<string>('0.8');
 
@@ -44,6 +44,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
   const [tolLargeMul, setTolLargeMul] = useState<string>('0.3');
 
+  // CORRECT: mutable state
   const [rows, setRows] = useState<FocalSpotRow[]>([
     {
       id: 'large',
@@ -65,15 +66,40 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
     },
   ]);
 
+  // Update any field in a row
   const updateRow = (id: string, field: keyof FocalSpotRow, value: string) => {
     setRows(prev => prev.map(row =>
       row.id === id ? { ...row, [field]: value } : row
     ));
   };
 
+  const addRow = () => {
+    setRows(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        focusType: 'Large Focus',
+        statedWidth: '',
+        statedHeight: '',
+        measuredWidth: '',
+        measuredHeight: '',
+        remark: '',
+      }
+    ]);
+  };
+
+  const removeRow = (id: string) => {
+    if (rows.length <= 1) {
+      toast.error("At least one row is required");
+      return;
+    }
+    setRows(prev => prev.filter(r => r.id !== id));
+  };
+
+  // Auto-calculate Pass/Fail
   const processedRows = useMemo(() => {
     const sLimit = parseFloat(smallLimit) || 0.8;
-    const mLower = parseFloat(mediumLower) || 0.8;
+    const mLower = parseFloat(mediumLower) || 0.8; // Not explicitly used in logic but kept for consistency
     const mUpper = parseFloat(mediumUpper) || 1.5;
 
     const tSmall = parseFloat(tolSmallMul) || 0.5;
@@ -94,18 +120,19 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       else if (avgStated > mUpper) multiplier = tLarge;
 
       const allowed = avgStated + avgStated * multiplier;
-      const isPass = avgMeasured <= allowed && mw > 0 && mh > 0;
+      const isPass = avgMeasured <= allowed; // Removed > 0 check for pass/fail calculation itself, but remark requires values
+
+      // Remark logic: only show if measured values are entered
+      const hasMeasured = mw > 0 && mh > 0;
 
       return {
         ...row,
-        remark: mw > 0 && mh > 0
-          ? (isPass ? 'Pass' : 'Fail')
-          : ''
+        remark: hasMeasured ? (isPass ? 'Pass' : 'Fail') : ''
       };
     });
   }, [rows, tolSmallMul, smallLimit, tolMediumMul, mediumLower, mediumUpper, tolLargeMul]);
 
-  const finalResult = processedRows.every(r => r.remark === 'Pass')
+  const finalResult = processedRows.every(r => r.remark === 'Pass' || r.remark === '') && processedRows.some(r => r.remark !== '')
     ? 'PASS'
     : processedRows.some(r => r.remark === 'Fail')
       ? 'FAIL'
@@ -131,8 +158,8 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
           }
           if (data.focalSpots && data.focalSpots.length > 0) {
             setRows(data.focalSpots.map((spot: any) => ({
-              id: spot.focusType === 'Large Focus' ? 'large' : 'small',
-              focusType: spot.focusType || (spot.focusType === 'Large Focus' ? 'Large Focus' : 'Small Focus'),
+              id: spot._id || Date.now().toString() + Math.random(),
+              focusType: spot.focusType || 'Large Focus',
               statedWidth: String(spot.statedWidth || ''),
               statedHeight: String(spot.statedHeight || ''),
               measuredWidth: String(spot.measuredWidth || ''),
@@ -181,7 +208,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
           measuredHeight: parseFloat(row.measuredHeight) || 0,
           remark: row.remark,
         })),
-        finalResult: finalResult,
+        finalResult: finalResult === 'PENDING' ? 'FAIL' : finalResult, // Default to FAIL if pending on save, or handle as needed
       };
 
       let result;
@@ -211,6 +238,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Effective Focal Spot Size</h2>
         <button
@@ -233,6 +261,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
         </button>
       </div>
 
+      {/* FCD */}
       <div className="bg-white shadow-md rounded-xl border border-gray-200 p-6">
         <h3 className="text-lg font-bold text-gray-800 mb-4">Focal Spot Distance (FCD)</h3>
         <div className="flex items-center justify-center gap-4">
@@ -247,10 +276,22 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
         </div>
       </div>
 
+      {/* Main Table */}
       <div className="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
-        <h3 className="px-6 py-4 text-lg font-bold bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-          Effective Focal Spot Size Measurement
-        </h3>
+        <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+          <h3 className="text-lg font-bold">
+            Effective Focal Spot Size Measurement
+          </h3>
+          {!isViewOnly && (
+            <button
+              onClick={addRow}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Row
+            </button>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead className="bg-purple-50">
@@ -258,45 +299,59 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Focus</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Stated Value (mm × mm)</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Measured Value (mm × mm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase leading-tight">
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span>+</span>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 leading-tight">
+                  <div className="space-y-3 text-sm normal-case">
+                    <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">
+                      <span className="font-bold">+</span>
                       <input type="number" step="0.1" value={tolSmallMul} onChange={(e) => setTolSmallMul(e.target.value)} disabled={isViewOnly}
-                        className="w-14 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>f for f {"<"}</span>
+                        className="w-14 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="font-medium">f for f {"<"}</span>
                       <input type="number" step="0.1" value={smallLimit} onChange={(e) => setSmallLimit(e.target.value)} disabled={isViewOnly}
-                        className="w-16 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>mm</span>
+                        className="w-16 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="text-gray-600">mm</span>
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span>+</span>
+                    <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">
+                      <span className="font-bold">+</span>
                       <input type="number" step="0.1" value={tolMediumMul} onChange={(e) => setTolMediumMul(e.target.value)} disabled={isViewOnly}
-                        className="w-14 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>f for</span>
+                        className="w-14 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="font-medium">f for</span>
                       <input type="number" step="0.1" value={mediumLower} onChange={(e) => setMediumLower(e.target.value)} disabled={isViewOnly}
-                        className="w-16 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>≤ f ≤</span>
+                        className="w-16 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="font-medium">≤ f ≤</span>
                       <input type="number" step="0.1" value={mediumUpper} onChange={(e) => setMediumUpper(e.target.value)} disabled={isViewOnly}
-                        className="w-16 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>mm</span>
+                        className="w-16 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="text-gray-600">mm</span>
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span>+</span>
+                    <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">
+                      <span className="font-bold">+</span>
                       <input type="number" step="0.1" value={tolLargeMul} onChange={(e) => setTolLargeMul(e.target.value)} disabled={isViewOnly}
-                        className="w-14 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>f for f {">"}</span>
-                      <input type="number" step="0.1" value={mediumUpper} disabled className="w-16 px-2 py-1 text-center bg-gray-100 text-gray-500" />
-                      <span>mm</span>
+                        className="w-14 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="font-medium">f for f {">"}</span>
+                      <input type="number" step="0.1" value={mediumUpper} disabled className="w-16 px-1 py-0.5 text-center bg-gray-200 text-gray-500 border border-gray-300 rounded font-bold" />
+                      <span className="text-gray-600">mm</span>
                     </div>
                   </div>
                 </th>
+                <th className="px-4 py-4 w-10"></th>
               </tr>
             </thead>
             <tbody>
               {processedRows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50 border-t">
-                  <td className="px-6 py-4 font-bold text-gray-800">{row.focusType}</td>
+                  <td className="px-6 py-4 font-bold text-gray-800">
+                    {isViewOnly ? (
+                      <span className="text-gray-900">{row.focusType}</span>
+                    ) : (
+                      <select
+                        value={row.focusType}
+                        onChange={(e) => updateRow(row.id, 'focusType', e.target.value)}
+                        className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 bg-white"
+                      >
+                        <option value="Large Focus">Large Focus</option>
+                        <option value="Small Focus">Small Focus</option>
+                      </select>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <input type="number" step="0.1" value={row.statedWidth} onChange={(e) => updateRow(row.id, 'statedWidth', e.target.value)} disabled={isViewOnly}
@@ -332,14 +387,25 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-block px-12 py-4 rounded-full text-xl font-bold min-w-36 ${row.remark === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : row.remark === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-600'
+                    <span className={`inline-block px-8 py-3 rounded-full text-lg font-bold min-w-28 ${row.remark === 'Pass'
+                      ? 'bg-green-100 text-green-800'
+                      : row.remark === 'Fail'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-600'
                       }`}>
                       {row.remark || '—'}
                     </span>
+                  </td>
+                  <td className="px-4 py-4 text-center">
+                    {!isViewOnly && rows.length > 1 && (
+                      <button
+                        onClick={() => removeRow(row.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-full transition-colors"
+                        title="Remove row"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -347,6 +413,20 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
           </table>
         </div>
       </div>
+
+      {/* Final Result */}
+      {/* <div className="flex justify-start">
+        <p className="text-xl font-bold text-gray-800">
+          Overall Result:
+          <span className={`ml-3 px-6 py-2 rounded-lg ${finalResult === 'PASS' ? 'bg-green-600 text-white' :
+            finalResult === 'FAIL' ? 'bg-red-600 text-white' :
+              'bg-gray-400 text-white'
+            }`}>
+            {finalResult}
+          </span>
+        </p>
+      </div> */}
+
     </div>
   );
 };

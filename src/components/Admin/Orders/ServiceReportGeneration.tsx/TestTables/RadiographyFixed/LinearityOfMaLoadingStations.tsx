@@ -132,7 +132,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
+      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4) : '—';
       const ma = parseFloat(row.ma);
       const x = avg !== '—' && ma > 0 ? (parseFloat(avg) / ma).toFixed(4) : '—';
 
@@ -149,7 +149,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : 0;
-    const col = hasData && colNum > 0 ? colNum.toFixed(3) : '—';
+    const col = hasData && colNum > 0 ? colNum.toFixed(4) : '—';
     
     // Determine pass/fail based on tolerance operator
     let pass = false;

@@ -42,7 +42,18 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
     const [toleranceValue, setToleranceValue] = useState("2.0");
-    const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "" });
+    const [totalFiltration, setTotalFiltration] = useState({ 
+        measured: "", 
+        required: "",
+        atKvp: "" 
+    });
+    const [filtrationTolerance, setFiltrationTolerance] = useState({
+        forKvGreaterThan70: "1.5",
+        forKvBetween70And100: "2.0",
+        forKvGreaterThan100: "2.5",
+        kvThreshold1: "70",  // Threshold for "kV > 70" and lower bound for "70 ≤ kV ≤ 100"
+        kvThreshold2: "100"  // Upper bound for "70 ≤ kV ≤ 100" and threshold for "kV > 100"
+    });
 
     // Load existing test data
     useEffect(() => {
@@ -89,6 +100,14 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                         setTotalFiltration({
                             measured: data.totalFiltration?.measured || "",
                             required: data.totalFiltration?.required || "",
+                            atKvp: data.totalFiltration?.atKvp || "",
+                        });
+                        setFiltrationTolerance({
+                            forKvGreaterThan70: data.filtrationTolerance?.forKvGreaterThan70 || "1.5",
+                            forKvBetween70And100: data.filtrationTolerance?.forKvBetween70And100 || "2.0",
+                            forKvGreaterThan100: data.filtrationTolerance?.forKvGreaterThan100 || "2.5",
+                            kvThreshold1: data.filtrationTolerance?.kvThreshold1 || "70",
+                            kvThreshold2: data.filtrationTolerance?.kvThreshold2 || "100",
                         });
                         setIsSaved(true);
                 } else {
@@ -123,6 +142,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             })),
             tolerance: { sign: toleranceSign, value: toleranceValue },
             totalFiltration,
+            filtrationTolerance,
         };
 
         setIsSaving(true);
@@ -242,11 +262,38 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         }));
     };
 
+    // Calculate PASS/FAIL for Total Filtration based on tolerance table
     const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-        const m = parseFloat(totalFiltration.measured);
-        const r = parseFloat(totalFiltration.required);
-        if (isNaN(m) || isNaN(r)) return "-";
-        return m >= r ? "PASS" : "FAIL";
+        const kvp = parseFloat(totalFiltration.atKvp);
+        const measured = parseFloat(totalFiltration.required);
+        const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
+        const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
+
+        if (isNaN(kvp) || isNaN(measured)) return "-";
+
+        let requiredTolerance: number;
+
+        // Determine which tolerance range applies based on kVp value
+        // Logic according to requirements:
+        // 1. If kV < threshold1 (e.g., < 70): measured must be >= forKvGreaterThan70 (e.g., >= 1.5) to PASS
+        // 2. If threshold1 <= kV <= threshold2 (e.g., 70 <= kV <= 100): measured must be >= forKvBetween70And100 (e.g., >= 2.0) to PASS
+        // 3. If kV > threshold2 (e.g., > 100): measured must be >= forKvGreaterThan100 (e.g., >= 2.5) to PASS
+        
+        if (kvp < threshold1) {
+            // kV < threshold1 (e.g., < 70) - measured must be >= forKvGreaterThan70 (e.g., >= 1.5)
+            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan70);
+        } else if (kvp >= threshold1 && kvp <= threshold2) {
+            // threshold1 <= kV <= threshold2 (e.g., 70 <= kV <= 100) - measured must be >= forKvBetween70And100 (e.g., >= 2.0)
+            requiredTolerance = parseFloat(filtrationTolerance.forKvBetween70And100);
+        } else {
+            // kV > threshold2 (e.g., > 100) - measured must be >= forKvGreaterThan100 (e.g., >= 2.5)
+            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan100);
+        }
+
+        if (isNaN(requiredTolerance)) return "-";
+
+        // PASS if measured value is greater than or equal to the required tolerance
+        return measured >= requiredTolerance ? "PASS" : "FAIL";
     };
 
     if (isLoading) {
@@ -420,45 +467,110 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             {/* Total Filtration */}
             <div className="bg-white shadow-lg rounded-lg border border-gray-300 p-8">
                 <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
-                <div className="flex items-center justify-center gap-12">
-                    <span className="text-xl font-medium text-gray-700">Total Filtration is</span>
-                    <div className="flex items-center gap-6">
-                        <div className="text-center">
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={totalFiltration.measured}
-                                onChange={(e) => { setTotalFiltration({ ...totalFiltration, measured: e.target.value }); setIsSaved(false); }}
-                                className="w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-green-500 focus:ring-4 focus:ring-green-200"
-                                placeholder="2.35"
-                            />
-                            <p className="text-sm text-gray-600 mt-1">Measured</p>
-                        </div>
-                        <span className="text-3xl font-bold text-gray-800">mm Al</span>
-                        <div className="text-center">
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={totalFiltration.required}
-                                onChange={(e) => { setTotalFiltration({ ...totalFiltration, required: e.target.value }); setIsSaved(false); }}
-                                className="w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200"
-                                placeholder="2.50"
-                            />
-                            <p className="text-sm text-gray-600 mt-1">Required</p>
-                        </div>
+                <div className="flex flex-col items-center justify-center gap-6">
+                    <div className="flex items-center justify-center gap-4 flex-wrap">
+                        <span className="text-xl font-medium text-gray-700">Total Filtration is (at</span>
+                        <input
+                            type="number"
+                            step="1"
+                            value={totalFiltration.atKvp}
+                            onChange={(e) => { setTotalFiltration({ ...totalFiltration, atKvp: e.target.value }); setIsSaved(false); }}
+                            disabled={isSaved}
+                            className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'}`}
+                            placeholder="80"
+                        />
+                        <span className="text-xl font-medium text-gray-700">kVp)</span>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={totalFiltration.required}
+                            onChange={(e) => { setTotalFiltration({ ...totalFiltration, required: e.target.value }); setIsSaved(false); }}
+                            disabled={isSaved}
+                            className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'}`}
+                            placeholder="2.50"
+                        />
+                        <span className="text-3xl font-bold text-gray-800">mm of Al</span>
                     </div>
-                    <span className={`text-5xl font-bold ${getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"}`}>
-                        {getFiltrationRemark()}
-                    </span>
+                    <div className="flex items-center justify-center">
+                        <span className={`text-5xl font-bold ${getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"}`}>
+                            {getFiltrationRemark()}
+                        </span>
+                    </div>
                 </div>
             </div>
 
             <div className="bg-amber-50 border-2 border-amber-400 rounded-lg p-6">
                 <p className="text-lg font-bold text-amber-900 mb-3">Tolerance for Total Filtration:</p>
-                <ul className="space-y-2 text-amber-800">
-                    <li>• <strong>1.5 mm Al</strong> for kV {">"} 70</li>
-                    <li>• <strong>2.0 mm Al</strong> for 70 ≤ kV ≤ 100</li>
-                    <li>• <strong>2.5 mm Al</strong> for kV {">"} 100</li>
+                <ul className="space-y-3 text-amber-800">
+                    <li className="flex items-center gap-3 flex-wrap">
+                        <span>•</span>
+                        <input
+                            type="number"
+                            step="0.1"
+                            value={filtrationTolerance.forKvGreaterThan70}
+                            onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, forKvGreaterThan70: e.target.value }); setIsSaved(false); }}
+                            disabled={isSaved}
+                            className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                        />
+                        <span>mm Al for kV {"<"}</span>
+                        <input
+                            type="number"
+                            step="1"
+                            value={filtrationTolerance.kvThreshold1}
+                            onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold1: e.target.value }); setIsSaved(false); }}
+                            disabled={isSaved}
+                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                        />
+                    </li>
+                    <li className="flex items-center gap-3 flex-wrap">
+                        <span>•</span>
+                        <input
+                            type="number"
+                            step="0.1"
+                            value={filtrationTolerance.forKvBetween70And100}
+                            onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, forKvBetween70And100: e.target.value }); setIsSaved(false); }}
+                            disabled={isSaved}
+                            className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                        />
+                        <span>mm Al for</span>
+                        <input
+                            type="number"
+                            step="1"
+                            value={filtrationTolerance.kvThreshold1}
+                            onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold1: e.target.value }); setIsSaved(false); }}
+                            disabled={isSaved}
+                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                        />
+                        <span>≤ kV ≤</span>
+                        <input
+                            type="number"
+                            step="1"
+                            value={filtrationTolerance.kvThreshold2}
+                            onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold2: e.target.value }); setIsSaved(false); }}
+                            disabled={isSaved}
+                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                        />
+                    </li>
+                    <li className="flex items-center gap-3 flex-wrap">
+                        <span>•</span>
+                        <input
+                            type="number"
+                            step="0.1"
+                            value={filtrationTolerance.forKvGreaterThan100}
+                            onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, forKvGreaterThan100: e.target.value }); setIsSaved(false); }}
+                            disabled={isSaved}
+                            className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                        />
+                        <span>mm Al for kV {">"}</span>
+                        <input
+                            type="number"
+                            step="1"
+                            value={filtrationTolerance.kvThreshold2}
+                            onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold2: e.target.value }); setIsSaved(false); }}
+                            disabled={isSaved}
+                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                        />
+                    </li>
                 </ul>
             </div>
         </div>

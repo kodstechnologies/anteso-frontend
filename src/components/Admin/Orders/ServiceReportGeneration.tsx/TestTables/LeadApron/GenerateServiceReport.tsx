@@ -36,7 +36,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const LeadApron: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null }> = ({ serviceId, qaTestDate, createdAt, ulrNumber }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -70,6 +70,7 @@ const LeadApron: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+        ulrNumber: "",
     });
 
     // Only fetch initial service details and tools — NOT saved report
@@ -89,29 +90,47 @@ const LeadApron: React.FC<{ serviceId: string }> = ({ serviceId }) => {
 
                 setDetails(data);
 
+                // Use createdAt prop for SRF date, or fallback to firstTest createdAt
+                const srfDateValue = createdAt ? (new Date(createdAt).toISOString().split("T")[0]) : 
+                                         (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+
+                // Use qaTestDate for test date, or fallback to firstTest createdAt
+                const testDateValue = qaTestDate ? (new Date(qaTestDate).toISOString().split("T")[0]) :
+                                      (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+
+                // Calculate due date as 2 years from test date
+                let testDueDateValue = "";
+                if (testDateValue) {
+                    const testDate = new Date(testDateValue);
+                    testDate.setFullYear(testDate.getFullYear() + 2);
+                    testDueDateValue = testDate.toISOString().split("T")[0];
+                }
+
                 // Pre-fill form from service details
-                setFormData({
+                setFormData(prev => ({
+                    ...prev,
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
-                    srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-                    testReportNumber: firstTest?.qaTestReportNumber || "",
-                    issueDate: new Date().toISOString().split("T")[0],
+                    srfDate: srfDateValue || prev.srfDate,
+                    testReportNumber: firstTest?.qaTestReportNumber || prev.testReportNumber,
+                    issueDate: prev.issueDate || new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
-                    make: "",
+                    make: prev.make || "",
                     model: data.machineModel,
                     slNumber: data.serialNumber,
-                    category: "",
-                    condition: "OK",
-                    testingProcedureNumber: "",
-                    pages: "",
-                    testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-                    testDueDate: "",
+                    category: prev.category || "",
+                    condition: prev.condition || "OK",
+                    testingProcedureNumber: prev.testingProcedureNumber || "",
+                    pages: prev.pages || "",
+                    testDate: testDateValue || prev.testDate,
+                    testDueDate: testDueDateValue || prev.testDueDate,
                     location: data.hospitalAddress,
-                    temperature: "",
-                    humidity: "",
-                    engineerNameRPId: data.engineerAssigned?.name || "",
-                });
+                    temperature: prev.temperature || "",
+                    humidity: prev.humidity || "",
+                    engineerNameRPId: data.engineerAssigned?.name || prev.engineerNameRPId,
+                    ulrNumber: ulrNumber || prev.ulrNumber || "N/A",
+                }));
 
                 // Map tools
                 const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
@@ -140,7 +159,7 @@ const LeadApron: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         if (serviceId) {
             fetchInitialData();
         }
-    }, [serviceId]);
+    }, [serviceId, createdAt, qaTestDate, ulrNumber]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -216,6 +235,7 @@ const LeadApron: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                         temperature: res.data.temperature || prev.temperature,
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
+                        ulrNumber: res.data.ulrNumber || prev.ulrNumber || "N/A",
                     }));
 
                     // Save test IDs

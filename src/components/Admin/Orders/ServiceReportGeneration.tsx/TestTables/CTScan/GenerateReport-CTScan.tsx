@@ -22,6 +22,11 @@ import ConsisitencyOfRadiationOutput from "./OutputConsistency";
 import HighContrastResolutionForCTScan from "./HighContrastResolutionForCTScan";
 import LowContrastResolutionForCT from "./LowContrastResolutionForCTScan";
 // import MeasureMaxRadiationLevel from "./MeasureMaxRadiationLevel";
+import DetailsOfRadiationProtection from "./DetailsOfRadiationProtection";
+import LinearityOfMasLoading from "./LinearityOfMasLoading";
+import AlignmentOfTableGantry from "./AlignmentOfTableGantry";
+import TablePosition from "./TablePosition";
+import GantryTilt from "./GantryTilt";
 interface Standard {
     slNumber: string;
     nomenclature: string;
@@ -46,7 +51,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; createdAt?: string | null }> = ({ serviceId, qaTestDate, createdAt }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -57,6 +62,22 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
     const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
+    const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
+    const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
+    const [savedTestIds, setSavedTestIds] = useState<{
+        LinearityOfMasLoadingCTScan?: string;
+    }>({});
+
+    // Helper function to add years to a date
+    const addYearsToDate = (dateStr: string, years: number): string => {
+        if (!dateStr) return "";
+        const base = dateStr.split("T")[0];
+        const d = new Date(base);
+        if (Number.isNaN(d.getTime())) return base;
+        d.setFullYear(d.getFullYear() + years);
+        return d.toISOString().split("T")[0];
+    };
+
     const [formData, setFormData] = useState({
         customerName: "",
         address: "",
@@ -97,12 +118,20 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
 
                 setDetails(data);
 
+                // Calculate dates
+                const srfDateValue = createdAt ? (new Date(createdAt).toISOString().split("T")[0]) : 
+                                    (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+                
+                const rawTestDate = qaTestDate || firstTest?.createdAt || "";
+                const testDateValue = rawTestDate ? rawTestDate.split("T")[0] : "";
+                const testDueDateValue = testDateValue ? addYearsToDate(testDateValue, 2) : "";
+
                 // Pre-fill form from service details
                 setFormData({
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
-                    srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    srfDate: srfDateValue,
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
@@ -113,8 +142,8 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                     condition: "OK",
                     testingProcedureNumber: "",
                     pages: "",
-                    testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-                    testDueDate: "",
+                    testDate: testDateValue,
+                    testDueDate: testDueDateValue,
                     location: data.hospitalAddress,
                     temperature: "",
                     humidity: "",
@@ -226,6 +255,63 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         };
         loadReportHeader();
     }, [serviceId]);
+
+    // Load report header to check for timer test and show modal if needed
+    useEffect(() => {
+        const loadReportHeader = async () => {
+            if (!serviceId) return;
+            try {
+                const res = await getReportHeaderForCTScan(serviceId);
+                if (res?.exists && res?.data) {
+                    // Check if AccuracyOfIrradiationTime test exists
+                    if (res.data.AccuracyOfIrradiationTimeCTScan) {
+                        setHasTimer(true);
+                        setShowTimerModal(false);
+                    } else {
+                        // Check localStorage for saved choice
+                        const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
+                        if (savedChoice !== null) {
+                            setHasTimer(JSON.parse(savedChoice));
+                            setShowTimerModal(false);
+                        } else {
+                            // Only show modal if no saved choice and no existing test
+                            setShowTimerModal(true);
+                        }
+                    }
+                } else {
+                    // No report header exists, check localStorage
+                    const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
+                    if (savedChoice !== null) {
+                        setHasTimer(JSON.parse(savedChoice));
+                        setShowTimerModal(false);
+                    } else {
+                        // Show modal only if no saved choice
+                        setShowTimerModal(true);
+                    }
+                }
+            } catch (err) {
+                console.log("No report header found or failed to load:", err);
+                // On error, check localStorage
+                const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
+                if (savedChoice !== null) {
+                    setHasTimer(JSON.parse(savedChoice));
+                    setShowTimerModal(false);
+                } else {
+                    setShowTimerModal(true);
+                }
+            }
+        };
+        loadReportHeader();
+    }, [serviceId]);
+
+    // Close modal and set timer choice
+    const handleTimerChoice = (choice: boolean) => {
+        setHasTimer(choice);
+        setShowTimerModal(false);
+        // Persist choice in localStorage
+        localStorage.setItem(`ctscan_timer_choice_${serviceId}`, JSON.stringify(choice));
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -242,6 +328,34 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
         );
     }
 
+    // MODAL POPUP
+    if (showTimerModal && hasTimer === null) {
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105 animate-in fade-in duration-300">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-4">Timer Test Availability</h3>
+                    <p className="text-gray-600 mb-8">
+                        Does this CT Scan unit have a selectable <strong>Irradiation Time (Timer)</strong> setting?
+                    </p>
+                    <div className="flex gap-4 justify-center">
+                        <button
+                            onClick={() => handleTimerChoice(true)}
+                            className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition transform hover:scale-105"
+                        >
+                            Yes, Has Timer
+                        </button>
+                        <button
+                            onClick={() => handleTimerChoice(false)}
+                            className="px-8 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition transform hover:scale-105"
+                        >
+                            No Timer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
@@ -251,14 +365,28 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
             {/* Customer Info */}
             <section className="mb-10 bg-gray-50 p-6 rounded-lg">
                 <h2 className="text-xl font-semibold text-blue-700 mb-4">1. Name and Address of Customer</h2>
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-1 gap-6">
                     <div>
                         <label className="block font-medium mb-1">Customer Name</label>
-                        <input type="text" name="customerName" value={formData.customerName} onChange={handleInputChange} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
+                        <textarea 
+                            name="customerName" 
+                            value={formData.customerName} 
+                            onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))} 
+                            readOnly 
+                            rows={2}
+                            className="w-full border rounded-md px-3 py-2 bg-gray-100 resize-none" 
+                        />
                     </div>
                     <div>
                         <label className="block font-medium mb-1">Address</label>
-                        <input type="text" name="address" value={formData.address} onChange={handleInputChange} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
+                        <textarea 
+                            name="address" 
+                            value={formData.address} 
+                            onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))} 
+                            readOnly 
+                            rows={3}
+                            className="w-full border rounded-md px-3 py-2 bg-gray-100 resize-none" 
+                        />
                     </div>
                 </div>
             </section>
@@ -363,20 +491,28 @@ const CTScanReport: React.FC<{ serviceId: string }> = ({ serviceId }) => {
                             <RadiationProfileWidth
                                 serviceId={serviceId}
                                 testId={radiationProfileTest?._id || null}   // ← magic line
-                                onTestSaved={(id:any) => console.log("Radiation Profile saved:", id)}
+                                onTestSaved={(id: any) => console.log("Radiation Profile saved:", id)}
                             />
                         ),
                     },
                     { title: "Measurement of Operating Potential", component: <MeasurementOfOperatingPotential serviceId={serviceId} /> },
-                    { title: "Measurement of mA Linearity", component: <MeasurementOfMaLinearity serviceId={serviceId} /> },
-                    { title: "Timer Accuracy", component: <TimerAccuracy serviceId={serviceId} /> },
+                    // Show based on timer choice
+                    ...(hasTimer === true ? [
+                        { title: "Measurement of mA Linearity", component: <MeasurementOfMaLinearity serviceId={serviceId} /> },
+                        { title: "Timer Accuracy", component: <TimerAccuracy serviceId={serviceId} /> },
+                    ] : hasTimer === false ? [
+                        { title: "Linearity of mAs Loading", component: <LinearityOfMasLoading serviceId={serviceId} testId={savedTestIds.LinearityOfMasLoadingCTScan || null} onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMasLoadingCTScan: id }))} /> },
+                    ] : []),
                     { title: "Measurement of CTDI", component: <MeasurementOfCTDI serviceId={serviceId} /> },
                     { title: "Total Filtration", component: <TotalFilterationForCTScan serviceId={serviceId} /> },
                     { title: "Radiation Leakage Level", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} /> },
                     { title: "Output Consistency", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
                     { title: "Low Contrast Resolution", component: <LowContrastResolutionForCT serviceId={serviceId} /> },
                     { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} /> },
-                    { title: "Maximum Radiation Level", component: <MeasureMaxRadiationLevel serviceId={serviceId} /> },
+                    { title: "Alignment of Table/Gantry", component: <AlignmentOfTableGantry serviceId={serviceId} /> },
+                    { title: "Table Position", component: <TablePosition serviceId={serviceId} /> },
+                    { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} /> },
+                    { title: "Maximum Radiation Level", component: <DetailsOfRadiationProtection serviceId={serviceId} /> },
 
 
 

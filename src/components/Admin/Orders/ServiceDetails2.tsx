@@ -93,6 +93,7 @@ interface MachineData {
             verificationRemark: any
             assignedAtEngineer?: string | undefined;  // For QA Raw
             assignedAtStaff?: string | undefined    // For QA Test
+            createdAt:string
         }
         reportUrl: any
         qaTestSubmittedAt?: string
@@ -619,6 +620,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
             machinesArray.forEach((machineData: any) => {
                 const workTypeDetails = machineData.workTypeDetails || [];
+                // Store machineData for later use in navigation
+                const machineDataRef = machineData;
                 const transformedData: MachineData[] = workTypeDetails.map(
                     (workTypeDetail: any, index: number) => {
                         const createWorkTypes = () => {
@@ -2509,11 +2512,29 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                         const cleanId = service.id.replace(/-0$/, "");
                                                                                         console.log("Navigating with:", { serviceId: cleanId, machineType: service.machineType });
 
+                                                                                        // Get createdAt from the first QA test's createdAt (from backend)
+                                                                                        // We need to get it from the original machineData response
+                                                                                        // For now, use qaTestSubmittedAt as fallback, or get from firstTest
+                                                                                        const firstQATest = service.workTypes.find((wt: any) => wt.name === "QA Raw");
+                                                                                        // Try to get createdAt from the original response - it should be in firstTest.createdAt
+                                                                                        // Since we don't have direct access, we'll use qaTestSubmittedAt or fetch it
+                                                                                        // For Lead Apron, the createdAt is typically the first QA test's createdAt
+                                                                                        const createdAt = workType.qaTestSubmittedAt || 
+                                                                                                         firstQATest?.backendFields?.createdAt || 
+                                                                                                         null;
+
+                                                                                        // Get ULR number from reportNumbers
+                                                                                        const ulrNumber = reportNumbers[service.id]?.qatest?.reportULRNumber || 
+                                                                                                         firstQATest?.backendFields?.reportURLNumber || 
+                                                                                                         null;
+
                                                                                         navigate("/admin/orders/generic-service-table", {
                                                                                             state: {
                                                                                                 serviceId: cleanId,
                                                                                                 machineType: service.machineType,
                                                                                                 qaTestDate: workType.qaTestSubmittedAt || null,
+                                                                                                createdAt: createdAt,
+                                                                                                ulrNumber: ulrNumber,
                                                                                             },
                                                                                         });
                                                                                     }}

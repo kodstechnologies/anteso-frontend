@@ -21,6 +21,12 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
   testId: initialTestId = null,
   onTestSaved,
 }) => {
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
   const [testId, setTestId] = useState<string | null>(initialTestId);
   const [loading, setLoading] = useState(!!initialTestId);
   const [saving, setSaving] = useState(false);
@@ -37,7 +43,7 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
     equipmentId: '',
     personTesting: '',
     serviceAgency: '',
-    testDate: '',
+    testDate: getTodayDate(),
     testDuration: '',
   });
 
@@ -257,7 +263,7 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
     <div className="w-full space-y-8">
       {/* Header with Edit/Save Button */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Lead Apron Test Report</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Test Report</h2>
         <button
           onClick={isViewMode ? startEditing : handleSave}
           disabled={saving}

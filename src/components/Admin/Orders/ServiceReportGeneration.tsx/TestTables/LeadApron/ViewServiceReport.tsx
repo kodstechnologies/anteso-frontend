@@ -6,8 +6,7 @@ import logo from "../../../../../../assets/logo/logo-sm.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { generatePDF } from "../../../../../../utils/generatePDF";
 
 interface Tool {
   slNumber: string;
@@ -50,20 +49,14 @@ interface ReportData {
   toolsUsed?: Tool[];
   notes?: Note[];
   LeadApronTest?: any;
+  ulrNumber?: string;
 }
 
-// Default notes to use if none are provided
 const defaultNotes: Note[] = [
   { slNo: "5.1", text: "The Test Report relates only to the above item only." },
-  {
-    slNo: "5.2",
-    text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
-  },
+  { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
   { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
-  {
-    slNo: "5.4",
-    text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
-  },
+  { slNo: "5.4", text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats." },
   { slNo: "5.5", text: "Any error in this Report should be brought to our knowledge within 30 days from the date of this report." },
   { slNo: "5.6", text: "Results reported are valid at the time of and under the stated conditions of measurements." },
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
@@ -128,134 +121,29 @@ const ViewServiceReportLeadApron: React.FC = () => {
     fetchReport();
   }, [serviceId]);
 
+  const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
+
   const downloadPDF = async () => {
-    const element = document.getElementById("report-content");
-    if (!element) return;
-
-    const originalButton = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
-    if (originalButton) {
-      originalButton.disabled = true;
-      originalButton.textContent = "Generating PDF...";
-    }
-
     try {
-      // Wait a bit to ensure DOM is ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = await html2canvas(element, {
-        scale: 1.5, // Reduced from 3 to 1.5 - still good quality but much smaller file size
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        allowTaint: false,
-        removeContainer: true,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.getElementById("report-content");
-          if (clonedElement) {
-            // Remove all padding and margins from parent containers
-            clonedElement.style.width = '210mm';
-            clonedElement.style.maxWidth = 'none';
-            clonedElement.style.margin = '0';
-            clonedElement.style.padding = '20px';
-            
-            // Fix nested containers
-            const nestedContainers = clonedElement.querySelectorAll('div');
-            nestedContainers.forEach((div: HTMLElement) => {
-              // Remove max-width constraints that cause issues
-              if (div.style.maxWidth || div.classList.contains('max-w-5xl') || div.classList.contains('max-w-7xl')) {
-                div.style.maxWidth = 'none';
-                div.style.width = '100%';
-              }
-              // Remove excessive padding that causes misalignment
-              if (div.classList.contains('p-8') || div.classList.contains('p-10')) {
-                div.style.padding = '20px';
-              }
-            });
-
-            // Fix tables - prevent breaks and ensure proper alignment
-            const tables = clonedElement.querySelectorAll('table');
-            tables.forEach((table) => {
-              (table as HTMLElement).style.breakInside = 'avoid';
-              (table as HTMLElement).style.width = '100%';
-              (table as HTMLElement).style.borderCollapse = 'collapse';
-              (table as HTMLElement).style.tableLayout = 'auto';
-              
-              // Ensure table cells don't break and align properly
-              const cells = table.querySelectorAll('td, th');
-              cells.forEach((cell) => {
-                (cell as HTMLElement).style.breakInside = 'avoid';
-                (cell as HTMLElement).style.wordWrap = 'break-word';
-                (cell as HTMLElement).style.overflowWrap = 'break-word';
-                (cell as HTMLElement).style.verticalAlign = 'top';
-              });
-            });
-
-            // Fix sections to prevent breaks
-            const sections = clonedElement.querySelectorAll('section, div.mb-6, div.mb-8');
-            sections.forEach((section) => {
-              (section as HTMLElement).style.breakInside = 'avoid';
-            });
-
-            // Hide print buttons and other UI elements
-            const buttons = clonedElement.querySelectorAll('button, .print\\:hidden');
-            buttons.forEach((btn) => {
-              (btn as HTMLElement).style.display = 'none';
-            });
-          }
-        }
+      await generatePDF({
+        elementId: "report-content",
+        filename: `LeadApron-Report-${report?.testReportNumber || "report"}.pdf`,
+        buttonSelector: ".download-pdf-btn",
       });
-
-      // Convert to JPEG with compression for much smaller file size
-      const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG at 85% quality - good balance
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      // Add additional pages if needed
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      pdf.save(`Lead_Apron_Report_${report?.testReportNumber || "Report"}.pdf`);
     } catch (error) {
-      console.error("PDF generation error:", error);
+      console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
-    } finally {
-      if (originalButton) {
-        originalButton.disabled = false;
-        originalButton.textContent = "Download PDF";
-      }
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">
-        Loading Report...
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading Lead Apron Report...</div>;
 
   if (notFound || !report) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-10 rounded-lg shadow-xl text-center">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
-          <p>Please save the report header first.</p>
+          <p>Please generate and save the report header first.</p>
           <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Go Back
           </button>
@@ -264,299 +152,380 @@ const ViewServiceReportLeadApron: React.FC = () => {
     );
   }
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-  };
+  const toolsArray = report.toolsUsed || [];
+  const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
 
   return (
     <>
-      {/* PDF Download & Print Buttons */}
+      {/* Floating Buttons */}
       <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
-        <button
-          onClick={() => window.print()}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl"
-        >
+        <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
         </button>
-        <button
-          onClick={downloadPDF}
-          className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl"
-        >
+        <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Download PDF
         </button>
       </div>
 
-      {/* Main Report Content */}
-      <div 
-        id="report-content" 
-        className="bg-white p-8 max-w-7xl mx-auto"
-        style={{
-          breakInside: 'avoid'
-        }}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8 border-b-2 pb-4">
-          <div>
-            <img src={logo} alt="Logo" className="h-16" />
-          </div>
-          <div className="text-right">
-            <img src={logoA} alt="NABL Logo" className="h-16 mx-auto mb-2" />
-            <p className="text-xs">NABL Accredited</p>
-          </div>
-        </div>
-
-        {/* Title */}
-        <h1 className="text-3xl font-bold text-center mb-8">Lead Apron Test Report</h1>
-
-        {/* Customer Info */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">1. Name and Address of Customer</h2>
-          <p className="mb-1"><strong>Customer Name:</strong> {report.customerName || "—"}</p>
-          <p><strong>Address:</strong> {report.address || "—"}</p>
-        </div>
-
-        {/* Reference */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">2. Customer Reference</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="mb-1"><strong>2.1 SRF Number:</strong> {report.srfNumber || "—"}</p>
-              <p><strong>SRF Date:</strong> {formatDate(report.srfDate) || "—"}</p>
+      <div id="report-content">
+        {/* PAGE 1 - MAIN REPORT */}
+        <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
+          {/* Header */}
+          <div className="flex justify-between items-center mb-4 print:mb-2">
+            <img src={logoA} alt="NABL" className="h-28 print:h-20" />
+            <div className="text-right">
+              <table className="text-xs print:text-[7px] border border-black compact-table" style={{ fontSize: '9px', borderCollapse: 'collapse', borderSpacing: '0', tableLayout: 'auto', width: 'auto', maxWidth: '200px' }}>
+                <tbody>
+                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '0.9', padding: '0', margin: '0', verticalAlign: 'middle' }}>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5 font-bold" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>SRF No.</td>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{report.srfNumber}</td>
+                  </tr>
+                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '0.9', padding: '0', margin: '0', verticalAlign: 'middle' }}>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5 font-bold" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>SRF Date</td>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{formatDate(report.srfDate)}</td>
+                  </tr>
+                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '0.9', padding: '0', margin: '0', verticalAlign: 'middle' }}>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5 font-bold" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>ULR No.</td>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{report.ulrNumber || "N/A"}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <div>
-              <p className="mb-1"><strong>2.2 Test Report Number:</strong> {report.testReportNumber || "—"}</p>
-              <p><strong>Issue Date:</strong> {formatDate(report.issueDate) || "—"}</p>
-            </div>
+            <img src={logo} alt="Logo" className="h-28 print:h-20" />
           </div>
-        </div>
-
-        {/* Device Details */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">3. Details of Device Under Test</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <p><strong>Nomenclature:</strong> {report.nomenclature || "—"}</p>
-            <p><strong>Make:</strong> {report.make || "—"}</p>
-            <p><strong>Model:</strong> {report.model || "—"}</p>
-            <p><strong>Serial Number:</strong> {report.slNumber || "—"}</p>
-            <p><strong>Condition:</strong> {report.condition || "—"}</p>
-            <p><strong>Testing Procedure Number:</strong> {report.testingProcedureNumber || "—"}</p>
-            <p><strong>Test Date:</strong> {formatDate(report.testDate) || "—"}</p>
-            <p><strong>Test Due Date:</strong> {formatDate(report.testDueDate) || "—"}</p>
-            <p><strong>Location:</strong> {report.location || "—"}</p>
-            <p><strong>Temperature:</strong> {report.temperature || "—"} °C</p>
-            <p><strong>Humidity:</strong> {report.humidity || "—"} %</p>
+          
+          <div className="text-center mb-4 print:mb-2">
+            <p className="text-sm print:text-[9px]">Government of India, Atomic Energy Regulatory Board</p>
+            <p className="text-sm print:text-[9px]">Radiological Safety Division, Mumbai-400094</p>
           </div>
-        </div>
 
-        {/* Lead Apron Test Data */}
+          <h1 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-base" style={{ fontSize: '15px' }}>
+            TEST REPORT
+          </h1>
+          <p className="text-center italic text-sm mb-6 print:mb-2 print:text-[9px]">
+            (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
+          </p>
 
-
-        {/* Tools Used */}
-        {report.toolsUsed && report.toolsUsed.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">4. Standards Used</h2>
-            <table className="w-full border-collapse border">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border p-2">Sl. No.</th>
-                  <th className="border p-2">Nomenclature</th>
-                  <th className="border p-2">Make</th>
-                  <th className="border p-2">Model</th>
-                  <th className="border p-2">Sr. No.</th>
-                  <th className="border p-2">Range</th>
-                  <th className="border p-2">Calibration Certificate No.</th>
-                  <th className="border p-2">Calibration Valid Till</th>
-                </tr>
-              </thead>
+          {/* Customer Details */}
+          <section className="mb-4 print:mb-2">
+            <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">1. Customer Details</h2>
+            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
-                {report.toolsUsed.map((tool, index) => (
-                  <tr key={index}>
-                    <td className="border p-2 text-center">{tool.slNumber || index + 1}</td>
-                    <td className="border p-2">{tool.nomenclature || "—"}</td>
-                    <td className="border p-2">{tool.make || "—"}</td>
-                    <td className="border p-2">{tool.model || "—"}</td>
-                    <td className="border p-2">{tool.SrNo || "—"}</td>
-                    <td className="border p-2">{tool.range || "—"}</td>
-                    <td className="border p-2">{tool.calibrationCertificateNo || "—"}</td>
-                    <td className="border p-2">{tool.calibrationValidTill || "—"}</td>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Customer</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
+                </tr>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.address}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          {/* Reference */}
+          <section className="mb-4 print:mb-2">
+            <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">2. Reference</h2>
+            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+              <tbody>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}><td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>SRF No. & Date</td><td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}><td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Test Report No. & Issue Date</td><td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          {/* Equipment Details */}
+          <section className="mb-4 print:mb-2">
+            <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">3. Details of Equipment Under Test</h2>
+            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+              <tbody>
+                {[
+                  ["Nomenclature", report.nomenclature],
+                  ["Make", report.make || "-"],
+                  ["Model", report.model],
+                  ["Serial No.", report.slNumber],
+                  ["Category", report.category || "-"],
+                  ["Condition", report.condition],
+                  ["Testing Procedure No.", report.testingProcedureNumber || "-"],
+                  ["Engineer Name & RP ID", report.engineerNameRPId],
+                  ["Test Date", formatDate(report.testDate)],
+                  ["Due Date", formatDate(report.testDueDate)],
+                  ["Location", report.location],
+                  ["Temperature (°C)", report.temperature || "-"],
+                  ["Humidity (%)", report.humidity || "-"],
+                ].map(([label, value]) => (
+                  <tr key={label} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                    <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</td>
+                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{value}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+          </section>
 
-        {/* Notes */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">5. Notes</h2>
-          <ul className="list-decimal list-inside space-y-2">
-            {(report.notes || defaultNotes).map((note, index) => (
-              <li key={index} className="text-sm">
-                <strong>{note.slNo}</strong> {note.text}
-              </li>
-            ))}
-          </ul>
+          {/* Tools Used */}
+          <section className="mb-4 print:mb-2">
+            <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">4. Standards / Tools Used</h2>
+            <div className="overflow-x-auto print:overflow-visible print:max-w-none">
+              <table className="w-full border-2 border-black text-xs print:text-[8px] compact-table" style={{ tableLayout: 'fixed', width: '100%', fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '6%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Sl No.</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '16%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Nomenclature</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Make / Model</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Sr. No.</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Range</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '18%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Certificate No.</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '18%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Valid Till</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {toolsArray.length > 0 ? toolsArray.map((tool, i) => (
+                    <tr key={i} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{i + 1}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.nomenclature}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.make} / {tool.model}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.SrNo}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.range}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.calibrationCertificateNo}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{formatDate(tool.calibrationValidTill)}</td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={7} className="text-center py-2 print:py-1" style={{ padding: '0px 1px', fontSize: '11px' }}>No tools recorded</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Notes */}
+          <section className="mb-6 print:mb-3">
+            <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">5. Notes</h2>
+            <div className="ml-8 text-sm print:text-[8px] print:ml-4" style={{ fontSize: '12px', lineHeight: '1.2' }}>
+              {notesArray.map(n => (
+                <p key={n.slNo} className="mb-1 print:mb-0.5" style={{ fontSize: '12px', lineHeight: '1.2', marginBottom: '2px' }}><strong>{n.slNo}.</strong> {n.text}</p>
+              ))}
+            </div>
+          </section>
+
+          {/* Signature */}
+          <div className="flex justify-between items-end mt-8 print:mt-4">
+            <img src={AntesoQRCode} alt="QR" className="h-24 print:h-16" />
+            <div className="text-center">
+              <img src={Signature} alt="Signature" className="h-20 print:h-16 mx-auto mb-2 print:mb-1" />
+              <p className="font-bold print:text-xs">Authorized Signatory</p>
+            </div>
+          </div>
+
+          <footer className="text-center text-xs print:text-[8px] text-gray-600 mt-6 print:mt-3">
+            <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
+            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+            <p>Email: info@antesobiomedicalengg.com</p>
+          </footer>
         </div>
-        {/* Lead Apron Test Results */}
+
+        {/* PAGE 2+ - LEAD APRON TEST RESULTS */}
         {testData && (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">6. Lead Apron Test Results</h2>
-            
-            {/* Report Details Table */}
-            {testData.reportDetails && (
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold mb-2">6.1 Report Details</h3>
-                <table className="w-full border-collapse border mb-4">
-                  <tbody>
-                    <tr>
-                      <td className="border p-2 font-medium bg-gray-50 w-1/3">Institution Name</td>
-                      <td className="border p-2">{testData.reportDetails.institutionName || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium bg-gray-50">Institution City</td>
-                      <td className="border p-2">{testData.reportDetails.institutionCity || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium bg-gray-50">Equipment Type</td>
-                      <td className="border p-2">{testData.reportDetails.equipmentType || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium bg-gray-50">Equipment ID</td>
-                      <td className="border p-2">{testData.reportDetails.equipmentId || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium bg-gray-50">Person Testing</td>
-                      <td className="border p-2">{testData.reportDetails.personTesting || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium bg-gray-50">Service Agency</td>
-                      <td className="border p-2">{testData.reportDetails.serviceAgency || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium bg-gray-50">Test Date</td>
-                      <td className="border p-2">{formatDate(testData.reportDetails.testDate) || "—"}</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2 font-medium bg-gray-50">Test Duration</td>
-                      <td className="border p-2">{testData.reportDetails.testDuration || "—"}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Operating Parameters Table */}
-            {testData.operatingParameters && (
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold mb-2">6.2 Operating Parameters: Tested on Direct Radiation</h3>
-                <table className="w-full border-collapse border mb-4">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border p-2 text-left">FFD (cm)</th>
-                      <th className="border p-2 text-left">kV</th>
-                      <th className="border p-2 text-left">mAs</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border p-2 text-center">{testData.operatingParameters.ffd || "—"}</td>
-                      <td className="border p-2 text-center">{testData.operatingParameters.kv || "—"}</td>
-                      <td className="border p-2 text-center">{testData.operatingParameters.mas || "—"}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Dose Measurements Table */}
-            {testData.doseMeasurements && (
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold mb-2">6.3 Dose Value and Reading</h3>
-                <table className="w-full border-collapse border">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border p-2 text-left">Dose Value</th>
-                      <th className="border p-2 text-center">Reading</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border p-2 font-medium">Neutral</td>
-                      <td className="border p-2 text-center">{testData.doseMeasurements.neutral || "—"}</td>
-                    </tr>
-                    {/* Dynamic Positions - handle both old format (position1/2/3) and new format (positions array) */}
-                    {testData.doseMeasurements.positions && Array.isArray(testData.doseMeasurements.positions) && testData.doseMeasurements.positions.length > 0 ? (
-                      // New format: positions array
-                      testData.doseMeasurements.positions.map((pos: any, index: number) => (
-                        <tr key={index}>
-                          <td className="border p-2 font-medium">{pos.position || `Position ${index + 1}`}</td>
-                          <td className="border p-2 text-center">{pos.value || "—"}</td>
+          <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section" style={{ pageBreakAfter: 'always' }}>
+            <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+              <h2 className="text-3xl font-bold text-center underline mb-6 print:mb-2 print:text-xl">LEAD APRON TEST RESULTS</h2>
+              
+              {/* Report Details Table */}
+              {testData.reportDetails && (
+                <div className="mb-4 print:mb-2">
+                  <h3 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm">6.1 Report Details</h3>
+                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                    <tbody>
+                      {[
+                        ["Institution Name", testData.reportDetails.institutionName || "—"],
+                        ["Institution City", testData.reportDetails.institutionCity || "—"],
+                        ["Equipment Type", testData.reportDetails.equipmentType || "—"],
+                        ["Equipment ID", testData.reportDetails.equipmentId || "—"],
+                        ["Person Testing", testData.reportDetails.personTesting || "—"],
+                        ["Service Agency", testData.reportDetails.serviceAgency || "—"],
+                        ["Test Date", formatDate(testData.reportDetails.testDate) || "—"],
+                        ["Test Duration", testData.reportDetails.testDuration || "—"],
+                      ].map(([label, value]) => (
+                        <tr key={label} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                          <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</td>
+                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{value}</td>
                         </tr>
-                      ))
-                    ) : (
-                      // Old format: position1, position2, position3 (backward compatibility)
-                      <>
-                        {testData.doseMeasurements.position1 && (
-                          <tr>
-                            <td className="border p-2 font-medium">Position 1</td>
-                            <td className="border p-2 text-center">{testData.doseMeasurements.position1}</td>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Operating Parameters Table */}
+              {testData.operatingParameters && (
+                <div className="mb-4 print:mb-2">
+                  <h3 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm">6.2 Operating Parameters: Tested on Direct Radiation</h3>
+                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>FFD (cm)</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kV</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mAs</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.operatingParameters.ffd || "—"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.operatingParameters.kv || "—"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.operatingParameters.mas || "—"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Dose Measurements Table */}
+              {testData.doseMeasurements && (
+                <div className="mb-4 print:mb-2">
+                  <h3 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm">6.3 Dose Value and Reading</h3>
+                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Dose Value</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Reading</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                        <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Neutral</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.doseMeasurements.neutral || "—"}</td>
+                      </tr>
+                      {/* Dynamic Positions */}
+                      {testData.doseMeasurements.positions && Array.isArray(testData.doseMeasurements.positions) && testData.doseMeasurements.positions.length > 0 ? (
+                        testData.doseMeasurements.positions.map((pos: any, index: number) => (
+                          <tr key={index} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                            <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{pos.position || `Position ${index + 1}`}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{pos.value || "—"}</td>
                           </tr>
-                        )}
-                        {testData.doseMeasurements.position2 && (
-                          <tr>
-                            <td className="border p-2 font-medium">Position 2</td>
-                            <td className="border p-2 text-center">{testData.doseMeasurements.position2}</td>
-                          </tr>
-                        )}
-                        {testData.doseMeasurements.position3 && (
-                          <tr>
-                            <td className="border p-2 font-medium">Position 3</td>
-                            <td className="border p-2 text-center">{testData.doseMeasurements.position3}</td>
-                          </tr>
-                        )}
-                      </>
-                    )}
-                    <tr className="bg-gray-50">
-                      <td className="border p-2 font-semibold">Average Value</td>
-                      <td className="border p-2 text-center font-semibold">{testData.doseMeasurements.averageValue || "—"}</td>
-                    </tr>
-                    <tr className="bg-gray-50">
-                      <td className="border p-2 font-semibold">% Reduction in Dose (Remark)</td>
-                      <td className="border p-2 text-center">
-                        <span className="font-semibold">{testData.doseMeasurements.percentReduction ? `${testData.doseMeasurements.percentReduction}%` : "—"}</span>
-                        {testData.doseMeasurements.remark && (
-                          <span className={`ml-2 px-2 py-1 rounded text-xs ${testData.doseMeasurements.remark.includes('Pass')
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                            }`}>
-                            {testData.doseMeasurements.remark}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
+                        ))
+                      ) : (
+                        <>
+                          {testData.doseMeasurements.position1 && (
+                            <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                              <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Position 1</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.doseMeasurements.position1}</td>
+                            </tr>
+                          )}
+                          {testData.doseMeasurements.position2 && (
+                            <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                              <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Position 2</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.doseMeasurements.position2}</td>
+                            </tr>
+                          )}
+                          {testData.doseMeasurements.position3 && (
+                            <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                              <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Position 3</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.doseMeasurements.position3}</td>
+                            </tr>
+                          )}
+                        </>
+                      )}
+                      <tr className="bg-gray-50" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                        <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Average Value</td>
+                        <td className="border border-black p-2 print:p-1 text-center font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.doseMeasurements.averageValue || "—"}</td>
+                      </tr>
+                      <tr className="bg-gray-50" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                        <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Reduction in Dose (Remark)</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                          <span className="font-semibold">{testData.doseMeasurements.percentReduction ? `${testData.doseMeasurements.percentReduction}%` : "—"}</span>
+                          {testData.doseMeasurements.remark && (
+                            <span className={`ml-2 px-2 py-1 rounded text-xs ${testData.doseMeasurements.remark.includes('Pass')
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                              }`}>
+                              {testData.doseMeasurements.remark}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
-        {/* Footer */}
-        <div className="mt-12 flex justify-between items-end">
-          <div className="text-center">
-            <img src={Signature} alt="Signature" className="h-16 mb-2" />
-            <p className="font-semibold">{report.engineerNameRPId || "Engineer Name"}</p>
-            <p className="text-sm">Service Engineer</p>
-          </div>
-          <div className="text-center">
-            <img src={AntesoQRCode} alt="QR Code" className="h-20" />
-          </div>
-        </div>
       </div>
+
+      <style>{`
+        @media print {
+          body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+          .print\\:break-before-page { page-break-before: always; }
+          .print\\:break-inside-avoid { page-break-inside: avoid; break-inside: avoid; }
+          .test-section { page-break-inside: avoid; break-inside: avoid; }
+          @page { margin: 0.5cm; size: A4; }
+          table, tr, td, th {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          .compact-table {
+            font-size: 11px !important;
+            border-collapse: collapse !important;
+            border-spacing: 0 !important;
+          }
+          .compact-table td, .compact-table th {
+            padding: 0px 1px !important;
+            font-size: 11px !important;
+            line-height: 1.0 !important;
+            min-height: 0 !important;
+            height: auto !important;
+            vertical-align: middle !important;
+            border-color: #000000 !important;
+            text-align: center !important;
+          }
+          table, td, th {
+            border-color: #000000 !important;
+          }
+          table td, table th {
+            text-align: center !important;
+          }
+          .force-small-text {
+            font-size: 7px !important;
+          }
+          .force-small-text td, .force-small-text th {
+            font-size: 7px !important;
+            padding: 0px 1px !important;
+            line-height: 1.0 !important;
+          }
+          .compact-table tr {
+            height: auto !important;
+            min-height: 0 !important;
+            line-height: 1.0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          thead { display: table-header-group; }
+          h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
+          table {
+            border-collapse: collapse;
+            border-spacing: 0;
+            border-width: 1px !important;
+            border-style: solid !important;
+            border-color: #000000 !important;
+          }
+          table td, table th {
+            border-width: 1px !important;
+            border-style: solid !important;
+            border-color: #000000 !important;
+          }
+          table.border-2, table[class*="border-2"] {
+            border-width: 1px !important;
+          }
+          table td.border-2, table th.border-2,
+          table td[class*="border-2"], table th[class*="border-2"] {
+            border-width: 1px !important;
+          }
+        }
+      `}</style>
     </>
   );
 };
 
 export default ViewServiceReportLeadApron;
-

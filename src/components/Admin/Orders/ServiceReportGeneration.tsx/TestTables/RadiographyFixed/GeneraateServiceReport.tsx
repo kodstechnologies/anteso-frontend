@@ -131,6 +131,18 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
 
         setDetails(data);
 
+        // Calculate test due date (2 years from QA test date)
+        let testDate = "";
+        let testDueDate = "";
+        if (firstTest?.createdAt) {
+          const qaTestDate = new Date(firstTest.createdAt);
+          testDate = qaTestDate.toISOString().split("T")[0];
+          // Add 2 years
+          const dueDate = new Date(qaTestDate);
+          dueDate.setFullYear(dueDate.getFullYear() + 2);
+          testDueDate = dueDate.toISOString().split("T")[0];
+        }
+
         // Pre-fill form from service details
         setFormData({
           customerName: data.hospitalName,
@@ -146,9 +158,9 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
           condition: "OK",
           testingProcedureNumber: "",
           pages: "",
-          testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-          testDueDate: "",
-          location: data.hospitalAddress,
+          testDate: testDate,
+          testDueDate: testDueDate,
+          location: "", // Don't auto-fill location
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
@@ -177,6 +189,7 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
           if (reportRes.exists && reportRes.data) {
             const reportData = reportRes.data;
             // Update formData with existing report data
+            // Note: testDate and testDueDate are calculated from QA test date, don't override them
             setFormData((prev) => ({
               ...prev,
               customerName: reportData.customerName || prev.customerName,
@@ -193,9 +206,8 @@ const RadiographyFixed: React.FC<{ serviceId: string }> = ({ serviceId }) => {
               condition: reportData.condition || prev.condition,
               testingProcedureNumber: reportData.testingProcedureNumber || prev.testingProcedureNumber,
               pages: reportData.pages || prev.pages,
-              testDate: reportData.testDate || prev.testDate,
-              testDueDate: reportData.testDueDate || prev.testDueDate,
-              location: reportData.location || prev.location,
+              // testDate and testDueDate are calculated from QA test date, keep calculated values
+              location: reportData.location || prev.location, // Allow saved location to override
               temperature: reportData.temperature || prev.temperature,
               humidity: reportData.humidity || prev.humidity,
               engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,

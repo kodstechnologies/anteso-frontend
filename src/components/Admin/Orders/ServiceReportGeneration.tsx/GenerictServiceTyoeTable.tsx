@@ -44,6 +44,8 @@ import KVImagingReport from "./TestTables/OBI/GenerateServiceReport"
 type ReportComponentProps = {
   serviceId: string;
   qaTestDate?: string | null;
+  createdAt?: string | null;
+  ulrNumber?: string | null;
 };
 
 // ---- 2. Map machine → component ---------------------------------------
@@ -82,7 +84,7 @@ const GenerateServiceReport: React.FC = () => {
   const location = useLocation();
   console.log("📦 Location state →", location.state);
 
-  const { state } = location as { state?: { serviceId?: string; machineType?: string; qaTestDate?: string | null } };
+  const { state } = location as { state?: { serviceId?: string; machineType?: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null } };
 
   console.log("🧭 From location.state:", state);
 
@@ -94,7 +96,7 @@ const GenerateServiceReport: React.FC = () => {
     );
   }
 
-  const { serviceId, machineType, qaTestDate } = state;
+  const { serviceId, machineType, qaTestDate, createdAt, ulrNumber } = state;
 
   // ---- 5. Find the correct component ------------------------------------
   const ReportComponent = REPORT_MAP[machineType];
@@ -108,7 +110,7 @@ const GenerateServiceReport: React.FC = () => {
   }
 
   // ---- 6. Render it with serviceId ---------------------------------------
-  return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} />;
+  return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} createdAt={createdAt} ulrNumber={ulrNumber} />;
 };
 
 export default GenerateServiceReport;

@@ -97,8 +97,8 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       return {
         ...row,
-        avg: avg.toFixed(3),
-        cv: cv.toFixed(2),
+        avg: avg.toFixed(4),
+        cv: cv.toFixed(4),
         remark,
       };
     });

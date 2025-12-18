@@ -6733,6 +6733,226 @@ export const updateRadiationProtectionSurveyForCBCT = async (testId: string, pay
     return res.data;
 };
 
+// Radiation Protection Survey - CTScan
+export const addRadiationProtectionSurveyForCTScan = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/ct-scan/radiation-protection-survey/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getRadiationProtectionSurveyByServiceIdForCTScan = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/ct-scan/radiation-protection-survey-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationProtectionSurveyByTestIdForCTScan = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/ct-scan/radiation-protection-survey/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateRadiationProtectionSurveyForCTScan = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/ct-scan/radiation-protection-survey/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Linearity of mAs Loading - CTScan
+export const addLinearityOfMasLoadingForCTScan = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/ct-scan/linearity-of-mas-loading/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMasLoadingByServiceIdForCTScan = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/ct-scan/linearity-of-mas-loading-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getLinearityOfMasLoadingByTestIdForCTScan = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/ct-scan/linearity-of-mas-loading/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateLinearityOfMasLoadingForCTScan = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/ct-scan/linearity-of-mas-loading/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Alignment of Table/Gantry - CTScan
+export const addAlignmentOfTableGantryForCTScan = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/ct-scan/alignment-of-table-gantry/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAlignmentOfTableGantryByServiceIdForCTScan = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/ct-scan/alignment-of-table-gantry-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getAlignmentOfTableGantryByTestIdForCTScan = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/ct-scan/alignment-of-table-gantry/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateAlignmentOfTableGantryForCTScan = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/ct-scan/alignment-of-table-gantry/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Table Position - CTScan
+export const addTablePositionForCTScan = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/ct-scan/table-position/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getTablePositionByServiceIdForCTScan = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/ct-scan/table-position-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getTablePositionByTestIdForCTScan = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/ct-scan/table-position/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateTablePositionForCTScan = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/ct-scan/table-position/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Gantry Tilt - CTScan
+export const addGantryTiltForCTScan = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/ct-scan/gantry-tilt/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getGantryTiltByServiceIdForCTScan = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/ct-scan/gantry-tilt-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getGantryTiltByTestIdForCTScan = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/ct-scan/gantry-tilt/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateGantryTiltForCTScan = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/ct-scan/gantry-tilt/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 // Get Report Header for CBCT
 export const getReportHeaderForCBCT = async (serviceId: string) => {
     const token = Cookies.get("accessToken");

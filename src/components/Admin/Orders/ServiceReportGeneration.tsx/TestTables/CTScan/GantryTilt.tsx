@@ -1,7 +1,15 @@
+// components/TestTables/GantryTilt.tsx
+'use client';
 
-
-import React, { useState } from 'react';
-import { Trash2, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trash2, Plus, Loader2, Edit3, Save } from 'lucide-react';
+import toast from 'react-hot-toast';
+import {
+  addGantryTiltForCTScan,
+  getGantryTiltByServiceIdForCTScan,
+  getGantryTiltByTestIdForCTScan,
+  updateGantryTiltForCTScan,
+} from '../../../../../../api';
 
 interface Parameter {
     id: string;
@@ -15,7 +23,20 @@ interface Measurement {
     measured: string;
 }
 
-export default function GantryTilt() {
+interface Props {
+    serviceId: string;
+    testId?: string | null;
+    onTestSaved?: (testId: string) => void;
+    onRefresh?: () => void;
+}
+
+const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh }) => {
+    const [testId, setTestId] = useState<string | null>(propTestId || null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [hasSaved, setHasSaved] = useState(false);
+
     // Parameters table state
     const [parameters, setParameters] = useState<Parameter[]>([
         { id: '1', name: 'Parameter 1', value: '' }
@@ -26,7 +47,10 @@ export default function GantryTilt() {
         { id: '1', actual: '', measured: '' }
     ]);
 
-    const TOLERANCE = '±2°';
+    // Tolerance - dynamic
+    const [toleranceSign, setToleranceSign] = useState<'+' | '-' | '±'>('±');
+    const [toleranceValue, setToleranceValue] = useState<string>('2');
+    const toleranceDisplay = `${toleranceSign}${toleranceValue}°`;
 
     // Add new parameter row
     const addParameterRow = () => {
@@ -40,6 +64,7 @@ export default function GantryTilt() {
 
     // Update parameter
     const updateParameter = (id: string, field: keyof Parameter, value: string) => {
+        if (isViewMode) return;
         setParameters(parameters.map(p =>
             p.id === id ? { ...p, [field]: value } : p
         ));
@@ -64,6 +89,7 @@ export default function GantryTilt() {
 
     // Update measurement
     const updateMeasurement = (id: string, field: keyof Measurement, value: string) => {
+        if (isViewMode) return;
         setMeasurements(measurements.map(m =>
             m.id === id ? { ...m, [field]: value } : m
         ));
@@ -76,143 +102,336 @@ export default function GantryTilt() {
         }
     };
 
+    // Load data from backend
+    useEffect(() => {
+        const load = async () => {
+            if (!serviceId) {
+                setIsLoading(false);
+                return;
+            }
+            try {
+                const res = await getGantryTiltByServiceIdForCTScan(serviceId);
+                const data = res?.data;
+                if (data) {
+                    setTestId(data._id || null);
+                    if (Array.isArray(data.parameters) && data.parameters.length > 0) {
+                        setParameters(data.parameters.map((p: any, i: number) => ({
+                            id: String(i + 1),
+                            name: p.name || '',
+                            value: p.value || '',
+                        })));
+                    }
+                    if (Array.isArray(data.measurements) && data.measurements.length > 0) {
+                        setMeasurements(data.measurements.map((m: any, i: number) => ({
+                            id: String(i + 1),
+                            actual: m.actual || '',
+                            measured: m.measured || '',
+                        })));
+                    }
+                    setToleranceSign(data.toleranceSign || '±');
+                    setToleranceValue(data.toleranceValue || '2');
+                    setHasSaved(true);
+                    setIsEditing(false);
+                    if (data._id && !propTestId) {
+                        onTestSaved?.(data._id);
+                    }
+                } else {
+                    setIsEditing(true);
+                }
+            } catch (err: any) {
+                if (err.response?.status !== 404) {
+                    toast.error('Failed to load gantry tilt data');
+                }
+                setIsEditing(true);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        load();
+    }, [serviceId]);
+
+    // Save handler
+    const handleSave = async () => {
+        if (!serviceId) {
+            toast.error('Service ID is missing');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const payload = {
+                parameters: parameters.map(p => ({
+                    name: p.name.trim(),
+                    value: p.value.trim(),
+                })),
+                measurements: measurements.map(m => ({
+                    actual: m.actual.trim(),
+                    measured: m.measured.trim(),
+                })),
+                toleranceSign,
+                toleranceValue: toleranceValue.trim(),
+            };
+
+            let result_response;
+            let currentTestId = testId;
+
+            if (!currentTestId) {
+                try {
+                    const existing = await getGantryTiltByServiceIdForCTScan(serviceId);
+                    if (existing?.data?._id) {
+                        currentTestId = existing.data._id;
+                        setTestId(currentTestId);
+                    }
+                } catch (err) {
+                    // No existing data, will create new
+                }
+            }
+
+            if (currentTestId) {
+                result_response = await updateGantryTiltForCTScan(currentTestId, payload);
+                toast.success('Updated successfully!');
+            } else {
+                result_response = await addGantryTiltForCTScan(serviceId, payload);
+                const newId = result_response?.data?.testId || result_response?.data?._id;
+                if (newId) {
+                    setTestId(newId);
+                    onTestSaved?.(newId);
+                }
+                toast.success('Saved successfully!');
+            }
+            setHasSaved(true);
+            setIsEditing(false);
+            onRefresh?.();
+        } catch (err: any) {
+            console.error('Save error:', err);
+            toast.error(err?.response?.data?.message || err?.message || 'Save failed');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const toggleEdit = () => {
+        setIsEditing(true);
+    };
+    const isViewMode = hasSaved && !isEditing;
+    const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
+    const ButtonIcon = isViewMode ? Edit3 : Save;
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-10">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <span className="ml-2">Loading...</span>
+            </div>
+        );
+    }
+
     return (
-        <>
-            <div className="min-h-screen bg-gray-50 p-8">
-                <div className="max-w-6xl mx-auto space-y-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-8">Gantry Tilt Measurement</h1>
+        <div className="p-6 max-w-full mx-auto space-y-8">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">Gantry Tilt Measurement</h2>
+                <button
+                    onClick={isViewMode ? toggleEdit : handleSave}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
+                        isSaving
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : isViewMode
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+                    }`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <ButtonIcon className="w-4 h-4" />
+                            {buttonText} Gantry Tilt
+                        </>
+                    )}
+                </button>
+            </div>
 
-                    {/* Parameters Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold text-gray-800">Parameters</h2>
-                            <button
-                                onClick={addParameterRow}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Add Column
-                            </button>
-                        </div>
+            {/* Parameters Table */}
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-gray-800">Parameters</h3>
+                    {!isViewMode && (
+                        <button
+                            onClick={addParameterRow}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add Column
+                        </button>
+                    )}
+                </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="border-b border-gray-300">
-                                        <th className="text-left p-3 font-medium text-gray-700">Parameter Name</th>
-                                        <th className="text-left p-3 font-medium text-gray-700">Value</th>
-                                        {parameters.length > 1 && (
-                                            <th className="w-12 p-3"></th>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {parameters.map((param) => (
-                                        <tr key={param.id} className="border-b border-gray-200 hover:bg-gray-50">
-                                            <td className="p-3">
-                                                <input
-                                                    type="text"
-                                                    value={param.name}
-                                                    onChange={(e) => updateParameter(param.id, 'name', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="Parameter name"
-                                                />
-                                            </td>
-                                            <td className="p-3">
-                                                <input
-                                                    type="text"
-                                                    value={param.value}
-                                                    onChange={(e) => updateParameter(param.id, 'value', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="Value"
-                                                />
-                                            </td>
-                                            {parameters.length > 1 && (
-                                                <td className="p-3">
-                                                    <button
-                                                        onClick={() => deleteParameter(param.id)}
-                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* Results Table */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold text-gray-800">Measurement Results</h2>
-                            <button
-                                onClick={addMeasurementRow}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Add Row
-                            </button>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="border-b border-gray-300">
-                                        <th className="text-left p-3 font-medium text-gray-700">Actual Gantry Tilt</th>
-                                        <th className="text-left p-3 font-medium text-gray-700">Measured Gantry Tilt</th>
-                                        <th className="text-left p-3 font-medium text-gray-700">Tolerance</th>
-                                        {measurements.length > 1 && (
-                                            <th className="w-12 p-3"></th>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {measurements.map((measurement) => (
-                                        <tr key={measurement.id} className="border-b border-gray-200 hover:bg-gray-50">
-                                            <td className="p-3">
-                                                <input
-                                                    type="text"
-                                                    value={measurement.actual}
-                                                    onChange={(e) => updateMeasurement(measurement.id, 'actual', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="e.g., 0°"
-                                                />
-                                            </td>
-                                            <td className="p-3">
-                                                <input
-                                                    type="text"
-                                                    value={measurement.measured}
-                                                    onChange={(e) => updateMeasurement(measurement.id, 'measured', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="e.g., 1.5°"
-                                                />
-                                            </td>
-                                            <td className="p-3">
-                                                <div className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md font-medium">
-                                                    {TOLERANCE}
-                                                </div>
-                                            </td>
-                                            {measurements.length > 1 && (
-                                                <td className="p-3">
-                                                    <button
-                                                        onClick={() => deleteMeasurement(measurement.id)}
-                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="border-b border-gray-300 bg-gray-50">
+                                <th className="text-left p-3 font-medium text-gray-700">Parameter Name</th>
+                                <th className="text-left p-3 font-medium text-gray-700">Value</th>
+                                {!isViewMode && parameters.length > 1 && (
+                                    <th className="w-12 p-3"></th>
+                                )}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {parameters.map((param) => (
+                                <tr key={param.id} className="border-b border-gray-200 hover:bg-gray-50">
+                                    <td className="p-3">
+                                        <input
+                                            type="text"
+                                            value={param.name}
+                                            onChange={(e) => updateParameter(param.id, 'name', e.target.value)}
+                                            disabled={isViewMode}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                                            }`}
+                                            placeholder="Parameter name"
+                                        />
+                                    </td>
+                                    <td className="p-3">
+                                        <input
+                                            type="text"
+                                            value={param.value}
+                                            onChange={(e) => updateParameter(param.id, 'value', e.target.value)}
+                                            disabled={isViewMode}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                                            }`}
+                                            placeholder="Value"
+                                        />
+                                    </td>
+                                    {!isViewMode && parameters.length > 1 && (
+                                        <td className="p-3">
+                                            <button
+                                                onClick={() => deleteParameter(param.id)}
+                                                className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </>
+
+            {/* Results Table */}
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-gray-800">Measurement Results</h3>
+                    {!isViewMode && (
+                        <button
+                            onClick={addMeasurementRow}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add Row
+                        </button>
+                    )}
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="border-b border-gray-300 bg-gray-50">
+                                <th className="text-left p-3 font-medium text-gray-700">Actual Gantry Tilt</th>
+                                <th className="text-left p-3 font-medium text-gray-700">Measured Gantry Tilt</th>
+                                <th className="text-left p-3 font-medium text-gray-700">Tolerance</th>
+                                {!isViewMode && measurements.length > 1 && (
+                                    <th className="w-12 p-3"></th>
+                                )}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {measurements.map((measurement) => (
+                                <tr key={measurement.id} className="border-b border-gray-200 hover:bg-gray-50">
+                                    <td className="p-3">
+                                        <input
+                                            type="text"
+                                            value={measurement.actual}
+                                            onChange={(e) => updateMeasurement(measurement.id, 'actual', e.target.value)}
+                                            disabled={isViewMode}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                                            }`}
+                                            placeholder="e.g., 0°"
+                                        />
+                                    </td>
+                                    <td className="p-3">
+                                        <input
+                                            type="text"
+                                            value={measurement.measured}
+                                            onChange={(e) => updateMeasurement(measurement.id, 'measured', e.target.value)}
+                                            disabled={isViewMode}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                                            }`}
+                                            placeholder="e.g., 1.5°"
+                                        />
+                                    </td>
+                                    <td className="p-3">
+                                        <div className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md font-medium">
+                                            {toleranceDisplay}
+                                        </div>
+                                    </td>
+                                    {!isViewMode && measurements.length > 1 && (
+                                        <td className="p-3">
+                                            <button
+                                                onClick={() => deleteMeasurement(measurement.id)}
+                                                className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Tolerance Section */}
+            <div className="bg-white shadow-md rounded-lg p-6 border border-gray-200">
+                <div className="flex items-center gap-4">
+                    <label className="text-sm font-medium text-gray-700">Tolerance:</label>
+                    <select
+                        value={toleranceSign}
+                        onChange={(e) => setToleranceSign(e.target.value as '+' | '-' | '±')}
+                        disabled={isViewMode}
+                        className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                        }`}
+                    >
+                        <option value="+">+</option>
+                        <option value="-">-</option>
+                        <option value="±">±</option>
+                    </select>
+                    <input
+                        type="text"
+                        value={toleranceValue}
+                        onChange={(e) => setToleranceValue(e.target.value)}
+                        disabled={isViewMode}
+                        placeholder="Enter tolerance value"
+                        className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                        }`}
+                    />
+                    <span className="text-sm text-gray-600">°</span>
+                </div>
+            </div>
+        </div>
     );
-}
+};
+
+export default GantryTilt;

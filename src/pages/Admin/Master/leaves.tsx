@@ -25,7 +25,7 @@ interface LeaveItem {
     leaveType: string;
     reason: string;
     status: any;
-    rejectionReason:any
+    rejectionReason: any
 }
 
 const Leaves: React.FC = () => {

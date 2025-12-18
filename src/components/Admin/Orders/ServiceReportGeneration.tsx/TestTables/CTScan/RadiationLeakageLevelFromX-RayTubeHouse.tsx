@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Edit3, Save } from 'lucide-react';
+import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
   addRadiationLeakage,
   getRadiationLeakageByTestId,
@@ -73,20 +73,34 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     });
   }, [leakageRows]);
 
-  // === Max Leakage Result ===
-  const maxLeakageResult = useMemo(() => {
+  // === Calculate leakage result for each row ===
+  const rowLeakageResults = useMemo(() => {
     const workloadVal = parseFloat(workload) || 0;
-    const maxLeakage = Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0));
-    if (workloadVal > 0 && maxLeakage > 0) {
-      return ((workloadVal * maxLeakage) / (60 * 100)).toFixed(3);
-    }
-    return '';
-  }, [workload, processedLeakage]);
+    const maVal = parseFloat(settings.ma) || 1;
+    
+    return processedLeakage.map(row => {
+      const rowMax = parseFloat(row.max) || 0;
+      if (workloadVal > 0 && rowMax > 0 && maVal > 0) {
+        return ((workloadVal * rowMax) / (60 * maVal)).toFixed(3);
+      }
+      return '';
+    });
+  }, [workload, processedLeakage, settings.ma]);
 
+  // === Max Leakage Result (max of all rows) ===
+  const maxLeakageResult = useMemo(() => {
+    const results = rowLeakageResults.map(r => parseFloat(r) || 0).filter(r => r > 0);
+    return results.length > 0 ? Math.max(...results).toFixed(3) : '';
+  }, [rowLeakageResults]);
+
+  // === Maximum Radiation Leakage (max of each row's calculation divided by 114) ===
   const maxRadiationLeakage = useMemo(() => {
-    const result = parseFloat(maxLeakageResult) || 0;
-    return result > 0 ? (result / 114).toFixed(3) : '';
-  }, [maxLeakageResult]);
+    const results = rowLeakageResults
+      .map(r => parseFloat(r) || 0)
+      .filter(r => r > 0)
+      .map(r => r / 114);
+    return results.length > 0 ? Math.max(...results).toFixed(3) : '';
+  }, [rowLeakageResults]);
 
   // === Auto Remark ===
   const finalRemark = useMemo(() => {
@@ -112,6 +126,27 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     setLeakageRows(prev =>
       prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
     );
+  };
+
+  const addLeakageRow = () => {
+    setLeakageRows(prev => [
+      ...prev,
+      {
+        location: 'Tube',
+        front: '',
+        back: '',
+        left: '',
+        right: '',
+        max: '',
+        unit: 'mGy/h',
+        remark: '',
+      },
+    ]);
+  };
+
+  const removeLeakageRow = (index: number) => {
+    if (leakageRows.length <= 1) return;
+    setLeakageRows(prev => prev.filter((_, i) => i !== index));
   };
 
   // === Form Valid ===
@@ -394,15 +429,16 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             {processedLeakage.map((row, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
                 <td className="px-4 py-2 border-r">
-                  <input
-                    type="text"
+                  <select
                     value={row.location}
                     onChange={(e) => updateLeakage(idx, 'location', e.target.value)}
                     disabled={isViewMode}
                     className={`w-full px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
                       }`}
-                    placeholder="Tube"
-                  />
+                  >
+                    <option value="Tube">Tube</option>
+                    <option value="Collimator">Collimator</option>
+                  </select>
                 </td>
                 {(['front', 'back', 'left', 'right'] as const).map((field) => (
                   <td key={field} className="px-2 py-2 border-r">
@@ -451,27 +487,55 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             ))}
           </tbody>
         </table>
+        {!isViewMode && (
+          <div className="px-6 py-3 bg-gray-50 border-t">
+            <button
+              onClick={addLeakageRow}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" /> Add Row
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white shadow-md rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-3">Max Leakage Calculation</h3>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="font-medium">{workload || '—'}</span>
-          <span>×</span>
-          <span className="font-medium">
-            {Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0)).toFixed(3) || '—'}
-          </span>
-          <span>÷</span>
-          <span className="font-medium">60</span>
-          <span>×</span>
-          <span className="font-medium">100</span>
-          <span>=</span>
-          <input
-            type="text"
-            value={maxLeakageResult}
-            readOnly
-            className="w-24 px-2 py-1 bg-gray-100 text-sm font-medium text-center rounded"
-          />
+        <div className="space-y-3">
+          {processedLeakage.map((row, idx) => {
+            const rowMax = parseFloat(row.max) || 0;
+            const maVal = parseFloat(settings.ma) || 1;
+            const workloadVal = parseFloat(workload) || 0;
+            const rowResult = rowLeakageResults[idx] || '—';
+            
+            return (
+              <div key={idx} className="flex items-center gap-3 text-sm border-b pb-2">
+                <span className="font-medium w-24">{row.location}:</span>
+                <span className="font-medium">{workload || '—'}</span>
+                <span>×</span>
+                <span className="font-medium">{rowMax > 0 ? rowMax.toFixed(3) : '—'}</span>
+                <span>÷</span>
+                <span className="font-medium">60</span>
+                <span>×</span>
+                <span className="font-medium">{maVal || '—'}</span>
+                <span>=</span>
+                <input
+                  type="text"
+                  value={rowResult}
+                  readOnly
+                  className="w-24 px-2 py-1 bg-gray-100 text-sm font-medium text-center rounded"
+                />
+                {!isViewMode && leakageRows.length > 1 && (
+                  <button
+                    onClick={() => removeLeakageRow(idx)}
+                    className="ml-2 text-red-600 hover:bg-red-100 p-1 rounded"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
