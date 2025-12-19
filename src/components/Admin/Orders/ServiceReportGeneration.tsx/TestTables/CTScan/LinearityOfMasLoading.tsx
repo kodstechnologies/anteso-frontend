@@ -31,11 +31,12 @@ interface Table2Row {
 interface Props {
   serviceId: string;
   testId?: string | null;
+  tubeId?: 'A' | 'B' | null;
   onTestSaved?: (testId: string) => void;
   onRefresh?: () => void;
 }
 
-const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh }) => {
+const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId = null, tubeId, onTestSaved, onRefresh }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,7 +104,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         return;
       }
       try {
-        const res = await getLinearityOfMasLoadingByServiceIdForCTScan(serviceId);
+        const res = await getLinearityOfMasLoadingByServiceIdForCTScan(serviceId, tubeId || null);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -151,7 +152,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, tubeId]);
 
   // Save handler
   const handleSave = async () => {
@@ -194,6 +195,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
           };
         }),
         tolerance,
+        tubeId: tubeId || null,
       };
 
       let result;
@@ -201,7 +203,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
       if (!currentTestId) {
         try {
-          const existing = await getLinearityOfMasLoadingByServiceIdForCTScan(serviceId);
+          const existing = await getLinearityOfMasLoadingByServiceIdForCTScan(serviceId, tubeId || null);
           if (existing?.data?._id) {
             currentTestId = existing.data._id;
             setTestId(currentTestId);

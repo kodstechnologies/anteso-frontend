@@ -23,12 +23,14 @@ interface OutputRow {
 interface Props {
     serviceId: string;
     testId?: string | null;
+    tubeId?: string | null;
     onTestSaved?: (testId: string) => void;
 }
 
 const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     serviceId,
     testId: propTestId = null,
+    tubeId,
     onTestSaved,
 }) => {
     const [testId, setTestId] = useState<string | null>(propTestId);
@@ -116,7 +118,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         const loadTest = async () => {
             setIsLoading(true);
             try {
-                const res = await getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId);
+                const res = await getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tubeId);
                 const data = res?.data;
 
                 if (data) {
@@ -182,6 +184,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 operator: "<=",
                 value: tolerance.trim(),
             },
+            tubeId: tubeId || null,
         };
 
         try {

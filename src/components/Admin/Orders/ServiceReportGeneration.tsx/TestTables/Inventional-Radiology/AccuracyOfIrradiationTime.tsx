@@ -9,6 +9,7 @@ import {
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
+  tubeId?: string | null;
 }
 
 interface Table1Row {
@@ -26,6 +27,7 @@ interface Table2Row {
 
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
+  tubeId,
 }) => {
   const [testId, setTestId] = useState<string | null>(null); // Mongo _id
   const [loading, setLoading] = useState(false);
@@ -100,7 +102,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       if (!serviceId) return;
       setLoading(true);
       try {
-        const data = await getAccuracyOfIrradiationTimeByServiceId(serviceId);
+        const data = await getAccuracyOfIrradiationTimeByServiceId(serviceId, tubeId);
         if (data) {
           setTestId(data._id);
           setTable1Row(data.testConditions || { fcd: "", kv: "", ma: "" });
@@ -124,7 +126,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     };
 
     fetchData();
-  }, [serviceId]);
+  }, [serviceId, tubeId]);
 
   // Save / Update
   const handleSave = async () => {
@@ -144,6 +146,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         operator: toleranceOperator,
         value: toleranceValue,
       },
+      tubeId: tubeId || null,
     };
 
     setSaving(true);

@@ -46,7 +46,8 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
   const [rows, setRows] = useState<TableRow[]>([
     { id: '1', kvp: '28', mAs: '', alEquivalence: '', hvt: '' },
   ]);
-  const [resultHVT28kVp, setResultHVT28kVp] = useState('');
+  const [resultHVT, setResultHVT] = useState('');
+  const [resultHVTKvp, setResultHVTKvp] = useState('28');
 
   const [hvlTolerances, setHvlTolerances] = useState<HvlTolerances>({
     at30: { operator: '>=', value: '0.30' },
@@ -59,17 +60,31 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // Auto-sync HVT at 28 kVp
-  const hvtAt28kVp = useMemo(() => {
-    const row = rows.find(r => r.kvp.trim() === '28');
+  // Auto-sync HVT from the row that matches the result kVp
+  const hvtAtResultKvp = useMemo(() => {
+    const row = rows.find(r => r.kvp.trim() === resultHVTKvp.trim());
     return row?.hvt.trim() || '';
-  }, [rows]);
+  }, [rows, resultHVTKvp]);
+
+  // Auto-detect kVp from row with HVT value if resultHVT matches
+  useEffect(() => {
+    if (resultHVT) {
+      const matchingRow = rows.find(r => {
+        const rowHvt = parseFloat(r.hvt);
+        const resultHvt = parseFloat(resultHVT);
+        return !isNaN(rowHvt) && !isNaN(resultHvt) && Math.abs(rowHvt - resultHvt) < 0.001;
+      });
+      if (matchingRow && matchingRow.kvp.trim()) {
+        setResultHVTKvp(matchingRow.kvp.trim());
+      }
+    }
+  }, [rows, resultHVT]);
 
   useEffect(() => {
-    if (hvtAt28kVp && !resultHVT28kVp) {
-      setResultHVT28kVp(hvtAt28kVp);
+    if (hvtAtResultKvp && !resultHVT) {
+      setResultHVT(hvtAtResultKvp);
     }
-  }, [hvtAt28kVp, resultHVT28kVp]);
+  }, [hvtAtResultKvp, resultHVT]);
 
   // Load data from backend
   useEffect(() => {
@@ -89,7 +104,18 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
               hvt: t.hvt?.toString() || '',
             }))
           );
-          setResultHVT28kVp(data.resultHVT28kVp?.toString() || '');
+          setResultHVT(data.resultHVT28kVp?.toString() || '');
+          // Try to find the kVp from the table that matches the result HVT
+          const resultHvtValue = data.resultHVT28kVp ? parseFloat(data.resultHVT28kVp.toString()) : null;
+          const resultRow = resultHvtValue ? data.table.find((t: any) => {
+            const rowHvt = t.hvt ? parseFloat(t.hvt.toString()) : null;
+            return rowHvt !== null && Math.abs(rowHvt - resultHvtValue) < 0.001;
+          }) : null;
+          if (resultRow && resultRow.kvp !== null && resultRow.kvp !== undefined) {
+            setResultHVTKvp(resultRow.kvp.toString());
+          } else if (data.table.length > 0 && data.table[0].kvp !== null && data.table[0].kvp !== undefined) {
+            setResultHVTKvp(data.table[0].kvp.toString());
+          }
           setHvlTolerances(data.hvlTolerances || {
             at30: { operator: '>=', value: '0.30' },
             at40: { operator: '>=', value: '0.40' },
@@ -123,7 +149,7 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
         alEquivalence: parseFloat(r.alEquivalence) || null,
         hvt: parseFloat(r.hvt) || null,
       })),
-      resultHVT28kVp: parseFloat(resultHVT28kVp) || null,
+      resultHVT28kVp: parseFloat(resultHVT) || null,
       hvlTolerances: {
         at30: { operator: hvlTolerances.at30.operator, value: parseFloat(hvlTolerances.at30.value) || null },
         at40: { operator: hvlTolerances.at40.operator, value: parseFloat(hvlTolerances.at40.value) || null },
@@ -340,14 +366,40 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
       </div>
 
       {/* Result */}
-      <div className="bg-amber-50 border-2 border-amber-400 rounded-xl p-6 text-center">
-        <p className="text-xl font-bold text-amber-900">
-          Result: The HVT of the unit is{' '}
-          <span className="inline-block w-32 px-4 py-2 bg-white border-2 border-amber-600 rounded font-bold text-amber-900">
-            {resultHVT28kVp || '—'}
-          </span>{' '}
-          mm Al at 28 kVp
-        </p>
+      <div className="bg-amber-50 border-2 border-amber-400 rounded-xl p-6">
+        <div className="text-center space-y-4">
+          <p className="text-xl font-bold text-amber-900">
+            Result: The HVT of the unit is{' '}
+            <span className={`inline-block w-32 px-4 py-2 bg-white border-2 border-amber-600 rounded font-bold text-amber-900 ${!isViewMode ? 'cursor-text' : ''}`}>
+              {isViewMode ? (
+                resultHVT || '—'
+              ) : (
+                <input
+                  type="text"
+                  value={resultHVT}
+                  onChange={(e) => setResultHVT(e.target.value)}
+                  className="w-full text-center bg-transparent border-none outline-none font-bold text-amber-900"
+                  placeholder="—"
+                />
+              )}
+            </span>{' '}
+            mm Al at{' '}
+            <span className={`inline-block w-24 px-4 py-2 bg-white border-2 border-amber-600 rounded font-bold text-amber-900 ${!isViewMode ? 'cursor-text' : ''}`}>
+              {isViewMode ? (
+                resultHVTKvp || '—'
+              ) : (
+                <input
+                  type="text"
+                  value={resultHVTKvp}
+                  onChange={(e) => setResultHVTKvp(e.target.value)}
+                  className="w-full text-center bg-transparent border-none outline-none font-bold text-amber-900"
+                  placeholder="28"
+                />
+              )}
+            </span>{' '}
+            kVp
+          </p>
+        </div>
       </div>
 
       {/* Recommended HVL Tolerances */}

@@ -49,12 +49,16 @@ interface ReportData {
   notes?: Note[];
 
   // Test documents
+  CentralBeamAlignmentInventionalRadiology?: any;
+  EffectiveFocalSpotInventionalRadiology?: any;
   AccuracyOfIrradiationTimeInventionalRadiology?: any;
   TotalFilterationForInventionalRadiology?: any;
-  ExposureRateTableTopInventionalRadiology?: any;
-  HighContrastResolutionInventionalRadiology?: any;
+  ConsistencyOfRadiationOutputInventionalRadiology?: any;
   LowContrastResolutionInventionalRadiology?: any;
+  HighContrastResolutionInventionalRadiology?: any;
+  ExposureRateTableTopInventionalRadiology?: any;
   TubeHousingLeakageInventionalRadiology?: any;
+  RadiationProtectionSurveyInventionalRadiology?: any;
 }
 
 const defaultNotes: Note[] = [
@@ -75,6 +79,8 @@ const ViewServiceReport: React.FC = () => {
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
+  const [testDataFrontal, setTestDataFrontal] = useState<any>({});
+  const [testDataLateral, setTestDataLateral] = useState<any>({});
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -86,7 +92,13 @@ const ViewServiceReport: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await getReportHeaderForInventionalRadiology(serviceId);
+        
+        // Check if it's a double tube setup
+        const savedTubeType = localStorage.getItem(`inventional_radiology_tube_type_${serviceId}`);
+        const isDoubleTube = savedTubeType === 'double';
+        
+        // Always fetch single tube data (tubeId = null) for common tests and header
+        const response = await getReportHeaderForInventionalRadiology(serviceId, null);
 
         if (response?.exists && response?.data) {
           const data = response.data;
@@ -114,15 +126,65 @@ const ViewServiceReport: React.FC = () => {
             notes: data.notes || defaultNotes,
           });
 
-          // Extract test data from populated response
-          setTestData({
-            accuracyOfIrradiationTime: data.AccuracyOfIrradiationTimeInventionalRadiology || null,
-            totalFilteration: data.TotalFilterationForInventionalRadiology || null,
-            exposureRateTableTop: data.ExposureRateTableTopInventionalRadiology || null,
-            highContrastResolution: data.HighContrastResolutionInventionalRadiology || null,
-            lowContrastResolution: data.LowContrastResolutionInventionalRadiology || null,
-            tubeHousingLeakage: data.TubeHousingLeakageInventionalRadiology || null,
-          });
+          if (isDoubleTube) {
+            // Fetch both Tube Frontal and Tube Lateral data
+            const [responseFrontal, responseLateral] = await Promise.all([
+              getReportHeaderForInventionalRadiology(serviceId, 'frontal'),
+              getReportHeaderForInventionalRadiology(serviceId, 'lateral'),
+            ]);
+
+            // Extract test data for Tube Frontal
+            if (responseFrontal?.exists && responseFrontal?.data) {
+              const dataFrontal = responseFrontal.data;
+              setTestDataFrontal({
+                centralBeamAlignment: dataFrontal.CentralBeamAlignmentInventionalRadiology || null,
+                effectiveFocalSpot: dataFrontal.EffectiveFocalSpotInventionalRadiology || null,
+                accuracyOfIrradiationTime: dataFrontal.AccuracyOfIrradiationTimeInventionalRadiology || null,
+                totalFilteration: dataFrontal.TotalFilterationForInventionalRadiology || null,
+                consistencyOfRadiationOutput: dataFrontal.ConsistencyOfRadiationOutputInventionalRadiology || null,
+                lowContrastResolution: dataFrontal.LowContrastResolutionInventionalRadiology || null,
+                highContrastResolution: dataFrontal.HighContrastResolutionInventionalRadiology || null,
+                exposureRateTableTop: dataFrontal.ExposureRateTableTopInventionalRadiology || null,
+                tubeHousingLeakage: dataFrontal.TubeHousingLeakageInventionalRadiology || null,
+              });
+            }
+
+            // Extract test data for Tube Lateral
+            if (responseLateral?.exists && responseLateral?.data) {
+              const dataLateral = responseLateral.data;
+              setTestDataLateral({
+                centralBeamAlignment: dataLateral.CentralBeamAlignmentInventionalRadiology || null,
+                effectiveFocalSpot: dataLateral.EffectiveFocalSpotInventionalRadiology || null,
+                accuracyOfIrradiationTime: dataLateral.AccuracyOfIrradiationTimeInventionalRadiology || null,
+                totalFilteration: dataLateral.TotalFilterationForInventionalRadiology || null,
+                consistencyOfRadiationOutput: dataLateral.ConsistencyOfRadiationOutputInventionalRadiology || null,
+                lowContrastResolution: dataLateral.LowContrastResolutionInventionalRadiology || null,
+                highContrastResolution: dataLateral.HighContrastResolutionInventionalRadiology || null,
+                exposureRateTableTop: dataLateral.ExposureRateTableTopInventionalRadiology || null,
+                tubeHousingLeakage: dataLateral.TubeHousingLeakageInventionalRadiology || null,
+              });
+            }
+
+            // Set combined test data for summary (common tests only)
+            setTestData({
+              // Common tests that don't have tubeId
+              radiationProtectionSurvey: data.RadiationProtectionSurveyInventionalRadiology || null,
+            });
+          } else {
+            // Single tube - use the response data
+            setTestData({
+              centralBeamAlignment: data.CentralBeamAlignmentInventionalRadiology || null,
+              effectiveFocalSpot: data.EffectiveFocalSpotInventionalRadiology || null,
+              accuracyOfIrradiationTime: data.AccuracyOfIrradiationTimeInventionalRadiology || null,
+              totalFilteration: data.TotalFilterationForInventionalRadiology || null,
+              consistencyOfRadiationOutput: data.ConsistencyOfRadiationOutputInventionalRadiology || null,
+              lowContrastResolution: data.LowContrastResolutionInventionalRadiology || null,
+              highContrastResolution: data.HighContrastResolutionInventionalRadiology || null,
+              exposureRateTableTop: data.ExposureRateTableTopInventionalRadiology || null,
+              tubeHousingLeakage: data.TubeHousingLeakageInventionalRadiology || null,
+              radiationProtectionSurvey: data.RadiationProtectionSurveyInventionalRadiology || null,
+            });
+          }
         } else {
           setNotFound(true);
         }
@@ -138,6 +200,35 @@ const ViewServiceReport: React.FC = () => {
   }, [serviceId]);
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
+
+  // Helper function to render test table for both tubes
+  const renderTestTable = (
+    testDataFrontal: any,
+    testDataLateral: any,
+    testDataSingle: any,
+    renderTable: (data: any) => React.ReactNode
+  ) => {
+    if (isDoubleTube) {
+      return (
+        <>
+          {testDataFrontal && (
+            <div className="mb-4 print:mb-2">
+              <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
+              {renderTable(testDataFrontal)}
+            </div>
+          )}
+          {testDataLateral && (
+            <div className="mb-4 print:mb-2">
+              <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
+              {renderTable(testDataLateral)}
+            </div>
+          )}
+        </>
+      );
+    } else {
+      return testDataSingle ? renderTable(testDataSingle) : null;
+    }
+  };
 
   const downloadPDF = async () => {
     try {
@@ -170,6 +261,10 @@ const ViewServiceReport: React.FC = () => {
 
   const toolsArray = report.toolsUsed || [];
   const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
+  
+  // Check if it's a double tube setup
+  const savedTubeType = localStorage.getItem(`inventional_radiology_tube_type_${serviceId}`);
+  const isDoubleTube = savedTubeType === 'double';
 
   return (
     <>
@@ -342,8 +437,33 @@ const ViewServiceReport: React.FC = () => {
 
         {/* PAGE 2+ - SUMMARY TABLE */}
         <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section" style={{ pageBreakAfter: 'always' }}>
-          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
-            <MainTestTableForInventionalRadiology testData={testData} />
+          <div className="max-w-5xl mx-auto print:max-w-none flex flex-col items-center" style={{ width: '100%', maxWidth: 'none' }}>
+            {isDoubleTube ? (
+              <>
+                {/* Summary for Tube Frontal */}
+                <div className="mb-8 print:mb-4 w-full flex flex-col items-center">
+                  <h3 className="text-xl font-bold text-center mb-4 print:mb-2 print:text-base" style={{ fontSize: '14px' }}>
+                    SUMMARY OF QA TEST RESULTS - TUBE FRONTAL
+                  </h3>
+                  <div className="w-full flex justify-center">
+                    <MainTestTableForInventionalRadiology testData={testDataFrontal} />
+                  </div>
+                </div>
+                {/* Summary for Tube Lateral */}
+                <div className="mb-8 print:mb-4 w-full flex flex-col items-center">
+                  <h3 className="text-xl font-bold text-center mb-4 print:mb-2 print:text-base" style={{ fontSize: '14px' }}>
+                    SUMMARY OF QA TEST RESULTS - TUBE LATERAL
+                  </h3>
+                  <div className="w-full flex justify-center">
+                    <MainTestTableForInventionalRadiology testData={testDataLateral} />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="w-full flex justify-center">
+                <MainTestTableForInventionalRadiology testData={testData} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -356,20 +476,163 @@ const ViewServiceReport: React.FC = () => {
             <h2 className="text-3xl font-bold text-center underline mb-6 print:mb-2 print:text-xl">DETAILED TEST RESULTS</h2>
 
             {/* 1. Accuracy of Irradiation Time */}
-            {testData.accuracyOfIrradiationTime && (
+            {((isDoubleTube && (testDataFrontal.accuracyOfIrradiationTime || testDataLateral.accuracyOfIrradiationTime)) || (!isDoubleTube && testData.accuracyOfIrradiationTime)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Accuracy of Irradiation Time</h3>
-                {testData.accuracyOfIrradiationTime.testConditions && (
-                  <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
-                    <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
-                    <div className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                      FCD: {testData.accuracyOfIrradiationTime.testConditions.fcd || "-"} cm |
-                      kV: {testData.accuracyOfIrradiationTime.testConditions.kv || "-"} |
-                      mA: {testData.accuracyOfIrradiationTime.testConditions.ma || "-"}
-                    </div>
-                  </div>
-                )}
-                {testData.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (
+                {isDoubleTube ? (
+                  <>
+                    {/* Tube Frontal */}
+                    {testDataFrontal.accuracyOfIrradiationTime && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
+                        {testDataFrontal.accuracyOfIrradiationTime.testConditions && (
+                          <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
+                            <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
+                            <div className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
+                              FCD: {testDataFrontal.accuracyOfIrradiationTime.testConditions.fcd || "-"} cm |
+                              kV: {testDataFrontal.accuracyOfIrradiationTime.testConditions.kv || "-"} |
+                              mA: {testDataFrontal.accuracyOfIrradiationTime.testConditions.ma || "-"}
+                            </div>
+                          </div>
+                        )}
+                        {testDataFrontal.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (
+                          <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remarks</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {testDataFrontal.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
+                                  const setTime = parseFloat(row.setTime);
+                                  const measuredTime = parseFloat(row.measuredTime);
+                                  let error = "-";
+                                  if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
+                                    error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
+                                  }
+                                  const toleranceOp = testDataFrontal.accuracyOfIrradiationTime.tolerance?.operator || "<=";
+                                  const toleranceVal = parseFloat(testDataFrontal.accuracyOfIrradiationTime.tolerance?.value || "5");
+                                  const errorVal = parseFloat(error);
+                                  let isPass = false;
+                                  if (!isNaN(errorVal) && !isNaN(toleranceVal)) {
+                                    if (toleranceOp === "<=") isPass = errorVal <= toleranceVal;
+                                    else if (toleranceOp === ">=") isPass = errorVal >= toleranceVal;
+                                    else if (toleranceOp === "<") isPass = errorVal < toleranceVal;
+                                    else if (toleranceOp === ">") isPass = errorVal > toleranceVal;
+                                  }
+                                  return (
+                                    <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime || "-"}</td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredTime || "-"}</td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{error}%</td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
+                                        <span className={isPass ? "text-green-600" : "text-red-600"}>
+                                          {isPass ? "PASS" : "FAIL"}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {testDataFrontal.accuracyOfIrradiationTime.tolerance && (
+                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                              <strong>Tolerance:</strong> Error {testDataFrontal.accuracyOfIrradiationTime.tolerance.operator || "<="} {testDataFrontal.accuracyOfIrradiationTime.tolerance.value || "-"}%
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Tube Lateral */}
+                    {testDataLateral.accuracyOfIrradiationTime && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
+                        {testDataLateral.accuracyOfIrradiationTime.testConditions && (
+                          <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
+                            <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
+                            <div className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
+                              FCD: {testDataLateral.accuracyOfIrradiationTime.testConditions.fcd || "-"} cm |
+                              kV: {testDataLateral.accuracyOfIrradiationTime.testConditions.kv || "-"} |
+                              mA: {testDataLateral.accuracyOfIrradiationTime.testConditions.ma || "-"}
+                            </div>
+                          </div>
+                        )}
+                        {testDataLateral.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (
+                          <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remarks</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {testDataLateral.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
+                                  const setTime = parseFloat(row.setTime);
+                                  const measuredTime = parseFloat(row.measuredTime);
+                                  let error = "-";
+                                  if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
+                                    error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
+                                  }
+                                  const toleranceOp = testDataLateral.accuracyOfIrradiationTime.tolerance?.operator || "<=";
+                                  const toleranceVal = parseFloat(testDataLateral.accuracyOfIrradiationTime.tolerance?.value || "5");
+                                  const errorVal = parseFloat(error);
+                                  let isPass = false;
+                                  if (!isNaN(errorVal) && !isNaN(toleranceVal)) {
+                                    if (toleranceOp === "<=") isPass = errorVal <= toleranceVal;
+                                    else if (toleranceOp === ">=") isPass = errorVal >= toleranceVal;
+                                    else if (toleranceOp === "<") isPass = errorVal < toleranceVal;
+                                    else if (toleranceOp === ">") isPass = errorVal > toleranceVal;
+                                  }
+                                  return (
+                                    <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime || "-"}</td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredTime || "-"}</td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{error}%</td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
+                                        <span className={isPass ? "text-green-600" : "text-red-600"}>
+                                          {isPass ? "PASS" : "FAIL"}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {testDataLateral.accuracyOfIrradiationTime.tolerance && (
+                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                              <strong>Tolerance:</strong> Error {testDataLateral.accuracyOfIrradiationTime.tolerance.operator || "<="} {testDataLateral.accuracyOfIrradiationTime.tolerance.value || "-"}%
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {testData.accuracyOfIrradiationTime.testConditions && (
+                      <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
+                        <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
+                        <div className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
+                          FCD: {testData.accuracyOfIrradiationTime.testConditions.fcd || "-"} cm |
+                          kV: {testData.accuracyOfIrradiationTime.testConditions.kv || "-"} |
+                          mA: {testData.accuracyOfIrradiationTime.testConditions.ma || "-"}
+                        </div>
+                      </div>
+                    )}
+                    {testData.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
@@ -422,29 +685,136 @@ const ViewServiceReport: React.FC = () => {
                     </p>
                   </div>
                 )}
+                  </>
+                )}
               </div>
             )}
 
             {/* 2. Total Filtration */}
-            {testData.totalFilteration && (
+            {((isDoubleTube && (testDataFrontal.totalFilteration || testDataLateral.totalFilteration)) || (!isDoubleTube && testData.totalFilteration)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Total Filtration</h3>
-                {testData.totalFilteration.totalFiltration && (
-                  <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Total Filtration:</strong> Measured: {testData.totalFilteration.totalFiltration.measured || "-"} mm Al | 
-                      Required: {testData.totalFilteration.totalFiltration.required || "-"} mm Al
-                    </p>
-                  </div>
+                {isDoubleTube ? (
+                  <>
+                    {testDataFrontal.totalFilteration && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
+                        {testDataFrontal.totalFilteration.totalFiltration && (
+                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                              <strong>Total Filtration:</strong> Measured: {testDataFrontal.totalFilteration.totalFiltration.measured || "-"} mm Al | 
+                              Required: {testDataFrontal.totalFilteration.totalFiltration.required || "-"} mm Al
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {testDataLateral.totalFilteration && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
+                        {testDataLateral.totalFilteration.totalFiltration && (
+                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                              <strong>Total Filtration:</strong> Measured: {testDataLateral.totalFilteration.totalFiltration.measured || "-"} mm Al | 
+                              Required: {testDataLateral.totalFilteration.totalFiltration.required || "-"} mm Al
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  testData.totalFilteration?.totalFiltration && (
+                    <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                      <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                        <strong>Total Filtration:</strong> Measured: {testData.totalFilteration.totalFiltration.measured || "-"} mm Al | 
+                        Required: {testData.totalFilteration.totalFiltration.required || "-"} mm Al
+                      </p>
+                    </div>
+                  )
                 )}
               </div>
             )}
 
             {/* 3. Exposure Rate at Table Top */}
-            {testData.exposureRateTableTop && (
+            {((isDoubleTube && (testDataFrontal.exposureRateTableTop || testDataLateral.exposureRateTableTop)) || (!isDoubleTube && testData.exposureRateTableTop)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Exposure Rate at Table Top</h3>
-                {testData.exposureRateTableTop.rows?.length > 0 && (
+                {isDoubleTube ? (
+                  <>
+                    {testDataFrontal.exposureRateTableTop && testDataFrontal.exposureRateTableTop.rows?.length > 0 && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
+                        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Distance (cm)</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied kV</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied mA</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Exposure (mGy/min)</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mode</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Result</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {testDataFrontal.exposureRateTableTop.rows.map((row: any, i: number) => (
+                                <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.distance || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKv || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedMa || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.exposure || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.remark || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
+                                    <span className={row.result === "PASS" ? "text-green-600" : row.result === "FAIL" ? "text-red-600" : ""}>
+                                      {row.result || "-"}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    {testDataLateral.exposureRateTableTop && testDataLateral.exposureRateTableTop.rows?.length > 0 && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
+                        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Distance (cm)</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied kV</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied mA</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Exposure (mGy/min)</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mode</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Result</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {testDataLateral.exposureRateTableTop.rows.map((row: any, i: number) => (
+                                <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.distance || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKv || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedMa || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.exposure || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.remark || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
+                                    <span className={row.result === "PASS" ? "text-green-600" : row.result === "FAIL" ? "text-red-600" : ""}>
+                                      {row.result || "-"}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  testData.exposureRateTableTop?.rows?.length > 0 && (
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
@@ -475,49 +845,136 @@ const ViewServiceReport: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
+                  )
                 )}
               </div>
             )}
 
             {/* 4. Low Contrast Resolution */}
-            {testData.lowContrastResolution && (
+            {((isDoubleTube && (testDataFrontal.lowContrastResolution || testDataLateral.lowContrastResolution)) || (!isDoubleTube && testData.lowContrastResolution)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Low Contrast Resolution</h3>
-                <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Smallest Hole Size:</strong> {testData.lowContrastResolution.smallestHoleSize || "-"} mm
-                  </p>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Recommended Standard:</strong> {testData.lowContrastResolution.recommendedStandard || "3.0"} mm
-                  </p>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Remarks:</strong>{" "}
-                    <span className={testData.lowContrastResolution.remark === "PASS" ? "text-green-600" : testData.lowContrastResolution.remark === "FAIL" ? "text-red-600" : ""}>
-                      {testData.lowContrastResolution.remark || "-"}
-                    </span>
-                  </p>
-                </div>
+                {isDoubleTube ? (
+                  <>
+                    {testDataFrontal.lowContrastResolution && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
+                        <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Smallest Hole Size:</strong> {testDataFrontal.lowContrastResolution.smallestHoleSize || "-"} mm
+                          </p>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Recommended Standard:</strong> {testDataFrontal.lowContrastResolution.recommendedStandard || "3.0"} mm
+                          </p>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Remarks:</strong>{" "}
+                            <span className={testDataFrontal.lowContrastResolution.remark === "PASS" ? "text-green-600" : testDataFrontal.lowContrastResolution.remark === "FAIL" ? "text-red-600" : ""}>
+                              {testDataFrontal.lowContrastResolution.remark || "-"}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {testDataLateral.lowContrastResolution && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
+                        <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Smallest Hole Size:</strong> {testDataLateral.lowContrastResolution.smallestHoleSize || "-"} mm
+                          </p>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Recommended Standard:</strong> {testDataLateral.lowContrastResolution.recommendedStandard || "3.0"} mm
+                          </p>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Remarks:</strong>{" "}
+                            <span className={testDataLateral.lowContrastResolution.remark === "PASS" ? "text-green-600" : testDataLateral.lowContrastResolution.remark === "FAIL" ? "text-red-600" : ""}>
+                              {testDataLateral.lowContrastResolution.remark || "-"}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                      <strong>Smallest Hole Size:</strong> {testData.lowContrastResolution.smallestHoleSize || "-"} mm
+                    </p>
+                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                      <strong>Recommended Standard:</strong> {testData.lowContrastResolution.recommendedStandard || "3.0"} mm
+                    </p>
+                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                      <strong>Remarks:</strong>{" "}
+                      <span className={testData.lowContrastResolution.remark === "PASS" ? "text-green-600" : testData.lowContrastResolution.remark === "FAIL" ? "text-red-600" : ""}>
+                        {testData.lowContrastResolution.remark || "-"}
+                      </span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {/* 5. High Contrast Resolution */}
-            {testData.highContrastResolution && (
+            {((isDoubleTube && (testDataFrontal.highContrastResolution || testDataLateral.highContrastResolution)) || (!isDoubleTube && testData.highContrastResolution)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. High Contrast Resolution</h3>
-                <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Measured:</strong> {testData.highContrastResolution.measuredLpPerMm || "-"} lp/mm
-                  </p>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Recommended Standard:</strong> {testData.highContrastResolution.recommendedStandard || "1.50"} lp/mm
-                  </p>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Remarks:</strong>{" "}
-                    <span className={testData.highContrastResolution.remark === "PASS" ? "text-green-600" : testData.highContrastResolution.remark === "FAIL" ? "text-red-600" : ""}>
-                      {testData.highContrastResolution.remark || "-"}
-                    </span>
-                  </p>
-                </div>
+                {isDoubleTube ? (
+                  <>
+                    {testDataFrontal.highContrastResolution && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
+                        <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Measured:</strong> {testDataFrontal.highContrastResolution.measuredLpPerMm || "-"} lp/mm
+                          </p>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Recommended Standard:</strong> {testDataFrontal.highContrastResolution.recommendedStandard || "1.50"} lp/mm
+                          </p>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Remarks:</strong>{" "}
+                            <span className={testDataFrontal.highContrastResolution.remark === "PASS" ? "text-green-600" : testDataFrontal.highContrastResolution.remark === "FAIL" ? "text-red-600" : ""}>
+                              {testDataFrontal.highContrastResolution.remark || "-"}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {testDataLateral.highContrastResolution && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
+                        <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Measured:</strong> {testDataLateral.highContrastResolution.measuredLpPerMm || "-"} lp/mm
+                          </p>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Recommended Standard:</strong> {testDataLateral.highContrastResolution.recommendedStandard || "1.50"} lp/mm
+                          </p>
+                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                            <strong>Remarks:</strong>{" "}
+                            <span className={testDataLateral.highContrastResolution.remark === "PASS" ? "text-green-600" : testDataLateral.highContrastResolution.remark === "FAIL" ? "text-red-600" : ""}>
+                              {testDataLateral.highContrastResolution.remark || "-"}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                      <strong>Measured:</strong> {testData.highContrastResolution.measuredLpPerMm || "-"} lp/mm
+                    </p>
+                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                      <strong>Recommended Standard:</strong> {testData.highContrastResolution.recommendedStandard || "1.50"} lp/mm
+                    </p>
+                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                      <strong>Remarks:</strong>{" "}
+                      <span className={testData.highContrastResolution.remark === "PASS" ? "text-green-600" : testData.highContrastResolution.remark === "FAIL" ? "text-red-600" : ""}>
+                        {testData.highContrastResolution.remark || "-"}
+                      </span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

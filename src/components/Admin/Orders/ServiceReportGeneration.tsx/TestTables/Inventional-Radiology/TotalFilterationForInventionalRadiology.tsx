@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import {
     createTotalFilteration,
     getTotalFilteration,
+    getTotalFilterationByServiceIdForInventionalRadiology,
     updateTotalFilterationforInventionalRadiology,
 } from "../../../../../../api"; 
 interface RowData {
@@ -18,12 +19,14 @@ interface RowData {
 interface TotalFilterationForInventionalRadiologyProps {
     serviceId: string;
     testId?: string | null;
+    tubeId?: string | null;
     onTestSaved?: (testId: string) => void;
 }
 
 const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInventionalRadiologyProps> = ({
     serviceId,
     testId: initialTestId = null,
+    tubeId,
     onTestSaved,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
@@ -45,39 +48,43 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
 
     // Load existing test data
     useEffect(() => {
-        if (initialTestId) {
-            const loadTest = async () => {
-                setIsLoading(true);
-                try {
-                    const data = await getTotalFilteration(initialTestId);
-                    if (data) {
-                        setMAStations(data.mAStations || ["50 mA", "100 mA"]);
-                        setRows(
-                            data.measurements?.map((m: any) => ({
-                                id: Date.now().toString() + Math.random(),
-                                appliedKvp: m.appliedKvp || "",
-                                measuredValues: m.measuredValues || [],
-                                averageKvp: m.averageKvp || "",
-                                remarks: m.remarks || "-",
-                            })) || rows
-                        );
-                        setToleranceSign(data.tolerance?.sign || "±");
-                        setToleranceValue(data.tolerance?.value || "2.0");
-                        setTotalFiltration({
-                            measured: data.totalFiltration?.measured || "",
-                            required: data.totalFiltration?.required || "",
-                        });
-                        setIsSaved(true);
-                    }
-                } catch (err) {
-                    toast.error("Failed to load test data");
-                } finally {
-                    setIsLoading(false);
+        const loadTest = async () => {
+            setIsLoading(true);
+            try {
+                let data;
+                if (initialTestId) {
+                    data = await getTotalFilteration(initialTestId);
+                } else {
+                    data = await getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tubeId);
                 }
-            };
-            loadTest();
-        }
-    }, [initialTestId]);
+                if (data) {
+                    setTestId(data._id || initialTestId);
+                    setMAStations(data.mAStations || ["50 mA", "100 mA"]);
+                    setRows(
+                        data.measurements?.map((m: any) => ({
+                            id: Date.now().toString() + Math.random(),
+                            appliedKvp: m.appliedKvp || "",
+                            measuredValues: m.measuredValues || [],
+                            averageKvp: m.averageKvp || "",
+                            remarks: m.remarks || "-",
+                        })) || rows
+                    );
+                    setToleranceSign(data.tolerance?.sign || "±");
+                    setToleranceValue(data.tolerance?.value || "2.0");
+                    setTotalFiltration({
+                        measured: data.totalFiltration?.measured || "",
+                        required: data.totalFiltration?.required || "",
+                    });
+                    setIsSaved(true);
+                }
+            } catch (err) {
+                // Silently fail if no data exists
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadTest();
+    }, [serviceId, initialTestId, tubeId]);
 
     // Save function
     const saveTest = async () => {
@@ -96,6 +103,7 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
             })),
             tolerance: { sign: toleranceSign, value: toleranceValue },
             totalFiltration,
+            tubeId: tubeId || null,
         };
 
         setIsSaving(true);

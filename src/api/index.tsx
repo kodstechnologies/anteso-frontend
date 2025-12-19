@@ -3563,12 +3563,17 @@ export const getRadiationProfileWidthByServiceId = async (serviceId: string) => 
 };
 
 // GET BY SERVICE ID - Radiation Profile Width for CT Scan
-export const getRadiationProfileWidthByServiceIdForCTScan = async (serviceId: string) => {
+export const getRadiationProfileWidthByServiceIdForCTScan = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get("accessToken");
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(
             `/service-report/ct-scan/radiation-profile-width/service/${serviceId}`,
             {
+                params,
                 headers: { Authorization: `Bearer ${token}` },
             }
         );
@@ -3886,10 +3891,15 @@ export const updateOutputConsistency = async (testId: string, payload: any) => {
 };
 
 // GET BY SERVICE ID
-export const getOutputConsistencyByServiceId = async (serviceId: string) => {
+export const getOutputConsistencyByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/output-consistency/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -3901,10 +3911,15 @@ export const getOutputConsistencyByServiceId = async (serviceId: string) => {
 };
 
 // GET BY SERVICE ID - Measurement of Operating Potential
-export const getMeasurementOfOperatingPotentialByServiceId = async (serviceId: string) => {
+export const getMeasurementOfOperatingPotentialByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/measurement-of-operating-potential/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -3916,10 +3931,15 @@ export const getMeasurementOfOperatingPotentialByServiceId = async (serviceId: s
 };
 
 // GET BY SERVICE ID - Timer Accuracy
-export const getTimerAccuracyByServiceId = async (serviceId: string) => {
+export const getTimerAccuracyByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/timer-accuracy/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -3931,10 +3951,15 @@ export const getTimerAccuracyByServiceId = async (serviceId: string) => {
 };
 
 // GET BY SERVICE ID - Measurement of CTDI
-export const getMeasurementOfCTDIByServiceId = async (serviceId: string) => {
+export const getMeasurementOfCTDIByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/measurement-of-CTDI/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -3946,10 +3971,15 @@ export const getMeasurementOfCTDIByServiceId = async (serviceId: string) => {
 };
 
 // GET BY SERVICE ID - Total Filtration
-export const getTotalFilterationByServiceId = async (serviceId: string) => {
+export const getTotalFilterationByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/total-filteration/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -3961,10 +3991,15 @@ export const getTotalFilterationByServiceId = async (serviceId: string) => {
 };
 
 // GET BY SERVICE ID - Measurement of mA Linearity
-export const getMeasurementOfMaLinearityByServiceId = async (serviceId: string) => {
+export const getMeasurementOfMaLinearityByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/measurement-of-ma-linearity/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -3976,10 +4011,15 @@ export const getMeasurementOfMaLinearityByServiceId = async (serviceId: string) 
 };
 
 // GET BY SERVICE ID - Radiation Leakage
-export const getRadiationLeakageByServiceId = async (serviceId: string) => {
+export const getRadiationLeakageByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/radiation-leakage/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -4019,10 +4059,15 @@ export const getMeasureMaxRadiationLevelForCTScan = async (testId: string) => {
 };
 
 // GET BY SERVICE ID - Measure Max Radiation Level
-export const getMeasureMaxRadiationLevelByServiceId = async (serviceId: string) => {
+export const getMeasureMaxRadiationLevelByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/measure-max-radiation-level/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -4047,10 +4092,15 @@ export const updateMeasureMaxRadiationLevelForCTScan = async (testId: string, pa
 };
 
 // GET BY SERVICE ID - Low Contrast Resolution
-export const getLowContrastResolutionByServiceIdForCTScan = async (serviceId: string) => {
+export const getLowContrastResolutionByServiceIdForCTScan = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/low-contrast-resolution/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -4062,10 +4112,15 @@ export const getLowContrastResolutionByServiceIdForCTScan = async (serviceId: st
 };
 
 // Get Report Header for CT Scan
-export const getReportHeaderForCTScan = async (serviceId: string) => {
+export const getReportHeaderForCTScan = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get("accessToken");
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/report-header/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data;
@@ -4104,10 +4159,15 @@ export const getHighContrastResolutionForCTScan = async (testId: string) => {
     }
 };
 
-export const getHighContrastResolutionByServiceIdForCTScan = async (serviceId: string) => {
+export const getHighContrastResolutionByServiceIdForCTScan = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/ct-scan/high-contrast-resolution/service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data.data || null;
@@ -4203,10 +4263,15 @@ export const updateAccuracyOfIrradiationTime = async (testId: string, payload: a
     return res.data;
 };
 
-export const getAccuracyOfIrradiationTimeByServiceId = async (serviceId: string) => {
+export const getAccuracyOfIrradiationTimeByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get("accessToken");
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/inventional-radiology/accuracy-of-irradiation-time-by-service/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data?.data || null;
@@ -4253,6 +4318,28 @@ export const updateTotalFilterationforInventionalRadiology = async (testId: stri
     return res.data;
 };
 
+// GET by serviceId
+export const getTotalFilterationByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
+        const res = await api.get(`/service-report/inventional-radiology/total-filteration-by-service/${serviceId}`, {
+            params,
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data?.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getTotalFilterationByServiceIdForInventionalRadiology failed:", error);
+        throw error;
+    }
+};
+
 //exposure rate at table top
 export const addExposureRateTableTop = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
@@ -4282,6 +4369,28 @@ export const getExposureRateTableTopByTestId = async (testId: string) => {
         return res.data.data;
     } catch (error: any) {
         console.error("ExposureRateTableTop fetch failed:", error);
+        throw error;
+    }
+};
+
+// GET BY SERVICE ID
+export const getExposureRateTableTopByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
+        const res = await api.get(`/service-report/inventional-radiology/exposure-rate-by-service/${serviceId}`, {
+            params,
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data?.data || null;
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        console.error("getExposureRateTableTopByServiceIdForInventionalRadiology failed:", error);
         throw error;
     }
 };
@@ -5282,10 +5391,15 @@ export const getReportHeaderForCArm = async (serviceId: string) => {
 };
 
 //Interventional Radiology
-export const getReportHeaderForInventionalRadiology = async (serviceId: string) => {
+export const getReportHeaderForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get("accessToken");
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(`/service-report/inventional-radiology/report-header/${serviceId}`, {
+            params,
             headers: { Authorization: `Bearer ${token}` },
         });
         return res.data;
@@ -6744,12 +6858,16 @@ export const addRadiationProtectionSurveyForCTScan = async (serviceId: string, p
     return res.data;
 };
 
-export const getRadiationProtectionSurveyByServiceIdForCTScan = async (serviceId: string) => {
+export const getRadiationProtectionSurveyByServiceIdForCTScan = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get("accessToken");
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(
             `/service-report/ct-scan/radiation-protection-survey-by-serviceId/${serviceId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            { params, headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
     } catch (error: any) {
@@ -6788,12 +6906,16 @@ export const addLinearityOfMasLoadingForCTScan = async (serviceId: string, paylo
     return res.data;
 };
 
-export const getLinearityOfMasLoadingByServiceIdForCTScan = async (serviceId: string) => {
+export const getLinearityOfMasLoadingByServiceIdForCTScan = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get("accessToken");
     try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
         const res = await api.get(
             `/service-report/ct-scan/linearity-of-mas-loading-by-serviceId/${serviceId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            { params, headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
     } catch (error: any) {
@@ -9982,9 +10104,16 @@ export const addConsistencyOfRadiationOutputForInventionalRadiology = async (ser
     const res = await api.post(`/service-report/inventional-radiology/consistency-of-radiation-output/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
-export const getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology = async (serviceId: string) => {
+export const getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
-    const res = await api.get(`/service-report/inventional-radiology/consistency-of-radiation-output-by-service/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const params: any = {};
+    if (tubeId !== undefined) {
+        params.tubeId = tubeId === null ? 'null' : tubeId;
+    }
+    const res = await api.get(`/service-report/inventional-radiology/consistency-of-radiation-output-by-service/${serviceId}`, { 
+        params,
+        headers: { Authorization: `Bearer ${token}` } 
+    });
     return res.data;
 };
 export const updateConsistencyOfRadiationOutputForInventionalRadiology = async (testId: string, payload: any) => {
@@ -10005,9 +10134,16 @@ export const addCentralBeamAlignmentForInventionalRadiology = async (serviceId: 
     const res = await api.post(`/service-report/inventional-radiology/central-beam-alignment/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
-export const getCentralBeamAlignmentByServiceIdForInventionalRadiology = async (serviceId: string) => {
+export const getCentralBeamAlignmentByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
-    const res = await api.get(`/service-report/inventional-radiology/central-beam-alignment-by-service/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const params: any = {};
+    if (tubeId !== undefined) {
+        params.tubeId = tubeId === null ? 'null' : tubeId;
+    }
+    const res = await api.get(`/service-report/inventional-radiology/central-beam-alignment-by-service/${serviceId}`, { 
+        params,
+        headers: { Authorization: `Bearer ${token}` } 
+    });
     return res.data;
 };
 export const updateCentralBeamAlignmentForInventionalRadiology = async (testId: string, payload: any) => {
@@ -10026,9 +10162,16 @@ export const addEffectiveFocalSpotForInventionalRadiology = async (serviceId: st
     const res = await api.post(`/service-report/inventional-radiology/effective-focal-spot/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
-export const getEffectiveFocalSpotByServiceIdForInventionalRadiology = async (serviceId: string) => {
+export const getEffectiveFocalSpotByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
-    const res = await api.get(`/service-report/inventional-radiology/effective-focal-spot-by-service/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const params: any = {};
+    if (tubeId !== undefined) {
+        params.tubeId = tubeId === null ? 'null' : tubeId;
+    }
+    const res = await api.get(`/service-report/inventional-radiology/effective-focal-spot-by-service/${serviceId}`, { 
+        params,
+        headers: { Authorization: `Bearer ${token}` } 
+    });
     return res.data;
 };
 export const updateEffectiveFocalSpotForInventionalRadiology = async (testId: string, payload: any) => {
@@ -10079,9 +10222,16 @@ export const addLowContrastResolutionForInventionalRadiology = async (serviceId:
     const res = await api.post(`/service-report/inventional-radiology/low-contrast-resolution/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
-export const getLowContrastResolutionByServiceIdForInventionalRadiology = async (serviceId: string) => {
+export const getLowContrastResolutionByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
-    const res = await api.get(`/service-report/inventional-radiology/low-contrast-resolution/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const params: any = {};
+    if (tubeId !== undefined) {
+        params.tubeId = tubeId === null ? 'null' : tubeId;
+    }
+    const res = await api.get(`/service-report/inventional-radiology/low-contrast-resolution/${serviceId}`, { 
+        params,
+        headers: { Authorization: `Bearer ${token}` } 
+    });
     return res.data;
 };
 export const updateLowContrastResolutionForInventionalRadiology = async (testId: string, payload: any) => {
@@ -10095,9 +10245,16 @@ export const addHighContrastResolutionForInventionalRadiology = async (serviceId
     const res = await api.post(`/service-report/inventional-radiology/high-contrast-resolution/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
-export const getHighContrastResolutionByServiceIdForInventionalRadiology = async (serviceId: string) => {
+export const getHighContrastResolutionByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');
-    const res = await api.get(`/service-report/inventional-radiology/high-contrast-resolution/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const params: any = {};
+    if (tubeId !== undefined) {
+        params.tubeId = tubeId === null ? 'null' : tubeId;
+    }
+    const res = await api.get(`/service-report/inventional-radiology/high-contrast-resolution/${serviceId}`, { 
+        params,
+        headers: { Authorization: `Bearer ${token}` } 
+    });
     return res.data;
 };
 export const updateHighContrastResolutionForInventionalRadiology = async (testId: string, payload: any) => {

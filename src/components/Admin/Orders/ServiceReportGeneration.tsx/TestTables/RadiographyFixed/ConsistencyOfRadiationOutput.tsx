@@ -69,9 +69,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     },
   ]);
 
-  // Calculate avg, CV and remark – pure calculation, no state mutation needed
+  // Calculate avg, CoV and remark – pure calculation, no state mutation needed
   const rowsWithCalc = useMemo(() => {
-    const tolValue = parseFloat(tolerance.value) || 0.05;
+    // Tolerance value is already in percentage (e.g., 5.0 for 5%)
+    const tolValuePercent = parseFloat(tolerance.value) || 5.0;
 
     return outputRows.map((row): OutputRow => {
       const values = row.outputs
@@ -86,19 +87,21 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const variance =
         values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
       const stdDev = Math.sqrt(variance);
-      const cv = avg > 0 ? (stdDev / avg) : 0;
+      const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal
+      const covPercent = covDecimal * 100; // CoV as percentage
 
+      // Compare CoV (percentage) with tolerance (percentage)
       const passes =
         tolerance.operator === '<=' || tolerance.operator === '<'
-          ? cv <= tolValue
-          : cv >= tolValue;
+          ? covPercent <= tolValuePercent
+          : covPercent >= tolValuePercent;
 
       const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
 
       return {
         ...row,
         avg: avg.toFixed(4),
-        cv: cv.toFixed(4),
+        cv: covPercent.toFixed(4), // Display CoV as percentage
         remark,
       };
     });
@@ -380,10 +383,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                   kV
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                   mAs
                 </th>
                 {Array.from({ length: measurementCount }, (_, i) => (
@@ -416,11 +419,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     </div>
                   </th>
                 ))}
-                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600  border-r">
                   Average
                 </th>
-                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase">
-                  CV / Result
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 ">
+                  CoV / Result
                 </th>
                 <th className="w-12" />
               </tr>
@@ -473,7 +476,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                           : 'bg-gray-100 text-gray-600'
                       }`}
                     >
-                      {row.cv ? `${row.cv} → ${row.remark}` : '—'}
+                      {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
                     </span>
                   </td>
                   <td className="px-3 text-center">
@@ -510,7 +513,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       <div className="bg-white rounded-lg border p-6 max-w-md shadow-sm">
         <h3 className="font-semibold text-gray-700 mb-4">Acceptance Criteria</h3>
         <div className="flex items-center gap-4">
-          <span className="text-gray-700">Coefficient of Variation (CV)</span>
+          <span className="text-gray-700">Coefficient of Variation (CoV)</span>
           <select
             value={tolerance.operator}
             onChange={e => {
@@ -538,7 +541,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             disabled={isViewMode}
             className={`w-24 px-4 py-2 text-center border-2 border-blue-500 rounded font-bold text-lg focus:outline-none focus:ring-2 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
           />
-          <span className="text-gray-700">%</span>
+          {/* <span className="text-gray-700">%</span> */}
         </div>
         <p className="text-sm text-gray-500 mt-3">
           Reference: IEC 61223-3-1 & AERB Safety Code

@@ -132,28 +132,36 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4) : '—';
+      // Calculate average mGy and round to 4 decimal places
+      const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
+      const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
+      
       const ma = parseFloat(row.ma);
-      const x = avg !== '—' && ma > 0 ? (parseFloat(avg) / ma).toFixed(4) : '—';
+      // Calculate X = mGy / mA and round to 4 decimal places
+      const x = avg !== null && ma > 0 ? parseFloat((avg / ma).toFixed(4)) : null;
+      const xDisplay = x !== null ? x.toFixed(4) : '—';
 
-      if (x !== '—') xValues.push(parseFloat(x));
+      if (x !== null) xValues.push(x);
 
-      return { ...row, average: avg, x };
+      return { ...row, average: avgDisplay, x: xDisplay };
     });
 
     const hasData = xValues.length > 0;
-    const xMax = hasData ? Math.max(...xValues).toFixed(4) : '—';
-    const xMin = hasData ? Math.min(...xValues).toFixed(4) : '—';
+    // Round xMax and xMin to 4 decimal places
+    const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
+    const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
     
-    // Calculate COL: |xMax - xMin| / (xMax + xMin)
+    // Calculate COL: |xMax - xMin| / (xMax + xMin) and round to 4 decimal places
     const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
-      : 0;
-    const col = hasData && colNum > 0 ? colNum.toFixed(4) : '—';
+      : null;
+    const col = hasData && colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
     
-    // Determine pass/fail based on tolerance operator
+    // Determine pass/fail based on tolerance operator and CoL value
     let pass = false;
-    if (hasData && col !== '—') {
+    let remarks = '—';
+    
+    if (hasData && col !== '—' && colNum !== null) {
       const colVal = parseFloat(col);
       switch (toleranceOperator) {
         case '<':
@@ -174,9 +182,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         default:
           pass = colVal <= tol;
       }
+      remarks = pass ? 'Pass' : 'Fail';
     }
-
-    const remarks = hasData && col !== '—' ? (pass ? 'Pass' : 'Fail') : '—';
 
     return {
       rows: rowsWithX,
@@ -363,8 +370,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">FCD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FFD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (sec)</th>
             </tr>
           </thead>
@@ -413,13 +420,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
               {/* Header – make mA column wider */}
               <th
                 rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r whitespace-nowrap"
+                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
               >
                 mA
               </th>
               <th
                 colSpan={measHeaders.length}
-                className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
               >
                 <div className="flex items-center justify-between">
                   <span>Output (mGy)</span>
@@ -430,12 +437,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   )}
                 </div>
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X (mGy/mA)</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MAX</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MIN</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">CoL</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mA)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
               <th rowSpan={2} className="w-10" />
             </tr>
             <tr>

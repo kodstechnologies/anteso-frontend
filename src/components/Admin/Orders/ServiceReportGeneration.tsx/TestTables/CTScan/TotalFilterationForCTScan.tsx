@@ -20,10 +20,11 @@ interface Row {
 interface Props {
     serviceId: string;
     testId?: string;
+    tubeId?: string | null;
     onRefresh?: () => void;
 }
 
-const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
 
     // Single fixed row

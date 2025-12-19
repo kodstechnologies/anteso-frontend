@@ -23,9 +23,10 @@ interface LocationData {
 }
 interface Props {
   serviceId: string;
+  tubeId?: string | null;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();

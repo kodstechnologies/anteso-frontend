@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import {
     addExposureRateTableTop,
     getExposureRateTableTopByTestId,
+    getExposureRateTableTopByServiceIdForInventionalRadiology,
     updateExposureRateTableTop
 } from "../../../../../../api";
 
@@ -20,12 +21,14 @@ interface Row {
 interface Props {
     serviceId: string;
     testId?: string | null;
+    tubeId?: string | null;
     onTestSaved?: (testId: string) => void;
 }
 
 const ExposureRateAtTableTop: React.FC<Props> = ({
     serviceId,
     testId: propTestId = null,
+    tubeId,
     onTestSaved,
 }) => {
     const [testId, setTestId] = useState<string | null>(propTestId);
@@ -66,12 +69,18 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
         const loadTest = async () => {
             setIsLoading(true);
             try {
-                const data = await getExposureRateTableTopByTestId(serviceId);
+                let data;
+                if (propTestId) {
+                    data = await getExposureRateTableTopByTestId(propTestId);
+                } else {
+                    data = await getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, tubeId);
+                }
 
-                if (data?.data) {
-                    setTestId(data.data._id);
+                const testData = propTestId ? (data?.data || data) : (data || null);
+                if (testData) {
+                    setTestId(testData._id || propTestId);
                     setRows(
-                        data.data.rows?.map((r: any, i: number) => ({
+                        testData.rows?.map((r: any, i: number) => ({
                             id: Date.now().toString() + i,
                             distance: r.distance || "",
                             appliedKv: r.appliedKv || "",
@@ -80,9 +89,9 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
                             remark: r.remark || "",
                         })) || []
                     );
-                    setAecTolerance(data.data.aecTolerance || "10");
-                    setNonAecTolerance(data.data.nonAecTolerance || "5");
-                    setMinFocusDistance(data.data.minFocusDistance || "30");
+                    setAecTolerance(testData.aecTolerance || "10");
+                    setNonAecTolerance(testData.nonAecTolerance || "5");
+                    setMinFocusDistance(testData.minFocusDistance || "30");
                     setIsSaved(true);
                     setIsEditing(false);
                 } else {
@@ -98,7 +107,7 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
             }
         };
         loadTest();
-    }, [propTestId, serviceId]);
+    }, [propTestId, serviceId, tubeId]);
 
     // Save handler
     const handleSave = async () => {
@@ -118,6 +127,7 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
             aecTolerance: aecTolerance.trim(),
             nonAecTolerance: nonAecTolerance.trim(),
             minFocusDistance: minFocusDistance.trim(),
+            tubeId: tubeId || null,
         };
 
         setIsSaving(true);

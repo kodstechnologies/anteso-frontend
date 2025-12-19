@@ -27,10 +27,11 @@ interface Table2Row {
 interface Props {
     serviceId: string;
     testId?: string;
+    tubeId?: 'A' | 'B' | null;
     onRefresh?: () => void;
 }
 
-const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
 
     // Table 1: Only 1 row
@@ -146,7 +147,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                     const response = await getMeasurementOfOperatingPotentialByTestId(propTestId);
                     rec = response.data || response;
                 } else {
-                    rec = await getMeasurementOfOperatingPotentialByServiceId(serviceId);
+                    rec = await getMeasurementOfOperatingPotentialByServiceId(serviceId, tubeId || null);
                 }
 
                 if (rec) {
@@ -196,7 +197,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
             }
         };
         load();
-    }, [serviceId, propTestId]);
+    }, [serviceId, propTestId, tubeId]);
 
     // === Save / Update ===
     const handleSave = async () => {
@@ -233,6 +234,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
             toleranceValue,
             toleranceType,
             toleranceSign,
+            tubeId: tubeId || null,
         };
 
         try {

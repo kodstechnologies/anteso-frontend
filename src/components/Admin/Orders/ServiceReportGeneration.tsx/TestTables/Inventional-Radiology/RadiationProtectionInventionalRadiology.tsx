@@ -18,9 +18,10 @@ interface LocationData {
 }
 interface Props {
     serviceId: string;
+    tubeId?: string | null;
 }
 
-const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId }) => {
+const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId, tubeId }) => {
     const [testId, setTestId] = useState<string | null>(null);
     const [isSaved, setIsSaved] = useState(false);
     const [isEditing, setIsEditing] = useState(true);
@@ -122,7 +123,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                 return;
             }
             try {
-                const res = await getRadiationProtectionSurveyByServiceIdForInventionalRadiology(serviceId);
+                const res = await getRadiationProtectionSurveyByServiceIdForInventionalRadiology(serviceId, tubeId);
                 const data = res?.data;
                 if (data) {
                     setTestId(data._id || null);
@@ -160,7 +161,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
             }
         };
         load();
-    }, [serviceId]);
+    }, [serviceId, tubeId]);
 
     const handleSave = async () => {
         if (!serviceId) {
@@ -191,6 +192,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                 calculatedResult: l.calculatedResult,
                 category: l.category,
             })),
+            tubeId: tubeId || null,
         };
 
         setIsSaving(true);

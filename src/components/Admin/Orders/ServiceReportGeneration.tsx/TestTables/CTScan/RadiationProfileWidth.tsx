@@ -17,9 +17,9 @@ interface Table2Row {
     toleranceValue: string;
     remarks: string;
 }
-interface Props { serviceId: string; testId?: string; onTestSaved?: (testId: string) => void;}
+interface Props { serviceId: string; testId?: string; tubeId?: 'A' | 'B' | null; onTestSaved?: (testId: string) => void;}
 
-const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId ,onTestSaved}) => {
+const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved}) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
     const [table1Row, setTable1Row] = useState<Table1Row>({ kvp: '', ma: '' });
     const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
@@ -87,7 +87,7 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId 
                     const response = await getRadiationProfileWidthByTestId(propTestId);
                     rec = response.data || response;
                 } else {
-                    rec = await getRadiationProfileWidthByServiceIdForCTScan(serviceId);
+                    rec = await getRadiationProfileWidthByServiceIdForCTScan(serviceId, tubeId || null);
                 }
 
                 if (rec) {
@@ -122,7 +122,7 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId 
             }
         };
         load();
-    }, [serviceId, propTestId]);
+    }, [serviceId, propTestId, tubeId]);
 
     // ---- handle save / update ----
     const handleSave = async () => {
@@ -137,6 +137,7 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId 
                 tolerance: r.toleranceValue,
                 remarks: r.remarks,
             })),
+            tubeId: tubeId || null,
         };
 
         try {

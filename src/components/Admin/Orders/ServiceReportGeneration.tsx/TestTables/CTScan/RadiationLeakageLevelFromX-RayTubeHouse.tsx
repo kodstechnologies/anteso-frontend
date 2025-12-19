@@ -30,10 +30,11 @@ interface LeakageRow {
 interface Props {
   serviceId: string;
   testId?: string;
+  tubeId?: string | null;
   onRefresh?: () => void;
 }
 
-export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, tubeId, onRefresh }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Fixed rows

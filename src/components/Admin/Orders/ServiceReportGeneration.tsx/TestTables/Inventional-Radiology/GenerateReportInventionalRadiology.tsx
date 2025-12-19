@@ -87,6 +87,10 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
+  const [showTubeModal, setShowTubeModal] = useState(true); // Show tube selection modal first
+  const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
+  const [tubeType, setTubeType] = useState<'single' | 'double' | null>(null); // null = not selected yet
 
   const [formData, setFormData] = useState({
     customerName: "",
@@ -241,6 +245,53 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
     }));
   };
 
+  // Handle tube type selection - show timer modal after selection
+  const handleTubeTypeSelection = (type: 'single' | 'double') => {
+    setTubeType(type);
+    setShowTubeModal(false);
+    // Save tube type to localStorage
+    localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, type);
+    
+    // Always show timer modal after tube type selection
+    // Load saved choice if exists, but still show modal to confirm/change
+    const savedChoice = localStorage.getItem(`inventional_radiology_timer_choice_${serviceId}`);
+    if (savedChoice !== null) {
+      setHasTimer(JSON.parse(savedChoice));
+    }
+    // Always show timer modal after tube selection
+    setShowTimerModal(true);
+  };
+
+  // Close modal and set timer choice
+  const handleTimerChoice = (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+    // Persist choice in localStorage
+    localStorage.setItem(`inventional_radiology_timer_choice_${serviceId}`, JSON.stringify(choice));
+  };
+
+  // Load saved tube type on mount (if exists)
+  useEffect(() => {
+    if (!serviceId) return;
+    
+    // Load saved tube type
+    const savedTubeType = localStorage.getItem(`inventional_radiology_tube_type_${serviceId}`);
+    if (savedTubeType === 'single' || savedTubeType === 'double') {
+      setTubeType(savedTubeType as 'single' | 'double');
+      setShowTubeModal(false);
+      // Load saved timer choice if exists
+      const savedChoice = localStorage.getItem(`inventional_radiology_timer_choice_${serviceId}`);
+      if (savedChoice !== null) {
+        setHasTimer(JSON.parse(savedChoice));
+      }
+      // Always show timer modal when tube type is loaded from storage
+      setShowTimerModal(true);
+    } else {
+      // No saved tube type, show tube selection modal first
+      setShowTubeModal(true);
+    }
+  }, [serviceId]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -316,6 +367,71 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
 
   if (!details) {
     return <div className="max-w-6xl mx-auto p-8">No data received.</div>;
+  }
+
+  // TUBE TYPE SELECTION MODAL - Show first
+  if (showTubeModal) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105 animate-in fade-in duration-300">
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">Tube Configuration</h3>
+          <p className="text-gray-600 mb-8">
+            Please select the tube configuration for this Interventional Radiology unit:
+          </p>
+          <div className="flex flex-col gap-4">
+            <button
+              onClick={() => handleTubeTypeSelection('single')}
+              className="px-8 py-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition transform hover:scale-105 text-left"
+            >
+              Single Tube
+            </button>
+            <button
+              onClick={() => handleTubeTypeSelection('double')}
+              className="px-8 py-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition transform hover:scale-105 text-left"
+            >
+              Double Tube (Tube Frontal & Tube Lateral)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // TIMER TEST AVAILABILITY MODAL - Show after tube type selection
+  if (showTimerModal && tubeType && hasTimer === null) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105 animate-in fade-in duration-300">
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">Timer Test Availability</h3>
+          <p className="text-gray-600 mb-8">
+            Does this Interventional Radiology unit have a selectable <strong>Irradiation Time (Timer)</strong> setting?
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => handleTimerChoice(true)}
+              className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition transform hover:scale-105"
+            >
+              Yes, Has Timer
+            </button>
+            <button
+              onClick={() => handleTimerChoice(false)}
+              className="px-8 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition transform hover:scale-105"
+            >
+              No Timer
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't show tests until tube type is selected and timer choice is made
+  if (!tubeType || hasTimer === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl font-medium text-gray-700">Loading...</div>
+      </div>
+    );
   }
 
   return (
@@ -494,28 +610,44 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
       <div className="mt-12">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
-        {[
-          { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
-          { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement serviceId={serviceId} /> },
-          { title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
-
-          // { title: "Accuracy of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
-          { title: "Total Filtration", component: <TotalFilteration serviceId={serviceId} /> },
-          // { title: "Linearity of mAs Loading", component: <LinearityOfmAsLoading serviceId={serviceId} /> },
-          { title: "Consistency of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} /> },
-          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
-          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
-          {
-            title: "Exposure Rate at Table Top",
-            component: <ExposureRateAtTableTop serviceId={serviceId} />,
-          },
-          { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
-          { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} /> },
-          // { title: "Equipment Setting", component: <EquipmentSettingForInterventionalRadiology serviceId={serviceId} /> },
-          // { title: "Max Radiation Level", component: <MaxRadiationLevel serviceId={serviceId} /> },
-
-
-        ].map((item, idx) => (
+        {(tubeType === 'single' ? [
+          { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} tubeId={null} /> },
+          { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId={null} /> },
+          { title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId={null} /> },
+          { title: "Total Filtration", component: <TotalFilteration serviceId={serviceId} tubeId={null} /> },
+          { title: "Consistency of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId={null} /> },
+          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} tubeId={null} /> },
+          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} tubeId={null} /> },
+          { title: "Exposure Rate at Table Top", component: <ExposureRateAtTableTop serviceId={serviceId} tubeId={null} /> },
+          { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} tubeId={null} /> },
+          { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} /> },
+        ] : [
+          // ===== TUBE FRONTAL TESTS =====
+          { title: "Central Beam Alignment - Tube Frontal", component: <CentralBeamAlignment serviceId={serviceId} tubeId="frontal" /> },
+          { title: "Effective Focal Spot Measurement - Tube Frontal", component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="frontal" /> },
+          { title: "Accuracy of Irradiation Time - Tube Frontal", component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="frontal" /> },
+          { title: "Total Filtration - Tube Frontal", component: <TotalFilteration serviceId={serviceId} tubeId="frontal" /> },
+          { title: "Consistency of Radiation Output - Tube Frontal", component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="frontal" /> },
+          { title: "Low Contrast Resolution - Tube Frontal", component: <LowContrastResolution serviceId={serviceId} tubeId="frontal" /> },
+          { title: "High Contrast Resolution - Tube Frontal", component: <HighContrastResolution serviceId={serviceId} tubeId="frontal" /> },
+          { title: "Exposure Rate at Table Top - Tube Frontal", component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="frontal" /> },
+          { title: "Tube Housing Leakage - Tube Frontal", component: <TubeHousingLeakage serviceId={serviceId} tubeId="frontal" /> },
+          
+          // ===== TUBE LATERAL TESTS =====
+          { title: "Central Beam Alignment - Tube Lateral", component: <CentralBeamAlignment serviceId={serviceId} tubeId="lateral" /> },
+          { title: "Effective Focal Spot Measurement - Tube Lateral", component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="lateral" /> },
+          { title: "Accuracy of Irradiation Time - Tube Lateral", component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="lateral" /> },
+          { title: "Total Filtration - Tube Lateral", component: <TotalFilteration serviceId={serviceId} tubeId="lateral" /> },
+          { title: "Consistency of Radiation Output - Tube Lateral", component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="lateral" /> },
+          { title: "Low Contrast Resolution - Tube Lateral", component: <LowContrastResolution serviceId={serviceId} tubeId="lateral" /> },
+          { title: "High Contrast Resolution - Tube Lateral", component: <HighContrastResolution serviceId={serviceId} tubeId="lateral" /> },
+          { title: "Exposure Rate at Table Top - Tube Lateral", component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="lateral" /> },
+          { title: "Tube Housing Leakage - Tube Lateral", component: <TubeHousingLeakage serviceId={serviceId} tubeId="lateral" /> },
+          
+          // ===== COMMON TESTS (No Tube ID) =====
+          { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} /> },
+        ] as any)
+        .map((item: any, idx: number) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
             {({ open }) => (
               <>

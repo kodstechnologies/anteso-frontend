@@ -30,10 +30,11 @@ interface Table2Row {
 interface Props {
     serviceId: string;
     testId?: string;
+    tubeId?: 'A' | 'B' | null;
     onRefresh?: () => void;
 }
 
-const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
 
     // Table 1: Single row
@@ -185,7 +186,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                     const response = await getMeasurementOfMaLinearityByTestId(propTestId);
                     rec = response.data || response;
                 } else {
-                    rec = await getMeasurementOfMaLinearityByServiceId(serviceId);
+                    rec = await getMeasurementOfMaLinearityByServiceId(serviceId, tubeId || null);
                 }
 
                 if (rec) {
@@ -232,7 +233,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             }
         };
         load();
-    }, [serviceId, propTestId]);
+    }, [serviceId, propTestId, tubeId]);
 
     // === Save / Update ===
     // === Save / Update ===
@@ -254,6 +255,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                 remarks: row.remarks || '',
             })),
             tolerance,
+            tubeId: tubeId || null,
         };
 
         try {

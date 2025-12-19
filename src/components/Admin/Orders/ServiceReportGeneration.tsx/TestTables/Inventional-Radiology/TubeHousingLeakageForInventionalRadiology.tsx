@@ -27,10 +27,11 @@ interface LeakageRow {
 interface Props {
   serviceId: string;
   testId?: string;
+  tubeId?: string | null;
   onRefresh?: () => void;
 }
 
-export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function TubeHousingLeakage({ serviceId, testId: propTestId, tubeId, onRefresh }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   const [settings, setSettings] = useState<SettingsRow>({

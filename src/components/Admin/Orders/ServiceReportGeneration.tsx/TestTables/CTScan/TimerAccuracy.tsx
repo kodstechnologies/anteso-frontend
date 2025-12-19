@@ -26,10 +26,11 @@ interface Table2Row {
 interface Props {
   serviceId: string;
   testId?: string;
+  tubeId?: 'A' | 'B' | null;
   onRefresh?: () => void;
 }
 
-const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: Fixed single row
@@ -118,7 +119,7 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
           const response = await getTimerAccuracyByTestId(propTestId);
           rec = response.data || response;
         } else {
-          rec = await getTimerAccuracyByServiceId(serviceId);
+          rec = await getTimerAccuracyByServiceId(serviceId, tubeId || null);
         }
 
         if (rec) {
@@ -157,7 +158,7 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
     };
 
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, propTestId, tubeId]);
 
   // === Save / Update ===
   const handleSave = async () => {
@@ -172,6 +173,7 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
         remarks: r.remarks,
       })),
       tolerance,
+      tubeId: tubeId || null,
     };
 
     try {

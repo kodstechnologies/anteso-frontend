@@ -932,6 +932,20 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (() => {
                   const workerLocs = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.category === "worker");
                   const publicLocs = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.category === "public");
+                  
+                  // Find locations with maximum values
+                  const maxWorkerLocation = workerLocs.reduce((max: any, loc: any) => {
+                    const maxVal = parseFloat(max.mRPerWeek) || 0;
+                    const locVal = parseFloat(loc.mRPerWeek) || 0;
+                    return locVal > maxVal ? loc : max;
+                  }, workerLocs[0] || { mRPerHr: '', location: '' });
+                  
+                  const maxPublicLocation = publicLocs.reduce((max: any, loc: any) => {
+                    const maxVal = parseFloat(max.mRPerWeek) || 0;
+                    const locVal = parseFloat(loc.mRPerWeek) || 0;
+                    return locVal > maxVal ? loc : max;
+                  }, publicLocs[0] || { mRPerHr: '', location: '' });
+                  
                   const maxWorkerWeekly = Math.max(...workerLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
                   const maxPublicWeekly = Math.max(...publicLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
                   const workerResult = parseFloat(maxWorkerWeekly) > 0 && parseFloat(maxWorkerWeekly) <= 40 ? "Pass" : parseFloat(maxWorkerWeekly) > 40 ? "Fail" : "";
@@ -970,6 +984,39 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                             </tr>
                           </tbody>
                         </table>
+                      </div>
+                      {/* Calculation Formulas */}
+                      <div className="mt-4 print:mt-1 space-y-3 print:space-y-1">
+                        {/* Worker Calculation */}
+                        {maxWorkerLocation.mRPerHr && parseFloat(maxWorkerLocation.mRPerHr) > 0 && (
+                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
+                            <p className="text-sm print:text-[9px] font-semibold mb-2 print:mb-0.5" style={{ fontSize: '11px', margin: '2px 0', fontWeight: 'bold' }}>Calculation for Maximum Radiation Level/week (For Radiation Worker):</p>
+                            <p className="text-xs print:text-[8px] mb-1 print:mb-0.5" style={{ fontSize: '10px', margin: '2px 0' }}>
+                              <strong>Location:</strong> {maxWorkerLocation.location}
+                            </p>
+                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}>
+                              <strong>Formula:</strong> ({testData.radiationProtectionSurvey.workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtectionSurvey.appliedCurrent || '—'} mA)
+                            </p>
+                            <p className="text-xs print:text-[8px] mt-1 print:mt-0.5" style={{ fontSize: '10px', margin: '2px 0' }}>
+                              <strong>Result:</strong> {maxWorkerWeekly} mR/week
+                            </p>
+                          </div>
+                        )}
+                        {/* Public Calculation */}
+                        {maxPublicLocation.mRPerHr && parseFloat(maxPublicLocation.mRPerHr) > 0 && (
+                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
+                            <p className="text-sm print:text-[9px] font-semibold mb-2 print:mb-0.5" style={{ fontSize: '11px', margin: '2px 0', fontWeight: 'bold' }}>Calculation for Maximum Radiation Level/week (For Public):</p>
+                            <p className="text-xs print:text-[8px] mb-1 print:mb-0.5" style={{ fontSize: '10px', margin: '2px 0' }}>
+                              <strong>Location:</strong> {maxPublicLocation.location}
+                            </p>
+                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}>
+                              <strong>Formula:</strong> ({testData.radiationProtectionSurvey.workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtectionSurvey.appliedCurrent || '—'} mA)
+                            </p>
+                            <p className="text-xs print:text-[8px] mt-1 print:mt-0.5" style={{ fontSize: '10px', margin: '2px 0' }}>
+                              <strong>Result:</strong> {maxPublicWeekly} mR/week
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

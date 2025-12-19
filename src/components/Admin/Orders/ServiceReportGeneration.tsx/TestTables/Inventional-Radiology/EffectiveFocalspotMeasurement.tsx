@@ -23,10 +23,11 @@ interface FocalSpotRow {
 interface Props {
     serviceId: string;
     testId?: string | null;
+    tubeId?: string | null;
     onTestSaved?: (testId: string) => void;
 }
 
-const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
     const [isSaved, setIsSaved] = useState(!!propTestId);
     const [isEditing, setIsEditing] = useState(false);
@@ -115,7 +116,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
         if (!serviceId) return;
         const loadTest = async () => {
             try {
-                const res = await getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId);
+                const res = await getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId, tubeId);
                 if (res?.data) {
                     const data = res.data;
                     setTestId(data._id);
@@ -149,7 +150,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
             }
         };
         loadTest();
-    }, [serviceId]);
+    }, [serviceId, tubeId]);
 
     const handleSave = async () => {
         if (!serviceId) return toast.error("Service ID missing");
@@ -181,6 +182,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                     remark: row.remark,
                 })),
                 finalResult: finalResult,
+                tubeId: tubeId || null,
             };
 
             let result;

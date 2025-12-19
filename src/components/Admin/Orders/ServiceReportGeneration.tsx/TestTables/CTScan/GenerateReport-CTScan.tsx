@@ -63,7 +63,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
     const [tools, setTools] = useState<Standard[]>([]);
     const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
     const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
+    const [showTubeModal, setShowTubeModal] = useState(true); // Show tube selection modal first
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
+    const [tubeType, setTubeType] = useState<'single' | 'double' | null>(null); // null = not selected yet
     const [savedTestIds, setSavedTestIds] = useState<{
         LinearityOfMasLoadingCTScan?: string;
     }>({});
@@ -256,53 +258,22 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         loadReportHeader();
     }, [serviceId]);
 
-    // Load report header to check for timer test and show modal if needed
-    useEffect(() => {
-        const loadReportHeader = async () => {
-            if (!serviceId) return;
-            try {
-                const res = await getReportHeaderForCTScan(serviceId);
-                if (res?.exists && res?.data) {
-                    // Check if AccuracyOfIrradiationTime test exists
-                    if (res.data.AccuracyOfIrradiationTimeCTScan) {
-                        setHasTimer(true);
-                        setShowTimerModal(false);
-                    } else {
-                        // Check localStorage for saved choice
-                        const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
-                        if (savedChoice !== null) {
-                            setHasTimer(JSON.parse(savedChoice));
-                            setShowTimerModal(false);
-                        } else {
-                            // Only show modal if no saved choice and no existing test
-                            setShowTimerModal(true);
-                        }
-                    }
-                } else {
-                    // No report header exists, check localStorage
-                    const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
-                    if (savedChoice !== null) {
-                        setHasTimer(JSON.parse(savedChoice));
-                        setShowTimerModal(false);
-                    } else {
-                        // Show modal only if no saved choice
-                        setShowTimerModal(true);
-                    }
-                }
-            } catch (err) {
-                console.log("No report header found or failed to load:", err);
-                // On error, check localStorage
-                const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
-                if (savedChoice !== null) {
-                    setHasTimer(JSON.parse(savedChoice));
-                    setShowTimerModal(false);
-                } else {
-                    setShowTimerModal(true);
-                }
-            }
-        };
-        loadReportHeader();
-    }, [serviceId]);
+    // Handle tube type selection - show timer modal after selection
+    const handleTubeTypeSelection = (type: 'single' | 'double') => {
+        setTubeType(type);
+        setShowTubeModal(false);
+        // Save tube type to localStorage
+        localStorage.setItem(`ctscan_tube_type_${serviceId}`, type);
+        
+        // Always show timer modal after tube type selection
+        // Load saved choice if exists, but still show modal to confirm/change
+        const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
+        if (savedChoice !== null) {
+            setHasTimer(JSON.parse(savedChoice));
+        }
+        // Always show timer modal after tube selection
+        setShowTimerModal(true);
+    };
 
     // Close modal and set timer choice
     const handleTimerChoice = (choice: boolean) => {
@@ -311,6 +282,28 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         // Persist choice in localStorage
         localStorage.setItem(`ctscan_timer_choice_${serviceId}`, JSON.stringify(choice));
     };
+
+    // Load saved tube type on mount (if exists)
+    useEffect(() => {
+        if (!serviceId) return;
+        
+        // Load saved tube type
+        const savedTubeType = localStorage.getItem(`ctscan_tube_type_${serviceId}`);
+        if (savedTubeType === 'single' || savedTubeType === 'double') {
+            setTubeType(savedTubeType as 'single' | 'double');
+            setShowTubeModal(false);
+            // Load saved timer choice if exists
+            const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
+            if (savedChoice !== null) {
+                setHasTimer(JSON.parse(savedChoice));
+            }
+            // Always show timer modal when tube type is loaded from storage
+            setShowTimerModal(true);
+        } else {
+            // No saved tube type, show tube selection modal first
+            setShowTubeModal(true);
+        }
+    }, [serviceId]);
 
     if (loading) {
         return (
@@ -328,8 +321,36 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         );
     }
 
-    // MODAL POPUP
-    if (showTimerModal && hasTimer === null) {
+    // TUBE TYPE SELECTION MODAL - Show first
+    if (showTubeModal) {
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105 animate-in fade-in duration-300">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-4">Tube Configuration</h3>
+                    <p className="text-gray-600 mb-8">
+                        Please select the tube configuration for this CT Scan:
+                    </p>
+                    <div className="flex flex-col gap-4">
+                        <button
+                            onClick={() => handleTubeTypeSelection('single')}
+                            className="px-8 py-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition transform hover:scale-105 text-left"
+                        >
+                            Single Tube
+                        </button>
+                        <button
+                            onClick={() => handleTubeTypeSelection('double')}
+                            className="px-8 py-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition transform hover:scale-105 text-left"
+                        >
+                            Double Tube (Tube A & Tube B)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // TIMER TEST AVAILABILITY MODAL - Show after tube type selection
+    if (showTimerModal && tubeType && hasTimer === null) {
         return (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
                 <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105 animate-in fade-in duration-300">
@@ -352,6 +373,15 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                         </button>
                     </div>
                 </div>
+            </div>
+        );
+    }
+
+    // Don't show tests until tube type is selected and timer choice is made
+    if (!tubeType || hasTimer === null) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-xl font-medium text-gray-700">Loading...</div>
             </div>
         );
     }
@@ -480,43 +510,138 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 </button>
             </div>
 
+            {/* Tube Type Display - Show current selection */}
+            {/* <section className="mb-10 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                <h2 className="text-xl font-semibold text-blue-700 mb-4">Tube Configuration</h2>
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="radio"
+                            name="tubeType"
+                            checked={tubeType === 'single'}
+                            readOnly
+                            className="w-5 h-5 text-blue-600"
+                        />
+                        <span className="text-lg font-medium text-gray-700">Single Tube</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="radio"
+                            name="tubeType"
+                            checked={tubeType === 'double'}
+                            readOnly
+                            className="w-5 h-5 text-blue-600"
+                        />
+                        <span className="text-lg font-medium text-gray-700">Double Tube (Tube A & Tube B)</span>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setShowTubeModal(true);
+                            setShowTimerModal(false);
+                            setHasTimer(null);
+                        }}
+                        className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                    >
+                        Change Configuration
+                    </button>
+                </div>
+                {tubeType && (
+                    <p className="mt-4 text-sm text-gray-600">
+                        Selected: <strong>{tubeType === 'single' ? 'Single Tube' : 'Double Tube (Tube A & Tube B)'}</strong>
+                    </p>
+                )}
+            </section> */}
+
             {/* Test Tables */}
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
-                {[
-                    // { title: "Radiation Profile Width/Slice Thickness", component: <RadiationProfileWidth serviceId={serviceId} /> },
+                {(tubeType === 'single' ? [
                     {
                         title: "Radiation Profile Width for CT Scan",
                         component: (
                             <RadiationProfileWidth
                                 serviceId={serviceId}
-                                testId={radiationProfileTest?._id || null}   // ← magic line
+                                testId={radiationProfileTest?._id || null}
+                                tubeId={null}
                                 onTestSaved={(id: any) => console.log("Radiation Profile saved:", id)}
                             />
                         ),
                     },
-                    { title: "Measurement of Operating Potential", component: <MeasurementOfOperatingPotential serviceId={serviceId} /> },
-                    // Show based on timer choice
+                    { title: "Measurement of Operating Potential", component: <MeasurementOfOperatingPotential serviceId={serviceId} tubeId={null} /> },
                     ...(hasTimer === true ? [
-                        { title: "Measurement of mA Linearity", component: <MeasurementOfMaLinearity serviceId={serviceId} /> },
-                        { title: "Timer Accuracy", component: <TimerAccuracy serviceId={serviceId} /> },
+                        { title: "Measurement of mA Linearity", component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId={null} /> },
+                        { title: "Timer Accuracy", component: <TimerAccuracy serviceId={serviceId} tubeId={null} /> },
                     ] : hasTimer === false ? [
-                        { title: "Linearity of mAs Loading", component: <LinearityOfMasLoading serviceId={serviceId} testId={savedTestIds.LinearityOfMasLoadingCTScan || null} onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMasLoadingCTScan: id }))} /> },
+                        { title: "Linearity of mAs Loading", component: <LinearityOfMasLoading serviceId={serviceId} testId={savedTestIds.LinearityOfMasLoadingCTScan || null} tubeId={null} onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMasLoadingCTScan: id }))} /> },
                     ] : []),
-                    { title: "Measurement of CTDI", component: <MeasurementOfCTDI serviceId={serviceId} /> },
-                    { title: "Total Filtration", component: <TotalFilterationForCTScan serviceId={serviceId} /> },
-                    { title: "Radiation Leakage Level", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} /> },
-                    { title: "Output Consistency", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
-                    { title: "Low Contrast Resolution", component: <LowContrastResolutionForCT serviceId={serviceId} /> },
-                    { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} /> },
+                    { title: "Measurement of CTDI", component: <MeasurementOfCTDI serviceId={serviceId} tubeId={null} /> },
+                    { title: "Total Filtration", component: <TotalFilterationForCTScan serviceId={serviceId} tubeId={null} /> },
+                    { title: "Radiation Leakage Level", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} tubeId={null} /> },
+                    { title: "Output Consistency", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} tubeId={null} /> },
+                    { title: "Low Contrast Resolution", component: <LowContrastResolutionForCT serviceId={serviceId} tubeId={null} /> },
+                    { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId={null} /> },
                     { title: "Alignment of Table/Gantry", component: <AlignmentOfTableGantry serviceId={serviceId} /> },
                     { title: "Table Position", component: <TablePosition serviceId={serviceId} /> },
                     { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} /> },
-                    { title: "Maximum Radiation Level", component: <DetailsOfRadiationProtection serviceId={serviceId} /> },
-
-
-
-                ].map((item, i) => (
+                    { title: "Maximum Radiation Level", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} /> },
+                ] : [
+                    // ===== TUBE A TESTS =====
+                    {
+                        title: "Radiation Profile Width for CT Scan - Tube A",
+                        component: (
+                            <RadiationProfileWidth
+                                serviceId={serviceId}
+                                tubeId="A"
+                                onTestSaved={(id: any) => console.log("Radiation Profile Tube A saved:", id)}
+                            />
+                        ),
+                    },
+                    { title: "Measurement of Operating Potential - Tube A", component: <MeasurementOfOperatingPotential serviceId={serviceId} tubeId="A" /> },
+                    ...(hasTimer === true ? [
+                        { title: "Measurement of mA Linearity - Tube A", component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="A" /> },
+                        { title: "Timer Accuracy - Tube A", component: <TimerAccuracy serviceId={serviceId} tubeId="A" /> },
+                    ] : hasTimer === false ? [
+                        { title: "Linearity of mAs Loading - Tube A", component: <LinearityOfMasLoading serviceId={serviceId} tubeId="A" onTestSaved={(id) => console.log("Tube A saved:", id)} /> },
+                    ] : []),
+                    { title: "Measurement of CTDI - Tube A", component: <MeasurementOfCTDI serviceId={serviceId} tubeId="A" /> },
+                    { title: "Total Filtration - Tube A", component: <TotalFilterationForCTScan serviceId={serviceId} tubeId="A" /> },
+                    { title: "Radiation Leakage Level - Tube A", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} tubeId="A" /> },
+                    { title: "Output Consistency - Tube A", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} tubeId="A" /> },
+                    { title: "Low Contrast Resolution - Tube A", component: <LowContrastResolutionForCT serviceId={serviceId} tubeId="A" /> },
+                    { title: "High Contrast Resolution - Tube A", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId="A" /> },
+                    
+                    // ===== TUBE B TESTS =====
+                    {
+                        title: "Radiation Profile Width for CT Scan - Tube B",
+                        component: (
+                            <RadiationProfileWidth
+                                serviceId={serviceId}
+                                tubeId="B"
+                                onTestSaved={(id: any) => console.log("Radiation Profile Tube B saved:", id)}
+                            />
+                        ),
+                    },
+                    { title: "Measurement of Operating Potential - Tube B", component: <MeasurementOfOperatingPotential serviceId={serviceId} tubeId="B" /> },
+                    ...(hasTimer === true ? [
+                        { title: "Measurement of mA Linearity - Tube B", component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="B" /> },
+                        { title: "Timer Accuracy - Tube B", component: <TimerAccuracy serviceId={serviceId} tubeId="B" /> },
+                    ] : hasTimer === false ? [
+                        { title: "Linearity of mAs Loading - Tube B", component: <LinearityOfMasLoading serviceId={serviceId} tubeId="B" onTestSaved={(id) => console.log("Tube B saved:", id)} /> },
+                    ] : []),
+                    { title: "Measurement of CTDI - Tube B", component: <MeasurementOfCTDI serviceId={serviceId} tubeId="B" /> },
+                    { title: "Total Filtration - Tube B", component: <TotalFilterationForCTScan serviceId={serviceId} tubeId="B" /> },
+                    { title: "Radiation Leakage Level - Tube B", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} tubeId="B" /> },
+                    { title: "Output Consistency - Tube B", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} tubeId="B" /> },
+                    { title: "Low Contrast Resolution - Tube B", component: <LowContrastResolutionForCT serviceId={serviceId} tubeId="B" /> },
+                    { title: "High Contrast Resolution - Tube B", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId="B" /> },
+                    
+                    // ===== COMMON TESTS (No Tube ID) =====
+                    { title: "Radiation Protection Survey Report", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} /> },
+                    { title: "Alignment of Table/Gantry", component: <AlignmentOfTableGantry serviceId={serviceId} /> },
+                    { title: "Table Position", component: <TablePosition serviceId={serviceId} /> },
+                    { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} /> },
+                ] as any)
+                .map((item: any, i: number) => (
                     <Disclosure key={i} defaultOpen={i === 0}>
                         {({ open }) => (
                             <>

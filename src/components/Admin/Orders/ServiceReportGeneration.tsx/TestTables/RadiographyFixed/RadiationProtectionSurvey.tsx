@@ -100,6 +100,19 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
   const workerLocations = locations.filter(l => l.category === "worker");
   const publicLocations = locations.filter(l => l.category === "public");
 
+  // Find maximum values and their corresponding locations
+  const maxWorkerLocation = workerLocations.reduce((max, loc) => {
+    const maxVal = parseFloat(max.mRPerWeek) || 0;
+    const locVal = parseFloat(loc.mRPerWeek) || 0;
+    return locVal > maxVal ? loc : max;
+  }, workerLocations[0] || { mRPerHr: '', location: '' });
+  
+  const maxPublicLocation = publicLocations.reduce((max, loc) => {
+    const maxVal = parseFloat(max.mRPerWeek) || 0;
+    const locVal = parseFloat(loc.mRPerWeek) || 0;
+    return locVal > maxVal ? loc : max;
+  }, publicLocations[0] || { mRPerHr: '', location: '' });
+
   const maxWorkerWeekly = Math.max(...workerLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
   const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
 
@@ -510,6 +523,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                 {maxWorkerWeekly} <span className="text-2xl font-normal">mR/week</span>
               </p>
               <p className="text-lg text-blue-700 mt-4 font-semibold">Limit: ≤ 40 mR/week</p>
+              {maxWorkerLocation.mRPerHr && parseFloat(maxWorkerLocation.mRPerHr) > 0 && (
+                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-blue-400 text-left">
+                  <p className="text-sm font-semibold text-blue-900 mb-2">Calculation:</p>
+                  <p className="text-xs text-blue-800 mb-1">
+                    <strong>Location:</strong> {maxWorkerLocation.location}
+                  </p>
+                  <p className="text-xs text-blue-800">
+                    <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                  </p>
+                  <p className="text-xs text-blue-800 mt-1">
+                    <strong>Result:</strong> {maxWorkerWeekly} mR/week
+                  </p>
+                </div>
+              )}
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-4 border-purple-300 rounded-2xl p-8 text-center shadow-lg">
               <h3 className="text-xl font-bold text-purple-900">Maximum Radiation Level/week</h3>
@@ -518,6 +545,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                 {maxPublicWeekly} <span className="text-2xl font-normal">mR/week</span>
               </p>
               <p className="text-lg text-purple-700 mt-4 font-semibold">Limit: ≤ 2 mR/week</p>
+              {maxPublicLocation.mRPerHr && parseFloat(maxPublicLocation.mRPerHr) > 0 && (
+                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-purple-400 text-left">
+                  <p className="text-sm font-semibold text-purple-900 mb-2">Calculation:</p>
+                  <p className="text-xs text-purple-800 mb-1">
+                    <strong>Location:</strong> {maxPublicLocation.location}
+                  </p>
+                  <p className="text-xs text-purple-800">
+                    <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                  </p>
+                  <p className="text-xs text-purple-800 mt-1">
+                    <strong>Result:</strong> {maxPublicWeekly} mR/week
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

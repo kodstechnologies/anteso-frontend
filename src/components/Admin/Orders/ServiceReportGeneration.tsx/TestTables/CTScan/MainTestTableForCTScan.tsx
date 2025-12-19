@@ -416,8 +416,8 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         SUMMARY OF QA TEST RESULTS
       </h2>
 
-      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-        <table className="w-full border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
+      <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
+        <table className="border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto', margin: '0 auto' }}>
           <thead className="bg-gray-200">
             <tr>
               <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center print:text-[9px]">Sr. No.</th>

@@ -25,10 +25,11 @@ interface TiltRow {
 interface Props {
   serviceId: string;
   testId?: string | null;
+  tubeId?: string | null;
   onTestSaved?: (testId: string) => void;
 }
 
-const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -75,7 +76,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         return;
       }
       try {
-        const res = await getCentralBeamAlignmentByServiceIdForInventionalRadiology(serviceId);
+        const res = await getCentralBeamAlignmentByServiceIdForInventionalRadiology(serviceId, tubeId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -109,7 +110,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
     };
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, propTestId, tubeId]);
 
   const updateTechnique = (field: keyof TechniqueRow, value: string) => {
     setTechniqueRow(prev => ({ ...prev, [field]: value }));
@@ -133,6 +134,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         value: parseFloat(toleranceValue) || 0,
       },
       finalResult,
+      tubeId: tubeId || null,
     };
 
     setIsSaving(true);

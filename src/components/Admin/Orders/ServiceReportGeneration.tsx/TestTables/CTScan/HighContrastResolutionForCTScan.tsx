@@ -12,12 +12,14 @@ import {
 interface Props {
   serviceId: string;
   testId?: string | null;
+  tubeId?: string | null;
   onTestSaved?: (testId: string) => void;
 }
 
 const HighContrastResolutionForCTScan: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
+  tubeId,
   onTestSaved,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);

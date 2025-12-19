@@ -11,12 +11,14 @@ import {
 interface Props {
     serviceId: string;
     testId?: string | null;
+    tubeId?: string | null;
     onTestSaved?: (testId: string) => void;
 }
 
 const LowContrastResolution: React.FC<Props> = ({
     serviceId,
     testId: propTestId = null,
+    tubeId,
     onTestSaved,
 }) => {
     const [testId, setTestId] = useState<string | null>(propTestId);
@@ -43,7 +45,7 @@ const LowContrastResolution: React.FC<Props> = ({
         const loadTest = async () => {
             setIsLoading(true);
             try {
-                const data = await getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId);
+                const data = await getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId);
 
                 if (data?.data) {
                     setTestId(data.data._id);
@@ -65,7 +67,7 @@ const LowContrastResolution: React.FC<Props> = ({
         };
 
         loadTest();
-    }, [propTestId, serviceId]);
+    }, [propTestId, serviceId, tubeId]);
 
     // Save / Update
     const handleSave = async () => {
@@ -83,6 +85,7 @@ const LowContrastResolution: React.FC<Props> = ({
         const payload = {
             smallestHoleSize: smallestHoleSize.trim(),
             recommendedStandard: recommendedStandard.trim(),
+            tubeId: tubeId || null,
         };
 
         try {

@@ -17,7 +17,12 @@ interface OutputRow {
   remark: string;
 }
 
-const ConsisitencyOfRadiationOutput: React.FC = () => {
+interface Props {
+  serviceId: string;
+  tubeId?: string | null;
+}
+
+const ConsisitencyOfRadiationOutput: React.FC<Props> = ({ serviceId, tubeId }) => {
   // ---- Table 1: FCD -------------------------------------------------
   const [fcdRows, setFcdRows] = useState<FCDRow[]>([{ id: '1', fcd: '' }]);
 
