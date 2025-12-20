@@ -50,6 +50,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,34 +132,70 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
+      // Calculate average mGy and round to 4 decimal places
+      const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
+      const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
+      
       const ma = parseFloat(row.ma);
-      const x = avg !== '—' && ma > 0 ? (parseFloat(avg) / ma).toFixed(4) : '—';
+      // Calculate X = mGy / mA and round to 4 decimal places
+      const x = avg !== null && ma > 0 ? parseFloat((avg / ma).toFixed(4)) : null;
+      const xDisplay = x !== null ? x.toFixed(4) : '—';
 
-      if (x !== '—') xValues.push(parseFloat(x));
+      if (x !== null) xValues.push(x);
 
-      return { ...row, average: avg, x };
+      return { ...row, average: avgDisplay, x: xDisplay };
     });
 
-    // Calculate summary values once for all rows
-    const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
-    const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
-    const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
+    const hasData = xValues.length > 0;
+    // Round xMax and xMin to 4 decimal places
+    const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
+    const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
+    
+    // Calculate COL: |xMax - xMin| / (xMax + xMin) and round to 4 decimal places
+    const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
-      : 0;
-    const col = colVal > 0 ? colVal.toFixed(3) : '—';
-    const pass = col !== '—' && parseFloat(col) <= tol;
-    const remarks = col !== '—' ? (pass ? 'Pass' : 'Fail') : '—';
+      : null;
+    const col = hasData && colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
+    
+    // Determine pass/fail based on tolerance operator and CoL value
+    let pass = false;
+    let remarks = '—';
+    
+    if (hasData && col !== '—' && colNum !== null) {
+      const colVal = parseFloat(col);
+      switch (toleranceOperator) {
+        case '<':
+          pass = colVal < tol;
+          break;
+        case '>':
+          pass = colVal > tol;
+          break;
+        case '<=':
+          pass = colVal <= tol;
+          break;
+        case '>=':
+          pass = colVal >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colVal - tol) < 0.0001; // Allow small floating point differences
+          break;
+        default:
+          pass = colVal <= tol;
+      }
+      remarks = pass ? 'Pass' : 'Fail';
+    }
 
-    // Return rows with summary values (same for all rows)
-    return rowsWithX.map(row => ({
-      ...row,
-      xMax,
-      xMin,
-      col,
-      remarks,
-    }));
-  }, [table2Rows, tolerance]);
+    return {
+      rows: rowsWithX.map(row => ({
+        ...row,
+        xMax,
+        xMin,
+        col,
+        remarks,
+      })),
+      summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
+    };
+  }, [table2Rows, tolerance, toleranceOperator]);
 
   // === Form Valid ===
   const isFormValid = useMemo(() => {
@@ -205,6 +242,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             );
           }
           setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -248,7 +286,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       // Use processedTable2 to get calculated values
       const payload = {
         table1: [table1Row],
-        table2: processedTable2.map(r => ({
+        table2: processedTable2.rows.map(r => ({
           mAsApplied: r.ma,
           measuredOutputs: r.measuredOutputs.map(v => {
             const val = v.trim();
@@ -342,7 +380,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">FCD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FFD (cm)</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">kV</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (sec)</th>
             </tr>
@@ -439,9 +477,9 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {processedTable2.map((p, index) => {
+            {processedTable2.rows.map((p, index) => {
               const isFirstRow = index === 0;
-              const rowSpan = processedTable2.length;
+              const rowSpan = processedTable2.summary.rowSpan;
               return (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2 border-r">
@@ -472,30 +510,30 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.x}</td>
                   {isFirstRow && (
                     <td rowSpan={rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
-                      {p.xMax}
+                      {processedTable2.summary.xMax}
                     </td>
                   )}
                   {isFirstRow && (
                     <td rowSpan={rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
-                      {p.xMin}
+                      {processedTable2.summary.xMin}
                     </td>
                   )}
                   {isFirstRow && (
                     <td rowSpan={rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
-                      {p.col}
+                      {processedTable2.summary.col}
                     </td>
                   )}
                   {isFirstRow && (
                     <td rowSpan={rowSpan} className="px-4 py-2 text-center align-middle">
                       <span
-                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${p.remarks === 'Pass'
+                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedTable2.summary.remarks === 'Pass'
                           ? 'bg-green-100 text-green-800'
-                          : p.remarks === 'Fail'
+                          : processedTable2.summary.remarks === 'Fail'
                             ? 'bg-red-100 text-red-800'
                             : 'text-gray-400'
                           }`}
                       >
-                        {p.remarks || '—'}
+                        {processedTable2.summary.remarks || '—'}
                       </span>
                     </td>
                   )}

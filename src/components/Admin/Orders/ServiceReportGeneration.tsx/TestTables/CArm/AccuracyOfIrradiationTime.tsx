@@ -1,6 +1,8 @@
 // src/components/TestTables/AccuracyOfIrradiationTime.tsx
 import React, { useState, useEffect } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Edit3, Save } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   createAccuracyOfIrradiationTimeForCArm,
   getAccuracyOfIrradiationTimeForCArm,
@@ -28,9 +30,11 @@ interface Table2Row {
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
 }) => {
-  const [testId, setTestId] = useState<string | null>(null); // Mongo _id
+  const [testId, setTestId] = useState<string | null>(null); // Mongo _id (optional, not strictly needed)
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Test Conditions (Single Row)
   const [table1Row, setTable1Row] = useState<Table1Row>({
@@ -47,10 +51,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
   // Tolerance
   const [toleranceOperator, setToleranceOperator] = useState("<=");
-  const [toleranceValue, setToleranceValue] = useState("");
+  const [toleranceValue, setToleranceValue] = useState("10");
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
     setTable1Row((prev) => ({ ...prev, [field]: value }));
+    setIsSaved(false);
   };
 
   const addTable2Row = () => {
@@ -58,11 +63,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       ...prev,
       { id: Date.now().toString(), setTime: "", measuredTime: "" },
     ]);
+    setIsSaved(false);
   };
 
   const deleteTable2Row = (id: string) => {
     if (table2Rows.length > 1) {
       setTable2Rows((prev) => prev.filter((r) => r.id !== id));
+      setIsSaved(false);
     }
   };
 
@@ -70,6 +77,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     setTable2Rows((prev) =>
       prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
     );
+    setIsSaved(false);
   };
 
   // Calculations
@@ -101,10 +109,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       if (!serviceId) return;
       setLoading(true);
       try {
-        const data = await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId);
+        const res = await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId);
+        const data = res?.data || res;
         if (data) {
-          setTestId(data._id);
-          setTable1Row(data.testConditions || { fcd: "", kv: "", ma: "" });
+          setTestId(data._id || null);
+          setTable1Row(data.testConditions || { id: "1", fcd: "", kv: "", ma: "" });
           setTable2Rows(
             data.irradiationTimes && data.irradiationTimes.length > 0
               ? data.irradiationTimes.map((t: any, i: number) => ({
@@ -115,10 +124,17 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
           setToleranceOperator(data.tolerance?.operator || "<=");
-          setToleranceValue(data.tolerance?.value || "");
+          setToleranceValue(data.tolerance?.value || "10");
+          setIsSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsSaved(false);
+          setIsEditing(true);
         }
       } catch (err) {
         console.log("No saved data or failed to load:", err);
+        setIsSaved(false);
+        setIsEditing(true);
       } finally {
         setLoading(false);
       }
@@ -158,18 +174,29 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           setTestId(newId);
         }
       }
-      alert("Saved successfully!");
-    } catch (err) {
-      alert("Failed to save");
+      setIsSaved(true);
+      setIsEditing(false);
+      toast.success(testId ? "Updated successfully!" : "Saved successfully!");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save");
       console.error(err);
     } finally {
       setSaving(false);
     }
   };
 
+  const isViewMode = isSaved && !isEditing;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-blue-600">Loading saved data...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-6">
-      {loading && <p className="text-blue-600">Loading saved data...</p>}
 
       {/* Test Conditions */}
       <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
@@ -189,13 +216,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           <tbody className="bg-white">
             <tr className="hover:bg-gray-50">
               <td className="px-4 py-3">
-                <input type="text" value={table1Row.fcd} onChange={(e) => updateTable1("fcd", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" placeholder="100" />
+                <input type="text" value={table1Row.fcd} onChange={(e) => updateTable1("fcd", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="100" />
               </td>
               <td className="px-4 py-3">
-                <input type="text" value={table1Row.kv} onChange={(e) => updateTable1("kv", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" placeholder="80" />
+                <input type="text" value={table1Row.kv} onChange={(e) => updateTable1("kv", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="80" />
               </td>
               <td className="px-4 py-3">
-                <input type="text" value={table1Row.ma} onChange={(e) => updateTable1("ma", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" placeholder="100" />
+                <input type="text" value={table1Row.ma} onChange={(e) => updateTable1("ma", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="100" />
               </td>
             </tr>
           </tbody>
@@ -223,10 +250,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             {table2Rows.map((row) => {
               const error = calcError(row.setTime, row.measuredTime);
               const remark = getRemark(error);
+              const isFail = remark === "FAIL" && row.measuredTime && row.measuredTime.trim() !== "";
               return (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3"><input type="number" step="0.1" value={row.setTime} onChange={(e) => updateTable2(row.id, "setTime", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" /></td>
-                  <td className="px-4 py-3"><input type="number" step="0.1" value={row.measuredTime} onChange={(e) => updateTable2(row.id, "measuredTime", e.target.value)} className="w-full px-2 py-1 text-center border border-gray-300 rounded text-sm" /></td>
+                  <td className="px-4 py-3"><input type="number" step="0.1" value={row.setTime} onChange={(e) => updateTable2(row.id, "setTime", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} /></td>
+                  <td className={`px-4 py-3 ${isFail ? 'bg-red-100' : ''}`}><input type="number" step="0.1" value={row.measuredTime} onChange={(e) => updateTable2(row.id, "measuredTime", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border ${isFail ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded text-sm ${isViewMode ? (isFail ? 'bg-red-50 text-gray-500 cursor-not-allowed' : 'bg-gray-50 text-gray-500 cursor-not-allowed') : ''}`} /></td>
                   <td className="px-4 py-3 text-center font-medium">{error}%</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${remark === "PASS" ? "bg-green-100 text-green-800" : remark === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"}`}>
@@ -234,7 +262,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {table2Rows.length > 1 && (
+                    {table2Rows.length > 1 && !isViewMode && (
                       <button onClick={() => deleteTable2Row(row.id)} className="text-red-600 hover:text-red-800">
                         <XMarkIcon className="h-5 w-5" />
                       </button>
@@ -246,9 +274,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           </tbody>
         </table>
         <div className="px-4 py-3 bg-gray-50 border-t border-gray-300 flex justify-start">
-          <button onClick={addTable2Row} className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium">
-            <PlusIcon className="h-4 w-4" /> Add Row
-          </button>
+          {!isViewMode && (
+            <button onClick={addTable2Row} className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium">
+              <PlusIcon className="h-4 w-4" /> Add Row
+            </button>
+          )}
         </div>
       </div>
 
@@ -257,26 +287,37 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <h4 className="text-sm font-semibold text-indigo-900 mb-2">Tolerance Setting</h4>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium text-indigo-800">Error should be</span>
-          <select value={toleranceOperator} onChange={(e) => setToleranceOperator(e.target.value)} className="px-3 py-1 border border-indigo-300 rounded bg-white text-indigo-900">
+          <select value={toleranceOperator} onChange={(e) => { setToleranceOperator(e.target.value); setIsSaved(false); }} disabled={isViewMode} className={`px-3 py-1 border border-indigo-300 rounded bg-white text-indigo-900 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}>
             <option value=">">greater than</option>
             <option value="<">less than</option>
             <option value=">=">greater than or equal to</option>
             <option value="<=">less than or equal to</option>
           </select>
-          <input type="number" step="0.1" value={toleranceValue} onChange={(e) => setToleranceValue(e.target.value)} className="w-20 px-2 py-1 text-center border border-indigo-300 rounded bg-white" placeholder="5.0" />
+          <input type="number" step="0.1" value={toleranceValue} onChange={(e) => { setToleranceValue(e.target.value); setIsSaved(false); }} disabled={isViewMode} className={`w-20 px-2 py-1 text-center border border-indigo-300 rounded bg-white ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="10.0" />
           <span className="font-medium text-indigo-800">%</span>
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={saving || loading}
-          className={`px-6 py-2 rounded-lg text-white font-medium ${saving ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"}`}
-        >
-          {saving ? "Saving..." : "Save Test Data"}
-        </button>
+      {/* Save/Edit Button */}
+      <div className="flex justify-end gap-3">
+        {isViewMode ? (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium bg-orange-600 hover:bg-orange-700"
+          >
+            <Edit3 className="w-4 h-4" />
+            Edit Test Data
+          </button>
+        ) : (
+          <button
+            onClick={handleSave}
+            disabled={saving || loading}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium ${saving ? "bg-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}
+          >
+            <Save className="w-4 h-4" />
+            {saving ? "Saving..." : testId ? "Update Test Data" : "Save Test Data"}
+          </button>
+        )}
       </div>
 
       {/* Formula Info */}

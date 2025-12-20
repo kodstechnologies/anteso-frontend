@@ -18,6 +18,7 @@ interface Table2Row {
   id: string;
   mAsRange: string;
   measuredOutputs: string[];
+  measuredOutputsStatus: boolean[]; // true = PASS, false = FAIL
   average: string;
   x: string;
   xMax: string;
@@ -43,10 +44,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
   const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-    { id: '1', mAsRange: '5 - 10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '2', mAsRange: '10 - 20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '3', mAsRange: '20 - 50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '4', mAsRange: '50 - 100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '1', mAsRange: '5 - 10', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '2', mAsRange: '10 - 20', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '3', mAsRange: '20 - 50', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '4', mAsRange: '50 - 100', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
@@ -60,13 +61,28 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const removeMeasColumn = (idx: number) => {
     if (measHeaders.length <= 1) return;
     setMeasHeaders(p => p.filter((_, i) => i !== idx));
-    setTable2Rows(p => p.map(r => ({ ...r, measuredOutputs: r.measuredOutputs.filter((_, i) => i !== idx) })));
+    setTable2Rows(p => p.map(r => ({ 
+      ...r, 
+      measuredOutputs: r.measuredOutputs.filter((_, i) => i !== idx),
+      measuredOutputsStatus: (r.measuredOutputsStatus || []).filter((_, i) => i !== idx)
+    })));
   };
 
   const addTable2Row = () => {
     setTable2Rows(p => [
       ...p,
-      { id: Date.now().toString(), mAsRange: '', measuredOutputs: Array(measHeaders.length).fill(''), average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+      { 
+        id: Date.now().toString(), 
+        mAsRange: '', 
+        measuredOutputs: Array(measHeaders.length).fill(''), 
+        measuredOutputsStatus: Array(measHeaders.length).fill(true),
+        average: '', 
+        x: '', 
+        xMax: '', 
+        xMin: '', 
+        col: '', 
+        remarks: '' 
+      },
     ]);
   };
 
@@ -115,6 +131,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                 id: Date.now().toString() + Math.random(),
                 mAsRange: r.mAsApplied || r.mAsRange || '',
                 measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
+                measuredOutputsStatus: [],
                 // Don't load average and x - they will be recalculated by processedTable2
               }))
             );
@@ -216,29 +233,35 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
+      // Calculate average mGy and round to 4 decimal places
+      const avg = outputs.length > 0 ? outputs.reduce((a, b) => a + b, 0) / outputs.length : null;
+      const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : '—';
 
+      // Extract mAs value (mA*s) from range or single value
       const match = row.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
       const midMas = match
         ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
         : parseFloat(row.mAsRange) || 0;
 
-      const x = avg !== '—' && midMas > 0 ? (parseFloat(avg) / midMas).toFixed(4) : '—';
-      if (x !== '—') xValues.push(parseFloat(x));
+      // Calculate X = mGy / (mA*s) and round to 4 decimal places
+      const x = avg !== null && midMas > 0 ? avg / midMas : null;
+      const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : '—';
+      if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
 
-      return { ...row, average: avg, x };
+      return { ...row, average: avgDisplay, x: xDisplay };
     });
 
     const hasData = xValues.length > 0;
-    const xMax = hasData ? Math.max(...xValues).toFixed(4) : '—';
-    const xMin = hasData ? Math.min(...xValues).toFixed(4) : '—';
-    
-    // Calculate COL: |xMax - xMin| / (xMax + xMin)
+    // Round xMax and xMin to 4 decimal places
+    const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
+    const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
+
+    // Calculate COL: |xMax - xMin| / (xMax + xMin) and round to 4 decimal places
     const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : 0;
-    const col = hasData && colNum > 0 ? colNum.toFixed(3) : '—';
-    
+    const col = hasData && colNum > 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
+
     // Determine pass/fail based on tolerance operator
     let pass = false;
     if (hasData && col !== '—') {
@@ -266,9 +289,28 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
     const remarks = hasData && col !== '—' ? (pass ? 'Pass' : 'Fail') : '—';
 
+    // Calculate validation status for each measured output
+    // If CoL fails tolerance, mark all measured values as failed (since they all contribute to CoL)
+    const rowsWithStatus = rowsWithX.map((row) => {
+      const measuredStatus = row.measuredOutputs.map((val) => {
+        const numVal = parseFloat(val);
+        // Empty or invalid values don't fail
+        if (isNaN(numVal) || numVal <= 0) return true;
+        
+        // If CoL fails, all measured values fail
+        if (!pass && hasData && col !== '—') {
+          return false;
+        }
+        
+        return true; // Default to pass
+      });
+      
+      return { ...row, measuredOutputsStatus: measuredStatus };
+    });
+
     return {
-      rows: rowsWithX,
-      summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
+      rows: rowsWithStatus,
+      summary: { xMax, xMin, col, remarks, rowSpan: rowsWithStatus.length }
     };
   }, [table2Rows, tolerance, toleranceOperator]);
 
@@ -417,19 +459,31 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                       placeholder="10 - 20"
                     />
                   </td>
-                  {p.measuredOutputs.map((val, idx) => (
-                    <td key={idx} className="px-3 py-4 text-center border-r">
-                      <input
-                        type="number"
-                        step="any"
-                        value={val}
-                        onChange={e => updateCell(p.id, idx, e.target.value)}
-                        disabled={isViewMode}
-                        className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                  {p.measuredOutputs.map((val, idx) => {
+                    const hasValue = val !== "" && !isNaN(parseFloat(val)) && parseFloat(val) > 0;
+                    const isValid = p.measuredOutputsStatus && p.measuredOutputsStatus.length > idx 
+                      ? p.measuredOutputsStatus[idx] 
+                      : true;
+                    
+                    return (
+                      <td key={idx} className={`px-3 py-4 text-center border-r ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
+                        <input
+                          type="number"
+                          step="any"
+                          value={val}
+                          onChange={e => updateCell(p.id, idx, e.target.value)}
+                          disabled={isViewMode}
+                          className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${
+                            isViewMode 
+                              ? 'bg-gray-50 text-gray-500 cursor-not-allowed' 
+                              : hasValue && !isValid
+                                ? 'border-red-500 bg-red-50'
+                                : ''
                           }`}
-                      />
-                    </td>
-                  ))}
+                        />
+                      </td>
+                    );
+                  })}
                   <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.average}</td>
                   <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.x}</td>
                   {index === 0 && (

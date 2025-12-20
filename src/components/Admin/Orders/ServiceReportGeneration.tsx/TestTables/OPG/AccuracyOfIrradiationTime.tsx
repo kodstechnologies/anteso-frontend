@@ -56,10 +56,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
   // Tolerance
   const [toleranceOperator, setToleranceOperator] = useState("<=");
-  const [toleranceValue, setToleranceValue] = useState("");
+  const [toleranceValue, setToleranceValue] = useState("10");
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
     setTable1Row((prev) => ({ ...prev, [field]: value }));
+    setIsSaved(false);
   };
 
   const addTable2Row = () => {
@@ -67,11 +68,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       ...prev,
       { id: Date.now().toString(), setTime: "", measuredTime: "" },
     ]);
+    setIsSaved(false);
   };
 
   const deleteTable2Row = (id: string) => {
     if (table2Rows.length > 1) {
       setTable2Rows((prev) => prev.filter((r) => r.id !== id));
+      setIsSaved(false);
     }
   };
 
@@ -79,6 +82,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     setTable2Rows((prev) =>
       prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
     );
+    setIsSaved(false);
   };
 
   // Calculations
@@ -125,7 +129,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
           setToleranceOperator(data.tolerance?.operator || "");
-          setToleranceValue(data.tolerance?.value || "");
+          setToleranceValue(data.tolerance?.value || "10");
           setIsSaved(true);
           setIsEditing(false);
         } else {
@@ -308,6 +312,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             {table2Rows.map((row) => {
               const error = calcError(row.setTime, row.measuredTime);
               const remark = getRemark(error);
+              const isFail = remark === "FAIL" && row.measuredTime && row.measuredTime.trim() !== "";
               return (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
@@ -320,14 +325,14 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                       className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={`px-4 py-3 ${isFail ? 'bg-red-100' : ''}`}>
                     <input 
                       type="number" 
                       step="0.1" 
                       value={row.measuredTime} 
                       onChange={(e) => updateTable2(row.id, "measuredTime", e.target.value)} 
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                      className={`w-full px-2 py-1 text-center border ${isFail ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded text-sm ${isViewMode ? (isFail ? 'bg-red-50 text-gray-500 cursor-not-allowed' : 'bg-gray-50 text-gray-500 cursor-not-allowed') : ''}`}
                     />
                   </td>
                   <td className="px-4 py-3 text-center font-medium">{error}%</td>
@@ -377,10 +382,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             type="number" 
             step="0.1" 
             value={toleranceValue} 
-            onChange={(e) => setToleranceValue(e.target.value)} 
+            onChange={(e) => { setToleranceValue(e.target.value); setIsSaved(false); }} 
             disabled={isViewMode}
             className={`w-20 px-2 py-1 text-center border border-indigo-300 rounded ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
-            placeholder="5.0" 
+            placeholder="10.0" 
           />
           <span className="font-medium text-indigo-800">%</span>
         </div>

@@ -8,6 +8,7 @@ import {
   addRadiationProtectionSurveyForRadiographyMobileHT,
   getRadiationProtectionSurveyByServiceIdForRadiographyMobileHT,
   updateRadiationProtectionSurveyForRadiographyMobileHT,
+  getTools,
 } from "../../../../../../api";
 
 interface LocationData {
@@ -23,12 +24,18 @@ interface Props {
 }
 
 const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
   const [testId, setTestId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [surveyDate, setSurveyDate] = useState<string>("");
+  const [surveyDate, setSurveyDate] = useState<string>(getTodayDate());
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
@@ -93,8 +100,76 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
   const workerLocations = locations.filter(l => l.category === "worker");
   const publicLocations = locations.filter(l => l.category === "public");
 
-  const maxWorkerWeekly = Math.max(...workerLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
-  const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
+  // Find maximum values and their corresponding locations
+  const maxWorkerLocation = workerLocations.reduce((max, loc) => {
+    const maxVal = parseFloat(max.mRPerWeek) || 0;
+    const locVal = parseFloat(loc.mRPerWeek) || 0;
+    return locVal > maxVal ? loc : max;
+  }, workerLocations[0] || { location: '', mRPerHr: '', mRPerWeek: '', result: '', category: 'worker' as const });
+  
+  const maxPublicLocation = publicLocations.reduce((max, loc) => {
+    const maxVal = parseFloat(max.mRPerWeek) || 0;
+    const locVal = parseFloat(loc.mRPerWeek) || 0;
+    return locVal > maxVal ? loc : max;
+  }, publicLocations[0] || { location: '', mRPerHr: '', mRPerWeek: '', result: '', category: 'public' as const });
+  
+  const maxWorkerWeekly = maxWorkerLocation.mRPerWeek || '0';
+  const maxPublicWeekly = maxPublicLocation.mRPerWeek || '0';
+
+  // Check calibration validity
+  useEffect(() => {
+    const checkCalibration = async () => {
+      if (!serviceId) return;
+      try {
+        const toolsRes = await getTools(serviceId);
+        const tools = toolsRes?.data?.toolsAssigned || [];
+        
+        if (tools.length > 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          let hasCalibrationDates = false;
+          let allValid = true;
+          let hasExpired = false;
+          
+          // Check all tools for calibration dates
+          for (const tool of tools) {
+            if (tool.calibrationValidTill) {
+              hasCalibrationDates = true;
+              const validTill = new Date(tool.calibrationValidTill);
+              validTill.setHours(0, 0, 0, 0);
+              
+              if (validTill < today) {
+                hasExpired = true;
+                allValid = false;
+              }
+            }
+          }
+          
+          // Set calibration status based on check
+          if (hasCalibrationDates) {
+            if (hasExpired) {
+              setHasValidCalibration("No");
+            } else if (allValid) {
+              setHasValidCalibration("Yes");
+            } else {
+              setHasValidCalibration("Yes"); // All dates are valid
+            }
+          } else {
+            // No calibration dates found in tools
+            setHasValidCalibration("N/A");
+          }
+        } else {
+          setHasValidCalibration("N/A");
+        }
+      } catch (err) {
+        console.error("Failed to check calibration:", err);
+        // Don't set calibration status if check fails
+      }
+    };
+    
+    checkCalibration();
+  }, [serviceId]);
 
   // Load existing survey
   useEffect(() => {
@@ -434,6 +509,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                 {maxWorkerWeekly} <span className="text-2xl font-normal">mR/week</span>
               </p>
               <p className="text-lg text-blue-700 mt-4 font-semibold">Limit: ≤ 40 mR/week</p>
+              {maxWorkerLocation.mRPerHr && parseFloat(maxWorkerLocation.mRPerHr) > 0 && (
+                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-blue-400 text-left">
+                  <p className="text-sm font-semibold text-blue-900 mb-2">Calculation:</p>
+                  <p className="text-xs text-blue-800 mb-1">
+                    <strong>Location:</strong> {maxWorkerLocation.location}
+                  </p>
+                  <p className="text-xs text-blue-800">
+                    <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                  </p>
+                  <p className="text-xs text-blue-800 mt-1">
+                    <strong>Result:</strong> {maxWorkerWeekly} mR/week
+                  </p>
+                </div>
+              )}
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-4 border-purple-300 rounded-2xl p-8 text-center shadow-lg">
               <h3 className="text-xl font-bold text-purple-900">Maximum Radiation Level/week</h3>
@@ -442,6 +531,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                 {maxPublicWeekly} <span className="text-2xl font-normal">mR/week</span>
               </p>
               <p className="text-lg text-purple-700 mt-4 font-semibold">Limit: ≤ 2 mR/week</p>
+              {maxPublicLocation.mRPerHr && parseFloat(maxPublicLocation.mRPerHr) > 0 && (
+                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-purple-400 text-left">
+                  <p className="text-sm font-semibold text-purple-900 mb-2">Calculation:</p>
+                  <p className="text-xs text-purple-800 mb-1">
+                    <strong>Location:</strong> {maxPublicLocation.location}
+                  </p>
+                  <p className="text-xs text-purple-800">
+                    <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                  </p>
+                  <p className="text-xs text-purple-800 mt-1">
+                    <strong>Result:</strong> {maxPublicWeekly} mR/week
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

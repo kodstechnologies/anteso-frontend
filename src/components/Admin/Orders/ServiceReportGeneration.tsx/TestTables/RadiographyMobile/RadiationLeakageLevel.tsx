@@ -346,18 +346,29 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
             {processedLeakage.map((row, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
                 <td className="px-3 py-3 font-medium border-r">{row.location}</td>
-                {(['left', 'right', 'front', 'back', 'top'] as const).map(field => (
-                  <td key={field} className="px-1 py-2 border-r">
-                    <input
-                      type="text"
-                      value={leakageRows[idx][field]}
-                      onChange={(e) => updateLeakage(idx, field, e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full text-center border rounded text-xs ${isViewMode ? 'bg-gray-50' : ''}`}
-                      placeholder="0.00"
-                    />
-                  </td>
-                ))}
+                {(['left', 'right', 'front', 'back', 'top'] as const).map(field => {
+                  const isFailed = finalRemark === 'Fail';
+                  const hasValue = leakageRows[idx][field] !== '' && !isNaN(parseFloat(leakageRows[idx][field]));
+                  
+                  return (
+                    <td key={field} className={`px-1 py-2 border-r ${isFailed && hasValue ? 'bg-red-100' : ''}`}>
+                      <input
+                        type="text"
+                        value={leakageRows[idx][field]}
+                        onChange={(e) => updateLeakage(idx, field, e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-full text-center border rounded text-xs ${
+                          isViewMode 
+                            ? 'bg-gray-50 cursor-not-allowed' 
+                            : isFailed && hasValue
+                              ? 'border-red-500 bg-red-50'
+                              : ''
+                        }`}
+                        placeholder="0.00"
+                      />
+                    </td>
+                  );
+                })}
                 <td className="px-3 py-3 text-center font-medium border-r bg-gray-50">{row.max || '—'}</td>
                 <td className="px-3 py-3 text-center font-medium border-r bg-blue-50">{row.result || '—'}</td>
                 <td className="px-3 py-3 text-center font-medium border-r bg-green-50">{row.mgy || '—'}</td>

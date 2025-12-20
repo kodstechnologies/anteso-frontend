@@ -69,9 +69,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     },
   ]);
 
-  // Calculate avg, CV and remark – pure calculation, no state mutation needed
+  // Calculate avg, CoV and remark – pure calculation, no state mutation needed
   const rowsWithCalc = useMemo(() => {
-    const tolValue = parseFloat(tolerance.value) || 0.05;
+    // Tolerance value is stored as decimal (e.g., 0.05 for 5%), convert to percentage
+    const tolValueDecimal = parseFloat(tolerance.value) || 0.05;
+    const tolValuePercent = tolValueDecimal * 100; // Convert to percentage
 
     return outputRows.map((row): OutputRow => {
       const values = row.outputs
@@ -86,19 +88,21 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const variance =
         values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
       const stdDev = Math.sqrt(variance);
-      const cv = avg > 0 ? (stdDev / avg) : 0;
+      const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal
+      const covPercent = covDecimal * 100; // CoV as percentage
 
+      // Compare CoV (percentage) with tolerance (percentage)
       const passes =
         tolerance.operator === '<=' || tolerance.operator === '<'
-          ? cv <= tolValue
-          : cv >= tolValue;
+          ? covPercent <= tolValuePercent
+          : covPercent >= tolValuePercent;
 
       const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
 
       return {
         ...row,
-        avg: avg.toFixed(3),
-        cv: cv.toFixed(2),
+        avg: avg.toFixed(4),
+        cv: covPercent.toFixed(4), // Display CoV as percentage
         remark,
       };
     });
@@ -355,7 +359,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       <div className="bg-white rounded-lg border shadow-sm">
 
         <div className="p-6 flex items-center gap-4">
-          <label className="w-48 text-sm font-medium text-gray-700">FCD:</label>
+          <label className="w-48 text-sm font-medium text-gray-700">FFD(cm):</label>
           <input
             type="text"
             value={ffd.value}
@@ -420,7 +424,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   Average
                 </th>
                 <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase">
-                  CV / Result
+                  CoV / Result
                 </th>
                 <th className="w-12" />
               </tr>
@@ -472,7 +476,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                           : 'bg-gray-100 text-gray-600'
                         }`}
                     >
-                      {row.cv ? `${row.cv} → ${row.remark}` : '—'}
+                      {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
                     </span>
                   </td>
                   <td className="px-3 text-center">
