@@ -1,0 +1,297 @@
+Test Case ID,Module,Feature,Test Description,API Endpoint/Method,Test Steps,Expected Result,Priority,Status,Test Date,Tester Name,Actual Result,Notes
+AUTH-001,Authentication,Admin Login,Verify admin login with valid credentials,POST /anteso/admin/auth/login,"1. Send POST request with email and password
+2. Verify response contains access token and refresh token","Status 200, Access token and refresh token returned, User data included",Critical,Not Tested,,,,
+AUTH-002,Authentication,Admin Login,Verify admin login with invalid credentials,POST /anteso/admin/auth/login,"1. Send POST request with incorrect password
+2. Verify error response","Status 401, Error message indicating invalid credentials",Critical,Not Tested,,,,
+AUTH-003,Authentication,Token Refresh,Verify JWT token refresh functionality,POST /anteso/admin/auth/refresh,"1. Send POST request with valid refresh token
+2. Verify new access token is returned","Status 200, New access token returned",High,Not Tested,,,,
+AUTH-004,Authentication,Mobile OTP Send,Verify OTP sending for mobile login,POST /anteso/user/send-otp,"1. Send POST request with mobile number
+2. Verify OTP is sent via SMS
+3. Verify OTP is stored in database","Status 200, Success message, OTP stored in database, SMS sent",Critical,Not Tested,,,,
+AUTH-005,Authentication,Mobile OTP Verify,Verify OTP verification for mobile login,POST /anteso/user/verify-otp,"1. Send POST request with mobile number and OTP
+2. Verify JWT tokens are returned
+3. Verify user/technician attendance is marked (if applicable)","Status 200, Access token and refresh token returned, User data included, Attendance marked for engineers",Critical,Not Tested,,,,
+AUTH-006,Authentication,Logout,Verify logout functionality,POST /anteso/user/logout,"1. Send POST request with valid token
+2. Verify refresh token cookie is cleared","Status 200, Success message, Refresh token cookie cleared",Medium,Not Tested,,,,
+AUTH-007,Authentication,Role Authorization,Verify role-based access control,GET /anteso/admin/clients,"1. Send request with different user roles (admin, staff, customer, technician)
+2. Verify access granted/denied based on role","Admin: Access granted, Staff: Access granted, Customer: Access denied, Appropriate status codes",Critical,Not Tested,,,,
+CLIENT-001,Client Management,Create Client,Verify client creation with all required fields,POST /anteso/admin/clients/add,"1. Send POST request with client details (name, address, contact, etc.)
+2. Verify client is created in database
+3. Verify response contains client ID","Status 201, Client created successfully, Client ID returned",High,Not Tested,,,,
+CLIENT-002,Client Management,Get All Clients,Verify fetching all clients with pagination,GET /anteso/admin/clients/get-all,"1. Send GET request with pagination parameters (page, limit)
+2. Verify clients list is returned
+3. Verify pagination metadata is included","Status 200, List of clients returned, Pagination metadata (total, page, limit) included",High,Not Tested,,,,
+CLIENT-003,Client Management,Get Client By ID,Verify fetching single client details,GET /anteso/admin/clients/get-by-id/:id,"1. Send GET request with valid client ID
+2. Verify complete client details are returned
+3. Verify related data (hospitals, RSO, institutes) is included","Status 200, Complete client object returned with all related entities",High,Not Tested,,,,
+CLIENT-004,Client Management,Update Client,Verify client update functionality,PUT /anteso/admin/clients/update/:id,"1. Send PUT request with updated client data
+2. Verify client is updated in database
+3. Verify response contains updated client","Status 200, Client updated successfully, Updated client data returned",High,Not Tested,,,,
+CLIENT-005,Client Management,Delete Client,Verify client deletion (if applicable),DELETE /anteso/admin/clients/delete/:id,"1. Send DELETE request with client ID
+2. Verify client is deleted/soft-deleted
+3. Verify related data handling","Status 200, Client deleted successfully, Appropriate cleanup of related data",Medium,Not Tested,,,,
+HOSPITAL-001,Hospital Management,Add Hospital,Verify hospital creation under client,POST /anteso/admin/hospital/add/:clientId,"1. Send POST request with hospital details
+2. Verify hospital is created and linked to client
+3. Verify response contains hospital ID","Status 201, Hospital created successfully, Hospital ID returned, Linked to client",High,Not Tested,,,,
+HOSPITAL-002,Hospital Management,Get Hospitals By Client,Verify fetching hospitals for a client,GET /anteso/admin/hospital/get-by-client/:clientId,"1. Send GET request with client ID
+2. Verify list of hospitals is returned
+3. Verify all hospitals belong to specified client","Status 200, List of hospitals returned, All hospitals linked to client",High,Not Tested,,,,
+HOSPITAL-003,Hospital Management,Update Hospital,Verify hospital update functionality,PUT /anteso/admin/hospital/update/:id,"1. Send PUT request with updated hospital data
+2. Verify hospital is updated
+3. Verify client relationship is maintained","Status 200, Hospital updated successfully, Client relationship intact",High,Not Tested,,,,
+ORDER-001,Order Management,Create Order,Verify order creation with all details,POST /anteso/admin/orders/create,"1. Send POST request with order details (client, hospital, services, etc.)
+2. Verify order is created
+3. Verify order number is generated
+4. Verify work order copy upload to S3 (if provided)","Status 201, Order created successfully, Order ID and number returned, File uploaded to S3",Critical,Not Tested,,,,
+ORDER-002,Order Management,Get All Orders,Verify fetching all orders with filters,GET /anteso/admin/orders/get-all,"1. Send GET request with optional filters (status, date range, client)
+2. Verify orders list is returned
+3. Verify pagination works correctly","Status 200, Filtered orders list returned, Pagination working, Lead owner names populated",High,Not Tested,,,,
+ORDER-003,Order Management,Get Order Details,Verify fetching complete order details,GET /anteso/admin/orders/basic-details-by-orderId/:orderId,"1. Send GET request with order ID
+2. Verify complete order object is returned
+3. Verify all related data (services, machines, client, hospital) is included","Status 200, Complete order details returned with all related entities",High,Not Tested,,,,
+ORDER-004,Order Management,Assign Technician (QA/RAW),Verify technician assignment to service,PUT /anteso/admin/orders/assign-to-technician/:orderId/:serviceId/:technicianId/:workType,"1. Send PUT request with order, service, technician IDs and work type
+2. Verify technician is assigned
+3. Verify service status is updated
+4. Verify notification/status change","Status 200, Technician assigned successfully, Service status updated, Work type set",Critical,Not Tested,,,,
+ORDER-005,Order Management,Assign Office Staff (QA Test),Verify office staff assignment to QA test,PUT /anteso/admin/orders/assign-to-office-staff/:orderId/:serviceId/:officeStaffId/:workType/:status,"1. Send PUT request with office staff details
+2. Verify office staff is assigned
+3. Verify service status is updated","Status 200, Office staff assigned successfully, Service status updated",High,Not Tested,,,,
+ORDER-006,Order Management,Mobile - Get Technician Orders,Verify mobile API for technician orders,GET /anteso/admin/orders/all-technician-orders/:technicianId,"1. Send GET request with technician ID
+2. Verify list of assigned orders is returned
+3. Verify order details include service information","Status 200, List of orders for technician returned, Service details included",Critical,Not Tested,,,,
+ORDER-007,Order Management,Mobile - Start Order,Verify order start functionality for technician,GET /anteso/admin/orders/start-order/:employeeId/:orderId,"1. Send GET request to start order
+2. Verify order status is updated to 'In Progress' or similar
+3. Verify timestamp is recorded","Status 200, Order started successfully, Status updated, Start time recorded",Critical,Not Tested,,,,
+ORDER-008,Order Management,Mobile - Get SRF Details,Verify SRF details retrieval for technician,GET /anteso/admin/orders/srf-details/:technicianId/:orderId,"1. Send GET request with technician and order IDs
+2. Verify SRF details are returned
+3. Verify machine and service information included","Status 200, SRF details returned with machine and service information",Critical,Not Tested,,,,
+ORDER-009,Order Management,Mobile - Get Machine Details,Verify machine details for service work,GET /anteso/admin/orders/get-machine-details-for-technician/:technicianId/:orderId/:serviceId,"1. Send GET request with service details
+2. Verify machine details are returned
+3. Verify machine type and specifications included","Status 200, Machine details returned with specifications",Critical,Not Tested,,,,
+ORDER-010,Order Management,Mobile - Update Service Work,Verify service work update with file uploads,PATCH /anteso/admin/orders/update-machine-details-by-technician/:technicianId/:orderId/:serviceId/:machineType/:workType,"1. Send PATCH request with work details
+2. Upload files (uploadFile, viewFile) to S3
+3. Verify service is updated
+4. Verify files are stored in S3","Status 200, Service updated successfully, Files uploaded to S3, File URLs returned",Critical,Not Tested,,,,
+ORDER-011,Order Management,Complete Service Status,Verify service completion with report upload,POST /anteso/admin/orders/completed-status-report/:staffId/:orderId/:serviceId/:workType/:status/:reportType,"1. Send POST request with completion status
+2. Upload report file
+3. Verify service status updated to completed
+4. Verify report file uploaded to S3","Status 200, Service marked as completed, Report uploaded, Status updated",Critical,Not Tested,,,,
+ORDER-012,Order Management,Get Additional Services,Verify fetching additional services for order,GET /anteso/admin/orders/additional-services/:orderId,"1. Send GET request with order ID
+2. Verify additional services list is returned
+3. Verify service details and attachments included","Status 200, List of additional services returned with details",Medium,Not Tested,,,,
+ORDER-013,Order Management,Update Additional Service,Verify additional service update with file,PUT /anteso/admin/orders/update-additional-service/:id,"1. Send PUT request with updated service data
+2. Upload new file if provided
+3. Verify service is updated
+4. Verify file upload to S3","Status 200, Additional service updated, File uploaded if provided",Medium,Not Tested,,,,
+SERVICE-REPORT-001,Service Reports,CT Scan - Create Report Header,Verify CT Scan service report header creation,POST /anteso/admin/service-report/ct-scan/report-header,"1. Send POST request with service report header data
+2. Verify report header is created
+3. Verify report number is generated","Status 201, Report header created, Report number generated",High,Not Tested,,,,
+SERVICE-REPORT-002,Service Reports,CT Scan - Save Test Data,Verify CT Scan test data saving,POST /anteso/admin/service-report/ct-scan/test-data,"1. Send POST request with test data (various test types)
+2. Verify test data is saved
+3. Verify data validation works","Status 201, Test data saved successfully, Validation applied",High,Not Tested,,,,
+SERVICE-REPORT-003,Service Reports,Mammography - Create Report,Verify Mammography service report creation,POST /anteso/admin/service-report/mammography/report-header,"1. Send POST request with mammography report data
+2. Verify report is created
+3. Verify all test tables are accessible","Status 201, Mammography report created successfully",High,Not Tested,,,,
+SERVICE-REPORT-004,Service Reports,Radiography Mobile - Create Report,Verify Radiography Mobile report creation,POST /anteso/admin/service-report/radiography-mobile/report-header,"1. Send POST request with report data
+2. Verify report is created
+3. Verify test tables are linked","Status 201, Report created successfully, Test tables linked",High,Not Tested,,,,
+SERVICE-REPORT-005,Service Reports,Generate PDF Report,Verify PDF generation for service report,GET /anteso/admin/service-report/generate-pdf/:reportId,"1. Send GET request with report ID
+2. Verify PDF is generated
+3. Verify PDF contains all test data
+4. Verify QR code is included","Status 200, PDF generated successfully, All data included, QR code present",Critical,Not Tested,,,,
+SERVICE-REPORT-006,Service Reports,Get Report By ID,Verify fetching service report details,GET /anteso/admin/service-report/get-by-id/:reportId,"1. Send GET request with report ID
+2. Verify complete report data is returned
+3. Verify all test tables data included","Status 200, Complete report data returned with all test tables",High,Not Tested,,,,
+HRMS-001,HRMS - Leave Management,Apply Leave (Technician),Verify leave application by technician,POST /anteso/admin/leaves/apply-for-leave/:technicianId,"1. Send POST request with leave details (start date, end date, type, reason)
+2. Verify leave application is created
+3. Verify status is set to 'Pending'","Status 201, Leave application created, Status: Pending",High,Not Tested,,,,
+HRMS-002,HRMS - Leave Management,Get All Leaves,Verify fetching leaves with filters,GET /anteso/admin/leaves/get-all,"1. Send GET request with optional filters (employee, status, date range)
+2. Verify leaves list is returned
+3. Verify pagination works","Status 200, Filtered leaves list returned, Pagination working",High,Not Tested,,,,
+HRMS-003,HRMS - Leave Management,Approve Leave,Verify leave approval by admin,PUT /anteso/admin/leaves/approve/:leaveId,"1. Send PUT request to approve leave
+2. Verify leave status updated to 'Approved'
+3. Verify leave balance updated
+4. Verify attendance records updated if applicable","Status 200, Leave approved, Status updated, Balance decremented",High,Not Tested,,,,
+HRMS-004,HRMS - Leave Management,Reject Leave,Verify leave rejection by admin,PUT /anteso/admin/leaves/reject/:leaveId,"1. Send PUT request with rejection reason
+2. Verify leave status updated to 'Rejected'
+3. Verify leave balance not affected","Status 200, Leave rejected, Status updated, Balance unchanged",High,Not Tested,,,,
+HRMS-005,HRMS - Attendance,Get Attendance Summary,Verify attendance summary retrieval,GET /anteso/admin/technician/attendance-summary/:empId,"1. Send GET request with employee ID
+2. Verify attendance summary is returned
+3. Verify present/absent/leave counts
+4. Verify date range filtering works","Status 200, Attendance summary returned with counts and statistics",High,Not Tested,,,,
+HRMS-006,HRMS - Attendance,Get Attendance Status,Verify current attendance status,GET /anteso/admin/technician/attendence-status/:employeeId,"1. Send GET request with employee ID
+2. Verify current attendance status is returned
+3. Verify today's attendance record included","Status 200, Attendance status returned, Current day record included",High,Not Tested,,,,
+HRMS-007,HRMS - Salary,Create Salary,Verify salary creation for employee,POST /anteso/admin/salary/create,"1. Send POST request with salary details (employee, amount, allowances, deductions)
+2. Verify salary record is created
+3. Verify calculations are correct","Status 201, Salary created successfully, Calculations verified",High,Not Tested,,,,
+HRMS-008,HRMS - Salary,Get Salary Details,Verify salary details retrieval,GET /anteso/admin/salary/get-by-id/:salaryId,"1. Send GET request with salary ID
+2. Verify complete salary details returned
+3. Verify all components (basic, allowances, deductions) included","Status 200, Complete salary details returned with all components",High,Not Tested,,,,
+HRMS-009,HRMS - Salary,Generate Payslip PDF,Verify payslip PDF generation,GET /anteso/admin/salary/generate-payslip/:salaryId,"1. Send GET request with salary ID
+2. Verify PDF is generated
+3. Verify all salary components are included
+4. Verify formatting is correct","Status 200, Payslip PDF generated, All components included, Proper formatting",High,Not Tested,,,,
+HRMS-010,HRMS - Advance,Add Advance to Technician,Verify advance payment to technician,POST /anteso/admin/advance/add-advance-to-technician/:technicianId,"1. Send POST request with advance amount and details
+2. Verify advance record is created
+3. Verify technician advance balance updated","Status 201, Advance added successfully, Balance updated",Medium,Not Tested,,,,
+HRMS-011,HRMS - Advance,Get Advance Amount,Verify advance balance retrieval,GET /anteso/admin/advance/get-advance-amount/:technicianId,"1. Send GET request with technician ID
+2. Verify total advance amount returned
+3. Verify advance history included","Status 200, Advance amount and history returned",Medium,Not Tested,,,,
+HRMS-012,HRMS - Trip Management,Create Trip (Technician),Verify trip creation by technician,POST /anteso/admin/technician/create-trip-by-techinician/:technicianId,"1. Send POST request with trip details (destination, purpose, dates)
+2. Verify trip is created
+3. Verify trip status set to appropriate state","Status 201, Trip created successfully, Status set correctly",Medium,Not Tested,,,,
+HRMS-013,HRMS - Trip Management,Add Trip Expense,Verify expense addition to trip,POST /anteso/admin/technician/add-trip-expense/:tripId/:technicianId,"1. Send POST request with expense details (amount, type, description, receipt)
+2. Upload receipt image to S3
+3. Verify expense is added to trip
+4. Verify receipt uploaded successfully","Status 201, Expense added, Receipt uploaded to S3, Expense linked to trip",Medium,Not Tested,,,,
+HRMS-014,HRMS - Trip Management,Get Trip Expenses,Verify trip expenses retrieval,GET /anteso/admin/technician/get-trip-expenses/:technicianId/:tripId/:expenseId,"1. Send GET request with trip and expense IDs
+2. Verify expense details returned
+3. Verify receipt URL included","Status 200, Expense details returned with receipt URL",Medium,Not Tested,,,,
+INVOICE-001,Financial - Invoice,Create Invoice,Verify invoice creation,POST /anteso/admin/invoice/create,"1. Send POST request with invoice details (client, items, amounts, taxes)
+2. Verify invoice is created
+3. Verify invoice number is generated
+4. Verify calculations are correct","Status 201, Invoice created, Invoice number generated, Calculations correct",Critical,Not Tested,,,,
+INVOICE-002,Financial - Invoice,Get All Invoices,Verify fetching invoices with filters,GET /anteso/admin/invoice/get-all,"1. Send GET request with optional filters (client, status, date range)
+2. Verify invoices list returned
+3. Verify pagination works","Status 200, Filtered invoices list returned, Pagination working",High,Not Tested,,,,
+INVOICE-003,Financial - Invoice,Generate Invoice PDF,Verify invoice PDF generation,GET /anteso/admin/invoice/generate-pdf/:invoiceId,"1. Send GET request with invoice ID
+2. Verify PDF is generated
+3. Verify all invoice details included
+4. Verify QR code present","Status 200, Invoice PDF generated, All details included, QR code present",Critical,Not Tested,,,,
+INVOICE-004,Financial - Invoice,Update Invoice,Verify invoice update functionality,PUT /anteso/admin/invoice/update/:invoiceId,"1. Send PUT request with updated invoice data
+2. Verify invoice is updated
+3. Verify version history maintained if applicable","Status 200, Invoice updated successfully, History maintained",High,Not Tested,,,,
+PAYMENT-001,Financial - Payment,Record Payment,Verify payment recording,POST /anteso/admin/payment/add,"1. Send POST request with payment details (invoice, amount, mode, date)
+2. Verify payment is recorded
+3. Verify invoice status updated if fully paid
+4. Verify payment receipt generated","Status 201, Payment recorded, Invoice status updated, Receipt generated",Critical,Not Tested,,,,
+PAYMENT-002,Financial - Payment,Get Payment History,Verify payment history retrieval,GET /anteso/admin/payment/get-by-invoice/:invoiceId,"1. Send GET request with invoice ID
+2. Verify payment history returned
+3. Verify all payment details included","Status 200, Payment history returned with all details",High,Not Tested,,,,
+QUOTATION-001,Financial - Quotation,Create Quotation,Verify quotation creation,POST /anteso/admin/quotation/create,"1. Send POST request with quotation details (client, items, prices, validity)
+2. Verify quotation is created
+3. Verify quotation number generated
+4. Verify PDF generation option available","Status 201, Quotation created, Quotation number generated, PDF available",High,Not Tested,,,,
+QUOTATION-002,Financial - Quotation,Convert Quotation to Order,Verify quotation to order conversion,POST /anteso/admin/quotation/convert-to-order/:quotationId,"1. Send POST request to convert quotation
+2. Verify order is created from quotation
+3. Verify quotation status updated to 'Converted'
+4. Verify all quotation items transferred to order","Status 201, Order created from quotation, Quotation status updated, Items transferred",High,Not Tested,,,,
+QUOTATION-003,Financial - Quotation,Get Quotation PDF,Verify quotation PDF generation,GET /anteso/admin/quotation/generate-pdf/:quotationId,"1. Send GET request with quotation ID
+2. Verify PDF is generated
+3. Verify all quotation details included
+4. Verify formatting correct","Status 200, Quotation PDF generated, All details included",High,Not Tested,,,,
+TECHNICIAN-001,Technician Management,Get Technician Details,Verify technician profile retrieval,GET /anteso/admin/technician/get-by-id/:id,"1. Send GET request with technician ID
+2. Verify complete technician profile returned
+3. Verify assigned tools and orders included","Status 200, Complete technician profile returned with tools and orders",High,Not Tested,,,,
+TECHNICIAN-002,Technician Management,Get Assigned Tools,Verify tools assigned to technician,GET /anteso/admin/technician/assigned-tools-for-technician/:technicianId,"1. Send GET request with technician ID
+2. Verify list of assigned tools returned
+3. Verify tool details and calibration info included","Status 200, List of assigned tools returned with details",High,Not Tested,,,,
+TECHNICIAN-003,Technician Management,Get Payment Details (Mobile),Verify payment details for technician,GET /anteso/admin/technician/get-payment-details/:employeeId,"1. Send GET request with employee ID
+2. Verify payment history returned
+3. Verify salary and advance details included","Status 200, Payment details returned with history",Medium,Not Tested,,,,
+TECHNICIAN-004,Technician Management,Get Advance Amount (Mobile),Verify advance balance for technician,GET /anteso/admin/technician/get-advanced-amount/:employeeId,"1. Send GET request with employee ID
+2. Verify total advance amount returned
+3. Verify advance transactions included","Status 200, Advance amount and transactions returned",Medium,Not Tested,,,,
+TOOLS-001,Tools Management,Create Tool,Verify tool creation,POST /anteso/admin/tools/add,"1. Send POST request with tool details (name, model, serial number, calibration info)
+2. Verify tool is created
+3. Verify calibration certificate upload to S3 if provided","Status 201, Tool created, Certificate uploaded if provided",High,Not Tested,,,,
+TOOLS-002,Tools Management,Get All Tools,Verify fetching tools with filters,GET /anteso/admin/tools/get-all,"1. Send GET request with optional filters (status, type, assigned)
+2. Verify tools list returned
+3. Verify pagination works","Status 200, Filtered tools list returned, Pagination working",High,Not Tested,,,,
+TOOLS-003,Tools Management,Assign Tool to Technician,Verify tool assignment,PUT /anteso/admin/tools/assign/:toolId/:technicianId,"1. Send PUT request with tool and technician IDs
+2. Verify tool is assigned to technician
+3. Verify tool status updated to 'Assigned'","Status 200, Tool assigned successfully, Status updated",High,Not Tested,,,,
+ENQUIRY-001,Enquiry Management,Create Enquiry,Verify enquiry creation,POST /anteso/admin/enquiry/add,"1. Send POST request with enquiry details (client, requirements, priority)
+2. Verify enquiry is created
+3. Verify enquiry number generated
+4. Verify status set to 'New'","Status 201, Enquiry created, Enquiry number generated, Status: New",High,Not Tested,,,,
+ENQUIRY-002,Enquiry Management,Convert Enquiry to Quotation,Verify enquiry to quotation conversion,POST /anteso/admin/enquiry/convert-to-quotation/:enquiryId,"1. Send POST request to convert enquiry
+2. Verify quotation is created
+3. Verify enquiry status updated to 'Converted'","Status 201, Quotation created, Enquiry status updated",High,Not Tested,,,,
+DASHBOARD-001,Dashboard,Get Dashboard Statistics,Verify dashboard data retrieval,GET /anteso/admin/dashboard/stats,"1. Send GET request for dashboard statistics
+2. Verify key metrics returned (orders count, revenue, pending items, etc.)
+3. Verify data is aggregated correctly","Status 200, Dashboard statistics returned with key metrics",High,Not Tested,,,,
+DASHBOARD-002,Dashboard,Get Recent Orders,Verify recent orders widget,GET /anteso/admin/dashboard/recent-orders,"1. Send GET request for recent orders
+2. Verify recent orders list returned
+3. Verify limit and sorting work correctly","Status 200, Recent orders returned, Properly sorted and limited",Medium,Not Tested,,,,
+AWS-S3-001,Third-Party Integration,AWS S3 File Upload,Verify file upload to S3,POST /anteso/admin/orders/create (with file),"1. Upload file (image, PDF, document)
+2. Verify file is uploaded to S3
+3. Verify file URL is returned
+4. Verify file is accessible via URL","File uploaded successfully, S3 URL returned, File accessible via URL",Critical,Not Tested,,,,
+AWS-S3-002,Third-Party Integration,AWS S3 File Retrieval,Verify file retrieval from S3,GET /anteso/admin/orders/get (with file URLs),"1. Request data that includes S3 file URLs
+2. Verify file URLs are correct
+3. Verify files are accessible
+4. Verify file download works","File URLs returned, Files accessible, Download successful",Critical,Not Tested,,,,
+AWS-S3-003,Third-Party Integration,AWS S3 Multiple File Upload,Verify multiple files upload to S3,PATCH /anteso/admin/orders/update-machine-details-by-technician (with multiple files),"1. Upload multiple files (uploadFile, viewFile[])
+2. Verify all files uploaded to S3
+3. Verify all file URLs returned
+4. Verify files are organized correctly in S3","All files uploaded, All URLs returned, Files organized correctly",High,Not Tested,,,,
+SMS-001,Third-Party Integration,SMS OTP Sending,Verify SMS service integration for OTP,POST /anteso/user/send-otp,"1. Send OTP request
+2. Verify SMS is sent to mobile number
+3. Verify OTP content is correct
+4. Verify SMS delivery status","SMS sent successfully, OTP delivered, Correct format",Critical,Not Tested,,,,
+DATABASE-001,Database Integration,Database Connection,Verify MongoDB connection stability,General,"1. Monitor database connection
+2. Test connection during high load
+3. Verify connection pooling works
+4. Verify reconnection on failure","Connection stable, Connection pooling working, Auto-reconnect on failure",Critical,Not Tested,,,,
+DATABASE-002,Database Integration,Database Transactions,Verify data consistency in transactions,POST /anteso/admin/orders/create (complex order),"1. Create order with multiple services and files
+2. Verify all data saved consistently
+3. Verify rollback on error
+4. Verify data integrity","All data saved consistently, Rollback on error, Data integrity maintained",Critical,Not Tested,,,,
+DATABASE-003,Database Integration,Database Queries Performance,Verify query performance with pagination,GET /anteso/admin/orders/get-all (with large dataset),"1. Request data with large dataset
+2. Verify pagination works efficiently
+3. Verify response time is acceptable (< 2 seconds)
+4. Verify indexes are utilized","Pagination efficient, Response time < 2s, Indexes utilized",High,Not Tested,,,,
+VALIDATION-001,Data Validation,Input Validation,Verify input validation on API endpoints,POST /anteso/admin/clients/add (with invalid data),"1. Send request with invalid/missing required fields
+2. Verify validation errors returned
+3. Verify appropriate status code (400)
+4. Verify error messages are clear","Status 400, Validation errors returned, Clear error messages",High,Not Tested,,,,
+VALIDATION-002,Data Validation,File Validation,Verify file upload validation,POST /anteso/admin/orders/create (with invalid file),"1. Upload invalid file (wrong type, too large, corrupted)
+2. Verify file validation errors returned
+3. Verify file size limits enforced
+4. Verify file type restrictions work","File validation errors returned, Size limits enforced, Type restrictions working",High,Not Tested,,,,
+ERROR-HANDLING-001,Error Handling,API Error Handling,Verify error handling for invalid requests,GET /anteso/admin/clients/get-by-id/invalid-id,"1. Send request with invalid ID
+2. Verify appropriate error response
+3. Verify status code (404)
+4. Verify error message is user-friendly","Status 404, Error message returned, User-friendly format",High,Not Tested,,,,
+ERROR-HANDLING-002,Error Handling,Server Error Handling,Verify server error handling,Any endpoint (simulate server error),"1. Simulate server error (database connection failure, etc.)
+2. Verify error is caught and handled
+3. Verify appropriate status code (500)
+4. Verify error logging works","Status 500, Error handled gracefully, Error logged, User-friendly message",Critical,Not Tested,,,,
+SECURITY-001,Security,Token Expiry,Verify JWT token expiry handling,Any protected endpoint (with expired token),"1. Send request with expired token
+2. Verify 401 Unauthorized response
+3. Verify error message indicates token expiry
+4. Verify refresh token mechanism available","Status 401, Token expiry error, Refresh mechanism available",Critical,Not Tested,,,,
+SECURITY-002,Security,CORS Configuration,Verify CORS policy enforcement,Any endpoint (from unauthorized origin),"1. Send request from unauthorized origin
+2. Verify CORS error
+3. Verify allowed origins are configured correctly","CORS error returned, Only allowed origins can access",Critical,Not Tested,,,,
+SECURITY-003,Security,SQL Injection Prevention,Verify injection attack prevention,GET /anteso/admin/clients/get-all?search=<script>,"1. Send request with injection attempt (SQL, XSS)
+2. Verify input is sanitized
+3. Verify no code execution
+4. Verify safe data handling","Input sanitized, No code execution, Safe data handling",Critical,Not Tested,,,,
+MOBILE-INTEGRATION-001,Mobile Integration,Mobile API Authentication Flow,Verify complete mobile authentication flow,"1. POST /anteso/user/send-otp
+2. POST /anteso/user/verify-otp","1. Send OTP request
+2. Receive and verify OTP
+3. Get access token
+4. Use token for subsequent requests","OTP sent and verified, Token received, Subsequent requests successful",Critical,Not Tested,,,,
+MOBILE-INTEGRATION-002,Mobile Integration,Technician Order Workflow,Verify complete technician order workflow,"1. GET /anteso/admin/orders/all-technician-orders/:technicianId
+2. GET /anteso/admin/orders/start-order/:employeeId/:orderId
+3. GET /anteso/admin/orders/srf-details/:technicianId/:orderId
+4. PATCH /anteso/admin/orders/update-machine-details-by-technician
+5. POST /anteso/admin/orders/completed-status-report","1. Get assigned orders
+2. Start order
+3. Get SRF details
+4. Update service work with files
+5. Complete service with report
+6. Verify all steps work together","Complete workflow functional, All steps integrated correctly, Data consistency maintained",Critical,Not Tested,,,,
+MOBILE-INTEGRATION-003,Mobile Integration,Trip and Expense Workflow,Verify trip and expense management workflow,"1. POST /anteso/admin/technician/create-trip-by-techinician/:technicianId
+2. POST /anteso/admin/technician/add-trip-expense/:tripId/:technicianId
+3. GET /anteso/admin/technician/get-trips-per-technician/:technicianId
+4. GET /anteso/admin/technician/get-trip-expenses/:technicianId/:tripId/:expenseId","1. Create trip
+2. Add expenses with receipts
+3. View trips list
+4. View expense details
+5. Verify file uploads work
+6. Verify data consistency","Trip created, Expenses added, Files uploaded, Data consistent",High,Not Tested,,,,
+

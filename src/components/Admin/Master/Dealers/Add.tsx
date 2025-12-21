@@ -107,6 +107,8 @@ const AddDealer = () => {
                 showMessage(message || "Validation error", "warning");
             } else if (statusCode === 401) {
                 showMessage("Unauthorized: Please login again.", "error");
+            } else if (statusCode === 500) {
+                showMessage(message || "Server error: Failed to create dealer", "error");
             } else {
                 showMessage(message || "Something went wrong", "error");
             }
@@ -114,7 +116,29 @@ const AddDealer = () => {
             console.log("🚀 ~ submitForm response:", res.data);
         } catch (err: any) {
             console.error("❌ createDealer error:", err);
-            showMessage("Server error: Failed to create dealer", "error");
+            
+            // Check if error response exists from axios (when backend returns error response)
+            const errorResponse = err?.response?.data;
+            
+            // Handle error response from backend (statusCode-based responses)
+            if (errorResponse && errorResponse.statusCode) {
+                const { statusCode, message } = errorResponse;
+                
+                if (statusCode === 400) {
+                    // Duplicate key errors or validation errors (backend now returns proper messages)
+                    showMessage(message || "Validation error: Please check your input", "error");
+                } else if (statusCode === 401) {
+                    showMessage(message || "Unauthorized: Please login again.", "error");
+                } else if (statusCode === 500) {
+                    showMessage(message || "Server error: Failed to create dealer", "error");
+                } else {
+                    showMessage(message || "Something went wrong", "error");
+                }
+            } else {
+                // Network errors or other exceptions
+                const errorMessage = err?.message || "Network error: Failed to create dealer. Please try again.";
+                showMessage(errorMessage, "error");
+            }
         }
     };
 

@@ -3,7 +3,7 @@ import * as Yup from 'yup';
 import { ErrorMessage, Field, Form, Formik } from 'formik';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
-import { getAllTechnicians, getByToolId, updateTool } from '../../../../api';
+import { getActiveTechnicians, getByToolId, updateTool } from '../../../../api';
 import { getEngineerByToolId } from '../../../../api';
 
 const EditTool = () => {
@@ -110,7 +110,7 @@ const EditTool = () => {
         const fetchData = async () => {
             try {
                 // ✅ Step 1: Fetch all technicians for dropdown
-                const allTechRes = await getAllTechnicians();
+                const allTechRes = await getActiveTechnicians();
                 setTechnicians(allTechRes?.technicians || allTechRes?.data || []); // handle both response shapes
 
                 // ✅ Step 2: Always fetch tool details

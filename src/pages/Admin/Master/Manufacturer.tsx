@@ -43,13 +43,8 @@ const Manufacturers = () => {
             try {
                 const res = await getAllManufacturer();
                 const data = res.data?.data || [];
-                const mappedItems = data.map((item: any, index: number) => ({
-                    ...item,
-                    manufacturersID: `MANU${String(index + 1).padStart(3, '0')}`,
-                }));
-                console.log("🚀 ~ fetchManufacturers ~ mappedItems:", mappedItems)
-                setItems(mappedItems);
-                setInitialRecords(sortBy(mappedItems, 'manufactureName'));
+                setItems(data);
+                setInitialRecords(sortBy(data, 'manufactureName'));
             } catch (error) {
                 console.error('Error fetching manufacturers:', error);
             }
@@ -61,7 +56,6 @@ const Manufacturers = () => {
     useEffect(() => {
         const filtered = items.filter((item) => {
             return (
-                item.manufacturersID.toLowerCase().includes(search.toLowerCase()) ||
                 item.manufactureName?.toLowerCase().includes(search.toLowerCase()) ||
                 item.address?.toLowerCase().includes(search.toLowerCase()) ||
                 item.contactPersonName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -171,7 +165,7 @@ const Manufacturers = () => {
                             className="whitespace-nowrap table-hover invoice-table"
                             records={records}
                             columns={[
-                                { accessor: 'manufacturersID', title: 'MANU ID', sortable: true },
+                                { accessor: 'manufacturerId', title: 'MANU ID', sortable: true },
                                 { accessor: 'name', title: 'Name', sortable: true }, // Updated accessor to match data
                                 { accessor: 'contactPersonName', title: 'Contact Person', sortable: true },
                                 { accessor: 'pincode', title: 'Pincode', sortable: true }, // Updated to pinCode
