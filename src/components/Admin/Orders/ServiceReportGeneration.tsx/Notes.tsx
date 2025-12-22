@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 interface NotesProps {
     initialNotes?: string[];
     onChange?: (notes: string[]) => void;
+    allowDelete?: boolean;
 }
 
 const Notes: React.FC<NotesProps> = ({
@@ -16,9 +17,11 @@ const Notes: React.FC<NotesProps> = ({
         "Name, Address & Contact detail is provided by Customer.",
     ],
     onChange,
+    allowDelete = true,
 }) => {
     const [notes, setNotes] = useState<string[]>(initialNotes);
     const [newNote, setNewNote] = useState("");
+    const initialNotesLength = initialNotes.length;
 
     // Notify parent when notes change
     useEffect(() => {
@@ -44,20 +47,29 @@ const Notes: React.FC<NotesProps> = ({
             <h3 className="text-lg font-semibold mb-2">5. Notes</h3>
 
             <ol className="list-decimal pl-6 space-y-1">
-                {notes.map((note, index) => (
-                    <li key={index} className="flex justify-between items-start gap-2">
-                        <span>
-                            <strong>5.{index + 1}.</strong> {note}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => handleDeleteNote(index)}
-                            className="text-red-500 hover:text-red-700 font-medium"
-                        >
-                            Delete
-                        </button>
-                    </li>
-                ))}
+                {notes.map((note, index) => {
+                    // Show delete button if:
+                    // 1. allowDelete is true (show for all notes), OR
+                    // 2. allowDelete is false but this is an added note (index >= initialNotesLength)
+                    const showDeleteButton = allowDelete || index >= initialNotesLength;
+                    
+                    return (
+                        <li key={index} className={`flex ${showDeleteButton ? 'justify-between' : ''} items-start gap-2`}>
+                            <span>
+                                <strong>5.{index + 1}.</strong> {note}
+                            </span>
+                            {showDeleteButton && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteNote(index)}
+                                    className="text-red-500 hover:text-red-700 font-medium"
+                                >
+                                    Delete
+                                </button>
+                            )}
+                        </li>
+                    );
+                })}
             </ol>
 
             {/* Add new note input */}

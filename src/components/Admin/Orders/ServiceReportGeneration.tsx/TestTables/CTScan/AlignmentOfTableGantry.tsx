@@ -1,7 +1,7 @@
 // components/TestTables/AlignmentOfTableGantry.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -28,6 +28,36 @@ const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId
   const [result, setResult] = useState<string>('');
   const [toleranceSign, setToleranceSign] = useState<'+' | '-' | '±'>('±');
   const [toleranceValue, setToleranceValue] = useState<string>('2');
+
+  // Calculate pass/fail remark
+  const remark = useMemo(() => {
+    if (!result.trim()) {
+      return '';
+    }
+
+    const resultNum = parseFloat(result.trim());
+    const toleranceNum = parseFloat(toleranceValue.trim());
+
+    // If either value is not a valid number, return empty
+    if (isNaN(resultNum) || isNaN(toleranceNum)) {
+      return '';
+    }
+
+    let passes = false;
+
+    if (toleranceSign === '±') {
+      // Check if result is within ±toleranceValue
+      passes = resultNum >= -toleranceNum && resultNum <= toleranceNum;
+    } else if (toleranceSign === '+') {
+      // Check if result is within 0 to +toleranceValue
+      passes = resultNum >= 0 && resultNum <= toleranceNum;
+    } else if (toleranceSign === '-') {
+      // Check if result is within -toleranceValue to 0
+      passes = resultNum >= -toleranceNum && resultNum <= 0;
+    }
+
+    return passes ? 'Pass' : 'Fail';
+  }, [result, toleranceSign, toleranceValue]);
 
   // Load data from backend
   useEffect(() => {
@@ -77,6 +107,7 @@ const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId
         result: result.trim(),
         toleranceSign,
         toleranceValue: toleranceValue.trim(),
+        remark: remark || '',
       };
 
       let result_response;
@@ -222,6 +253,24 @@ const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId
                     }`}
                   />
                 </div>
+              </td>
+            </tr>
+            <tr className="hover:bg-gray-50">
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                Remarks:
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span
+                  className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
+                    remark === 'Pass'
+                      ? 'bg-green-100 text-green-800'
+                      : remark === 'Fail'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {remark || '—'}
+                </span>
               </td>
             </tr>
           </tbody>

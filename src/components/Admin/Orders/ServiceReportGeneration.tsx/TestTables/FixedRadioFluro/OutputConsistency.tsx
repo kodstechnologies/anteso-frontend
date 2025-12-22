@@ -1,416 +1,492 @@
-// src/components/TestTables/OutputConsistencyForCArm.tsx
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
+// components/TestTables/ConsistencyOfRadiationOutput.tsx
+'use client';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addOutputConsistencyForFixedRadioFluro,
   getOutputConsistencyByServiceIdForFixedRadioFluro,
-  getOutputConsistencyByTestIdForFixedRadioFluro,
   updateOutputConsistencyForFixedRadioFluro,
-} from "../../../../../../api";
+} from '../../../../../../api';
+
+interface FCDData {
+  value: string; // e.g. "100" cm
+}
+
+interface OutputMeasurement {
+  value: string;
+}
 
 interface OutputRow {
   id: string;
-  ffd: string;
-  outputs: string[];
-  mean: string;
-  cov: string;
+  kv: string;
+  mas: string;
+  outputs: OutputMeasurement[];
+  avg: string;
+  cv: string;
+  remark: 'Pass' | 'Fail' | '';
+}
+
+interface Tolerance {
+  operator: '<=' | '<' | '>=' | '>';
+  value: string; // e.g. "5.0"
 }
 
 interface Props {
   serviceId: string;
-  testId?: string | null;
+  testId?: string;
   onTestSaved?: (testId: string) => void;
 }
 
-const OutputConsistency: React.FC<Props> = ({
-  serviceId,
-  testId: propTestId = null,
-  onTestSaved,
+const ConsistencyOfRadiationOutput: React.FC<Props> = ({ 
+  serviceId, 
+  testId: propTestId,
+  onTestSaved 
 }) => {
-  const [testId, setTestId] = useState<string | null>(propTestId);
-  const [isSaved, setIsSaved] = useState(!!propTestId);
-  const [isLoading, setIsLoading] = useState(true);
+  const [testId, setTestId] = useState<string | null>(propTestId || null);
+  const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [ffd, setFFD] = useState<FCDData>({ value: '' });
+  const [measurementCount, setMeasurementCount] = useState<number>(5);
 
-  // Single FFD for the entire test (top input)
-  const [ffd, setFfd] = useState<string>('100');
+  const [tolerance, setTolerance] = useState<Tolerance>({
+    operator: '<=',
+    value: '0.05',
+  });
 
-  // Dynamic measurement rows
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
     {
       id: '1',
-      ffd: '',
-      outputs: ['', '', '', '', ''],
-      mean: '',
-      cov: '',
+      kv: '80',
+      mas: '100',
+      outputs: Array(5).fill({ value: '' }),
+      avg: '',
+      cv: '',
+      remark: '',
     },
   ]);
 
-  const [headers, setHeaders] = useState<string[]>([
-    'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
-  ]);
+  // Calculate avg, CoV and remark – pure calculation, no state mutation needed
+  const rowsWithCalc = useMemo(() => {
+    // Tolerance value is already in percentage (e.g., 5.0 for 5%)
+    const tolValuePercent = parseFloat(tolerance.value) || 5.0;
 
-  const [tolerance, setTolerance] = useState<string>('2.0');
+    return outputRows.map((row): OutputRow => {
+      const values = row.outputs
+        .map(m => parseFloat(m.value))
+        .filter(v => !isNaN(v) && v > 0);
 
-  // Auto-calculate Mean & COV
-  useEffect(() => {
-    setOutputRows((rows) =>
-      rows.map((row) => {
-        const nums = row.outputs
-          .filter((v) => v.trim() !== '')
-          .map((v) => parseFloat(v))
-          .filter((n) => !isNaN(n));
+      if (values.length === 0) {
+        return { ...row, avg: '', cv: '', remark: '' };
+      }
 
-        if (nums.length === 0) {
-          return { ...row, mean: '', cov: '' };
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const variance =
+        values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
+      const stdDev = Math.sqrt(variance);
+      const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal
+      const covPercent = covDecimal * 100; // CoV as percentage
+
+      // Compare CoV (percentage) with tolerance (percentage)
+      const passes =
+        tolerance.operator === '<=' || tolerance.operator === '<'
+          ? covPercent <= tolValuePercent
+          : covPercent >= tolValuePercent;
+
+      const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
+
+      return {
+        ...row,
+        avg: avg.toFixed(4),
+        cv: covPercent.toFixed(4), // Display CoV as percentage
+        remark,
+      };
+    });
+  }, [outputRows, tolerance]);
+
+  // Handlers
+  const updateFcd = (value: string) => {
+    setFFD({ value });
+    setIsSaved(false);
+  };
+
+  const updateMeasurementCount = (count: number) => {
+    if (count < 3 || count > 10) return;
+    setMeasurementCount(count);
+
+    setOutputRows(prev =>
+      prev.map(row => {
+        const diff = count - row.outputs.length;
+        if (diff > 0) {
+          return {
+            ...row,
+            outputs: [...row.outputs, ...Array(diff).fill({ value: '' })],
+          };
         }
-
-        const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-        let cov = 0;
-
-        if (nums.length > 1) {
-          const variance = nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (nums.length - 1);
-          cov = Math.sqrt(variance) / mean;
+        if (diff < 0) {
+          return { ...row, outputs: row.outputs.slice(0, count) };
         }
+        return row;
+      })
+    );
+    setIsSaved(false);
+  };
 
+  const addMeasurementColumn = (afterIndex: number) => {
+    if (measurementCount >= 10) {
+      toast.error('Maximum 10 measurements allowed');
+      return;
+    }
+    const newCount = measurementCount + 1;
+    setMeasurementCount(newCount);
+    setOutputRows(prev =>
+      prev.map(row => {
+        const newOutputs = [...row.outputs];
+        newOutputs.splice(afterIndex + 1, 0, { value: '' });
         return {
           ...row,
-          mean: mean.toFixed(3),
-          cov: cov.toFixed(4),
+          outputs: newOutputs,
         };
       })
     );
-  }, [outputRows.map((r) => r.outputs.join(',')).join('|')]);
+    setIsSaved(false);
+  };
 
-  // Final Pass/Fail
-  const finalRemark = useMemo(() => {
-    if (!tolerance || outputRows.length === 0) return '';
-    const tol = parseFloat(tolerance);
-    if (isNaN(tol)) return '';
+  const removeMeasurementColumn = (index: number) => {
+    if (measurementCount <= 3) {
+      toast.error('Minimum 3 measurements required');
+      return;
+    }
+    const newCount = measurementCount - 1;
+    setMeasurementCount(newCount);
+    setOutputRows(prev =>
+      prev.map(row => ({
+        ...row,
+        outputs: row.outputs.filter((_, i) => i !== index),
+      }))
+    );
+    setIsSaved(false);
+  };
 
-    const allPass = outputRows.every((row) => {
-      if (!row.cov) return true;
-      return parseFloat(row.cov) * 100 <= tol;
-    });
+  const addRow = () => {
+    setOutputRows(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        kv: '',
+        mas: '',
+        outputs: Array(measurementCount).fill({ value: '' }),
+        avg: '',
+        cv: '',
+        remark: '',
+      },
+    ]);
+    setIsSaved(false);
+  };
 
-    return allPass ? 'Pass' : 'Fail';
-  }, [outputRows, tolerance]);
+  const removeRow = (id: string) => {
+    if (outputRows.length <= 1) return;
+    setOutputRows(prev => prev.filter(r => r.id !== id));
+    setIsSaved(false);
+  };
 
-  // Load test data
+  const updateCell = (rowId: string, field: 'kv' | 'mas', value: string) => {
+    setOutputRows(prev =>
+      prev.map(row => (row.id === rowId ? { ...row, [field]: value } : row))
+    );
+    setIsSaved(false);
+  };
+
+  const updateMeasurement = (rowId: string, index: number, value: string) => {
+    setOutputRows(prev =>
+      prev.map(row => {
+        if (row.id !== rowId) return row;
+        const outputs = [...row.outputs];
+        outputs[index] = { value: value.replace(/[^0-9.-]/g, '') };
+        return { ...row, outputs };
+      })
+    );
+    setIsSaved(false);
+  };
+
+  // Load existing test data
   useEffect(() => {
+    if (!serviceId) {
+      setIsLoading(false);
+      return;
+    }
+
     const loadTest = async () => {
       setIsLoading(true);
       try {
-        let response = null;
-        if (propTestId) {
-          response = await getOutputConsistencyByTestIdForFixedRadioFluro(propTestId);
-        } else {
-          response = await getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId);
-        }
-
-        // Handle nested response structure (response.data or response)
-        const data = response?.data || response;
-
-        if (data) {
-          const existingTestId = data._id || data.testId || data.id;
-          setTestId(existingTestId);
-          setFfd(data.ffd || '100');
-          setTolerance(data.tolerance || '2.0');
-          setHeaders(data.measurementHeaders || headers);
-
-          setOutputRows(
-            data.outputRows?.map((row: any) => ({
+        const data = await getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId);
+        if (data?.data) {
+          const testData = data.data;
+          setTestId(testData._id);
+          if (testData.ffd?.value) {
+            setFFD({ value: testData.ffd.value });
+          }
+          if (testData.outputRows && testData.outputRows.length > 0) {
+            const firstRow = testData.outputRows[0];
+            const numMeas = firstRow.outputs?.length || 5;
+            setMeasurementCount(numMeas);
+            setOutputRows(testData.outputRows.map((r: any) => ({
               id: Date.now().toString() + Math.random(),
-              ffd: row.ffd || '',
-              outputs: row.outputs || Array(headers.length).fill(''),
-              mean: row.mean || '',
-              cov: row.cov || '',
-            })) || outputRows
-          );
+              kv: r.kv || '',
+              mas: r.mas || '',
+              outputs: r.outputs?.map((o: any) => ({ value: o.value || '' })) || Array(numMeas).fill({ value: '' }),
+              avg: r.avg || '',
+              cv: '',
+              remark: r.remark || '',
+            })));
+          }
+          if (testData.tolerance) {
+            setTolerance({
+              operator: testData.tolerance.operator || '<=',
+              value: testData.tolerance.value || '0.05',
+            });
+          }
           setIsSaved(true);
         }
       } catch (err: any) {
-        console.error("Load failed:", err);
-        // Only set isSaved to false if it's not a 404 (no data found)
-        if (err?.response?.status !== 404) {
-          console.warn("Non-404 error loading test data");
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load test data');
         }
-        setIsSaved(false);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadTest();
-  }, [propTestId, serviceId]);
+  }, [serviceId]);
 
-  // Save / Update
   const handleSave = async () => {
-    if (!serviceId) return toast.error('Service ID missing');
-    if (!ffd.trim()) return toast.error('Please enter FFD');
+    if (!serviceId) {
+      toast.error('Service ID is missing');
+      return;
+    }
 
     setIsSaving(true);
-
-    const payload = {
-      ffd: ffd.trim(),
-      outputRows: outputRows.map((row) => ({
-        ffd: row.ffd.trim(),
-        outputs: row.outputs.map((v) => v.trim()),
-        mean: row.mean || '',
-        cov: row.cov || '',
-      })),
-      measurementHeaders: headers,
-      tolerance: tolerance.trim(),
-    };
-
     try {
+      const payload = {
+        ffd,
+        outputRows: rowsWithCalc.map(r => ({
+          kv: r.kv,
+          mas: r.mas,
+          outputs: r.outputs,
+          avg: r.avg,
+          remark: r.remark,
+        })),
+        tolerance,
+      };
+
       let result;
       if (testId) {
         result = await updateOutputConsistencyForFixedRadioFluro(testId, payload);
-        toast.success('Test updated successfully!');
       } else {
         result = await addOutputConsistencyForFixedRadioFluro(serviceId, payload);
-        // Handle nested response structure
-        const responseData = result?.data?.data || result?.data || result;
-        const newId = responseData?._id || responseData?.testId || responseData?.id;
-        if (newId) {
-          setTestId(newId);
-          onTestSaved?.(newId);
+        if (result?.data?._id) {
+          setTestId(result.data._id);
+          onTestSaved?.(result.data._id);
         }
-        toast.success('Test saved successfully!');
       }
+
       setIsSaved(true);
-    } catch (e: any) {
-      const errorMessage = e?.response?.data?.message || 'Save failed';
-      
-      // If data already exists, try to reload it to get the testId
-      if (errorMessage.includes('already exists')) {
-        toast.error('Data already exists. Loading existing data...');
-        try {
-          const response = await getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId);
-          const data = response?.data || response;
-          if (data) {
-            const existingTestId = data._id || data.testId || data.id;
-            setTestId(existingTestId);
-            setIsSaved(true);
-            toast.success('Existing data loaded. Click "Edit Test" to modify it.');
-          }
-        } catch (loadErr) {
-          console.error('Failed to load existing data:', loadErr);
-          toast.error('Failed to load existing data');
-        }
-      } else {
-        toast.error(errorMessage);
-      }
-      console.error('Save error:', e);
+      setIsEditing(false);
+      toast.success(testId ? 'Updated successfully' : 'Saved successfully');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Save failed');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const startEditing = () => setIsSaved(false);
-  const isViewMode = isSaved;
-
-  // Column Management
-  const addColumn = () => {
-    if (isViewMode) return;
-    const newHeader = `Meas ${headers.length + 1}`;
-    setHeaders((prev) => [...prev, newHeader]);
-    setOutputRows((rows) =>
-      rows.map((r) => ({ ...r, outputs: [...r.outputs, ''] }))
-    );
+  const toggleEdit = () => {
+    setIsEditing(true);
+    setIsSaved(false);
   };
 
-  const removeColumn = (idx: number) => {
-    if (isViewMode || headers.length <= 1) return;
-    setHeaders((prev) => prev.filter((_, i) => i !== idx));
-    setOutputRows((rows) =>
-      rows.map((r) => ({
-        ...r,
-        outputs: r.outputs.filter((_, i) => i !== idx),
-      }))
-    );
-  };
-
-  const updateHeader = (idx: number, value: string) => {
-    if (isViewMode) return;
-    setHeaders((prev) => {
-      const copy = [...prev];
-      copy[idx] = value || `Meas ${idx + 1}`;
-      return copy;
-    });
-  };
-
-  // Row Management
-  const addRow = () => {
-    if (isViewMode) return;
-    setOutputRows((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        ffd: '',
-        outputs: Array(headers.length).fill(''),
-        mean: '',
-        cov: '',
-      },
-    ]);
-  };
-
-  const removeRow = (id: string) => {
-    if (isViewMode || outputRows.length <= 1) return;
-    setOutputRows((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const updateCell = (rowId: string, field: 'ffd' | number, value: string) => {
-    if (isViewMode) return;
-    setOutputRows((prev) =>
-      prev.map((row) => {
-        if (row.id !== rowId) return row;
-        if (field === 'ffd') return { ...row, ffd: value };
-        const newOutputs = [...row.outputs];
-        newOutputs[field] = value;
-        return { ...row, outputs: newOutputs };
-      })
-    );
-  };
+  const isViewMode = isSaved && !isEditing;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
-        <span className="ml-4 text-lg">Loading test...</span>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-full mx-auto space-y-10">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-gray-800">Output Consistency Test</h2>
+    <div className="p-6 space-y-10">
+      <div className="flex justify-between items-center border-b pb-4">
+        <h2 className="text-2xl font-bold text-gray-800">
+          Reproducibility of Radiation Output (Consistency Test)
+        </h2>
         <button
-          onClick={isViewMode ? startEditing : handleSave}
+          onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
-          className={`flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-white shadow-lg transition-all ${isSaving
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
               ? 'bg-gray-400 cursor-not-allowed'
               : isViewMode
                 ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700'
+                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
             <>
-              <Loader2 className="w-6 h-6 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
               Saving...
+            </>
+          ) : isViewMode ? (
+            <>
+              <Edit3 className="w-4 h-4" />
+              Edit
             </>
           ) : (
             <>
-              {isViewMode ? <Edit3 className="w-6 h-6" /> : <Save className="w-6 h-6" />}
-              {isViewMode ? 'Edit Test' : testId ? 'Update Test' : 'Save Test'}
+              <Save className="w-4 h-4" />
+              {testId ? 'Update' : 'Save'} Test
             </>
           )}
         </button>
       </div>
 
-      {/* FFD Input */}
-      <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border-2 border-teal-300 rounded-2xl p-8 shadow-lg">
-        <h3 className="text-xl font-bold text-teal-900 mb-6">Test Geometry</h3>
-        <div className="flex items-center gap-6 max-w-md">
-          <label className="text-lg font-semibold text-gray-800">FFD (Focus-to-Detector Distance):</label>
+      {/* FCD */}
+      <div className="bg-white rounded-lg border shadow-sm">
+        
+        <div className="p-6 flex items-center gap-4">
+          <label className="w-48 text-sm font-medium text-gray-700">FFD(cm):</label>
           <input
             type="text"
-            value={ffd}
-            onChange={(e) => setFfd(e.target.value)}
+            value={ffd.value}
+            onChange={e => updateFcd(e.target.value)}
             disabled={isViewMode}
-            className={`w-48 px-6 py-4 text-2xl font-bold text-center border-4 rounded-xl focus:ring-4 focus:ring-teal-400 transition-all ${isViewMode ? 'bg-gray-100 border-gray-300 text-gray-600' : 'border-teal-500 bg-white'
-              }`}
+            className={`w-32 px-4 py-2 border rounded-lg text-center font-medium focus:border-blue-500 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             placeholder="100"
           />
-          <span className="text-3xl font-extrabold text-teal-700">cm</span>
+          <span className="text-gray-600">cm</span>
         </div>
       </div>
 
-      {/* Output Table */}
-      <div className="bg-white shadow-xl rounded-2xl border border-gray-200 overflow-hidden">
-        <h3 className="px-8 py-5 text-xl font-bold bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
-          Radiation Output Measurements (mGy)
-        </h3>
+      {/* Main Table */}
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+        <div className="bg-gray-50 px-6 py-4 border-b">
+          <h3 className="font-semibold text-gray-700">
+            Radiation Output Measurements (mGy)
+          </h3>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-blue-50">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase border-r">FFD (cm)</th>
-                <th colSpan={headers.length} className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase border-r relative">
-                  <div className="flex items-center justify-between pr-10">
-                    <span>Radiation Output (mGy)</span>
-                    {!isViewMode && (
-                      <button onClick={addColumn} className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                        <Plus className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
+                  kV
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase border-r">Mean</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase border-r">COV (%)</th>
-                <th className="w-12" />
-              </tr>
-              <tr>
-                {headers.map((h, i) => (
-                  <th key={i} className="px-3 py-3 text-center text-xs font-medium text-gray-700 border-r">
-                    <div className="flex items-center justify-center gap-1">
-                      <input
-                        type="text"
-                        value={h}
-                        onChange={(e) => updateHeader(i, e.target.value)}
-                        disabled={isViewMode}
-                        className="w-24 px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      {headers.length > 1 && !isViewMode && (
-                        <button onClick={() => removeColumn(i)} className="text-red-600 hover:bg-red-100 p-1 rounded">
-                          <Trash2 className="w-4 h-4" />
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
+                  mAs
+                </th>
+                {Array.from({ length: measurementCount }, (_, i) => (
+                  <th
+                    key={i}
+                    className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r relative"
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-1">
+                        <span>Meas {i + 1}</span>
+                        {!isViewMode && measurementCount < 10 && (
+                          <button
+                            onClick={() => addMeasurementColumn(i)}
+                            className="text-green-600 hover:bg-green-100 p-0.5 rounded transition"
+                            title="Add column after this"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      {!isViewMode && measurementCount > 3 && (
+                        <button
+                          onClick={() => removeMeasurementColumn(i)}
+                          className="text-red-600 hover:bg-red-100 p-1 rounded transition"
+                          title="Remove this column"
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       )}
                     </div>
                   </th>
                 ))}
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600  border-r">
+                  Average
+                </th>
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 ">
+                  CoV / Result
+                </th>
+                <th className="w-12" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {outputRows.map((row) => (
+            <tbody className="bg-white divide-y divide-gray-200">
+              {rowsWithCalc.map(row => (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 border-r">
+                  <td className="px-5 py-4 border-r">
                     <input
                       type="text"
-                      value={row.ffd}
-                      onChange={(e) => updateCell(row.id, 'ffd', e.target.value)}
+                      value={row.kv}
+                      onChange={e => updateCell(row.id, 'kv', e.target.value)}
                       disabled={isViewMode}
-                      className="w-full px-3 py-2 text-center font-medium border rounded focus:ring-2 focus:ring-blue-500"
+                      className={`w-20 px-3 py-2 text-center border rounded text-sm focus:border-blue-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      placeholder="80"
+                    />
+                  </td>
+                  <td className="px-5 py-4 border-r">
+                    <input
+                      type="text"
+                      value={row.mas}
+                      onChange={e => updateCell(row.id, 'mas', e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-20 px-3 py-2 text-center border rounded text-sm focus:border-blue-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       placeholder="100"
                     />
                   </td>
-                  {row.outputs.map((val, idx) => (
-                    <td key={idx} className="px-3 py-4 border-r text-center">
+                  {row.outputs.map((meas, i) => (
+                    <td key={i} className="px-2 py-4 border-r">
                       <input
                         type="text"
-                        value={val}
-                        onChange={(e) => updateCell(row.id, idx, e.target.value)}
+                        value={meas.value}
+                        onChange={e => updateMeasurement(row.id, i, e.target.value)}
                         disabled={isViewMode}
-                        className="w-24 px-3 py-2 text-center border rounded focus:ring-2 focus:ring-blue-500 text-sm"
+                        className={`w-20 px-2 py-1.5 text-center border rounded text-xs focus:border-blue-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         placeholder="0.00"
                       />
                     </td>
                   ))}
-                  <td className="px-6 py-4 border-r text-center font-semibold text-blue-700">
-                    {row.mean || '—'}
+                  <td className="px-5 py-4 text-center font-semibold border-r bg-blue-50">
+                    {row.avg || '—'}
                   </td>
-                  <td className="px-6 py-4 border-r text-center font-semibold text-purple-700">
-                    {row.cov ? (parseFloat(row.cov) * 100).toFixed(2) + '%' : '—'}
+                  <td className="px-5 py-4 text-center">
+                    <span
+                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${
+                        row.remark === 'Pass'
+                          ? 'bg-green-100 text-green-800'
+                          : row.remark === 'Fail'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
+                    </span>
                   </td>
-                  <td className="px-3 py-4 text-center">
-                    {outputRows.length > 1 && !isViewMode && (
-                      <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
-                        <Trash2 className="w-5 h-5" />
+                  <td className="px-3 text-center">
+                    {outputRows.length > 1 && (
+                      <button
+                        onClick={() => removeRow(row.id)}
+                        disabled={isViewMode}
+                        className="text-red-600 hover:bg-red-50 p-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </td>
@@ -420,53 +496,59 @@ const OutputConsistency: React.FC<Props> = ({
           </table>
         </div>
 
-        {!isViewMode && (
-          <div className="p-6 bg-gray-50 border-t">
+        <div className="px-6 py-4 bg-gray-50 border-t">
+          {!isViewMode && (
             <button
               onClick={addRow}
-              className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
             >
-              <Plus className="w-5 h-5" />
-              Add Measurement Set
+              <Plus className="w-4 h-4" />
+              Add New Technique
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Tolerance & Final Result */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-4 border-purple-400 rounded-3xl p-10 shadow-2xl text-center">
-        <h3 className="text-2xl font-bold text-purple-900 mb-8">Acceptance Criteria</h3>
-        <div className="flex items-center justify-center gap-6 text-xl">
-          <span className="font-semibold text-purple-800">Coefficient of Variation (COV) must be ≤</span>
+      {/* Acceptance Criteria */}
+      <div className="bg-white rounded-lg border p-6 max-w-md shadow-sm">
+        <h3 className="font-semibold text-gray-700 mb-4">Acceptance Criteria</h3>
+        <div className="flex items-center gap-4">
+          <span className="text-gray-700">Coefficient of Variation (CoV)</span>
+          <select
+            value={tolerance.operator}
+            onChange={e => {
+              setTolerance({ ...tolerance, operator: e.target.value as any });
+              setIsSaved(false);
+            }}
+            disabled={isViewMode}
+            className={`px-4 py-2 border rounded font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+          >
+            <option value="<=">≤</option>
+            <option value="<">&lt;</option>
+            <option value=">=">≥</option>
+            <option value=">">&gt;</option>
+          </select>
           <input
             type="text"
-            value={tolerance}
-            onChange={(e) => setTolerance(e.target.value)}
+            value={tolerance.value}
+            onChange={e => {
+              setTolerance({
+                ...tolerance,
+                value: e.target.value.replace(/[^0-9.]/g, ''),
+              });
+              setIsSaved(false);
+            }}
             disabled={isViewMode}
-            className="w-32 px-6 py-4 text-center text-3xl font-extrabold border-4 border-purple-600 rounded-xl focus:ring-8 focus:ring-purple-300"
-            placeholder="2.0"
+            className={`w-24 px-4 py-2 text-center border-2 border-blue-500 rounded font-bold text-lg focus:outline-none focus:ring-2 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
           />
-          <span className="text-4xl font-extrabold text-purple-700">%</span>
+          {/* <span className="text-gray-700">%</span> */}
         </div>
-
-        <div className="mt-12">
-          <p className="text-3xl font-bold text-purple-900">
-            Final Result:{' '}
-            <span
-              className={`inline-block px-12 py-6 rounded-full text-4xl font-bold border-8 ${finalRemark === 'Pass'
-                  ? 'bg-green-500 text-white border-green-600'
-                  : finalRemark === 'Fail'
-                    ? 'bg-red-500 text-white border-red-600'
-                    : 'bg-gray-300 text-gray-700 border-gray-400'
-                }`}
-            >
-              {finalRemark || 'Pending'}
-            </span>
-          </p>
-        </div>
+        <p className="text-sm text-gray-500 mt-3">
+          Reference: IEC 61223-3-1 & AERB Safety Code
+        </p>
       </div>
     </div>
   );
 };
 
-export default OutputConsistency
+export default ConsistencyOfRadiationOutput;

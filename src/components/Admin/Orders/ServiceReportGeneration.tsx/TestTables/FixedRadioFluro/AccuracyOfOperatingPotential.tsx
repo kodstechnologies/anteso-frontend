@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
-  addMeasurementOfOperatingPotential,
-  getMeasurementOfOperatingPotentialByTestId,
-  updateMeasurementOfOperatingPotential,
+  addAccuracyOfOperatingPotentialForFixedRadioFluro,
+  getAccuracyOfOperatingPotentialByServiceIdForFixedRadioFluro,
+  updateAccuracyOfOperatingPotentialForFixedRadioFluro,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
 
@@ -131,14 +131,19 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
 
   // === Load Existing Data ===
   useEffect(() => {
-    if (!testId) {
+    if (!serviceId) {
       setIsLoading(false);
       return;
     }
     const load = async () => {
       try {
-        const { data } = await getMeasurementOfOperatingPotentialByTestId(testId);
-        const rec = data;
+        const res = await getAccuracyOfOperatingPotentialByServiceIdForFixedRadioFluro(serviceId);
+        if (!res?.data) {
+          setIsLoading(false);
+          return;
+        }
+        const rec = res.data;
+        if (rec._id) setTestId(rec._id);
 
         // Table 1
         if (rec.table1?.[0]) {
@@ -157,7 +162,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
               ma10: String(r.ma10),
               ma100: String(r.ma100),
               ma200: String(r.ma200),
-              avgKvp: '',
+              avgKvp: String(r.avgKvp || ''),
               remarks: r.remarks,
             }))
           );
@@ -166,7 +171,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
         // Tolerance
         if (rec.tolerance) {
           setToleranceValue(rec.tolerance.value);
-          setToleranceType(rec.tolerance.type);
+          setToleranceType(rec.tolerance.type === 'kvp' ? 'absolute' : rec.tolerance.type);
           setToleranceSign(rec.tolerance.sign);
         }
 
@@ -179,7 +184,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
       }
     };
     load();
-  }, [testId]);
+  }, [serviceId]);
 
   // === Save / Update ===
   const handleSave = async () => {
@@ -208,24 +213,26 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
           ma10: parseFloat(r.ma10) || null,
           ma100: parseFloat(r.ma100) || null,
           ma200: parseFloat(r.ma200) || null,
-          avgKvp: avgKvp ? parseFloat(avgKvp) : null,        // ← NOW SAVED
-          deviation: deviation ? parseFloat(deviation) : null, // ← Optional: useful for PDF
+          avgKvp: avgKvp ? parseFloat(avgKvp) : null,
+          deviation: deviation ? parseFloat(deviation) : null,
           remarks: r.remarks,
         };
       }),
-      toleranceValue,
-      toleranceType,
-      toleranceSign,
+      tolerance: {
+        value: toleranceValue,
+        type: toleranceType === 'absolute' ? 'kvp' : toleranceType,
+        sign: toleranceSign,
+      },
     };
 
     try {
       let res;
       if (testId) {
-        res = await updateMeasurementOfOperatingPotential(testId, payload);
+        res = await updateAccuracyOfOperatingPotentialForFixedRadioFluro(testId, payload);
         toast.success('Updated successfully!');
       } else {
-        res = await addMeasurementOfOperatingPotential(serviceId, payload);
-        setTestId(res.data.testId);
+        res = await addAccuracyOfOperatingPotentialForFixedRadioFluro(serviceId, payload);
+        if (res?.data?._id) setTestId(res.data._id);
         toast.success('Saved successfully!');
       }
       setHasSaved(true);
@@ -270,10 +277,10 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">
                 Time (ms)
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 tracking-wider">
                 Slice Thickness (mm)
               </th>
             </tr>
@@ -320,22 +327,22 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">
                   Set kV
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">
                   @ mA 10
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">
                   @ mA 100
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">
                   @ mA 200
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">
                   Avg kVp
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider">
                   Pass/Fail
                 </th>
                 <th className="w-12" />

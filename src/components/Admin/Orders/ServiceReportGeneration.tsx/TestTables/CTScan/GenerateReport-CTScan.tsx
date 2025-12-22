@@ -479,7 +479,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             </section>
 
             <Standards standards={tools} />
-            <Notes />
+            <Notes allowDelete={false} />
 
             {/* Save & View */}
             <div className="my-10 flex justify-end gap-6">

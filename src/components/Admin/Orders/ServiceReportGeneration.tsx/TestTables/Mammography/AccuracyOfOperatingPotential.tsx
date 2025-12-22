@@ -1,369 +1,426 @@
-// src/components/TestTables/AccuracyOfOperatingPotential.tsx
-import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
-import toast from "react-hot-toast";
-
+// components/TestTables/AccuracyOfOperatingPotential.tsx
+import React, { useState, useEffect, useMemo } from 'react';
+import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
   addAccuracyOfOperatingPotentialForMammography,
   getAccuracyOfOperatingPotentialByServiceIdForMammography,
   updateAccuracyOfOperatingPotentialForMammography,
-} from "../../../../../../api";
+} from '../../../../../../api';
+import toast from 'react-hot-toast';
 
-interface RowData {
+interface Table1Row {
+  time: string;
+  sliceThickness: string;
+}
+
+interface Table2Row {
   id: string;
-  appliedKvp: string;
-  measuredValues: string[];
-  averageKvp: string;
-  remarks: "PASS" | "FAIL" | "-";
+  setKV: string;
+  ma10: string;
+  ma100: string;
+  ma200: string;
+  avgKvp: string;
+  remarks: 'Pass' | 'Fail' | '';
 }
 
 interface Props {
   serviceId: string;
+  testId?: string;
+  onRefresh?: () => void;
 }
 
-const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId }) => {
-  const [testId, setTestId] = useState<string | null>(null);
-  const [isSaved, setIsSaved] = useState(false);        // This was the bug
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+  const [testId, setTestId] = useState<string | null>(propTestId || null);
 
-  const [mAStations, setMAStations] = useState<string[]>(["28 kV", "30 kV"]);
-  const [rows, setRows] = useState<RowData[]>([
-    { id: "1", appliedKvp: "25", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
-    { id: "2", appliedKvp: "28", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
-    { id: "3", appliedKvp: "30", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
-    { id: "4", appliedKvp: "35", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
+  // Table 1: Only 1 row
+  const [table1Row, setTable1Row] = useState<Table1Row>({ time: '', sliceThickness: '' });
+
+  // Table 2: Dynamic rows
+  const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
+    { id: '1', setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' },
   ]);
 
-  const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
-  const [toleranceValue, setToleranceValue] = useState("1.5");
+  const [toleranceValue, setToleranceValue] = useState<string>('1.5');
+  const [toleranceType, setToleranceType] = useState<'percent' | 'absolute'>('absolute');
+  const [toleranceSign, setToleranceSign] = useState<'plus' | 'minus' | 'both'>('both');
 
-  // LOAD DATA FROM SERVER
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
+
+  // === Table 2: Add/Remove ===
+  const addTable2Row = () => {
+    setTable2Rows((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        setKV: '',
+        ma10: '',
+        ma100: '',
+        ma200: '',
+        avgKvp: '',
+        remarks: '',
+      },
+    ]);
+  };
+
+  const removeTable2Row = (id: string) => {
+    if (table2Rows.length <= 1) return;
+    setTable2Rows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const updateTable2 = (
+    id: string,
+    field: 'setKV' | 'ma10' | 'ma100' | 'ma200',
+    value: string
+  ) => {
+    setTable2Rows((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    );
+  };
+
+  // === Auto-calculate Avg & Pass/Fail ===
   useEffect(() => {
-    if (!serviceId) return;
+    setTable2Rows((prev) =>
+      prev.map((row) => {
+        const values = [row.ma10, row.ma100, row.ma200]
+          .map((v) => parseFloat(v))
+          .filter((v) => !isNaN(v));
+        const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
 
-    const loadTest = async () => {
+        const setKV = parseFloat(row.setKV);
+        if (isNaN(setKV) || avg === '') {
+          return { ...row, avgKvp: avg, remarks: '' };
+        }
+
+        const measured = parseFloat(avg);
+        let withinTolerance = false;
+
+        if (toleranceType === 'percent') {
+          const tolerance = parseFloat(toleranceValue) || 0;
+          const allowedDiff = (setKV * tolerance) / 100;
+          if (toleranceSign === 'plus') withinTolerance = measured <= setKV + allowedDiff;
+          else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - allowedDiff;
+          else withinTolerance = Math.abs(measured - setKV) <= allowedDiff;
+        } else {
+          const tolerance = parseFloat(toleranceValue) || 0;
+          if (toleranceSign === 'plus') withinTolerance = measured <= setKV + tolerance;
+          else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - tolerance;
+          else withinTolerance = Math.abs(measured - setKV) <= tolerance;
+        }
+
+        return {
+          ...row,
+          avgKvp: avg,
+          remarks: withinTolerance ? 'Pass' : 'Fail',
+        };
+      })
+    );
+  }, [table2Rows, toleranceValue, toleranceType, toleranceSign]);
+
+  // === Form Valid ===
+  const isFormValid = useMemo(() => {
+    return (
+      !!serviceId &&
+      table1Row.time.trim() &&
+      table1Row.sliceThickness.trim() &&
+      table2Rows.every((r) => r.setKV.trim() && (r.ma10.trim() || r.ma100.trim() || r.ma200.trim()))
+    );
+  }, [serviceId, table1Row, table2Rows]);
+
+  // === Load Existing Data ===
+  useEffect(() => {
+    if (!serviceId) {
+      setIsLoading(false);
+      return;
+    }
+    const load = async () => {
       try {
-        setIsLoading(true);
         const res = await getAccuracyOfOperatingPotentialByServiceIdForMammography(serviceId);
+        if (!res?.data) {
+          setIsLoading(false);
+          return;
+        }
+        const rec = res.data;
+        if (rec._id) setTestId(rec._id);
 
-        // SUCCESS: Data exists in DB
-        if (res?.data?.data) {
-          const data = res.data.data;
+        // Table 1
+        if (rec.table1?.[0]) {
+          setTable1Row({
+            time: rec.table1[0].time,
+            sliceThickness: rec.table1[0].sliceThickness,
+          });
+        }
 
-          setTestId(data._id);
-          setMAStations(data.mAStations || ["28 kV", "30 kV"]);
-
-          setRows(
-            data.measurements?.map((m: any, i: number) => ({
-              id: Date.now().toString() + i,
-              appliedKvp: String(m.appliedKvp || ""),
-              measuredValues: m.measuredValues || Array(data.mAStations?.length || 2).fill(""),
-              averageKvp: String(m.averageKvp || ""),
-              remarks: (m.remarks as "PASS" | "FAIL" | "-") || "-",
-            })) || rows
+        // Table 2
+        if (Array.isArray(rec.table2) && rec.table2.length > 0) {
+          setTable2Rows(
+            rec.table2.map((r: any) => ({
+              id: Date.now().toString() + Math.random(),
+              setKV: String(r.setKV || ''),
+              ma10: String(r.ma10 || ''),
+              ma100: String(r.ma100 || ''),
+              ma200: String(r.ma200 || ''),
+              avgKvp: '',
+              remarks: r.remarks || '',
+            }))
           );
+        }
 
-          setToleranceSign(data.tolerance?.sign || "±");
-          setToleranceValue(data.tolerance?.value || "1.5");
+        // Tolerance
+        if (rec.tolerance) {
+          setToleranceValue(rec.tolerance.value || '1.5');
+          setToleranceType(rec.tolerance.type || 'absolute');
+          setToleranceSign(rec.tolerance.sign || 'both');
+        }
 
-          // THIS LINE WAS MISSING → THIS IS THE MAIN FIX
-          // setIsSaved(true);
-          setIsSaved(true);
-          setIsEditing(false);
-        }
-        // No data yet → first time user
-        else {
-          setIsSaved(false);
-        }
-      } catch (err: any) {
-        if (err.response?.status !== 404) {
-          toast.error("Failed to load saved data");
-        }
-        // 404 = no saved data → normal for first time
-        setIsSaved(false);
+        setHasSaved(true);
+        setIsEditing(false);
+      } catch (e: any) {
+        if (e.response?.status !== 404) toast.error('Failed to load data');
       } finally {
         setIsLoading(false);
       }
     };
-
-    loadTest();
+    load();
   }, [serviceId]);
 
-  // SAVE / UPDATE
-  const saveTest = async () => {
-    if (!serviceId) {
-      toast.error("Service ID missing");
-      return;
-    }
+  // === Save / Update ===
+  const handleSave = async () => {
+    if (!isFormValid) return;
+    setIsSaving(true);
 
     const payload = {
-      mAStations,
-      measurements: rows.map(r => ({
-        appliedKvp: r.appliedKvp,
-        measuredValues: r.measuredValues,
-        averageKvp: r.averageKvp,
-        remarks: r.remarks,
-      })),
-      tolerance: { sign: toleranceSign, value: toleranceValue },
+      table1: [table1Row],
+      table2: table2Rows.map((r) => {
+        const values = [r.ma10, r.ma100, r.ma200]
+          .map(v => parseFloat(v))
+          .filter(v => !isNaN(v));
+
+        const avgKvp = values.length > 0
+          ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
+          : null;
+
+        const setKV = parseFloat(r.setKV);
+        let deviation = null;
+        if (avgKvp && !isNaN(setKV)) {
+          deviation = ((parseFloat(avgKvp) - setKV) / setKV * 100).toFixed(2);
+        }
+
+        return {
+          setKV: setKV,
+          ma10: parseFloat(r.ma10) || null,
+          ma100: parseFloat(r.ma100) || null,
+          ma200: parseFloat(r.ma200) || null,
+          avgKvp: avgKvp ? parseFloat(avgKvp) : null,
+          deviation: deviation ? parseFloat(deviation) : null,
+          remarks: r.remarks,
+        };
+      }),
+      toleranceValue,
+      toleranceType,
+      toleranceSign,
     };
 
-    setIsSaving(true);
     try {
-      let result;
+      let res;
       if (testId) {
-        result = await updateAccuracyOfOperatingPotentialForMammography(testId, payload);
-        toast.success("Updated successfully");
+        res = await updateAccuracyOfOperatingPotentialForMammography(testId, payload);
+        toast.success('Updated successfully!');
       } else {
-        result = await addAccuracyOfOperatingPotentialForMammography(serviceId, payload);
-        if (result?.data?.data?._id) {
-          setTestId(result.data.data._id);
-        }
-        toast.success("Saved successfully");
+        res = await addAccuracyOfOperatingPotentialForMammography(serviceId, payload);
+        if (res?.data?.data?.testId) setTestId(res.data.data.testId);
+        else if (res?.data?.data?._id) setTestId(res.data.data._id);
+        toast.success('Saved successfully!');
       }
-      setIsSaved(true);
+      setHasSaved(true);
       setIsEditing(false);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Save failed");
+      onRefresh?.();
+    } catch (e: any) {
+      toast.error(e.message || 'Save failed');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Auto-save
-  useEffect(() => {
-    if (isEditing && testId) {
-      const timer = setTimeout(saveTest, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [rows, mAStations, toleranceSign, toleranceValue, isEditing, testId]);
-
-  const isEditable = isEditing || !isSaved;
-
-  // Handlers
-  const addMAColumn = () => {
-    setMAStations(prev => [...prev, "35 kV"]);
-    setRows(prev => prev.map(r => ({ ...r, measuredValues: [...r.measuredValues, ""] })));
+  const toggleEdit = () => {
+    if (!hasSaved) return;
     setIsEditing(true);
   };
 
-  const removeMAColumn = (index: number) => {
-    if (mAStations.length <= 1) return;
-    setMAStations(prev => prev.filter((_, i) => i !== index));
-    setRows(prev => prev.map(r => ({
-      ...r,
-      measuredValues: r.measuredValues.filter((_, i) => i !== index),
-    })));
-    setIsEditing(true);
-  };
-
-  const updateMAHeader = (index: number, value: string) => {
-    setMAStations(prev => prev.map((v, i) => (i === index ? value : v)));
-    setIsEditing(true);
-  };
-
-  const addRow = () => {
-    setRows(prev => [...prev, {
-      id: Date.now().toString(),
-      appliedKvp: "",
-      measuredValues: Array(mAStations.length).fill(""),
-      averageKvp: "",
-      remarks: "-",
-    }]);
-    setIsEditing(true);
-  };
-
-  const removeRow = (id: string) => {
-    if (rows.length <= 1) return;
-    setRows(prev => prev.filter(r => r.id !== id));
-    setIsEditing(true);
-  };
-
-  const updateCell = (rowId: string, field: "appliedKvp" | number, value: string) => {
-    setRows(prev => prev.map(row => {
-      if (row.id !== rowId) return row;
-
-      const newRow = { ...row };
-
-      if (field === "appliedKvp") {
-        newRow.appliedKvp = value;
-      } else {
-        newRow.measuredValues = [...row.measuredValues];
-        newRow.measuredValues[field] = value;
-
-        const nums = newRow.measuredValues
-          .filter(v => v !== "" && !isNaN(Number(v)))
-          .map(v => Number(v));
-
-        newRow.averageKvp = nums.length > 0
-          ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2)
-          : "";
-      }
-
-      // Recalculate remarks
-      const applied = parseFloat(newRow.appliedKvp || "0");
-      const avg = parseFloat(newRow.averageKvp || "0");
-      const tol = parseFloat(toleranceValue || "0");
-
-      if (!isNaN(applied) && !isNaN(avg) && tol > 0) {
-        const diff = Math.abs(avg - applied);
-        newRow.remarks = toleranceSign === "±"
-          ? (diff <= tol ? "PASS" : "FAIL")
-          : toleranceSign === "+"
-            ? (avg <= applied + tol ? "PASS" : "FAIL")
-            : (avg >= applied - tol ? "PASS" : "FAIL");
-      } else {
-        newRow.remarks = "-";
-      }
-
-      return newRow;
-    }));
-    setIsEditing(true);
-  };
+  const isViewMode = hasSaved && !isEditing;
+  const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
+  const ButtonIcon = isViewMode ? Edit3 : Save;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-full mx-auto space-y-10">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Accuracy of Operating Potential (kVp) – Mammography
-        </h2>
+    <div className="p-6 max-w-7xl mx-auto space-y-10">
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">
+        Accuracy of Operating Potential (kVp) – Mammography
+      </h2>
 
-        <button
-          onClick={() => (isSaved && !isEditing ? setIsEditing(true) : saveTest())}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving
-            ? "bg-gray-500 cursor-not-allowed"
-            : isSaved && !isEditing
-              ? "bg-orange-600 hover:bg-orange-700"
-              : "bg-teal-600 hover:bg-teal-700"
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Saving...
-            </>
-          ) : isSaved && !isEditing ? (
-            <>
-              <Edit3 className="w-5 h-5" />
-              Edit
-            </>
-          ) : (
-            <>
-              <Save className="w-5 h-5" />
-              Save Test
-            </>
-          )}
-        </button>
+      {/* Table 1: Single Row */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
+          Exposure Time vs Slice Thickness
+        </h3>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                Time (ms)
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                Slice Thickness (mm)
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            <tr className="hover:bg-gray-50">
+              <td className="px-6 py-2 border-r">
+                <input
+                  type="text"
+                  value={table1Row.time}
+                  onChange={(e) => setTable1Row((p) => ({ ...p, time: e.target.value }))}
+                  disabled={isViewMode}
+                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                    ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                    : 'border-gray-300'
+                    }`}
+                  placeholder="100"
+                />
+              </td>
+              <td className="px-6 py-2">
+                <input
+                  type="text"
+                  value={table1Row.sliceThickness}
+                  onChange={(e) => setTable1Row((p) => ({ ...p, sliceThickness: e.target.value }))}
+                  disabled={isViewMode}
+                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                    ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                    : 'border-gray-300'
+                    }`}
+                  placeholder="5.0"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      {/* Table */}
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
-        <div className="px-6 py-4 bg-blue-50 border-b">
-          <h3 className="text-xl font-bold text-blue-900">kVp Accuracy Measurement</h3>
-        </div>
-
+      {/* Table 2 */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
+          kV Measurement at Different mA
+        </h3>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
-                  Applied kVp
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                  Set kV
                 </th>
-                <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
-                  <div className="flex items-center justify-between px-4">
-                    <span>Measured kVp</span>
-                    {isEditable && (
-                      <button onClick={addMAColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
-                        <Plus className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                  @ mA 10
                 </th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
-                  Average kVp
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                  @ mA 100
                 </th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase">
-                  Remarks
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                  @ mA 200
                 </th>
-                <th rowSpan={2} className="w-12"></th>
-              </tr>
-              <tr>
-                {mAStations.map((station, idx) => (
-                  <th key={idx} className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
-                    <div className="flex items-center justify-center gap-2">
-                      <input
-                        type="text"
-                        value={station}
-                        onChange={(e) => updateMAHeader(idx, e.target.value)}
-                        disabled={!isEditable}
-                        className="w-28 px-2 py-1 text-xs border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                      />
-                      {mAStations.length > 1 && isEditable && (
-                        <button onClick={() => removeMAColumn(idx)} className="text-red-600 hover:bg-red-100 p-1 rounded">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </th>
-                ))}
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                  Avg kVp
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Pass/Fail
+                </th>
+                <th className="w-12" />
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {rows.map((row) => (
+              {table2Rows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 border-r">
+                  <td className="px-4 py-2 border-r">
                     <input
-                      type="number"
-                      value={row.appliedKvp}
-                      onChange={(e) => updateCell(row.id, "appliedKvp", e.target.value)}
-                      disabled={!isEditable}
-                      className="w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                      type="text"
+                      value={row.setKV}
+                      onChange={(e) => updateTable2(row.id, 'setKV', e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                        : 'border-gray-300'
+                        }`}
                       placeholder="28"
                     />
                   </td>
-                  {row.measuredValues.map((val, idx) => (
-                    <td key={idx} className="px-4 py-4 text-center border-r">
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={val}
-                        onChange={(e) => updateCell(row.id, idx, e.target.value)}
-                        disabled={!isEditable}
-                        className="w-24 px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                        placeholder="0.0"
-                      />
-                    </td>
-                  ))}
-                  <td className="px-6 py-4 text-center font-bold text-gray-800 border-r">
-                    {row.averageKvp || "-"}
+                  <td className="px-4 py-2 border-r">
+                    <input
+                      type="text"
+                      value={row.ma10}
+                      onChange={(e) => updateTable2(row.id, 'ma10', e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                        : 'border-gray-300'
+                        }`}
+                    />
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-4 py-2 border-r">
+                    <input
+                      type="text"
+                      value={row.ma100}
+                      onChange={(e) => updateTable2(row.id, 'ma100', e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                        : 'border-gray-300'
+                        }`}
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-r">
+                    <input
+                      type="text"
+                      value={row.ma200}
+                      onChange={(e) => updateTable2(row.id, 'ma200', e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                        : 'border-gray-300'
+                        }`}
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-r font-medium bg-gray-50 text-center">
+                    {row.avgKvp || '-'}
+                  </td>
+                  <td className="px-4 py-2 text-center">
                     <span
-                      className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === "PASS"
-                        ? "bg-green-100 text-green-800"
-                        : row.remarks === "FAIL"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-600"
+                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : row.remarks === 'Fail'
+                          ? 'bg-red-100 text-red-800'
+                          : 'text-gray-400'
                         }`}
                     >
-                      {row.remarks}
+                      {row.remarks || '—'}
                     </span>
                   </td>
-                  <td className="px-3 py-4 text-center">
-                    {rows.length > 1 && isEditable && (
-                      <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
-                        <Trash2 className="w-5 h-5" />
+                  <td className="px-2 py-2 text-center">
+                    {table2Rows.length > 1 && !isViewMode && (
+                      <button
+                        onClick={() => removeTable2Row(row.id)}
+                        className="text-red-600 hover:bg-red-100 p-1 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </td>
@@ -372,45 +429,101 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId }) => {
             </tbody>
           </table>
         </div>
-
-        <div className="px-6 py-4 bg-gray-50 border-t">
-          <button
-            onClick={addRow}
-            disabled={!isEditable}
-            className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
-          >
-            <Plus className="w-5 h-5" />
-            Add kVp Row
-          </button>
-        </div>
+        {!isViewMode && (
+          <div className="px-6 py-3 bg-gray-50 border-t">
+            <button
+              onClick={addTable2Row}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" /> Add Row
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tolerance */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-lg border border-indigo-300 shadow-md">
-        <h4 className="text-lg font-bold text-indigo-900 mb-4">Tolerance for kVp Accuracy</h4>
-        <div className="flex items-center gap-4 flex-wrap">
-          <span className="font-medium text-indigo-800">Acceptable Tolerance:</span>
-          <select
-            value={toleranceSign}
-            onChange={(e) => { setToleranceSign(e.target.value as any); setIsEditing(true); }}
-            disabled={!isEditable}
-            className="px-5 py-2.5 border border-indigo-400 rounded-lg bg-white font-medium text-indigo-900 focus:ring-2 focus:ring-indigo-500 disabled:opacity-70"
-          >
-            <option value="±">± (Plus or Minus)</option>
-            <option value="+">+ (Positive only)</option>
-            <option value="-">- (Negative only)</option>
-          </select>
-          <input
-            type="number"
-            step="0.1"
-            value={toleranceValue}
-            onChange={(e) => { setToleranceValue(e.target.value); setIsEditing(true); }}
-            disabled={!isEditable}
-            className="w-32 px-4 py-2.5 text-center border-2 border-indigo-400 rounded-lg font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 disabled:opacity-70"
-            placeholder="1.5"
-          />
-          <span className="font-medium text-indigo-800">kV</span>
+      <div className="bg-white p-6 shadow-md rounded-lg">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Tolerance Setting</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tolerance Value</label>
+            <input
+              type="number"
+              value={toleranceValue}
+              onChange={(e) => setToleranceValue(e.target.value)}
+              disabled={isViewMode}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                : 'border-gray-300'
+                }`}
+              min="0"
+              step="0.1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <select
+              value={toleranceType}
+              onChange={(e) => setToleranceType(e.target.value as any)}
+              disabled={isViewMode}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                : 'border-gray-300'
+                }`}
+            >
+              <option value="percent">%</option>
+              <option value="absolute">kVp</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Direction</label>
+            <select
+              value={toleranceSign}
+              onChange={(e) => setToleranceSign(e.target.value as any)}
+              disabled={isViewMode}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                : 'border-gray-300'
+                }`}
+            >
+              <option value="both">± (Both)</option>
+              <option value="plus">+ Only</option>
+              <option value="minus">- Only</option>
+            </select>
+          </div>
         </div>
+        <p className="mt-3 text-sm text-gray-600">
+          Current: <strong>
+            {toleranceSign === 'both' ? '±' : toleranceSign === 'plus' ? '+' : '-'}
+            {toleranceValue}{toleranceType === 'percent' ? '%' : ' kVp'}
+          </strong>
+        </p>
+      </div>
+
+      {/* SAVE BUTTON */}
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving || (!isViewMode && !isFormValid)}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-4 h-4" />
+              {buttonText} Measurement
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

@@ -341,7 +341,7 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
       </div>
 
       {/* Remark */}
-      <div className="mt-10 bg-amber-50 border-2 border-amber-300 rounded-xl p-6">
+      {/* <div className="mt-10 bg-amber-50 border-2 border-amber-300 rounded-xl p-6">
         <h3 className="text-xl font-bold text-amber-900 mb-3">Remark</h3>
         <p className={`text-lg font-medium leading-relaxed ${status === 'pass' ? 'text-green-700' : 'text-red-700'}`}>
           {status === 'pass' &&
@@ -351,7 +351,7 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
           {status === 'incomplete' &&
             'Please enter the smallest visible low-contrast object size to determine compliance.'}
         </p>
-      </div>
+      </div> */}
     </div>
   );
 };

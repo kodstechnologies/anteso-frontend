@@ -25,6 +25,7 @@ interface Table2Row {
     xMin: string;
     col: string;
     remarks: string;
+    failedCells?: boolean[]; // Track which measured outputs failed tolerance check
 }
 
 interface Props {
@@ -43,10 +44,10 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
     // Table 2: Dynamic rows + measurement columns
     const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
     const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-        { id: '1', mAsApplied: '10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-        { id: '2', mAsApplied: '20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-        { id: '3', mAsApplied: '50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-        { id: '4', mAsApplied: '100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+        { id: '1', mAsApplied: '10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '', failedCells: [] },
+        { id: '2', mAsApplied: '20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '', failedCells: [] },
+        { id: '3', mAsApplied: '50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '', failedCells: [] },
+        { id: '4', mAsApplied: '100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '', failedCells: [] },
     ]);
 
     const [tolerance, setTolerance] = useState<string>('0.1');
@@ -96,6 +97,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             xMin: '',
             col: '',
             remarks: '',
+            failedCells: Array(measHeaders.length).fill(false),
         };
         setTable2Rows((prev) => [...prev, newRow]);
     };
@@ -124,21 +126,35 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
         );
     };
 
-    // === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks ===
+    // === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks, Failed Cells ===
     const processedTable2 = useMemo(() => {
         const tol = parseFloat(tolerance) || 0.1;
         const xValues: number[] = [];
+        // Tolerance for individual measured outputs: 10% deviation from average
+        const individualTolerance = 0.1; // 10%
 
-        // First pass: calculate Avg and X
+        // First pass: calculate Avg, check individual outputs, and X
         const rowsWithX = table2Rows.map((row) => {
             const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-            const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
-            const mAs = parseFloat(row.mAsApplied);
-            const x = avg !== '—' && mAs > 0 ? (parseFloat(avg) / mAs).toFixed(4) : '—';
+            const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length) : 0;
+            const avgStr = avg > 0 ? avg.toFixed(3) : '—';
+            
+            // Check each measured output against average with tolerance
+            const failedCells: boolean[] = row.measuredOutputs.map((val) => {
+                const numVal = parseFloat(val);
+                if (isNaN(numVal) || numVal <= 0 || avg <= 0) return false;
+                // Check if value is within 10% of average
+                const allowedDeviation = avg * individualTolerance;
+                return Math.abs(numVal - avg) > allowedDeviation;
+            });
+
+            const mA = parseFloat(row.mAsApplied);
+            const time = parseFloat(table1Row.time);
+            const x = avgStr !== '—' && mA > 0 && time > 0 ? (avg / (mA * time)).toFixed(4) : '—';
 
             if (x !== '—') xValues.push(parseFloat(x));
 
-            return { ...row, average: avg, x };
+            return { ...row, average: avgStr, x, failedCells };
         });
 
         // Global Xmax, Xmin
@@ -150,14 +166,20 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
         const pass = colVal !== '—' && parseFloat(colVal) <= tol;
 
         // Second pass: apply Xmax, Xmin, CoL, Remarks
-        return rowsWithX.map((row) => ({
-            ...row,
-            xMax,
-            xMin,
-            col: colVal,
-            remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
-        }));
-    }, [table2Rows, tolerance]);
+        // Overall pass: CoL must pass AND no individual measurements failed
+        return rowsWithX.map((row) => {
+            const hasFailedCells = row.failedCells?.some(failed => failed) || false;
+            const overallPass = pass && !hasFailedCells;
+            
+            return {
+                ...row,
+                xMax,
+                xMin,
+                col: colVal,
+                remarks: overallPass ? 'Pass' : colVal === '—' ? '' : 'Fail',
+            };
+        });
+    }, [table2Rows, tolerance, table1Row.time]);
 
     // === Form Valid ===
     const isFormValid = useMemo(() => {
@@ -212,6 +234,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                                 xMin: '',
                                 col: '',
                                 remarks: '',
+                                failedCells: Array((r.measuredOutputs || []).length).fill(false),
                             }))
                         );
                     }
@@ -307,9 +330,9 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">kVp</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">Slice Thickness (mm)</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (ms)</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">kVp</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">Slice Thickness (mm)</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">Time (ms)</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -357,12 +380,12 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-blue-50">
                         <tr>
-                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                                mAs Applied
+                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
+                                mA Applied
                             </th>
                             <th
                                 colSpan={measHeaders.length}
-                                className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                                className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
                             >
                                 <div className="flex items-center justify-between">
                                     <span>Radiation Output (mGy)</span>
@@ -373,12 +396,12 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                                     )}
                                 </div>
                             </th>
-                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Avg Output</th>
-                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X (mGy/mAs)</th>
-                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MAX</th>
-                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MIN</th>
-                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">CoL</th>
-                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
+                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output (mGy)</th>
+                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/(mA·time))</th>
+                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
+                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
+                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
+                            <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
                             <th rowSpan={2} className="w-10" />
                         </tr>
                         <tr>
@@ -419,19 +442,22 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                                 </td>
 
                                 {/* Measurement Columns */}
-                                {p.measuredOutputs.map((val, colIdx) => (
-                                    <td key={colIdx} className="px-2 py-2 border-r">
-                                        <input
-                                            type="number"
-                                            step="any"
-                                            value={val}
-                                            onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
-                                            disabled={isViewMode}
-                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                                                }`}
-                                        />
-                                    </td>
-                                ))}
+                                {p.measuredOutputs.map((val, colIdx) => {
+                                    const isFailed = p.failedCells?.[colIdx] || false;
+                                    return (
+                                        <td key={colIdx} className={`px-2 py-2 border-r ${isFailed ? 'bg-red-100' : ''}`}>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                value={val}
+                                                onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
+                                                disabled={isViewMode}
+                                                className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isFailed ? 'bg-red-50 border-red-300 text-red-700 font-semibold' : isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                                    }`}
+                                            />
+                                        </td>
+                                    );
+                                })}
 
                                 {/* Calculated Columns */}
                                 <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.average}</td>
@@ -459,14 +485,11 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                                     {table2Rows.length > 1 && (
                                         <button
                                             onClick={() => {
-                                                // Confirm before delete
-                                                if (window.confirm('Delete this row?')) {
-                                                    removeTable2Row(p.id);
-                                                    // If already saved, trigger parent refresh after delete
-                                                    if (hasSaved) {
-                                                        // Small delay to let state update
-                                                        setTimeout(() => onRefresh?.(), 100);
-                                                    }
+                                                removeTable2Row(p.id);
+                                                // If already saved, trigger parent refresh after delete
+                                                if (hasSaved) {
+                                                    // Small delay to let state update
+                                                    setTimeout(() => onRefresh?.(), 100);
                                                 }
                                             }}
                                             className="text-red-600 hover:bg-red-100 p-1 rounded transition-colors"

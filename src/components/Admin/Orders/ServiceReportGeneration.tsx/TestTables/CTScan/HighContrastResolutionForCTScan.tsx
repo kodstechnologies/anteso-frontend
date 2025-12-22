@@ -47,17 +47,19 @@ const HighContrastResolutionForCTScan: React.FC<Props> = ({
 
   const observed = parseFloat(observedSize);
   const toleranceSizeNum = parseFloat(toleranceSize);
+  const toleranceLpCmNum = parseFloat(toleranceLpCm);
   const expectedSizeNum = parseFloat(expectedSize);
   const isValidNumber = !isNaN(observed) && observed > 0;
 
-  // Status: pass if observed <= expected (better), fail if observed > tolerance, incomplete otherwise
+  // Convert observed size (mm) to lp/cm: lp/cm = 5 / size_mm
+  const observedLpCm = isValidNumber && observed > 0 ? 5 / observed : 0;
+
+  // Status: pass if observed lp/cm >= tolerance lp/cm (3.12 or dynamic value), incomplete otherwise
   const status = !isValidNumber
     ? 'incomplete'
-    : observed <= expectedSizeNum
+    : observedLpCm >= toleranceLpCmNum
       ? 'pass'
-      : observed <= toleranceSizeNum
-        ? 'pass'
-        : 'fail';
+      : 'fail';
 
   const isExpectedMet = isValidNumber && observed <= expectedSizeNum;
 
@@ -395,7 +397,7 @@ const HighContrastResolutionForCTScan: React.FC<Props> = ({
       </div>
 
       {/* Remark */}
-      <div className="mt-10 bg-amber-50 border-2 border-amber-300 rounded-xl p-6">
+      {/* <div className="mt-10 bg-amber-50 border-2 border-amber-300 rounded-xl p-6">
         <h3 className="text-xl font-bold text-amber-900 mb-3">Remark</h3>
         <p className={`text-lg font-medium leading-relaxed ${status === 'pass' ? 'text-green-700' : 'text-red-700'}`}>
           {status === 'pass' &&
@@ -405,7 +407,7 @@ const HighContrastResolutionForCTScan: React.FC<Props> = ({
           {status === 'incomplete' &&
             'Please enter the smallest resolvable bar/hole pattern size to determine compliance.'}
         </p>
-      </div>
+      </div> */}
     </div>
   );
 };

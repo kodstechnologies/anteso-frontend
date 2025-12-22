@@ -31,8 +31,8 @@ interface Table2Row {
 }
 
 interface Tolerance {
-    expected: { value: string; quote: string };
-    maximum: { value: string; quote: string };
+    sign: 'plus' | 'minus' | 'both';
+    value: string;
 }
 
 interface Props {
@@ -70,8 +70,8 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
     ]);
 
     const [tolerance, setTolerance] = useState<Tolerance>({
-        expected: { value: '', quote: '' },
-        maximum: { value: '', quote: '' },
+        sign: 'both',
+        value: '',
     });
 
     const [isSaving, setIsSaving] = useState(false);
@@ -262,8 +262,8 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
 
                     if (rec.tolerance) {
                         setTolerance({
-                            expected: { value: rec.tolerance.expected?.value || '', quote: rec.tolerance.expected?.quote || '' },
-                            maximum: { value: rec.tolerance.maximum?.value || '', quote: rec.tolerance.maximum?.quote || '' },
+                            sign: rec.tolerance.sign || 'both',
+                            value: rec.tolerance.value || '',
                         });
                     }
 
@@ -550,59 +550,49 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
             </div>
 
             {/* ==================== Tolerance Section ==================== */}
-            <div className="bg-white p-6 shadow-md rounded-lg space-y-6">
-                <h3 className="text-lg font-semibold text-gray-800">Tolerance</h3>
+            <div className="bg-white p-6 shadow-md rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Tolerance</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-end gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Expected Value</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Sign</label>
+                        <select
+                            value={tolerance.sign}
+                            onChange={(e) => setTolerance(p => ({ ...p, sign: e.target.value as 'plus' | 'minus' | 'both' }))}
+                            disabled={isViewMode}
+                            className={`px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                }`}
+                        >
+                            <option value="both">± (Plus/Minus)</option>
+                            <option value="plus">+ (Plus)</option>
+                            <option value="minus">- (Minus)</option>
+                        </select>
+                    </div>
+
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
                         <div className="flex gap-2">
                             <input
                                 type="text"
-                                value={tolerance.expected.value}
-                                onChange={(e) => setTolerance(p => ({ ...p, expected: { ...p.expected, value: e.target.value } }))}
+                                value={tolerance.value}
+                                onChange={(e) => setTolerance(p => ({ ...p, value: e.target.value }))}
                                 disabled={isViewMode}
                                 className={`flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
                                     }`}
-                                placeholder="e.g. 10.50"
+                                placeholder="e.g. 5.0"
                             />
                             <span className="self-center text-sm text-gray-600">mGy/100mAs</span>
                         </div>
-                        <textarea
-                            value={tolerance.expected.quote}
-                            onChange={(e) => setTolerance(p => ({ ...p, expected: { ...p.expected, quote: e.target.value } }))}
-                            rows={2}
-                            disabled={isViewMode}
-                            className={`mt-2 w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                                }`}
-                            placeholder="Quote or reference..."
-                        />
                     </div>
+                </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Maximum Value</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={tolerance.maximum.value}
-                                onChange={(e) => setTolerance(p => ({ ...p, maximum: { ...p.maximum, value: e.target.value } }))}
-                                disabled={isViewMode}
-                                className={`flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                                    }`}
-                                placeholder="e.g. 12.00"
-                            />
-                            <span className="self-center text-sm text-gray-600">mGy/100mAs</span>
-                        </div>
-                        <textarea
-                            value={tolerance.maximum.quote}
-                            onChange={(e) => setTolerance(p => ({ ...p, maximum: { ...p.maximum, quote: e.target.value } }))}
-                            rows={2}
-                            disabled={isViewMode}
-                            className={`mt-2 w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                                }`}
-                            placeholder="Quote or reference..."
-                        />
-                    </div>
+                <div className="mt-4">
+                    <p className="text-sm text-gray-600">
+                        Current: <strong>
+                            {tolerance.sign === 'both' ? '±' : tolerance.sign === 'plus' ? '+' : '-'}
+                            {tolerance.value || '0'}
+                        </strong> mGy/100mAs
+                    </p>
                 </div>
             </div>
 

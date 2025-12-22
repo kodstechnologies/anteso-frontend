@@ -1,7 +1,7 @@
 // components/TestTables/TablePosition.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -22,6 +22,7 @@ interface TableIncrementationRow {
   tablePosition: string;
   expected: string;
   measured: string;
+  remark?: string;
 }
 
 interface Props {
@@ -55,6 +56,45 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
   // Tolerance
   const [toleranceSign, setToleranceSign] = useState<'+' | '-' | '±'>('±');
   const [toleranceValue, setToleranceValue] = useState<string>('2');
+
+  // Calculate pass/fail remarks for each table incrementation row
+  const tableIncrementationRowsWithRemarks = useMemo(() => {
+    return tableIncrementationRows.map((row) => {
+      if (!row.expected.trim() || !row.measured.trim()) {
+        return { ...row, remark: '' };
+      }
+
+      const expectedNum = parseFloat(row.expected.trim());
+      const measuredNum = parseFloat(row.measured.trim());
+      const toleranceNum = parseFloat(toleranceValue.trim());
+
+      // If any value is not a valid number, return empty remark
+      if (isNaN(expectedNum) || isNaN(measuredNum) || isNaN(toleranceNum)) {
+        return { ...row, remark: '' };
+      }
+
+      // Calculate the difference (measured - expected)
+      const difference = measuredNum - expectedNum;
+
+      let passes = false;
+
+      if (toleranceSign === '±') {
+        // Check if difference is within ±toleranceValue
+        passes = difference >= -toleranceNum && difference <= toleranceNum;
+      } else if (toleranceSign === '+') {
+        // Check if difference is within 0 to +toleranceValue
+        passes = difference >= 0 && difference <= toleranceNum;
+      } else if (toleranceSign === '-') {
+        // Check if difference is within -toleranceValue to 0
+        passes = difference >= -toleranceNum && difference <= 0;
+      }
+
+      return {
+        ...row,
+        remark: passes ? 'Pass' : 'Fail',
+      };
+    });
+  }, [tableIncrementationRows, toleranceSign, toleranceValue]);
 
   // Add exposure parameter row
   const addExposureParameterRow = () => {
@@ -118,6 +158,7 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
               tablePosition: row.tablePosition || '',
               expected: row.expected || '',
               measured: row.measured || '',
+              remark: row.remark || '',
             })));
           }
           setToleranceSign(data.toleranceSign || '±');
@@ -159,10 +200,11 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
           ma: ep.ma.trim(),
           sliceThickness: ep.sliceThickness.trim(),
         })),
-        tableIncrementation: tableIncrementationRows.map(row => ({
+        tableIncrementation: tableIncrementationRowsWithRemarks.map(row => ({
           tablePosition: row.tablePosition.trim(),
           expected: row.expected.trim(),
           measured: row.measured.trim(),
+          remark: row.remark || '',
         })),
         toleranceSign,
         toleranceValue: toleranceValue.trim(),
@@ -396,12 +438,13 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                 Table position from reference position (cm)
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Expected (cm)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Measured (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Measured (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
               {!isViewMode && tableIncrementationRows.length > 1 && <th className="w-12"></th>}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tableIncrementationRows.map((row) => (
+            {tableIncrementationRowsWithRemarks.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 border-r">
                   <input
@@ -425,7 +468,7 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                     }`}
                   />
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-4 border-r">
                   <input
                     type="text"
                     value={row.measured}
@@ -435,6 +478,19 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                       isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
                     }`}
                   />
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
+                      row.remark === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : row.remark === 'Fail'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {row.remark || '—'}
+                  </span>
                 </td>
                 {!isViewMode && tableIncrementationRows.length > 1 && (
                   <td className="px-3 py-4 text-center">

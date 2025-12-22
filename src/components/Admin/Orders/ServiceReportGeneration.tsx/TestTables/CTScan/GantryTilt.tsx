@@ -1,7 +1,7 @@
 // components/TestTables/GantryTilt.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Trash2, Plus, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -21,6 +21,7 @@ interface Measurement {
     id: string;
     actual: string;
     measured: string;
+    remark?: string;
 }
 
 interface Props {
@@ -51,6 +52,45 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
     const [toleranceSign, setToleranceSign] = useState<'+' | '-' | '±'>('±');
     const [toleranceValue, setToleranceValue] = useState<string>('2');
     const toleranceDisplay = `${toleranceSign}${toleranceValue}°`;
+
+    // Calculate pass/fail remarks for each measurement
+    const measurementsWithRemarks = useMemo(() => {
+        return measurements.map((measurement) => {
+            if (!measurement.actual.trim() || !measurement.measured.trim()) {
+                return { ...measurement, remark: '' };
+            }
+
+            const actualNum = parseFloat(measurement.actual.trim().replace('°', ''));
+            const measuredNum = parseFloat(measurement.measured.trim().replace('°', ''));
+            const toleranceNum = parseFloat(toleranceValue.trim());
+
+            // If any value is not a valid number, return empty remark
+            if (isNaN(actualNum) || isNaN(measuredNum) || isNaN(toleranceNum)) {
+                return { ...measurement, remark: '' };
+            }
+
+            // Calculate the difference (measured - actual)
+            const difference = measuredNum - actualNum;
+
+            let passes = false;
+
+            if (toleranceSign === '±') {
+                // Check if difference is within ±toleranceValue
+                passes = difference >= -toleranceNum && difference <= toleranceNum;
+            } else if (toleranceSign === '+') {
+                // Check if difference is within 0 to +toleranceValue
+                passes = difference >= 0 && difference <= toleranceNum;
+            } else if (toleranceSign === '-') {
+                // Check if difference is within -toleranceValue to 0
+                passes = difference >= -toleranceNum && difference <= 0;
+            }
+
+            return {
+                ...measurement,
+                remark: passes ? 'Pass' : 'Fail',
+            };
+        });
+    }, [measurements, toleranceSign, toleranceValue]);
 
     // Add new parameter row
     const addParameterRow = () => {
@@ -126,6 +166,7 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                             id: String(i + 1),
                             actual: m.actual || '',
                             measured: m.measured || '',
+                            remark: m.remark || '',
                         })));
                     }
                     setToleranceSign(data.toleranceSign || '±');
@@ -164,9 +205,10 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                     name: p.name.trim(),
                     value: p.value.trim(),
                 })),
-                measurements: measurements.map(m => ({
+                measurements: measurementsWithRemarks.map(m => ({
                     actual: m.actual.trim(),
                     measured: m.measured.trim(),
+                    remark: m.remark || '',
                 })),
                 toleranceSign,
                 toleranceValue: toleranceValue.trim(),
@@ -347,13 +389,14 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                                 <th className="text-left p-3 font-medium text-gray-700">Actual Gantry Tilt</th>
                                 <th className="text-left p-3 font-medium text-gray-700">Measured Gantry Tilt</th>
                                 <th className="text-left p-3 font-medium text-gray-700">Tolerance</th>
+                                <th className="text-left p-3 font-medium text-gray-700">Remarks</th>
                                 {!isViewMode && measurements.length > 1 && (
                                     <th className="w-12 p-3"></th>
                                 )}
                             </tr>
                         </thead>
                         <tbody>
-                            {measurements.map((measurement) => (
+                            {measurementsWithRemarks.map((measurement) => (
                                 <tr key={measurement.id} className="border-b border-gray-200 hover:bg-gray-50">
                                     <td className="p-3">
                                         <input
@@ -383,6 +426,19 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                                         <div className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md font-medium">
                                             {toleranceDisplay}
                                         </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <span
+                                            className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
+                                                measurement.remark === 'Pass'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : measurement.remark === 'Fail'
+                                                    ? 'bg-red-100 text-red-800'
+                                                    : 'bg-gray-100 text-gray-600'
+                                            }`}
+                                        >
+                                            {measurement.remark || '—'}
+                                        </span>
                                     </td>
                                     {!isViewMode && measurements.length > 1 && (
                                         <td className="p-3">

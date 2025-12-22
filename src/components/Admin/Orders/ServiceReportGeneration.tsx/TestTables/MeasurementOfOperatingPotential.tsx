@@ -1,5 +1,5 @@
 // components/TestTables/MeasurementOfOperatingPotential.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
     addMeasurementOfOperatingPotential,
@@ -22,6 +22,12 @@ interface Table2Row {
     ma200: string;
     avgKvp: string;
     remarks: 'Pass' | 'Fail' | '';
+    failedCells?: {
+        ma10: boolean;
+        ma100: boolean;
+        ma200: boolean;
+        avgKvp: boolean;
+    };
 }
 
 interface Props {
@@ -39,7 +45,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
 
     // Table 2: Dynamic rows
     const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-        { id: '1', setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' },
+        { id: '1', setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '', failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false } },
     ]);
 
     const [toleranceValue, setToleranceValue] = useState<string>('5');
@@ -63,6 +69,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                 ma200: '',
                 avgKvp: '',
                 remarks: '',
+                failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false },
             },
         ]);
     };
@@ -72,54 +79,89 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
         setTable2Rows((prev) => prev.filter((r) => r.id !== id));
     };
 
+    // Helper function to check if a value is within tolerance
+    const checkTolerance = useCallback((measured: number, setKV: number): boolean => {
+        if (isNaN(measured) || isNaN(setKV) || setKV <= 0) return false;
+
+        if (toleranceType === 'percent') {
+            const tolerance = parseFloat(toleranceValue) || 0;
+            const allowedDiff = (setKV * tolerance) / 100;
+            if (toleranceSign === 'plus') return measured <= setKV + allowedDiff;
+            else if (toleranceSign === 'minus') return measured >= setKV - allowedDiff;
+            else return Math.abs(measured - setKV) <= allowedDiff;
+        } else {
+            const tolerance = parseFloat(toleranceValue) || 0;
+            if (toleranceSign === 'plus') return measured <= setKV + tolerance;
+            else if (toleranceSign === 'minus') return measured >= setKV - tolerance;
+            else return Math.abs(measured - setKV) <= tolerance;
+        }
+    }, [toleranceValue, toleranceType, toleranceSign]);
+
+    // Helper function to calculate row values (avg, remarks, failedCells)
+    const calculateRowValues = useCallback((row: Table2Row): Table2Row => {
+        const setKV = parseFloat(row.setKV);
+        if (isNaN(setKV) || setKV <= 0) {
+            return { ...row, avgKvp: '', remarks: '', failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false } };
+        }
+
+        // Check each mA value individually
+        const ma10Value = parseFloat(row.ma10);
+        const ma100Value = parseFloat(row.ma100);
+        const ma200Value = parseFloat(row.ma200);
+
+        const ma10Pass = isNaN(ma10Value) || checkTolerance(ma10Value, setKV);
+        const ma100Pass = isNaN(ma100Value) || checkTolerance(ma100Value, setKV);
+        const ma200Pass = isNaN(ma200Value) || checkTolerance(ma200Value, setKV);
+
+        // Calculate average
+        const values = [ma10Value, ma100Value, ma200Value]
+            .filter((v) => !isNaN(v));
+        const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
+        
+        // Check average value
+        const avgPass = avg === '' || checkTolerance(parseFloat(avg), setKV);
+
+        // Determine failed cells
+        const failedCells = {
+            ma10: !isNaN(ma10Value) && !ma10Pass,
+            ma100: !isNaN(ma100Value) && !ma100Pass,
+            ma200: !isNaN(ma200Value) && !ma200Pass,
+            avgKvp: avg !== '' && !avgPass,
+        };
+
+        // Overall pass/fail: if any cell fails, the entire row fails
+        const overallPass = ma10Pass && ma100Pass && ma200Pass && avgPass;
+
+        return {
+            ...row,
+            avgKvp: avg,
+            remarks: overallPass ? 'Pass' : 'Fail',
+            failedCells,
+        };
+    }, [checkTolerance]);
+
+    // === Auto-calculate Avg & Pass/Fail when tolerance settings change ===
+    useEffect(() => {
+        setTable2Rows((prev) =>
+            prev.map((row) => calculateRowValues(row))
+        );
+    }, [calculateRowValues]);
+
     const updateTable2 = (
         id: string,
         field: 'setKV' | 'ma10' | 'ma100' | 'ma200',
         value: string
     ) => {
         setTable2Rows((prev) =>
-            prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-        );
-    };
-
-    // === Auto-calculate Avg & Pass/Fail ===
-    useEffect(() => {
-        setTable2Rows((prev) =>
             prev.map((row) => {
-                const values = [row.ma10, row.ma100, row.ma200]
-                    .map((v) => parseFloat(v))
-                    .filter((v) => !isNaN(v));
-                const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
-
-                const setKV = parseFloat(row.setKV);
-                if (isNaN(setKV) || avg === '') {
-                    return { ...row, avgKvp: avg, remarks: '' };
+                if (row.id === id) {
+                    const updatedRow = { ...row, [field]: value };
+                    return calculateRowValues(updatedRow);
                 }
-
-                const measured = parseFloat(avg);
-                let withinTolerance = false;
-
-                if (toleranceType === 'percent') {
-                    const tolerance = parseFloat(toleranceValue) || 0;
-                    const allowedDiff = (setKV * tolerance) / 100;
-                    if (toleranceSign === 'plus') withinTolerance = measured <= setKV + allowedDiff;
-                    else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - allowedDiff;
-                    else withinTolerance = Math.abs(measured - setKV) <= allowedDiff;
-                } else {
-                    const tolerance = parseFloat(toleranceValue) || 0;
-                    if (toleranceSign === 'plus') withinTolerance = measured <= setKV + tolerance;
-                    else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - tolerance;
-                    else withinTolerance = Math.abs(measured - setKV) <= tolerance;
-                }
-
-                return {
-                    ...row,
-                    avgKvp: avg,
-                    remarks: withinTolerance ? 'Pass' : 'Fail',
-                };
+                return row;
             })
         );
-    }, [table2Rows, toleranceValue, toleranceType, toleranceSign]);
+    };
 
     // === Form Valid ===
     const isFormValid = useMemo(() => {
@@ -171,6 +213,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                                 ma200: String(r.ma200 || ''),
                                 avgKvp: '',
                                 remarks: r.remarks || '',
+                                failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false },
                             }))
                         );
                     }
@@ -292,10 +335,10 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                 Time (ms)
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
                                 Slice Thickness (mm)
                             </th>
                         </tr>
@@ -342,22 +385,22 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     Set kV
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     @ mA 10
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     @ mA 100
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     @ mA 200
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     Avg kVp
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
                                     Pass/Fail
                                 </th>
                                 <th className="w-12" />
@@ -379,43 +422,43 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                                             placeholder="80"
                                         />
                                     </td>
-                                    <td className="px-4 py-2 border-r">
+                                    <td className={`px-4 py-2 border-r ${row.failedCells?.ma10 ? 'bg-red-100' : ''}`}>
                                         <input
                                             type="text"
                                             value={row.ma10}
                                             onChange={(e) => updateTable2(row.id, 'ma10', e.target.value)}
                                             disabled={isViewMode}
-                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${row.failedCells?.ma10 ? 'bg-red-50 border-red-300 text-red-700 font-semibold' : isViewMode
                                                 ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
                                                 : 'border-gray-300'
                                                 }`}
                                         />
                                     </td>
-                                    <td className="px-4 py-2 border-r">
+                                    <td className={`px-4 py-2 border-r ${row.failedCells?.ma100 ? 'bg-red-100' : ''}`}>
                                         <input
                                             type="text"
                                             value={row.ma100}
                                             onChange={(e) => updateTable2(row.id, 'ma100', e.target.value)}
                                             disabled={isViewMode}
-                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${row.failedCells?.ma100 ? 'bg-red-50 border-red-300 text-red-700 font-semibold' : isViewMode
                                                 ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
                                                 : 'border-gray-300'
                                                 }`}
                                         />
                                     </td>
-                                    <td className="px-4 py-2 border-r">
+                                    <td className={`px-4 py-2 border-r ${row.failedCells?.ma200 ? 'bg-red-100' : ''}`}>
                                         <input
                                             type="text"
                                             value={row.ma200}
                                             onChange={(e) => updateTable2(row.id, 'ma200', e.target.value)}
                                             disabled={isViewMode}
-                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${row.failedCells?.ma200 ? 'bg-red-50 border-red-300 text-red-700 font-semibold' : isViewMode
                                                 ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
                                                 : 'border-gray-300'
                                                 }`}
                                         />
                                     </td>
-                                    <td className="px-4 py-2 border-r font-medium bg-gray-50 text-center">
+                                    <td className={`px-4 py-2 border-r font-medium text-center ${row.failedCells?.avgKvp ? 'bg-red-100 text-red-700 font-bold' : 'bg-gray-50'}`}>
                                         {row.avgKvp || '-'}
                                     </td>
                                     <td className="px-4 py-2 text-center">

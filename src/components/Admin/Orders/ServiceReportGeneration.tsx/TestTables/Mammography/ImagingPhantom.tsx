@@ -1,7 +1,7 @@
 // components/TestTables/ImagingPhantom.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Edit3, Save, Loader2, Plus, Trash2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -16,6 +16,7 @@ interface PhantomRow {
   visibleCount: string;
   toleranceOperator: '>' | '>=' | '<' | '<=' | '=';
   toleranceValue: string;
+  remark?: 'Pass' | 'Fail' | '';
 }
 
 interface SavedRow {
@@ -25,12 +26,13 @@ interface SavedRow {
     operator: '>' | '>=' | '<' | '<=' | '=';
     value: number;
   };
+  remark?: 'Pass' | 'Fail' | '';
 }
 
 interface SavedData {
   _id?: string;
   rows: SavedRow[];
-  remark: 'Pass' | 'Fail';
+  remark?: 'Pass' | 'Fail' | '';
 }
 
 interface Props {
@@ -40,9 +42,9 @@ interface Props {
 }
 
 const defaultRows: PhantomRow[] = [
-  { id: '1', name: 'Fibers', visibleCount: '', toleranceOperator: '>=', toleranceValue: '5' },
-  { id: '2', name: 'Microcalcifications', visibleCount: '', toleranceOperator: '>=', toleranceValue: '5' },
-  { id: '3', name: 'Masses', visibleCount: '', toleranceOperator: '>=', toleranceValue: '4' },
+  { id: '1', name: 'Fibers', visibleCount: '', toleranceOperator: '>=', toleranceValue: '5', remark: '' },
+  { id: '2', name: 'Microcalcifications', visibleCount: '', toleranceOperator: '>=', toleranceValue: '5', remark: '' },
+  { id: '3', name: 'Masses', visibleCount: '', toleranceOperator: '>=', toleranceValue: '4', remark: '' },
 ];
 
 const operators = ['>', '>=', '<', '<=', '='] as const;
@@ -55,8 +57,44 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [hasSaved, setHasSaved] = useState(false);
+  const [remark, setRemark] = useState<'Pass' | 'Fail' | ''>('');
 
   const isViewMode = hasSaved && !isEditing;
+
+  // Calculate remark for each row based on tolerance checks
+  const rowsWithRemarks = useMemo(() => {
+    return rows.map(row => {
+      const visibleCount = parseFloat(row.visibleCount) || 0;
+      const toleranceValue = parseFloat(row.toleranceValue) || 0;
+      const operator = row.toleranceOperator;
+
+      if (!row.visibleCount.trim() || !row.toleranceValue.trim()) {
+        return { ...row, remark: '' as const };
+      }
+
+      let passes = false;
+      switch (operator) {
+        case '>': passes = visibleCount > toleranceValue; break;
+        case '>=': passes = visibleCount >= toleranceValue; break;
+        case '<': passes = visibleCount < toleranceValue; break;
+        case '<=': passes = visibleCount <= toleranceValue; break;
+        case '=': passes = visibleCount === toleranceValue; break;
+        default: passes = false;
+      }
+
+      return {
+        ...row,
+        remark: (passes ? 'Pass' : 'Fail') as 'Pass' | 'Fail',
+      };
+    });
+  }, [rows]);
+
+  // Calculate overall remark based on all rows
+  const calculatedRemark = useMemo(() => {
+    if (rowsWithRemarks.length === 0) return '';
+    const allPass = rowsWithRemarks.every(row => row.remark === 'Pass');
+    return allPass ? 'Pass' : 'Fail';
+  }, [rowsWithRemarks]);
 
   // Load existing data
   useEffect(() => {
@@ -67,26 +105,31 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
       }
 
       try {
-        const data: SavedData | null = await getImagingPhantomByServiceIdForMammography(serviceId);
+        const res = await getImagingPhantomByServiceIdForMammography(serviceId);
+        const data = res?.data;
         if (data) {
           setRows(
-            data.rows.length > 0
-              ? data.rows.map((r, i) => ({
+            data.rows && data.rows.length > 0
+              ? data.rows.map((r: any, i: number) => ({
                 id: Date.now().toString() + i,
                 name: r.name,
-                visibleCount: r.visibleCount.toString(),
-                toleranceOperator: r.tolerance.operator,
-                toleranceValue: r.tolerance.value.toString(),
+                visibleCount: String(r.visibleCount || ''),
+                toleranceOperator: r.tolerance?.operator || '>=',
+                toleranceValue: String(r.tolerance?.value || ''),
+                remark: r.remark || '',
               }))
               : defaultRows
           );
           setTestId(data._id || null);
+          setRemark(data.remark || '');
           setHasSaved(true);
           setIsEditing(false);
         }
-      } catch (err) {
-        console.error(err);
-        toast.error('Failed to load Imaging Phantom data');
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          console.error(err);
+          toast.error('Failed to load Imaging Phantom data');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -111,14 +154,16 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
     setIsSaving(true);
 
     const payload = {
-      rows: rows.map(r => ({
+      rows: rowsWithRemarks.map(r => ({
         name: r.name.trim(),
         visibleCount: parseInt(r.visibleCount, 10) || 0,
         tolerance: {
           operator: r.toleranceOperator,
           value: parseFloat(r.toleranceValue) || 0,
         },
+        remark: r.remark || '',
       })),
+      remark: calculatedRemark,
     };
 
     try {
@@ -130,11 +175,12 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
         setTestId(res.data._id || res.data.testId);
         toast.success('Saved successfully!');
       }
+      setRemark(calculatedRemark);
       setHasSaved(true);
       setIsEditing(false);
       onRefresh?.();
     } catch (err: any) {
-      toast.error(err.message || 'Save failed');
+      toast.error(err?.response?.data?.message || err?.message || 'Save failed');
     } finally {
       setIsSaving(false);
     }
@@ -154,6 +200,7 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
       visibleCount: '',
       toleranceOperator: '>=',
       toleranceValue: '',
+      remark: '',
     }]);
   };
 
@@ -240,14 +287,17 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
                   Number of objects visible
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
                   Tolerance (at AGD less than 3 mGy)
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-100">
+                  Remarks
                 </th>
                 <th className="w-12"></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {rows.map((row, index) => (
+              {rowsWithRemarks.map((row, index) => (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-center font-medium text-gray-700 border-r">
                     {index + 1}
@@ -322,6 +372,20 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
                     </div>
                   </td>
 
+                  <td className="px-6 py-4 text-center border-r">
+                    <span
+                      className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
+                        row.remark === 'Pass'
+                          ? 'bg-green-100 text-green-800'
+                          : row.remark === 'Fail'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}
+                    >
+                      {row.remark || '—'}
+                    </span>
+                  </td>
+
                   <td className="px-3 py-4 text-center">
                     {rows.length > 1 && !isViewMode && (
                       <button
@@ -339,7 +403,7 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
           </table>
         </div>
 
-        <div className="px-6 py-4 bg-gray-50 border-t">
+        <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
           {!isViewMode && (
             <button
               onClick={addRow}
@@ -349,6 +413,20 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
               Add Object
             </button>
           )}
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700">Remarks:</span>
+            <span
+              className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
+                (isViewMode ? remark : calculatedRemark) === 'Pass'
+                  ? 'bg-green-100 text-green-800'
+                  : (isViewMode ? remark : calculatedRemark) === 'Fail'
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {isViewMode ? (remark || '—') : (calculatedRemark || '—')}
+            </span>
+          </div>
         </div>
       </div>
     </div>

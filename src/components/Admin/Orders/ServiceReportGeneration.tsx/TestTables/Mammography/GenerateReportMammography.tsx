@@ -378,7 +378,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string }> = ({ serviceId 
                     { title: "Radiation Leakage Level (5 cm from Tube Housing)", component: <RadiationLeakageLevel serviceId={serviceId} /> },
                     { title: "Imaging Performance Evaluation (Phantom)", component: <ImagingPhantom serviceId={serviceId} /> },
                     { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey serviceId={serviceId} /> },
-                    { title: "Equipment Settings Verification", component: <EquipementSetting serviceId={serviceId} /> },
+                    // { title: "Equipment Settings Verification", component: <EquipementSetting serviceId={serviceId} /> },
                     // { title: "Maximum Radiation Levels at Different Locations", component: <MaximumRadiationLevel serviceId={serviceId} /> },
                 ].map((item, i) => (
                     <Disclosure key={i} defaultOpen={i === 0}>

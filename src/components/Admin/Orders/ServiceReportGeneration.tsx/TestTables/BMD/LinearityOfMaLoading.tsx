@@ -50,6 +50,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,30 +132,64 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
+      // Calculate average mGy and round to 4 decimal places
+      const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
+      const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
+      
       const ma = parseFloat(row.ma);
-      const x = avg !== '—' && ma > 0 ? (parseFloat(avg) / ma).toFixed(4) : '—';
+      // Calculate X = mGy / mA and round to 4 decimal places
+      const x = avg !== null && ma > 0 ? parseFloat((avg / ma).toFixed(4)) : null;
+      const xDisplay = x !== null ? x.toFixed(4) : '—';
 
-      if (x !== '—') xValues.push(parseFloat(x));
+      if (x !== null) xValues.push(x);
 
-      return { ...row, average: avg, x };
+      return { ...row, average: avgDisplay, x: xDisplay };
     });
 
-    const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
-    const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
-    const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-      ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
-      : '—';
-    const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+    const hasData = xValues.length > 0;
+    // Round xMax and xMin to 4 decimal places
+    const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
+    const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
+    
+    // Calculate COL: |xMax - xMin| / (xMax + xMin) and round to 4 decimal places
+    const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
+      ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+      : null;
+    const col = hasData && colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
+    
+    // Determine pass/fail based on tolerance operator and CoL value
+    let pass = false;
+    let remarks = '—';
+    
+    if (hasData && col !== '—' && colNum !== null) {
+      const colVal = parseFloat(col);
+      switch (toleranceOperator) {
+        case '<':
+          pass = colVal < tol;
+          break;
+        case '>':
+          pass = colVal > tol;
+          break;
+        case '<=':
+          pass = colVal <= tol;
+          break;
+        case '>=':
+          pass = colVal >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colVal - tol) < 0.0001; // Allow small floating point differences
+          break;
+        default:
+          pass = colVal <= tol;
+      }
+      remarks = pass ? 'Pass' : 'Fail';
+    }
 
-    return rowsWithX.map(row => ({
-      ...row,
-      xMax,
-      xMin,
-      col: colVal,
-      remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
-    }));
-  }, [table2Rows, tolerance]);
+    return {
+      rows: rowsWithX,
+      summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
+    };
+  }, [table2Rows, tolerance, toleranceOperator]);
 
   // === Form Valid ===
   const isFormValid = useMemo(() => {
@@ -205,6 +240,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             })));
           }
           if (testData.tolerance) setTolerance(testData.tolerance);
+          if (testData.toleranceOperator) setToleranceOperator(testData.toleranceOperator);
+          if (testData.measHeaders && testData.measHeaders.length > 0) {
+            setMeasHeaders(testData.measHeaders);
+          }
           setHasSaved(true);
         }
       } catch (err: any) {
@@ -232,19 +271,25 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
     setIsSaving(true);
     try {
+      // Use processedTable2 to get calculated values
       const payload = {
-        table1: table1Row,
-        table2: processedTable2.map(p => ({
-          ma: p.ma,
-          measuredOutputs: p.measuredOutputs,
-          average: p.average,
-          x: p.x,
-          xMax: p.xMax,
-          xMin: p.xMin,
-          col: p.col,
-          remarks: p.remarks,
+        table1: [table1Row],
+        table2: processedTable2.rows.map(r => ({
+          mAsApplied: r.ma,
+          measuredOutputs: r.measuredOutputs.map(v => {
+            const val = v.trim();
+            return val === '' ? null : (isNaN(parseFloat(val)) ? val : parseFloat(val));
+          }),
+          average: r.average || '',
+          x: r.x || '',
         })),
+        measHeaders,
         tolerance,
+        toleranceOperator,
+        xMax: processedTable2.summary.xMax,
+        xMin: processedTable2.summary.xMin,
+        col: processedTable2.summary.col,
+        remarks: processedTable2.summary.remarks,
       };
 
       let result;
@@ -291,8 +336,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">FCD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FFD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (sec)</th>
             </tr>
           </thead>
@@ -341,13 +386,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
               {/* Header – make mA column wider */}
               <th
                 rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r whitespace-nowrap"
+                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
               >
                 mA
               </th>
               <th
                 colSpan={measHeaders.length}
-                className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
               >
                 <div className="flex items-center justify-between">
                   <span>Output (mGy)</span>
@@ -358,12 +403,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   )}
                 </div>
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X (mGy/mA)</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MAX</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MIN</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">CoL</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mA)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
               <th rowSpan={2} className="w-10" />
             </tr>
             <tr>
@@ -388,7 +433,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {processedTable2.map((p) => (
+            {processedTable2.rows.map((p, index) => (
               <tr key={p.id} className="hover:bg-gray-50">
                 <td className="px-4 py-2 border-r">
                   <input
@@ -416,27 +461,36 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
                 <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.average}</td>
                 <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.x}</td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50">{p.xMax}</td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50">{p.xMin}</td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50">{p.col}</td>
-
-                <td className="px-4 py-2 text-center">
-                  <span
-                    className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${p.remarks === 'Pass'
-                      ? 'bg-green-100 text-green-800'
-                      : p.remarks === 'Fail'
-                        ? 'bg-red-100 text-red-800'
-                        : 'text-gray-400'
-                      }`}
-                  >
-                    {p.remarks || '—'}
-                  </span>
-                </td>
+                {index === 0 && (
+                  <>
+                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                      {processedTable2.summary.xMax}
+                    </td>
+                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                      {processedTable2.summary.xMin}
+                    </td>
+                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                      {processedTable2.summary.col}
+                    </td>
+                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center align-middle">
+                      <span
+                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedTable2.summary.remarks === 'Pass'
+                          ? 'bg-green-100 text-green-800'
+                          : processedTable2.summary.remarks === 'Fail'
+                            ? 'bg-red-100 text-red-800'
+                            : 'text-gray-400'
+                          }`}
+                      >
+                        {processedTable2.summary.remarks || '—'}
+                      </span>
+                    </td>
+                  </>
+                )}
 
                 <td className="px-2 py-2 text-center">
                   {table2Rows.length > 1 && !isViewMode && (
                     <button
-                      onClick={() => window.confirm('Delete this row?') && removeTable2Row(p.id)}
+                      onClick={() => removeTable2Row(p.id)}
                       className="text-red-600 hover:bg-red-100 p-1 rounded transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -458,7 +512,19 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) less than</span>
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"

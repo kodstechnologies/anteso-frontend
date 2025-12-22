@@ -69,9 +69,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     },
   ]);
 
-  // Calculate avg, CV and remark – pure calculation, no state mutation needed
+  // Calculate avg, CoV and remark – pure calculation, no state mutation needed
   const rowsWithCalc = useMemo(() => {
-    const tolValue = parseFloat(tolerance.value) || 5.0;
+    // Tolerance value is already in percentage (e.g., 5.0 for 5%)
+    const tolValuePercent = parseFloat(tolerance.value) || 5.0;
 
     return outputRows.map((row): OutputRow => {
       const values = row.outputs
@@ -86,19 +87,21 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const variance =
         values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
       const stdDev = Math.sqrt(variance);
-      const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
+      const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal
+      const covPercent = covDecimal * 100; // CoV as percentage
 
+      // Compare CoV (percentage) with tolerance (percentage)
       const passes =
         tolerance.operator === '<=' || tolerance.operator === '<'
-          ? cv <= tolValue
-          : cv >= tolValue;
+          ? covPercent <= tolValuePercent
+          : covPercent >= tolValuePercent;
 
       const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
 
       return {
         ...row,
-        avg: avg.toFixed(3),
-        cv: cv.toFixed(2),
+        avg: avg.toFixed(4),
+        cv: covPercent.toFixed(4), // Display CoV as percentage
         remark,
       };
     });
@@ -128,6 +131,42 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         }
         return row;
       })
+    );
+    setIsSaved(false);
+  };
+
+  const addMeasurementColumn = (afterIndex: number) => {
+    if (measurementCount >= 10) {
+      toast.error('Maximum 10 measurements allowed');
+      return;
+    }
+    const newCount = measurementCount + 1;
+    setMeasurementCount(newCount);
+    setOutputRows(prev =>
+      prev.map(row => {
+        const newOutputs = [...row.outputs];
+        newOutputs.splice(afterIndex + 1, 0, { value: '' });
+        return {
+          ...row,
+          outputs: newOutputs,
+        };
+      })
+    );
+    setIsSaved(false);
+  };
+
+  const removeMeasurementColumn = (index: number) => {
+    if (measurementCount <= 3) {
+      toast.error('Minimum 3 measurements required');
+      return;
+    }
+    const newCount = measurementCount - 1;
+    setMeasurementCount(newCount);
+    setOutputRows(prev =>
+      prev.map(row => ({
+        ...row,
+        outputs: row.outputs.filter((_, i) => i !== index),
+      }))
     );
     setIsSaved(false);
   };
@@ -239,6 +278,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           mas: r.mas,
           outputs: r.outputs,
           avg: r.avg,
+          cv: r.cv,
           remark: r.remark,
         })),
         tolerance,
@@ -319,7 +359,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       <div className="bg-white rounded-lg border shadow-sm">
         
         <div className="p-6 flex items-center gap-4">
-          <label className="w-48 text-sm font-medium text-gray-700">FCD:</label>
+          <label className="w-48 text-sm font-medium text-gray-700">FFD(cm):</label>
           <input
             type="text"
             value={fcd.value}
@@ -334,47 +374,57 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       {/* Main Table */}
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+        <div className="bg-gray-50 px-6 py-4 border-b">
           <h3 className="font-semibold text-gray-700">
             Radiation Output Measurements (mGy)
           </h3>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-gray-600">Measurements per row:</span>
-            <input
-              type="number"
-              min="3"
-              max="10"
-              value={measurementCount}
-              onChange={e => updateMeasurementCount(Number(e.target.value))}
-              disabled={isViewMode}
-              className={`w-16 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-            />
-          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                   kV
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                   mAs
                 </th>
                 {Array.from({ length: measurementCount }, (_, i) => (
                   <th
                     key={i}
-                    className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r"
+                    className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r relative"
                   >
-                    Meas {i + 1}
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-1">
+                        <span>Meas {i + 1}</span>
+                        {!isViewMode && measurementCount < 10 && (
+                          <button
+                            onClick={() => addMeasurementColumn(i)}
+                            className="text-green-600 hover:bg-green-100 p-0.5 rounded transition"
+                            title="Add column after this"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      {!isViewMode && measurementCount > 3 && (
+                        <button
+                          onClick={() => removeMeasurementColumn(i)}
+                          className="text-red-600 hover:bg-red-100 p-1 rounded transition"
+                          title="Remove this column"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </th>
                 ))}
-                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600  border-r">
                   Average
                 </th>
-                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase">
-                  CV (%) / Result
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 ">
+                  CoV / Result
                 </th>
                 <th className="w-12" />
               </tr>
@@ -434,7 +484,8 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     {outputRows.length > 1 && (
                       <button
                         onClick={() => removeRow(row.id)}
-                        className="textMY-red-600 hover:bg-red-50 p-2 rounded transition"
+                        disabled={isViewMode}
+                        className="text-red-600 hover:bg-red-50 p-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -463,7 +514,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       <div className="bg-white rounded-lg border p-6 max-w-md shadow-sm">
         <h3 className="font-semibold text-gray-700 mb-4">Acceptance Criteria</h3>
         <div className="flex items-center gap-4">
-          <span className="text-gray-700">Coefficient of Variation (CV)</span>
+          <span className="text-gray-700">Coefficient of Variation (CoV)</span>
           <select
             value={tolerance.operator}
             onChange={e => {
@@ -491,7 +542,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             disabled={isViewMode}
             className={`w-24 px-4 py-2 text-center border-2 border-blue-500 rounded font-bold text-lg focus:outline-none focus:ring-2 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
           />
-          <span className="text-gray-700">%</span>
+          {/* <span className="text-gray-700">%</span> */}
         </div>
         <p className="text-sm text-gray-500 mt-3">
           Reference: IEC 61223-3-1 & AERB Safety Code

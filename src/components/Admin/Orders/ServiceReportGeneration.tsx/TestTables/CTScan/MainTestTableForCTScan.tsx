@@ -157,11 +157,40 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
   const rows: any[] = [];
   let srNo = 1;
 
+  // Helper function to get criteria text based on applied value for Radiation Profile Width
+  const getRadiationProfileCriteria = (applied: string | number): string => {
+    const appliedNum = typeof applied === 'string' ? parseFloat(applied) : applied;
+    if (isNaN(appliedNum) || appliedNum <= 0) return "-";
+    
+    if (appliedNum < 1.0) {
+      return "a. Less than 1.0 mm";
+    } else if (appliedNum >= 1.0 && appliedNum <= 2.0) {
+      return "b. 1.0 mm to 2.0 mm";
+    } else {
+      return "c. Above 2.0 mm";
+    }
+  };
+
+  // Helper function to calculate tolerance based on applied value for Radiation Profile Width
+  const getRadiationProfileTolerance = (applied: string | number): string => {
+    const appliedNum = typeof applied === 'string' ? parseFloat(applied) : applied;
+    if (isNaN(appliedNum) || appliedNum <= 0) return "-";
+    
+    if (appliedNum < 1.0) {
+      return "0.5 mm";
+    } else if (appliedNum >= 1.0 && appliedNum <= 2.0) {
+      return "±50%";
+    } else {
+      return "±1.0 mm";
+    }
+  };
+
   const addRowsForTest = (
     parameter: string,
     testRows: Array<{
       specified: string | number;
       measured: string | number;
+      criteria?: string;
       tolerance: string;
       remarks: "Pass" | "Fail";
     }>
@@ -175,6 +204,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         rowSpan: idx === 0 ? testRows.length : 0, // First row spans all rows
         specified: testRow.specified,
         measured: testRow.measured,
+        criteria: testRow.criteria,
         tolerance: testRow.tolerance,
         remarks: testRow.remarks,
         isFirstRow: idx === 0,
@@ -186,12 +216,11 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.radiationProfile?.table2 && Array.isArray(testData.radiationProfile.table2)) {
     const validRows = testData.radiationProfile.table2.filter((row: any) => row.applied || row.measured);
     if (validRows.length > 0) {
-      // Fixed tolerance values: 0.5 mm, ±50%, ±1.0 mm
-      const FIXED_TOLERANCE_VALUES = ['0.5 mm', '±50%', '±1.0 mm'];
-      const testRows = validRows.map((row: any, index: number) => ({
+      const testRows = validRows.map((row: any) => ({
         specified: row.applied || "-",
         measured: row.measured || "-",
-        tolerance: row.criteriaValue || row.toleranceValue || FIXED_TOLERANCE_VALUES[index] || "±10% or ±1 mm",
+        criteria: getRadiationProfileCriteria(row.applied),
+        tolerance: getRadiationProfileTolerance(row.applied),
         remarks: row.remarks === "Pass" ? "Pass" : "Fail" as "Pass" | "Fail",
       }));
       addRowsForTest("Radiation Profile Width / Slice Thickness (mm)", testRows);
@@ -342,18 +371,37 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
   // 8. OUTPUT CONSISTENCY - Separate rows for each value
   if (testData.outputConsistency) {
     const { outputRows, tolerance } = testData.outputConsistency;
-    const tol = tolerance ? parseFloat(tolerance) : 2.0;
+    // Handle tolerance as object (new format) or number (old format)
+    const tolValue = tolerance && typeof tolerance === 'object' && tolerance.value 
+      ? parseFloat(tolerance.value) 
+      : (typeof tolerance === 'string' || typeof tolerance === 'number') 
+        ? parseFloat(String(tolerance)) 
+        : 0.05;
+    const tolOperator = tolerance && typeof tolerance === 'object' && tolerance.operator 
+      ? tolerance.operator 
+      : '<=';
 
     if (outputRows && Array.isArray(outputRows) && outputRows.length > 0) {
       const validRows = outputRows.filter((row: any) => row.kvp || row.mean);
       if (validRows.length > 0) {
         const testRows = validRows.map((row: any) => {
-          const cov = row.cov ? (parseFloat(row.cov) * 100).toFixed(2) : "-";
-          const isPass = row.cov ? parseFloat(row.cov) * 100 <= tol : false;
+          // CoV is stored as decimal, not percentage
+          const cov = row.cov ? parseFloat(row.cov).toFixed(4) : "-";
+          // Compare CoV (decimal) with tolerance (decimal)
+          let isPass = false;
+          if (cov !== "-") {
+            const covNum = parseFloat(row.cov);
+            if (tolOperator === '<=' || tolOperator === '<') {
+              isPass = covNum <= tolValue;
+            } else {
+              isPass = covNum >= tolValue;
+            }
+          }
+          const operatorSymbol = tolOperator === '<=' ? '≤' : tolOperator === '<' ? '<' : tolOperator === '>=' ? '≥' : '>';
           return {
             specified: row.kvp ? `${row.kvp} kVp` : "Varies with kVp",
-            measured: cov === "-" ? "-" : `${cov}%`,
-            tolerance: `≤ ${tol}%`,
+            measured: cov === "-" ? "-" : cov,
+            tolerance: `${operatorSymbol} ${tolValue}`, // Display as decimal, not percentage
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
@@ -424,6 +472,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-left w-72 print:text-[9px]">Parameters Used</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32 print:text-[9px]">Specified Values</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32 print:text-[9px]">Measured Values</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-40 print:text-[9px]">Criteria</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-40 print:text-[9px]">Tolerance</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-green-100 w-24 print:text-[9px]">Remarks</th>
             </tr>
@@ -443,6 +492,9 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
                 ) : null}
                 <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.specified}</td>
                 <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.measured}</td>
+                <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent">
+                  {row.criteria || "-"}
+                </td>
                 <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent">
                   {row.tolerance}
                 </td>

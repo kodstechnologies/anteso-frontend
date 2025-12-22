@@ -74,7 +74,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     });
   }, [leakageRows]);
 
-  // === Calculate leakage result for each row ===
+  // === Calculate leakage result for each row (in mR in one hour) ===
   const rowLeakageResults = useMemo(() => {
     const workloadVal = parseFloat(workload) || 0;
     const maVal = parseFloat(settings.ma) || 1;
@@ -82,41 +82,65 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     return processedLeakage.map(row => {
       const rowMax = parseFloat(row.max) || 0;
       if (workloadVal > 0 && rowMax > 0 && maVal > 0) {
+        // Formula: (workload × max Exposure Level (mR/hr)) / (60 × mA used for measurement) = mR in one hour
         return ((workloadVal * rowMax) / (60 * maVal)).toFixed(3);
       }
       return '';
     });
   }, [workload, processedLeakage, settings.ma]);
 
-  // === Max Leakage Result (max of all rows) ===
-  const maxLeakageResult = useMemo(() => {
-    const results = rowLeakageResults.map(r => parseFloat(r) || 0).filter(r => r > 0);
-    return results.length > 0 ? Math.max(...results).toFixed(3) : '';
-  }, [rowLeakageResults]);
+  // === Calculate mGy in one hour for each row (result / 114) ===
+  // Following Radiography Fixed formula structure
+  const calculatedResults = useMemo(() => {
+    return processedLeakage.map((row, idx) => {
+      const rowMax = parseFloat(row.max) || 0;
+      const maVal = parseFloat(settings.ma) || 1;
+      const workloadVal = parseFloat(workload) || 0;
+      
+      let calculatedMR = '';
+      let calculatedMGy = '—';
+      
+      if (rowMax > 0 && maVal > 0 && workloadVal > 0) {
+        // Treat exposure level as mR/hr for calculation (convert mGy/h to mR/hr if needed)
+        // If unit is mGy/h, convert to mR/hr: mGy/h × 114 = mR/hr
+        const exposureLevelMR = row.unit === 'mGy/h' ? rowMax * 114 : rowMax;
+        
+        // Formula: (workload × max Exposure Level (mR/hr)) / (60 × mA used for measurement) = mR in one hour
+        const resultMR = (workloadVal * exposureLevelMR) / (60 * maVal);
+        calculatedMR = resultMR.toFixed(3);
+        // Convert to mGy: result / 114 = mGy in one hour
+        calculatedMGy = (resultMR / 114).toFixed(4);
+      }
+      
+      return {
+        location: row.location,
+        max: row.max,
+        calculatedMR,
+        calculatedMGy,
+      };
+    });
+  }, [processedLeakage, settings.ma, workload]);
 
-  // === Maximum Radiation Leakage (max of each row's calculation divided by 114) ===
-  const maxRadiationLeakage = useMemo(() => {
-    const results = rowLeakageResults
-      .map(r => parseFloat(r) || 0)
-      .filter(r => r > 0)
-      .map(r => r / 114);
-    return results.length > 0 ? Math.max(...results).toFixed(3) : '';
-  }, [rowLeakageResults]);
+  // === Global highest leakage (for final Pass/Fail) ===
+  const allCalculatedMGy = calculatedResults.map(r => parseFloat(r.calculatedMGy || '0') || 0);
+  const globalMaxResultMGy = allCalculatedMGy.length > 0 && Math.max(...allCalculatedMGy) > 0 
+    ? Math.max(...allCalculatedMGy).toFixed(4) 
+    : '—';
 
   // === Auto Remark ===
   const finalRemark = useMemo(() => {
-    const maxLeak = parseFloat(maxRadiationLeakage) || 0;
+    const result = parseFloat(globalMaxResultMGy || '0') || 0;
     const tol = parseFloat(toleranceValue) || 0;
 
-    if (!toleranceValue || !maxRadiationLeakage) return '';
+    if (!toleranceValue || globalMaxResultMGy === '—') return '';
 
     let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = maxLeak <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = maxLeak >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(maxLeak - tol) < 0.001;
+    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
+    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
+    if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
 
     return pass ? 'Pass' : 'Fail';
-  }, [maxRadiationLeakage, toleranceValue, toleranceOperator]);
+  }, [globalMaxResultMGy, toleranceValue, toleranceOperator]);
 
   // === Update Handlers ===
   const updateSettings = (field: 'kv' | 'ma' | 'time', value: string) => {
@@ -315,13 +339,13 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
                 kV
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
                 mA
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">
                 Time (sec)
               </th>
             </tr>
@@ -399,19 +423,19 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                 Location
               </th>
-              <th colSpan={4} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+              <th colSpan={4} className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r">
                 Exposure Level (mGy)
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                 Max
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                 Unit
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
                 Remark
               </th>
             </tr>
@@ -500,58 +524,86 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         )}
       </div>
 
+      {/* Work Load and Max Leakage Calculation */}
       <div className="bg-white shadow-md rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-3">Max Leakage Calculation</h3>
+        <h3 className="text-lg font-semibold mb-4">Work Load and Max Leakage Calculation</h3>
         <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700 w-48">Work Load:</label>
+            <input
+              type="text"
+              value={workload}
+              onChange={(e) => setWorkload(e.target.value)}
+              disabled={isViewMode}
+              className={`w-48 px-4 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+              placeholder="500"
+            />
+            <input
+              type="text"
+              value={workloadUnit}
+              onChange={(e) => setWorkloadUnit(e.target.value)}
+              disabled={isViewMode}
+              className={`w-48 px-4 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+              placeholder="mA·min/week"
+            />
+          </div>
           {processedLeakage.map((row, idx) => {
             const rowMax = parseFloat(row.max) || 0;
-            const maVal = parseFloat(settings.ma) || 1;
+            const maVal = parseFloat(settings.ma) || 0;
             const workloadVal = parseFloat(workload) || 0;
-            const rowResult = rowLeakageResults[idx] || '—';
+            const calculatedMR = calculatedResults[idx]?.calculatedMR || '—';
+            const exposureLevelMR = row.unit === 'mGy/h' ? rowMax * 114 : rowMax;
+            const maxExposureLevel = rowMax > 0 ? (row.unit === 'mGy/h' ? `${rowMax.toFixed(2)} mGy/h (= ${exposureLevelMR.toFixed(2)} mR/hr)` : `${rowMax.toFixed(2)} mR/hr`) : '—';
             
             return (
-              <div key={idx} className="flex items-center gap-3 text-sm border-b pb-2">
-                <span className="font-medium w-24">{row.location}:</span>
-                <span className="font-medium">{workload || '—'}</span>
-                <span>×</span>
-                <span className="font-medium">{rowMax > 0 ? rowMax.toFixed(3) : '—'}</span>
-                <span>÷</span>
-                <span className="font-medium">60</span>
-                <span>×</span>
-                <span className="font-medium">{maVal || '—'}</span>
-                <span>=</span>
-                <input
-                  type="text"
-                  value={rowResult}
-                  readOnly
-                  className="w-24 px-2 py-1 bg-gray-100 text-sm font-medium text-center rounded"
-                />
-                {!isViewMode && leakageRows.length > 1 && (
-                  <button
-                    onClick={() => removeLeakageRow(idx)}
-                    className="ml-2 text-red-600 hover:bg-red-100 p-1 rounded"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
+              <div key={idx} className="flex items-start gap-3">
+                <label className="text-sm font-medium text-gray-700 w-48">Max Leakage =</label>
+                <div className="flex-1">
+                  <div className="text-sm text-gray-700 mb-2">
+                    ({workload || '—'} {workloadUnit || 'mA·min/week'} × {maxExposureLevel} max Exposure Level) / (60 × {maVal || '—'} mA used for measurement)
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-sm font-medium text-gray-700">Calculated Max Leakage:</span>
+                    <span className={`ml-3 px-4 py-2 border-2 rounded-md font-bold text-lg ${
+                      calculatedMR !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300'
+                    }`}>
+                      {calculatedMR} mR in one hour
+                    </span>
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* ==================== Maximum Radiation Leakage ==================== */}
+      {/* ==================== Summary of Maximum Radiation Leakage ==================== */}
       <div className="bg-white shadow-md rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-3">Maximum Radiation Leakage from Tube Housing</h3>
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={maxRadiationLeakage}
-            readOnly
-            className="w-32 px-3 py-2 bg-gray-100 text-sm font-medium text-center rounded"
-          />
-          <span className="text-sm text-gray-600">mGy/h</span>
-          <span className="text-sm text-gray-500 italic">(Result ÷ 114)</span>
+        <h3 className="text-lg font-semibold mb-4">Summary of Maximum Radiation Leakage</h3>
+        <div className="space-y-3">
+          {calculatedResults.map((result, idx) => {
+            const row = processedLeakage[idx];
+            const maxValue = row.max || '—';
+            const maVal = parseFloat(settings.ma) || 0;
+            
+            return (
+              <div key={idx} className="flex items-start gap-3">
+                <span className="text-sm font-medium text-gray-700 w-64">
+                  Maximum Radiation Leakage from {result.location}:
+                </span>
+                <div className="flex-1">
+                  <div className="text-sm text-gray-600 mb-2">
+                    Formula: ({workload || '—'} {workloadUnit || 'mA·min/week'} × {maxValue} max Exposure Level ({row.unit === 'mGy/h' ? `${maxValue} mGy/h (= ${(parseFloat(maxValue || '0') * 114).toFixed(2)} mR/hr)` : `${maxValue} mR/hr`})) / (60 × {maVal || '—'} mA used for measurement) ÷ 114
+                  </div>
+                  <span className={`px-4 py-2 border-2 rounded-md font-semibold ${
+                    result.calculatedMGy !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-gray-50'
+                  }`}>
+                    {result.calculatedMGy !== '—' ? `${result.calculatedMGy} mGy` : '—'} in one hour
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -8,35 +8,36 @@ import {
   updateTotalFilterationForMammography,
 } from '../../../../../../api'; // Adjust path as needed
 
+interface RecommendedValue {
+  minValue: string;
+  maxValue: string;
+  kvp: string;
+}
+
 interface TableRow {
   id: string;
   kvp: string;
   mAs: string;
   alEquivalence: string;
   hvt: string;
-}
-
-interface HvlToleranceItem {
-  operator: '>' | '>=' | '<' | '<=' | '=';
-  value: string;
-}
-
-interface HvlTolerances {
-  at30: HvlToleranceItem;
-  at40: HvlToleranceItem;
-  at50: HvlToleranceItem;
+  remarks: 'Pass' | 'Fail' | '';
+  recommendedValue?: RecommendedValue;
 }
 
 interface SavedData {
   targetWindow: string;
   addedFilterThickness: string | null;
-  table: { kvp: number | null; mAs: number | null; alEquivalence: number | null; hvt: number | null }[];
+  table: { 
+    kvp: number | null; 
+    mAs: number | null; 
+    alEquivalence: number | null; 
+    hvt: number | null; 
+    remarks?: 'Pass' | 'Fail' | '';
+    recommendedValue?: { minValue: number | null; maxValue: number | null; kvp: number | null };
+  }[];
   resultHVT28kVp: number | null;
-  hvlTolerances: HvlTolerances;
   _id?: string;
 }
-
-const operators = ['>', '>=', '<', '<=', '='] as const;
 
 const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceId }) => {
   const [testId, setTestId] = useState<string | null>(null);
@@ -44,47 +45,56 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
   const [targetWindow, setTargetWindow] = useState('Molybdenum target, Beryllium window or Rh/Rh or W/Al');
   const [addedFilterThickness, setAddedFilterThickness] = useState('');
   const [rows, setRows] = useState<TableRow[]>([
-    { id: '1', kvp: '28', mAs: '', alEquivalence: '', hvt: '' },
+    { 
+      id: '1', 
+      kvp: '28', 
+      mAs: '', 
+      alEquivalence: '', 
+      hvt: '', 
+      remarks: '',
+      recommendedValue: { minValue: '0.30', maxValue: '0.37', kvp: '28' }
+    },
   ]);
   const [resultHVT, setResultHVT] = useState('');
   const [resultHVTKvp, setResultHVTKvp] = useState('28');
 
-  const [hvlTolerances, setHvlTolerances] = useState<HvlTolerances>({
-    at30: { operator: '>=', value: '0.30' },
-    at40: { operator: '>=', value: '0.40' },
-    at50: { operator: '>=', value: '0.50' },
-  });
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // Auto-sync HVT from the row that matches the result kVp
-  const hvtAtResultKvp = useMemo(() => {
-    const row = rows.find(r => r.kvp.trim() === resultHVTKvp.trim());
-    return row?.hvt.trim() || '';
-  }, [rows, resultHVTKvp]);
-
-  // Auto-detect kVp from row with HVT value if resultHVT matches
-  useEffect(() => {
-    if (resultHVT) {
-      const matchingRow = rows.find(r => {
-        const rowHvt = parseFloat(r.hvt);
-        const resultHvt = parseFloat(resultHVT);
-        return !isNaN(rowHvt) && !isNaN(resultHvt) && Math.abs(rowHvt - resultHvt) < 0.001;
-      });
-      if (matchingRow && matchingRow.kvp.trim()) {
-        setResultHVTKvp(matchingRow.kvp.trim());
+  // Calculate remarks for each row based on recommended values
+  const rowsWithRemarks = useMemo(() => {
+    return rows.map((row) => {
+      if (!row.recommendedValue) {
+        return { ...row, remarks: '' as const };
       }
-    }
-  }, [rows, resultHVT]);
 
-  useEffect(() => {
-    if (hvtAtResultKvp && !resultHVT) {
-      setResultHVT(hvtAtResultKvp);
-    }
-  }, [hvtAtResultKvp, resultHVT]);
+      const minValue = parseFloat(row.recommendedValue.minValue);
+      const maxValue = parseFloat(row.recommendedValue.maxValue);
+      const recommendedKvpNum = parseFloat(row.recommendedValue.kvp);
+      const rowKvp = parseFloat(row.kvp);
+
+      // Only calculate remark if this row's kVp matches the recommended kVp
+      if (isNaN(rowKvp) || isNaN(recommendedKvpNum) || rowKvp !== recommendedKvpNum) {
+        return { ...row, remarks: '' as const };
+      }
+
+      const hvtValue = parseFloat(row.hvt);
+      if (isNaN(hvtValue) || isNaN(minValue) || isNaN(maxValue)) {
+        return { ...row, remarks: '' as const };
+      }
+
+      // Check if HVT is within recommended range: minValue ≤ HVT ≤ maxValue
+      const passes = hvtValue >= minValue && hvtValue <= maxValue;
+      return {
+        ...row,
+        remarks: (passes ? 'Pass' : 'Fail') as 'Pass' | 'Fail',
+      };
+    });
+  }, [rows]);
+
 
   // Load data from backend
   useEffect(() => {
@@ -102,6 +112,12 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
               mAs: t.mAs?.toString() || '',
               alEquivalence: t.alEquivalence?.toString() || '',
               hvt: t.hvt?.toString() || '',
+              remarks: (t.remarks as 'Pass' | 'Fail' | '') || '',
+              recommendedValue: t.recommendedValue ? {
+                minValue: t.recommendedValue.minValue?.toString() || '0.30',
+                maxValue: t.recommendedValue.maxValue?.toString() || '0.37',
+                kvp: t.recommendedValue.kvp?.toString() || t.kvp?.toString() || '28',
+              } : { minValue: '0.30', maxValue: '0.37', kvp: t.kvp?.toString() || '28' },
             }))
           );
           setResultHVT(data.resultHVT28kVp?.toString() || '');
@@ -116,11 +132,6 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
           } else if (data.table.length > 0 && data.table[0].kvp !== null && data.table[0].kvp !== undefined) {
             setResultHVTKvp(data.table[0].kvp.toString());
           }
-          setHvlTolerances(data.hvlTolerances || {
-            at30: { operator: '>=', value: '0.30' },
-            at40: { operator: '>=', value: '0.40' },
-            at50: { operator: '>=', value: '0.50' },
-          });
           setTestId(data._id || null);
           setHasSaved(true);
           setIsEditing(false);
@@ -143,18 +154,19 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
     const payload = {
       targetWindow,
       addedFilterThickness: addedFilterThickness || null,
-      table: rows.map(r => ({
+      table: rowsWithRemarks.map(r => ({
         kvp: parseFloat(r.kvp) || null,
         mAs: parseFloat(r.mAs) || null,
         alEquivalence: parseFloat(r.alEquivalence) || null,
         hvt: parseFloat(r.hvt) || null,
+        remarks: r.remarks || '',
+        recommendedValue: r.recommendedValue ? {
+          minValue: parseFloat(r.recommendedValue.minValue) || null,
+          maxValue: parseFloat(r.recommendedValue.maxValue) || null,
+          kvp: parseFloat(r.recommendedValue.kvp) || null,
+        } : null,
       })),
       resultHVT28kVp: parseFloat(resultHVT) || null,
-      hvlTolerances: {
-        at30: { operator: hvlTolerances.at30.operator, value: parseFloat(hvlTolerances.at30.value) || null },
-        at40: { operator: hvlTolerances.at40.operator, value: parseFloat(hvlTolerances.at40.value) || null },
-        at50: { operator: hvlTolerances.at50.operator, value: parseFloat(hvlTolerances.at50.value) || null },
-      },
     };
 
     try {
@@ -193,6 +205,8 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
       mAs: '',
       alEquivalence: '',
       hvt: '',
+      remarks: '',
+      recommendedValue: { minValue: '0.30', maxValue: '0.37', kvp: '' },
     }]);
   };
 
@@ -205,12 +219,33 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
   };
 
-  const updateTolerance = (kvp: 'at30' | 'at40' | 'at50', field: 'operator' | 'value', value: string) => {
-    setHvlTolerances(prev => ({
-      ...prev,
-      [kvp]: { ...prev[kvp], [field]: value }
+  const updateRecommendedValue = (id: string, field: 'minValue' | 'maxValue' | 'kvp', value: string) => {
+    setRows(prev => prev.map(r => {
+      if (r.id === id) {
+        return {
+          ...r,
+          recommendedValue: {
+            ...(r.recommendedValue || { minValue: '0.30', maxValue: '0.37', kvp: r.kvp || '28' }),
+            [field]: value,
+          },
+        };
+      }
+      return r;
     }));
   };
+
+
+
+  // Auto-update recommended values for rows when targetWindow changes
+  useEffect(() => {
+    const targetWindowLower = targetWindow.toLowerCase();
+    const defaultValues = { minValue: '0.30', maxValue: '0.37', kvp: '28' };
+    
+    setRows(prev => prev.map(row => ({
+      ...row,
+      recommendedValue: row.recommendedValue || defaultValues,
+    })));
+  }, [targetWindow]);
 
   if (isLoading) {
     return (
@@ -300,12 +335,14 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">kVp</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">Al Equivalence (mm Al)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">HVT (mm Al)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">HVT (mm Al)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r bg-indigo-50">Recommended Value</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase bg-green-100">Remarks</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {rows.map((row) => (
+              {rowsWithRemarks.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 border-r">
                     <input
@@ -335,7 +372,7 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                       className={`w-full px-3 py-2 text-center border rounded text-sm ${!isViewMode ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                     />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 border-r">
                     <input
                       type="text"
                       value={row.hvt}
@@ -343,6 +380,59 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
                       readOnly={isViewMode}
                       className={`w-full px-3 py-2 text-center border rounded text-sm ${!isViewMode ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 cursor-not-allowed'}`}
                     />
+                  </td>
+                  <td className="px-6 py-4 border-r bg-indigo-50">
+                    {isViewMode ? (
+                      <div className="text-xs text-center">
+                        {row.recommendedValue ? (
+                          <span className="font-semibold text-indigo-900">
+                            {row.recommendedValue.minValue} mm Al ≤ HVL ≤ {row.recommendedValue.maxValue} mm Al at {row.recommendedValue.kvp} kVp
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 flex-wrap text-xs">
+                        <input
+                          type="text"
+                          value={row.recommendedValue?.minValue || ''}
+                          onChange={(e) => updateRecommendedValue(row.id, 'minValue', e.target.value)}
+                          className="w-14 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500"
+                          placeholder="0.30"
+                        />
+                        <span className="text-gray-600">≤ HVL ≤</span>
+                        <input
+                          type="text"
+                          value={row.recommendedValue?.maxValue || ''}
+                          onChange={(e) => updateRecommendedValue(row.id, 'maxValue', e.target.value)}
+                          className="w-14 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500"
+                          placeholder="0.37"
+                        />
+                        <span className="text-gray-600">at</span>
+                        <input
+                          type="text"
+                          value={row.recommendedValue?.kvp || ''}
+                          onChange={(e) => updateRecommendedValue(row.id, 'kvp', e.target.value)}
+                          className="w-12 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500"
+                          placeholder="28"
+                        />
+                        <span className="text-gray-600">kVp</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span
+                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                        row.remarks === 'Pass'
+                          ? 'bg-green-100 text-green-800'
+                          : row.remarks === 'Fail'
+                          ? 'bg-red-100 text-red-800'
+                          : 'text-gray-400'
+                      }`}
+                    >
+                      {row.remarks || '—'}
+                    </span>
                   </td>
                   <td className="px-3 text-center">
                     {!isViewMode && rows.length > 1 && (
@@ -402,39 +492,6 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
         </div>
       </div>
 
-      {/* Recommended HVL Tolerances */}
-      <div className="bg-white shadow-md rounded-lg p-6 border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Recommended Minimum HVL Values</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {(['at30', 'at40', 'at50'] as const).map((key) => {
-            const t = hvlTolerances[key];
-            const label = key === 'at30' ? '30 kVp' : key === 'at40' ? '40 kVp' : '50 kVp';
-            return (
-              <div key={key} className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">First HVL at {label}</label>
-                <div className="flex items-center gap-3">
-                  <select
-                    value={t.operator}
-                    onChange={(e) => updateTolerance(key, 'operator', e.target.value)}
-                    disabled={isViewMode}
-                    className={`px-4 py-2 border rounded-md font-medium ${!isViewMode ? 'cursor-pointer' : 'bg-gray-50 cursor-not-allowed'}`}
-                  >
-                    {operators.map(op => <option key={op} value={op}>{op}</option>)}
-                  </select>
-                  <input
-                    type="text"
-                    value={t.value}
-                    onChange={(e) => updateTolerance(key, 'value', e.target.value)}
-                    disabled={isViewMode}
-                    className={`w-28 px-4 py-2 text-center border rounded-md font-medium ${!isViewMode ? 'focus:ring-2 focus:ring-teal-500' : 'bg-gray-50 cursor-not-allowed'}`}
-                  />
-                  <span className="text-sm text-gray-600">mm Al</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 };

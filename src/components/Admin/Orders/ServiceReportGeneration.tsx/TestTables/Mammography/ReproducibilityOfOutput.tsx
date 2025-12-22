@@ -1,7 +1,7 @@
 // ReproducibilityOfOutput.tsx — FIXED FOR YOUR SCHEMA
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -10,115 +10,179 @@ import {
   updateReproducibilityOfOutputForMammography,
 } from '../../../../../../api';
 
-interface OutputMeasurement {
-  value: string;
-}
-
+// ---------- Radiation Output ----------
 interface OutputRow {
   id: string;
   kv: string;
   mas: string;
-  outputs: OutputMeasurement[];  // ← Now array of objects!
+  outputs: string[];      // one entry per dynamic column
   avg: string;
+  cov: string;
   remark: string;
 }
 
-interface Tolerance {
-  operator: string;
-  value: string;
-}
-
 interface SavedData {
-  ffd?: string;
   outputRows: {
     kv: string;
     mas: string;
-    outputs: OutputMeasurement[];  // ← Must match schema
+    outputs: string[];
     avg: string;
+    cov: string;
     remark: string;
   }[];
-  tolerance: Tolerance;
+  tolerance?: string;
   _id?: string;
 }
 
 const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId }) => {
   const [testId, setTestId] = useState<string | null>(null);
+  
+  // ---- Radiation Output ------------------------------------
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
     {
       id: '1',
-      kv: '28',
-      mas: '100',
-      outputs: [{ value: '' }, { value: '' }, { value: '' }, { value: '' }, { value: '' }],
+      kv: '',
+      mas: '',
+      outputs: ['', '', '', '', ''], // 5 starter columns
       avg: '',
+      cov: '',
       remark: '',
     },
   ]);
+
+  // editable header names – start with "Meas 1 … Meas 5"
   const [outputHeaders, setOutputHeaders] = useState<string[]>([
-    'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+    'Meas 1',
+    'Meas 2',
+    'Meas 3',
+    'Meas 4',
+    'Meas 5',
   ]);
-  const [ffd, setFfd] = useState<string>('');
-  const [tolerance, setTolerance] = useState<Tolerance>({ operator: '<=', value: '5.0' });
+
+  const outputColumnsCount = outputHeaders.length;
+
+  // ---- Tolerance ------------------------------------------------------
+  const [tolerance, setTolerance] = useState<string>('0.05');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [hasSaved, setHasSaved] = useState(false);
 
-  const outputColumnsCount = outputHeaders.length;
+  // Auto-calculate Avg, CV, and Remark for each row
+  const rowsWithCalc = useMemo(() => {
+    // Tolerance value is stored as percentage (e.g., "5.0" for 5%)
+    const tolValuePercent = parseFloat(tolerance) || 5.0;
+    const tolValueDecimal = tolValuePercent / 100; // Convert to decimal
 
-  // Auto calculate average, CV, and remark
-  useEffect(() => {
-    const toleranceValue = parseFloat(tolerance.value) || 5.0;
+    return outputRows.map((row): OutputRow & { remark: 'Pass' | 'Fail' | '' } => {
+      const nums = row.outputs
+        .filter((v) => v.trim() !== '')
+        .map((v) => parseFloat(v))
+        .filter((n) => !isNaN(n) && n > 0);
 
-    setOutputRows(prev =>
-      prev.map(row => {
-        const values = row.outputs
-          .map(m => parseFloat(m.value))
-          .filter(v => !isNaN(v) && v > 0);
+      if (nums.length === 0) {
+        return { ...row, avg: '', cov: '', remark: '' };
+      }
 
-        if (values.length === 0) {
-          return { ...row, avg: '', remark: '' };
-        }
-
-        const avg = values.reduce((a, b) => a + b, 0) / values.length;
-        const avgStr = avg.toFixed(3);
-
-        const variance = values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
+      const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+      
+      let cov = 0;
+      if (nums.length > 1) {
+        const variance =
+          nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+          nums.length;
         const stdDev = Math.sqrt(variance);
-        const cv = avg > 0 ? (stdDev / avg) * 100 : 0;
-        const cvStr = cv.toFixed(2);
+        cov = mean > 0 ? stdDev / mean : 0; // CoV as decimal
+      }
 
-        const remark = cv <= toleranceValue ? 'Pass' : 'Fail';
+      // Compare CoV (decimal) with tolerance (decimal)
+      const passes = cov <= tolValueDecimal;
 
-        return { ...row, avg: avgStr, remark: `${cvStr}% → ${remark}` };
-      })
+      return {
+        ...row,
+        avg: mean.toFixed(4),
+        cov: cov.toFixed(4), // Display CoV as decimal (not percentage)
+        remark: passes ? 'Pass' : 'Fail',
+      };
+    });
+  }, [outputRows, tolerance]);
+
+  // ---- Column handling ------------------------------------------------
+  const addOutputColumn = () => {
+    const newHeader = `Meas ${outputHeaders.length + 1}`;
+    setOutputHeaders((prev) => [...prev, newHeader]);
+
+    setOutputRows((prev) =>
+      prev.map((row) => ({
+        ...row,
+        outputs: [...row.outputs, ''],
+      }))
     );
-  }, [outputRows.map(r => r.outputs.map(o => o.value).join()).join(), tolerance.value]);
+  };
+
+  const removeOutputColumn = (colIdx: number) => {
+    if (outputHeaders.length <= 1) return;
+    setOutputHeaders((prev) => prev.filter((_, i) => i !== colIdx));
+
+    setOutputRows((prev) =>
+      prev.map((row) => ({
+        ...row,
+        outputs: row.outputs.filter((_, i) => i !== colIdx),
+      }))
+    );
+  };
+
+  const updateHeader = (colIdx: number, newName: string) => {
+    setOutputHeaders((prev) => {
+      const copy = [...prev];
+      copy[colIdx] = newName || `Meas ${colIdx + 1}`;
+      return copy;
+    });
+  };
 
   // Load data
   useEffect(() => {
     const load = async () => {
-      if (!serviceId) return;
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
       try {
-        const data: SavedData | null = await getReproducibilityOfOutputByServiceIdForMammography(serviceId);
+        const res = await getReproducibilityOfOutputByServiceIdForMammography(serviceId);
+        const data = res?.data;
         if (data) {
-          setOutputRows(data.outputRows.map((r, i) => ({
-            id: Date.now().toString() + i,
-            kv: r.kv || '',
-            mas: r.mas || '',
-            outputs: r.outputs.length > 0 ? r.outputs : [{ value: '' }, { value: '' }, { value: '' }, { value: '' }, { value: '' }],
-            avg: r.avg || '',
-            remark: r.remark || '',
-          })));
-          setFfd(data.ffd || '');
-          setTolerance(data.tolerance || { operator: '<=', value: '5.0' });
           setTestId(data._id || null);
+          
+          // Load output rows
+          if (data.outputRows && Array.isArray(data.outputRows) && data.outputRows.length > 0) {
+            const firstRow = data.outputRows[0];
+            const numCols = firstRow.outputs?.length || 5;
+            setOutputHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
+            
+            setOutputRows(data.outputRows.map((r: any, i: number) => ({
+              id: Date.now().toString() + i,
+              kv: String(r.kv || ''),
+              mas: String(r.mas || ''),
+              outputs: Array.isArray(r.outputs) ? r.outputs.map((o: any) => String(o || '')) : Array(numCols).fill(''),
+              avg: String(r.avg || ''),
+              cov: String(r.cov || ''),
+              remark: String(r.remark || ''),
+            })));
+          }
+          
+          if (data.tolerance) setTolerance(String(data.tolerance));
+          
           setHasSaved(true);
           setIsEditing(false);
+        } else {
+          setIsEditing(true);
         }
-      } catch (err) {
-        console.error(err);
-        toast.error('Failed to load data');
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load data');
+        }
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
@@ -126,94 +190,109 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
     load();
   }, [serviceId]);
 
-  // Save handler — sends correct { value: "1.25" } format
+  // Save handler
   const saveData = async () => {
     if (!serviceId) return;
     setIsSaving(true);
 
     const payload = {
-      ffd,
-      outputRows: outputRows.map(r => ({
+      outputRows: rowsWithCalc.map(r => ({
         kv: r.kv,
         mas: r.mas,
-        outputs: r.outputs,  // ← Already correct format!
+        outputs: r.outputs,
         avg: r.avg,
-        remark: r.remark,
+        cov: r.cov,
+        remark: r.remark || '',
       })),
       tolerance,
     };
 
     try {
-      if (testId) {
-        await updateReproducibilityOfOutputForMammography(testId, payload);
+      let result;
+      let currentTestId = testId;
+
+      // If no testId, try to get existing data by serviceId first
+      if (!currentTestId) {
+        try {
+          const existing = await getReproducibilityOfOutputByServiceIdForMammography(serviceId);
+          if (existing?.data?._id) {
+            currentTestId = existing.data._id;
+            setTestId(currentTestId);
+          }
+        } catch (err) {
+          // No existing data, will create new
+        }
+      }
+
+      if (currentTestId) {
+        // Update existing
+        result = await updateReproducibilityOfOutputForMammography(currentTestId, payload);
         toast.success('Updated successfully!');
       } else {
-        const res = await addReproducibilityOfOutputForMammography(serviceId, payload);
-        setTestId(res.data._id);
+        // Create new
+        result = await addReproducibilityOfOutputForMammography(serviceId, payload);
+        const newId = result?.data?._id || result?.data?.data?._id || result?._id;
+        if (newId) {
+          setTestId(newId);
+        }
         toast.success('Saved successfully!');
       }
+
       setHasSaved(true);
       setIsEditing(false);
     } catch (err: any) {
-      toast.error(err.message || 'Save failed');
+      toast.error(err?.response?.data?.message || err?.message || 'Save failed');
       console.error(err);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const toggleEdit = () => setIsEditing(prev => !prev);
-  const showEditButton = hasSaved && !isEditing;
-  const showSaveButton = isEditing;
+  const toggleEdit = () => setIsEditing(true);
+  const isViewMode = hasSaved && !isEditing;
+  const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
+  const ButtonIcon = isViewMode ? Edit3 : Save;
 
-  // Column & Row handlers
-  const addOutputColumn = () => {
-    const newHeader = `Meas ${outputHeaders.length + 1}`;
-    setOutputHeaders(prev => [...prev, newHeader]);
-    setOutputRows(prev => prev.map(row => ({
-      ...row,
-      outputs: [...row.outputs, { value: '' }],
-    })));
-  };
-
-  const removeOutputColumn = (idx: number) => {
-    if (outputHeaders.length <= 3) return;
-    setOutputHeaders(prev => prev.filter((_, i) => i !== idx));
-    setOutputRows(prev => prev.map(row => ({
-      ...row,
-      outputs: row.outputs.filter((_, i) => i !== idx),
-    })));
-  };
-
-  const updateHeader = (idx: number, value: string) => {
-    setOutputHeaders(prev => prev.map((h, i) => i === idx ? (value || `Meas ${i + 1}`) : h));
-  };
-
+  // ---- Row handling --------------------------------------------------
   const addOutputRow = () => {
-    setOutputRows(prev => [...prev, {
-      id: Date.now().toString(),
-      kv: '28',
-      mas: '100',
-      outputs: Array(outputColumnsCount).fill(null).map(() => ({ value: '' })),
-      avg: '',
-      remark: '',
-    }]);
+    setOutputRows((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        kv: '',
+        mas: '',
+        outputs: Array(outputColumnsCount).fill(''),
+        avg: '',
+        cov: '',
+        remark: '',
+      },
+    ]);
   };
 
-  const removeOutputRow = (id: string) => {
+  const removeOutputRow = (rowId: string) => {
     if (outputRows.length <= 1) return;
-    setOutputRows(prev => prev.filter(r => r.id !== id));
+    setOutputRows((prev) => prev.filter((r) => r.id !== rowId));
   };
 
-  const updateCell = (rowId: string, field: 'kv' | 'mas' | number, value: string) => {
-    setOutputRows(prev =>
-      prev.map(row => {
+  // ---- Cell update ---------------------------------------------------
+  const updateCell = (
+    rowId: string,
+    field: 'kv' | 'mas' | 'avg' | 'cov' | 'remark' | number,
+    value: string
+  ) => {
+    setOutputRows((prev) =>
+      prev.map((row) => {
         if (row.id !== rowId) return row;
-        if (field === 'kv' || field === 'mas') return { ...row, [field]: value };
+
+        if (field === 'kv' || field === 'mas' || field === 'avg' || field === 'cov' || field === 'remark') {
+          return { ...row, [field]: value };
+        }
+
+        // field === column index for measured outputs
         if (typeof field === 'number') {
-          const outputs = [...row.outputs];
-          outputs[field] = { value };
-          return { ...row, outputs };
+          const newOutputs = [...row.outputs];
+          newOutputs[field] = value;
+          return { ...row, outputs: newOutputs };
         }
         return row;
       })
@@ -231,89 +310,96 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
 
   return (
     <div className="p-6 max-w-full overflow-x-auto space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Consistency of Radiation Output (Reproducibility)
-        </h2>
+      <h2 className="text-2xl font-bold mb-6">
+        Consistency of Radiation Output
+      </h2>
 
-        <div className="flex items-center gap-4">
-          {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
-
-          {showEditButton && (
-            <button onClick={toggleEdit} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">
-              <Edit3 className="w-4 h-4" /> Edit
-            </button>
-          )}
-
-          {showSaveButton && (
-            <button onClick={saveData} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50">
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  {hasSaved ? 'Update' : 'Save'} Test
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
-        <h3 className="px-6 py-4 text-lg font-semibold bg-blue-50 text-blue-900 border-b flex justify-between items-center">
-          <span>Radiation Output Measurements</span>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">FFD (cm)</span>
-            <input
-              type="text"
-              value={ffd}
-              onChange={(e) => setFfd(e.target.value)}
-              readOnly={!isEditing}
-              className={`w-24 px-3 py-1.5 text-center border rounded-md text-sm ${isEditing ? 'focus:ring-2 focus:ring-blue-500' : 'bg-gray-100 cursor-not-allowed'}`}
-              placeholder="60"
-            />
-          </div>
+      {/* ==================== Radiation Output ==================== */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
+          Radiation Output Measurements
         </h3>
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
+              {/* ---- First header row ---- */}
               <tr>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">kV</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs</th>
-                <th colSpan={outputColumnsCount} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">
+                <th
+                  rowSpan={2}
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                >
+                  Applied kV
+                </th>
+                <th
+                  rowSpan={2}
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                >
+                  mAs
+                </th>
+
+                {/* Dynamic measured columns + plus button */}
+                <th
+                  colSpan={outputColumnsCount}
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                >
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
-                    {isEditing && (
-                      <button onClick={addOutputColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                    {!isViewMode && (
+                      <button
+                        onClick={addOutputColumn}
+                        className="p-1 text-green-600 hover:bg-green-100 rounded"
+                        title="Add Column"
+                      >
                         <Plus className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">Avg (X̄)</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">CV % / Remark</th>
+
+                <th
+                  rowSpan={2}
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                >
+                  Avg (X̄)
+                </th>
+                <th
+                  rowSpan={2}
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                >
+                  CV
+                </th>
+                <th
+                  rowSpan={2}
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-100"
+                >
+                  Remarks
+                </th>
                 <th rowSpan={2} className="w-10" />
               </tr>
+
+              {/* ---- Second header row (editable column names) ---- */}
               <tr>
-                {outputHeaders.map((h, i) => (
-                  <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border-r">
+                {outputHeaders.map((header, idx) => (
+                  <th
+                    key={idx}
+                    className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                  >
                     <div className="flex items-center justify-center gap-1">
                       <input
                         type="text"
-                        value={h}
-                        onChange={(e) => updateHeader(i, e.target.value)}
-                        readOnly={!isEditing}
-                        className="w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        value={header}
+                        onChange={(e) => updateHeader(idx, e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-20 px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        placeholder={`Meas ${idx + 1}`}
                       />
-                      {isEditing && outputColumnsCount > 3 && (
-                        <button onClick={() => removeOutputColumn(i)} className="text-red-600">
+                      {!isViewMode && outputColumnsCount > 1 && (
+                        <button
+                          onClick={() => removeOutputColumn(idx)}
+                          className="p-0.5 text-red-600 hover:bg-red-100 rounded"
+                          title="Remove Column"
+                        >
                           <Trash2 className="w-3 h-3" />
                         </button>
                       )}
@@ -322,51 +408,87 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
                 ))}
               </tr>
             </thead>
+
+            {/* ---- Body ---- */}
             <tbody className="bg-white divide-y divide-gray-200">
-              {outputRows.map(row => (
+              {rowsWithCalc.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
+                  {/* kV */}
                   <td className="px-4 py-2 border-r">
                     <input
                       type="text"
                       value={row.kv}
-                      onChange={e => updateCell(row.id, 'kv', e.target.value)}
-                      readOnly={!isEditing}
-                      className="w-full px-3 py-2 text-center border rounded text-sm"
+                      onChange={(e) => updateCell(row.id, 'kv', e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      placeholder="28"
                     />
                   </td>
+
+                  {/* mAs */}
                   <td className="px-4 py-2 border-r">
                     <input
                       type="text"
                       value={row.mas}
-                      onChange={e => updateCell(row.id, 'mas', e.target.value)}
-                      readOnly={!isEditing}
-                      className="w-full px-3 py-2 text-center border rounded text-sm"
+                      onChange={(e) => updateCell(row.id, 'mas', e.target.value)}
+                      disabled={isViewMode}
+                      className={`w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      placeholder="100"
                     />
                   </td>
-                  {row.outputs.map((measurement, i) => (
-                    <td key={i} className="px-2 py-2 border-r">
+
+                  {/* Dynamic measured outputs */}
+                  {row.outputs.map((val, colIdx) => (
+                    <td key={colIdx} className="px-2 py-2 border-r">
                       <input
                         type="text"
-                        value={measurement.value}
-                        onChange={e => updateCell(row.id, i, e.target.value)}
-                        readOnly={!isEditing}
-                        className="w-full px-3 py-2 text-center border rounded text-sm"
-                        placeholder="0.00"
+                        value={val}
+                        onChange={(e) => updateCell(row.id, colIdx, e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        placeholder="1.25"
                       />
                     </td>
                   ))}
-                  <td className="px-4 py-2 border-r font-medium text-center bg-blue-50">
-                    {row.avg || '—'}
+
+                  {/* Avg */}
+                  <td className="px-4 py-2 border-r bg-blue-50">
+                    <span className="w-full px-2 py-1 text-sm text-center font-medium text-gray-700">
+                      {row.avg || '—'}
+                    </span>
                   </td>
+
+                  {/* CV */}
+                  <td className="px-4 py-2 border-r bg-blue-50">
+                    <span className="w-full px-2 py-1 text-sm text-center font-medium text-gray-700">
+                      {row.cov || '—'}
+                    </span>
+                  </td>
+
+                  {/* Remarks */}
                   <td className="px-4 py-2 text-center">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${row.remark.includes('Pass') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <span
+                      className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
+                        row.remark === 'Pass'
+                          ? 'bg-green-100 text-green-800'
+                          : row.remark === 'Fail'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}
+                    >
                       {row.remark || '—'}
                     </span>
                   </td>
-                  <td className="px-2 text-center">
-                    {isEditing && outputRows.length > 1 && (
-                      <button onClick={() => removeOutputRow(row.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
-                        <Trash2 className="w-5 h-5" />
+
+                  {/* Delete Row (only in the very last column) */}
+                  <td className="px-2 py-2 text-center">
+                    {!isViewMode && outputRows.length > 1 && (
+                      <button
+                        onClick={() => removeOutputRow(row.id)}
+                        className="text-red-600 hover:bg-red-100 p-1 rounded"
+                        title="Remove Row"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </td>
@@ -376,35 +498,73 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
           </table>
         </div>
 
-        <div className="px-6 py-4 bg-gray-50 border-t flex justify-start">
-          {isEditing && (
-            <button onClick={addOutputRow} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-5 h-5" /> Add Technique
+        {/* Add Row button (bottom) */}
+        {!isViewMode && (
+          <div className="px-6 py-3 bg-gray-50 border-t flex justify-start">
+            <button
+              onClick={addOutputRow}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Add Row
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Tolerance */}
-      <div className="bg-gradient-to-r from-blue-50 to-teal-50 border-2 border-blue-200 rounded-xl p-6 max-w-md">
-        <label className="block text-lg font-semibold text-gray-800 mb-3">
-          Acceptance Criteria (CV {tolerance.operator} {tolerance.value}%)
+      <div className="bg-white shadow-md rounded-lg p-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Acceptance Criteria (CV ≤ {tolerance || '5.0'}%)
         </label>
-        <div className="flex items-center gap-4">
-          <span className="text-lg">CV</span>
-          <span className="text-3xl font-bold">{tolerance.operator}</span>
+        <div className="flex items-center gap-2 max-w-xs">
+          <span className="text-sm text-gray-600">CV ≤</span>
           <input
             type="text"
-            value={tolerance.value}
-            onChange={e => setTolerance(prev => ({ ...prev, value: e.target.value }))}
-            readOnly={!isEditing}
-            className="w-32 px-4 py-3 text-xl font-bold text-center border-4 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-300 bg-white"
+            value={tolerance}
+            onChange={(e) => setTolerance(e.target.value)}
+            disabled={isViewMode}
+            className={`w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-center font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+            placeholder="5.0"
           />
-          <span className="text-lg">%</span>
+          <span className="text-sm text-gray-600">%</span>
         </div>
-        <p className="text-sm text-gray-600 mt-3">
-          IEC 61223-3-1 & AERB: Coefficient of Variation should be {tolerance.operator} {tolerance.value}%
+        <p className="text-xs text-gray-600 mt-2">
+          IEC 61223-3-1 & AERB: Coefficient of Variation should be ≤ {tolerance || '5.0'}%
         </p>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end mt-8">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isViewMode) {
+              toggleEdit();
+            } else {
+              saveData();
+            }
+          }}
+          disabled={isSaving}
+          className={`flex items-center gap-3 px-8 py-3 text-white font-medium rounded-lg transition-all ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-5 h-5" />
+              {buttonText} Consistency of Radiation Output
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

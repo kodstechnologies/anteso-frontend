@@ -194,22 +194,22 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     Applied kV
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     Applied mA
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     Time (s)
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     Slice Thickness (mm)
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     Measured TF (mm of Al)
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
                                     Remark
                                 </th>
                             </tr>
