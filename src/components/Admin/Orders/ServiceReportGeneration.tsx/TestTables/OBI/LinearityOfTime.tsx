@@ -26,9 +26,25 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: {
+    testConditions?: {
+      fdd: string;
+      kv: string;
+      time: string;
+    };
+    headers?: string[];
+    tolerance?: string;
+    measurementRows?: Array<{
+      maApplied: string;
+      radiationOutputs: string[];
+      averageOutput?: string;
+      mGyPerMAs?: string;
+    }>;
+  };
 }
 
-const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Test Conditions (Fixed)
@@ -52,9 +68,10 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
@@ -154,24 +171,90 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
     const xMax = mGyPerMAsValues.length > 0 ? Math.max(...mGyPerMAsValues).toFixed(4) : '';
     const xMin = mGyPerMAsValues.length > 0 ? Math.min(...mGyPerMAsValues).toFixed(4) : '';
 
-    const col =
-      xMax && xMin && (parseFloat(xMax) + parseFloat(xMin)) > 0
-        ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
-        : '';
+    const colNum = xMax && xMin && (parseFloat(xMax) + parseFloat(xMin)) > 0
+      ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+      : null;
+    const col = colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
 
-    const remarks = col && parseFloat(col) < tol ? 'Pass' : col ? 'Fail' : '';
+    // Determine pass/fail based on tolerance operator and CoL value
+    let pass = false;
+    let remarks = '—';
+    
+    if (col !== '—' && colNum !== null) {
+      const colVal = parseFloat(col);
+      switch (toleranceOperator) {
+        case '<':
+          pass = colVal < tol;
+          break;
+        case '>':
+          pass = colVal > tol;
+          break;
+        case '<=':
+          pass = colVal <= tol;
+          break;
+        case '>=':
+          pass = colVal >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colVal - tol) < 0.0001;
+          break;
+        default:
+          pass = colVal <= tol;
+      }
+      remarks = pass ? 'Pass' : 'Fail';
+    }
 
     return {
       rows: rowsWithCalculations,
-      xMax,
-      xMin,
+      xMax: xMax || '—',
+      xMin: xMin || '—',
       coefficientOfLinearity: col,
       remarks,
     };
-  }, [measurementRows, testConditions.time, tolerance]);
+  }, [measurementRows, testConditions.time, tolerance, toleranceOperator]);
+
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('LinearityOfTime: Loading initial data from CSV:', initialData);
+      if (initialData.testConditions) {
+        setTestConditions({
+          fdd: initialData.testConditions.fdd || '',
+          kv: initialData.testConditions.kv || '',
+          time: initialData.testConditions.time || '',
+        });
+      }
+      if (initialData.headers && initialData.headers.length > 0) {
+        setMeasHeaders(initialData.headers);
+      }
+      if (initialData.tolerance) {
+        setTolerance(initialData.tolerance);
+      }
+      if (initialData.measurementRows && initialData.measurementRows.length > 0) {
+        const numCols = initialData.headers?.length || initialData.measurementRows[0]?.radiationOutputs?.length || 3;
+        setMeasurementRows(
+          initialData.measurementRows.map((r, i) => ({
+            id: `csv-row-${Date.now()}-${i}`,
+            maApplied: r.maApplied || '',
+            measuredOutputs: r.radiationOutputs || Array(numCols).fill(''),
+            averageOutput: r.averageOutput || '',
+            mGyPerMAs: r.mGyPerMAs || '',
+          }))
+        );
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('LinearityOfTime: CSV data loaded into form');
+    }
+  }, [initialData]);
 
   // Load existing test data
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+
     if (!serviceId) return;
 
     const loadTest = async () => {
@@ -216,19 +299,26 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
           if (testData.tolerance) {
             setTolerance(testData.tolerance);
           }
+          if (testData.toleranceOperator) {
+            setToleranceOperator(testData.toleranceOperator);
+          }
           setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
           toast.error("Failed to load test data");
         }
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, initialData]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -243,6 +333,7 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
         })),
         measHeaders,
         tolerance,
+        toleranceOperator,
         xMax: processedRows.xMax,
         xMin: processedRows.xMin,
         coefficientOfLinearity: processedRows.coefficientOfLinearity,
@@ -250,18 +341,35 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
       };
 
       let result;
-      if (testId) {
-        result = await updateLinearityOfTimeForOBI(testId, payload);
+      let currentTestId = testId;
+
+      // If no testId, try to get existing data by serviceId first
+      if (!currentTestId) {
+        try {
+          const existing = await getLinearityOfTimeByServiceIdForOBI(serviceId);
+          if (existing?.data?._id) {
+            currentTestId = existing.data._id;
+            setTestId(currentTestId);
+          }
+        } catch (err) {
+          // No existing data, will create new
+        }
+      }
+
+      if (currentTestId) {
+        result = await updateLinearityOfTimeForOBI(currentTestId, payload);
+        toast.success("Updated successfully");
       } else {
         result = await addLinearityOfTimeForOBI(serviceId, payload);
-        if (result?.data?._id) {
-          setTestId(result.data._id);
+        const newId = result?.data?._id || result?.data?.data?._id || result?._id;
+        if (newId) {
+          setTestId(newId);
         }
+        toast.success("Saved successfully");
       }
 
       setHasSaved(true);
       setIsEditing(false);
-      toast.success(testId ? "Updated successfully" : "Saved successfully");
       onRefresh?.();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Save failed");
@@ -291,88 +399,47 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Linearity of Time</h2>
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium ${isViewMode
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
-            : 'bg-green-600 text-white hover:bg-green-700'
-            } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isSaving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <ButtonIcon className="w-4 h-4" />
-          )}
-          {isSaving ? 'Saving...' : buttonText}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold mb-6">Linearity of Time</h2>
 
-      {/* Test Conditions Table */}
+      {/* Table 1: FDD, kV, Time (sec) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
-          Test Conditions
-        </h3>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                FDD (cm)
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                kV
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                Time (Sec)
-              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FFD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">Time (sec)</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             <tr className="hover:bg-gray-50">
-              <td className="px-6 py-2 border-r">
+              <td className="px-4 py-2 border-r">
                 <input
                   type="text"
                   value={testConditions.fdd}
-                  onChange={(e) =>
-                    setTestConditions((p) => ({ ...p, fdd: e.target.value }))
-                  }
+                  onChange={e => setTestConditions(p => ({ ...p, fdd: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                    ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                    : 'border-gray-300'
-                    }`}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                   placeholder="100"
                 />
               </td>
-              <td className="px-6 py-2 border-r">
+              <td className="px-4 py-2 border-r">
                 <input
                   type="text"
                   value={testConditions.kv}
-                  onChange={(e) =>
-                    setTestConditions((p) => ({ ...p, kv: e.target.value }))
-                  }
+                  onChange={e => setTestConditions(p => ({ ...p, kv: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                    ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                    : 'border-gray-300'
-                    }`}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                   placeholder="60"
                 />
               </td>
-              <td className="px-6 py-2">
+              <td className="px-4 py-2">
                 <input
                   type="text"
                   value={testConditions.time}
-                  onChange={(e) =>
-                    setTestConditions((p) => ({ ...p, time: e.target.value }))
-                  }
+                  onChange={e => setTestConditions(p => ({ ...p, time: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                    ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                    : 'border-gray-300'
-                    }`}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                   placeholder="0.10"
                 />
               </td>
@@ -381,212 +448,204 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
         </table>
       </div>
 
-      {/* Main Measurement Table */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
-          Measurements
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
-                >
-                  mA Applied
-                </th>
-                <th
-                  colSpan={measHeaders.length}
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
-                >
-                  <div className="flex items-center justify-between px-4">
-                    <span>Radiation Output (mGy)</span>
-                    {!isViewMode && (
-                      <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
-                        <Plus className="w-4 h-4" />
+      {/* Table 2: mA + Output (mGy) */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-blue-50">
+            <tr>
+              {/* Header – make mA column wider */}
+              <th
+                rowSpan={2}
+                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
+              >
+                mA Applied
+              </th>
+              <th
+                colSpan={measHeaders.length}
+                className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
+              >
+                <div className="flex items-center justify-between">
+                  <span>Output (mGy)</span>
+                  {!isViewMode && (
+                    <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mAs)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
+              <th rowSpan={2} className="w-10" />
+            </tr>
+            <tr>
+              {measHeaders.map((header, idx) => (
+                <th key={idx} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+                  <div className="flex items-center justify-center gap-1">
+                    <input
+                      type="text"
+                      value={header}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setMeasHeaders(prev => {
+                          const newHeaders = [...prev];
+                          newHeaders[idx] = val;
+                          return newHeaders;
+                        });
+                      }}
+                      disabled={isViewMode}
+                      className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                    />
+                    {measHeaders.length > 1 && !isViewMode && (
+                      <button onClick={() => removeMeasColumn(idx)} className="p-0.5 text-red-600 hover:bg-red-100 rounded">
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     )}
                   </div>
                 </th>
-                <th
-                  rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
-                >
-                  Average Output (mGy)
-                </th>
-                <th
-                  rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-                >
-                  mGy / mAs (X)
-                </th>
-                <th className="w-12" rowSpan={2} />
-              </tr>
-              <tr>
-                {measHeaders.map((header, idx) => (
-                  <th key={idx} className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                    <div className="flex items-center justify-center gap-1">
-                      <input
-                        value={header}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setMeasHeaders(prev => {
-                            const newHeaders = [...prev];
-                            newHeaders[idx] = val;
-                            return newHeaders;
-                          });
-                        }}
-                        disabled={isViewMode}
-                        className="w-16 text-center bg-transparent border-b border-gray-300 focus:border-blue-500 outline-none"
-                      />
-                      {!isViewMode && measHeaders.length > 1 && (
-                        <button onClick={() => removeMeasColumn(idx)} className="text-red-500 hover:bg-red-50 rounded">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {processedRows.rows.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border-r">
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {processedRows.rows.map((p, index) => (
+              <tr key={p.id} className="hover:bg-gray-50">
+                <td className="px-4 py-2 border-r">
+                  <input
+                    type="text"
+                    value={p.maApplied}
+                    onChange={e => updateMeasurementRow(p.id, 'maApplied', e.target.value)}
+                    disabled={isViewMode}
+                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                    placeholder="100"
+                  />
+                </td>
+
+                {p.measuredOutputs.map((val, colIdx) => (
+                  <td key={colIdx} className="px-2 py-2 border-r">
                     <input
-                      type="text"
-                      value={row.maApplied}
-                      onChange={(e) =>
-                        updateMeasurementRow(row.id, 'maApplied', e.target.value)
-                      }
+                      type="number"
+                      step="any"
+                      value={val}
+                      onChange={e => updateMeasurementRow(p.id, colIdx, e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                        : 'border-gray-300'
-                        }`}
-                      placeholder="50"
+                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     />
                   </td>
-                  {row.measuredOutputs.map((val, idx) => (
-                    <td key={idx} className="px-4 py-2 border-r">
-                      <input
-                        type="text"
-                        value={val}
-                        onChange={(e) =>
-                          updateMeasurementRow(row.id, idx, e.target.value)
-                        }
-                        disabled={isViewMode}
-                        className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                          ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                          : 'border-gray-300'
-                          }`}
-                      />
+                ))}
+
+                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.averageOutput}</td>
+                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.mGyPerMAs}</td>
+                {index === 0 && (
+                  <>
+                    <td rowSpan={processedRows.rows.length} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                      {processedRows.xMax}
                     </td>
-                  ))}
-                  <td className="px-4 py-2 border-r font-medium bg-gray-50 text-center">
-                    {row.averageOutput || '—'}
-                  </td>
-                  <td className="px-4 py-2 font-medium bg-gray-50 text-center">
-                    {row.mGyPerMAs || '—'}
-                  </td>
-                  <td className="px-2 py-2 text-center">
-                    {measurementRows.length > 1 && !isViewMode && (
-                      <button
-                        onClick={() => removeMeasurementRow(row.id)}
-                        className="text-red-600 hover:bg-red-100 p-1 rounded"
+                    <td rowSpan={processedRows.rows.length} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                      {processedRows.xMin}
+                    </td>
+                    <td rowSpan={processedRows.rows.length} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                      {processedRows.coefficientOfLinearity}
+                    </td>
+                    <td rowSpan={processedRows.rows.length} className="px-4 py-2 text-center align-middle">
+                      <span
+                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedRows.remarks === 'Pass'
+                          ? 'bg-green-100 text-green-800'
+                          : processedRows.remarks === 'Fail'
+                            ? 'bg-red-100 text-red-800'
+                            : 'text-gray-400'
+                          }`}
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {/* Summary Rows */}
-              <tr className="bg-blue-50 font-semibold">
-                <td colSpan={summaryColSpan} className="px-4 py-2 text-right border-r">
-                  X MAX:
+                        {processedRows.remarks || '—'}
+                      </span>
+                    </td>
+                  </>
+                )}
+
+                <td className="px-2 py-2 text-center">
+                  {measurementRows.length > 1 && !isViewMode && (
+                    <button
+                      onClick={() => removeMeasurementRow(p.id)}
+                      className="text-red-600 hover:bg-red-100 p-1 rounded transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </td>
-                <td className="px-4 py-2 text-center font-bold">
-                  {processedRows.xMax || '—'}
-                </td>
-                <td />
               </tr>
-              <tr className="bg-blue-50 font-semibold">
-                <td colSpan={summaryColSpan} className="px-4 py-2 text-right border-r">
-                  X MIN:
-                </td>
-                <td className="px-4 py-2 text-center font-bold">
-                  {processedRows.xMin || '—'}
-                </td>
-                <td />
-              </tr>
-              <tr className="bg-blue-50 font-semibold">
-                <td colSpan={summaryColSpan} className="px-4 py-2 text-right border-r">
-                  Coefficient of Linearity (CoL):
-                </td>
-                <td className="px-4 py-2 text-center">
-                  {processedRows.coefficientOfLinearity || '—'}
-                </td>
-                <td />
-              </tr>
-              <tr className="bg-blue-50 font-semibold">
-                <td colSpan={summaryColSpan} className="px-4 py-2 text-right border-r">
-                  Result:
-                </td>
-                <td className="px-4 py-2 text-center">
-                  <span
-                    className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedRows.remarks === 'Pass'
-                      ? 'bg-green-100 text-green-800'
-                      : processedRows.remarks === 'Fail'
-                        ? 'bg-red-100 text-red-800'
-                        : 'text-gray-400'
-                      }`}
-                  >
-                    {processedRows.remarks || '—'}
-                  </span>
-                </td>
-                <td />
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        {!isViewMode && (
-          <div className="px-6 py-3 bg-gray-50 border-t">
+            ))}
+          </tbody>
+        </table>
+
+        <div className="px-4 py-3 bg-gray-50 border-t flex justify-between items-center">
+          {!isViewMode && (
             <button
               onClick={addMeasurementRow}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
             >
               <Plus className="w-4 h-4" /> Add Row
             </button>
-          </div>
-        )}
-      </div>
-
-      {/* Tolerance */}
-      <div className="bg-white p-6 shadow-md rounded-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Tolerance Setting</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tolerance (CoL &lt; value)
-            </label>
-            <input
-              type="text"
-              value={tolerance}
-              onChange={(e) => setTolerance(e.target.value)}
+          )}
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
               disabled={isViewMode}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                : 'border-gray-300'
-                }`}
-              placeholder="0.1"
+              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
+            <input
+              type="number"
+              step="0.001"
+              value={tolerance}
+              onChange={e => setTolerance(e.target.value)}
+              disabled={isViewMode}
+              className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
             />
           </div>
         </div>
-        <p className="mt-2 text-sm text-gray-600">
-          Tolerance: CoL &lt; {tolerance || '0.1'}
-        </p>
+      </div>
+
+      {/* SAVE BUTTON */}
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isViewMode) {
+              toggleEdit();
+            } else {
+              handleSave();
+            }
+          }}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-4 h-4" />
+              {buttonText} Linearity
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

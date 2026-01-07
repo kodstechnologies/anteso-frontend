@@ -46,6 +46,7 @@ type ReportComponentProps = {
   qaTestDate?: string | null;
   createdAt?: string | null;
   ulrNumber?: string | null;
+  csvFileUrl?: string | null;
 };
 
 // ---- 2. Map machine → component ---------------------------------------
@@ -84,7 +85,7 @@ const GenerateServiceReport: React.FC = () => {
   const location = useLocation();
   console.log("📦 Location state →", location.state);
 
-  const { state } = location as { state?: { serviceId?: string; machineType?: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null } };
+  const { state } = location as { state?: { serviceId?: string; machineType?: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null; csvFileUrl?: string | null } };
 
   console.log("🧭 From location.state:", state);
 
@@ -96,7 +97,7 @@ const GenerateServiceReport: React.FC = () => {
     );
   }
 
-  const { serviceId, machineType, qaTestDate, createdAt, ulrNumber } = state;
+  const { serviceId, machineType, qaTestDate, createdAt, ulrNumber, csvFileUrl } = state;
 
   // ---- 5. Find the correct component ------------------------------------
   const ReportComponent = REPORT_MAP[machineType];
@@ -110,6 +111,14 @@ const GenerateServiceReport: React.FC = () => {
   }
 
   // ---- 6. Render it with serviceId ---------------------------------------
+  // Pass csvFileUrl as prop for mammography, OBI, and BMD
+  if ((machineType === "Mammography" || machineType === "OBI" || machineType === "KV Imaging (OBI)" || machineType === "Bone Densitometer (BMD)" || machineType === "BMD") && csvFileUrl) {
+    return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} createdAt={createdAt} ulrNumber={ulrNumber} csvFileUrl={csvFileUrl} />;
+  }
+  // For BMD without csvFileUrl, still pass the prop (it can be null)
+  if (machineType === "Bone Densitometer (BMD)" || machineType === "BMD") {
+    return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} createdAt={createdAt} ulrNumber={ulrNumber} csvFileUrl={csvFileUrl || null} />;
+  }
   return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} createdAt={createdAt} ulrNumber={ulrNumber} />;
 };
 

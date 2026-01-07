@@ -2528,6 +2528,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                          firstQATest?.backendFields?.reportURLNumber || 
                                                                                                          null;
 
+                                                                                        // Get file URL for mammography/OBI/BMD CSV/Excel file
+                                                                                        let csvFileUrl = null;
+                                                                                            if (service.machineType === "Mammography" || service.machineType === "OBI" || service.machineType === "KV Imaging (OBI)" || service.machineType === "Bone Densitometer (BMD)" || service.machineType === "BMD") {
+                                                                                            // Get the uploaded file URL from reportNumbers (QA Test report URL)
+                                                                                            csvFileUrl = reportNumbers[service.id]?.qatest?.reportUrl || null;
+                                                                                        }
+
                                                                                         navigate("/admin/orders/generic-service-table", {
                                                                                             state: {
                                                                                                 serviceId: cleanId,
@@ -2535,6 +2542,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                 qaTestDate: workType.qaTestSubmittedAt || null,
                                                                                                 createdAt: createdAt,
                                                                                                 ulrNumber: ulrNumber,
+                                                                                                csvFileUrl: csvFileUrl, // Pass file URL for mammography
                                                                                             },
                                                                                         });
                                                                                     }}

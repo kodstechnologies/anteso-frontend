@@ -27,9 +27,26 @@ interface Props {
     serviceId: string;
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
+    refreshKey?: number;
+    initialData?: {
+        techniqueFactors?: {
+            fcd: string;
+            kv: string;
+            mAs?: string;
+            mas?: string;
+        };
+        observedTilt?: {
+            value: string;
+            operator?: string;
+        };
+        tolerance?: {
+            value: string;
+            operator: string;
+        };
+    };
 }
 
-const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, refreshKey, initialData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
     const [isSaved, setIsSaved] = useState(!!propTestId);
     const [isEditing, setIsEditing] = useState(false);
@@ -45,13 +62,13 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
     });
 
     // Observed Tilt — only the measured value
-    const [observedTilt, setObservedTilt] = useState<string>('1.8');
+    const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
     // Tolerance (Acceptance Criteria)
-    const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '<=' | '>=' | '='>('<=');
-    const [toleranceValue, setToleranceValue] = useState<string>('2');
+    const [toleranceOperator, setToleranceOperator] = useState<'<' | '>'>('<');
+    const [toleranceValue, setToleranceValue] = useState<string>('1.5');
 
-    const operators = ['<', '>', '<=', '>=', '='] as const;
+    const operators = ['<', '>'] as const;
 
     // Auto-calculate Pass/Fail based on TOLERANCE
     const evaluation = useMemo(() => {
@@ -75,52 +92,39 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
     const finalResult = evaluation.remark === 'Pass' ? 'PASS' :
         evaluation.remark === 'Fail' ? 'FAIL' : 'PENDING';
 
-    // Load existing data
+    // Load CSV Initial Data
     useEffect(() => {
-        const load = async () => {
-            if (!serviceId) {
-                setIsLoading(false);
-                return;
+        if (initialData) {
+            console.log('CentralBeamAlignment: Loading initial data from CSV:', initialData);
+            if (initialData.techniqueFactors) {
+                setTechniqueRow({
+                    id: '1',
+                    fcd: initialData.techniqueFactors.fcd || '',
+                    kv: initialData.techniqueFactors.kv || '',
+                    mas: initialData.techniqueFactors.mAs || initialData.techniqueFactors.mas || '',
+                });
             }
-            try {
-                const res = await getCentralBeamAlignmentByServiceIdForOBI(serviceId);
-                const data = res?.data;
-                if (data) {
-                    setTestId(data._id || null);
-                    if (data.techniqueFactors) {
-                        setTechniqueRow({
-                            id: '1',
-                            fcd: String(data.techniqueFactors.fcd ?? ''),
-                            kv: String(data.techniqueFactors.kv ?? ''),
-                            mas: String(data.techniqueFactors.mas ?? ''),
-                        });
-                    }
-                    if (data.observedTilt) {
-                        setObservedTilt(String(data.observedTilt.value ?? ''));
-                    }
-                    if (data.tolerance) {
-                        setToleranceOperator(data.tolerance.operator || '<=');
-                        setToleranceValue(String(data.tolerance.value ?? '2'));
-                    }
-                    setIsSaved(true);
-                    setIsEditing(false);
-                } else {
-                    setIsEditing(true);
-                }
-            } catch (err: any) {
-                if (err.response?.status !== 404) {
-                    toast.error('Failed to load Central Beam Alignment data');
-                }
-                setIsEditing(true);
-            } finally {
-                setIsLoading(false);
+            if (initialData.observedTilt?.value !== undefined) {
+                setObservedTilt(initialData.observedTilt.value);
             }
-        };
-        load();
-    }, [serviceId, propTestId]);
+            if (initialData.tolerance) {
+                const op = initialData.tolerance.operator || '<';
+                setToleranceOperator((op === '<=' || op === '<') ? '<' : '>');
+                setToleranceValue(initialData.tolerance.value || '1.5');
+            }
+            setIsEditing(true);
+            setIsLoading(false);
+            console.log('CentralBeamAlignment: CSV data loaded into form');
+        }
+    }, [initialData]);
 
     // Load existing data
     useEffect(() => {
+        // Skip loading if we have initial CSV data
+        if (initialData) {
+            return;
+        }
+
         const load = async () => {
             if (!serviceId) {
                 setIsLoading(false);
@@ -161,7 +165,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             }
         };
         load();
-    }, [serviceId, propTestId]);
+    }, [serviceId, propTestId, initialData]);
 
     // Update technique fields
     const updateTechnique = (field: keyof TechniqueRow, value: string) => {
@@ -234,16 +238,16 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 <div>
                     <h2 className="text-3xl font-bold text-gray-800">Central Beam Alignment Test</h2>
                 </div>
-                <button
-                    onClick={isViewOnly ? startEditing : handleSave}
-                    disabled={isSaving}
-                    className={`flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-white transition-all shadow-lg ${isSaving
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : isViewOnly
-                            ? "bg-orange-600 hover:bg-orange-700"
-                            : "bg-teal-600 hover:bg-teal-700"
-                        }`}
-                >
+        <button
+          onClick={isViewOnly ? startEditing : handleSave}
+          disabled={isSaving}
+                className={`flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-white transition-all shadow-lg ${isSaving
+            ? "bg-gray-400 cursor-not-allowed"
+            : isViewOnly
+              ? "bg-orange-600 hover:bg-orange-700"
+              : "bg-teal-600 hover:bg-teal-700"
+            }`}
+        >
                     {isSaving ? (
                         <>
                             <Loader2 className="w-6 h-6 animate-spin" />
@@ -322,8 +326,8 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
                                 value={observedTilt}
                                 onChange={(e) => setObservedTilt(e.target.value)}
                                 disabled={isViewOnly}
-                                className="w-48 px-8 py-6 text-center text-4xl font-extrabold text-purple-900 border-4 border-purple-500 rounded-2xl focus:ring-8 focus:ring-purple-300 transition-all"
-                                placeholder="1.8"
+                className="w-48 px-8 py-6 text-center text-4xl font-extrabold text-purple-900 border-4 border-purple-500 rounded-2xl focus:ring-8 focus:ring-purple-300 transition-all"
+                placeholder="1.5"
                             />
                             <span className="text-6xl font-extrabold text-purple-700">°</span>
                         </div>
@@ -368,8 +372,8 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
                         value={toleranceValue}
                         onChange={(e) => setToleranceValue(e.target.value)}
                         disabled={isViewOnly}
-                        className="w-48 px-10 py-6 text-center text-4xl font-extrabold text-indigo-900 border-4 border-indigo-600 rounded-2xl focus:ring-8 focus:ring-indigo-300"
-                        placeholder="2"
+                className="w-48 px-10 py-6 text-center text-4xl font-extrabold text-indigo-900 border-4 border-indigo-600 rounded-2xl focus:ring-8 focus:ring-indigo-300"
+            placeholder="1.5"
                     />
                     <span className="text-7xl font-extrabold text-indigo-800">°</span>
                 </div>

@@ -39,6 +39,10 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: {
+    rows?: Array<{ name: string; visibleCount: string; tolerance: { operator: string; value: string }; remark?: string }>;
+  };
 }
 
 const defaultRows: PhantomRow[] = [
@@ -49,7 +53,7 @@ const defaultRows: PhantomRow[] = [
 
 const operators = ['>', '>=', '<', '<=', '='] as const;
 
-const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
+const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(null);
   const [rows, setRows] = useState<PhantomRow[]>(defaultRows);
 
@@ -64,11 +68,11 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
   // Calculate remark for each row based on tolerance checks
   const rowsWithRemarks = useMemo(() => {
     return rows.map(row => {
-      const visibleCount = parseFloat(row.visibleCount) || 0;
-      const toleranceValue = parseFloat(row.toleranceValue) || 0;
+      const visibleCount = parseFloat(String(row.visibleCount || '')) || 0;
+      const toleranceValue = parseFloat(String(row.toleranceValue || '')) || 0;
       const operator = row.toleranceOperator;
 
-      if (!row.visibleCount.trim() || !row.toleranceValue.trim()) {
+      if (!String(row.visibleCount || '').trim() || !String(row.toleranceValue || '').trim()) {
         return { ...row, remark: '' as const };
       }
 
@@ -96,8 +100,44 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
     return allPass ? 'Pass' : 'Fail';
   }, [rowsWithRemarks]);
 
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('ImagingPhantom: Loading initial data from CSV:', initialData);
+      if (initialData.rows && initialData.rows.length > 0) {
+        setRows(
+          initialData.rows.map((r, i) => ({
+            id: `csv-row-${Date.now()}-${i}`,
+            name: String(r.name || ''),
+            visibleCount: String(r.visibleCount ?? ''),
+            toleranceOperator: (r.tolerance?.operator as '>' | '>=' | '<' | '<=' | '=') || '>=',
+            toleranceValue: String(r.tolerance?.value ?? ''),
+            remark: (r.remark as 'Pass' | 'Fail' | '') || '',
+          }))
+        );
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('ImagingPhantom: CSV data loaded into form');
+    }
+  }, [initialData]);
+
   // Load existing data
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+    
+    // Reset state when refreshKey changes
+    if (refreshKey !== undefined) {
+      setIsLoading(true);
+      setRows(defaultRows);
+      setRemark('');
+      setHasSaved(false);
+      setIsEditing(true);
+    }
+    
     const load = async () => {
       if (!serviceId) {
         setIsLoading(false);
@@ -105,8 +145,11 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
       }
 
       try {
+        console.log('ImagingPhantom: Loading data, refreshKey:', refreshKey);
         const res = await getImagingPhantomByServiceIdForMammography(serviceId);
-        const data = res?.data;
+        // API returns res.data.data directly
+        const data = res;
+        console.log('ImagingPhantom: Loaded data:', data);
         if (data) {
           setRows(
             data.rows && data.rows.length > 0
@@ -136,14 +179,14 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh }) => {
     };
 
     load();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
 
   // Save handler
   const handleSave = async () => {
     const hasEmpty = rows.some(r =>
-      !r.name.trim() ||
-      r.visibleCount.trim() === '' ||
-      r.toleranceValue.trim() === ''
+      !String(r.name || '').trim() ||
+      String(r.visibleCount || '').trim() === '' ||
+      String(r.toleranceValue || '').trim() === ''
     );
 
     if (hasEmpty) {

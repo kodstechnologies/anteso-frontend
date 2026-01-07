@@ -1,10 +1,10 @@
-// components/TestTables/AccuracyOfOperatingPotential.tsx
+// components/TestTables/MeasurementOfOperatingPotential.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
-  addAccuracyOfOperatingPotentialForMammography,
-  getAccuracyOfOperatingPotentialByServiceIdForMammography,
-  updateAccuracyOfOperatingPotentialForMammography,
+  addAccuracyOfOperatingPotentialForBMD,
+  getAccuracyOfOperatingPotentialByServiceIdForBMD,
+  updateAccuracyOfOperatingPotentialForBMD,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
 
@@ -27,15 +27,9 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
-  refreshKey?: number;
-  initialData?: {
-    table1?: Array<{ time: string; sliceThickness: string }>;
-    table2?: Array<{ setKV: string; ma10: string; ma100: string; ma200: string; avgKvp: string; remarks: string }>;
-    tolerance?: { value: string; type: 'percent' | 'absolute'; sign: 'plus' | 'minus' | 'both' };
-  };
 }
 
-const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
+const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: Only 1 row
@@ -46,8 +40,8 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
     { id: '1', setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' },
   ]);
 
-  const [toleranceValue, setToleranceValue] = useState<string>('1.5');
-  const [toleranceType, setToleranceType] = useState<'percent' | 'absolute'>('absolute');
+  const [toleranceValue, setToleranceValue] = useState<string>('5');
+  const [toleranceType, setToleranceType] = useState<'percent' | 'absolute'>('percent');
   const [toleranceSign, setToleranceSign] = useState<'plus' | 'minus' | 'both'>('both');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -87,41 +81,42 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
   };
 
   // === Auto-calculate Avg & Pass/Fail ===
-  // Use useMemo to compute calculated values without causing infinite loops
-  const table2RowsWithCalculations = useMemo(() => {
-    return table2Rows.map((row) => {
-      const values = [row.ma10, row.ma100, row.ma200]
-        .map((v) => parseFloat(v))
-        .filter((v) => !isNaN(v));
-      const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
+  useEffect(() => {
+    setTable2Rows((prev) =>
+      prev.map((row) => {
+        const values = [row.ma10, row.ma100, row.ma200]
+          .map((v) => parseFloat(v))
+          .filter((v) => !isNaN(v));
+        const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
 
-      const setKV = parseFloat(row.setKV);
-      if (isNaN(setKV) || avg === '') {
-        return { ...row, avgKvp: avg, remarks: '' as const };
-      }
+        const setKV = parseFloat(row.setKV);
+        if (isNaN(setKV) || avg === '') {
+          return { ...row, avgKvp: avg, remarks: '' };
+        }
 
-      const measured = parseFloat(avg);
-      let withinTolerance = false;
+        const measured = parseFloat(avg);
+        let withinTolerance = false;
 
-      if (toleranceType === 'percent') {
-        const tolerance = parseFloat(toleranceValue) || 0;
-        const allowedDiff = (setKV * tolerance) / 100;
-        if (toleranceSign === 'plus') withinTolerance = measured <= setKV + allowedDiff;
-        else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - allowedDiff;
-        else withinTolerance = Math.abs(measured - setKV) <= allowedDiff;
-      } else {
-        const tolerance = parseFloat(toleranceValue) || 0;
-        if (toleranceSign === 'plus') withinTolerance = measured <= setKV + tolerance;
-        else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - tolerance;
-        else withinTolerance = Math.abs(measured - setKV) <= tolerance;
-      }
+        if (toleranceType === 'percent') {
+          const tolerance = parseFloat(toleranceValue) || 0;
+          const allowedDiff = (setKV * tolerance) / 100;
+          if (toleranceSign === 'plus') withinTolerance = measured <= setKV + allowedDiff;
+          else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - allowedDiff;
+          else withinTolerance = Math.abs(measured - setKV) <= allowedDiff;
+        } else {
+          const tolerance = parseFloat(toleranceValue) || 0;
+          if (toleranceSign === 'plus') withinTolerance = measured <= setKV + tolerance;
+          else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - tolerance;
+          else withinTolerance = Math.abs(measured - setKV) <= tolerance;
+        }
 
-      return {
-        ...row,
-        avgKvp: avg,
-        remarks: (withinTolerance ? 'Pass' : 'Fail') as 'Pass' | 'Fail',
-      };
-    });
+        return {
+          ...row,
+          avgKvp: avg,
+          remarks: withinTolerance ? 'Pass' : 'Fail',
+        };
+      })
+    );
   }, [table2Rows, toleranceValue, toleranceType, toleranceSign]);
 
   // === Form Valid ===
@@ -134,132 +129,62 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
     );
   }, [serviceId, table1Row, table2Rows]);
 
-  // === Load CSV Initial Data ===
-  useEffect(() => {
-    if (initialData) {
-      console.log('AccuracyOfOperatingPotential: Loading initial data from CSV:', initialData);
-      if (initialData.table1 && initialData.table1.length > 0) {
-        setTable1Row({
-          time: String(initialData.table1[0].time || ''),
-          sliceThickness: String(initialData.table1[0].sliceThickness || ''),
-        });
-      }
-      if (initialData.table2 && initialData.table2.length > 0) {
-        setTable2Rows(
-          initialData.table2.map((r, idx) => ({
-            id: `csv-row-${Date.now()}-${idx}`,
-            setKV: String(r.setKV || ''),
-            ma10: String(r.ma10 || ''),
-            ma100: String(r.ma100 || ''),
-            ma200: String(r.ma200 || ''),
-            avgKvp: '',
-            remarks: (r.remarks as '' | 'Pass' | 'Fail') || '',
-          }))
-        );
-      }
-      if (initialData.tolerance) {
-        setToleranceValue(initialData.tolerance.value || '1.5');
-        setToleranceType(initialData.tolerance.type || 'absolute');
-        setToleranceSign(initialData.tolerance.sign || 'both');
-      }
-      setIsEditing(true); // Allow editing after CSV load
-      setIsLoading(false);
-      console.log('AccuracyOfOperatingPotential: CSV data loaded into form');
-    }
-  }, [initialData]);
-
   // === Load Existing Data ===
   useEffect(() => {
     if (!serviceId) {
       setIsLoading(false);
       return;
     }
-    
-    // Skip loading if we have initial CSV data
-    if (initialData) {
-      return;
-    }
-    
-    // Reset state when refreshKey changes to ensure clean reload
-    if (refreshKey !== undefined && !initialData) {
-      setIsLoading(true);
-      setTable1Row({ time: '', sliceThickness: '' });
-      setTable2Rows([{ id: '1', setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' }]);
-      setHasSaved(false);
-      setIsEditing(false);
-    }
-    
     const load = async () => {
       try {
-        console.log('AccuracyOfOperatingPotential: Loading data for serviceId:', serviceId, 'refreshKey:', refreshKey);
-        const res = await getAccuracyOfOperatingPotentialByServiceIdForMammography(serviceId);
-        console.log('AccuracyOfOperatingPotential: API response (already extracted data):', res);
-        
-        // The API function returns res.data.data directly, so res is already the data object
-        const rec = res;
-        if (!rec) {
-          console.log('AccuracyOfOperatingPotential: No data found (null or undefined)');
+        const res = await getAccuracyOfOperatingPotentialByServiceIdForBMD(serviceId);
+        if (!res?.data) {
           setIsLoading(false);
           return;
         }
-        console.log('AccuracyOfOperatingPotential: Loaded data:', rec);
-        console.log('AccuracyOfOperatingPotential: table1:', rec.table1);
-        console.log('AccuracyOfOperatingPotential: table2:', rec.table2);
-        console.log('AccuracyOfOperatingPotential: tolerance:', rec.tolerance, 'or separate:', { toleranceValue: rec.toleranceValue, toleranceType: rec.toleranceType, toleranceSign: rec.toleranceSign });
-        
+        const rec = res.data;
         if (rec._id) setTestId(rec._id);
 
         // Table 1
-        if (rec.table1 && Array.isArray(rec.table1) && rec.table1.length > 0 && rec.table1[0]) {
-          console.log('AccuracyOfOperatingPotential: Setting table1Row:', rec.table1[0]);
+        if (rec.table1?.[0]) {
           setTable1Row({
-            time: String(rec.table1[0].time || ''),
-            sliceThickness: String(rec.table1[0].sliceThickness || ''),
+            time: rec.table1[0].time,
+            sliceThickness: rec.table1[0].sliceThickness,
           });
         }
 
         // Table 2
         if (Array.isArray(rec.table2) && rec.table2.length > 0) {
-          console.log('AccuracyOfOperatingPotential: Setting table2Rows, count:', rec.table2.length);
           setTable2Rows(
-            rec.table2.map((r: any, idx: number) => ({
-              id: `row-${Date.now()}-${idx}`,
-              setKV: String(r.setKV ?? ''),
-              ma10: String(r.ma10 ?? ''),
-              ma100: String(r.ma100 ?? ''),
-              ma200: String(r.ma200 ?? ''),
+            rec.table2.map((r: any) => ({
+              id: Date.now().toString() + Math.random(),
+              setKV: String(r.setKV),
+              ma10: String(r.ma10),
+              ma100: String(r.ma100),
+              ma200: String(r.ma200),
               avgKvp: '',
-              remarks: r.remarks || '',
+              remarks: r.remarks,
             }))
           );
         }
 
-        // Tolerance - handle both object format and separate fields
+        // Tolerance
         if (rec.tolerance) {
-          console.log('AccuracyOfOperatingPotential: Setting tolerance from object:', rec.tolerance);
-          setToleranceValue(String(rec.tolerance.value || '1.5'));
-          setToleranceType(rec.tolerance.type || 'absolute');
-          setToleranceSign(rec.tolerance.sign || 'both');
-        } else if (rec.toleranceValue || rec.toleranceType || rec.toleranceSign) {
-          // Handle separate fields format (from CSV upload)
-          console.log('AccuracyOfOperatingPotential: Setting tolerance from separate fields');
-          setToleranceValue(String(rec.toleranceValue || '1.5'));
-          setToleranceType(rec.toleranceType || 'absolute');
-          setToleranceSign(rec.toleranceSign || 'both');
+          setToleranceValue(rec.tolerance.value);
+          setToleranceType(rec.tolerance.type);
+          setToleranceSign(rec.tolerance.sign);
         }
 
         setHasSaved(true);
         setIsEditing(false);
-        console.log('AccuracyOfOperatingPotential: Data loaded successfully, hasSaved=true');
       } catch (e: any) {
-        console.error('AccuracyOfOperatingPotential: Error loading data:', e);
         if (e.response?.status !== 404) toast.error('Failed to load data');
       } finally {
         setIsLoading(false);
       }
     };
     load();
-  }, [serviceId, refreshKey, initialData]); // Add refreshKey and initialData as dependencies
+  }, [serviceId]);
 
   // === Save / Update ===
   const handleSave = async () => {
@@ -268,7 +193,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
 
     const payload = {
       table1: [table1Row],
-      table2: table2RowsWithCalculations.map((r) => {
+      table2: table2Rows.map((r) => {
         const values = [r.ma10, r.ma100, r.ma200]
           .map(v => parseFloat(v))
           .filter(v => !isNaN(v));
@@ -293,20 +218,21 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
           remarks: r.remarks,
         };
       }),
-      toleranceValue,
-      toleranceType,
-      toleranceSign,
+      tolerance: {
+        value: toleranceValue,
+        type: toleranceType,
+        sign: toleranceSign,
+      },
     };
 
     try {
       let res;
       if (testId) {
-        res = await updateAccuracyOfOperatingPotentialForMammography(testId, payload);
+        res = await updateAccuracyOfOperatingPotentialForBMD(testId, payload);
         toast.success('Updated successfully!');
       } else {
-        res = await addAccuracyOfOperatingPotentialForMammography(serviceId, payload);
-        if (res?.data?.data?.testId) setTestId(res.data.data.testId);
-        else if (res?.data?.data?._id) setTestId(res.data.data._id);
+        res = await addAccuracyOfOperatingPotentialForBMD(serviceId, payload);
+        if (res?.data?._id) setTestId(res.data._id);
         toast.success('Saved successfully!');
       }
       setHasSaved(true);
@@ -340,7 +266,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-10">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        Accuracy of Operating Potential (kVp) – Mammography
+        Measurement of Operating Potential
       </h2>
 
       {/* Table 1: Single Row */}
@@ -423,28 +349,25 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {table2RowsWithCalculations.map((row) => {
-                // Find the base row for input values
-                const baseRow = table2Rows.find(r => r.id === row.id) || row;
-                return (
+              {table2Rows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2 border-r">
                     <input
                       type="text"
-                      value={baseRow.setKV}
+                      value={row.setKV}
                       onChange={(e) => updateTable2(row.id, 'setKV', e.target.value)}
                       disabled={isViewMode}
                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
                         ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
                         : 'border-gray-300'
                         }`}
-                      placeholder="28"
+                      placeholder="80"
                     />
                   </td>
                   <td className="px-4 py-2 border-r">
                     <input
                       type="text"
-                      value={baseRow.ma10}
+                      value={row.ma10}
                       onChange={(e) => updateTable2(row.id, 'ma10', e.target.value)}
                       disabled={isViewMode}
                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
@@ -456,7 +379,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                   <td className="px-4 py-2 border-r">
                     <input
                       type="text"
-                      value={baseRow.ma100}
+                      value={row.ma100}
                       onChange={(e) => updateTable2(row.id, 'ma100', e.target.value)}
                       disabled={isViewMode}
                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
@@ -468,7 +391,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                   <td className="px-4 py-2 border-r">
                     <input
                       type="text"
-                      value={baseRow.ma200}
+                      value={row.ma200}
                       onChange={(e) => updateTable2(row.id, 'ma200', e.target.value)}
                       disabled={isViewMode}
                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
@@ -503,7 +426,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                     )}
                   </td>
                 </tr>
-              )})}
+              ))}
             </tbody>
           </table>
         </div>
@@ -607,4 +530,5 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
   );
 };
 
-export default AccuracyOfOperatingPotential;
+export default MeasurementOfOperatingPotential;
+

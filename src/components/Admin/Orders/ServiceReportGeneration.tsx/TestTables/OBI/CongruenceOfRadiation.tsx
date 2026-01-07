@@ -31,9 +31,20 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: {
+    rows?: Array<{
+      dimension: string;
+      observedShift: string;
+      edgeShift: string;
+      percentFED?: string;
+      tolerance: string;
+      remark?: 'Pass' | 'Fail' | '';
+    }>;
+  };
 }
 
-const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -93,8 +104,36 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
     setCongruenceRows(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
   };
 
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('CongruenceOfRadiation: Loading initial data from CSV:', initialData);
+      if (initialData.rows && initialData.rows.length > 0) {
+        setCongruenceRows(
+          initialData.rows.map((r, i) => ({
+            id: i === 0 ? 'x' : i === 1 ? 'y' : String(i + 1),
+            dimension: r.dimension || (i === 0 ? 'Ι X Ι + Ι X\u2019 Ι' : 'Ι Y Ι + Ι Y\u2019 Ι'),
+            observedShift: r.observedShift || '',
+            edgeShift: r.edgeShift || '',
+            percentFED: r.percentFED || '',
+            tolerance: r.tolerance || '2',
+            remark: (r.remark as 'Pass' | 'Fail' | '') || '',
+          }))
+        );
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('CongruenceOfRadiation: CSV data loaded into form');
+    }
+  }, [initialData]);
+
   // Load existing data
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+
     const load = async () => {
       if (!serviceId) return;
       setIsLoading(true);
@@ -141,7 +180,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       }
     };
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, propTestId, initialData]);
 
   // Save handler
   const handleSave = async () => {
@@ -235,7 +274,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
           <table className="min-w-full">
             <thead className="bg-blue-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase">FCD (cm)</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase">FFD (cm)</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase">kV</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase">mAs</th>
                 <th className="w-12"></th>

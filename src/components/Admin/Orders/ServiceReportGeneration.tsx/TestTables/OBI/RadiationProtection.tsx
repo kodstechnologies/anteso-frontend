@@ -8,6 +8,7 @@ import {
     addRadiationProtectionSurveyForOBI,
     getRadiationProtectionSurveyByServiceIdForOBI,
     updateRadiationProtectionSurveyForOBI,
+    getTools,
 } from "../../../../../../api";
 
 interface LocationData {
@@ -20,16 +21,36 @@ interface LocationData {
 }
 interface Props {
     serviceId: string;
+    refreshKey?: number;
+    initialData?: {
+        surveyDate?: string;
+        hasValidCalibration?: string;
+        appliedCurrent?: string;
+        appliedVoltage?: string;
+        exposureTime?: string;
+        workload?: string;
+        locations?: Array<{
+            location: string;
+            mRPerHr: string;
+            category: string;
+        }>;
+    };
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
-    const [testId, setTestId] = useState<string | null>(null);
-    const [isSaved, setIsSaved] = useState(false);
-    const [isEditing, setIsEditing] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [surveyDate, setSurveyDate] = useState<string>("");
-    const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, initialData }) => {
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
+  const [testId, setTestId] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [surveyDate, setSurveyDate] = useState<string>(getTodayDate());
+  const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
     const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
     const [appliedVoltage, setAppliedVoltage] = useState<string>("80");
@@ -93,11 +114,129 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     const workerLocations = locations.filter(l => l.category === "worker");
     const publicLocations = locations.filter(l => l.category === "public");
 
+    // Find maximum values and their corresponding locations
+    const maxWorkerLocation = workerLocations.reduce((max, loc) => {
+      const maxVal = parseFloat(max.mRPerWeek) || 0;
+      const locVal = parseFloat(loc.mRPerWeek) || 0;
+      return locVal > maxVal ? loc : max;
+    }, workerLocations[0] || { mRPerHr: '', location: '' });
+    
+    const maxPublicLocation = publicLocations.reduce((max, loc) => {
+      const maxVal = parseFloat(max.mRPerWeek) || 0;
+      const locVal = parseFloat(loc.mRPerWeek) || 0;
+      return locVal > maxVal ? loc : max;
+    }, publicLocations[0] || { mRPerHr: '', location: '' });
+
     const maxWorkerWeekly = Math.max(...workerLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
     const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
 
+    // Check calibration validity from tools
+    useEffect(() => {
+      const checkCalibration = async () => {
+        if (!serviceId) return;
+        try {
+          const toolsRes = await getTools(serviceId);
+          const tools = toolsRes?.data?.toolsAssigned || [];
+          
+          if (tools.length > 0) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            let hasCalibrationDates = false;
+            let allValid = true;
+            let hasExpired = false;
+            
+            // Check all tools for calibration dates
+            for (const tool of tools) {
+              if (tool.calibrationValidTill) {
+                hasCalibrationDates = true;
+                const validTill = new Date(tool.calibrationValidTill);
+                validTill.setHours(0, 0, 0, 0);
+                
+                if (validTill < today) {
+                  hasExpired = true;
+                  allValid = false;
+                }
+              }
+            }
+            
+            // Set calibration status based on check
+            if (hasCalibrationDates) {
+              if (hasExpired) {
+                setHasValidCalibration("No");
+              } else if (allValid) {
+                setHasValidCalibration("Yes");
+              } else {
+                setHasValidCalibration("Yes"); // All dates are valid
+              }
+            } else {
+              // No calibration dates found in tools
+              setHasValidCalibration("N/A");
+            }
+          } else {
+            setHasValidCalibration("N/A");
+          }
+        } catch (err) {
+          console.error("Failed to check calibration:", err);
+          // Don't set calibration status if check fails
+        }
+      };
+      
+      checkCalibration();
+    }, [serviceId]);
+
+    // Load CSV Initial Data
+    useEffect(() => {
+        if (initialData) {
+            console.log('RadiationProtectionSurvey: Loading initial data from CSV:', initialData);
+            if (initialData.surveyDate) {
+                setSurveyDate(initialData.surveyDate);
+            }
+            if (initialData.hasValidCalibration !== undefined) {
+                setHasValidCalibration(initialData.hasValidCalibration);
+            }
+            if (initialData.appliedCurrent) {
+                setAppliedCurrent(initialData.appliedCurrent);
+            }
+            if (initialData.appliedVoltage) {
+                setAppliedVoltage(initialData.appliedVoltage);
+            }
+            if (initialData.exposureTime) {
+                setExposureTime(initialData.exposureTime);
+            }
+            if (initialData.workload) {
+                setWorkload(initialData.workload);
+            }
+            if (initialData.locations && initialData.locations.length > 0) {
+                // Merge CSV locations with existing default locations by matching location name
+                setLocations(prevLocations => {
+                    const locationMap = new Map(initialData.locations!.map(loc => [loc.location, loc]));
+                    return prevLocations.map(prevLoc => {
+                        const csvLoc = locationMap.get(prevLoc.location);
+                        if (csvLoc) {
+                            return {
+                                ...prevLoc,
+                                mRPerHr: csvLoc.mRPerHr || prevLoc.mRPerHr,
+                                category: (csvLoc.category as "worker" | "public") || prevLoc.category,
+                            };
+                        }
+                        return prevLoc;
+                    });
+                });
+            }
+            setIsEditing(true);
+            setIsLoading(false);
+            console.log('RadiationProtectionSurvey: CSV data loaded into form');
+        }
+    }, [initialData]);
+
     // Load existing survey
     useEffect(() => {
+        // Skip loading if we have initial CSV data
+        if (initialData) {
+            return;
+        }
+
         const load = async () => {
             if (!serviceId) {
                 setIsLoading(false);
@@ -109,7 +248,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                 if (data) {
                     setTestId(data._id || null);
                     setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
-                    setHasValidCalibration(data.hasValidCalibration || "");
+                    // Calibration status is set by the tools check useEffect, don't override it here
+                    // (The tools check will run and set it based on current calibration dates)
                     setAppliedCurrent(data.appliedCurrent || "100");
                     setAppliedVoltage(data.appliedVoltage || "80");
                     setExposureTime(data.exposureTime || "0.5");
@@ -141,7 +281,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
             }
         };
         load();
-    }, [serviceId]);
+    }, [serviceId, initialData]);
 
     const handleSave = async () => {
         if (!serviceId) {
@@ -154,6 +294,11 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
         }
         if (!hasValidCalibration.trim()) {
             toast.error("Please select calibration status");
+            return;
+        }
+        // Prevent submission if calibration is "No"
+        if (hasValidCalibration === "No") {
+            toast.error("Cannot submit test: Calibration certificate is expired. Please ensure all tools have valid calibration certificates.");
             return;
         }
 
@@ -195,6 +340,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     };
 
     const isViewMode = isSaved && !isEditing;
+    const isDisabled = isViewMode || hasValidCalibration === "No";
 
     if (isLoading) {
         return (
@@ -206,14 +352,21 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
 
     return (
         <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
+            {hasValidCalibration === "No" && (
+                <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 mb-4">
+                    <p className="text-red-800 font-semibold">
+                        ⚠️ Calibration certificate is expired. All fields are disabled until valid calibration certificates are provided for all tools.
+                    </p>
+                </div>
+            )}
             <div className="flex justify-between items-center">
                 <h1 className="text-4xl font-bold text-center text-gray-800">
                     Radiation Protection Survey Report
                 </h1>
                 <button
                     onClick={isViewMode ? () => setIsEditing(true) : handleSave}
-                    disabled={isSaving}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
+                    disabled={isSaving || isDisabled}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving || isDisabled ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
                 >
                     {isSaving ? (
                         <>
@@ -238,14 +391,14 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Survey</label>
                         <input type="date" value={surveyDate} onChange={e => setSurveyDate(e.target.value)}
-                            disabled={isViewMode}
-                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} />
+                            disabled={isDisabled}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} />
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Valid Calibration Certificate?</label>
                         <select value={hasValidCalibration} onChange={e => setHasValidCalibration(e.target.value)}
-                            disabled={isViewMode}
-                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}>
+                            disabled={isDisabled}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}>
                             <option value="">Select</option>
                             <option value="Yes">Yes</option>
                             <option value="No">No</option>
@@ -264,26 +417,26 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Applied Current (mA)</label>
                         <input type="number" value={appliedCurrent} onChange={e => setAppliedCurrent(e.target.value)}
-                            disabled={isViewMode}
-                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="100" />
+                            disabled={isDisabled}
+                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="100" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Applied Voltage (kV)</label>
                         <input type="number" value={appliedVoltage} onChange={e => setAppliedVoltage(e.target.value)}
-                            disabled={isViewMode}
-                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="80" />
+                            disabled={isDisabled}
+                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="80" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Exposure Time (s)</label>
                         <input type="number" step="0.001" value={exposureTime} onChange={e => setExposureTime(e.target.value)}
-                            disabled={isViewMode}
-                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="0.5" />
+                            disabled={isDisabled}
+                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="0.5" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
                         <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
-                            disabled={isViewMode}
-                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
+                            disabled={isDisabled}
+                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
                     </div>
                 </div>
             </section>
@@ -298,10 +451,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                         <table className="min-w-full divide-y divide-gray-300">
                             <thead className="bg-purple-50">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">Location</th>
-                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Max. Radiation Level (mR/hr)</th>
-                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">mR/week</th>
-                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">Result</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">LOCATION</th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MAX. RADIATION LEVEL (MR/HR)</th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MR/WEEK</th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">RESULT</th>
                                     <th className="w-32"></th>
                                 </tr>
                             </thead>
@@ -314,8 +467,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                                 type="text"
                                                 value={row.location}
                                                 onChange={e => updateRow(row.id, "location", e.target.value)}
-                                                disabled={isViewMode}
-                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                                disabled={isDisabled}
+                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
                                             />
                                         </td>
                                         <td className="px-6 py-4 text-center">
@@ -324,8 +477,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                                 step="0.001"
                                                 value={row.mRPerHr}
                                                 onChange={e => updateRow(row.id, "mRPerHr", e.target.value)}
-                                                disabled={isViewMode}
-                                                className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                                disabled={isDisabled}
+                                                className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
                                                 placeholder="0.000"
                                             />
                                         </td>
@@ -341,15 +494,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                         </td>
                                         {/* RowSpan for Worker */}
                                         {index === 0 && (
-                                            <td rowSpan={workerLocations.length} className="text-center align-middle bg-blue-100 border-l-4 border-blue-600">
-                                                <div className="text-lg font-bold text-blue-900 tracking-wider px-2">
+                                            <td rowSpan={workerLocations.length} className="text-center align-middle bg-blue-100 border-l-4 border-blue-600 relative">
+                                                <div className="text-sm font-bold text-blue-900 tracking-wider">
                                                     FOR RADIATION WORKER
                                                 </div>
                                             </td>
                                         )}
                                         {/* Delete button */}
-                                        {!isViewMode && (
-                                            <td className="px-3 py-4 text-center">
+                                        {!isDisabled && (
+                                            <td className="px-3 py-4 text-center bg-blue-100">
                                                 <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
                                                     <Trash2 className="w-5 h-5" />
                                                 </button>
@@ -366,8 +519,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                                 type="text"
                                                 value={row.location}
                                                 onChange={e => updateRow(row.id, "location", e.target.value)}
-                                                disabled={isViewMode}
-                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                                disabled={isDisabled}
+                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
                                             />
                                         </td>
                                         <td className="px-6 py-4 text-center">
@@ -376,8 +529,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                                 step="0.001"
                                                 value={row.mRPerHr}
                                                 onChange={e => updateRow(row.id, "mRPerHr", e.target.value)}
-                                                disabled={isViewMode}
-                                                className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                                disabled={isDisabled}
+                                                className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
                                                 placeholder="0.000"
                                             />
                                         </td>
@@ -393,15 +546,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                         </td>
                                         {/* RowSpan for Public */}
                                         {index === 0 && (
-                                            <td rowSpan={publicLocations.length} className="text-center align-middle bg-purple-100 border-l-4 border-purple-600">
-                                                <div className="text-lg font-bold text-purple-900 tracking-wider px-2">
+                                            <td rowSpan={publicLocations.length} className="text-center align-middle bg-purple-100 border-l-4 border-purple-600 relative">
+                                                <div className="text-sm font-bold text-purple-900 tracking-wider">
                                                     FOR PUBLIC
                                                 </div>
                                             </td>
                                         )}
                                         {/* Delete button */}
-                                        {!isViewMode && (
-                                            <td className="px-3 py-4 text-center">
+                                        {!isDisabled && (
+                                            <td className="px-3 py-4 text-center bg-purple-100">
                                                 <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
                                                     <Trash2 className="w-5 h-5" />
                                                 </button>
@@ -414,7 +567,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                     </div>
 
                     {/* Add Buttons */}
-                    {!isViewMode && (
+                    {!isDisabled && (
                         <div className="flex justify-center gap-8 mt-8">
                             <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                                 <Plus className="w-5 h-5" /> Add Worker Location
@@ -434,6 +587,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                 {maxWorkerWeekly} <span className="text-2xl font-normal">mR/week</span>
                             </p>
                             <p className="text-lg text-blue-700 mt-4 font-semibold">Limit: ≤ 40 mR/week</p>
+                            {maxWorkerLocation.mRPerHr && parseFloat(maxWorkerLocation.mRPerHr) > 0 && (
+                                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-blue-400 text-left">
+                                    <p className="text-sm font-semibold text-blue-900 mb-2">Calculation:</p>
+                                    <p className="text-xs text-blue-800 mb-1">
+                                        <strong>Location:</strong> {maxWorkerLocation.location}
+                                    </p>
+                                    <p className="text-xs text-blue-800">
+                                        <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                                    </p>
+                                    <p className="text-xs text-blue-800 mt-1">
+                                        <strong>Result:</strong> {maxWorkerWeekly} mR/week
+                                    </p>
+                                </div>
+                            )}
                         </div>
                         <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-4 border-purple-300 rounded-2xl p-8 text-center shadow-lg">
                             <h3 className="text-xl font-bold text-purple-900">Maximum Radiation Level/week</h3>
@@ -442,6 +609,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                                 {maxPublicWeekly} <span className="text-2xl font-normal">mR/week</span>
                             </p>
                             <p className="text-lg text-purple-700 mt-4 font-semibold">Limit: ≤ 2 mR/week</p>
+                            {maxPublicLocation.mRPerHr && parseFloat(maxPublicLocation.mRPerHr) > 0 && (
+                                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-purple-400 text-left">
+                                    <p className="text-sm font-semibold text-purple-900 mb-2">Calculation:</p>
+                                    <p className="text-xs text-purple-800 mb-1">
+                                        <strong>Location:</strong> {maxPublicLocation.location}
+                                    </p>
+                                    <p className="text-xs text-purple-800">
+                                        <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                                    </p>
+                                    <p className="text-xs text-purple-800 mt-1">
+                                        <strong>Result:</strong> {maxPublicWeekly} mR/week
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

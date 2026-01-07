@@ -50,12 +50,12 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.accuracyOfOperatingPotential && !isEmpty(testData.accuracyOfOperatingPotential)) {
     const test = testData.accuracyOfOperatingPotential;
     if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
-      const validRows = test.rows.filter((row: any) => row.appliedKvp || row.avgKvp);
+      const validRows = test.rows.filter((row: any) => row.appliedKvp || row.appliedkVp || row.avgKvp);
       if (validRows.length > 0) {
         const toleranceSign = test.kvpToleranceSign || "±";
         const toleranceValue = test.kvpToleranceValue || "5";
         const testRows = validRows.map((row: any) => {
-          const appliedKvp = parseFloat(row.appliedKvp) || 0;
+          const appliedKvp = parseFloat(row.appliedKvp || row.appliedkVp) || 0;
           const avgKvp = parseFloat(row.avgKvp) || 0;
           let isPass = false;
           
@@ -70,7 +70,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
           }
           
           return {
-            specified: row.appliedKvp || "-",
+            specified: row.appliedKvp || row.appliedkVp || "-",
             measured: row.avgKvp || "-",
             tolerance: `${toleranceSign}${toleranceValue}%`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -222,36 +222,36 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
   }
 
   // 6. Radiation Protection Survey
-  if (testData.radiationProtectionSurvey && !isEmpty(testData.radiationProtectionSurvey)) {
-    const test = testData.radiationProtectionSurvey;
-    if (test.locations && Array.isArray(test.locations) && test.locations.length > 0) {
-      const validRows = test.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
-      if (validRows.length > 0) {
-        const testRows = validRows.map((loc: any) => {
-          const mRPerWeek = loc.mRPerWeek || "-";
-          const limit = loc.category === "worker" ? 40 : 2;
-          let isPass = false;
+  // if (testData.radiationProtectionSurvey && !isEmpty(testData.radiationProtectionSurvey)) {
+  //   const test = testData.radiationProtectionSurvey;
+  //   if (test.locations && Array.isArray(test.locations) && test.locations.length > 0) {
+  //     const validRows = test.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
+  //     if (validRows.length > 0) {
+  //       const testRows = validRows.map((loc: any) => {
+  //         const mRPerWeek = loc.mRPerWeek || "-";
+  //         const limit = loc.category === "worker" ? 40 : 2;
+  //         let isPass = false;
           
-          if (loc.result === "PASS" || loc.result === "Pass") {
-            isPass = true;
-          } else if (loc.result === "FAIL" || loc.result === "Fail") {
-            isPass = false;
-          } else if (mRPerWeek !== "-") {
-            const val = parseFloat(mRPerWeek);
-            isPass = val <= limit;
-          }
+  //         if (loc.result === "PASS" || loc.result === "Pass") {
+  //           isPass = true;
+  //         } else if (loc.result === "FAIL" || loc.result === "Fail") {
+  //           isPass = false;
+  //         } else if (mRPerWeek !== "-") {
+  //           const val = parseFloat(mRPerWeek);
+  //           isPass = val <= limit;
+  //         }
           
-          return {
-            specified: loc.location || "-",
-            measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-            tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          };
-        });
-        addRowsForTest("Radiation Protection Survey", testRows);
-      }
-    }
-  }
+  //         return {
+  //           specified: loc.location || "-",
+  //           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
+  //           tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+  //           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+  //         };
+  //       });
+  //       addRowsForTest("Radiation Protection Survey", testRows);
+  //     }
+  //   }
+  // }
 
   if (rows.length === 0) {
     return <div className="text-center text-gray-500 py-10">No test results available.</div>;

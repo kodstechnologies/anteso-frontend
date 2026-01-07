@@ -33,9 +33,18 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: {
+    settings?: { fcd: string; kv: string; ma: string; time: string };
+    workload?: string;
+    leakageMeasurements?: Array<{ location: string; left: string; right: string; front: string; back: string; top: string; unit: string }>;
+    toleranceValue?: string;
+    toleranceOperator?: string;
+    toleranceTime?: string;
+  };
 }
 
-export default function RadiationLeakageLevel({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function RadiationLeakageLevel({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   const [settings, setSettings] = useState<SettingsRow>({
@@ -208,21 +217,88 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
       workload.trim() &&
       toleranceValue.trim() &&
       leakageRows.every(r =>
-        r.left.trim() && r.right.trim() && r.front.trim() && r.back.trim() && r.top.trim()
+        String(r.left || '').trim() && 
+        String(r.right || '').trim() && 
+        String(r.front || '').trim() && 
+        String(r.back || '').trim() && 
+        String(r.top || '').trim()
       )
     );
   }, [serviceId, settings, workload, toleranceValue, leakageRows]);
 
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('RadiationLeakageLevel: Loading initial data from CSV:', initialData);
+      if (initialData.settings) {
+        setSettings(initialData.settings);
+      }
+      if (initialData.workload) {
+        setWorkload(initialData.workload);
+      }
+      if (initialData.leakageMeasurements && initialData.leakageMeasurements.length > 0) {
+        setLeakageRows(
+          initialData.leakageMeasurements.map((m, i) => ({
+            location: m.location || '',
+            left: String(m.left ?? ''),
+            right: String(m.right ?? ''),
+            front: String(m.front ?? ''),
+            back: String(m.back ?? ''),
+            top: String(m.top ?? ''),
+            max: '',
+            result: '',
+            unit: m.unit || 'mR/h',
+            mgy: '',
+            remark: '',
+          }))
+        );
+      }
+      if (initialData.toleranceValue) {
+        setToleranceValue(initialData.toleranceValue);
+      }
+      if (initialData.toleranceOperator) {
+        setToleranceOperator(initialData.toleranceOperator);
+      }
+      if (initialData.toleranceTime) {
+        setToleranceTime(initialData.toleranceTime);
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('RadiationLeakageLevel: CSV data loaded into form');
+    }
+  }, [initialData]);
+
   // Load existing data
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+    
+    // Reset state when refreshKey changes
+    if (refreshKey !== undefined) {
+      setIsLoading(true);
+      setSettings({ fcd: '100', kv: '120', ma: '21', time: '2.0' });
+      setLeakageRows([{ location: 'Tube', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '', remark: '' }]);
+      setWorkload('');
+      setToleranceValue('');
+      setToleranceOperator('less than or equal to');
+      setToleranceTime('1');
+      setHasSaved(false);
+      setIsEditing(false);
+    }
+    
     const load = async () => {
       if (!serviceId) {
         setIsLoading(false);
         return;
       }
       try {
+        console.log('RadiationLeakageLevel: Loading data, refreshKey:', refreshKey);
         const res = await getRadiationLeakageLevelByServiceIdForMammography(serviceId);
-        const data = res?.data;
+        // API returns res.data.data directly
+        const data = res;
+        console.log('RadiationLeakageLevel: Loaded data:', data);
         if (data) {
           setTestId(data._id || null);
           if (data.fcd) setSettings({ fcd: data.fcd, kv: data.kv || '', ma: data.ma || '', time: data.time || '' });
@@ -282,7 +358,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
 
   const handleSave = async () => {
     console.log('handleSave called', { isFormValid, serviceId, testId });

@@ -1,13 +1,13 @@
-// components/TestTables/LinearityOfMaLoading.tsx
+// components/TestTables/Mammography/LinearityOfMaLoadingStations.tsx
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addLinearityOfMaLoadingForBMD,
-  getLinearityOfMaLoadingByServiceIdForBMD,
-  updateLinearityOfMaLoadingForBMD,
+  addLinearityOfMasLoadingStationsForMammography,
+  getLinearityOfMasLoadingStationsByServiceIdForMammography,
+  updateLinearityOfMasLoadingStationsForMammography,
 } from '../../../../../../api';
 
 interface Table1Row {
@@ -18,7 +18,7 @@ interface Table1Row {
 
 interface Table2Row {
   id: string;
-  ma: string;                    // Changed from mAsApplied
+  ma: string;
   measuredOutputs: string[];
   average: string;
   x: string;
@@ -32,10 +32,17 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
-  initialData?: any;
+  initialData?: {
+    table1?: Array<{ fcd: string; kv: string; time: string }>;
+    measHeaders?: string[];
+    table2?: Array<{ ma: string; measuredOutputs: string[] }>;
+    tolerance?: string;
+    toleranceOperator?: string;
+  };
+  refreshKey?: number;
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, initialData }) => {
+const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, initialData, refreshKey }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: FCD, kV, Time (sec)
@@ -203,152 +210,198 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     );
   }, [serviceId, table1Row, table2Rows]);
 
-  // === Load Data ===
+  // === Load CSV Initial Data ===
   useEffect(() => {
-    if (!serviceId) {
+    if (initialData) {
+      console.log('LinearityOfMaLoadingStations: Loading initial data from CSV:', initialData);
+      if (initialData.table1 && initialData.table1.length > 0) {
+        setTable1Row({
+          fcd: String(initialData.table1[0].fcd || ''),
+          kv: String(initialData.table1[0].kv || ''),
+          time: String(initialData.table1[0].time || ''),
+        });
+      }
+      if (initialData.measHeaders && initialData.measHeaders.length > 0) {
+        setMeasHeaders(initialData.measHeaders);
+      }
+      if (initialData.table2 && initialData.table2.length > 0) {
+        setTable2Rows(
+          initialData.table2.map((r, idx) => ({
+            id: `csv-row-${Date.now()}-${idx}`,
+            ma: String(r.ma || ''),
+            measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
+            average: '',
+            x: '',
+            xMax: '',
+            xMin: '',
+            col: '',
+            remarks: '',
+          }))
+        );
+      }
+      if (initialData.tolerance) {
+        setTolerance(initialData.tolerance);
+      }
+      if (initialData.toleranceOperator) {
+        setToleranceOperator(initialData.toleranceOperator);
+      }
+      setIsEditing(true); // Allow editing after CSV load
       setIsLoading(false);
+      console.log('LinearityOfMaLoadingStations: CSV data loaded into form');
+    }
+  }, [initialData]);
+
+  // === Load Data from backend ===
+  useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
       return;
     }
 
-    const loadTest = async () => {
-      setIsLoading(true);
+    const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
       try {
-        const data = await getLinearityOfMaLoadingByServiceIdForBMD(serviceId);
-        if (data?.data) {
-          const testData = data.data;
-          setTestId(testData._id);
-          if (testData.table1) {
-            setTable1Row({
-              fcd: testData.table1.fcd || '',
-              kv: testData.table1.kv || '',
-              time: testData.table1.time || '',
-            });
+        const res = await getLinearityOfMasLoadingStationsByServiceIdForMammography(serviceId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          setTable1Row({
+            fcd: data.table1?.[0]?.fcd || '',
+            kv: data.table1?.[0]?.kv || '',
+            time: data.table1?.[0]?.time || '',
+          });
+          setMeasHeaders(data.measHeaders && data.measHeaders.length > 0 ? data.measHeaders : ['Meas 1', 'Meas 2', 'Meas 3']);
+          if (Array.isArray(data.table2) && data.table2.length > 0) {
+            setTable2Rows(
+              data.table2.map((r: any) => ({
+                id: Date.now().toString() + Math.random(),
+                ma: r.mAsApplied || r.ma || '',
+                measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
+                // Don't load average and x - they will be recalculated by processedTable2
+              }))
+            );
           }
-          if (testData.table2 && testData.table2.length > 0) {
-            const firstRow = testData.table2[0];
-            const numCols = firstRow.measuredOutputs?.length || 3;
-            setMeasHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
-            setTable2Rows(testData.table2.map((r: any) => ({
-              id: Date.now().toString() + Math.random(),
-              ma: r.ma || '',
-              measuredOutputs: r.measuredOutputs || Array(numCols).fill(''),
-              average: r.average || '',
-              x: r.x || '',
-              xMax: r.xMax || '',
-              xMin: r.xMin || '',
-              col: r.col || '',
-              remarks: r.remarks || '',
-            })));
-          }
-          if (testData.tolerance) setTolerance(testData.tolerance);
-          if (testData.toleranceOperator) setToleranceOperator(testData.toleranceOperator);
-          if (testData.measHeaders && testData.measHeaders.length > 0) {
-            setMeasHeaders(testData.measHeaders);
-          }
+          setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
-          toast.error('Failed to load test data');
+          toast.error('Failed to load mA linearity data');
         }
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
-
-    loadTest();
-  }, [serviceId]);
-
-  // Load initialData from CSV if provided
-  useEffect(() => {
-    if (initialData) {
-      try {
-        if (initialData.table1) {
-          setTable1Row({
-            fcd: initialData.table1.fcd || '',
-            kv: initialData.table1.kv || '',
-            time: initialData.table1.time || '',
-          });
-        }
-        if (initialData.table2 && initialData.table2.length > 0) {
-          const firstRow = initialData.table2[0];
-          const numCols = firstRow.measuredOutputs?.length || 3;
-          setMeasHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
-          setTable2Rows(initialData.table2.map((r: any) => ({
-            id: Date.now().toString() + Math.random(),
-            ma: r.ma || '',
-            measuredOutputs: r.measuredOutputs || Array(numCols).fill(''),
-            average: r.average || '',
-            x: r.x || '',
-            xMax: r.xMax || '',
-            xMin: r.xMin || '',
-            col: r.col || '',
-            remarks: r.remarks || '',
-          })));
-        }
-        if (initialData.tolerance) setTolerance(initialData.tolerance);
-        if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
-      } catch (err) {
-        console.error('Error loading initialData:', err);
-      }
-    }
-  }, [initialData]);
+    load();
+  }, [serviceId, refreshKey, initialData]);
 
   // === Save Handler ===
   const handleSave = async () => {
-    if (!isFormValid) {
-      toast.error('Please fill all required fields');
-      return;
-    }
+    console.log('handleSave called', { isFormValid, serviceId, testId, table1Row, table2Rows: table2Rows.length });
+
     if (!serviceId) {
       toast.error('Service ID is missing');
       return;
     }
 
+    if (!isFormValid) {
+      toast.error('Please fill all required fields');
+      console.log('Form validation failed:', {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
+        time: table1Row.time,
+        table2Rows: table2Rows.map(r => ({ ma: r.ma, hasOutputs: r.measuredOutputs.some(v => v.trim()) }))
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
+      console.log('Starting save...', { serviceId, testId });
       // Use processedTable2 to get calculated values
       const payload = {
-        table1: table1Row, // Send as object, not array
+        table1: [table1Row],
         table2: processedTable2.rows.map(r => ({
-          ma: r.ma || '', // Use 'ma' instead of 'mAsApplied' and ensure it's always a string
+          mAsApplied: r.ma,
           measuredOutputs: r.measuredOutputs.map(v => {
             const val = v.trim();
-            // Return as string, not number or null
-            return val === '' ? '' : val;
+            return val === '' ? null : (isNaN(parseFloat(val)) ? val : parseFloat(val));
           }),
           average: r.average || '',
           x: r.x || '',
-          xMax: processedTable2.summary.xMax || '',
-          xMin: processedTable2.summary.xMin || '',
-          col: processedTable2.summary.col || '',
-          remarks: processedTable2.summary.remarks || '',
         })),
-        tolerance: tolerance || '0.1',
+        measHeaders,
+        tolerance,
+        toleranceOperator,
+        xMax: processedTable2.summary.xMax,
+        xMin: processedTable2.summary.xMin,
+        col: processedTable2.summary.col,
+        remarks: processedTable2.summary.remarks,
       };
 
       let result;
-      if (testId) {
-        result = await updateLinearityOfMaLoadingForBMD(testId, payload);
-      } else {
-        result = await addLinearityOfMaLoadingForBMD(serviceId, payload);
-        if (result?.data?._id) {
-          setTestId(result.data._id);
+      let currentTestId = testId;
+
+      // If no testId, try to get existing data by serviceId first
+      if (!currentTestId) {
+        try {
+          const existing = await getLinearityOfMasLoadingStationsByServiceIdForMammography(serviceId);
+          if (existing?.data?._id) {
+            currentTestId = existing.data._id;
+            setTestId(currentTestId);
+          }
+        } catch (err) {
+          // No existing data, will create new
         }
       }
 
+      console.log('Payload prepared:', payload);
+
+      if (currentTestId) {
+        // Update existing
+        console.log('Updating with testId:', currentTestId);
+        result = await updateLinearityOfMasLoadingStationsForMammography(currentTestId, payload);
+        console.log('Update result:', result);
+        toast.success('Updated successfully!');
+      } else {
+        // Create new (backend uses upsert, so this will work even if data exists)
+        console.log('Creating new with serviceId:', serviceId);
+        result = await addLinearityOfMasLoadingStationsForMammography(serviceId, payload);
+        console.log('Create result:', result);
+        const newId = result?.data?._id || result?.data?.data?._id || result?._id;
+        if (newId) {
+          setTestId(newId);
+        }
+        toast.success('Saved successfully!');
+      }
       setHasSaved(true);
       setIsEditing(false);
-      toast.success(testId ? 'Updated successfully' : 'Saved successfully');
       onRefresh?.();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Save failed');
+      console.error('Save error:', err);
+      console.error('Error details:', {
+        message: err?.message,
+        response: err?.response?.data,
+        status: err?.response?.status
+      });
+      toast.error(err?.response?.data?.message || err?.message || 'Save failed');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const toggleEdit = () => setIsEditing(true);
+  const toggleEdit = () => {
+    console.log('toggleEdit called');
+    setIsEditing(true);
+  };
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
@@ -364,15 +417,15 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
+      <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading Stations</h2>
 
       {/* Table 1: FCD, kV, Time (sec) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FFD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">FFD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">kV</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (sec)</th>
             </tr>
           </thead>
@@ -395,7 +448,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   onChange={e => setTable1Row(p => ({ ...p, kv: e.target.value }))}
                   disabled={isViewMode}
                   className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                  placeholder="80"
+                  placeholder="28"
                 />
               </td>
               <td className="px-4 py-2">
@@ -405,7 +458,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   onChange={e => setTable1Row(p => ({ ...p, time: e.target.value }))}
                   disabled={isViewMode}
                   className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                  placeholder="0.5"
+                  placeholder="2.0"
                 />
               </td>
             </tr>
@@ -421,13 +474,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
               {/* Header – make mA column wider */}
               <th
                 rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
+                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r whitespace-nowrap"
               >
                 mA
               </th>
               <th
                 colSpan={measHeaders.length}
-                className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
+                className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
               >
                 <div className="flex items-center justify-between">
                   <span>Output (mGy)</span>
@@ -438,12 +491,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   )}
                 </div>
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mA)</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Avg Output</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X (mGy/mA)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MAX</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MIN</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">CoL</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
               <th rowSpan={2} className="w-10" />
             </tr>
             <tr>
@@ -575,8 +628,17 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       {/* SAVE BUTTON */}
       <div className="flex justify-end mt-6">
         <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving || (!isViewMode && !isFormValid)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Button clicked', { isViewMode, isSaving, isFormValid });
+            if (isViewMode) {
+              toggleEdit();
+            } else {
+              handleSave();
+            }
+          }}
+          disabled={isSaving || (isViewMode ? false : !isFormValid)}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
             ? 'bg-gray-400 cursor-not-allowed'
             : isViewMode
@@ -601,4 +663,5 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   );
 };
 
-export default LinearityOfMaLoading;
+export default LinearityOfMaLoadingStations;
+

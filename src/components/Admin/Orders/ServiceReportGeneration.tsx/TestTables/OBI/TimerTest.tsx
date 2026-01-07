@@ -11,6 +11,22 @@ import {
 
 interface AccuracyOfIrradiationTimeProps {
     serviceId: string;
+    refreshKey?: number;
+    initialData?: {
+        testConditions?: {
+            fcd: string;
+            kv: string;
+            ma: string;
+        };
+        irradiationTimes?: Array<{
+            setTime: string;
+            measuredTime: string;
+        }>;
+        tolerance?: {
+            operator: string;
+            value: string;
+        };
+    };
 }
 
 interface Table1Row {
@@ -28,6 +44,8 @@ interface Table2Row {
 
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     serviceId,
+    refreshKey,
+    initialData,
 }) => {
     const [testId, setTestId] = useState<string | null>(null); // Mongo _id (optional, not strictly needed)
     const [loading, setLoading] = useState(false);
@@ -102,10 +120,63 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         }
     };
 
+    // Load CSV Initial Data (separate useEffect)
+    useEffect(() => {
+        if (initialData) {
+            console.log('AccuracyOfIrradiationTime OBI: Loading initial data from CSV:', initialData);
+            console.log('AccuracyOfIrradiationTime OBI: initialData.testConditions:', initialData.testConditions);
+            console.log('AccuracyOfIrradiationTime OBI: initialData.irradiationTimes:', initialData.irradiationTimes);
+            console.log('AccuracyOfIrradiationTime OBI: initialData.irradiationTimes.length:', initialData.irradiationTimes?.length);
+            
+            setLoading(true);
+            
+            if (initialData.testConditions) {
+                console.log('Setting testConditions:', initialData.testConditions);
+                setTable1Row({
+                    id: "1",
+                    fcd: initialData.testConditions.fcd || "",
+                    kv: initialData.testConditions.kv || "",
+                    ma: initialData.testConditions.ma || "",
+                });
+            }
+            
+            if (initialData.irradiationTimes && initialData.irradiationTimes.length > 0) {
+                console.log('Setting irradiationTimes, count:', initialData.irradiationTimes.length);
+                const newRows = initialData.irradiationTimes.map((t, index) => {
+                    console.log(`Row ${index}: setTime=${t.setTime}, measuredTime=${t.measuredTime}`);
+                    return {
+                        id: `csv-row-${Date.now()}-${index}`,
+                        setTime: t.setTime || "",
+                        measuredTime: t.measuredTime || "",
+                    };
+                });
+                setTable2Rows(newRows);
+            } else {
+                console.warn('No irradiationTimes found in initialData');
+            }
+            
+            if (initialData.tolerance) {
+                console.log('Setting tolerance:', initialData.tolerance);
+                setToleranceOperator(initialData.tolerance.operator || "<=");
+                setToleranceValue(initialData.tolerance.value || "10");
+            }
+            
+            setIsSaved(false);
+            setLoading(false);
+            console.log('AccuracyOfIrradiationTime OBI: CSV data loaded into form');
+        }
+    }, [initialData]);
+
     // Load saved data
     useEffect(() => {
         const fetchData = async () => {
             if (!serviceId) return;
+            
+            // Skip loading if we have initial CSV data
+            if (initialData) {
+                return;
+            }
+            
             setLoading(true);
             try {
                 const res = await getTimerTestByServiceIdForOBI(serviceId);
@@ -140,7 +211,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         };
 
         fetchData();
-    }, [serviceId]);
+    }, [serviceId, refreshKey, initialData]);
 
     // Save / Update
     const handleSave = async () => {
@@ -205,9 +276,9 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">FCD (cm)</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">kV</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">mA</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FFD (cm)</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">kV</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">mA</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white">
@@ -229,17 +300,17 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             {/* Accuracy Table */}
             <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
                 <div className="px-4 py-3 bg-blue-50 border-b border-gray-300">
-                    <h3 className="text-sm font-semibold text-blue-900 uppercase tracking-wider">
+                    <h3 className="text-sm font-semibold text-blue-900  tracking-wider">
                         2. Accuracy of Irradiation Time
                     </h3>
                 </div>
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Set Time (mSec)</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Measured Time (mSec)</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">% Error</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Remarks</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Set Time (mSec)</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Measured Time (mSec)</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">% Error</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Remarks</th>
                             <th className="px-4 py-3 w-12"></th>
                         </tr>
                     </thead>

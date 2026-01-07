@@ -1,4 +1,4 @@
-// src/components/TestTables/LowContrastResolutionForCArm.tsx
+// src/components/TestTables/LowContrastResolutionForOBI.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -13,12 +13,19 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: {
+    smallestHoleSize?: string;
+    recommendedStandard?: string;
+  };
 }
 
 const LowContrastSensitivity: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  refreshKey,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -39,8 +46,29 @@ const LowContrastSensitivity: React.FC<Props> = ({
     return measured < standard ? 'PASS' : 'FAIL';
   }, [smallestHoleSize, recommendedStandard]);
 
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('LowContrastSensitivity: Loading initial data from CSV:', initialData);
+      if (initialData.smallestHoleSize !== undefined) {
+        setSmallestHoleSize(initialData.smallestHoleSize || '');
+      }
+      if (initialData.recommendedStandard !== undefined) {
+        setRecommendedStandard(initialData.recommendedStandard || '3.0');
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('LowContrastSensitivity: CSV data loaded into form');
+    }
+  }, [initialData]);
+
   // Load existing test
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+
     const loadTest = async () => {
       setIsLoading(true);
       try {
@@ -50,7 +78,8 @@ const LowContrastSensitivity: React.FC<Props> = ({
           const response = await getLowContrastSensitivityByTestIdForOBI(propTestId);
           data = response?.data || response;
         } else {
-          data = await getLowContrastSensitivityByServiceIdForOBI(serviceId);
+          const response = await getLowContrastSensitivityByServiceIdForOBI(serviceId);
+          data = response?.data || response;
         }
 
         if (data) {
@@ -73,7 +102,7 @@ const LowContrastSensitivity: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [propTestId, serviceId]);
+  }, [propTestId, serviceId, initialData]);
 
   // Save / Update
   const handleSave = async () => {
@@ -100,8 +129,10 @@ const LowContrastSensitivity: React.FC<Props> = ({
       } else {
         const res = await addLowContrastSensitivityForOBI(serviceId, payload);
         const newId = res.data?._id || res.data?.testId;
-        setTestId(newId);
-        onTestSaved?.(newId);
+        if (newId) {
+          setTestId(newId);
+          onTestSaved?.(newId);
+        }
         toast.success("Saved successfully!");
       }
       setIsSaved(true);

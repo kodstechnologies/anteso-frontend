@@ -34,9 +34,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     onTestSaved,
 }) => {
     const [testId, setTestId] = useState<string | null>(propTestId);
-    const [isSaved, setIsSaved] = useState(!!propTestId);
+    const [isSaved, setIsSaved] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     const [fdd, setFdd] = useState<string>('');
 
@@ -116,6 +117,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     // Load test data
     useEffect(() => {
         const loadTest = async () => {
+            if (!serviceId) {
+                setIsLoading(false);
+                return;
+            }
+
             setIsLoading(true);
             try {
                 const res = await getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tubeId);
@@ -146,19 +152,24 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     setHeaders(data.measurementHeaders || headers);
                     setTolerance(data.tolerance?.value || data.tolerance || '0.05');
                     setIsSaved(true);
+                    setIsEditing(false);
                 } else {
                     setIsSaved(false);
+                    setIsEditing(true);
                 }
             } catch (err: any) {
-                console.error("Load failed:", err);
+                if (err.response?.status !== 404) {
+                    toast.error('Failed to load test data');
+                }
                 setIsSaved(false);
+                setIsEditing(true);
             } finally {
                 setIsLoading(false);
             }
         };
 
         loadTest();
-    }, [propTestId, serviceId]);
+    }, [propTestId, serviceId, tubeId]);
 
     // Save / Update
     const handleSave = async () => {
@@ -202,6 +213,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 toast.success('Saved successfully!');
             }
             setIsSaved(true);
+            setIsEditing(false);
         } catch (e: any) {
             toast.error(e?.response?.data?.message || 'Save failed');
         } finally {
@@ -209,11 +221,12 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         }
     };
 
-    const startEditing = () => {
+    const toggleEdit = () => {
+        setIsEditing(true);
         setIsSaved(false);
     };
 
-    const isViewMode = isSaved;
+    const isViewMode = isSaved && !isEditing;
 
     // Dynamic handlers
     const addColumn = () => {
@@ -290,212 +303,218 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     }
 
     return (
-        <div className="p-6 max-w-full mx-auto space-y-10">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">Consistency of Radiation Output</h2>
+        <div className="p-6 space-y-10">
+            <div className="flex justify-between items-center border-b pb-4">
+                <h2 className="text-2xl font-bold text-gray-800">
+                    Reproducibility of Radiation Output (Consistency Test)
+                </h2>
+                <button
+                    onClick={isViewMode ? toggleEdit : handleSave}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : isViewMode
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+                        }`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : isViewMode ? (
+                        <>
+                            <Edit3 className="w-4 h-4" />
+                            Edit
+                        </>
+                    ) : (
+                        <>
+                            <Save className="w-4 h-4" />
+                            {testId ? 'Update' : 'Save'} Test
+                        </>
+                    )}
+                </button>
+            </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-700">FDD (cm)</span>
-                        <input
-                            type="number"
-                            value={fdd}
-                            onChange={(e) => setFdd(e.target.value)}
-                            disabled={isViewMode}
-                            className={`w-24 px-3 py-1.5 text-center border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                                }`}
-                            placeholder="100"
-                        />
-                    </div>
-
-                    <button
-                        onClick={isViewMode ? startEditing : handleSave}
-                        disabled={isSaving}
-                        className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : isViewMode
-                                ? 'bg-orange-600 hover:bg-orange-700'
-                                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
-                            }`}
-                    >
-                        {isSaving ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Saving...
-                            </>
-                        ) : (
-                            <>
-                                {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                                {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
-                            </>
-                        )}
-                    </button>
+            {/* FCD */}
+            <div className="bg-white rounded-lg border shadow-sm">
+                <div className="p-6 flex items-center gap-4">
+                    <label className="w-48 text-sm font-medium text-gray-700">FDD(cm):</label>
+                    <input
+                        type="text"
+                        value={fdd}
+                        onChange={e => setFdd(e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-32 px-4 py-2 border rounded-lg text-center font-medium focus:border-blue-500 focus:outline-none ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        placeholder="100"
+                    />
+                    <span className="text-gray-600">cm</span>
                 </div>
             </div>
 
-            {/* Radiation Output */}
-            <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <h3 className="px-6 py-3 text-lg font-semibold bg-teal-50 border-b">
-                    Radiation Output Consistency
-                </h3>
+            {/* Main Table */}
+            <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+                <div className="bg-gray-50 px-6 py-4 border-b">
+                    <h3 className="font-semibold text-gray-700">
+                        Radiation Output Measurements (mGy)
+                    </h3>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-blue-50">
+                        <thead className="bg-gray-50">
                             <tr>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                                    kVp
+                                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
+                                    kV
                                 </th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
+                                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                                     mAs
                                 </th>
-                                <th
-                                    colSpan={headers.length}
-                                    className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r relative"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span>Radiation Output (mGy)</span>
-                                        {!isViewMode && (
-                                            <button onClick={addColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
-                                                <Plus className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                                    Mean (X̄)
-                                </th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                                    CoV
-                                </th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                                    Remarks
-                                </th>
-                            </tr>
-                            <tr>
-                                {headers.map((h, i) => (
-                                    <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border-r">
-                                        <div className="flex items-center justify-center gap-1">
-                                            <input
-                                                type="text"
-                                                value={h}
-                                                onChange={(e) => updateHeader(i, e.target.value)}
-                                                disabled={isViewMode}
-                                                className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                                            />
-                                            {headers.length > 1 && !isViewMode && (
-                                                <button onClick={() => removeColumn(i)} className="text-red-600 hover:bg-red-100 p-0.5 rounded">
+                                {Array.from({ length: headers.length }, (_, i) => (
+                                    <th
+                                        key={i}
+                                        className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r relative"
+                                    >
+                                        <div className="flex flex-col items-center gap-1">
+                                            <div className="flex items-center gap-1">
+                                                <span>Meas {i + 1}</span>
+                                                {!isViewMode && headers.length < 10 && (
+                                                    <button
+                                                        onClick={() => addColumn()}
+                                                        className="text-green-600 hover:bg-green-100 p-0.5 rounded transition"
+                                                        title="Add column after this"
+                                                    >
+                                                        <Plus className="w-3 h-3" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {!isViewMode && headers.length > 3 && (
+                                                <button
+                                                    onClick={() => removeColumn(i)}
+                                                    className="text-red-600 hover:bg-red-100 p-1 rounded transition"
+                                                    title="Remove this column"
+                                                >
                                                     <Trash2 className="w-3 h-3" />
                                                 </button>
                                             )}
                                         </div>
                                     </th>
                                 ))}
+                                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600  border-r">
+                                    Average
+                                </th>
+                                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 ">
+                                    CoV / Result
+                                </th>
+                                <th className="w-12" />
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {outputRows.map((row) => (
-                                <tr key={row.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-2 border-r">
-                                        <input
-                                            type="text"
-                                            value={row.kvp}
-                                            onChange={(e) => updateOutputCell(row.id, 'kvp', e.target.value)}
-                                            disabled={isViewMode}
-                                            className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                                            placeholder="80"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-2 border-r">
-                                        <input
-                                            type="text"
-                                            value={row.mas}
-                                            onChange={(e) => updateOutputCell(row.id, 'mas', e.target.value)}
-                                            disabled={isViewMode}
-                                            className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                                            placeholder="100"
-                                        />
-                                    </td>
-                                    {row.outputs.map((val, idx) => (
-                                        <td key={idx} className="px-2 py-2 border-r">
+                            {outputRows.map((row) => {
+                                const isFailed = row.remarks === 'Fail';
+                                const hasValue = row.cov && parseFloat(row.cov) > 0;
+                                
+                                return (
+                                    <tr key={row.id} className={`hover:bg-gray-50 ${isFailed && hasValue ? 'bg-red-50' : ''}`}>
+                                        <td className="px-5 py-4 border-r">
                                             <input
                                                 type="text"
-                                                value={val}
-                                                onChange={(e) => updateOutputCell(row.id, idx, e.target.value)}
+                                                value={row.kvp}
+                                                onChange={e => updateOutputCell(row.id, 'kvp', e.target.value)}
                                                 disabled={isViewMode}
-                                                className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                                                placeholder="0.00"
+                                                className={`w-20 px-3 py-2 text-center border rounded text-sm focus:border-blue-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                                                placeholder="80"
                                             />
                                         </td>
-                                    ))}
-                                    <td className="px-4 py-2 border-r text-center font-medium">
-                                        {row.mean ? parseFloat(row.mean).toFixed(3) : '-'}
-                                    </td>
-                                    <td className="px-4 py-2 border-r text-center font-medium">
-                                        {row.cov ? parseFloat(row.cov).toFixed(4) : '-'}
-                                    </td>
-                                    <td className="px-4 py-2 border-r text-center">
-                                        {row.remarks && (
+                                        <td className="px-5 py-4 border-r">
+                                            <input
+                                                type="text"
+                                                value={row.mas}
+                                                onChange={e => updateOutputCell(row.id, 'mas', e.target.value)}
+                                                disabled={isViewMode}
+                                                className={`w-20 px-3 py-2 text-center border rounded text-sm focus:border-blue-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                                                placeholder="100"
+                                            />
+                                        </td>
+                                        {row.outputs.map((val, idx) => (
+                                            <td key={idx} className="px-2 py-4 border-r">
+                                                <input
+                                                    type="text"
+                                                    value={val}
+                                                    onChange={e => updateOutputCell(row.id, idx, e.target.value)}
+                                                    disabled={isViewMode}
+                                                    className={`w-20 px-2 py-1.5 text-center border rounded text-xs focus:border-blue-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                                                    placeholder="0.00"
+                                                />
+                                            </td>
+                                        ))}
+                                        <td className="px-5 py-4 text-center font-semibold border-r bg-blue-50">
+                                            {row.mean || '—'}
+                                        </td>
+                                        <td className="px-5 py-4 text-center">
                                             <span
-                                                className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass'
+                                                className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${
+                                                    row.remarks === 'Pass'
                                                         ? 'bg-green-100 text-green-800'
                                                         : row.remarks === 'Fail'
-                                                            ? 'bg-red-100 text-red-800'
-                                                            : 'bg-gray-100 text-gray-500'
-                                                    }`}
+                                                        ? 'bg-red-100 text-red-800'
+                                                        : 'bg-gray-100 text-gray-600'
+                                                }`}
                                             >
-                                                {row.remarks}
+                                                {row.cov ? `${row.cov}% → ${row.remarks}` : '—'}
                                             </span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="px-3 text-center">
+                                            {outputRows.length > 1 && (
+                                                <button
+                                                    onClick={() => removeRow(row.id)}
+                                                    disabled={isViewMode}
+                                                    className="text-red-600 hover:bg-red-50 p-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
 
-                <div className="px-6 py-3 bg-gray-50 border-t">
+                <div className="px-6 py-4 bg-gray-50 border-t">
                     {!isViewMode && (
                         <button
                             onClick={addRow}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
                         >
                             <Plus className="w-4 h-4" />
-                            Add Row
+                            Add New Technique
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* Tolerance & Final Remark */}
-            <div className="bg-white shadow-md rounded-lg p-6 max-w-md">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tolerance
-                </label>
-                <div className="flex items-center gap-2 mb-4">
-                    <span className="text-sm text-gray-600">CoV &lt;</span>
+            {/* Acceptance Criteria */}
+            <div className="bg-white rounded-lg border p-6 max-w-md shadow-sm">
+                <h3 className="font-semibold text-gray-700 mb-4">Acceptance Criteria</h3>
+                <div className="flex items-center gap-4">
+                    <span className="text-gray-700">Coefficient of Variation (CoV)</span>
+                    <span className="text-gray-700">&lt;=</span>
                     <input
                         type="text"
                         value={tolerance}
-                        onChange={(e) => setTolerance(e.target.value)}
+                        onChange={e => {
+                            setTolerance(e.target.value.replace(/[^0-9.]/g, ''));
+                            setIsSaved(false);
+                        }}
                         disabled={isViewMode}
-                        className={`w-32 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                        placeholder="0.05"
+                        className={`w-24 px-4 py-2 text-center border-2 border-blue-500 rounded font-bold text-lg focus:outline-none focus:ring-2 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
                 </div>
-
-                <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Final Result:</span>
-                    <span
-                        className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${remark === 'Pass'
-                            ? 'bg-green-100 text-green-800'
-                            : remark === 'Fail'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-500'
-                            }`}
-                    >
-                        {remark || '—'}
-                    </span>
-                </div>
+                <p className="text-sm text-gray-500 mt-3">
+                    Reference: IEC 61223-3-1 & AERB Safety Code
+                </p>
             </div>
         </div>
     );

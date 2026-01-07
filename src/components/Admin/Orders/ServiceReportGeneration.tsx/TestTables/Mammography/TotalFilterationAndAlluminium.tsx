@@ -39,7 +39,23 @@ interface SavedData {
   _id?: string;
 }
 
-const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const TotalFiltrationAndAluminium: React.FC<{ 
+  serviceId: string; 
+  refreshKey?: number;
+  initialData?: {
+    targetWindow?: string;
+    addedFilterThickness?: string;
+    table?: Array<{
+      kvp: number | null;
+      mAs: number | null;
+      alEquivalence: number | null;
+      hvt: number | null;
+      remarks?: string;
+      recommendedValue?: { minValue: number | null; maxValue: number | null; kvp: number | null };
+    }>;
+    resultHVT28kVp?: string;
+  };
+}> = ({ serviceId, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(null);
 
   const [targetWindow, setTargetWindow] = useState('Molybdenum target, Beryllium window or Rh/Rh or W/Al');
@@ -96,12 +112,77 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
   }, [rows]);
 
 
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('TotalFiltrationAndAluminium: Loading initial data from CSV:', initialData);
+      if (initialData.targetWindow) {
+        setTargetWindow(initialData.targetWindow);
+      }
+      if (initialData.addedFilterThickness !== undefined) {
+        setAddedFilterThickness(initialData.addedFilterThickness || '');
+      }
+      if (initialData.table && initialData.table.length > 0) {
+        setRows(
+          initialData.table.map((t, i) => ({
+            id: `csv-row-${Date.now()}-${i}`,
+            kvp: t.kvp?.toString() || '',
+            mAs: t.mAs?.toString() || '',
+            alEquivalence: t.alEquivalence?.toString() || '',
+            hvt: t.hvt?.toString() || '',
+            remarks: (t.remarks as 'Pass' | 'Fail' | '') || '',
+            recommendedValue: t.recommendedValue ? {
+              minValue: t.recommendedValue.minValue?.toString() || '0.30',
+              maxValue: t.recommendedValue.maxValue?.toString() || '0.37',
+              kvp: t.recommendedValue.kvp?.toString() || t.kvp?.toString() || '28',
+            } : { minValue: '0.30', maxValue: '0.37', kvp: t.kvp?.toString() || '28' },
+          }))
+        );
+      }
+      if (initialData.resultHVT28kVp) {
+        setResultHVT(initialData.resultHVT28kVp);
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('TotalFiltrationAndAluminium: CSV data loaded into form');
+    }
+  }, [initialData]);
+
   // Load data from backend
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+    
+    // Reset state when refreshKey changes to ensure clean reload
+    if (refreshKey !== undefined) {
+      setIsLoading(true);
+      setTargetWindow('Molybdenum target, Beryllium window or Rh/Rh or W/Al');
+      setAddedFilterThickness('');
+      setRows([{ 
+        id: '1', 
+        kvp: '28', 
+        mAs: '', 
+        alEquivalence: '', 
+        hvt: '', 
+        remarks: '',
+        recommendedValue: { minValue: '0.30', maxValue: '0.37', kvp: '28' }
+      }]);
+      setResultHVT('');
+      setResultHVTKvp('28');
+      setHasSaved(false);
+      setIsEditing(false);
+    }
+    
     const load = async () => {
       if (!serviceId) return;
       try {
-        const data: SavedData | null = await getTotalFilterationByServiceIdForMammography(serviceId);
+        console.log('TotalFiltrationAndAluminium: Loading data, refreshKey:', refreshKey);
+        const res = await getTotalFilterationByServiceIdForMammography(serviceId);
+        // API returns res.data.data directly
+        const data: SavedData | null = res;
+        console.log('TotalFiltrationAndAluminium: Loaded data:', data);
         if (data) {
           setTargetWindow(data.targetWindow || '');
           setAddedFilterThickness(data.addedFilterThickness || '');
@@ -144,7 +225,7 @@ const TotalFiltrationAndAluminium: React.FC<{ serviceId: string }> = ({ serviceI
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
 
   // Save handler
   const saveData = async () => {

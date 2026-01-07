@@ -1,17 +1,22 @@
-// src/components/TestTables/AccuracyOfIrradiationTime.tsx
+// src/components/TestTables/Mammography/AccuracyOfIrradiationTime.tsx
 import React, { useState, useEffect } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Edit3, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  addAccuracyOfIrradiationTimeForBMD,
-  getAccuracyOfIrradiationTimeByServiceIdForBMD,
-  updateAccuracyOfIrradiationTimeForBMD,
+  addAccuracyOfIrradiationTimeForMammography,
+  getAccuracyOfIrradiationTimeByServiceIdForMammography,
+  updateAccuracyOfIrradiationTimeForMammography,
 } from "../../../../../../api";
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
-  initialData?: any;
+  initialData?: {
+    testConditions?: { fcd: string; kv: string; ma: string };
+    irradiationTimes?: Array<{ setTime: string; measuredTime: string }>;
+    tolerance?: { operator: string; value: string };
+  };
+  refreshKey?: number;
 }
 
 interface Table1Row {
@@ -30,8 +35,9 @@ interface Table2Row {
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
   initialData,
+  refreshKey,
 }) => {
-  const [testId, setTestId] = useState<string | null>(null); // Mongo _id (optional, not strictly needed)
+  const [testId, setTestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -104,70 +110,59 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     }
   };
 
-  // Load initialData from CSV if provided (priority over API)
+  // Load CSV Initial Data
   useEffect(() => {
-    if (!initialData) return;
-    
-    // Use a more robust check - check if initialData exists and has any meaningful data
-    const hasData = (
-      (initialData.testConditions && (initialData.testConditions.fcd || initialData.testConditions.kv || initialData.testConditions.ma)) ||
-      (initialData.irradiationTimes && initialData.irradiationTimes.length > 0 && initialData.irradiationTimes.some((t: any) => t.setTime || t.measuredTime)) ||
-      (initialData.tolerance && (initialData.tolerance.operator || initialData.tolerance.value))
-    );
-    
-    if (hasData) {
-      try {
-        console.log('Loading AccuracyOfIrradiationTime from initialData:', initialData);
-        if (initialData.testConditions) {
-          setTable1Row({
-            id: "1",
-            fcd: initialData.testConditions.fcd || "",
-            kv: initialData.testConditions.kv || "",
-            ma: initialData.testConditions.ma || "",
-          });
-        }
-        if (initialData.irradiationTimes && initialData.irradiationTimes.length > 0) {
-          setTable2Rows(
-            initialData.irradiationTimes.map((t: any, i: number) => ({
-              id: String(i + 1),
-              setTime: t.setTime || "",
-              measuredTime: t.measuredTime || "",
-            }))
-          );
-        }
-        if (initialData.tolerance) {
-          setToleranceOperator(initialData.tolerance.operator || "<=");
-          setToleranceValue(initialData.tolerance.value || "10");
-        }
-        setIsEditing(true); // Allow editing when data comes from CSV
-        setIsSaved(false);
-        setLoading(false);
-        console.log('AccuracyOfIrradiationTime data loaded successfully');
-      } catch (err) {
-        console.error("Error loading initialData:", err);
+    if (initialData) {
+      console.log('AccuracyOfIrradiationTime: Loading initial data from CSV:', initialData);
+      if (initialData.testConditions) {
+        setTable1Row({
+          id: "1",
+          fcd: String(initialData.testConditions.fcd || ''),
+          kv: String(initialData.testConditions.kv || ''),
+          ma: String(initialData.testConditions.ma || ''),
+        });
       }
+      if (initialData.irradiationTimes && initialData.irradiationTimes.length > 0) {
+        setTable2Rows(
+          initialData.irradiationTimes.map((t, idx) => ({
+            id: `csv-row-${Date.now()}-${idx}`,
+            setTime: String(t.setTime || ''),
+            measuredTime: String(t.measuredTime || ''),
+          }))
+        );
+      }
+      if (initialData.tolerance) {
+        setToleranceOperator(initialData.tolerance.operator || "<=");
+        setToleranceValue(initialData.tolerance.value || "10");
+      }
+      setIsEditing(true); // Allow editing after CSV load
+      setLoading(false);
+      console.log('AccuracyOfIrradiationTime: CSV data loaded into form');
     }
-  }, [initialData, JSON.stringify(initialData)]);
+  }, [initialData]);
 
-  // Load saved data from API (only if no initialData)
+  // Load saved data
   useEffect(() => {
-    if (initialData) return; // Skip API load if CSV data is available
-    
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+
     const fetchData = async () => {
       if (!serviceId) return;
       setLoading(true);
       try {
-        const res = await getAccuracyOfIrradiationTimeByServiceIdForBMD(serviceId);
+        const res = await getAccuracyOfIrradiationTimeByServiceIdForMammography(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setTable1Row(data.testConditions || { id: "1", fcd: "", kv: "", ma: "" });
+          setTable1Row({ id: "1", ...(data.testConditions || { fcd: "", kv: "", ma: "" }) });
           setTable2Rows(
             data.irradiationTimes && data.irradiationTimes.length > 0
               ? data.irradiationTimes.map((t: any, i: number) => ({
                 id: String(i + 1),
-                setTime: t.setTime || "",
-                measuredTime: t.measuredTime || "",
+                setTime: t.setTime,
+                measuredTime: t.measuredTime,
               }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
@@ -189,7 +184,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     };
 
     fetchData();
-  }, [serviceId, initialData]);
+  }, [serviceId, refreshKey, initialData]);
 
   // Save / Update
   const handleSave = async () => {
@@ -215,9 +210,9 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     try {
       let res;
       if (testId) {
-        res = await updateAccuracyOfIrradiationTimeForBMD(testId, payload);
+        res = await updateAccuracyOfIrradiationTimeForMammography(testId, payload);
       } else {
-        res = await addAccuracyOfIrradiationTimeForBMD(serviceId, payload);
+        res = await addAccuracyOfIrradiationTimeForMammography(serviceId, payload);
       }
       if (res?.data?._id) setTestId(res.data._id);
       setIsSaved(true);
@@ -233,16 +228,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
   const isViewMode = isSaved && !isEditing;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-blue-600">Loading saved data...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full space-y-6">
+      {loading && <p className="text-blue-600">Loading saved data...</p>}
+
       {/* Test Conditions */}
       <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
         <div className="px-4 py-3 bg-blue-50 border-b border-gray-300">
@@ -264,7 +253,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                 <input type="text" value={table1Row.fcd} onChange={(e) => updateTable1("fcd", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="100" />
               </td>
               <td className="px-4 py-3">
-                <input type="text" value={table1Row.kv} onChange={(e) => updateTable1("kv", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="80" />
+                <input type="text" value={table1Row.kv} onChange={(e) => updateTable1("kv", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="28" />
               </td>
               <td className="px-4 py-3">
                 <input type="text" value={table1Row.ma} onChange={(e) => updateTable1("ma", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="100" />
@@ -375,3 +364,4 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 };
 
 export default AccuracyOfIrradiationTime;
+

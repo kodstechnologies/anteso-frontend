@@ -34,7 +34,14 @@ interface SavedData {
   _id?: string;
 }
 
-const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const ReproducibilityOfOutput: React.FC<{ 
+  serviceId: string; 
+  refreshKey?: number;
+  initialData?: {
+    outputRows?: Array<{ kv: string; mas: string; outputs: string[] }>;
+    tolerance?: string;
+  };
+}> = ({ serviceId, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(null);
   
   // ---- Radiation Output ------------------------------------
@@ -141,16 +148,71 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
     });
   };
 
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('ReproducibilityOfOutput: Loading initial data from CSV:', initialData);
+      if (initialData.outputRows && initialData.outputRows.length > 0) {
+        const firstRow = initialData.outputRows[0];
+        const numCols = firstRow.outputs?.length || 5;
+        setOutputHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
+        setOutputRows(
+          initialData.outputRows.map((r, i) => ({
+            id: `csv-row-${Date.now()}-${i}`,
+            kv: r.kv || '',
+            mas: r.mas || '',
+            outputs: r.outputs || [],
+            avg: '',
+            cov: '',
+            remark: '',
+          }))
+        );
+      }
+      if (initialData.tolerance) {
+        setTolerance(initialData.tolerance);
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('ReproducibilityOfOutput: CSV data loaded into form');
+    }
+  }, [initialData]);
+
   // Load data
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+    
+    // Reset state when refreshKey changes
+    if (refreshKey !== undefined) {
+      setIsLoading(true);
+      setOutputRows([{
+        id: '1',
+        kv: '',
+        mas: '',
+        outputs: ['', '', '', '', ''],
+        avg: '',
+        cov: '',
+        remark: '',
+      }]);
+      setOutputHeaders(['Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5']);
+      setTolerance('0.05');
+      setHasSaved(false);
+      setIsEditing(true);
+    }
+    
     const load = async () => {
       if (!serviceId) {
         setIsLoading(false);
         return;
       }
       try {
+        console.log('ReproducibilityOfOutput: Loading data, refreshKey:', refreshKey);
         const res = await getReproducibilityOfOutputByServiceIdForMammography(serviceId);
-        const data = res?.data;
+        // API returns res.data.data directly
+        const data = res;
+        console.log('ReproducibilityOfOutput: Loaded data:', data);
         if (data) {
           setTestId(data._id || null);
           
@@ -188,7 +250,7 @@ const ReproducibilityOfOutput: React.FC<{ serviceId: string }> = ({ serviceId })
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
 
   // Save handler
   const saveData = async () => {

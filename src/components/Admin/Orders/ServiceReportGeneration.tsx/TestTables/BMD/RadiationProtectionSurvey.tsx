@@ -24,12 +24,14 @@ interface Props {
   serviceId: string;
   testId?: string;
   onTestSaved?: (testId: string) => void;
+  initialData?: any;
 }
 
 const RadiationProtectionSurvey: React.FC<Props> = ({
   serviceId,
   testId: propTestId,
-  onTestSaved
+  onTestSaved,
+  initialData
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -144,6 +146,34 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
 
     loadTest();
   }, [serviceId]);
+
+  // Load initialData from CSV if provided
+  useEffect(() => {
+    if (initialData) {
+      try {
+        if (initialData.surveyDate) {
+          setSurveyDate(initialData.surveyDate);
+        }
+        if (initialData.appliedCurrent) setAppliedCurrent(initialData.appliedCurrent);
+        if (initialData.appliedVoltage) setAppliedVoltage(initialData.appliedVoltage);
+        if (initialData.exposureTime) setExposureTime(initialData.exposureTime);
+        if (initialData.workload) setWorkload(initialData.workload);
+        if (initialData.calibrationCertificateValid) setHasValidCalibration(initialData.calibrationCertificateValid);
+        if (initialData.locations && initialData.locations.length > 0) {
+          setLocations(initialData.locations.map((l: any, i: number) => ({
+            id: Date.now().toString() + i,
+            location: l.location || '',
+            mRPerHr: l.mRPerHr || '',
+            mRPerWeek: l.mRPerWeek || '',
+            result: l.result || '',
+            category: l.category || 'worker',
+          })));
+        }
+      } catch (err) {
+        console.error('Error loading initialData:', err);
+      }
+    }
+  }, [initialData]);
 
   const handleSave = async () => {
     if (!serviceId) {

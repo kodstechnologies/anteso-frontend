@@ -25,7 +25,16 @@ interface SavedData {
   tolerance: string;
 }
 
-const LinearityOfMasLLoading: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const LinearityOfMasLLoading: React.FC<{ 
+  serviceId: string; 
+  refreshKey?: number;
+  initialData?: {
+    exposureCondition?: { fcd: string; kv: string };
+    measurementHeaders?: string[];
+    measurements?: Array<{ mAsRange: string; measuredOutputs: (string | null)[] }>;
+    tolerance?: string;
+  };
+}> = ({ serviceId, refreshKey, initialData }) => {
   const [exposureCondition, setExposureCondition] = useState<ExposureCondition>({
     fcd: '100',
     kv: '80',
@@ -46,12 +55,80 @@ const LinearityOfMasLLoading: React.FC<{ serviceId: string }> = ({ serviceId }) 
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('LinearityOfMasLLoading: Loading initial data from CSV:', initialData);
+      
+      // Set exposure condition first
+      if (initialData.exposureCondition) {
+        setExposureCondition(initialData.exposureCondition);
+      }
+      
+      // Determine the maximum number of columns needed from measurements
+      const maxColsFromMeasurements = initialData.measurements && initialData.measurements.length > 0
+        ? Math.max(...initialData.measurements.map(m => m.measuredOutputs?.length || 0), 0)
+        : 0;
+      
+      // Set headers - use provided headers or create default ones based on max columns
+      let finalHeaders: string[] = [];
+      if (initialData.measurementHeaders && initialData.measurementHeaders.length > 0) {
+        finalHeaders = [...initialData.measurementHeaders];
+      }
+      
+      // Ensure we have enough headers for all measurement columns
+      const requiredCols = Math.max(finalHeaders.length, maxColsFromMeasurements);
+      while (finalHeaders.length < requiredCols) {
+        finalHeaders.push(`Meas ${finalHeaders.length + 1}`);
+      }
+      
+      setMeasHeaders(finalHeaders);
+      
+      // Set table rows with properly sized measuredOutputs arrays
+      if (initialData.measurements && initialData.measurements.length > 0) {
+        setTable2Rows(
+          initialData.measurements.map((m, i) => {
+            const outputs = (m.measuredOutputs || []).map(v => (v != null ? String(v) : ''));
+            // Pad with empty strings if needed to match header count
+            while (outputs.length < requiredCols) {
+              outputs.push('');
+            }
+            return {
+              id: `csv-row-${Date.now()}-${i}`,
+              mAsRange: String(m.mAsRange || ''),
+              measuredOutputs: outputs,
+            };
+          })
+        );
+      }
+      
+      if (initialData.tolerance) {
+        setTolerance(initialData.tolerance);
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('LinearityOfMasLLoading: CSV data loaded into form', {
+        headers: finalHeaders,
+        rows: initialData.measurements?.length || 0,
+      });
+    }
+  }, [initialData]);
+
   // Load data
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+    
     const load = async () => {
       if (!serviceId) return;
       try {
-        const data: SavedData | null = await getLinearityOfMasLLoadingByServiceIdForMammography(serviceId);
+        console.log('LinearityOfMasLLoading: Loading data, refreshKey:', refreshKey);
+        const res = await getLinearityOfMasLLoadingByServiceIdForMammography(serviceId);
+        // API returns res.data.data directly
+        const data: SavedData | null = res;
+        console.log('LinearityOfMasLLoading: Loaded data:', data);
         if (data) {
           setExposureCondition(data.exposureCondition || { fcd: '100', kv: '80' });
           setMeasHeaders(data.measurementHeaders?.length > 0 ? data.measurementHeaders : ['Meas 1', 'Meas 2', 'Meas 3']);
@@ -76,7 +153,7 @@ const LinearityOfMasLLoading: React.FC<{ serviceId: string }> = ({ serviceId }) 
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
 
   // Save
   const saveData = async () => {

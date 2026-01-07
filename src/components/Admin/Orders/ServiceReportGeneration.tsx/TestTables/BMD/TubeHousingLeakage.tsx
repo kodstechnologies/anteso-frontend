@@ -33,9 +33,10 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  initialData?: any;
 }
 
-export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh, initialData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   const [settings, setSettings] = useState<SettingsRow>({
@@ -222,18 +223,37 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     const loadTest = async () => {
       setIsLoading(true);
       try {
-        const data = await getRadiationLeakageLevelByServiceIdForBMD(serviceId);
-        if (data?.data) {
-          const testData = data.data;
-          setTestId(data._id || null);
-          if (data.fcd) setSettings({ fcd: data.fcd, kv: data.kv || '', ma: data.ma || '', time: data.time || '' });
-          if (data.workload) setWorkload(data.workload);
-          if (data.toleranceValue) setToleranceValue(data.toleranceValue);
-          if (data.toleranceOperator) setToleranceOperator(data.toleranceOperator);
-          if (data.toleranceTime) setToleranceTime(data.toleranceTime);
-          if (Array.isArray(data.leakageMeasurements) && data.leakageMeasurements.length > 0) {
+        const response = await getRadiationLeakageLevelByServiceIdForBMD(serviceId);
+        if (response?.data) {
+          const testData = response.data;
+          setTestId(testData._id || null);
+          
+          // Load measurementSettings (nested structure)
+          if (testData.measurementSettings) {
+            setSettings({
+              fcd: testData.measurementSettings.distance || '',
+              kv: testData.measurementSettings.kv || '',
+              ma: testData.measurementSettings.ma || '',
+              time: testData.measurementSettings.time || '',
+            });
+          }
+          
+          // Load workload (nested structure)
+          if (testData.workload?.value) {
+            setWorkload(testData.workload.value);
+          }
+          
+          // Load tolerance (nested structure)
+          if (testData.tolerance) {
+            if (testData.tolerance.value) setToleranceValue(testData.tolerance.value);
+            if (testData.tolerance.operator) setToleranceOperator(testData.tolerance.operator);
+            if (testData.tolerance.time) setToleranceTime(testData.tolerance.time);
+          }
+          
+          // Load leakageMeasurements
+          if (Array.isArray(testData.leakageMeasurements) && testData.leakageMeasurements.length > 0) {
             // Ensure Tube is always first, then Collimator if it exists
-            const sortedMeasurements = data.leakageMeasurements.sort((a: any, b: any) => {
+            const sortedMeasurements = testData.leakageMeasurements.sort((a: any, b: any) => {
               if (a.location === 'Tube') return -1;
               if (b.location === 'Tube') return 1;
               return 0;
@@ -280,6 +300,49 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     loadTest();
   }, [serviceId]);
 
+  // Load initialData from CSV if provided
+  useEffect(() => {
+    if (initialData) {
+      try {
+        if (initialData.measurementSettings) {
+          setSettings({
+            fcd: initialData.measurementSettings.distance || '',
+            kv: initialData.measurementSettings.kv || '',
+            ma: initialData.measurementSettings.ma || '',
+            time: initialData.measurementSettings.time || '',
+          });
+        }
+        if (initialData.workload) {
+          setWorkload(initialData.workload);
+        }
+        if (initialData.toleranceValue) setToleranceValue(initialData.toleranceValue);
+        if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
+        if (initialData.toleranceTime) setToleranceTime(initialData.toleranceTime);
+        if (initialData.leakageMeasurements && initialData.leakageMeasurements.length > 0) {
+          const sortedMeasurements = initialData.leakageMeasurements.sort((a: any, b: any) => {
+            if (a.location === 'Tube') return -1;
+            if (b.location === 'Tube') return 1;
+            return 0;
+          });
+          setLeakageRows(sortedMeasurements.map((m: any) => ({
+            location: m.location || '',
+            left: String(m.left ?? ''),
+            right: String(m.right ?? ''),
+            front: String(m.front ?? ''),
+            back: String(m.back ?? ''),
+            top: String(m.top ?? ''),
+            max: String(m.max ?? ''),
+            result: String(m.result ?? ''),
+            unit: m.unit || 'mR/h',
+            mgy: String(m.mgy ?? ''),
+          })));
+        }
+      } catch (err) {
+        console.error('Error loading initialData:', err);
+      }
+    }
+  }, [initialData]);
+
   const handleSave = async () => {
     if (!isFormValid) {
       toast.error('Please fill all fields');
@@ -292,28 +355,38 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
     setIsSaving(true);
     try {
+      // Transform payload to match backend structure
       const payload = {
-        fcd: settings.fcd,
-        kv: settings.kv,
-        ma: settings.ma,
-        time: settings.time,
-        workload,
+        measurementSettings: {
+          distance: settings.fcd,  // fcd maps to distance
+          kv: settings.kv,
+          ma: settings.ma,
+          time: settings.time,
+        },
         leakageMeasurements: processedLeakage.map(row => ({
           location: row.location,
-          left: parseFloat(row.left) || 0,
-          right: parseFloat(row.right) || 0,
-          front: parseFloat(row.front) || 0,
-          back: parseFloat(row.back) || 0,
-          top: parseFloat(row.top) || 0,
-          max: row.max,
-          result: row.result,
-          unit: row.unit,
-          mgy: row.mgy,
+          left: String(row.left || ''),
+          right: String(row.right || ''),
+          front: String(row.front || ''),
+          back: String(row.back || ''),
+          top: String(row.top || ''),
+          max: row.max || '',
+          unit: row.unit || 'mR/h',
         })),
-        toleranceValue,
-        toleranceOperator,
-        toleranceTime,
-        remark: finalRemark,
+        workload: {
+          value: workload,
+          unit: 'mA·min/week',
+        },
+        tolerance: {
+          value: toleranceValue,
+          operator: toleranceOperator,
+          time: toleranceTime,
+        },
+        calculatedResult: {
+          maxLeakageIntermediate: calculatedMaxLeakage !== '—' ? calculatedMaxLeakage : '',
+          finalLeakageRate: globalMaxResultMGy !== '—' ? globalMaxResultMGy : '',
+          remark: finalRemark || '',
+        },
       };
 
       let result;

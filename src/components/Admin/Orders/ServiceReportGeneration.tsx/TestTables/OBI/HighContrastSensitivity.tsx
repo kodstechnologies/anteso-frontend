@@ -1,4 +1,4 @@
-// src/components/TestTables/HighContrastResolutionForCArm.tsx
+// src/components/TestTables/HighContrastResolutionForOBI.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -13,12 +13,19 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: {
+    measuredLpPerMm?: string;
+    recommendedStandard?: string;
+  };
 }
 
 const HighContrastSensitivity: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  refreshKey,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -39,8 +46,29 @@ const HighContrastSensitivity: React.FC<Props> = ({
     return measured > standard ? 'PASS' : 'FAIL';
   }, [measuredLpPerMm, recommendedStandard]);
 
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('HighContrastSensitivity: Loading initial data from CSV:', initialData);
+      if (initialData.measuredLpPerMm !== undefined) {
+        setMeasuredLpPerMm(initialData.measuredLpPerMm || '');
+      }
+      if (initialData.recommendedStandard !== undefined) {
+        setRecommendedStandard(initialData.recommendedStandard || '1.50');
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('HighContrastSensitivity: CSV data loaded into form');
+    }
+  }, [initialData]);
+
   // Load existing test data
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+
     const loadTest = async () => {
       setIsLoading(true);
       try {
@@ -50,7 +78,8 @@ const HighContrastSensitivity: React.FC<Props> = ({
           const response = await getHighContrastSensitivityByTestIdForOBI(propTestId);
           data = response?.data || response;
         } else {
-          data = await getHighContrastSensitivityByServiceIdForOBI(serviceId);
+          const response = await getHighContrastSensitivityByServiceIdForOBI(serviceId);
+          data = response?.data || response;
         }
 
         if (data) {
@@ -73,7 +102,7 @@ const HighContrastSensitivity: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [propTestId, serviceId]);
+  }, [propTestId, serviceId, initialData]);
 
   // Save / Update
   const handleSave = async () => {

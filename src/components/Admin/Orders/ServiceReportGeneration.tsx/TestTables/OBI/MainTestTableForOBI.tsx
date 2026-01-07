@@ -39,24 +39,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     });
   };
 
-  // 1. Alignment Test
-  if (testData.alignmentTest?.testRows && Array.isArray(testData.alignmentTest.testRows)) {
-    const validRows = testData.alignmentTest.testRows.filter((row: any) => row.testName && row.value);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => {
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS";
-        return {
-          specified: row.testName || "-",
-          measured: "-",
-          tolerance: `${row.sign || "≤"} ${row.value || "-"}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Alignment Test", testRows);
-    }
-  }
-
-  // 2. Accuracy of Operating Potential
+  // 1. Accuracy of Operating Potential
 
   const opData = testData.operatingPotential;
   if (opData && (opData.rows || opData.table2)) {
@@ -326,6 +309,40 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
         };
       });
       addRowsForTest("Tube Housing Leakage", testRows);
+    }
+  }
+
+  // 11. High Contrast Sensitivity
+  if (testData.highContrastSensitivity) {
+    const hcsData = testData.highContrastSensitivity;
+    if (hcsData.measuredLpPerMm || hcsData.recommendedStandard) {
+      const measured = parseFloat(hcsData.measuredLpPerMm || "0");
+      const standard = parseFloat(hcsData.recommendedStandard || "0");
+      const isPass = !isNaN(measured) && !isNaN(standard) && measured > standard;
+      
+      addRowsForTest("High Contrast Sensitivity", [{
+        specified: `Recommended >= ${hcsData.recommendedStandard || "-"} lp/mm`,
+        measured: hcsData.measuredLpPerMm ? `${hcsData.measuredLpPerMm} lp/mm` : "-",
+        tolerance: `> ${hcsData.recommendedStandard || "-"} lp/mm`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }]);
+    }
+  }
+
+  // 12. Low Contrast Sensitivity
+  if (testData.lowContrastSensitivity) {
+    const lcsData = testData.lowContrastSensitivity;
+    if (lcsData.smallestHoleSize || lcsData.recommendedStandard) {
+      const measured = parseFloat(lcsData.smallestHoleSize || "999");
+      const standard = parseFloat(lcsData.recommendedStandard || "0");
+      const isPass = !isNaN(measured) && !isNaN(standard) && measured < standard;
+      
+      addRowsForTest("Low Contrast Sensitivity", [{
+        specified: `Recommended <= ${lcsData.recommendedStandard || "-"} mm`,
+        measured: lcsData.smallestHoleSize ? `${lcsData.smallestHoleSize} mm` : "-",
+        tolerance: `< ${lcsData.recommendedStandard || "-"} mm`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }]);
     }
   }
 

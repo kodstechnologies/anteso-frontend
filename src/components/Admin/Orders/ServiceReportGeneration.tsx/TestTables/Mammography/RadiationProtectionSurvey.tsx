@@ -23,9 +23,19 @@ interface LocationData {
 interface Props {
   serviceId: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: {
+    surveyDate?: string;
+    hasValidCalibration?: string;
+    appliedCurrent?: string;
+    appliedVoltage?: string;
+    exposureTime?: string;
+    workload?: string;
+    locations?: Array<{ location: string; mRPerHr: string; mRPerWeek: string; result: string; category: string }>;
+  };
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, initialData }) => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
@@ -173,16 +183,88 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     checkCalibration();
   }, [serviceId]);
 
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('RadiationProtectionSurvey: Loading initial data from CSV:', initialData);
+      if (initialData.surveyDate) {
+        setSurveyDate(initialData.surveyDate);
+      }
+      if (initialData.hasValidCalibration !== undefined) {
+        setHasValidCalibration(initialData.hasValidCalibration);
+      }
+      if (initialData.appliedCurrent) {
+        setAppliedCurrent(initialData.appliedCurrent);
+      }
+      if (initialData.appliedVoltage) {
+        setAppliedVoltage(initialData.appliedVoltage);
+      }
+      if (initialData.exposureTime) {
+        setExposureTime(initialData.exposureTime);
+      }
+      if (initialData.workload) {
+        setWorkload(initialData.workload);
+      }
+      if (initialData.locations && initialData.locations.length > 0) {
+        setLocations(
+          initialData.locations.map((l, i) => ({
+            id: `csv-row-${Date.now()}-${i}`,
+            location: l.location || '',
+            mRPerHr: l.mRPerHr || '',
+            mRPerWeek: l.mRPerWeek || '',
+            result: l.result || '',
+            category: (l.category as 'worker' | 'public') || 'worker',
+          }))
+        );
+      }
+      setIsEditing(true);
+      setIsLoading(false);
+      console.log('RadiationProtectionSurvey: CSV data loaded into form');
+    }
+  }, [initialData]);
+
   // Load existing survey
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+    
+    // Reset state when refreshKey changes
+    if (refreshKey !== undefined) {
+      setIsLoading(true);
+      setSurveyDate(getTodayDate());
+      setHasValidCalibration('');
+      setAppliedCurrent('100');
+      setAppliedVoltage('28');
+      setExposureTime('0.5');
+      setWorkload('5000');
+      setLocations([
+        { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
+        { id: "2", location: "Outside Lead Glass / View Window", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
+        { id: "3", location: "Technician Entrance Door (Service Door)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
+        { id: "4", location: "Wall D (Console Wall)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
+        { id: "5", location: "Wall C", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
+        { id: "6", location: "Wall B", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
+        { id: "7", location: "Wall A", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
+        { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
+        { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
+      ]);
+      setIsSaved(false);
+      setIsEditing(true);
+    }
+    
     const load = async () => {
       if (!serviceId) {
         setIsLoading(false);
         return;
       }
       try {
+        console.log('RadiationProtectionSurvey: Loading data, refreshKey:', refreshKey);
         const res = await getRadiationProtectionSurveyByServiceIdForMammography(serviceId);
-        const data = res?.data;
+        // API returns res.data.data directly
+        const data = res;
+        console.log('RadiationProtectionSurvey: Loaded data:', data);
         if (data) {
           setTestId(data._id || null);
           setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
@@ -219,7 +301,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
 
   const handleSave = async () => {
     if (!serviceId) {

@@ -134,17 +134,39 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
   }, [serviceId, settings, workload, toleranceValue, leakageRows]);
 
   const handleSave = async () => {
-    if (!isFormValid) return;
-    setIsSaving(true);
+    if (!serviceId) {
+      toast.error('Service ID is missing');
+      return;
+    }
 
-    setTimeout(() => {
+    if (!isFormValid) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // TODO: Replace with actual API call when available
+      // const payload = { ... };
+      // let result;
+      // if (testId) {
+      //   result = await updateTubeHousingLeakageForInventionalRadiology(testId, payload);
+      // } else {
+      //   result = await addTubeHousingLeakageForInventionalRadiology(serviceId, payload);
+      //   const newId = result?.data?._id || result?.data?.data?._id || result?._id;
+      //   if (newId) setTestId(newId);
+      // }
+      
       toast.success('Tube Housing Leakage saved successfully!');
       setHasSaved(true);
       setIsEditing(false);
-      setTestId('mock-test-id-123');
       onRefresh?.();
+    } catch (err: any) {
+      console.error('Save error:', err);
+      toast.error(err?.response?.data?.message || err?.message || 'Save failed');
+    } finally {
       setIsSaving(false);
-    }, 1000);
+    }
   };
 
   const toggleEdit = () => {
@@ -226,26 +248,38 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
             {processedLeakage.map((row, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
                 <td className="px-3 py-3 font-medium border-r">{row.location}</td>
-                {(['left', 'right', 'front', 'back', 'top'] as const).map(field => (
-                  <td key={field} className="px-1 py-2 border-r">
-                    <input
-                      type="text"
-                      value={leakageRows[idx][field]}
-                      onChange={(e) => updateLeakage(idx, field, e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full text-center border rounded text-xs ${isViewMode ? 'bg-gray-50' : ''}`}
-                      placeholder="0.00"
-                    />
-                  </td>
-                ))}
+                {(['left', 'right', 'front', 'back', 'top'] as const).map(field => {
+                  const isFailed = row.remark === 'Fail';
+                  const hasValue = leakageRows[idx][field] !== '' && !isNaN(parseFloat(leakageRows[idx][field]));
+                  
+                  return (
+                    <td key={field} className={`px-1 py-2 border-r ${isFailed && hasValue ? 'bg-red-100' : ''}`}>
+                      <input
+                        type="text"
+                        value={leakageRows[idx][field]}
+                        onChange={(e) => updateLeakage(idx, field, e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-full text-center border rounded text-xs ${
+                          isViewMode 
+                            ? 'bg-gray-50 cursor-not-allowed' 
+                            : isFailed && hasValue
+                              ? 'border-red-500 bg-red-50'
+                              : ''
+                        }`}
+                        placeholder="0.00"
+                      />
+                    </td>
+                  );
+                })}
                 <td className="px-3 py-3 text-center font-medium border-r bg-gray-50">{row.max || '—'}</td>
                 <td className="px-3 py-3 text-center font-medium border-r bg-blue-50">{row.result || '—'}</td>
                 <td className="px-3 py-3 text-center font-medium border-r bg-green-50">{row.mgy || '—'}</td>
                 <td className="px-3 py-3 text-center">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${finalRemark === 'Pass' ? 'bg-green-100 text-green-800' :
-                      finalRemark === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100'
-                    }`}>
-                    {finalRemark || '—'}
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                    row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
+                    row.remark === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100'
+                  }`}>
+                    {row.remark || '—'}
                   </span>
                 </td>
               </tr>
@@ -312,13 +346,21 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
       {/* Save Button */}
       <div className="flex justify-end mt-8">
         <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving || (!isViewMode && !isFormValid)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isViewMode) {
+              toggleEdit();
+            } else {
+              handleSave();
+            }
+          }}
+          disabled={isSaving || (isViewMode ? false : !isFormValid)}
           className={`flex items-center gap-3 px-8 py-3 text-white font-medium rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700'
             }`}
         >
           {isSaving ? (
