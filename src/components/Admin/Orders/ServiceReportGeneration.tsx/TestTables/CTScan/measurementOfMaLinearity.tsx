@@ -200,20 +200,31 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             }
 
             // Table 2
-            const t2Indices = [...new Set(csvData
+            const rowIndices = [...new Set(csvData
                 .filter(r => r['Field Name'].startsWith('Table2_'))
                 .map(r => parseInt(r['Row Index']))
                 .filter(i => !isNaN(i) && i > 0)
             )];
 
-            if (t2Indices.length > 0) {
-                const newRows = t2Indices.map(idx => {
+            if (rowIndices.length > 0) {
+                // Find all result columns across all rows to determine measHeaders
+                const resultFields = csvData.filter(r => r['Field Name'].startsWith('Table2_Result_'));
+                const maxResultIdx = resultFields.reduce((max, r) => {
+                    const idx = parseInt(r['Field Name'].replace('Table2_Result_', ''));
+                    return isNaN(idx) ? max : Math.max(max, idx);
+                }, 0);
+
+                const numMeas = Math.max(3, maxResultIdx + 1); // Default to at least 3
+                const newHeaders = Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`);
+                setMeasHeaders(newHeaders);
+
+                const newRows = rowIndices.map(idx => {
                     const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
                     const mAsApplied = rowData.find(r => r['Field Name'] === 'Table2_mAsApplied')?.['Value'] || '';
 
                     // Support multiple measurements (Meas 1, Meas 2, ...)
-                    const outputs = Array(measHeaders.length).fill('');
-                    measHeaders.forEach((_, hIdx) => {
+                    const outputs = Array(numMeas).fill('');
+                    newHeaders.forEach((_, hIdx) => {
                         const val = rowData.find(r => r['Field Name'] === `Table2_Result_${hIdx}`)?.['Value'];
                         if (val) outputs[hIdx] = val;
                     });
@@ -228,7 +239,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                         xMin: '',
                         col: '',
                         remarks: '',
-                        failedCells: Array(measHeaders.length).fill(false),
+                        failedCells: Array(numMeas).fill(false),
                     };
                 });
                 setTable2Rows(newRows);

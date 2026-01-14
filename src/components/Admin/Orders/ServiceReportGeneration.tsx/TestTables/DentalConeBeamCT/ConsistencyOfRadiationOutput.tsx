@@ -173,32 +173,36 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   useEffect(() => {
     if (csvData && csvData.length > 0) {
       // Check for FFD
-      const ffdRow = csvData.find(r => r.some((c: any) => c?.toString().toLowerCase() === 'ffd' || c?.toString().toLowerCase() === 'fcd'));
-      if (ffdRow) {
-        const fIdx = ffdRow.findIndex((c: any) => c?.toString().toLowerCase() === 'ffd' || c?.toString().toLowerCase() === 'fcd');
-        if (fIdx !== -1 && ffdRow[fIdx + 1]) {
-          setFfd(ffdRow[fIdx + 1].toString());
-        }
+      const ffdVal = csvData.find(r => r['Field Name'] === 'FFD')?.['Value'];
+      if (ffdVal) {
+        setFfd(ffdVal);
       }
 
-      // Filter valid rows (must have kVp and be numeric)
-      const validRows = csvData.filter(r => r[0] && !isNaN(parseFloat(r[0])));
+      // Measurement Rows
+      const rowIndices = [...new Set(csvData
+        .filter(r => r['Field Name'] && (r['Field Name'] === 'kVp' || r['Field Name'] === 'mAs' || r['Field Name'].startsWith('Measured_')))
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i >= 0)
+      )];
 
-      if (validRows.length > 0) {
-        const newRows = validRows.map((row, idx) => {
-          // Expected CSV format: [kVp, mA, Time, Reading 1, Reading 2, Reading 3, Reading 4, Reading 5]
-          // We need: kVp, mA, and Readings (skip Time at index 2)
-          const kvp = row[0];
-          const mas = row[1]; // mA
+      if (rowIndices.length > 0) {
+        const newRows = rowIndices.map(idx => {
+          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+          const kvp = rowData.find(r => r['Field Name'] === 'kVp')?.['Value'] || '';
+          const mas = rowData.find(r => r['Field Name'] === 'mAs')?.['Value'] || '';
 
-          // Skip Time at index 2, take readings from index 3 onwards
-          const values = row.slice(3).map((v: any) => v?.toString() || '');
+          const measured: string[] = [];
+          for (let i = 0; i < 10; i++) {
+            const val = rowData.find(r => r['Field Name'] === `Measured_${i}`)?.['Value'];
+            if (val !== undefined) measured.push(val);
+            else break;
+          }
 
           return {
-            id: String(idx + 1),
-            kvp: kvp?.toString() || '',
-            mas: mas?.toString() || '',
-            outputs: values,
+            id: String(idx),
+            kvp,
+            mas,
+            outputs: measured,
             mean: '',
             cov: '',
             remarks: '' as ''
@@ -213,8 +217,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           const newCols = Array.from({ length: maxMeas - headers.length }, (_, i) => `Meas ${headers.length + i + 1}`);
           setHeaders(prev => [...prev, ...newCols]);
         }
-        if (!testId) setIsSaved(false); // Edit mode
       }
+
+      if (!testId && (rowIndices.length > 0 || ffdVal)) setIsSaved(false); // Edit mode
     }
   }, [csvData]);
 

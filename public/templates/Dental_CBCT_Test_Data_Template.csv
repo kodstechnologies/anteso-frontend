@@ -9,6 +9,7 @@ Parameter,Measured (mm Al),Required (mm Al),At kVp
 TotalFiltration,2.6,2.5,80
 
 TEST: ACCURACY OF IRRADIATION TIME
+FCD,100,kV,70,mA,10
 Set Time (mSec),Measured Time (mSec),% Error
 100,102,2.00
 200,198,1.00

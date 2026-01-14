@@ -92,7 +92,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
   const [csvUploading, setCsvUploading] = useState(false);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // State to store CSV data for components
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
   const [csvDataVersion, setCsvDataVersion] = useState(0); // Track CSV data updates to force re-render
@@ -143,12 +143,12 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
   const parseCSV = (text: string): any[] => {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length === 0) return [];
-    
+
     const parseLine = (line: string): string[] => {
       const result: string[] = [];
       let current = '';
       let inQuotes = false;
-      
+
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
@@ -163,10 +163,10 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       result.push(current.trim());
       return result;
     };
-    
+
     const headers = parseLine(lines[0]);
     const data: any[] = [];
-    
+
     const sectionToTestName: { [key: string]: string } = {
       '========== ACCURACY OF OPERATING POTENTIAL (KVP) ==========': 'Accuracy of Operating Potential',
       '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
@@ -176,28 +176,28 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       '========== RADIATION LEAKAGE LEVEL AT 1M FROM TUBE HOUSING ==========': 'Tube Housing Leakage',
       '========== RADIATION PROTECTION SURVEY ==========': 'Radiation Protection Survey',
     };
-    
+
     let currentTestName = '';
-    
+
     for (let i = 1; i < lines.length; i++) {
       const values = parseLine(lines[i]);
       const row: any = {};
       headers.forEach((header, index) => {
         row[header] = values[index] || '';
       });
-      
+
       const fieldName = (row['Field Name'] || '').trim();
       const firstColumn = (row[headers[0]] || '').trim();
-      
+
       // Check if this is a section header (in Field Name column or first column)
       const potentialSectionHeader = fieldName || firstColumn;
       if (potentialSectionHeader.startsWith('==========') && potentialSectionHeader.endsWith('==========')) {
         // Try exact match first
         currentTestName = sectionToTestName[potentialSectionHeader] || '';
-        
+
         // If no exact match, try to find a matching key
         if (!currentTestName) {
-          const matchingKey = Object.keys(sectionToTestName).find(key => 
+          const matchingKey = Object.keys(sectionToTestName).find(key =>
             potentialSectionHeader.includes(key.replace(/==========/g, '').trim()) ||
             key.includes(potentialSectionHeader.replace(/==========/g, '').trim())
           );
@@ -205,20 +205,20 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
             currentTestName = sectionToTestName[matchingKey];
           }
         }
-        
+
         console.log(`ParseCSV: Found section header: "${potentialSectionHeader}", mapped to test: "${currentTestName}"`);
         continue;
       }
-      
+
       if (firstColumn.startsWith('---') || firstColumn === '' || !fieldName) {
         continue;
       }
-      
+
       const isKnownField = fieldName.match(/^(Table|Tolerance|TestConditions|IrradiationTime|Measurement|Row|OutputRow|Settings|Workload|LeakageMeasurement|Location|SurveyDate|AppliedCurrent|AppliedVoltage|ExposureTime|mAStations|TotalFiltration|FiltrationTolerance)/);
       if (!isKnownField) {
         continue;
       }
-      
+
       if (currentTestName) {
         row['Test Name'] = currentTestName;
         data.push(row);
@@ -226,7 +226,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
         console.warn(`ParseCSV: Found field "${fieldName}" but no current test name is set`);
       }
     }
-    
+
     return data;
   };
 
@@ -248,16 +248,16 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
 
       csvData.forEach(row => {
         let testName = (row['Test Name'] || '').trim();
-        const normalizedName = Object.keys(testNameMap).find(key => 
-          key.toLowerCase() === testName.toLowerCase() || 
+        const normalizedName = Object.keys(testNameMap).find(key =>
+          key.toLowerCase() === testName.toLowerCase() ||
           testName.toLowerCase().includes(key.toLowerCase()) ||
           key.toLowerCase().includes(testName.toLowerCase())
         );
-        
+
         if (normalizedName) {
           testName = normalizedName;
         }
-        
+
         if (testName) {
           if (!groupedData[testName]) {
             groupedData[testName] = [];
@@ -282,7 +282,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
 
             if (field === 'Table1_Time') table1Row.time = value;
             if (field === 'Table1_SliceThickness') table1Row.sliceThickness = value;
-            
+
             if (field.startsWith('Table2_')) {
               while (table2Rows.length <= rowIndex) {
                 table2Rows.push({ setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' });
@@ -335,7 +335,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
             if (field === 'TestConditions_FCD') testConditions.fcd = value;
             if (field === 'TestConditions_kV') testConditions.kv = value;
             if (field === 'TestConditions_ma') testConditions.ma = value;
-            
+
             if (field === 'Tolerance_Operator') toleranceOperator = value;
             if (field === 'Tolerance_Value') toleranceValue = value;
 
@@ -429,7 +429,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
                 measurements[rowIndex].measuredValues[colIndex] = value;
               } else if (fieldName === 'AverageKvp') {
                 measurements[rowIndex].averageKvp = value;
-              // Remarks will be calculated automatically by the component
+                // Remarks will be calculated automatically by the component
               }
             }
           });
@@ -516,7 +516,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       console.log('Checking for Reproducibility of Radiation Output data...');
       console.log('Available keys in groupedData:', Object.keys(groupedData));
       console.log('Reproducibility data:', groupedData['Reproducibility of Radiation Output']);
-      
+
       if (groupedData['Reproducibility of Radiation Output'] && groupedData['Reproducibility of Radiation Output'].length > 0) {
         try {
           const data = groupedData['Reproducibility of Radiation Output'];
@@ -540,7 +540,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
               const fieldName = field.replace('OutputRow_', '').trim();
               const fieldNameLower = fieldName.toLowerCase();
               console.log(`Processing field: ${field}, fieldName: ${fieldName}, value: ${value}, rowIndex: ${rowIndex}`);
-              
+
               if (fieldNameLower === 'kv') {
                 outputRows[rowIndex].kv = value;
                 console.log(`Set kv for row ${rowIndex}: ${value}`);
@@ -558,7 +558,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
                 } else {
                   console.warn(`Invalid Meas index for field: ${fieldName}, value: ${value}`);
                 }
-              // Remark will be calculated automatically by the component
+                // Remark will be calculated automatically by the component
               } else {
                 console.warn(`Unknown field name: ${fieldName} for value: ${value}`);
               }
@@ -567,7 +567,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
 
           // Log all rows before filtering
           console.log('All outputRows before filtering:', JSON.stringify(outputRows, null, 2));
-          
+
           // Filter out empty rows - but be more lenient, keep rows that have any data
           const validOutputRows = outputRows.filter(row => {
             const hasKv = row.kv && row.kv.trim() !== '';
@@ -777,7 +777,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       toast.error('Failed to read CSV file');
     };
     reader.readAsText(file);
-    
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -786,22 +786,22 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
   // Convert Excel file to CSV format (Field Name, Value, Row Index)
   const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
     const data: any[] = [];
-    
+
     // Get the first sheet
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
-    
+
     // Convert to JSON with header row
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
-    
+
     if (jsonData.length === 0) return data;
-    
+
     // Find header row (should contain "Field Name", "Value", "Row Index")
     let headerRowIndex = -1;
     let fieldNameCol = -1;
     let valueCol = -1;
     let rowIndexCol = -1;
-    
+
     for (let i = 0; i < Math.min(10, jsonData.length); i++) {
       const row = jsonData[i];
       for (let j = 0; j < row.length; j++) {
@@ -817,7 +817,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       }
       if (headerRowIndex !== -1 && valueCol !== -1) break;
     }
-    
+
     // If headers not found, assume first row is headers
     if (headerRowIndex === -1) {
       headerRowIndex = 0;
@@ -825,7 +825,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       valueCol = 1;
       rowIndexCol = 2;
     }
-    
+
     const sectionToTestName: { [key: string]: string } = {
       '========== ACCURACY OF OPERATING POTENTIAL (KVP) ==========': 'Accuracy of Operating Potential',
       '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
@@ -835,29 +835,29 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       '========== RADIATION LEAKAGE LEVEL AT 1M FROM TUBE HOUSING ==========': 'Tube Housing Leakage',
       '========== RADIATION PROTECTION SURVEY ==========': 'Radiation Protection Survey',
     };
-    
+
     let currentTestName = '';
-    
+
     // Process rows after header
     for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
       const row = jsonData[i];
       const fieldName = String(row[fieldNameCol] || '').trim();
       const value = String(row[valueCol] || '').trim();
       const rowIndex = String(row[rowIndexCol] || '').trim();
-      
+
       // Check if this is a section header
       if (fieldName.startsWith('==========') && fieldName.endsWith('==========')) {
         currentTestName = sectionToTestName[fieldName] || '';
         continue;
       }
-      
+
       // Skip empty rows or separator rows
       if (!fieldName || fieldName.startsWith('---')) continue;
-      
+
       // Check if field name matches known patterns
       const isKnownField = fieldName.match(/^(Table|Tolerance|TestConditions|IrradiationTime|Measurement|Row|OutputRow|Settings|Workload|LeakageMeasurement|Location|SurveyDate|AppliedCurrent|AppliedVoltage|ExposureTime|mAStations|TotalFiltration|FiltrationTolerance)/);
       if (!isKnownField) continue;
-      
+
       if (currentTestName) {
         data.push({
           'Field Name': fieldName,
@@ -867,7 +867,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
         });
       }
     }
-    
+
     return data;
   };
 
@@ -883,46 +883,46 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
 
       try {
         setCsvUploading(true);
-        
+
         // Determine file type from URL
         const urlLower = csvFileUrl.toLowerCase();
         const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
-        
+
         let csvData: any[] = [];
 
         if (isExcel) {
           console.log('GenerateReportForBMD: Detected Excel file, fetching through proxy...');
           toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-          
+
           // Use proxy endpoint (uses AWS SDK on backend, same as s3Fetch.js)
           const response = await proxyFile(csvFileUrl);
           // response.data is a Blob when using responseType: 'blob'
           const arrayBuffer = await response.data.arrayBuffer();
           const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-          
+
           console.log('GenerateReportForBMD: Excel file parsed, sheets:', workbook.SheetNames);
-          
+
           // Convert Excel to CSV format
           csvData = parseExcelToCSVFormat(workbook);
           console.log('GenerateReportForBMD: Converted Excel to CSV format, rows:', csvData.length);
         } else {
           console.log('GenerateReportForBMD: Detected CSV file, fetching through proxy...');
           toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-          
+
           // Use proxy endpoint (uses AWS SDK on backend, same as s3Fetch.js)
           const response = await proxyFile(csvFileUrl);
           // response.data is a Blob when using responseType: 'blob'
           const text = await response.data.text();
           console.log('GenerateReportForBMD: CSV file fetched, length:', text.length);
           console.log('GenerateReportForBMD: First 500 chars of CSV:', text.substring(0, 500));
-          
+
           // Parse CSV
           csvData = parseCSV(text);
         }
-        
+
         console.log('GenerateReportForBMD: Parsed data, rows:', csvData.length);
         console.log('GenerateReportForBMD: First few rows:', csvData.slice(0, 5));
-        
+
         if (csvData.length > 0) {
           console.log('GenerateReportForBMD: Processing data...');
           await processCSVData(csvData);
@@ -932,34 +932,34 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
           console.warn('GenerateReportForBMD: No data found in file');
           toast.error('File is empty or could not be parsed', { id: 'csv-loading' });
         }
-          } catch (error: any) {
-            console.error('GenerateReportForBMD: Error fetching or processing file:', error);
-            
-            // Try to extract error message from response
-            let errorMessage = 'Unknown error';
-            if (error?.message) {
-              errorMessage = error.message;
-            } else if (error?.response?.data) {
-              // If error response is a JSON blob, try to parse it
-              if (error.response.data instanceof Blob && error.response.data.type === 'application/json') {
-                try {
-                  const errorText = await error.response.data.text();
-                  const errorJson = JSON.parse(errorText);
-                  errorMessage = errorJson.message || errorMessage;
-                  if (errorJson.details) {
-                    console.error('Error details:', errorJson.details);
-                    errorMessage += ` (Key: ${errorJson.details.key}, Bucket: ${errorJson.details.bucket})`;
-                  }
-                } catch (parseError) {
-                  // If parsing fails, use default message
-                }
+      } catch (error: any) {
+        console.error('GenerateReportForBMD: Error fetching or processing file:', error);
+
+        // Try to extract error message from response
+        let errorMessage = 'Unknown error';
+        if (error?.message) {
+          errorMessage = error.message;
+        } else if (error?.response?.data) {
+          // If error response is a JSON blob, try to parse it
+          if (error.response.data instanceof Blob && error.response.data.type === 'application/json') {
+            try {
+              const errorText = await error.response.data.text();
+              const errorJson = JSON.parse(errorText);
+              errorMessage = errorJson.message || errorMessage;
+              if (errorJson.details) {
+                console.error('Error details:', errorJson.details);
+                errorMessage += ` (Key: ${errorJson.details.key}, Bucket: ${errorJson.details.bucket})`;
               }
+            } catch (parseError) {
+              // If parsing fails, use default message
             }
-            
-            toast.error(`Failed to load file: ${errorMessage}`, { id: 'csv-loading' });
-          } finally {
-            setCsvUploading(false);
           }
+        }
+
+        toast.error(`Failed to load file: ${errorMessage}`, { id: 'csv-loading' });
+      } finally {
+        setCsvUploading(false);
+      }
     };
 
     fetchAndProcessFile();
@@ -1058,7 +1058,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
               calculatedTestDueDate = dueDate.toISOString().split("T")[0];
             }
           }
-          
+
           // Update form data from report header
           setFormData(prev => ({
             ...prev,
@@ -1180,49 +1180,49 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
   // MUST be called before any conditional returns to follow Rules of Hooks
   const testComponents = useMemo(() => {
     const testItems = [
-      { 
-        title: "Accuracy Of Irradiation Time", 
+      {
+        title: "Accuracy Of Irradiation Time",
         component: <AccuracyOfIrradiationTime key={`accuracy-time-${csvDataVersion}`} serviceId={serviceId} initialData={csvDataForComponents.accuracyOfIrradiationTime} />,
         show: hasTimer !== false // Show if timer is true or not yet determined
       },
-      { 
-        title: "Accuracy Of Operating Potential & Total Filtration", 
-        component: <TotalFilteration key={`total-filtration-${csvDataVersion}`} serviceId={serviceId} initialData={csvDataForComponents.totalFiltration || csvDataForComponents.accuracyOfOperatingPotential} /> 
+      {
+        title: "Accuracy Of Operating Potential & Total Filtration",
+        component: <TotalFilteration key={`total-filtration-${csvDataVersion}`} serviceId={serviceId} initialData={csvDataForComponents.totalFiltration || csvDataForComponents.accuracyOfOperatingPotential} />
       },
-      { 
-        title: "Linearity Of Ma Loading stations", 
-        component: <LinearityOfMaLoading key={`linearity-${csvDataVersion}`} serviceId={serviceId} testId={savedTestIds['linearity']} onRefresh={() => { }} initialData={csvDataForComponents.linearityOfMaLoading} /> 
+      {
+        title: "Linearity Of Ma Loading stations",
+        component: <LinearityOfMaLoading key={`linearity-${csvDataVersion}`} serviceId={serviceId} testId={savedTestIds['linearity']} onRefresh={() => { }} initialData={csvDataForComponents.linearityOfMaLoading} />
       },
-      { 
-        title: "Reproducibility Of Radiation Output", 
+      {
+        title: "Reproducibility Of Radiation Output",
         component: (() => {
           const data = csvDataForComponents.reproducibilityOfRadiationOutput;
           // Create a unique key based on the data content to force remount when data changes
-          const dataKey = data && data.outputRows ? 
-            `reproducibility-${csvDataVersion}-${JSON.stringify(data.outputRows).slice(0, 50)}` : 
+          const dataKey = data && data.outputRows ?
+            `reproducibility-${csvDataVersion}-${JSON.stringify(data.outputRows).slice(0, 50)}` :
             `reproducibility-${csvDataVersion}`;
           console.log('GenerateReportForBMD: Passing reproducibilityOfRadiationOutput to component:', data, 'key:', dataKey);
-          return <ConsistencyOfRadiationOutput 
-            key={dataKey} 
-            serviceId={serviceId} 
-            testId={savedTestIds['reproducibility']} 
-            onTestSaved={(testId) => handleTestSaved('reproducibility', testId)} 
-            initialData={data} 
+          return <ConsistencyOfRadiationOutput
+            key={dataKey}
+            serviceId={serviceId}
+            testId={savedTestIds['reproducibility']}
+            onTestSaved={(testId) => handleTestSaved('reproducibility', testId)}
+            initialData={data}
           />;
         })()
       },
-      { 
-        title: "Radiation Leakage Level at 1m from tube housing and collimator", 
-        component: <TubeHousingLeakage key={`leakage-${csvDataVersion}`} serviceId={serviceId} testId={savedTestIds['leakage']} onRefresh={() => { }} initialData={csvDataForComponents.tubeHousingLeakage} /> 
+      {
+        title: "Radiation Leakage Level at 1m from tube housing and collimator",
+        component: <TubeHousingLeakage key={`leakage-${csvDataVersion}`} serviceId={serviceId} testId={savedTestIds['leakage']} onRefresh={() => { }} initialData={csvDataForComponents.tubeHousingLeakage} />
       },
-      { 
-        title: "Radiation Protection Survey", 
-        component: <RadiationProtectionSurvey key={`protection-${csvDataVersion}`} serviceId={serviceId} testId={savedTestIds['protection']} onTestSaved={(testId) => handleTestSaved('protection', testId)} initialData={csvDataForComponents.radiationProtectionSurvey} /> 
+      {
+        title: "Radiation Protection Survey",
+        component: <RadiationProtectionSurvey key={`protection-${csvDataVersion}`} serviceId={serviceId} testId={savedTestIds['protection']} onTestSaved={(testId) => handleTestSaved('protection', testId)} initialData={csvDataForComponents.radiationProtectionSurvey} />
       },
       // { title: "Equipment Setting", component: <EquipmentSetting serviceId={serviceId} /> },
       // { title: "Maximum Radiation level", component: <MaxRadiationLevel serviceId={serviceId} /> },
     ];
-    
+
     return testItems.filter(item => item.show !== false).map((item: any, idx: number) => (
       <Disclosure key={`${idx}-${csvDataVersion}`} defaultOpen={idx === 0}>
         {({ open }) => (
@@ -1457,14 +1457,14 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
           </div>
           <div className="flex gap-3">
             <div className="flex gap-2">
-              <a
+              {/* <a
                 href="/templates/BMD_Test_Data_Template.csv"
                 download="BMD_Test_Data_Template.csv"
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
               >
                 <CloudArrowUpIcon className="w-5 h-5" />
                 Download Template (With Timer)
-              </a>
+              </a> */}
               <a
                 href="/templates/BMD_Test_Data_Template_NoTimer.csv"
                 download="BMD_Test_Data_Template_NoTimer.csv"

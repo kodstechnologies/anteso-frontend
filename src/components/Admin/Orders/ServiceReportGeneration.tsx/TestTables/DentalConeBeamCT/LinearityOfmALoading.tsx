@@ -230,49 +230,47 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   // CSV Data Injection
   useEffect(() => {
     if (csvData && csvData.length > 0) {
-      // Separate table rows from CoL rows
-      const colRowIndex = csvData.findIndex(r => r[0] === 'Coefficient of Linearity' || r[0] === 'CoL');
+      // Test Conditions
+      const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
+      const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
+      const time = csvData.find(r => r['Field Name'] === 'time')?.['Value'];
 
-      let tableRows = colRowIndex !== -1 ? csvData.slice(0, colRowIndex) : csvData;
-      // Filter valid rows (must have mA value)
-      let newTable2Rows: Table2Row[] = [];
-      let foundSettings = false;
+      if (fcd || kv || time) {
+        setTable1Row(prev => ({
+          fcd: fcd || prev.fcd,
+          kv: kv || prev.kv,
+          time: time || prev.time
+        }));
+      }
 
-      csvData.forEach((row, idx) => {
-        const firstCell = row[0]?.toString()?.trim();
+      // Measurement Rows
+      const rowIndices = [...new Set(csvData
+        .filter(r => r['Field Name'] && (r['Field Name'] === 'mA_Station' || r['Field Name'].startsWith('Measured_')))
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i >= 0)
+      )];
 
-        // 1. Parameter Row: FCD, 100, kV, 70, Timer, 0.1
-        if ((row.includes('FCD') || row.includes('fcd')) && (row.includes('kV') || row.includes('kv'))) {
-          const fIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'fcd');
-          const kIndex = row.findIndex((c: any) => c?.toString().toLowerCase().includes('kv'));
-          // 'Timer' or 'Time'
-          const tIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'timer' || c?.toString().toLowerCase() === 'time');
+      if (rowIndices.length > 0) {
+        const newTable2Rows = rowIndices.map(idx => {
+          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+          const ma = rowData.find(r => r['Field Name'] === 'mA_Station')?.['Value'] || '';
 
-          setTable1Row({
-            fcd: row[fIndex + 1]?.toString() || '',
-            kv: row[kIndex + 1]?.toString() || '',
-            time: row[tIndex + 1]?.toString() || ''
-          });
-          foundSettings = true;
-        }
-        // 2. Data Rows
-        else if (firstCell && !isNaN(parseFloat(firstCell))) {
-          // Format: mA Station, Meas 1, Meas 2... (Time is removed from col)
-          const ma = row[0]?.toString() || '';
-          const meas = row.slice(1).map((v: any) => v?.toString() || '');
-          // Filter out empty if needed? No, user provides headers matching structure.
+          const measured: string[] = [];
+          for (let i = 0; i < 10; i++) {
+            const val = rowData.find(r => r['Field Name'] === `Measured_${i}`)?.['Value'];
+            if (val !== undefined) measured.push(val);
+            else break;
+          }
 
-          newTable2Rows.push({
-            id: String(idx + 1),
+          return {
+            id: String(idx),
             ma,
-            measuredOutputs: meas,
+            measuredOutputs: measured,
             average: '',
             x: '', xMax: '', xMin: '', col: '', remarks: ''
-          });
-        }
-      });
+          } as Table2Row;
+        });
 
-      if (newTable2Rows.length > 0) {
         setTable2Rows(newTable2Rows);
 
         // Update headers
@@ -283,7 +281,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         }
       }
 
-      if (!testId && (newTable2Rows.length > 0 || foundSettings)) setIsEditing(true);
+      if (!testId && (rowIndices.length > 0 || fcd || kv || time)) setIsEditing(true);
     }
   }, [csvData]);
 

@@ -152,46 +152,40 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   // CSV Data Injection
   useEffect(() => {
     if (csvData && csvData.length > 0) {
-      let newTable2Rows: Table2Row[] = [];
-      let foundSettings = false;
+      // Test Conditions
+      const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
+      const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
+      const ma = csvData.find(r => r['Field Name'] === 'mA')?.['Value'];
 
-      csvData.forEach((row, idx) => {
-        const firstCell = row[0]?.toString()?.trim();
+      if (fcd || kv || ma) {
+        setTable1Row(prev => ({
+          ...prev,
+          fcd: fcd || prev.fcd,
+          kv: kv || prev.kv,
+          ma: ma || prev.ma
+        }));
+      }
 
-        // 1. Parameter Row: FCD, 100, kV, 70, mA, 10
-        if ((row.includes('FCD') || row.includes('fcd')) && (row.includes('kV') || row.includes('kv'))) {
-          const fIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'fcd');
-          const kIndex = row.findIndex((c: any) => c?.toString().toLowerCase().includes('kv')); // kV or kVp
-          const mIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'ma');
+      // Measurement Rows
+      const rowIndices = [...new Set(csvData
+        .filter(r => r['Field Name'] && (r['Field Name'] === 'Set_Time' || r['Field Name'] === 'Measured_Time'))
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i >= 0)
+      )];
 
-          setTable1Row({ // Changed from setTableRow1 to setTable1Row
-            id: "1", // Assuming a fixed ID for the single row
-            fcd: row[fIndex + 1]?.toString() || '',
-            kv: row[kIndex + 1]?.toString() || '',
-            ma: row[mIndex + 1]?.toString() || ''
-          });
-          foundSettings = true;
-        }
-        // 2. Data Rows
-        else if (firstCell && !isNaN(parseFloat(firstCell))) {
-          // Format: Set Time, Meas 1, Meas 2... 
-          // (No Average, Error, Remarks as requested)
-          const setTime = row[0]?.toString() || '';
-          const meas = row[1]?.toString() || '';
-
-          newTable2Rows.push({
-            id: String(idx + 1),
-            setTime,
-            measuredTime: meas,
-          });
-        }
-      });
-
-      if (newTable2Rows.length > 0) {
+      if (rowIndices.length > 0) {
+        const newTable2Rows = rowIndices.map(idx => {
+          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+          return {
+            id: String(idx),
+            setTime: rowData.find(r => r['Field Name'] === 'Set_Time')?.['Value'] || '',
+            measuredTime: rowData.find(r => r['Field Name'] === 'Measured_Time')?.['Value'] || '',
+          };
+        });
         setTable2Rows(newTable2Rows);
       }
 
-      if (!testId && (newTable2Rows.length > 0 || foundSettings)) setIsEditing(true);
+      if (!testId && (rowIndices.length > 0 || fcd || kv || ma)) setIsEditing(true);
     }
   }, [csvData]);
 

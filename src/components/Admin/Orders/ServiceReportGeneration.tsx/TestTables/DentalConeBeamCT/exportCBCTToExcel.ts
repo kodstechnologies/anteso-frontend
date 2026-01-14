@@ -48,9 +48,14 @@ export const createCBCTUploadableExcel = (data: any) => {
 
     // 2. ACCURACY OF IRRADIATION TIME
     if (data.accuracyOfIrradiationTime) {
-        // Data has 'irradiationTimes' array
-        // Key: irradiationTimes -> [ { setTime, measuredTime } ]
-        const rows = (data.accuracyOfIrradiationTime.irradiationTimes || []).map((row: any) => {
+        const it = data.accuracyOfIrradiationTime;
+        // Test Conditions
+        if (it.testConditions) {
+            const tc = it.testConditions;
+            addSection('ACCURACY OF IRRADIATION TIME - CONDITIONS', ['kV', 'mA', 'FCD'], [[tc.kv || '', tc.ma || '', tc.fcd || '']]);
+        }
+
+        const rows = (it.irradiationTimes || []).map((row: any) => {
             const set = parseFloat(row.setTime);
             const meas = parseFloat(row.measuredTime);
             let error = '';
@@ -74,20 +79,24 @@ export const createCBCTUploadableExcel = (data: any) => {
 
     // 3. LINEARITY OF mA / mAs LOADING
     if (data.linearityOfMaLoading) {
-        // Shared API endpoint, distiguished by content
-        const table1 = data.linearityOfMaLoading.table1 || {};
-        const isMaLoading = table1.time && table1.time.trim() !== '';
+        const lma = data.linearityOfMaLoading;
+        // Test Conditions
+        if (lma.table1) {
+            const t1 = lma.table1;
+            addSection('LINEARITY OF mA/mAs LOADING - CONDITIONS', ['kV', 'time', 'FCD'], [[t1.kv || '', t1.time || '', t1.fcd || '']]);
+        }
 
-        // Data is in table2. Key: table2 -> [ { ma, measuredOutputs: [], average, x } ]
-        const rows = (data.linearityOfMaLoading.table2 || []).map((row: any) => [
-            row.ma || '', // "mA" (stored as ma even if mAs range)
+        const isMaLoading = lma.table1 && lma.table1.time && lma.table1.time.trim() !== '';
+
+        const rows = (lma.table2 || []).map((row: any) => [
+            row.ma || '',
             ...(row.measuredOutputs || []),
             row.average || '',
-            row.x || '' // mR/mAs
+            row.x || ''
         ]);
 
         if (rows.length > 0) {
-            const maxMeas = Math.max(...(data.linearityOfMaLoading.table2 || []).map((r: any) => (r.measuredOutputs || []).length));
+            const maxMeas = Math.max(...(lma.table2 || []).map((r: any) => (r.measuredOutputs || []).length));
             const measHeaders = Array.from({ length: maxMeas }, (_, i) => `Measured mR ${i + 1}`);
 
             if (isMaLoading) {
@@ -102,9 +111,13 @@ export const createCBCTUploadableExcel = (data: any) => {
 
     // 4. OUTPUT CONSISTENCY
     if (data.outputConsistency) {
-        // Data has 'outputRows'
-        // Key: outputRows -> [ { kvp, mas, outputs: [], mean, cov, remarks } ]
-        const rows = (data.outputConsistency.outputRows || []).map((row: any) => [
+        const oc = data.outputConsistency;
+        // Test Conditions
+        if (oc.ffd) {
+            addSection('CONSISTENCY OF RADIATION OUTPUT - CONDITIONS', ['FFD'], [[oc.ffd]]);
+        }
+
+        const rows = (oc.outputRows || []).map((row: any) => [
             row.kvp || '',
             row.mas || '',
             ...(row.outputs || []),
@@ -114,7 +127,7 @@ export const createCBCTUploadableExcel = (data: any) => {
         ]);
 
         if (rows.length > 0) {
-            const maxMeas = Math.max(...(data.outputConsistency.outputRows || []).map((r: any) => (r.outputs || []).length));
+            const maxMeas = Math.max(...(oc.outputRows || []).map((r: any) => (r.outputs || []).length));
             const measHeaders = Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`);
             const headers = ['kVp', 'mAs', ...measHeaders, 'Mean', 'CoV', 'Remarks'];
             addSection('CONSISTENCY OF RADIATION OUTPUT', headers, rows);
@@ -123,31 +136,38 @@ export const createCBCTUploadableExcel = (data: any) => {
 
     // 5. RADIATION LEAKAGE LEVEL
     if (data.radiationLeakage) {
-        // Payload key: leakageMeasurements (NOT leakageRows or measurements)
-        // [ { location, left, right, top, up, down, max, unit, remark } ]
-        const rows = (data.radiationLeakage.leakageMeasurements || []).map((row: any) => [
+        const rl = data.radiationLeakage;
+        // Test Conditions
+        if (rl.kvp || rl.ma || rl.ffd || rl.time) {
+            addSection('RADIATION LEAKAGE LEVEL - CONDITIONS', ['kV', 'mA', 'FFD', 'Time'], [[rl.kvp || '', rl.ma || '', rl.ffd || '', rl.time || '']]);
+        }
+
+        const rows = (rl.leakageMeasurements || []).map((row: any) => [
             row.location || '',
+            row.front || '',
+            row.back || '',
             row.left || '',
             row.right || '',
-            row.top || '',
-            row.up || '',
-            row.down || '',
-            row.max || '', // was maxLeakage
+            row.max || '',
             row.unit || '',
             row.remark || ''
         ]);
 
         if (rows.length > 0) {
-            const headers = ['Location', 'Left', 'Right', 'Top', 'Up', 'Down', 'Max Leakage', 'Unit', 'Remark'];
+            const headers = ['Location', 'Front', 'Back', 'Left', 'Right', 'Max Leakage', 'Unit', 'Remark'];
             addSection('RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE', headers, rows);
         }
     }
 
     // 6. RADIATION PROTECTION SURVEY
     if (data.radiationProtectionSurvey) {
-        // Payload key: locations
-        // [ { location, mRPerHr, mRPerWeek, result, calculatedResult, category } ]
-        const rows = (data.radiationProtectionSurvey.locations || []).map((row: any) => [
+        const rps = data.radiationProtectionSurvey;
+        // Test Conditions
+        if (rps.appliedVoltage || rps.appliedCurrent || rps.exposureTime || rps.workload) {
+            addSection('RADIATION PROTECTION SURVEY - CONDITIONS', ['kV', 'mA', 'Time', 'Workload'], [[rps.appliedVoltage || '', rps.appliedCurrent || '', rps.exposureTime || '', rps.workload || '']]);
+        }
+
+        const rows = (rps.locations || []).map((row: any) => [
             row.location || '',
             row.mRPerHr || '',
             row.mRPerWeek || '',

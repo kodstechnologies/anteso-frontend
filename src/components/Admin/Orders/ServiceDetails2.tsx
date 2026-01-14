@@ -93,7 +93,7 @@ interface MachineData {
             verificationRemark: any
             assignedAtEngineer?: string | undefined;  // For QA Raw
             assignedAtStaff?: string | undefined    // For QA Test
-            createdAt:string
+            createdAt: string
         }
         reportUrl: any
         qaTestSubmittedAt?: string
@@ -2519,24 +2519,24 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                         // Try to get createdAt from the original response - it should be in firstTest.createdAt
                                                                                         // Since we don't have direct access, we'll use qaTestSubmittedAt or fetch it
                                                                                         // For Lead Apron, the createdAt is typically the first QA test's createdAt
-                                                                                        const createdAt = workType.qaTestSubmittedAt || 
-                                                                                                         firstQATest?.backendFields?.createdAt || 
-                                                                                                         null;
+                                                                                        const createdAt = workType.qaTestSubmittedAt ||
+                                                                                            firstQATest?.backendFields?.createdAt ||
+                                                                                            null;
 
                                                                                         // Get ULR number from reportNumbers
-                                                                                        const ulrNumber = reportNumbers[service.id]?.qatest?.reportULRNumber || 
-                                                                                                         firstQATest?.backendFields?.reportURLNumber || 
-                                                                                                         null;
+                                                                                        const ulrNumber = reportNumbers[service.id]?.qatest?.reportULRNumber ||
+                                                                                            firstQATest?.backendFields?.reportURLNumber ||
+                                                                                            null;
 
                                                                                         // Get file URL for mammography/OBI/BMD/FixedRadioFluro/CT Scan CSV/Excel file
                                                                                         let csvFileUrl = null;
-                                                                                            if (service.machineType === "Mammography" || service.machineType === "OBI" || service.machineType === "KV Imaging (OBI)" || service.machineType === "Bone Densitometer (BMD)" || service.machineType === "BMD" || service.machineType === "Radiography and Fluoroscopy" || service.machineType === "CT Scan") {
+                                                                                        if (service.machineType === "Mammography" || service.machineType === "OBI" || service.machineType === "KV Imaging (OBI)" || service.machineType === "Bone Densitometer (BMD)" || service.machineType === "BMD" || service.machineType === "Radiography and Fluoroscopy" || service.machineType === "Computed Tomography" || service.machineType === "Dental Cone Beam CT") {
                                                                                             // First try to get uploadFile from QA Raw workType's backendFields (this is the file uploaded by engineer)
                                                                                             // Then fallback to reportUrl from reportNumbers (this is the file uploaded by office staff)
-                                                                                            csvFileUrl = firstQATest?.backendFields?.uploadFile || 
-                                                                                                        reportNumbers[service.id]?.qatest?.reportUrl || 
-                                                                                                        null;
-                                                                                            
+                                                                                            csvFileUrl = firstQATest?.backendFields?.uploadFile ||
+                                                                                                reportNumbers[service.id]?.qatest?.reportUrl ||
+                                                                                                null;
+
                                                                                             console.log('ServiceDetails2: Getting csvFileUrl:', {
                                                                                                 machineType: service.machineType,
                                                                                                 uploadFile: firstQATest?.backendFields?.uploadFile,

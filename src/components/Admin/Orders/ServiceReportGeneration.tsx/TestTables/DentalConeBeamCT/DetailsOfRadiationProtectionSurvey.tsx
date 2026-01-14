@@ -230,52 +230,46 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, csvData }) => {
   // CSV Data Injection
   useEffect(() => {
     if (csvData && csvData.length > 0) {
-      // Filter rows (header row 'Location' excluded by parser usually or check)
-      const validRows = csvData.filter(r => r[0] && r[0] !== 'Location');
+      // Global Params
+      const mA = csvData.find(r => r['Field Name'] === 'mA')?.['Value'];
+      const kV = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
+      const time = csvData.find(r => r['Field Name'] === 'Time')?.['Value'];
+      const wl = csvData.find(r => r['Field Name'] === 'Workload')?.['Value'];
 
-      if (validRows.length > 0) {
-        const newLocations: LocationData[] = validRows.map((row, idx) => {
-          // [Location, mR/hr, Category, Date, mA, kV, Time, Workload] (Calibrated Removed)
-          // 0, 1, 2, 3, 4, 5, 6, 7
+      if (mA) setAppliedCurrent(mA);
+      if (kV) setAppliedVoltage(kV);
+      if (time) setExposureTime(time);
+      if (wl) setWorkload(wl);
+
+      // Measurement Rows
+      const rowIndices = [...new Set(csvData
+        .filter(r => r['Field Name'] && (r['Field Name'] === 'Location' || r['Field Name'] === 'mR_hr'))
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i >= 0)
+      )];
+
+      if (rowIndices.length > 0) {
+        const newLocations: LocationData[] = rowIndices.map(idx => {
+          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+          const location = rowData.find(r => r['Field Name'] === 'Location')?.['Value'] || '';
+          const mRhr = rowData.find(r => r['Field Name'] === 'mR_hr')?.['Value'] || '';
+          const category = rowData.find(r => r['Field Name'] === 'Category')?.['Value'] || 'worker';
+
           return {
-            id: String(idx + 1),
-            location: row[0]?.toString() || '',
-            mRPerHr: row[1]?.toString() || '',
-            mRPerWeek: '', // Calculated
+            id: String(idx),
+            location,
+            mRPerHr: mRhr,
+            mRPerWeek: '', // Calculated by useEffect
             result: '',
             calculatedResult: '',
-            category: (row[2]?.toString()?.toLowerCase() || 'worker') as any
-            // Calibrated is NOT set from CSV as requested
+            category: category.toLowerCase() === 'public' ? 'public' : 'worker'
           };
         });
 
         setLocations(newLocations);
-
-        // Global Params from first row (Date, etc.)
-        const first = validRows[0];
-        if (first) {
-          // Date: "dd mm yyyy" -> yyyy-mm-dd
-          const dateStr = first[3]?.toString() || '';
-          if (dateStr) {
-            const parts = dateStr.split(/[ -/]/);
-            if (parts.length === 3) {
-              const d = parts[0].padStart(2, '0');
-              const m = parts[1].padStart(2, '0');
-              const y = parts[2];
-              setSurveyDate(`${y}-${m}-${d}`);
-            }
-          }
-
-          // Indices shifted by 1 because Calibrated column is gone
-          setAppliedCurrent(first[4]?.toString() || '');  // mA
-          setAppliedVoltage(first[5]?.toString() || '');  // kV
-          setExposureTime(first[6]?.toString() || '');    // Time
-          setWorkload(first[7]?.toString() || '');        // Workload
-          // hasValidCalibration is NOT set from CSV
-        }
-
-        if (!testId) setIsEditing(true);
       }
+
+      if (!testId && (rowIndices.length > 0 || mA || kV || time || wl)) setIsEditing(true);
     }
   }, [csvData]);
 

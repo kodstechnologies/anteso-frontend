@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForCBCT, getAccuracyOfOperatingPotentialByServiceIdForCBCT, getAccuracyOfIrradiationTimeByServiceIdForCBCT, getLinearityOfMaLoadingByServiceIdForCBCT, getConsistencyOfRadiationOutputByServiceIdForCBCT, getRadiationLeakageLevelByServiceIdForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT } from "../../../../../../api";
+import { saveReportHeader, getReportHeaderForCBCT, getAccuracyOfOperatingPotentialByServiceIdForCBCT, getAccuracyOfIrradiationTimeByServiceIdForCBCT, getLinearityOfMaLoadingByServiceIdForCBCT, getConsistencyOfRadiationOutputByServiceIdForCBCT, getRadiationLeakageLevelByServiceIdForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, proxyFile } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createCBCTUploadableExcel } from './exportCBCTToExcel';
@@ -46,7 +46,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serviceId, qaTestDate }) => {
+const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -56,7 +56,6 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
-    const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
     const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
     const [savedTestIds, setSavedTestIds] = useState<{
@@ -101,6 +100,257 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
         "Name, Address & Contact detail is provided by Customer.",
     ];
     const [notes, setNotes] = useState<string[]>(defaultNotes);
+
+    const parseHorizontalData = (rows: any[][]): any[] => {
+        const data: any[] = [];
+        let currentTestName = '';
+        let headers: string[] = [];
+        let isReadingTest = false;
+
+        const testMarkerToInternalName: { [key: string]: string } = {
+            'LINEARITY OF mAs LOADING': 'linearityOfMasLoading',
+            'LINEARITY OF mA LOADING': 'linearityOfMaLoading',
+            'ACCURACY OF OPERATING POTENTIAL': 'accuracyOfOperatingPotential',
+            'ACCURACY OF IRRADIATION TIME': 'accuracyOfIrradiationTime',
+            'TOTAL FILTRATION': 'accuracyOfOperatingPotential',
+            'CONSISTENCY OF RADIATION OUTPUT': 'consistencyOfRadiationOutput',
+            'RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE': 'radiationLeakageLevel',
+            'RADIATION PROTECTION SURVEY REPORT': 'radiationProtectionSurvey'
+        };
+
+        const headerMap: { [test: string]: { [header: string]: string } } = {
+            'accuracyOfOperatingPotential': {
+                'Applied kVp': 'Applied_kVp', 'applied kvp': 'Applied_kVp', 'Applied KVp': 'Applied_kVp',
+                'Average kVp': 'Average_kVp', 'average kvp': 'Average_kVp', 'Average KVp': 'Average_kVp',
+                'Remarks': 'Remarks', 'remarks': 'Remarks',
+                'mA 1': 'Measured_0', 'mA 2': 'Measured_1', 'mA 3': 'Measured_2', 'mA 4': 'Measured_3', 'mA 5': 'Measured_4',
+                'ma 1': 'Measured_0', 'ma 2': 'Measured_1', 'ma 3': 'Measured_2', 'ma 4': 'Measured_3', 'ma 5': 'Measured_4',
+                'Parameter': 'Parameter', 'parameter': 'Parameter',
+                'Measured (mm Al)': 'Measured', 'measured (mm al)': 'Measured',
+                'Required (mm Al)': 'Required', 'required (mm al)': 'Required',
+                'At kVp': 'atKvp', 'at kvp': 'atKvp', 'at kVp': 'atKvp',
+                'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
+                'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
+                'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
+                'FCD': 'FCD', 'fcd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+            },
+            'accuracyOfIrradiationTime': {
+                'Set Time (mSec)': 'Set_Time', 'set time (msec)': 'Set_Time',
+                'Measured Time (mSec)': 'Measured_Time', 'measured time (msec)': 'Measured_Time',
+                '% Error': 'Error', '% error': 'Error',
+                'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
+                'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
+                'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
+                'FCD': 'FCD', 'fcd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+            },
+            'linearityOfMaLoading': {
+                'mA Station': 'mA_Station', 'ma station': 'mA_Station', 'MA Station': 'mA_Station',
+                'Average': 'Average', 'average': 'Average',
+                'mR/mAs': 'mR_mAs', 'mr/mas': 'mR_mAs', 'mR/mAs ': 'mR_mAs',
+                'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
+                'measured mr 1': 'Measured_0', 'measured mr 2': 'Measured_1', 'measured mr 3': 'Measured_2', 'measured mr 4': 'Measured_3', 'measured mr 5': 'Measured_4',
+                'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
+                'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
+                'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
+                'time': 'time', 'Time': 'time', 'Timer': 'time', 'timer': 'time',
+                'FCD': 'FCD', 'fcd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+            },
+            'linearityOfMasLoading': {
+                'mAs Range': 'mAs_Range', 'mas range': 'mAs_Range',
+                'Average': 'Average', 'average': 'Average',
+                'mR/mAs': 'mR_mAs', 'mr/mas': 'mR_mAs',
+                'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
+                'measured mr 1': 'Measured_0', 'measured mr 2': 'Measured_1', 'measured mr 3': 'Measured_2', 'measured mr 4': 'Measured_3', 'measured mr 5': 'Measured_4',
+                'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
+                'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
+                'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
+                'FCD': 'FCD', 'fcd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+            },
+            'consistencyOfRadiationOutput': {
+                'kVp': 'kVp', 'kvp': 'kVp', 'Kvp': 'kVp',
+                'mAs': 'mAs', 'mas': 'mAs',
+                'Mean': 'Mean', 'mean': 'Mean',
+                'CoV': 'CoV', 'cov': 'CoV', 'COV': 'CoV',
+                'Remarks': 'Remarks', 'remarks': 'Remarks',
+                'Meas 1': 'Measured_0', 'Meas 2': 'Measured_1', 'Meas 3': 'Measured_2', 'Meas 4': 'Measured_3', 'Meas 5': 'Measured_4',
+                'meas 1': 'Measured_0', 'meas 2': 'Measured_1', 'meas 3': 'Measured_2', 'meas 4': 'Measured_3', 'meas 5': 'Measured_4',
+                'FFD': 'FFD', 'ffd': 'FFD'
+            },
+            'radiationLeakageLevel': {
+                'Location': 'Table2_Area', 'location': 'Table2_Area',
+                'Front': 'Table2_Front', 'front': 'Table2_Front',
+                'Back': 'Table2_Back', 'back': 'Table2_Back',
+                // Template variants that use Top/Up/Down instead of Front/Back
+                'Top': 'Table2_Front', 'top': 'Table2_Front',
+                'Up': 'Table2_Back', 'up': 'Table2_Back', 'Down': 'Table2_Back', 'down': 'Table2_Back',
+                'Left': 'Table2_Left', 'left': 'Table2_Left',
+                'Right': 'Table2_Right', 'right': 'Table2_Right',
+                'Max Leakage': 'Table2_Max', 'max leakage': 'Table2_Max',
+                'Unit': 'Table2_Unit', 'unit': 'Table2_Unit',
+                'Remark': 'Table2_Remark', 'remark': 'Table2_Remark',
+                'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
+                'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
+                'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
+                'FFD': 'FFD', 'ffd': 'FFD',
+                'Time': 'Time', 'time': 'Time',
+                // Workload + tolerance fields (consumed by the component)
+                'Workload': 'Workload', 'workload': 'Workload',
+                'Workload Unit': 'WorkloadUnit', 'workload unit': 'WorkloadUnit', 'WorkloadUnit': 'WorkloadUnit', 'workloadunit': 'WorkloadUnit',
+                'Tolerance': 'ToleranceValue', 'tolerance': 'ToleranceValue', 'Tolerance Value': 'ToleranceValue', 'tolerance value': 'ToleranceValue',
+                'Tolerance Operator': 'ToleranceOperator', 'tolerance operator': 'ToleranceOperator',
+                'Tolerance Time': 'ToleranceTime', 'tolerance time': 'ToleranceTime'
+            },
+            'radiationProtectionSurvey': {
+                'LOCATION': 'Location', 'location': 'Location', 'Location': 'Location',
+                'MAX. RADIATION LEVEL (MR/HR)': 'mR_hr', 'max. radiation level (mr/hr)': 'mR_hr',
+                'MR/WEEK': 'mR_week', 'mr/week': 'mR_week',
+                'STATUS': 'Status', 'status': 'Status',
+                'RESULT': 'Result', 'result': 'Result',
+                'LOCATION ': 'Location', 'MAX. RADIATION LEVEL (mR/hr)': 'mR_hr',
+                'Category': 'Category', 'category': 'Category',
+                // Settings row labels
+                'Applied Current (mA)': 'mA', 'APPLIED CURRENT (MA)': 'mA',
+                'Applied Voltage (kV)': 'kV', 'APPLIED VOLTAGE (KV)': 'kV',
+                'Exposure Time (s)': 'Time', 'EXPOSURE TIME (S)': 'Time',
+                'Workload (mA.min/week)': 'Workload', 'WORKLOAD (MA.MIN/WEEK)': 'Workload',
+                'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
+                'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
+                'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
+                'Time': 'Time', 'time': 'Time',
+                'Workload': 'Workload', 'workload': 'Workload'
+            }
+        };
+
+        const sectionRowCounter: { [key: string]: number } = {};
+
+        for (let i = 0; i < rows.length; i++) {
+            if (!rows[i] || !Array.isArray(rows[i])) continue;
+            const row = rows[i].map(c => String(c || '').trim());
+            const firstCell = row[0];
+
+            // Be tolerant: allow "TEST:XYZ" or "TEST : XYZ" (with/without spaces)
+            if (firstCell && /^TEST\s*:/i.test(firstCell)) {
+                const testTitle = firstCell.replace(/^TEST\s*:/i, '').trim().toUpperCase();
+                let matchedInternalName = '';
+                for (const marker in testMarkerToInternalName) {
+                    if (testTitle.startsWith(marker.toUpperCase())) {
+                        matchedInternalName = testMarkerToInternalName[marker];
+                        break;
+                    }
+                }
+
+                currentTestName = matchedInternalName;
+                isReadingTest = true;
+                headers = [];
+                if (currentTestName) {
+                    if (sectionRowCounter[currentTestName] === undefined) {
+                        sectionRowCounter[currentTestName] = 0;
+                    }
+                }
+                continue;
+            }
+
+            // If empty row, reset headers so next table within same section can be detected
+            if (isReadingTest && row.every(c => !c)) {
+                headers = [];
+                continue;
+            }
+
+            // Detect special "settings" rows that contain multiple label/value pairs on one line
+            if (isReadingTest && headers.length === 0 && currentTestName) {
+                const map = headerMap[currentTestName] || {};
+                const allowsMultiPair = ['linearityOfMaLoading', 'radiationLeakageLevel', 'radiationProtectionSurvey', 'accuracyOfIrradiationTime'].includes(currentTestName);
+                if (allowsMultiPair) {
+                    const pairs: { field: string; value: string }[] = [];
+                    let hasHeaderLikeValue = false;
+                    for (let idx = 0; idx < row.length - 1; idx += 2) {
+                        const label = row[idx];
+                        const value = row[idx + 1];
+                        if (!label || !value) continue;
+                        const internalLabel = map[label];
+                        const internalValueAsHeader = map[value];
+                        if (internalLabel && value) {
+                            pairs.push({ field: internalLabel, value });
+                        }
+                        if (internalLabel && internalValueAsHeader) {
+                            // e.g. "mA Station, Measured mR 1" – this is actually a header row, not settings
+                            hasHeaderLikeValue = true;
+                        }
+                    }
+                    if (pairs.length > 0 && !hasHeaderLikeValue) {
+                        sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
+                        const rowIdx = sectionRowCounter[currentTestName];
+                        pairs.forEach(p => {
+                            data.push({
+                                'Field Name': p.field,
+                                'Value': p.value,
+                                'Row Index': rowIdx,
+                                'Test Name': currentTestName,
+                            });
+                        });
+                        continue;
+                    }
+                }
+            }
+
+            // Detect key-value row (Vertical) or headers (Horizontal)
+            if (isReadingTest && headers.length === 0 && currentTestName) {
+                // Check if it's a key-value row: [Key, Value] where Key matches a field
+                const fieldForKey = (headerMap[currentTestName] || {})[firstCell];
+                if (fieldForKey && row[1] && row.slice(2).every(c => !c)) {
+                    sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
+                    data.push({
+                        'Field Name': fieldForKey,
+                        'Value': row[1],
+                        'Row Index': sectionRowCounter[currentTestName],
+                        'Test Name': currentTestName,
+                    });
+                    continue;
+                }
+
+                const matches = row.filter(c => (headerMap[currentTestName] || {})[c]).length;
+                if (matches >= 2 || (matches === 1 && row.filter(c => c).length > 2)) {
+                    headers = row;
+                    continue;
+                } else if (matches === 1 && row.filter(c => c).length === 1) {
+                    // Single cell matching a header? Could be a header row with 1 col or just noise.
+                    // If it's the first non-empty row, let's assume it's headers.
+                    headers = row;
+                    continue;
+                }
+            }
+
+            if (isReadingTest && currentTestName && headers.length > 0) {
+                sectionRowCounter[currentTestName]++;
+                const rowIdx = sectionRowCounter[currentTestName];
+                row.forEach((value, cellIdx) => {
+                    const header = headers[cellIdx];
+                    const internalField = (headerMap[currentTestName] || {})[header];
+                    if (internalField && value) {
+                        data.push({
+                            'Field Name': internalField,
+                            'Value': value,
+                            'Row Index': rowIdx,
+                            'Test Name': currentTestName,
+                        });
+                    }
+                });
+            }
+        }
+        return data;
+    };
+
+    const processCSVData = (csvData: any[]) => {
+        const groupedData: { [key: string]: any[] } = {};
+        csvData.forEach((row) => {
+            const testName = row['Test Name'];
+            if (testName) {
+                if (!groupedData[testName]) groupedData[testName] = [];
+                groupedData[testName].push(row);
+            }
+        });
+        return groupedData;
+    };
 
     const addYearsToDate = (dateStr: string, years: number): string => {
         if (!dateStr) return "";
@@ -328,13 +578,57 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
         loadReportHeader();
     }, [serviceId]);
 
+    // Fetch and process file from URL (for auto-fill)
     useEffect(() => {
-        const load = async () => {
-            const data = await getRadiationProfileWidthByServiceId(serviceId);
-            setRadiationProfileTest(data);
+        const fetchAndProcessFile = async () => {
+            if (!csvFileUrl) {
+                console.log('CBCT: No csvFileUrl provided, skipping file fetch');
+                return;
+            }
+
+            console.log('CBCT: Fetching file from URL:', csvFileUrl);
+
+            try {
+                toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
+
+                // Extract file extension from URL (remove query parameters first)
+                const urlWithoutQuery = csvFileUrl.split('?')[0].split('#')[0];
+                const urlLower = urlWithoutQuery.toLowerCase();
+                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+
+                if (isExcel) {
+                    const response = await proxyFile(csvFileUrl);
+                    const arrayBuffer = await response.data.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+                    const wsname = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[wsname];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    const parsed = parseHorizontalData(jsonData as any[]);
+                    const grouped = processCSVData(parsed);
+                    setCsvData(grouped);
+                    toast.success('Excel data loaded successfully!', { id: 'csv-loading' });
+                } else {
+                    const response = await proxyFile(csvFileUrl);
+                    const text = await response.data.text();
+
+                    // Simple CSV to array of arrays
+                    const rows = text.split('\n').map((line: any) => line.split(','));
+                    const parsed = parseHorizontalData(rows);
+                    const grouped = processCSVData(parsed);
+                    setCsvData(grouped);
+                    toast.success('CSV data loaded successfully!', { id: 'csv-loading' });
+                }
+            } catch (error: any) {
+                console.error('CBCT: Error fetching/processing file:', error);
+                toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
+            }
         };
-        if (serviceId) load();
-    }, [serviceId]);
+
+        fetchAndProcessFile();
+    }, [csvFileUrl]);
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -380,121 +674,6 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
         );
     }
 
-    const parseHorizontalData = (rows: any[]) => {
-        const result: any = {};
-        let currentSection = '';
-
-        const headerMap: any = {
-            'Applied kVp': 'appliedKvp',
-            'Measured kVp 1': 'measuredKvp1',
-            'Measured kVp 2': 'measuredKvp2',
-            'Set Time': 'setTime',
-            'Measured Time 1': 'measuredTime1',
-            'Time': 'time',
-            'Reading 1': 'reading1',
-            'Area': 'area',
-            'Front': 'front',
-            'Back': 'back',
-            'Left': 'left',
-            'Right': 'right',
-            'Location': 'location',
-            'mR/hr': 'mrPerHr',
-            'Category': 'category',
-            'Parameter': 'parameter',
-            'Specified': 'specified',
-            'Measured': 'measured',
-            'Tolerance': 'tolerance',
-            'Remarks': 'remarks',
-            'mA Station': 'maStation',
-            'mAs Station': 'maStation',
-            'Set Time (mSec)': 'setTime',
-            'Measured Time (mSec)': 'measuredTime',
-            '% Error': 'error',
-            'Measured mR 1': 'reading1',
-            'kVp': 'kvp',
-            'mAs': 'mas',
-            'Mean': 'mean',
-            'CoV': 'cov',
-            'Max Leakage': 'max'
-        };
-
-        const testMarkerToInternalName: any = {
-            'ACCURACY OF OPERATING POTENTIAL': 'accuracyOfOperatingPotential',
-            'TOTAL FILTRATION': 'accuracyOfOperatingPotential', // Merge with Accuracy test
-            'ACCURACY OF IRRADIATION TIME': 'accuracyOfIrradiationTime',
-            'LINEARITY OF mA LOADING': 'linearityOfMaLoading',
-            'LINEARITY OF mAs LOADING': 'linearityOfMasLoading',
-            'CONSISTENCY OF RADIATION OUTPUT': 'consistencyOfRadiationOutput',
-            'RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE': 'radiationLeakageLevel', // Match export
-            'RADIATION LEAKAGE LEVEL': 'radiationLeakageLevel', // Keep for backward compatibility
-            'RADIATION PROTECTION SURVEY REPORT': 'radiationProtectionSurvey', // Match export
-            'DETAILS OF RADIATION PROTECTION SURVEY': 'radiationProtectionSurvey' // Keep for backward compatibility
-        };
-
-        rows.forEach((row, index) => {
-            const firstCell = row[0]?.toString().trim();
-            if (firstCell && firstCell.startsWith('TEST: ')) {
-                const title = firstCell.replace('TEST: ', '').trim();
-                currentSection = testMarkerToInternalName[title] || '';
-                if (currentSection && !result[currentSection]) {
-                    result[currentSection] = [];
-                }
-                return;
-            }
-
-            // If we are in a section, parse rows
-            if (currentSection) {
-                // Skip header row - check if the first cell is a known header name
-                // This prevents filtering out data rows that happen to contain header values (like "Time" in settings row)
-                const firstCell = row[0]?.toString().trim();
-                if (firstCell && Object.keys(headerMap).includes(firstCell)) {
-                    return;
-                }
-
-                // Need to map row array to object based on column order?
-                // Or just pass the raw row array to the component and let it handle parsing?
-                // The existing implementation passes "csvData" which seems to be the raw rows for that section?
-
-                // Making it simple: store all rows for the section. 
-                // But wait, the child components expect `csvData` prop. 
-                // In existing CT Scan, `parseHorizontalData` converts it to an array of objects with 'Field Name' and 'Value' OR 
-                // it passes the raw structure. 
-
-                // Let's look at how we implemented `exportCBCTToExcel`. 
-                // It uses specific column headers.
-
-                // Strategy: Convert each row into an object where keys are the headers.
-                // Since we are iterating rows, we need to know the headers.
-                // Simple approach: Store these rows as "data rows" for the section.
-                // The child component will receive `csvData={csvData.accuracyOfOperatingPotential}` which will be an array of arrays (rows).
-
-                // Actually, it's better to pass objects if possible, but arrays are fine if indices are consistent.
-                // Let's pass the raw row (array of values).
-
-                if (row.length > 0) {
-                    result[currentSection].push(row);
-                }
-            }
-
-            // Handle Global Parameters (like Total Filtration, CoL) that might be outside standard tables
-            if (row[0] === 'Total Filtration') {
-                if (!result.accuracyOfOperatingPotential) result.accuracyOfOperatingPotential = [];
-                result.accuracyOfOperatingPotential.push(['TotalFiltration', ...row.slice(1)]);
-            }
-            if (row[0] === 'Coefficient of Linearity') {
-                // Determine which linearity test
-                // It usually follows the table.
-                if (currentSection === 'linearityOfMaLoading') {
-                    result.linearityOfMaLoading.push(['CoL', ...row.slice(1)]);
-                } else if (currentSection === 'linearityOfMasLoading') {
-                    result.linearityOfMasLoading.push(['CoL', ...row.slice(1)]);
-                }
-            }
-        });
-
-        return result;
-    };
-
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -507,10 +686,10 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
             const ws = wb.Sheets[wsname];
             const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }); // Array of arrays
 
-            const parsed = parseHorizontalData(jsonData as any[]);
-            console.log("Parsed CSV Data:", parsed);
-            console.log("Radiation Leakage Level rows:", parsed.radiationLeakageLevel);
-            setCsvData(parsed);
+            const rawParsed = parseHorizontalData(jsonData as any[]);
+            const grouped = processCSVData(rawParsed);
+            console.log("Parsed & Grouped CSV Data:", grouped);
+            setCsvData(grouped);
             toast.success("Excel data imported successfully!");
         };
         reader.readAsBinaryString(file);

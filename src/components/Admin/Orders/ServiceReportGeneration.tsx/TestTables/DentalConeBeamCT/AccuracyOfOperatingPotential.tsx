@@ -121,51 +121,46 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     // CSV Data Injection
     useEffect(() => {
         if (csvData && csvData.length > 0) {
-            // Filter out empty rows or headers if any slipped through
-            // The rows are arrays of values.
-            // Structure expected:
-            // [Applied kVp, Meas 1, Meas 2, ..., Avg, Remarks]
+            // Total Filtration
+            const tfMeasured = csvData.find(r => r['Field Name'] === 'Measured')?.['Value'];
+            const tfRequired = csvData.find(r => r['Field Name'] === 'Required')?.['Value'];
+            const tfAtKvp = csvData.find(r => r['Field Name'] === 'atKvp')?.['Value'];
 
-            // Check for Total Filtration row
-            const tfRow = csvData.find(r => {
-                const s = String(r[0]).trim();
-                return s === 'TotalFiltration' || s === 'Total Filtration';
-            });
-
-            if (tfRow) {
-                // Template: Total Filtration,Measured,2.5,Required,2.5,atKvp,80
-                // Export: TotalFiltration,Measured,2.5,Required,2.5,atKvp,80
-
-                const measIdx = tfRow.findIndex((c: any) => String(c).trim() === 'Measured');
-                const reqIdx = tfRow.findIndex((c: any) => String(c).trim() === 'Required');
-                const kvpIdx = tfRow.findIndex((c: any) => String(c).trim() === 'atKvp');
-
+            if (tfMeasured || tfRequired || tfAtKvp) {
                 setTotalFiltration({
-                    measured: measIdx !== -1 ? tfRow[measIdx + 1]?.toString() || '' : (tfRow[2] || ''),
-                    required: reqIdx !== -1 ? tfRow[reqIdx + 1]?.toString() || '' : (tfRow[4] || ''),
-                    atKvp: kvpIdx !== -1 ? tfRow[kvpIdx + 1]?.toString() || '' : (tfRow[6] || '')
+                    measured: tfMeasured || "",
+                    required: tfRequired || "",
+                    atKvp: tfAtKvp || ""
                 });
             }
 
-            const dataRows = csvData.filter(r => r[0] !== 'TotalFiltration' && !isNaN(parseFloat(r[0])));
+            // Measurement Rows
+            const rowIndices = [...new Set(csvData
+                .filter(r => r['Field Name'] && (r['Field Name'] === 'Applied_kVp' || r['Field Name'].startsWith('Measured_')))
+                .map(r => parseInt(r['Row Index']))
+                .filter(i => !isNaN(i) && i >= 0)
+            )];
 
-            if (dataRows.length > 0) {
-                const newRows = dataRows.map((row, idx) => {
-                    // Template: Applied kVp, Measured kVp 1, Measured kVp 2...
-                    // No Average or Remarks in CSV template.
-                    const applied = row[0];
-                    // Take all remaining columns as measured values
-                    const measured = row.slice(1).map((v: any) => v?.toString() || '');
+            if (rowIndices.length > 0) {
+                const newRows = rowIndices.map(idx => {
+                    const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+                    const applied = rowData.find(r => r['Field Name'] === 'Applied_kVp')?.['Value'] || '';
 
-                    const baseRow = {
-                        id: String(idx + 1),
-                        appliedKvp: applied?.toString() || '',
+                    // Collect all Measured_X fields
+                    const measured: string[] = [];
+                    for (let i = 0; i < 10; i++) {
+                        const val = rowData.find(r => r['Field Name'] === `Measured_${i}`)?.['Value'];
+                        if (val !== undefined) measured.push(val);
+                        else break;
+                    }
+
+                    const baseRow: RowData = {
+                        id: String(idx),
+                        appliedKvp: applied,
                         measuredValues: measured,
                         averageKvp: "",
-                        remarks: "-" as any
+                        remarks: "-"
                     };
-
-                    // Recalculate average and remarks using the recalcRow function
                     return recalcRow(baseRow);
                 });
 
