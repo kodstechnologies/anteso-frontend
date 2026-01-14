@@ -21,9 +21,11 @@ interface LocationData {
 }
 interface Props {
   serviceId: string;
+  refreshKey?: number;
+  initialData?: any;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, initialData }) => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
@@ -218,6 +220,30 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     };
     load();
   }, [serviceId]);
+
+  // Load CSV data when initialData is provided
+  useEffect(() => {
+    if (initialData && refreshKey !== undefined) {
+      console.log('RadiationProtectionSurvey: Loading CSV data', initialData);
+      if (initialData.surveyDate) setSurveyDate(initialData.surveyDate);
+      if (initialData.hasValidCalibration) setHasValidCalibration(initialData.hasValidCalibration);
+      if (initialData.appliedCurrent) setAppliedCurrent(String(initialData.appliedCurrent));
+      if (initialData.appliedVoltage) setAppliedVoltage(String(initialData.appliedVoltage));
+      if (initialData.exposureTime) setExposureTime(String(initialData.exposureTime));
+      if (initialData.workload) setWorkload(String(initialData.workload));
+      if (initialData.locations && initialData.locations.length > 0) {
+        setLocations(initialData.locations.map((loc: any, i: number) => ({
+          id: String(i + 1),
+          location: loc.location || '',
+          mRPerHr: String(loc.mRPerHr || ''),
+          mRPerWeek: String(loc.mRPerWeek || ''),
+          result: loc.result || 'PASS',
+          category: loc.category || 'worker',
+        })));
+      }
+      setIsSaved(false);
+    }
+  }, [refreshKey, initialData]);
 
   const handleSave = async () => {
     if (!serviceId) {

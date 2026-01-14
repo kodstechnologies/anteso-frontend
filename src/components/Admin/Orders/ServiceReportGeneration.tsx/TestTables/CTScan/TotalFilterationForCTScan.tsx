@@ -22,9 +22,10 @@ interface Props {
     testId?: string;
     tubeId?: string | null;
     onRefresh?: () => void;
+    csvData?: any[];
 }
 
-const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
+const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
 
     // Single fixed row
@@ -62,6 +63,41 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
             setRow(prev => ({ ...prev, measuredTF: '' }));
         }
     };
+
+    // === CSV Data Injection ===
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // Table 1: kvp, ma, time, sliceThickness
+            const kvp = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
+            const ma = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
+            const time = csvData.find(r => r['Field Name'] === 'Table1_Time')?.['Value'];
+            const slice = csvData.find(r => r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
+
+            // Table 2: Result -> measuredTF
+            // Generator produces 'MeasuredTF'
+            // We'll support 'MeasuredTF', 'Table2_Result', or 'Result'
+            const measuredTF = csvData.find(r =>
+                r['Field Name'] === 'MeasuredTF' ||
+                r['Field Name'] === 'Table2_Result' ||
+                r['Field Name'] === 'Result'
+            )?.['Value'];
+
+            if (kvp || ma || time || slice || measuredTF) {
+                setRow(prev => ({
+                    ...prev,
+                    appliedKV: kvp || prev.appliedKV,
+                    appliedMA: ma || prev.appliedMA,
+                    time: time || prev.time,
+                    sliceThickness: slice || prev.sliceThickness,
+                    measuredTF: measuredTF || prev.measuredTF
+                }));
+            }
+
+            if (!testId) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData]);
 
     // === Form Valid ===
     const isFormValid = useMemo(() => {
@@ -113,7 +149,9 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
                     setIsEditing(true);
                 }
             } catch (e: any) {
-                if (e.response?.status !== 404) toast.error('Failed to load data');
+                if (e.response?.status !== 404) {
+                    // toast.error('Failed to load data');
+                }
                 setHasSaved(false);
                 setIsEditing(true);
             } finally {
@@ -293,10 +331,10 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
                     onClick={isViewMode ? toggleEdit : handleSave}
                     disabled={isSaving || (!isViewMode && !isFormValid)}
                     className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : isViewMode
-                                ? 'bg-orange-600 hover:bg-orange-700'
-                                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : isViewMode
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
                         }`}
                 >
                     {isSaving ? (

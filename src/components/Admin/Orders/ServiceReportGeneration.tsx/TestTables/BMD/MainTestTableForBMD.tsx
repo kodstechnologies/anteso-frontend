@@ -81,7 +81,62 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 2. Accuracy of Irradiation Time (if available)
+  // 2. Total Filtration (if available)
+  if (testData.totalFiltration && !isEmpty(testData.totalFiltration)) {
+    const test = testData.totalFiltration;
+    if (test.measurements && Array.isArray(test.measurements) && test.measurements.length > 0) {
+      const validMeasurements = test.measurements.filter((m: any) => m.appliedKvp || m.averageKvp);
+      if (validMeasurements.length > 0) {
+        // Clean tolerance sign to remove encoding issues (e.g., "Â±" -> "±")
+        let toleranceSign = test.tolerance?.sign || "±";
+        // Remove encoding artifacts like "Â" before "±"
+        toleranceSign = toleranceSign.replace(/Â/g, '').trim();
+        // Normalize to standard symbols
+        if (toleranceSign.includes('±') || toleranceSign === '\u00B1') {
+          toleranceSign = "±";
+        } else if (toleranceSign.includes('+')) {
+          toleranceSign = "+";
+        } else if (toleranceSign.includes('-')) {
+          toleranceSign = "-";
+        } else {
+          toleranceSign = "±"; // Default
+        }
+        const toleranceValue = test.tolerance?.value || "2.0";
+        const testRows = validMeasurements.map((m: any) => {
+          const appliedKvp = parseFloat(m.appliedKvp) || 0;
+          const avgKvp = parseFloat(m.averageKvp) || 0;
+          let isPass = false;
+          
+          if (m.remarks === "PASS" || m.remarks === "Pass") {
+            isPass = true;
+          } else if (m.remarks === "FAIL" || m.remarks === "Fail") {
+            isPass = false;
+          } else if (appliedKvp > 0 && avgKvp > 0) {
+            // Check if average kVp is within tolerance
+            const deviation = Math.abs(avgKvp - appliedKvp);
+            const tol = parseFloat(toleranceValue);
+            if (toleranceSign === "±") {
+              isPass = deviation <= tol;
+            } else if (toleranceSign === "+") {
+              isPass = (avgKvp - appliedKvp) <= tol;
+            } else if (toleranceSign === "-") {
+              isPass = (appliedKvp - avgKvp) <= tol;
+            }
+          }
+          
+          return {
+            specified: m.appliedKvp || "-",
+            measured: m.averageKvp || "-",
+            tolerance: `${toleranceSign}${toleranceValue} kV`,
+            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          };
+        });
+        addRowsForTest("Total Filtration", testRows);
+      }
+    }
+  }
+
+  // 3. Accuracy of Irradiation Time (if available)
   if (testData.accuracyOfIrradiationTime && !isEmpty(testData.accuracyOfIrradiationTime)) {
     const test = testData.accuracyOfIrradiationTime;
     if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
@@ -116,45 +171,51 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 3. Reproducibility of Radiation Output (COV)
+  // 4. Reproducibility of Radiation Output (COV)
   if (testData.reproducibilityOfRadiationOutput && !isEmpty(testData.reproducibilityOfRadiationOutput)) {
     const test = testData.reproducibilityOfRadiationOutput;
-    if (test.outputRows && Array.isArray(test.outputRows) && test.outputRows.length > 0) {
-      const validRows = test.outputRows.filter((row: any) => row.kv || row.cv);
-      if (validRows.length > 0) {
-        const tolerance = test.tolerance || { operator: "<=", value: "5.0" };
-        const tolValue = tolerance.value || "5.0";
-        const tolOp = tolerance.operator || "<=";
-        const testRows = validRows.map((row: any) => {
-          const cv = row.cv ? parseFloat(row.cv) : null;
-          let isPass = false;
-          
-          if (row.remark === "Pass" || row.remark === "PASS") {
-            isPass = true;
-          } else if (row.remark === "Fail" || row.remark === "FAIL") {
-            isPass = false;
-          } else if (cv !== null && !isNaN(cv)) {
-            const tol = parseFloat(tolValue);
-            if (tolOp === "<=" || tolOp === "<") {
-              isPass = cv <= tol;
-            } else if (tolOp === ">=" || tolOp === ">") {
-              isPass = cv >= tol;
-            }
-          }
-          
-          return {
-            specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "-",
-            measured: cv !== null ? cv.toFixed(3) : "-",
-            tolerance: `${tolOp} ${tolValue}%`,
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          };
-        });
-        addRowsForTest("Reproducibility of Radiation Output (COV)", testRows, true);
+    // Get CoV from top-level test.cov (calculated in ViewServiceReport)
+    const cv = test.cov ? parseFloat(test.cov) : null;
+    
+    // Check if we have valid data (either cov or outputRows/measurements)
+    if (cv !== null && !isNaN(cv) || (test.outputRows && Array.isArray(test.outputRows) && test.outputRows.length > 0) || (test.measurements && Array.isArray(test.measurements) && test.measurements.length > 0)) {
+      const tolerance = test.tolerance || { operator: "<=", value: "5.0" };
+      const tolValue = tolerance.value || "5.0";
+      const tolOp = tolerance.operator || "<=";
+      
+      let isPass = false;
+      if (test.result === "Pass" || test.result === "PASS") {
+        isPass = true;
+      } else if (test.result === "Fail" || test.result === "FAIL") {
+        isPass = false;
+      } else if (cv !== null && !isNaN(cv)) {
+        const tol = parseFloat(tolValue);
+        if (tolOp === "<=" || tolOp === "<") {
+          isPass = cv <= tol;
+        } else if (tolOp === ">=" || tolOp === ">") {
+          isPass = cv >= tol;
+        }
       }
+      
+      // Get specified values from test data
+      const specified = test.kv && test.ma ? `${test.kv} kV, ${test.ma} mAs` : 
+                       test.kv ? `${test.kv} kV` : 
+                       test.outputRows && test.outputRows[0] ? 
+                         (test.outputRows[0].kv && test.outputRows[0].mas ? `${test.outputRows[0].kv} kV, ${test.outputRows[0].mas} mAs` : 
+                          test.outputRows[0].kv ? `${test.outputRows[0].kv} kV` : "-") : 
+                       "-";
+      
+      const testRows = [{
+        specified: specified,
+        measured: cv !== null && !isNaN(cv) ? cv.toFixed(4) : "-",
+        tolerance: `${tolOp} ${tolValue}%`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }];
+      addRowsForTest("Reproducibility of Radiation Output (COV)", testRows, true);
     }
   }
 
-  // 4. Linearity of mA Loading
+  // 5. Linearity of mA Loading
   if (testData.linearityOfMaLoading && !isEmpty(testData.linearityOfMaLoading)) {
     const test = testData.linearityOfMaLoading;
     if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
@@ -186,7 +247,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 5. Radiation Leakage Level
+  // 6. Radiation Leakage Level
   if (testData.tubeHousingLeakage && !isEmpty(testData.tubeHousingLeakage)) {
     const test = testData.tubeHousingLeakage;
     if (test.leakageRows && Array.isArray(test.leakageRows) && test.leakageRows.length > 0) {

@@ -32,9 +32,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: any;
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: FCD, kV, Time (sec)
@@ -248,6 +250,38 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     };
     load();
   }, [serviceId]);
+
+  // Load CSV data when initialData is provided
+  useEffect(() => {
+    if (initialData && refreshKey !== undefined) {
+      console.log('LinearityOfMasLoading: Loading CSV data', initialData);
+      if (initialData.table1) {
+        if (initialData.table1.fcd) setTable1Row(prev => ({ ...prev, fcd: String(initialData.table1.fcd) }));
+        if (initialData.table1.kv) setTable1Row(prev => ({ ...prev, kv: String(initialData.table1.kv) }));
+      }
+      if (initialData.tolerance) {
+        setTolerance(String(initialData.tolerance));
+      }
+      if (initialData.table2Rows && initialData.table2Rows.length > 0) {
+        setTable2Rows(initialData.table2Rows.map((r: any, i: number) => ({
+          id: String(i + 1),
+          mAsApplied: String(r.mAsApplied || ''),
+          measuredOutputs: [
+            String(r.meas1 || ''),
+            String(r.meas2 || ''),
+            String(r.meas3 || ''),
+          ],
+          average: String(r.average || ''),
+          x: String(r.x || ''),
+          xMax: String(r.xMax || ''),
+          xMin: String(r.xMin || ''),
+          col: String(r.col || ''),
+          remarks: r.remarks || '',
+        })));
+      }
+      setIsSaved(false);
+    }
+  }, [refreshKey, initialData]);
 
   // === Save Handler ===
   const handleSave = async () => {

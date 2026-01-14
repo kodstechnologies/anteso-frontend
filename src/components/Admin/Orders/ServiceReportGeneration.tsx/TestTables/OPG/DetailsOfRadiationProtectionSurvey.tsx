@@ -1,7 +1,7 @@
 // components/TestTables/RadiationProtectionSurvey.tsx
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, Loader2, Edit3, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -9,6 +9,7 @@ import {
   getRadiationProtectionSurveyByServiceIdForOPG,
   getRadiationProtectionSurveyByTestIdForOPG,
   updateRadiationProtectionSurveyForOPG,
+  getTools,
 } from "../../../../../../api";
 
 interface LocationData {
@@ -24,11 +25,12 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -108,6 +110,19 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
   const workerLocations = locations.filter(l => l.category === "worker");
   const publicLocations = locations.filter(l => l.category === "public");
 
+  // Find maximum values and their corresponding locations
+  const maxWorkerLocation = workerLocations.reduce((max, loc) => {
+    const maxVal = parseFloat(max.mRPerWeek) || 0;
+    const locVal = parseFloat(loc.mRPerWeek) || 0;
+    return locVal > maxVal ? loc : max;
+  }, workerLocations[0] || { mRPerHr: '', location: '' });
+
+  const maxPublicLocation = publicLocations.reduce((max, loc) => {
+    const maxVal = parseFloat(max.mRPerWeek) || 0;
+    const locVal = parseFloat(loc.mRPerWeek) || 0;
+    return locVal > maxVal ? loc : max;
+  }, publicLocations[0] || { mRPerHr: '', location: '' });
+
   const maxWorkerWeekly = Math.max(...workerLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
   const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
 
@@ -159,6 +174,116 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
     load();
   }, [serviceId]);
 
+  // Auto-check calibration validity
+  useEffect(() => {
+    const checkCalibration = async () => {
+      if (!serviceId) return;
+      try {
+        const toolsRes = await getTools(serviceId);
+        const tools = toolsRes?.data?.toolsAssigned || [];
+
+        if (tools.length > 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          let hasCalibrationDates = false;
+          let allValid = true;
+          let hasExpired = false;
+
+          // Check all tools for calibration dates
+          for (const tool of tools) {
+            if (tool.calibrationValidTill) {
+              hasCalibrationDates = true;
+              const validTill = new Date(tool.calibrationValidTill);
+              validTill.setHours(0, 0, 0, 0);
+
+              if (validTill < today) {
+                hasExpired = true;
+                allValid = false;
+              }
+            }
+          }
+
+          // Set calibration status based on check
+          if (hasCalibrationDates) {
+            if (hasExpired) {
+              setHasValidCalibration("No");
+            } else if (allValid) {
+              setHasValidCalibration("Yes");
+            } else {
+              setHasValidCalibration("Yes"); // All dates are valid
+            }
+          } else {
+            // No calibration dates found in tools
+            setHasValidCalibration("N/A");
+          }
+        } else {
+          setHasValidCalibration("N/A");
+        }
+      } catch (err) {
+        console.error("Failed to check calibration:", err);
+        // Don't set calibration status if check fails
+      }
+    };
+
+    checkCalibration();
+  }, [serviceId]);
+
+  // CSV Data Injection
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      let newLocations: LocationData[] = [];
+      let foundSettings = false;
+
+      csvData.forEach(row => {
+        const firstCell = row[0]?.toString()?.trim();
+
+        // 1. Settings Row
+        if (firstCell === 'Survey Date') {
+          // Survey Date, 2024-01-01, Applied Current (mA), 10, Applied Voltage (kV), 80, Exposure Time (s), 1.0, Workload (mA.min/week), 100
+          const dateVal = row[1]?.toString() || '';
+          if (dateVal) {
+            // Handle various date formats if needed, but template is YYYY-MM-DD
+            setSurveyDate(dateVal);
+          }
+
+          const mIndex = row.findIndex((c: any) => c?.toString()?.includes('Applied Current'));
+          const kIndex = row.findIndex((c: any) => c?.toString()?.includes('Applied Voltage'));
+          const tIndex = row.findIndex((c: any) => c?.toString()?.includes('Exposure Time'));
+          const wIndex = row.findIndex((c: any) => c?.toString()?.includes('Workload'));
+
+          if (mIndex !== -1) setAppliedCurrent(row[mIndex + 1]?.toString() || '');
+          if (kIndex !== -1) setAppliedVoltage(row[kIndex + 1]?.toString() || '');
+          if (tIndex !== -1) setExposureTime(row[tIndex + 1]?.toString() || '');
+          if (wIndex !== -1) setWorkload(row[wIndex + 1]?.toString() || '');
+
+          foundSettings = true;
+        }
+        // 2. Data Rows (after header)
+        else if (firstCell && firstCell !== 'LOCATION' && firstCell !== 'Location' && firstCell !== 'Survey Date' && !firstCell.startsWith('TEST:')) {
+          // Range check or content check
+          if (row.length >= 2) {
+            newLocations.push({
+              id: String(newLocations.length + 1),
+              location: row[0]?.toString() || '',
+              mRPerHr: row[1]?.toString() || '',
+              mRPerWeek: '',
+              result: '',
+              calculatedResult: '',
+              category: (row[2]?.toString()?.toLowerCase() || 'worker') as any
+            });
+          }
+        }
+      });
+
+      if (newLocations.length > 0) {
+        setLocations(newLocations);
+      }
+
+      if (!testId && (newLocations.length > 0 || foundSettings)) setIsEditing(true);
+    }
+  }, [csvData]);
+
   const handleSave = async () => {
     if (!serviceId) {
       toast.error("Service ID missing");
@@ -198,7 +323,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
         toast.success("Updated successfully");
       } else {
         res = await addRadiationProtectionSurveyForOPG(serviceId, payload);
-        const newId = res?.data?._id || res?.data?.data?._id;
+        const newId = res?.data?._id || res?.data?.data?._id || res?.data?.testId;
         if (newId) {
           setTestId(newId);
           onTestSaved?.(newId);
@@ -321,8 +446,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                   <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">LOCATION</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MAX. RADIATION LEVEL (MR/HR)</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MR/WEEK</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">RESULT</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">STATUS</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">RESULT</th>
                   <th className="w-32"></th>
                 </tr>
               </thead>
@@ -331,7 +456,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                 {workerLocations.map((row, index) => (
                   <tr key={row.id} className="hover:bg-blue-50">
                     <td className="px-6 py-4">
-                        <input
+                      <input
                         type="text"
                         value={row.location}
                         onChange={e => updateRow(row.id, "location", e.target.value)}
@@ -353,15 +478,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                     <td className="px-6 py-4 text-center font-medium text-gray-800">
                       {row.mRPerWeek || "—"}
                     </td>
-                    <td className="px-6 py-4 text-center font-medium text-gray-800">
-                      {row.calculatedResult || "—"}
-                    </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.calculatedResult || "—"}
                     </td>
                     {/* RowSpan for Worker */}
                     {index === 0 && (
@@ -408,15 +533,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                     <td className="px-6 py-4 text-center font-medium text-gray-800">
                       {row.mRPerWeek || "—"}
                     </td>
-                    <td className="px-6 py-4 text-center font-medium text-gray-800">
-                      {row.calculatedResult || "—"}
-                    </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-center font-medium text-gray-800">
+                      {row.calculatedResult || "—"}
                     </td>
                     {/* RowSpan for Public */}
                     {index === 0 && (
@@ -444,11 +569,11 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
           {!isViewMode && (
             <div className="flex justify-center gap-8 mt-8">
               <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-5 h-5" /> Add Worker Location
-            </button>
-            <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-              <Plus className="w-5 h-5" /> Add Public Location
-            </button>
+                <Plus className="w-5 h-5" /> Add Worker Location
+              </button>
+              <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <Plus className="w-5 h-5" /> Add Public Location
+              </button>
             </div>
           )}
 
@@ -461,6 +586,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                 {maxWorkerWeekly} <span className="text-2xl font-normal">mR/week</span>
               </p>
               <p className="text-lg text-blue-700 mt-4 font-semibold">Limit: ≤ 40 mR/week</p>
+              {maxWorkerLocation.mRPerHr && parseFloat(maxWorkerLocation.mRPerHr) > 0 && (
+                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-blue-400 text-left">
+                  <p className="text-sm font-semibold text-blue-900 mb-2">Calculation:</p>
+                  <p className="text-xs text-blue-800 mb-1">
+                    <strong>Location:</strong> {maxWorkerLocation.location}
+                  </p>
+                  <p className="text-xs text-blue-800">
+                    <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                  </p>
+                  <p className="text-xs text-blue-800 mt-1">
+                    <strong>Result:</strong> {maxWorkerWeekly} mR/week
+                  </p>
+                </div>
+              )}
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-4 border-purple-300 rounded-2xl p-8 text-center shadow-lg">
               <h3 className="text-xl font-bold text-purple-900">Maximum Radiation Level/week</h3>
@@ -469,6 +608,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
                 {maxPublicWeekly} <span className="text-2xl font-normal">mR/week</span>
               </p>
               <p className="text-lg text-purple-700 mt-4 font-semibold">Limit: ≤ 2 mR/week</p>
+              {maxPublicLocation.mRPerHr && parseFloat(maxPublicLocation.mRPerHr) > 0 && (
+                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-purple-400 text-left">
+                  <p className="text-sm font-semibold text-purple-900 mb-2">Calculation:</p>
+                  <p className="text-xs text-purple-800 mb-1">
+                    <strong>Location:</strong> {maxPublicLocation.location}
+                  </p>
+                  <p className="text-xs text-purple-800">
+                    <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                  </p>
+                  <p className="text-xs text-purple-800 mt-1">
+                    <strong>Result:</strong> {maxPublicWeekly} mR/week
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

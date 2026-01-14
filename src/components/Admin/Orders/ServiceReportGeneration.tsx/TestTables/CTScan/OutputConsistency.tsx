@@ -29,9 +29,10 @@ interface Props {
   testId?: string;
   tubeId?: string | null;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
+const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1 - Fixed parameters
@@ -87,6 +88,69 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
     );
   }, [measurementCount]);
 
+  // === CSV Data Injection ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Table 1: Parameters (mAs, Slice, Time)
+      // Look for TestConditions_mAs, TestConditions_SliceThickness, TestConditions_Time
+      const mas = csvData.find(r => r['Field Name'] === 'TestConditions_mAs' || r['Field Name'] === 'mAs')?.['Value'];
+      const st = csvData.find(r => r['Field Name'] === 'TestConditions_SliceThickness' || r['Field Name'] === 'SliceThickness')?.['Value'];
+      const time = csvData.find(r => r['Field Name'] === 'TestConditions_Time' || r['Field Name'] === 'Time')?.['Value'];
+
+      if (mas || st || time) {
+        setParameters(prev => ({
+          ...prev,
+          mas: mas || prev.mas,
+          sliceThickness: st || prev.sliceThickness,
+          time: time || prev.time
+        }));
+      }
+
+      // Table 2: Output Measurements
+      // Generator produces: OutputRow_kvp (e.g. 120), Result (e.g. 100.5)
+      // Multiple rows expected.
+      const rowIndices = [...new Set(csvData
+        .filter(r => r['Field Name'] === 'OutputRow_kvp' || r['Field Name'] === 'Result')
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i > 0)
+      )];
+
+      if (rowIndices.length > 0) {
+        const newRows = rowIndices.map(idx => {
+          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+          const kvp = rowData.find(r => r['Field Name'] === 'OutputRow_kvp')?.['Value'] || '';
+
+          // Support multiple measurements (Meas 1, Meas 2, ...)
+          const outputs = Array(measurementCount).fill('');
+          for (let i = 0; i < measurementCount; i++) {
+            const val = rowData.find(r => r['Field Name'] === `Result_${i}`)?.['Value'];
+            if (val) outputs[i] = val;
+          }
+
+          return {
+            id: Date.now().toString() + Math.random(),
+            kvp,
+            outputs,
+            mean: '',
+            cov: '',
+            remark: '' as const
+          };
+        });
+        setOutputRows(newRows);
+      }
+
+      // Tolerance
+      const tolVal = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+      if (tolVal) {
+        setTolerance(prev => ({ ...prev, value: tolVal }));
+      }
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData]);
+
   // Auto-calculate Mean & COV with per-row remarks
   const rowsWithCalc = useMemo(() => {
     // Tolerance value is stored as decimal (e.g., 0.05 for 5%)
@@ -103,7 +167,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
       }
 
       const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-      
+
       let cov = 0;
       if (nums.length > 1) {
         const variance =
@@ -152,7 +216,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
         if (data) {
           setTestId(data._id || propTestId);
           setParameters(data.parameters || { id: '1', mas: '', sliceThickness: '', time: '' });
-          
+
           if (data.outputRows && data.outputRows.length > 0) {
             const firstRow = data.outputRows[0];
             const numMeas = firstRow.outputs?.length || 5;
@@ -168,7 +232,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
               }))
             );
           }
-          
+
           if (data.tolerance) {
             if (typeof data.tolerance === 'object') {
               setTolerance({
@@ -350,10 +414,10 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -502,13 +566,12 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
                   </td>
                   <td className="px-5 py-4 text-center">
                     <span
-                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${
-                        row.remark === 'Pass'
-                          ? 'bg-green-100 text-green-800'
-                          : row.remark === 'Fail'
+                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${row.remark === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : row.remark === 'Fail'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-600'
-                      }`}
+                        }`}
                     >
                       {row.cov ? `${row.cov} → ${row.remark}` : '—'}
                     </span>

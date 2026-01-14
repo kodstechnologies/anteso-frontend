@@ -1,0 +1,171 @@
+Field Name,Value
+========== CONGRUENCE OF RADIATION & OPTICAL FIELD ==========,
+TechniqueFactors_FCD,100
+TechniqueFactors_kV,80
+TechniqueFactors_mAs,10
+CongruenceMeasurement_Dimension,Ι X Ι + Ι X' Ι
+CongruenceMeasurement_ObservedShift,1.0
+CongruenceMeasurement_EdgeShift,0.5
+CongruenceMeasurement_Tolerance,2
+CongruenceMeasurement_Dimension,Ι Y Ι + Ι Y' Ι
+CongruenceMeasurement_ObservedShift,1.2
+CongruenceMeasurement_EdgeShift,0.3
+CongruenceMeasurement_Tolerance,2
+========== CENTRAL BEAM ALIGNMENT ==========,
+TestConditions_FCD,100
+TestConditions_kV,80
+TestConditions_mAs,10
+ObservedTilt_X,0.5
+ObservedTilt_Y,0.3
+Tolerance_Value,2
+========== EFFECTIVE FOCAL SPOT ==========,
+FocalSpot_FocusType,Large Focus
+FocalSpot_StatedWidth,1.2
+FocalSpot_StatedHeight,1.2
+FocalSpot_MeasuredWidth,1.18
+FocalSpot_MeasuredHeight,1.19
+FocalSpot_FocusType,Small Focus
+FocalSpot_StatedWidth,0.6
+FocalSpot_StatedHeight,0.6
+FocalSpot_MeasuredWidth,0.58
+FocalSpot_MeasuredHeight,0.59
+Tolerance_TolSmallMul,0.5
+Tolerance_SmallLimit,0.8
+Tolerance_TolMediumMul,0.4
+Tolerance_MediumLower,0.8
+Tolerance_MediumUpper,1.5
+Tolerance_TolLargeMul,0.3
+========== TOTAL FILTRATION ==========,
+mAStations,50 mA
+mAStations,100 mA
+Measurement_AppliedKvp,60
+Measurement_Meas1,60.2
+Measurement_Meas2,60.1
+Measurement_Meas3,60.3
+Measurement_AverageKvp,60.2
+Measurement_AppliedKvp,80
+Measurement_Meas1,80.1
+Measurement_Meas2,80.2
+Measurement_Meas3,80.0
+Measurement_AverageKvp,80.1
+Measurement_Remarks,PASS
+Measurement_AppliedKvp,100
+Measurement_Meas1,100.2
+Measurement_Meas2,100.1
+Measurement_Meas3,100.3
+Measurement_AverageKvp,100.2
+Measurement_Remarks,PASS
+Tolerance_Sign,±
+Tolerance_Value,2.0
+TotalFiltration_Measured,2.5
+TotalFiltration_Required,2.0
+TotalFiltration_AtKvp,80
+FiltrationTolerance_ForKvGreaterThan70,1.5
+FiltrationTolerance_ForKvBetween70And100,2.0
+FiltrationTolerance_ForKvGreaterThan100,2.5
+FiltrationTolerance_KvThreshold1,70
+FiltrationTolerance_KvThreshold2,100
+========== LINEARITY OF MAS LOADING ==========,
+Table1_FCD,100
+Table1_kV,80
+Table2_mAsApplied,10
+Table2_Meas1,1.25
+Table2_Meas2,1.26
+Table2_Meas3,1.24
+Table2_Average,1.25
+Table2_x,0.025
+Table2_xMax,1.26
+Table2_xMin,1.24
+Table2_col,0.02
+Table2_mAsApplied,20
+Table2_Meas1,2.50
+Table2_Meas2,2.51
+Table2_Meas3,2.49
+Table2_Average,2.50
+Table2_x,0.025
+Table2_xMax,2.51
+Table2_xMin,2.49
+Table2_col,0.02
+Table2_Remarks,PASS
+Table2_mAsApplied,40
+Table2_Meas1,5.00
+Table2_Meas2,5.01
+Table2_Meas3,4.99
+Table2_Average,5.00
+Table2_x,0.025
+Table2_xMax,5.01
+Table2_xMin,4.99
+Table2_col,0.02
+Table2_Remarks,PASS
+Tolerance,0.1
+========== OUTPUT CONSISTENCY ==========,
+OutputRow_kV,80
+OutputRow_mAs,100
+OutputRow_Meas1,10.5
+OutputRow_Meas2,10.4
+OutputRow_Meas3,10.6
+OutputRow_Average,10.5
+OutputRow_CoV,0.95
+OutputRow_kV,100
+OutputRow_mAs,200
+OutputRow_Meas1,21.0
+OutputRow_Meas2,20.9
+OutputRow_Meas3,21.1
+OutputRow_Average,21.0
+OutputRow_CoV,0.48
+Tolerance_Value,5
+========== LOW CONTRAST RESOLUTION ==========,
+MeasuredLpPerMm,0.8
+RecommendedStandard,0.6
+SmallestHoleSize,2.0
+========== HIGH CONTRAST RESOLUTION ==========,
+MeasuredLpPerMm,2.5
+RecommendedStandard,2.0
+SmallestHoleSize,0.2
+========== EXPOSURE RATE AT TABLE TOP ==========,
+ExposureRateRow_Distance,100
+ExposureRateRow_AppliedKv,80
+ExposureRateRow_AppliedMa,100
+ExposureRateRow_Exposure,5.2
+ExposureRateRow_Remark,AEC Mode
+ExposureRateRow_Distance,100
+ExposureRateRow_AppliedKv,100
+ExposureRateRow_AppliedMa,200
+ExposureRateRow_Exposure,4.8
+ExposureRateRow_Remark,Manual Mode
+Tolerance_AecTolerance,10
+Tolerance_NonAecTolerance,5
+Tolerance_MinFocusDistance,30
+========== TUBE HOUSING LEAKAGE ==========,
+Settings_Distance,100
+Settings_kV,80
+Settings_ma,100
+Settings_time,1.0
+LeakageMeasurement_Location,Tube
+LeakageMeasurement_Left,0.05
+LeakageMeasurement_Right,0.04
+LeakageMeasurement_Front,0.06
+LeakageMeasurement_Back,0.05
+LeakageMeasurement_Top,0.07
+LeakageMeasurement_Max,0.07
+Workload,5000
+ToleranceValue,1
+ToleranceOperator,<=
+ToleranceTime,1
+========== RADIATION PROTECTION SURVEY ==========,
+SurveyDate,2024-01-15
+AppliedCurrent,100
+AppliedVoltage,80
+ExposureTime,1.0
+Workload,5000
+HasValidCalibration,Yes
+Location_Location,Control Room
+Location_mRPerHr,0.5
+Location_mRPerWeek,2.5
+Location_Category,worker
+Location_Location,Corridor
+Location_mRPerHr,0.2
+Location_mRPerWeek,1.0
+Location_Result,PASS
+Location_Category,public
+

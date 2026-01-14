@@ -13,6 +13,8 @@ interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: any;
 }
 
 interface Table1Row {
@@ -32,9 +34,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
   testId: initialTestId = null,
   onTestSaved,
+  refreshKey,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(initialTestId);
-  const [loading, setLoading] = useState(!!initialTestId);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(!!initialTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -60,6 +64,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
     setTable1Row((prev) => ({ ...prev, [field]: value }));
+    setIsSaved(false);
   };
 
   const addTable2Row = () => {
@@ -67,11 +72,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       ...prev,
       { id: Date.now().toString(), setTime: "", measuredTime: "" },
     ]);
+    setIsSaved(false);
   };
 
   const deleteTable2Row = (id: string) => {
     if (table2Rows.length > 1) {
       setTable2Rows((prev) => prev.filter((r) => r.id !== id));
+      setIsSaved(false);
     }
   };
 
@@ -79,6 +86,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     setTable2Rows((prev) =>
       prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
     );
+    setIsSaved(false);
   };
 
   // Calculations
@@ -114,17 +122,17 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setTable1Row(data.testConditions || { id: "1", fcd: "", kv: "", ma: "" });
+          setTable1Row(data.testConditions || { fcd: "", kv: "", ma: "" });
           setTable2Rows(
-            data.irradiationTimes && data.irradiationTimes.length > 0
+            data.irradiationTimes.length > 0
               ? data.irradiationTimes.map((t: any, i: number) => ({
-                  id: String(i + 1),
-                  setTime: t.setTime || "",
-                  measuredTime: t.measuredTime || "",
-                }))
+                id: String(i + 1),
+                setTime: t.setTime,
+                measuredTime: t.measuredTime,
+              }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
-          setToleranceOperator(data.tolerance?.operator || "");
+          setToleranceOperator(data.tolerance?.operator || "<=");
           setToleranceValue(data.tolerance?.value || "10");
           setIsSaved(true);
           setIsEditing(false);
@@ -134,7 +142,6 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         }
       } catch (err) {
         console.log("No saved data or failed to load:", err);
-        setIsSaved(false);
       } finally {
         setLoading(false);
       }
@@ -143,12 +150,37 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     fetchData();
   }, [serviceId]);
 
+  // Load CSV data when initialData is provided
+  useEffect(() => {
+    if (initialData && refreshKey !== undefined) {
+      console.log('AccuracyOfIrradiationTime: Loading CSV data', initialData);
+      if (initialData.testConditions) {
+        setTable1Row({
+          id: '1',
+          fcd: String(initialData.testConditions.fcd || ''),
+          kv: String(initialData.testConditions.kv || ''),
+          ma: String(initialData.testConditions.ma || ''),
+        });
+      }
+      if (initialData.irradiationTimes && initialData.irradiationTimes.length > 0) {
+        setTable2Rows(initialData.irradiationTimes.map((t: any, i: number) => ({
+          id: String(i + 1),
+          setTime: String(t.setTime || ''),
+          measuredTime: String(t.measuredTime || ''),
+        })));
+      }
+      if (initialData.tolerance) {
+        if (initialData.tolerance.operator) setToleranceOperator(initialData.tolerance.operator);
+        if (initialData.tolerance.value) setToleranceValue(String(initialData.tolerance.value));
+      }
+      setIsSaved(false);
+      setIsEditing(true);
+    }
+  }, [refreshKey, initialData]);
+
   // Save / Update
   const handleSave = async () => {
-    if (!serviceId) {
-      toast.error("Service ID is missing");
-      return;
-    }
+    if (!serviceId) return;
 
     const payload = {
       testConditions: {
@@ -168,32 +200,22 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
     setSaving(true);
     try {
-      let result;
+      let res;
       if (testId) {
-        result = await updateAccuracyOfIrradiationTimeForFixedRadioFluro(testId, payload);
-        toast.success("Updated successfully!");
+        res = await updateAccuracyOfIrradiationTimeForFixedRadioFluro(testId, payload);
       } else {
-        result = await createAccuracyOfIrradiationTimeForFixedRadioFluro(serviceId, payload);
-        const newTestId = result?.data?.testId || result?.data?._id;
-        if (newTestId) {
-          setTestId(newTestId);
-          onTestSaved?.(newTestId);
-        }
-        toast.success("Saved successfully!");
+        res = await createAccuracyOfIrradiationTimeForFixedRadioFluro(serviceId, payload);
       }
+      if (res?.data?._id) setTestId(res.data._id);
       setIsSaved(true);
       setIsEditing(false);
+      toast.success(testId ? "Updated successfully!" : "Saved successfully!");
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to save");
       console.error(err);
     } finally {
       setSaving(false);
     }
-  };
-
-  const startEditing = () => {
-    setIsEditing(true);
-    setIsSaved(false);
   };
 
   if (loading) {
@@ -207,33 +229,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
   return (
     <div className="w-full space-y-6">
-      {/* Header with Edit/Save Button */}
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Accuracy of Irradiation Time</h2>
-        <button
-          onClick={isViewMode ? startEditing : handleSave}
-          disabled={saving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
-            saving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300'
-          }`}
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
-            </>
-          )}
-        </button>
-      </div>
+      {loading && <p className="text-blue-600">Loading saved data...</p>}
 
       {/* Test Conditions */}
       <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
@@ -385,6 +381,28 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           />
           <span className="font-medium text-indigo-800">%</span>
         </div>
+      </div>
+
+      {/* Save/Edit Button */}
+      <div className="flex justify-end gap-3">
+        {isViewMode ? (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium bg-orange-600 hover:bg-orange-700"
+          >
+            <Edit3 className="w-4 h-4" />
+            Edit Test Data
+          </button>
+        ) : (
+          <button
+            onClick={handleSave}
+            disabled={saving || loading}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium ${saving ? "bg-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}
+          >
+            <Save className="w-4 h-4" />
+            {saving ? "Saving..." : testId ? "Update Test Data" : "Save Test Data"}
+          </button>
+        )}
       </div>
 
       {/* Formula Info */}

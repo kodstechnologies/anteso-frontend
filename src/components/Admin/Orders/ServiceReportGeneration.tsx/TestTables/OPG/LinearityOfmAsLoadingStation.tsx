@@ -20,7 +20,7 @@ interface Table2Row {
   id: string;
   mAsRange: string;
   measuredOutputs: string[];
-  average: string;  
+  average: string;
   x: string;
   xMax: string;
   xMin: string;
@@ -33,9 +33,10 @@ interface Props {
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh }) => {
+const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +46,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
   // Exposure Conditions
   const [exposureCondition, setExposureCondition] = useState<ExposureCondition>({ fcd: '100', kv: '80' });
 
-  const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
+  const [measHeaders, setMeasHeaders] = useState<string[]>(['Measured mR 1', 'Measured mR 2', 'Measured mR 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
     { id: '1', mAsRange: '5 - 10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
     { id: '2', mAsRange: '10 - 20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
@@ -57,7 +58,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
   // Handlers
   const addMeasColumn = () => {
-    setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
+    setMeasHeaders(p => [...p, `Measured mR ${p.length + 1}`]);
     setTable2Rows(p => p.map(r => ({ ...r, measuredOutputs: [...r.measuredOutputs, ''] })));
   };
 
@@ -154,7 +155,87 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       }
     };
     load();
+    load();
   }, [serviceId]);
+
+  // CSV Data Injection
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      let newTable2Rows: Table2Row[] = [];
+      let foundSettings = false;
+
+      csvData.forEach((row, idx) => {
+        const firstCell = row[0]?.toString()?.trim();
+
+        // 1. Parameter Row: FCD, 100, kV, 70...
+        if ((row.includes('FCD') || row.includes('fcd')) && (row.includes('kV') || row.includes('kv'))) {
+          const fIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'fcd');
+          const kIndex = row.findIndex((c: any) => c?.toString().toLowerCase().includes('kv'));
+
+          setExposureCondition({
+            fcd: row[fIndex + 1]?.toString() || '',
+            kv: row[kIndex + 1]?.toString() || ''
+          });
+          foundSettings = true;
+        }
+        // 2. Data Rows
+        else if (firstCell && (!isNaN(parseFloat(firstCell)) || firstCell.includes('-'))) {
+          const mAsRange = row[0]?.toString() || '';
+          const potentialMeas = row.slice(1);
+          const meas: string[] = [];
+
+          potentialMeas.forEach((val: any) => {
+            const s = val?.toString()?.trim();
+            if (s && !isNaN(parseFloat(s)) && !['Pass', 'Fail', 'PASS', 'FAIL'].includes(s)) {
+              meas.push(s);
+            }
+          });
+
+          // Detect and strip imported calculation columns (Average, mR/mAs)
+          if (meas.length > 2) {
+            const mrmas = parseFloat(meas[meas.length - 1]);
+            const avg = parseFloat(meas[meas.length - 2]);
+            const others = meas.slice(0, -2).map(v => parseFloat(v));
+            const calculatedAvg = others.reduce((a, b) => a + b, 0) / others.length;
+
+            if (Math.abs(avg - calculatedAvg) < 0.1) {
+              meas.splice(-2);
+            }
+          }
+
+          newTable2Rows.push({
+            id: String(idx + 1),
+            mAsRange,
+            measuredOutputs: meas,
+            average: '',
+            x: '', xMax: '', xMin: '', col: '', remarks: ''
+          });
+        }
+      });
+
+      if (newTable2Rows.length > 0) {
+        // Update headers exactly matching the import count (min 3)
+        const maxMeas = Math.max(...newTable2Rows.map(r => r.measuredOutputs.length));
+        const finalHeaderCount = maxMeas || 3;
+
+        if (finalHeaderCount !== measHeaders.length) {
+          setMeasHeaders(Array.from({ length: finalHeaderCount }, (_, i) => `Measured mR ${i + 1}`));
+        }
+
+        // Pad all rows to match finalHeaderCount
+        const paddedRows = newTable2Rows.map(row => {
+          const paddedMeas = [...row.measuredOutputs];
+          while (paddedMeas.length < finalHeaderCount) {
+            paddedMeas.push('');
+          }
+          return { ...row, measuredOutputs: paddedMeas };
+        });
+
+        setTable2Rows(paddedRows);
+        if (!testId) setIsEditing(true);
+      }
+    }
+  }, [csvData]);
 
   // Save handler
   const handleSave = async () => {
@@ -185,7 +266,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             const singleMatch = r.mAsRange.match(/(\d+(?:\.\d+)?)/);
             maValue = singleMatch ? singleMatch[1] : r.mAsRange.replace(/[^\d.]/g, '');
           }
-          
+
           return {
             ma: maValue || r.mAsRange,
             measuredOutputs: r.measuredOutputs.map(v => {
@@ -303,13 +384,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         <button
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
-            isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
               ? 'bg-orange-600 hover:bg-orange-700'
               : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-          }`}
+            }`}
         >
           {isSaving ? (
             <>
@@ -345,9 +425,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                   value={exposureCondition.fcd}
                   onChange={e => setExposureCondition(p => ({ ...p, fcd: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-4 py-2 text-center border rounded font-medium border-gray-300 focus:ring-2 focus:ring-teal-500 ${
-                    isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-full px-4 py-2 text-center border rounded font-medium border-gray-300 focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                    }`}
                 />
               </td>
               <td className="px-6 py-4">
@@ -356,9 +435,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                   value={exposureCondition.kv}
                   onChange={e => setExposureCondition(p => ({ ...p, kv: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-4 py-2 text-center border rounded font-medium border-gray-300 focus:ring-2 focus:ring-teal-500 ${
-                    isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-full px-4 py-2 text-center border rounded font-medium border-gray-300 focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                    }`}
                 />
               </td>
             </tr>
@@ -379,7 +457,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                 <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs Range</th>
                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">
                   <div className="flex items-center justify-between px-4">
-                    <span>Radiation Output (mGy)</span>
+                    <span>Radiation Output (mR)</span>
                     {!isViewMode && (
                       <button onClick={addMeasColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
                         <Plus className="w-5 h-5" />
@@ -388,7 +466,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                   </div>
                 </th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">Avg Output</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X (mGy/mAs)</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X (mR/mAs)</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">CoL</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Remarks</th>
                 <th rowSpan={2} className="w-12"></th>
@@ -408,9 +486,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                           });
                         }}
                         disabled={isViewMode}
-                        className={`w-24 px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 ${
-                          isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                        }`}
+                        className={`w-24 px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                          }`}
                       />
                       {measHeaders.length > 1 && !isViewMode && (
                         <button onClick={() => removeMeasColumn(i)} className="text-red-600 hover:bg-red-100 p-1 rounded">
@@ -431,9 +508,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                       value={p.mAsRange}
                       onChange={e => updateCell(p.id, 'mAsRange', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${
-                        isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                      }`}
+                      className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                        }`}
                       placeholder="10 - 20"
                     />
                   </td>
@@ -445,9 +521,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                         value={val}
                         onChange={e => updateCell(p.id, idx, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${
-                          isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                        }`}
+                        className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                          }`}
                       />
                     </td>
                   ))}
@@ -455,11 +530,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                   <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.x}</td>
                   <td className="px-6 py-4 text-center font-bold border-r bg-yellow-50">{p.col}</td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${
-                      p.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
+                    <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${p.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
                       p.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
+                        'bg-gray-100 text-gray-600'
+                      }`}>
                       {p.remarks}
                     </span>
                   </td>
@@ -490,9 +564,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
               value={tolerance}
               onChange={e => setTolerance(e.target.value)}
               disabled={isViewMode}
-              className={`w-32 px-4 py-2.5 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${
-                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-              }`}
+              className={`w-32 px-4 py-2.5 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                }`}
             />
           </div>
         </div>

@@ -22,12 +22,16 @@ interface TotalFilterationForFixedRadioFluoroProps {
     serviceId: string;
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
+    refreshKey?: number;
+    initialData?: any;
 }
 
 const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadioFluoroProps> = ({
     serviceId,
     testId: initialTestId = null,
     onTestSaved,
+    refreshKey,
+    initialData,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
     const [isSaved, setIsSaved] = useState(!!initialTestId);
@@ -169,6 +173,92 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
             };
             loadTest();
     }, [serviceId, initialTestId, toleranceSign, toleranceValue]);
+
+    // Load CSV data when initialData is provided
+    useEffect(() => {
+        if (initialData && refreshKey !== undefined) {
+            console.log('TotalFilteration: Loading CSV data', initialData);
+            
+            // Set tolerance first so we can use it for calculations
+            const csvToleranceSign = initialData.tolerance?.sign || toleranceSign;
+            const csvToleranceValue = initialData.tolerance?.value || toleranceValue;
+            
+            if (initialData.tolerance) {
+                if (initialData.tolerance.sign) setToleranceSign(initialData.tolerance.sign);
+                if (initialData.tolerance.value) setToleranceValue(String(initialData.tolerance.value));
+            }
+            
+            if (initialData.mAStations && initialData.mAStations.length > 0) {
+                setMAStations(initialData.mAStations);
+            }
+            
+            if (initialData.measurements && initialData.measurements.length > 0) {
+                const tol = parseFloat(csvToleranceValue || toleranceValue || "0");
+                const sign = csvToleranceSign || toleranceSign;
+                
+                setRows(initialData.measurements.map((m: any, i: number) => {
+                    const applied = parseFloat(m.appliedKvp || "0");
+                    const measuredVals = m.measuredValues || [];
+                    
+                    // Calculate measured values status
+                    const measuredStatus = measuredVals.map((val: string) => {
+                        const measured = parseFloat(val || "0");
+                        return checkTolerance(measured, applied, tol, sign);
+                    });
+                    
+                    // Use provided averageKvp or calculate from measured values
+                    let avg = m.averageKvp || "";
+                    if (!avg && measuredVals.length > 0) {
+                        const nums = measuredVals.filter((v: string) => v !== "" && !isNaN(Number(v))).map(Number);
+                        avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+                    }
+                    
+                    // Calculate average status
+                    const avgNum = parseFloat(avg || "0");
+                    const avgStatus = checkTolerance(avgNum, applied, tol, sign);
+                    
+                    // Determine remarks
+                    const hasAnyFailure = measuredStatus.some((status: boolean) => status === false) || avgStatus === false;
+                    const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 && 
+                        (measuredVals.some((v: string) => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
+                    
+                    // Always calculate remark based on validation, ignore CSV remarks
+                    let remark: "PASS" | "FAIL" | "-" = "-";
+                    if (hasValidData) {
+                        remark = hasAnyFailure ? "FAIL" : "PASS";
+                    }
+                    
+                    return {
+                        id: String(i + 1),
+                        appliedKvp: String(m.appliedKvp || ''),
+                        measuredValues: measuredVals,
+                        measuredValuesStatus: measuredStatus,
+                        averageKvp: String(avg),
+                        averageKvpStatus: avgStatus,
+                        remarks: remark,
+                    };
+                }));
+            }
+            
+            if (initialData.totalFiltration) {
+                setTotalFiltration({
+                    measured: String(initialData.totalFiltration.measured || ''),
+                    required: String(initialData.totalFiltration.required || ''),
+                    atKvp: String(initialData.totalFiltration.atKvp || ''),
+                });
+            }
+            if (initialData.filtrationTolerance) {
+                setFiltrationTolerance({
+                    forKvGreaterThan70: String(initialData.filtrationTolerance.forKvGreaterThan70 || '1.5'),
+                    forKvBetween70And100: String(initialData.filtrationTolerance.forKvBetween70And100 || '2.0'),
+                    forKvGreaterThan100: String(initialData.filtrationTolerance.forKvGreaterThan100 || '2.5'),
+                    kvThreshold1: String(initialData.filtrationTolerance.kvThreshold1 || '70'),
+                    kvThreshold2: String(initialData.filtrationTolerance.kvThreshold2 || '100'),
+                });
+            }
+            setIsSaved(false);
+        }
+    }, [refreshKey, initialData, toleranceSign, toleranceValue]);
 
     // Save function
     const saveTest = async () => {

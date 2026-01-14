@@ -2528,11 +2528,21 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                          firstQATest?.backendFields?.reportURLNumber || 
                                                                                                          null;
 
-                                                                                        // Get file URL for mammography/OBI/BMD CSV/Excel file
+                                                                                        // Get file URL for mammography/OBI/BMD/FixedRadioFluro/CT Scan CSV/Excel file
                                                                                         let csvFileUrl = null;
-                                                                                            if (service.machineType === "Mammography" || service.machineType === "OBI" || service.machineType === "KV Imaging (OBI)" || service.machineType === "Bone Densitometer (BMD)" || service.machineType === "BMD") {
-                                                                                            // Get the uploaded file URL from reportNumbers (QA Test report URL)
-                                                                                            csvFileUrl = reportNumbers[service.id]?.qatest?.reportUrl || null;
+                                                                                            if (service.machineType === "Mammography" || service.machineType === "OBI" || service.machineType === "KV Imaging (OBI)" || service.machineType === "Bone Densitometer (BMD)" || service.machineType === "BMD" || service.machineType === "Radiography and Fluoroscopy" || service.machineType === "CT Scan") {
+                                                                                            // First try to get uploadFile from QA Raw workType's backendFields (this is the file uploaded by engineer)
+                                                                                            // Then fallback to reportUrl from reportNumbers (this is the file uploaded by office staff)
+                                                                                            csvFileUrl = firstQATest?.backendFields?.uploadFile || 
+                                                                                                        reportNumbers[service.id]?.qatest?.reportUrl || 
+                                                                                                        null;
+                                                                                            
+                                                                                            console.log('ServiceDetails2: Getting csvFileUrl:', {
+                                                                                                machineType: service.machineType,
+                                                                                                uploadFile: firstQATest?.backendFields?.uploadFile,
+                                                                                                reportUrl: reportNumbers[service.id]?.qatest?.reportUrl,
+                                                                                                finalCsvFileUrl: csvFileUrl
+                                                                                            });
                                                                                         }
 
                                                                                         navigate("/admin/orders/generic-service-table", {

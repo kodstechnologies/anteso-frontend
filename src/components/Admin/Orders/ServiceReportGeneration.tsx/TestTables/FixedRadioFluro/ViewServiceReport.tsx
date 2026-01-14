@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportFixedRadioFluro.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeader } from "../../../../../../api";
+import { getReportHeader, getDetails } from "../../../../../../api";
 import FixedRadioFlouroResultTable from "./FixedRadioFluoroResultTable";
 import MainTestTableForFixedRadioFluro from "./MainTestTableForFixedRadioFluro";
 import logo from "../../../../../../assets/logo/logo-sm.png";
@@ -80,6 +80,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
   const [pageCount, setPageCount] = useState<string>('Calculating...');
+  const [ulrNumber, setUlrNumber] = useState<string>("N/A");
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -125,6 +126,48 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
     };
 
     fetchReport();
+  }, [serviceId]);
+
+  // Fetch ULR Number (matching ServiceDetails2.tsx approach)
+  useEffect(() => {
+    const fetchULRNumber = async () => {
+      if (!serviceId) return;
+      try {
+        // First, try to get from service details (qaTests)
+        const serviceDetails = await getDetails(serviceId);
+        if (serviceDetails?.data?.qaTests && serviceDetails.data.qaTests.length > 0) {
+          const ulr = serviceDetails.data.qaTests[0]?.reportULRNumber;
+          if (ulr && ulr !== "N/A") {
+            setUlrNumber(ulr);
+            return;
+          }
+        }
+        
+        // Second, try to get from localStorage reportNumbers (matching ServiceDetails2 pattern)
+        const keys = Object.keys(localStorage);
+        for (const key of keys) {
+          if (key.startsWith('reportNumbers_')) {
+            try {
+              const reportNumbers = JSON.parse(localStorage.getItem(key) || '{}');
+              const serviceReport = reportNumbers[serviceId];
+              if (serviceReport?.qatest?.reportULRNumber && serviceReport.qatest.reportULRNumber !== "N/A") {
+                setUlrNumber(serviceReport.qatest.reportULRNumber);
+                return;
+              }
+            } catch (e) {
+              // Continue to next key
+            }
+          }
+        }
+        
+        // If still not found, set default
+        setUlrNumber("N/A");
+      } catch (err) {
+        console.error("Failed to fetch ULR number:", err);
+        setUlrNumber("N/A");
+      }
+    };
+    fetchULRNumber();
   }, [serviceId]);
 
   // Calculate page count
@@ -289,7 +332,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                   </tr>
                   <tr style={{ height: 'auto', minHeight: '0', lineHeight: '0.9', padding: '0', margin: '0', verticalAlign: 'middle' }}>
                     <td className="border px-3 py-1 print:px-1 print:py-0.5 font-bold" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle', borderColor: '#000000' }}>ULR No.</td>
-                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle', borderColor: '#000000' }}>TC9A43250001485F</td>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle', borderColor: '#000000' }}>{ulrNumber}</td>
                   </tr>
                 </tbody>
               </table>

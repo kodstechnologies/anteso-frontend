@@ -33,9 +33,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: any;
 }
 
-export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   const [settings, setSettings] = useState<SettingsRow>({
@@ -280,6 +282,39 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     };
     load();
   }, [serviceId]);
+
+  // Load CSV data when initialData is provided
+  useEffect(() => {
+    if (initialData && refreshKey !== undefined) {
+      console.log('RadiationLeakageLevel: Loading CSV data', initialData);
+      if (initialData.settings) {
+        if (initialData.settings.distance) setSettings(prev => ({ ...prev, distance: String(initialData.settings.distance) }));
+        if (initialData.settings.kv) setSettings(prev => ({ ...prev, kv: String(initialData.settings.kv) }));
+        if (initialData.settings.ma) setSettings(prev => ({ ...prev, ma: String(initialData.settings.ma) }));
+        if (initialData.settings.time) setSettings(prev => ({ ...prev, time: String(initialData.settings.time) }));
+      }
+      if (initialData.workload) {
+        setWorkload(String(initialData.workload));
+      }
+      if (initialData.tolerance) {
+        if (initialData.tolerance.value) setToleranceValue(String(initialData.tolerance.value));
+        if (initialData.tolerance.operator) setToleranceOperator(initialData.tolerance.operator);
+      }
+      if (initialData.leakageMeasurements && initialData.leakageMeasurements.length > 0) {
+        setLeakageRows(initialData.leakageMeasurements.map((m: any, i: number) => ({
+          id: String(i + 1),
+          location: m.location || '',
+          left: String(m.left || ''),
+          right: String(m.right || ''),
+          front: String(m.front || ''),
+          back: String(m.back || ''),
+          top: String(m.top || ''),
+          max: String(m.max || ''),
+        })));
+      }
+      setHasSaved(false);
+    }
+  }, [refreshKey, initialData]);
 
   const handleSave = async () => {
     if (!serviceId) {

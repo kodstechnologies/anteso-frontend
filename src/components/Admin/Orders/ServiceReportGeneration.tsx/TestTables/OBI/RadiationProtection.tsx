@@ -189,6 +189,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     useEffect(() => {
         if (initialData) {
             console.log('RadiationProtectionSurvey: Loading initial data from CSV:', initialData);
+            console.log('RadiationProtectionSurvey: initialData.locations:', initialData.locations);
             if (initialData.surveyDate) {
                 setSurveyDate(initialData.surveyDate);
             }
@@ -207,22 +208,21 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
             if (initialData.workload) {
                 setWorkload(initialData.workload);
             }
-            if (initialData.locations && initialData.locations.length > 0) {
-                // Merge CSV locations with existing default locations by matching location name
-                setLocations(prevLocations => {
-                    const locationMap = new Map(initialData.locations!.map(loc => [loc.location, loc]));
-                    return prevLocations.map(prevLoc => {
-                        const csvLoc = locationMap.get(prevLoc.location);
-                        if (csvLoc) {
-                            return {
-                                ...prevLoc,
-                                mRPerHr: csvLoc.mRPerHr || prevLoc.mRPerHr,
-                                category: (csvLoc.category as "worker" | "public") || prevLoc.category,
-                            };
-                        }
-                        return prevLoc;
-                    });
-                });
+            if (initialData.locations && Array.isArray(initialData.locations) && initialData.locations.length > 0) {
+                console.log('RadiationProtectionSurvey: Processing locations, count:', initialData.locations.length);
+                // Replace locations with CSV data directly
+                const csvLocations = initialData.locations.map((loc, index) => ({
+                    id: `csv-loc-${Date.now()}-${index}`,
+                    location: loc.location || '',
+                    mRPerHr: loc.mRPerHr || '',
+                    mRPerWeek: '', // Will be calculated by useEffect
+                    result: '', // Will be calculated by useEffect
+                    category: (loc.category as "worker" | "public") || "worker",
+                }));
+                console.log('RadiationProtectionSurvey: Setting locations from CSV:', csvLocations);
+                setLocations(csvLocations);
+            } else {
+                console.log('RadiationProtectionSurvey: No locations found in initialData or empty array');
             }
             setIsEditing(true);
             setIsLoading(false);

@@ -14,6 +14,7 @@ interface Props {
   testId?: string | null;
   tubeId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
 const LowContrastResolutionForCTScan: React.FC<Props> = ({
@@ -21,6 +22,7 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
   testId: propTestId = null,
   tubeId,
   onTestSaved,
+  csvData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -48,6 +50,34 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
       : 'fail';
 
   const isExpectedMet = isValidNumber && observed <= 2.5;
+
+  // === CSV Data Injection ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Operating Params
+      const kv = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
+      const mVal = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'] || csvData.find(r => r['Field Name'] === 'Table1_mAs')?.['Value'];
+      const slice = csvData.find(r => r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
+      const winWidth = csvData.find(r => r['Field Name'] === 'Table1_WindowWidth' || r['Field Name'] === 'Table1_WW')?.['Value'];
+
+      if (kv) setKvp(kv);
+      if (mVal) setMa(mVal);
+      if (slice) setSliceThickness(slice);
+      if (winWidth) setWw(winWidth);
+
+      // Result: Look for first Table2_Result (or 'Size')
+      const result = csvData.find(r => r['Field Name'] === 'Table2_Result' || r['Field Name'] === 'Table2_Size')?.['Value'];
+      if (result) setObservedSize(result);
+
+      // Contrast Difference
+      const contrast = csvData.find(r => r['Field Name'] === 'Table2_Contrast' || r['Field Name'] === 'Table2_ContrastDifference')?.['Value'];
+      if (contrast) setContrastLevel(contrast);
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData]);
 
   // Load existing test data
   useEffect(() => {
@@ -164,10 +194,10 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewOnly
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewOnly
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
             }`}
         >
           {isSaving ? (
@@ -262,10 +292,10 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
                     onChange={(e) => setObservedSize(e.target.value)}
                     disabled={isViewOnly}
                     className={`w-32 px-6 py-4 text-2xl font-bold text-center rounded-lg border-4 transition-all ${status === 'pass'
-                        ? 'border-green-500 bg-green-50 text-green-700'
-                        : status === 'fail'
-                          ? 'border-red-500 bg-red-50 text-red-700'
-                          : 'border-gray-300'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : status === 'fail'
+                        ? 'border-red-500 bg-red-50 text-red-700'
+                        : 'border-gray-300'
                       } focus:ring-4 focus:ring-indigo-300 ${isViewOnly ? 'cursor-not-allowed' : ''}`}
                     placeholder="5.0"
                   />
@@ -319,8 +349,8 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
         {/* Small PASS/FAIL Badge */}
         <div className="flex items-center justify-center">
           <div className={`rounded-xl px-10 py-8 shadow-xl transition-all ${status === 'pass' ? 'bg-green-600' :
-              status === 'fail' ? 'bg-red-600' :
-                'bg-gray-500'
+            status === 'fail' ? 'bg-red-600' :
+              'bg-gray-500'
             } text-white`}>
             <div className="text-center">
               {status === 'pass' && <CheckCircle className="w-16 h-16 mx-auto mb-3" />}

@@ -1,5 +1,5 @@
 // components/TestTables/LinearityOfMaLoading.tsx
- 'use client';
+'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
@@ -7,7 +7,6 @@ import toast from 'react-hot-toast';
 import {
   addLinearityOfMaLoadingForOPG,
   getLinearityOfMaLoadingByServiceIdForOPG,
-  getLinearityOfMaLoadingByTestIdForOPG,
   updateLinearityOfMaLoadingForOPG,
 } from '../../../../../../api';
 
@@ -33,16 +32,17 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: FCD, kV, Time (sec)
   const [table1Row, setTable1Row] = useState<Table1Row>({ fcd: '', kv: '', time: '' });
 
   // Table 2: mA values + dynamic measurement columns
-  const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
+  const [measHeaders, setMeasHeaders] = useState<string[]>(['Measured mR 1', 'Measured mR 2', 'Measured mR 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
     { id: '1', ma: '50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
     { id: '2', ma: '100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
@@ -134,7 +134,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
       const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
       const ma = parseFloat(row.ma);
-      const x = avg !== '—' && ma > 0 ? (parseFloat(avg) / ma).toFixed(4) : '—';
+      const timer = parseFloat(table1Row.time) || 1; // Default to 1 if not set to avoid division issues, though OPG usually has it
+      const x = avg !== '—' && ma > 0 ? (parseFloat(avg) / (ma * timer)).toFixed(4) : '—';
 
       if (x !== '—') xValues.push(parseFloat(x));
 
@@ -180,13 +181,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          // OPG backend uses table1 as object, not array
+          // CBCT backend uses table1 as object, not array
           setTable1Row({
             fcd: data.table1?.fcd || '',
             kv: data.table1?.kv || '',
             time: data.table1?.time || '',
           });
-          // Note: OPG doesn't have measHeaders, we'll use default
+          // Note: CBCT doesn't have measHeaders, we'll use default
           if (Array.isArray(data.table2) && data.table2.length > 0) {
             setTable2Rows(
               data.table2.map((r: any, i: number) => ({
@@ -204,7 +205,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             // Set measHeaders based on first row's measuredOutputs length
             if (data.table2[0]?.measuredOutputs?.length) {
               const count = data.table2[0].measuredOutputs.length;
-              setMeasHeaders(Array.from({ length: count }, (_, i) => `Meas ${i + 1}`));
+              setMeasHeaders(Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`));
             }
           }
           setTolerance(data.tolerance || '0.1');
@@ -223,28 +224,128 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
     };
     load();
+    load();
   }, [serviceId]);
+
+  // CSV Data Injection
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Separate table rows from CoL rows
+      const colRowIndex = csvData.findIndex(r => {
+        const s = r[0]?.toString()?.toLowerCase() || '';
+        return s.includes('coefficient of linearity') || s === 'col';
+      });
+
+      let tableRows = colRowIndex !== -1 ? csvData.slice(0, colRowIndex) : csvData;
+      // Filter valid rows (must have mA value)
+      let newTable2Rows: Table2Row[] = [];
+      let foundSettings = false;
+
+      csvData.forEach((row, idx) => {
+        const firstCell = row[0]?.toString()?.trim();
+
+        // 1. Parameter Row: FCD, 100, kV, 70, Timer, 0.1
+        if ((row.includes('FCD') || row.includes('fcd')) && (row.includes('kV') || row.includes('kv'))) {
+          const fIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'fcd');
+          const kIndex = row.findIndex((c: any) => c?.toString().toLowerCase().includes('kv'));
+          // 'Timer' or 'Time'
+          const tIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'timer' || c?.toString().toLowerCase() === 'time');
+
+          setTable1Row({
+            fcd: row[fIndex + 1]?.toString() || '',
+            kv: row[kIndex + 1]?.toString() || '',
+            time: row[tIndex + 1]?.toString() || ''
+          });
+          foundSettings = true;
+        }
+        // 2. Data Rows
+        else if (firstCell && !isNaN(parseFloat(firstCell))) {
+          // Format in Template: mA Station, Meas 1, Meas 2... 
+          // Format in Export: mA Station, Meas 1, Meas 2, Average, mR/mAs
+          const ma = row[0]?.toString() || '';
+
+          const potentialMeas = row.slice(1);
+          const meas: string[] = [];
+
+          potentialMeas.forEach((val: any) => {
+            const s = val?.toString()?.trim();
+            // If it's numeric and not a known remark
+            if (s && !isNaN(parseFloat(s)) && !['Pass', 'Fail', 'PASS', 'FAIL'].includes(s)) {
+              meas.push(s);
+            }
+          });
+
+          // Detect and strip imported calculation columns (Average, mR/mAs)
+          // ONLY if it looks like a processed file (e.g. has Pass/Fail in original row or magnitude shift)
+          const hasRemark = row.some((c: any) => ['Pass', 'Fail', 'PASS', 'FAIL'].includes(c?.toString()?.trim()));
+
+          if (meas.length > 2) {
+            const mrmas = parseFloat(meas[meas.length - 1]);
+            const avg = parseFloat(meas[meas.length - 2]);
+            const firstMeas = parseFloat(meas[0]);
+
+            // Heuristic: mR/mAs is usually ~1.0, while output is ~10-100.
+            // Also check if Average matches early readings.
+            if (hasRemark || (mrmas < firstMeas * 0.2 && !isNaN(mrmas))) {
+              meas.splice(-2);
+            }
+          }
+
+          newTable2Rows.push({
+            id: String(idx + 1),
+            ma,
+            measuredOutputs: meas,
+            average: '',
+            x: '', xMax: '', xMin: '', col: '', remarks: ''
+          });
+        }
+      });
+
+      if (newTable2Rows.length > 0) {
+        // Update headers exactly matching the import count (min 3)
+        const maxMeasFromImport = Math.max(...newTable2Rows.map(r => r.measuredOutputs.length));
+        const finalHeaderCount = maxMeasFromImport || 3;
+
+        if (finalHeaderCount !== measHeaders.length) {
+          setMeasHeaders(Array.from({ length: finalHeaderCount }, (_, i) => `Measured mR ${i + 1}`));
+        }
+
+        // Pad all rows to match finalHeaderCount
+        const paddedRows = newTable2Rows.map(row => {
+          const paddedMeas = [...row.measuredOutputs];
+          while (paddedMeas.length < finalHeaderCount) {
+            paddedMeas.push('');
+          }
+          return { ...row, measuredOutputs: paddedMeas };
+        });
+
+        setTable2Rows(paddedRows);
+      }
+
+      if (!testId && (newTable2Rows.length > 0 || foundSettings)) setIsEditing(true);
+    }
+  }, [csvData]);
 
   // === Save Handler (connected to Fixed Radio Fluoro API) ===
   const handleSave = async () => {
     console.log('handleSave called', { isFormValid, serviceId, testId, table1Row, table2Rows: table2Rows.length });
-    
+
     if (!serviceId) {
       toast.error('Service ID is missing');
       return;
     }
-    
+
     if (!isFormValid) {
       toast.error('Please fill all required fields');
-      console.log('Form validation failed:', { 
-        fcd: table1Row.fcd, 
-        kv: table1Row.kv, 
+      console.log('Form validation failed:', {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
         time: table1Row.time,
         table2Rows: table2Rows.map(r => ({ ma: r.ma, hasOutputs: r.measuredOutputs.some(v => v.trim()) }))
       });
       return;
     }
-    
+
     setIsSaving(true);
     try {
       console.log('Starting save...', { serviceId, testId });
@@ -270,7 +371,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         })),
         tolerance,
       };
-      
+
       let result;
       let currentTestId = testId;
 
@@ -288,7 +389,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
 
       console.log('Payload prepared:', payload);
-      
+
       if (currentTestId) {
         // Update existing
         console.log('Updating with testId:', currentTestId);
@@ -407,7 +508,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
               >
                 <div className="flex items-center justify-between">
-                  <span>Output (mGy)</span>
+                  <span>Output (mR)</span>
                   {!isViewMode && (
                     <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
                       <Plus className="w-4 h-4" />
@@ -416,7 +517,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 </div>
               </th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X (mGy/mA)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X (mR/mAs)</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MAX</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">X MIN</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">CoL</th>

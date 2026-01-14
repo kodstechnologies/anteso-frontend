@@ -37,12 +37,16 @@ interface Props {
   serviceId: string;
   testId?: string;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: any;
 }
 
 const ConsistencyOfRadiationOutput: React.FC<Props> = ({ 
   serviceId, 
   testId: propTestId,
-  onTestSaved 
+  onTestSaved,
+  refreshKey,
+  initialData
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -262,6 +266,31 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
     loadTest();
   }, [serviceId]);
+
+  // Load CSV data when initialData is provided
+  useEffect(() => {
+    if (initialData && refreshKey !== undefined) {
+      console.log('OutputConsistency: Loading CSV data', initialData);
+      if (initialData.toleranceValue) {
+        setTolerance({ operator: '<=' as const, value: initialData.toleranceValue });
+      }
+      if (initialData.outputRows && initialData.outputRows.length > 0) {
+        setOutputRows(initialData.outputRows.map((r: any, i: number) => ({
+          id: String(i + 1),
+          kv: String(r.kv || ''),
+          mAs: String(r.mAs || ''),
+          outputs: [
+            { value: String(r.meas1 || '') },
+            { value: String(r.meas2 || '') },
+            { value: String(r.meas3 || '') },
+          ],
+          avg: String(r.average || ''),
+          cv: String(r.cv || ''),
+        })));
+      }
+      setIsSaved(false);
+    }
+  }, [refreshKey, initialData]);
 
   const handleSave = async () => {
     if (!serviceId) {

@@ -16,9 +16,10 @@ interface Props {
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh }) => {
+const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +59,18 @@ const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId
 
     return passes ? 'Pass' : 'Fail';
   }, [result, toleranceSign, toleranceValue]);
+
+  // === CSV Data Injection ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      const res = csvData.find(r => r['Field Name'] === 'Table1_Result' || r['Field Name'] === 'Table1_Value')?.['Value'];
+      if (res) setResult(res);
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData]);
 
   // Load data from backend
   useEffect(() => {
@@ -171,13 +184,12 @@ const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId
         <button
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
-            isSaving
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
               ? 'bg-gray-400 cursor-not-allowed'
               : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-          }`}
+                ? 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            }`}
         >
           {isSaving ? (
             <>
@@ -218,9 +230,8 @@ const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId
                   onChange={(e) => setResult(e.target.value)}
                   disabled={isViewMode}
                   placeholder="Enter result value"
-                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                    }`}
                 />
               </td>
             </tr>
@@ -234,9 +245,8 @@ const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId
                     value={toleranceSign}
                     onChange={(e) => setToleranceSign(e.target.value as '+' | '-' | '±')}
                     disabled={isViewMode}
-                    className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   >
                     <option value="+">+</option>
                     <option value="-">-</option>
@@ -248,9 +258,8 @@ const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId
                     onChange={(e) => setToleranceValue(e.target.value)}
                     disabled={isViewMode}
                     placeholder="Enter tolerance value"
-                    className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   />
                 </div>
               </td>
@@ -261,13 +270,12 @@ const AlignmentOfTableGantry: React.FC<Props> = ({ serviceId, testId: propTestId
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span
-                  className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
-                    remark === 'Pass'
+                  className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${remark === 'Pass'
                       ? 'bg-green-100 text-green-800'
                       : remark === 'Fail'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
                 >
                   {remark || '—'}
                 </span>

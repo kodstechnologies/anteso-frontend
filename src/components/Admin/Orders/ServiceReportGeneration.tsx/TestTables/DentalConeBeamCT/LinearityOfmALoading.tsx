@@ -1,5 +1,5 @@
 // components/TestTables/LinearityOfMaLoading.tsx
- 'use client';
+'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
@@ -33,16 +33,17 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: FCD, kV, Time (sec)
   const [table1Row, setTable1Row] = useState<Table1Row>({ fcd: '', kv: '', time: '' });
 
   // Table 2: mA values + dynamic measurement columns
-  const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
+  const [measHeaders, setMeasHeaders] = useState<string[]>(['Measured mR 1', 'Measured mR 2', 'Measured mR 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
     { id: '1', ma: '50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
     { id: '2', ma: '100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
@@ -204,7 +205,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             // Set measHeaders based on first row's measuredOutputs length
             if (data.table2[0]?.measuredOutputs?.length) {
               const count = data.table2[0].measuredOutputs.length;
-              setMeasHeaders(Array.from({ length: count }, (_, i) => `Meas ${i + 1}`));
+              setMeasHeaders(Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`));
             }
           }
           setTolerance(data.tolerance || '0.1');
@@ -223,28 +224,89 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
     };
     load();
+    load();
   }, [serviceId]);
+
+  // CSV Data Injection
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Separate table rows from CoL rows
+      const colRowIndex = csvData.findIndex(r => r[0] === 'Coefficient of Linearity' || r[0] === 'CoL');
+
+      let tableRows = colRowIndex !== -1 ? csvData.slice(0, colRowIndex) : csvData;
+      // Filter valid rows (must have mA value)
+      let newTable2Rows: Table2Row[] = [];
+      let foundSettings = false;
+
+      csvData.forEach((row, idx) => {
+        const firstCell = row[0]?.toString()?.trim();
+
+        // 1. Parameter Row: FCD, 100, kV, 70, Timer, 0.1
+        if ((row.includes('FCD') || row.includes('fcd')) && (row.includes('kV') || row.includes('kv'))) {
+          const fIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'fcd');
+          const kIndex = row.findIndex((c: any) => c?.toString().toLowerCase().includes('kv'));
+          // 'Timer' or 'Time'
+          const tIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'timer' || c?.toString().toLowerCase() === 'time');
+
+          setTable1Row({
+            fcd: row[fIndex + 1]?.toString() || '',
+            kv: row[kIndex + 1]?.toString() || '',
+            time: row[tIndex + 1]?.toString() || ''
+          });
+          foundSettings = true;
+        }
+        // 2. Data Rows
+        else if (firstCell && !isNaN(parseFloat(firstCell))) {
+          // Format: mA Station, Meas 1, Meas 2... (Time is removed from col)
+          const ma = row[0]?.toString() || '';
+          const meas = row.slice(1).map((v: any) => v?.toString() || '');
+          // Filter out empty if needed? No, user provides headers matching structure.
+
+          newTable2Rows.push({
+            id: String(idx + 1),
+            ma,
+            measuredOutputs: meas,
+            average: '',
+            x: '', xMax: '', xMin: '', col: '', remarks: ''
+          });
+        }
+      });
+
+      if (newTable2Rows.length > 0) {
+        setTable2Rows(newTable2Rows);
+
+        // Update headers
+        const maxMeas = Math.max(...newTable2Rows.map(r => r.measuredOutputs.length));
+        if (maxMeas > measHeaders.length) {
+          const newCols = Array.from({ length: maxMeas - measHeaders.length }, (_, i) => `Measured mR ${measHeaders.length + i + 1}`);
+          setMeasHeaders(prev => [...prev, ...newCols]);
+        }
+      }
+
+      if (!testId && (newTable2Rows.length > 0 || foundSettings)) setIsEditing(true);
+    }
+  }, [csvData]);
 
   // === Save Handler (connected to Fixed Radio Fluoro API) ===
   const handleSave = async () => {
     console.log('handleSave called', { isFormValid, serviceId, testId, table1Row, table2Rows: table2Rows.length });
-    
+
     if (!serviceId) {
       toast.error('Service ID is missing');
       return;
     }
-    
+
     if (!isFormValid) {
       toast.error('Please fill all required fields');
-      console.log('Form validation failed:', { 
-        fcd: table1Row.fcd, 
-        kv: table1Row.kv, 
+      console.log('Form validation failed:', {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
         time: table1Row.time,
         table2Rows: table2Rows.map(r => ({ ma: r.ma, hasOutputs: r.measuredOutputs.some(v => v.trim()) }))
       });
       return;
     }
-    
+
     setIsSaving(true);
     try {
       console.log('Starting save...', { serviceId, testId });
@@ -270,7 +332,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         })),
         tolerance,
       };
-      
+
       let result;
       let currentTestId = testId;
 
@@ -288,7 +350,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
 
       console.log('Payload prepared:', payload);
-      
+
       if (currentTestId) {
         // Update existing
         console.log('Updating with testId:', currentTestId);

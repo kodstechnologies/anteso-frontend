@@ -9,6 +9,7 @@ import {
   getRadiationProtectionSurveyByServiceIdForCBCT,
   getRadiationProtectionSurveyByTestIdForCBCT,
   updateRadiationProtectionSurveyForCBCT,
+  getTools,
 } from "../../../../../../api";
 
 interface LocationData {
@@ -22,9 +23,10 @@ interface LocationData {
 }
 interface Props {
   serviceId: string;
+  csvData?: any[];
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, csvData }) => {
   const [testId, setTestId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
@@ -106,6 +108,19 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
   const workerLocations = locations.filter(l => l.category === "worker");
   const publicLocations = locations.filter(l => l.category === "public");
 
+  // Find maximum values and their corresponding locations
+  const maxWorkerLocation = workerLocations.reduce((max, loc) => {
+    const maxVal = parseFloat(max.mRPerWeek) || 0;
+    const locVal = parseFloat(loc.mRPerWeek) || 0;
+    return locVal > maxVal ? loc : max;
+  }, workerLocations[0] || { mRPerHr: '', location: '' });
+
+  const maxPublicLocation = publicLocations.reduce((max, loc) => {
+    const maxVal = parseFloat(max.mRPerWeek) || 0;
+    const locVal = parseFloat(loc.mRPerWeek) || 0;
+    return locVal > maxVal ? loc : max;
+  }, publicLocations[0] || { mRPerHr: '', location: '' });
+
   const maxWorkerWeekly = Math.max(...workerLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
   const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
 
@@ -156,6 +171,113 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     };
     load();
   }, [serviceId]);
+
+  // Auto-check calibration validity
+  useEffect(() => {
+    const checkCalibration = async () => {
+      if (!serviceId) return;
+      try {
+        const toolsRes = await getTools(serviceId);
+        const tools = toolsRes?.data?.toolsAssigned || [];
+
+        if (tools.length > 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          let hasCalibrationDates = false;
+          let allValid = true;
+          let hasExpired = false;
+
+          // Check all tools for calibration dates
+          for (const tool of tools) {
+            if (tool.calibrationValidTill) {
+              hasCalibrationDates = true;
+              const validTill = new Date(tool.calibrationValidTill);
+              validTill.setHours(0, 0, 0, 0);
+
+              if (validTill < today) {
+                hasExpired = true;
+                allValid = false;
+              }
+            }
+          }
+
+          // Set calibration status based on check
+          if (hasCalibrationDates) {
+            if (hasExpired) {
+              setHasValidCalibration("No");
+            } else if (allValid) {
+              setHasValidCalibration("Yes");
+            } else {
+              setHasValidCalibration("Yes"); // All dates are valid
+            }
+          } else {
+            // No calibration dates found in tools
+            setHasValidCalibration("N/A");
+          }
+        } else {
+          setHasValidCalibration("N/A");
+        }
+      } catch (err) {
+        console.error("Failed to check calibration:", err);
+        // Don't set calibration status if check fails
+      }
+    };
+
+    checkCalibration();
+  }, [serviceId]);
+
+  // CSV Data Injection
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Filter rows (header row 'Location' excluded by parser usually or check)
+      const validRows = csvData.filter(r => r[0] && r[0] !== 'Location');
+
+      if (validRows.length > 0) {
+        const newLocations: LocationData[] = validRows.map((row, idx) => {
+          // [Location, mR/hr, Category, Date, mA, kV, Time, Workload] (Calibrated Removed)
+          // 0, 1, 2, 3, 4, 5, 6, 7
+          return {
+            id: String(idx + 1),
+            location: row[0]?.toString() || '',
+            mRPerHr: row[1]?.toString() || '',
+            mRPerWeek: '', // Calculated
+            result: '',
+            calculatedResult: '',
+            category: (row[2]?.toString()?.toLowerCase() || 'worker') as any
+            // Calibrated is NOT set from CSV as requested
+          };
+        });
+
+        setLocations(newLocations);
+
+        // Global Params from first row (Date, etc.)
+        const first = validRows[0];
+        if (first) {
+          // Date: "dd mm yyyy" -> yyyy-mm-dd
+          const dateStr = first[3]?.toString() || '';
+          if (dateStr) {
+            const parts = dateStr.split(/[ -/]/);
+            if (parts.length === 3) {
+              const d = parts[0].padStart(2, '0');
+              const m = parts[1].padStart(2, '0');
+              const y = parts[2];
+              setSurveyDate(`${y}-${m}-${d}`);
+            }
+          }
+
+          // Indices shifted by 1 because Calibrated column is gone
+          setAppliedCurrent(first[4]?.toString() || '');  // mA
+          setAppliedVoltage(first[5]?.toString() || '');  // kV
+          setExposureTime(first[6]?.toString() || '');    // Time
+          setWorkload(first[7]?.toString() || '');        // Workload
+          // hasValidCalibration is NOT set from CSV
+        }
+
+        if (!testId) setIsEditing(true);
+      }
+    }
+  }, [csvData]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -326,7 +448,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                 {workerLocations.map((row, index) => (
                   <tr key={row.id} className="hover:bg-blue-50">
                     <td className="px-6 py-4">
-                        <input
+                      <input
                         type="text"
                         value={row.location}
                         onChange={e => updateRow(row.id, "location", e.target.value)}
@@ -350,7 +472,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
@@ -405,7 +527,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
@@ -439,11 +561,11 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
           {!isViewMode && (
             <div className="flex justify-center gap-8 mt-8">
               <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-5 h-5" /> Add Worker Location
-            </button>
-            <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-              <Plus className="w-5 h-5" /> Add Public Location
-            </button>
+                <Plus className="w-5 h-5" /> Add Worker Location
+              </button>
+              <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <Plus className="w-5 h-5" /> Add Public Location
+              </button>
             </div>
           )}
 
@@ -456,6 +578,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                 {maxWorkerWeekly} <span className="text-2xl font-normal">mR/week</span>
               </p>
               <p className="text-lg text-blue-700 mt-4 font-semibold">Limit: ≤ 40 mR/week</p>
+              {maxWorkerLocation.mRPerHr && parseFloat(maxWorkerLocation.mRPerHr) > 0 && (
+                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-blue-400 text-left">
+                  <p className="text-sm font-semibold text-blue-900 mb-2">Calculation:</p>
+                  <p className="text-xs text-blue-800 mb-1">
+                    <strong>Location:</strong> {maxWorkerLocation.location}
+                  </p>
+                  <p className="text-xs text-blue-800">
+                    <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                  </p>
+                  <p className="text-xs text-blue-800 mt-1">
+                    <strong>Result:</strong> {maxWorkerWeekly} mR/week
+                  </p>
+                </div>
+              )}
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-4 border-purple-300 rounded-2xl p-8 text-center shadow-lg">
               <h3 className="text-xl font-bold text-purple-900">Maximum Radiation Level/week</h3>
@@ -464,6 +600,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                 {maxPublicWeekly} <span className="text-2xl font-normal">mR/week</span>
               </p>
               <p className="text-lg text-purple-700 mt-4 font-semibold">Limit: ≤ 2 mR/week</p>
+              {maxPublicLocation.mRPerHr && parseFloat(maxPublicLocation.mRPerHr) > 0 && (
+                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-purple-400 text-left">
+                  <p className="text-sm font-semibold text-purple-900 mb-2">Calculation:</p>
+                  <p className="text-xs text-purple-800 mb-1">
+                    <strong>Location:</strong> {maxPublicLocation.location}
+                  </p>
+                  <p className="text-xs text-purple-800">
+                    <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                  </p>
+                  <p className="text-xs text-purple-800 mt-1">
+                    <strong>Result:</strong> {maxPublicWeekly} mR/week
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

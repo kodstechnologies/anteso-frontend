@@ -32,9 +32,10 @@ interface Props {
   testId?: string;
   tubeId?: string | null;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, tubeId, onRefresh }: Props) {
+export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Fixed rows
@@ -78,7 +79,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const rowLeakageResults = useMemo(() => {
     const workloadVal = parseFloat(workload) || 0;
     const maVal = parseFloat(settings.ma) || 1;
-    
+
     return processedLeakage.map(row => {
       const rowMax = parseFloat(row.max) || 0;
       if (workloadVal > 0 && rowMax > 0 && maVal > 0) {
@@ -96,22 +97,22 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
       const rowMax = parseFloat(row.max) || 0;
       const maVal = parseFloat(settings.ma) || 1;
       const workloadVal = parseFloat(workload) || 0;
-      
+
       let calculatedMR = '';
       let calculatedMGy = '—';
-      
+
       if (rowMax > 0 && maVal > 0 && workloadVal > 0) {
         // Treat exposure level as mR/hr for calculation (convert mGy/h to mR/hr if needed)
         // If unit is mGy/h, convert to mR/hr: mGy/h × 114 = mR/hr
         const exposureLevelMR = row.unit === 'mGy/h' ? rowMax * 114 : rowMax;
-        
+
         // Formula: (workload × max Exposure Level (mR/hr)) / (60 × mA used for measurement) = mR in one hour
         const resultMR = (workloadVal * exposureLevelMR) / (60 * maVal);
         calculatedMR = resultMR.toFixed(3);
         // Convert to mGy: result / 114 = mGy in one hour
         calculatedMGy = (resultMR / 114).toFixed(4);
       }
-      
+
       return {
         location: row.location,
         max: row.max,
@@ -123,8 +124,8 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
   // === Global highest leakage (for final Pass/Fail) ===
   const allCalculatedMGy = calculatedResults.map(r => parseFloat(r.calculatedMGy || '0') || 0);
-  const globalMaxResultMGy = allCalculatedMGy.length > 0 && Math.max(...allCalculatedMGy) > 0 
-    ? Math.max(...allCalculatedMGy).toFixed(4) 
+  const globalMaxResultMGy = allCalculatedMGy.length > 0 && Math.max(...allCalculatedMGy) > 0
+    ? Math.max(...allCalculatedMGy).toFixed(4)
     : '—';
 
   // === Auto Remark ===
@@ -141,6 +142,68 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
     return pass ? 'Pass' : 'Fail';
   }, [globalMaxResultMGy, toleranceValue, toleranceOperator]);
+
+  // === CSV Data Injection ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Settings
+      const kv = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
+      const ma = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
+      const time = csvData.find(r => r['Field Name'] === 'Table1_Time')?.['Value'];
+
+      // Note: Workload is not in the standard template provided, so we leave it as is if not found.
+
+      if (kv || ma || time) {
+        setSettings(prev => ({
+          ...prev,
+          kv: kv || prev.kv,
+          ma: ma || prev.ma,
+          time: time || prev.time
+        }));
+      }
+
+      // Leakage Rows
+      const rowIndices = [...new Set(csvData
+        .filter(r => r['Field Name'].startsWith('Table2_'))
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i > 0)
+      )];
+
+      if (rowIndices.length > 0) {
+        const newRows = rowIndices.map(idx => {
+          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+          return {
+            location: rowData.find(r => r['Field Name'] === 'Table2_Area')?.['Value'] || '',
+            front: rowData.find(r => r['Field Name'] === 'Table2_Front')?.['Value'] || '',
+            back: rowData.find(r => r['Field Name'] === 'Table2_Back')?.['Value'] || '',
+            left: rowData.find(r => r['Field Name'] === 'Table2_Left')?.['Value'] || '',
+            right: rowData.find(r => r['Field Name'] === 'Table2_Right')?.['Value'] || '',
+            max: '',
+            unit: 'mGy/h',
+            remark: '',
+          };
+        });
+        setLeakageRows(newRows);
+      }
+
+      // Workload and Tolerance
+      const wl = csvData.find(r => r['Field Name'] === 'Workload')?.['Value'];
+      const wlUnit = csvData.find(r => r['Field Name'] === 'WorkloadUnit')?.['Value'];
+      const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+      const tolOp = csvData.find(r => r['Field Name'] === 'ToleranceOperator')?.['Value'];
+      const tolTime = csvData.find(r => r['Field Name'] === 'ToleranceTime')?.['Value'];
+
+      if (wl) setWorkload(wl);
+      if (wlUnit) setWorkloadUnit(wlUnit);
+      if (tol) setToleranceValue(tol);
+      if (tolOp) setToleranceOperator(tolOp as any);
+      if (tolTime) setToleranceTime(tolTime);
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData]);
 
   // === Update Handlers ===
   const updateSettings = (field: 'kv' | 'ma' | 'time', value: string) => {
@@ -211,34 +274,34 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         if (rec) {
           setTestId(rec._id || propTestId);
 
-        if (rec.measurementSettings?.[0]) {
-          setSettings({
-            kv: String(rec.measurementSettings[0].kv),
-            ma: String(rec.measurementSettings[0].ma),
-            time: String(rec.measurementSettings[0].time),
-          });
-        }
+          if (rec.measurementSettings?.[0]) {
+            setSettings({
+              kv: String(rec.measurementSettings[0].kv),
+              ma: String(rec.measurementSettings[0].ma),
+              time: String(rec.measurementSettings[0].time),
+            });
+          }
 
-        if (Array.isArray(rec.leakageMeasurements)) {
-          setLeakageRows(
-            rec.leakageMeasurements.map((r: any) => ({
-              location: r.location || '',
-              front: String(r.front),
-              back: String(r.back),
-              left: String(r.left),
-              right: String(r.right),
-              max: '',
-              unit: r.unit || 'mGy/h',
-              remark: '',
-            }))
-          );
-        }
+          if (Array.isArray(rec.leakageMeasurements)) {
+            setLeakageRows(
+              rec.leakageMeasurements.map((r: any) => ({
+                location: r.location || '',
+                front: String(r.front),
+                back: String(r.back),
+                left: String(r.left),
+                right: String(r.right),
+                max: '',
+                unit: r.unit || 'mGy/h',
+                remark: '',
+              }))
+            );
+          }
 
-        setWorkload(rec.workload || '');
-        setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
-        setToleranceValue(rec.tolerance || '');
-        setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
-        setToleranceTime(rec.toleranceTime || '1');
+          setWorkload(rec.workload || '');
+          setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
+          setToleranceValue(rec.tolerance || '');
+          setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
+          setToleranceTime(rec.toleranceTime || '1');
 
           setHasSaved(true);
           setIsEditing(false);
@@ -499,10 +562,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                 <td className="px-4 py-2">
                   <span
                     className={`inline-block w-full px-2 py-1 text-sm text-center font-medium rounded ${finalRemark === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : finalRemark === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100'
+                      ? 'bg-green-100 text-green-800'
+                      : finalRemark === 'Fail'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100'
                       }`}
                   >
                     {finalRemark || '—'}
@@ -554,7 +617,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             const calculatedMR = calculatedResults[idx]?.calculatedMR || '—';
             const exposureLevelMR = row.unit === 'mGy/h' ? rowMax * 114 : rowMax;
             const maxExposureLevel = rowMax > 0 ? (row.unit === 'mGy/h' ? `${rowMax.toFixed(2)} mGy/h (= ${exposureLevelMR.toFixed(2)} mR/hr)` : `${rowMax.toFixed(2)} mR/hr`) : '—';
-            
+
             return (
               <div key={idx} className="flex items-start gap-3">
                 <label className="text-sm font-medium text-gray-700 w-48">Max Leakage =</label>
@@ -564,9 +627,8 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                   </div>
                   <div className="mt-2">
                     <span className="text-sm font-medium text-gray-700">Calculated Max Leakage:</span>
-                    <span className={`ml-3 px-4 py-2 border-2 rounded-md font-bold text-lg ${
-                      calculatedMR !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300'
-                    }`}>
+                    <span className={`ml-3 px-4 py-2 border-2 rounded-md font-bold text-lg ${calculatedMR !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300'
+                      }`}>
                       {calculatedMR} mR in one hour
                     </span>
                   </div>
@@ -585,7 +647,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             const row = processedLeakage[idx];
             const maxValue = row.max || '—';
             const maVal = parseFloat(settings.ma) || 0;
-            
+
             return (
               <div key={idx} className="flex items-start gap-3">
                 <span className="text-sm font-medium text-gray-700 w-64">
@@ -595,9 +657,8 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                   <div className="text-sm text-gray-600 mb-2">
                     Formula: ({workload || '—'} {workloadUnit || 'mA·min/week'} × {maxValue} max Exposure Level ({row.unit === 'mGy/h' ? `${maxValue} mGy/h (= ${(parseFloat(maxValue || '0') * 114).toFixed(2)} mR/hr)` : `${maxValue} mR/hr`})) / (60 × {maVal || '—'} mA used for measurement) ÷ 114
                   </div>
-                  <span className={`px-4 py-2 border-2 rounded-md font-semibold ${
-                    result.calculatedMGy !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-gray-50'
-                  }`}>
+                  <span className={`px-4 py-2 border-2 rounded-md font-semibold ${result.calculatedMGy !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-gray-50'
+                    }`}>
                     {result.calculatedMGy !== '—' ? `${result.calculatedMGy} mGy` : '—'} in one hour
                   </span>
                 </div>
@@ -653,10 +714,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving || (!isViewMode && !isFormValid)}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (

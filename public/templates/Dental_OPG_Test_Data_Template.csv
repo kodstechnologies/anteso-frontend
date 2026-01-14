@@ -1,0 +1,47 @@
+TEST: ACCURACY OF OPERATING POTENTIAL
+Applied kVp,Measured kVp 1,Measured kVp 2
+60,60.2,60.5
+70,70.1,70.4
+80,80.3,80.1
+
+TEST: TOTAL FILTRATION
+Parameter,Measured mm Al,Required mm Al,At kVp
+TotalFiltration,2.6,2.5,80
+
+TEST: ACCURACY OF IRRADIATION TIME
+FCD,100,kV,70,mA,10
+Set Time (mSec),Measured Time (mSec)
+100,102
+200,198
+
+TEST: LINEARITY OF mA LOADING
+FCD,100,kV,70,Timer,0.1
+mA Station,Measured mR 1,Measured mR 2,Measured mR 3
+5,1.2,1.25,1.22
+10,2.4,2.45,2.42
+CoL,0.08
+
+TEST: LINEARITY OF mAs LOADING
+FCD,100,kV,80
+mAs Range,Measured mR 1,Measured mR 2,Measured mR 3
+5 - 10,1.2,1.25,1.22
+10 - 20,2.4,2.45,2.42
+CoL,0.08
+
+TEST: CONSISTENCY OF RADIATION OUTPUT
+FFD,100
+kVp,mAs,Reading (mR) 1,Reading (mR) 2,Reading (mR) 3
+80,100,10.2,10.1,10.3
+
+TEST: RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE
+FFD,100,kVp,120,mA,10,Time,1.0,Tolerance,1.0
+Workload,100
+Location,Left,Right,Top,Up,Down
+Front,0.01,0.02,0.015,0.012,0.011
+Back,0.012,0.014,0.011,0.013,0.015
+
+TEST: RADIATION PROTECTION SURVEY REPORT
+Survey Date,2024-01-01,Applied Current (mA),10,Applied Voltage (kV),80,Exposure Time (s),1.0,Workload (mA.min/week),100
+LOCATION,MAX. RADIATION LEVEL (MR/HR),RESULT
+Control Console,0.05,Worker
+Waiting Area,0.02,Public

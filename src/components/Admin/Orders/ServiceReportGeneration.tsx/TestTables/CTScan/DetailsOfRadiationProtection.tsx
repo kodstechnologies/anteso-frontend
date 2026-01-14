@@ -23,9 +23,10 @@ interface LocationData {
 interface Props {
   serviceId: string;
   tubeId?: string | null;
+  csvData?: any[];
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId, csvData }) => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
@@ -65,6 +66,109 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
     if (hr <= 0 || mA <= 0 || wl <= 0) return "";
     return ((wl * hr) / (60 * mA)).toFixed(3);
   };
+
+  // === CSV Data Injection ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // 1. Operating Params (Table 1)
+      const kv = csvData.find(r => r['Field Name'] === 'Table1_kvp' || r['Field Name'] === 'Table1_KV')?.['Value'];
+      const ma = csvData.find(r => r['Field Name'] === 'Table1_ma' || r['Field Name'] === 'Table1_MA')?.['Value'];
+      const time = csvData.find(r => r['Field Name'] === 'Table1_Time' || r['Field Name'] === 'Table1_ExposureTime')?.['Value'];
+      const wl = csvData.find(r => r['Field Name'] === 'Table1_Workload')?.['Value'];
+
+      if (kv) setAppliedVoltage(kv);
+      if (ma) setAppliedCurrent(ma);
+      if (time) setExposureTime(time);
+      if (wl) setWorkload(wl);
+
+      // 2. Locations (Table 2)
+      // Look for Table2_Location and Table2_Result (mR/hr)
+      // We need to map them to existing rows or create new ones? 
+      // The default rows cover most locations. We'll try to match by name or update existing.
+      // But standard CSV export might just have generic "Location 1", "Location 2" if not specific.
+      // My generator uses specific names: ['Control Console', 'Door', 'Window']
+
+      const locIndices = [...new Set(csvData
+        .filter(r => r['Field Name'] === 'Table2_Location')
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i > 0)
+      )];
+
+      if (locIndices.length > 0) {
+        // Map CSV rows to state
+        // We will try to update existing rows based on string match, or append new rows?
+        // Simpler: Just map to the first N locations, or attempt fuzzy match.
+        // Given complexity, let's just populate the first few rows if they match, or clear and set?
+        // Clearing default rows might remove "Category" info which is hardcoded.
+        // Let's try to match existing categories if possible.
+
+        // Strategy: Iterate CSV rows. If location name matches (fuzzy), update. Else add new?
+        // For now, let's just update the existing rows linearly or by name match.
+
+        const newLocations = [...locations]; // Start with defaults
+
+        locIndices.forEach((idx, i) => {
+          const locName = csvData.find(r => r['Field Name'] === 'Table2_Location' && parseInt(r['Row Index']) === idx)?.['Value'];
+          const resultVal = csvData.find(r => r['Field Name'] === 'Table2_Result' && parseInt(r['Row Index']) === idx)?.['Value'];
+
+          if (locName && resultVal) {
+            // Try to find matching existing row
+            const existingIndex = newLocations.findIndex(l => l.location.toLowerCase().includes(locName.toLowerCase()) || locName.toLowerCase().includes(l.location.toLowerCase()));
+
+            if (existingIndex !== -1) {
+              newLocations[existingIndex] = {
+                ...newLocations[existingIndex],
+                mRPerHr: resultVal
+              };
+            } else {
+              // Add new row? Or put in empty slot?
+              // Maybe just add it. Default category to 'public' unless specified (not in csv?)
+              // Generator doesn't specify category.
+              // Let's just create a new row if not found? 
+              // But we want to fill the standard form.
+              // Let's just update the component state with whatever changed.
+            }
+          }
+        });
+
+        // Alternative: Just take the result values and put them in order? 
+        // No, location names are important.
+        // If generator outputs specific names, use them.
+
+        // Better Strategy:
+        // Use the raw CSV data to reconstruct the table.
+        // But we need 'category'.
+        // Let's just map generic rows if names are generic?
+        // My generator uses: 'Control Console', 'Door', 'Window'.
+        // Defaults: 'Control Console (Operator Position)', 'Technician Entrance Door', 'Outside Lead Glass'.
+
+        // Let's just update mRPerHr if we find a match on location name.
+
+        setLocations(prev => {
+          const next = [...prev];
+          locIndices.forEach(idx => {
+            const locName = csvData.find(r => r['Field Name'] === 'Table2_Location' && parseInt(r['Row Index']) === idx)?.['Value'];
+            const val = csvData.find(r => r['Field Name'] === 'Table2_Result' && parseInt(r['Row Index']) === idx)?.['Value'];
+
+            if (locName && val) {
+              const match = next.findIndex(l =>
+                l.location.toLowerCase().includes(locName.toLowerCase()) ||
+                locName.toLowerCase().includes(l.location.toLowerCase())
+              );
+              if (match !== -1) {
+                next[match] = { ...next[match], mRPerHr: val };
+              }
+            }
+          });
+          return next;
+        });
+      }
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData]);
 
   useEffect(() => {
     setLocations(prev =>
@@ -108,7 +212,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
     const locVal = parseFloat(loc.mRPerWeek) || 0;
     return locVal > maxVal ? loc : max;
   }, workerLocations[0] || { mRPerHr: '', location: '' });
-  
+
   const maxPublicLocation = publicLocations.reduce((max, loc) => {
     const maxVal = parseFloat(max.mRPerWeek) || 0;
     const locVal = parseFloat(loc.mRPerWeek) || 0;
@@ -125,29 +229,29 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
       try {
         const toolsRes = await getTools(serviceId);
         const tools = toolsRes?.data?.toolsAssigned || [];
-        
+
         if (tools.length > 0) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          
+
           let hasCalibrationDates = false;
           let allValid = true;
           let hasExpired = false;
-          
+
           // Check all tools for calibration dates
           for (const tool of tools) {
             if (tool.calibrationValidTill) {
               hasCalibrationDates = true;
               const validTill = new Date(tool.calibrationValidTill);
               validTill.setHours(0, 0, 0, 0);
-              
+
               if (validTill < today) {
                 hasExpired = true;
                 allValid = false;
               }
             }
           }
-          
+
           // Set calibration status based on check
           if (hasCalibrationDates) {
             if (hasExpired) {
@@ -169,7 +273,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
         // Don't set calibration status if check fails
       }
     };
-    
+
     checkCalibration();
   }, [serviceId]);
 
@@ -402,7 +506,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
                 {workerLocations.map((row, index) => (
                   <tr key={row.id} className="hover:bg-blue-50">
                     <td className="px-6 py-4">
-                        <input
+                      <input
                         type="text"
                         value={row.location}
                         onChange={e => updateRow(row.id, "location", e.target.value)}
@@ -426,7 +530,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
@@ -478,7 +582,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
@@ -509,11 +613,11 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId }) => {
           {!isDisabled && (
             <div className="flex justify-center gap-8 mt-8">
               <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-5 h-5" /> Add Worker Location
-            </button>
-            <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-              <Plus className="w-5 h-5" /> Add Public Location
-            </button>
+                <Plus className="w-5 h-5" /> Add Worker Location
+              </button>
+              <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <Plus className="w-5 h-5" /> Add Public Location
+              </button>
             </div>
           )}
 

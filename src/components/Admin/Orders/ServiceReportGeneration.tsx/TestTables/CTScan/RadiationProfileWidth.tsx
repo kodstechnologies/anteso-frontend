@@ -17,9 +17,9 @@ interface Table2Row {
     toleranceValue: string;
     remarks: string;
 }
-interface Props { serviceId: string; testId?: string; tubeId?: 'A' | 'B' | null; onTestSaved?: (testId: string) => void;}
+interface Props { serviceId: string; testId?: string; tubeId?: 'A' | 'B' | null; onTestSaved?: (testId: string) => void; csvData?: any[] }
 
-const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved}) => {
+const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
     const [table1Row, setTable1Row] = useState<Table1Row>({ kvp: '', ma: '' });
     const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
@@ -60,6 +60,39 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
             })
         );
     }, [table2Rows.map(r => `${r.id}-${r.applied}-${r.measured}`).join()]);
+
+    // ---- CSV Data Injection ----
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // Table 1
+            const t1Kvp = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
+            const t1Ma = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
+
+            if (t1Kvp || t1Ma) {
+                setTable1Row(prev => ({
+                    ...prev,
+                    kvp: t1Kvp || prev.kvp,
+                    ma: t1Ma || prev.ma
+                }));
+            }
+
+            // Table 2
+            setTable2Rows(prev => prev.map(r => {
+                const applied = csvData.find(row => row['Field Name'] === 'Table2_Applied' && parseInt(row['Row Index']) === r.id)?.['Value'];
+                const measured = csvData.find(row => row['Field Name'] === 'Table2_Measured' && parseInt(row['Row Index']) === r.id)?.['Value'];
+
+                return {
+                    ...r,
+                    applied: applied || r.applied,
+                    measured: measured || r.measured
+                };
+            }));
+
+            if (!testId) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData]);
 
     // ---- form valid ----
     const isFormValid = useMemo(() => {
@@ -114,7 +147,10 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
                     setIsEditing(true);
                 }
             } catch (e: any) {
-                if (e.response?.status !== 404) toast.error('Failed to load data');
+                // Only show error if strictly not 404, or just silent 404
+                if (e.response?.status !== 404) {
+                    // toast.error('Failed to load data'); 
+                }
                 setHasSaved(false);
                 setIsEditing(true);
             } finally {
@@ -208,8 +244,8 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
                                     onChange={e => updateTable1('kvp', e.target.value)}
                                     disabled={isViewMode}
                                     className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                                            ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                                            : 'border-gray-300'
+                                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                                        : 'border-gray-300'
                                         }`}
                                     placeholder="80"
                                 />
@@ -221,8 +257,8 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
                                     onChange={e => updateTable1('ma', e.target.value)}
                                     disabled={isViewMode}
                                     className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                                            ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                                            : 'border-gray-300'
+                                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                                        : 'border-gray-300'
                                         }`}
                                     placeholder="100"
                                 />
@@ -260,8 +296,8 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
                                             onChange={e => updateTable2(row.id, 'applied', e.target.value)}
                                             disabled={isViewMode}
                                             className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                                                    ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                                                    : 'border-gray-300'
+                                                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                                                : 'border-gray-300'
                                                 }`}
                                             placeholder={row.id === 1 ? '0.6' : row.id === 2 ? '1.25' : '3.0'}
                                         />
@@ -274,8 +310,8 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
                                             onChange={e => updateTable2(row.id, 'measured', e.target.value)}
                                             disabled={isViewMode}
                                             className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                                                    ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                                                    : 'border-gray-300'
+                                                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                                                : 'border-gray-300'
                                                 }`}
                                             placeholder={row.id === 1 ? '1.0' : row.id === 2 ? '1.30' : '3.8'}
                                         />
@@ -287,10 +323,10 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
                                     <td className="px-4 py-2 text-center">
                                         <span
                                             className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : row.remarks === 'Fail'
-                                                        ? 'bg-red-100 text-red-800'
-                                                        : 'text-gray-400'
+                                                ? 'bg-green-100 text-green-800'
+                                                : row.remarks === 'Fail'
+                                                    ? 'bg-red-100 text-red-800'
+                                                    : 'text-gray-400'
                                                 }`}
                                         >
                                             {row.remarks || '—'}
@@ -309,10 +345,10 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
                     onClick={isViewMode ? toggleEdit : handleSave}
                     disabled={isSaving || (!isViewMode && !isFormValid)}
                     className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : isViewMode
-                                ? 'bg-orange-600 hover:bg-orange-700'
-                                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : isViewMode
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
                         }`}
                 >
                     {isSaving ? (

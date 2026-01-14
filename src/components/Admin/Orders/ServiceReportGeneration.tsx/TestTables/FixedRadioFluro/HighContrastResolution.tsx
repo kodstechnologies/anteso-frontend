@@ -9,9 +9,11 @@ import {
 
 interface Props {
   serviceId: string;
+  refreshKey?: number;
+  initialData?: any;
 }
 
-const HighContrastResolution: React.FC<Props> = ({ serviceId }) => {
+const HighContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initialData }) => {
   const [measuredLpPerMm, setMeasuredLpPerMm] = useState<string>('');
   const [recommendedStandard, setRecommendedStandard] = useState<string>('1.50');
   const [testId, setTestId] = useState<string | null>(null);
@@ -62,6 +64,20 @@ const HighContrastResolution: React.FC<Props> = ({ serviceId }) => {
     };
     load();
   }, [serviceId]);
+
+  // Load CSV data when initialData is provided
+  useEffect(() => {
+    if (initialData && refreshKey !== undefined) {
+      console.log('HighContrastResolution: Loading CSV data', initialData);
+      if (initialData.measuredLpPerMm) setMeasuredLpPerMm(String(initialData.measuredLpPerMm));
+      if (initialData.recommendedStandard) setRecommendedStandard(String(initialData.recommendedStandard));
+      if (initialData.smallestHoleSize) {
+        // This component might not have smallestHoleSize, but if it does, we can add it
+      }
+      setIsSaved(false);
+      setIsEditing(true);
+    }
+  }, [refreshKey, initialData]);
 
   const handleSave = async () => {
     if (!measuredLpPerMm.trim()) {

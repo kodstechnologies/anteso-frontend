@@ -23,12 +23,14 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
 const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  csvData
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId); // true = view mode (show "Edit")
@@ -44,7 +46,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       id: '1',
       kvp: '',
       mas: '',
-      outputs: ['', '', '', '', ''],
+      outputs: ['', '', ''],
       mean: '',
       cov: '',
       remarks: '',
@@ -52,52 +54,51 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   ]);
 
   const [headers, setHeaders] = useState<string[]>([
-    'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+    'Measured mR 1', 'Measured mR 2', 'Measured mR 3',
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.05');
 
-  // Auto-calculate Mean, COV, and Remarks
-  useEffect(() => {
-    setOutputRows((rows) =>
-      rows.map((row) => {
-        const nums = row.outputs
-          .filter((v) => v.trim() !== '')
-          .map((v) => parseFloat(v))
-          .filter((n) => !isNaN(n));
+  // Auto-calculate Mean, COV, and Remarks using useMemo
+  // This creates a computed version without modifying state, avoiding circular dependency
+  const processedRows = useMemo(() => {
+    return outputRows.map((row) => {
+      const nums = row.outputs
+        .filter((v) => v.trim() !== '')
+        .map((v) => parseFloat(v))
+        .filter((n) => !isNaN(n));
 
-        if (nums.length === 0) {
-          return { ...row, mean: '', cov: '', remarks: '' };
+      if (nums.length === 0) {
+        return { ...row, mean: '', cov: '', remarks: '' as '' };
+      }
+
+      const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+
+      let cov = 0;
+      if (nums.length > 1) {
+        const variance =
+          nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+          (nums.length - 1);
+        cov = Math.sqrt(variance) / mean;
+      }
+
+      // Calculate remarks based on COV <= tolerance
+      let remarks: 'Pass' | 'Fail' | '' = '';
+      if (tolerance) {
+        const tol = parseFloat(tolerance);
+        if (!isNaN(tol) && !isNaN(cov)) {
+          remarks = cov <= tol ? 'Pass' : 'Fail';
         }
+      }
 
-        const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-
-        let cov = 0;
-        if (nums.length > 1) {
-          const variance =
-            nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-            (nums.length - 1);
-          cov = Math.sqrt(variance) / mean;
-        }
-
-        // Calculate remarks based on COV <= tolerance
-        let remarks: 'Pass' | 'Fail' | '' = '';
-        if (tolerance) {
-          const tol = parseFloat(tolerance);
-          if (!isNaN(tol) && !isNaN(cov)) {
-            remarks = cov <= tol ? 'Pass' : 'Fail';
-          }
-        }
-
-        return {
-          ...row,
-          mean: mean.toFixed(3),
-          cov: cov.toFixed(4),
-          remarks,
-        };
-      })
-    );
-  }, [outputRows.map((r) => r.outputs.join(',')).join('|'), tolerance]);
+      return {
+        ...row,
+        mean: mean.toFixed(3),
+        cov: cov.toFixed(4),
+        remarks,
+      };
+    });
+  }, [outputRows, tolerance]);
 
   // Final Remark
   const remark = useMemo(() => {
@@ -105,13 +106,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     const tol = parseFloat(tolerance);
     if (isNaN(tol)) return '';
 
-    const allPass = outputRows.every((row) => {
+    const allPass = processedRows.every((row) => {
       if (!row.cov) return true;
       return parseFloat(row.cov) <= tol;
     });
 
     return allPass ? 'Pass' : 'Fail';
-  }, [outputRows, tolerance, isSaved]);
+  }, [processedRows, tolerance, isSaved]);
 
   // Load test data
   useEffect(() => {
@@ -165,7 +166,93 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     };
 
     loadTest();
+    loadTest();
   }, [propTestId, serviceId]);
+
+  // CSV Data Injection
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+
+      // Filter valid rows (must have kVp and be numeric)
+      // Check for FFD row
+      const ffdRow = csvData.find(r => r.some((c: any) => c?.toString().toLowerCase() === 'ffd' || c?.toString().toLowerCase() === 'fcd'));
+      if (ffdRow) {
+        const fIdx = ffdRow.findIndex((c: any) => c?.toString().toLowerCase() === 'ffd' || c?.toString().toLowerCase() === 'fcd');
+        if (fIdx !== -1 && ffdRow[fIdx + 1]) setFfd(ffdRow[fIdx + 1].toString());
+      }
+
+      const validRows = csvData.filter(r => r[0] && !isNaN(parseFloat(r[0])));
+
+      if (validRows.length > 0) {
+        const newRows = validRows.map((row, idx) => {
+          const kvp = row[0];
+          const mas = row[1];
+
+          // Check if index 2 is likely a 'Time' value. 
+          // If the row has 6+ columns, it might be [kVp, mAs, Time, R1, R2, R3...]
+          // In our template it's [kVp, mAs, R1, R2, R3...] (row.length is 5+)
+          let readingStartIdx = 2;
+          if (row.length >= 6) {
+            // Heuristic: if we have 6 columns, index 2 might be time. 
+            // But we don't have Time in OPG consistency usually. 
+            // Let's stick to 2 as per template, but filter PASS/FAIL.
+          }
+
+          const potentialReadings = row.slice(readingStartIdx);
+          const readingValues: string[] = [];
+          potentialReadings.forEach((val: any) => {
+            const s = val?.toString()?.trim();
+            if (s && !isNaN(parseFloat(s)) && !['Pass', 'Fail', 'PASS', 'FAIL'].includes(s)) {
+              readingValues.push(s);
+            }
+          });
+
+          return {
+            id: String(idx + 1),
+            kvp: kvp?.toString() || '',
+            mas: mas?.toString() || '',
+            outputs: readingValues,
+            mean: '',
+            cov: '',
+            remarks: '' as ''
+          };
+        });
+
+        // Refine row.outputs to remove trailing Mean/CoV if they were imported
+        const refinedRows = newRows.map(row => {
+          if (row.outputs.length > 1) {
+            // If we have more than 3 outputs, maybe the last two are Mean and CoV?
+            // But we don't want to over-guess. 
+            // Let's rely on the fact that if we have a lot of columns, 
+            // we'll just show them as readings and let the user delete if needed.
+            // HOWEVER, the user asked to NOT include formula values in TEMPLATE.
+            // So if they use our template, readingValues will BE just readings.
+          }
+          return row;
+        });
+
+        // Update headers if needed
+        const maxMeasFromImport = Math.max(...newRows.map(r => r.outputs.length));
+        const finalHeaderCount = maxMeasFromImport || 3;
+
+        if (finalHeaderCount !== headers.length) {
+          setHeaders(Array.from({ length: finalHeaderCount }, (_, i) => `Measured mR ${i + 1}`));
+        }
+
+        // Pad all rows to match finalHeaderCount
+        const paddedRows = refinedRows.map(row => {
+          const paddedOutputs = [...row.outputs];
+          while (paddedOutputs.length < finalHeaderCount) {
+            paddedOutputs.push('');
+          }
+          return { ...row, outputs: paddedOutputs };
+        });
+
+        setOutputRows(paddedRows);
+        if (!testId) setIsSaved(false); // Edit mode
+      }
+    }
+  }, [csvData]);
 
   // Save / Update
   const handleSave = async () => {
@@ -178,7 +265,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
     const payload = {
       ffd: ffd.trim(),
-      outputRows: outputRows.map((row) => ({
+      outputRows: processedRows.map((row) => ({
         kvp: row.kvp.trim(),
         mas: row.mas.trim(),
         outputs: row.outputs.map(v => v.trim()),
@@ -307,34 +394,33 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
               value={ffd}
               onChange={(e) => setFfd(e.target.value)}
               disabled={isViewMode}
-              className={`w-24 px-3 py-1.5 text-center border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-              }`}
+              className={`w-24 px-3 py-1.5 text-center border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                }`}
               placeholder="40"
             />
           </div>
 
           <button
-          onClick={isViewMode ? startEditing : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
-            </>
-          )}
+            onClick={isViewMode ? startEditing : handleSave}
+            disabled={isSaving}
+            className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+              ? 'bg-gray-400 cursor-not-allowed'
+              : isViewMode
+                ? 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+              }`}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -359,7 +445,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r relative"
                 >
                   <div className="flex items-center justify-between">
-                    <span>Radiation Output (mGy)</span>
+                    <span>Radiation Output (mR)</span>
                     {!isViewMode && (
                       <button onClick={addColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
                         <Plus className="w-4 h-4" />
@@ -399,7 +485,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {outputRows.map((row) => (
+              {processedRows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2 border-r">
                     <input
@@ -442,13 +528,12 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   <td className="px-4 py-2 border-r text-center">
                     {row.remarks && (
                       <span
-                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                          row.remarks === 'Pass'
-                            ? 'bg-green-100 text-green-800'
-                            : row.remarks === 'Fail'
+                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass'
+                          ? 'bg-green-100 text-green-800'
+                          : row.remarks === 'Fail'
                             ? 'bg-red-100 text-red-800'
                             : 'bg-gray-100 text-gray-500'
-                        }`}
+                          }`}
                       >
                         {row.remarks}
                       </span>

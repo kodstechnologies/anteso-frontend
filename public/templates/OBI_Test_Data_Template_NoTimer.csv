@@ -1,0 +1,146 @@
+Field Name,Value
+========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========,
+FFD,100
+MeasHeader,10 mA
+MeasHeader,100 mA
+MeasHeader,200 mA
+Measurement_AppliedKvp,60
+Measurement_Meas1,60.2
+Measurement_Meas2,60.1
+Measurement_Meas3,60.3
+Measurement_AverageKvp,60.2
+Measurement_AppliedKvp,80
+Measurement_Meas1,80.1
+Measurement_Meas2,80.2
+Measurement_Meas3,80.0
+Measurement_AverageKvp,80.1
+Measurement_AppliedKvp,100
+Measurement_Meas1,100.2
+Measurement_Meas2,100.1
+Measurement_Meas3,100.3
+Measurement_AverageKvp,100.2
+Tolerance_Sign,±
+Tolerance_Value,2.0
+TotalFiltration_Measured,2.5
+TotalFiltration_Required,2.5
+========== OUTPUT CONSISTENCY ==========,
+FFD,100
+OutputRow_kV,60
+OutputRow_mAs,10
+OutputRow_Meas1,1.2
+OutputRow_Meas2,1.3
+OutputRow_Meas3,1.25
+OutputRow_Avg,1.25
+OutputRow_CV,4.08
+OutputRow_kV,80
+OutputRow_mAs,20
+OutputRow_Meas1,2.5
+OutputRow_Meas2,2.6
+OutputRow_Meas3,2.55
+OutputRow_Avg,2.55
+OutputRow_CV,3.92
+Tolerance_Value,0.05
+========== CENTRAL BEAM ALIGNMENT ==========,
+TechniqueFactors_FCD,100
+TechniqueFactors_kV,80
+TechniqueFactors_mAs,20
+ObservedTilt_Value,0.5
+ObservedTilt_Operator,<=
+Tolerance_Value,1.5
+Tolerance_Operator,<=
+========== CONGRUENCE OF RADIATION ==========,
+CongruenceMeasurement_Dimension,100
+CongruenceMeasurement_ObservedShift,0.5
+CongruenceMeasurement_EdgeShift,1.0
+CongruenceMeasurement_PercentFED,0.5
+CongruenceMeasurement_Tolerance,2.0
+CongruenceMeasurement_Dimension,200
+CongruenceMeasurement_ObservedShift,1.0
+CongruenceMeasurement_EdgeShift,2.0
+CongruenceMeasurement_PercentFED,0.5
+CongruenceMeasurement_Tolerance,2.0
+========== EFFECTIVE FOCAL SPOT ==========,
+FCD,100
+FocalSpot_FocusType,Small
+FocalSpot_StatedWidth,0.6
+FocalSpot_StatedHeight,0.6
+FocalSpot_MeasuredWidth,0.62
+FocalSpot_MeasuredHeight,0.61
+FocalSpot_FocusType,Large
+FocalSpot_StatedWidth,1.2
+FocalSpot_StatedHeight,1.2
+FocalSpot_MeasuredWidth,1.22
+FocalSpot_MeasuredHeight,1.21
+========== LINEARITY OF mAs LOADING STATIONS ==========,
+Table1_FCD,100
+Table1_kV,80
+Table1_Time,1.0
+MeasHeader,Meas 1
+MeasHeader,Meas 2
+MeasHeader,Meas 3
+Table2_mAsApplied,10
+Table2_Meas1,1.2
+Table2_Meas2,1.3
+Table2_Meas3,1.25
+Table2_Average,1.25
+Table2_X,1.25
+Table2_XMax,1.3
+Table2_XMin,1.2
+Table2_CoL,0.08
+Table2_mAsApplied,20
+Table2_Meas1,2.5
+Table2_Meas2,2.6
+Table2_Meas3,2.55
+Table2_Average,2.55
+Table2_X,2.55
+Table2_XMax,2.6
+Table2_XMin,2.5
+Table2_CoL,0.04
+Tolerance,0.1
+ToleranceOperator,<=
+========== TUBE HOUSING LEAKAGE ==========,
+Settings_FCD,100
+Settings_kV,80
+Settings_ma,100
+Settings_Time,1.0
+Workload,5000
+LeakageMeasurement_Location,Tube
+LeakageMeasurement_Left,0.5
+LeakageMeasurement_Right,0.3
+LeakageMeasurement_Front,0.4
+LeakageMeasurement_Back,0.2
+LeakageMeasurement_Top,0.6
+LeakageMeasurement_Location,Collimator
+LeakageMeasurement_Left,0.3
+LeakageMeasurement_Right,0.4
+LeakageMeasurement_Front,0.5
+LeakageMeasurement_Back,0.3
+LeakageMeasurement_Top,0.7
+ToleranceValue,1
+ToleranceOperator,less than or equal to
+========== RADIATION PROTECTION SURVEY ==========,
+SurveyDate,2024-01-15
+HasValidCalibration,Yes
+AppliedCurrent,100
+AppliedVoltage,80
+ExposureTime,1.0
+Workload,5000
+Location_Location,Control Room
+Location_mRPerHr,0.5
+Location_Category,worker
+Location_Location,Corridor
+Location_mRPerHr,0.2
+Location_Category,public
+========== HIGH CONTRAST SENSITIVITY ==========,
+MeasuredLpPerMm,5.0
+RecommendedStandard,4.0
+========== LOW CONTRAST SENSITIVITY ==========,
+SmallestHoleSize,2.0
+RecommendedStandard,1.5
+========== ALIGNMENT TEST ==========,
+TestRow_TestName,Positional/re-positional accuracy of imager
+TestRow_Sign,≤
+TestRow_Value,1 mm
+TestRow_TestName,Alignment accuracy of X-ray beam
+TestRow_Sign,≤
+TestRow_Value,2 mm

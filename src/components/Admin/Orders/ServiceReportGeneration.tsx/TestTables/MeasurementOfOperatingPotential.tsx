@@ -35,9 +35,10 @@ interface Props {
     testId?: string;
     tubeId?: 'A' | 'B' | null;
     onRefresh?: () => void;
+    csvData?: any[];
 }
 
-const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
+const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
 
     // Table 1: Only 1 row
@@ -117,7 +118,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
         const values = [ma10Value, ma100Value, ma200Value]
             .filter((v) => !isNaN(v));
         const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
-        
+
         // Check average value
         const avgPass = avg === '' || checkTolerance(parseFloat(avg), setKV);
 
@@ -162,6 +163,72 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
             })
         );
     };
+
+    // === CSV Data Injection ===
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // Table 1: Map kvp->time, ma->sliceThickness based on logic inferred from export
+            // Or look for specific Time/SliceThickness fields if they exist?
+            // Export: ['kVp', 'mA'] headers but values correspond to time/sliceThickness.
+            // So if user uses template, Table1_kvp -> Time, Table1_ma -> SliceThickness.
+            const t1Time = csvData.find(r => r['Field Name'] === 'Table1_kvp' || r['Field Name'] === 'Table1_Time')?.['Value'];
+            const t1Slice = csvData.find(r => r['Field Name'] === 'Table1_ma' || r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
+
+            if (t1Time || t1Slice) {
+                setTable1Row(prev => ({
+                    ...prev,
+                    time: t1Time || prev.time,
+                    sliceThickness: t1Slice || prev.sliceThickness
+                }));
+            }
+
+            // Table 2
+            // Find all unique row indices for Table 2
+            const t2Indices = [...new Set(csvData
+                .filter(r => r['Field Name'].startsWith('Table2_'))
+                .map(r => parseInt(r['Row Index']))
+                .filter(i => !isNaN(i) && i > 0)
+            )];
+
+            if (t2Indices.length > 0) {
+                const newRows = t2Indices.map(idx => {
+                    const setKV = csvData.find(r => r['Field Name'] === 'Table2_SetKV' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+                    // Try to finding specific columns first, fallback to generic Result -> ma100
+                    const ma10 = csvData.find(r => r['Field Name'] === 'Table2_ma10' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+                    const ma100 = csvData.find(r => r['Field Name'] === 'Table2_ma100' && parseInt(r['Row Index']) === idx)?.['Value']
+                        || csvData.find(r => r['Field Name'] === 'Table2_Result' && parseInt(r['Row Index']) === idx)?.['Value']
+                        || '';
+                    const ma200 = csvData.find(r => r['Field Name'] === 'Table2_ma200' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+
+                    const row: Table2Row = {
+                        id: Date.now().toString() + Math.random(),
+                        setKV,
+                        ma10,
+                        ma100,
+                        ma200,
+                        avgKvp: '',
+                        remarks: '',
+                        failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false }
+                    };
+                    return calculateRowValues(row);
+                });
+                setTable2Rows(newRows);
+            }
+
+            // Tolerance
+            const tolVal = csvData.find(r => r['Field Name'] === 'Tolerance_Value')?.['Value'];
+            const tolType = csvData.find(r => r['Field Name'] === 'Tolerance_Type')?.['Value'];
+            const tolSign = csvData.find(r => r['Field Name'] === 'Tolerance_Sign')?.['Value'];
+
+            if (tolVal) setToleranceValue(tolVal);
+            if (tolType) setToleranceType(tolType.toLowerCase().includes('kv') ? 'absolute' : 'percent');
+            if (tolSign) setToleranceSign(tolSign.includes('plus') ? 'plus' : tolSign.includes('minus') ? 'minus' : 'both');
+
+            if (!testId) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData, calculateRowValues]);
 
     // === Form Valid ===
     const isFormValid = useMemo(() => {
@@ -232,7 +299,9 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                     setIsEditing(true);
                 }
             } catch (e: any) {
-                if (e.response?.status !== 404) toast.error('Failed to load data');
+                if (e.response?.status !== 404) {
+                    // toast.error('Failed to load data');
+                }
                 setHasSaved(false);
                 setIsEditing(true);
             } finally {

@@ -28,9 +28,10 @@ interface Props {
   testId?: string;
   tubeId?: 'A' | 'B' | null;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
+const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: Fixed single row
@@ -92,6 +93,56 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
     });
   }, [table2Rows, tolerance]);
 
+  // === CSV Data Injection ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Table 1
+      const kvp = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
+      const slice = csvData.find(r => r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
+      const ma = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
+
+      if (kvp || slice || ma) {
+        setTable1Row(prev => ({
+          ...prev,
+          kvp: kvp || prev.kvp,
+          sliceThickness: slice || prev.sliceThickness,
+          ma: ma || prev.ma
+        }));
+      }
+
+      // Table 2
+      const t2Indices = [...new Set(csvData
+        .filter(r => r['Field Name'].startsWith('Table2_'))
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i > 0)
+      )];
+
+      if (t2Indices.length > 0) {
+        const newRows = t2Indices.map(idx => {
+          const setTime = csvData.find(r => r['Field Name'] === 'Table2_SetTime' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+          const observedTime = csvData.find(r => r['Field Name'] === 'Table2_Result' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+
+          return {
+            id: Date.now().toString() + Math.random(),
+            setTime,
+            observedTime,
+            percentError: '',
+            remarks: ''
+          };
+        });
+        setTable2Rows(newRows);
+      }
+
+      // Tolerance
+      const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+      if (tol) setTolerance(tol);
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData]);
+
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
@@ -149,7 +200,9 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
           setIsEditing(true);
         }
       } catch (e: any) {
-        if (e.response?.status !== 404) toast.error('Failed to load data');
+        if (e.response?.status !== 404) {
+          // toast.error('Failed to load data');
+        }
         setHasSaved(false);
         setIsEditing(true);
       } finally {
@@ -406,10 +459,10 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving || (!isViewMode && !isFormValid)}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (

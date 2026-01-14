@@ -61,6 +61,40 @@ api.interceptors.response.use(
     }
 );
 
+// Proxy file from S3/external URL to avoid CORS issues
+// Uses AWS SDK on backend (same as s3Fetch.js) but streams through backend
+export const proxyFile = async (fileUrl: string) => {
+    try {
+        const res = await api.get('/file/proxy-file', {
+            params: { fileUrl },
+            responseType: 'blob', // Important: get binary data
+        });
+        return res;
+    } catch (error: any) {
+        console.error("🚀 ~ proxyFile ~ error:", error);
+        
+        // If error response is a JSON blob, try to parse it
+        if (error.response?.data instanceof Blob && error.response.data.type === 'application/json') {
+            try {
+                const errorText = await error.response.data.text();
+                const errorJson = JSON.parse(errorText);
+                console.error("🚀 ~ proxyFile ~ error details:", errorJson);
+                
+                // Create a more informative error
+                const enhancedError = new Error(errorJson.message || error.message);
+                (enhancedError as any).details = errorJson.details;
+                (enhancedError as any).status = error.response.status;
+                throw enhancedError;
+            } catch (parseError) {
+                // If parsing fails, throw original error
+                throw error;
+            }
+        }
+        
+        throw error;
+    }
+};
+
 export const adminLogin = async (payload: any) => {
     try {
         const res = await api.post('/auth/login', payload)

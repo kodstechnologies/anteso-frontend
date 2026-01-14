@@ -30,9 +30,10 @@ interface Props {
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh }) => {
+const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -108,18 +109,18 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
   };
 
   const updateExposureParameter = (index: number, field: keyof ExposureParameter, value: string) => {
-    setExposureParameters(exposureParameters.map((ep, i) => 
+    setExposureParameters(exposureParameters.map((ep, i) =>
       i === index ? { ...ep, [field]: value } : ep
     ));
   };
 
   // Add table incrementation row
   const addTableIncrementationRow = () => {
-    setTableIncrementationRows([...tableIncrementationRows, { 
-      id: Date.now().toString(), 
-      tablePosition: '', 
-      expected: '', 
-      measured: '' 
+    setTableIncrementationRows([...tableIncrementationRows, {
+      id: Date.now().toString(),
+      tablePosition: '',
+      expected: '',
+      measured: ''
     }]);
   };
 
@@ -134,6 +135,64 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
       row.id === id ? { ...row, [field]: value } : row
     ));
   };
+
+  // === CSV Data Injection ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Table 1
+      const initPos = csvData.find(r => r['Field Name'] === 'Table1_InitialTablePosition' || r['Field Name'] === 'Table1_Position')?.['Value'];
+      const load = csvData.find(r => r['Field Name'] === 'Table1_LoadOnCouch' || r['Field Name'] === 'Table1_Load')?.['Value'];
+
+      if (initPos) setInitialTablePosition(initPos);
+      if (load) setLoadOnCouch(load);
+
+      // Table 2: Exposure Parameters
+      const t2Indices = [...new Set(csvData
+        .filter(r => r['Field Name'].startsWith('Table2_'))
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i > 0)
+      )];
+
+      if (t2Indices.length > 0) {
+        const newEP = t2Indices.map(idx => {
+          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+          return {
+            kvp: rowData.find(r => r['Field Name'] === 'Table2_kvp')?.['Value'] || '',
+            ma: rowData.find(r => r['Field Name'] === 'Table2_ma')?.['Value'] || '',
+            sliceThickness: rowData.find(r => r['Field Name'] === 'Table2_SliceThickness')?.['Value'] || '',
+          };
+        });
+        setExposureParameters(newEP);
+      }
+
+      // Table 3: Incrementation
+      const t3Indices = [...new Set(csvData
+        .filter(r => r['Field Name'].startsWith('Table3_'))
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i > 0)
+      )];
+
+      if (t3Indices.length > 0) {
+        const newRows = t3Indices.map(idx => {
+          const tp = csvData.find(r => r['Field Name'] === 'Table3_TablePosition' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+          const exp = csvData.find(r => r['Field Name'] === 'Table3_Expected' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+          const meas = csvData.find(r => r['Field Name'] === 'Table3_Measured' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+
+          return {
+            id: Date.now().toString() + Math.random(),
+            tablePosition: tp,
+            expected: exp,
+            measured: meas
+          };
+        });
+        setTableIncrementationRows(newRows);
+      }
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData]);
 
   // Load data from backend
   useEffect(() => {
@@ -271,13 +330,12 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
         <button
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
-            isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
               ? 'bg-orange-600 hover:bg-orange-700'
               : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-          }`}
+            }`}
         >
           {isSaving ? (
             <>
@@ -312,9 +370,8 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                     onChange={(e) => setInitialTablePosition(e.target.value)}
                     disabled={isViewMode}
                     placeholder="Enter value"
-                    className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   />
                   <span className="text-sm text-gray-600">cm</span>
                 </div>
@@ -332,9 +389,8 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                     onChange={(e) => setLoadOnCouch(e.target.value)}
                     disabled={isViewMode}
                     placeholder="Enter value"
-                    className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   />
                   <span className="text-sm text-gray-600">kg</span>
                 </div>
@@ -375,9 +431,8 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                     value={ep.kvp}
                     onChange={(e) => updateExposureParameter(index, 'kvp', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   />
                 </td>
                 <td className="px-6 py-4 border-r">
@@ -386,9 +441,8 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                     value={ep.ma}
                     onChange={(e) => updateExposureParameter(index, 'ma', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   />
                 </td>
                 <td className="px-6 py-4">
@@ -397,9 +451,8 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                     value={ep.sliceThickness}
                     onChange={(e) => updateExposureParameter(index, 'sliceThickness', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   />
                 </td>
                 {!isViewMode && exposureParameters.length > 1 && (
@@ -452,9 +505,8 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                     value={row.tablePosition}
                     onChange={(e) => updateTableIncrementationRow(row.id, 'tablePosition', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   />
                 </td>
                 <td className="px-6 py-4 border-r">
@@ -463,9 +515,8 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                     value={row.expected}
                     onChange={(e) => updateTableIncrementationRow(row.id, 'expected', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   />
                 </td>
                 <td className="px-6 py-4 border-r">
@@ -474,20 +525,18 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
                     value={row.measured}
                     onChange={(e) => updateTableIncrementationRow(row.id, 'measured', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                      }`}
                   />
                 </td>
                 <td className="px-6 py-4">
                   <span
-                    className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
-                      row.remark === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : row.remark === 'Fail'
+                    className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remark === 'Pass'
+                      ? 'bg-green-100 text-green-800'
+                      : row.remark === 'Fail'
                         ? 'bg-red-100 text-red-800'
                         : 'bg-gray-100 text-gray-600'
-                    }`}
+                      }`}
                   >
                     {row.remark || '—'}
                   </span>
@@ -516,9 +565,8 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
             value={toleranceSign}
             onChange={(e) => setToleranceSign(e.target.value as '+' | '-' | '±')}
             disabled={isViewMode}
-            className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-            }`}
+            className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+              }`}
           >
             <option value="+">+</option>
             <option value="-">-</option>
@@ -530,9 +578,8 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
             onChange={(e) => setToleranceValue(e.target.value)}
             disabled={isViewMode}
             placeholder="Enter tolerance value"
-            className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-            }`}
+            className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+              }`}
           />
           <span className="text-sm text-gray-600">mm</span>
         </div>

@@ -1,10 +1,13 @@
-// GenerateReport-CTScan.tsx
+// GenerateReport-OPG.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForOPG } from "../../../../../../api";
+import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
+import * as XLSX from 'xlsx';
+import { createOPGUploadableExcel } from './exportOPGToExcel';
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -54,7 +57,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
     const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
-    const [showTimerModal, setShowTimerModal] = useState(true); // Show on load
+    const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
     const [savedTestIds, setSavedTestIds] = useState<{
         AccuracyOfIrradiationTimeOPG?: string;
@@ -64,6 +67,8 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
         RadiationLeakageTestOPG?: string;
         RadiationProtectionSurveyOPG?: string;
     }>({});
+    const [csvData, setCsvData] = useState<any>(null);
+    const [isExporting, setIsExporting] = useState(false);
     const [formData, setFormData] = useState({
         customerName: "",
         address: "",
@@ -75,7 +80,6 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
         make: "",
         model: "",
         slNumber: "",
-        category: "",
         condition: "OK",
         testingProcedureNumber: "",
         pages: "",
@@ -85,7 +89,18 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+        category: "",
     });
+    const defaultNotes = [
+        "The Test Report relates only to the above item only.",
+        "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
+        "Corrections/erasing invalidates the Test Report.",
+        "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
+        "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
+        "Results reported are valid at the time of and under the stated conditions of measurements.",
+        "Name, Address & Contact detail is provided by Customer.",
+    ];
+    const [notes, setNotes] = useState<string[]>(defaultNotes);
 
     const addYearsToDate = (dateStr: string, years: number): string => {
         if (!dateStr) return "";
@@ -132,7 +147,6 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                     make: "",
                     model: data.machineModel,
                     slNumber: data.serialNumber,
-                    category: "",
                     condition: "OK",
                     testingProcedureNumber: "",
                     pages: "",
@@ -142,6 +156,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
+                    category: data.category || "",
                 });
 
                 // Map tools
@@ -173,6 +188,8 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
     const handleTimerChoice = (choice: boolean) => {
         setHasTimer(choice);
         setShowTimerModal(false);
+        // Persist choice in localStorage
+        localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(choice));
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,18 +268,61 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
                     }));
 
+                    // Load existing notes, or use default if none exist
+                    if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
+                        const notesTexts = res.data.notes.map((n: any) => n.text || n);
+                        setNotes(notesTexts);
+                    } else {
+                        setNotes(defaultNotes);
+                    }
+
                     // Save test IDs
-                    setSavedTestIds({
+                    const testIds = {
                         AccuracyOfIrradiationTimeOPG: res.data.AccuracyOfIrradiationTimeOPG?._id || res.data.AccuracyOfIrradiationTimeOPG,
                         AccuracyOfOperatingPotentialOPG: res.data.AccuracyOfOperatingPotentialOPG?._id || res.data.AccuracyOfOperatingPotentialOPG,
                         OutputConsistencyForOPG: res.data.OutputConsistencyForOPG?._id || res.data.OutputConsistencyForOPG,
                         LinearityOfMaLoadingOPG: res.data.LinearityOfMaLoadingOPG?._id || res.data.LinearityOfMaLoadingOPG,
                         RadiationLeakageTestOPG: res.data.RadiationLeakageTestOPG?._id || res.data.RadiationLeakageTestOPG,
                         RadiationProtectionSurveyOPG: res.data.RadiationProtectionSurveyOPG?._id || res.data.RadiationProtectionSurveyOPG,
-                    });
+                    };
+                    setSavedTestIds(testIds);
+
+                    // If AccuracyOfIrradiationTimeOPG exists, set hasTimer to true
+                    if (testIds.AccuracyOfIrradiationTimeOPG) {
+                        setHasTimer(true);
+                        setShowTimerModal(false);
+                    } else {
+                        // Check localStorage for saved choice
+                        const savedChoice = localStorage.getItem(`opg_timer_choice_${serviceId}`);
+                        if (savedChoice !== null) {
+                            setHasTimer(JSON.parse(savedChoice));
+                            setShowTimerModal(false);
+                        } else {
+                            // Only show modal if no saved choice and no existing test
+                            setShowTimerModal(true);
+                        }
+                    }
+                } else {
+                    // No report header exists, check localStorage
+                    const savedChoice = localStorage.getItem(`opg_timer_choice_${serviceId}`);
+                    if (savedChoice !== null) {
+                        setHasTimer(JSON.parse(savedChoice));
+                        setShowTimerModal(false);
+                    } else {
+                        // Show modal only if no saved choice
+                        setShowTimerModal(true);
+                    }
                 }
             } catch (err) {
                 console.log("No report header found or failed to load:", err);
+                // On error, check localStorage
+                const savedChoice = localStorage.getItem(`opg_timer_choice_${serviceId}`);
+                if (savedChoice !== null) {
+                    setHasTimer(JSON.parse(savedChoice));
+                    setShowTimerModal(false);
+                } else {
+                    setShowTimerModal(true);
+                }
             }
         };
         loadReportHeader();
@@ -320,11 +380,213 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
         );
     }
 
+    const parseHorizontalData = (rows: any[]) => {
+        const result: any = {};
+        let currentSection = '';
+
+        const headerMap: any = {
+            'Applied kVp': 'appliedKvp',
+            'Measured kVp 1': 'measuredKvp1',
+            'Measured kVp 2': 'measuredKvp2',
+            'Set Time': 'setTime',
+            'Measured Time 1': 'measuredTime1',
+            'Time': 'time',
+            'Reading 1': 'reading1',
+            'Area': 'area',
+            'Location': 'location',
+            'mR/hr': 'mrPerHr',
+            'Category': 'category',
+            'Parameter': 'parameter',
+            'Specified': 'specified',
+            'Measured': 'measured',
+            'Tolerance': 'tolerance',
+            'Remarks': 'remarks',
+            'mA Station': 'maStation',
+            'mAs Station': 'maStation',
+            'Set Time (mSec)': 'setTime',
+            'Measured Time (mSec)': 'measuredTime',
+            '% Error': 'error',
+            'Measured mR 1': 'reading1',
+            'kVp': 'kvp',
+            'mAs': 'mas',
+            'Mean': 'mean',
+            'CoV': 'cov',
+            'Max Leakage': 'max'
+        };
+
+        const testMarkerToInternalName: any = {
+            'ACCURACY OF OPERATING POTENTIAL': 'accuracyOfOperatingPotential',
+            'TOTAL FILTRATION': 'accuracyOfOperatingPotential',
+            'ACCURACY OF IRRADIATION TIME': 'accuracyOfIrradiationTime',
+            'LINEARITY OF mA LOADING': 'linearityOfMaLoading',
+            'LINEARITY OF mAs LOADING': 'linearityOfMasLoading',
+            'CONSISTENCY OF RADIATION OUTPUT': 'consistencyOfRadiationOutput',
+            'RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE': 'radiationLeakageLevel',
+            'RADIATION LEAKAGE LEVEL': 'radiationLeakageLevel',
+            'RADIATION PROTECTION SURVEY REPORT': 'radiationProtectionSurvey',
+            'DETAILS OF RADIATION PROTECTION SURVEY': 'radiationProtectionSurvey'
+        };
+
+        rows.forEach((row, index) => {
+            const firstCell = row[0]?.toString().trim();
+            if (firstCell && firstCell.startsWith('TEST: ')) {
+                const title = firstCell.replace('TEST: ', '').trim();
+                currentSection = testMarkerToInternalName[title] || '';
+                if (currentSection && !result[currentSection]) {
+                    result[currentSection] = [];
+                }
+                return;
+            }
+
+            // If we are in a section, parse rows
+            if (currentSection) {
+                // Skip header row - only if EXACT match with KNOWN header-only markers
+                const headerOnlyMarkers = ['Applied kVp', 'Set Time (mSec)', 'mA Station', 'mAs Range', 'kVp', 'Location', 'LOCATION', 'LOCATION', 'Survey Date'];
+                if (firstCell && headerOnlyMarkers.includes(firstCell)) {
+                    return;
+                }
+
+                if (row.length > 0) {
+                    // Robust mapping for Linearity
+                    if (currentSection === 'linearityOfMaLoading' || currentSection === 'linearityOfMasLoading') {
+                        if (!result.linearityOfMaLoading) result.linearityOfMaLoading = [];
+                        if (!result.linearityOfMasLoading) result.linearityOfMasLoading = [];
+                        result.linearityOfMaLoading.push(row);
+                        result.linearityOfMasLoading.push(row);
+                    } else {
+                        result[currentSection].push(row);
+                    }
+                }
+            }
+
+            // Handle Global Parameters (like Total Filtration, CoL) that might be outside standard tables
+            if (row[0] === 'Total Filtration') {
+                if (!result.accuracyOfOperatingPotential) result.accuracyOfOperatingPotential = [];
+                result.accuracyOfOperatingPotential.push(['TotalFiltration', ...row.slice(1)]);
+            }
+            if (row[0] === 'Coefficient of Linearity') {
+                // Determine which linearity test
+                // It usually follows the table.
+                if (currentSection === 'linearityOfMaLoading') {
+                    result.linearityOfMaLoading.push(['CoL', ...row.slice(1)]);
+                } else if (currentSection === 'linearityOfMasLoading') {
+                    result.linearityOfMasLoading.push(['CoL', ...row.slice(1)]);
+                }
+            }
+        });
+
+        return result;
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const bstr = evt.target?.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const wsname = wb.SheetNames[0];
+            const ws = wb.Sheets[wsname];
+            const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }); // Array of arrays
+
+            const parsed = parseHorizontalData(jsonData as any[]);
+            console.log("Parsed CSV Data:", parsed);
+            console.log("Radiation Leakage Level rows:", parsed.radiationLeakageLevel);
+            setCsvData(parsed);
+            toast.success("Excel data imported successfully!");
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    const handleExportSavedData = async () => {
+        if (!serviceId) return;
+        setIsExporting(true);
+        try {
+            // Fetch all data
+            const [
+                kvpRes,
+                timeRes,
+                linMaRes,
+                // linMasRes, // Assume one linearity test usually
+                consRes,
+                leakRes,
+                protRes
+            ] = await Promise.all([
+                getAccuracyOfOperatingPotentialByServiceIdForOPG(serviceId),
+                getAccuracyOfIrradiationTimeByServiceIdForOPG(serviceId),
+                getLinearityOfMaLoadingByServiceIdForOPG(serviceId),
+                getConsistencyOfRadiationOutputByServiceIdForOPG(serviceId),
+                getRadiationLeakageLevelByServiceIdForOPG(serviceId),
+                getRadiationProtectionSurveyByServiceIdForOPG(serviceId)
+            ]);
+
+            // Construct data object
+            const exportData = {
+                accuracyOfOperatingPotential: kvpRes?.data,
+                accuracyOfIrradiationTime: timeRes?.data,
+                linearityOfMaLoading: linMaRes?.data, // Determine if it's mA or mAs based on data
+                outputConsistency: consRes?.data,
+                radiationLeakage: leakRes?.data,
+                radiationProtectionSurvey: protRes?.data
+            };
+
+            const wb = createOPGUploadableExcel(exportData);
+            XLSX.writeFile(wb, `OPG_Report_${serviceId}.xlsx`);
+            toast.success("Report data exported!");
+
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to export data");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // Helper to trigger hidden file input
+    const triggerFileInput = () => {
+        document.getElementById('excel-upload')?.click();
+    };
+
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
                 Generate OPG QA Test Report
             </h1>
+
+            {/* Excel Actions */}
+            <div className="flex flex-wrap gap-4 justify-center mb-8">
+                {/* <a
+                    href="/templates/Dental_OPG_Test_Data_Template.csv"
+                    download
+                    className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition shadow"
+                >
+                    Download Excel Template
+                </a> */}
+
+                <div className="relative">
+                    <input
+                        type="file"
+                        id="excel-upload"
+                        accept=".xlsx, .xls ,.csv"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                    />
+                    <button
+                        onClick={triggerFileInput}
+                        className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow"
+                    >
+                        Import Excel Data
+                    </button>
+                </div>
+                <button
+                    onClick={handleExportSavedData}
+                    disabled={isExporting}
+                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    {isExporting ? 'Exporting...' : 'Export Saved Data'}
+                </button>
+            </div>
 
             {/* Customer Info */}
             <section className="mb-10 bg-gray-50 p-6 rounded-lg">
@@ -399,7 +661,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
             </section>
 
             <Standards standards={tools} />
-            <Notes />
+            <Notes initialNotes={notes} onChange={setNotes} />
 
             {/* Save & View */}
             <div className="my-10 flex justify-end gap-6">
@@ -440,6 +702,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                             serviceId={serviceId}
                             testId={savedTestIds.AccuracyOfOperatingPotentialOPG || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialOPG: id }))}
+                            csvData={csvData?.accuracyOfOperatingPotential}
                         />
                     },
                     // { title: "Total Filteration", component: <TotalFilteration /> },
@@ -453,6 +716,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                                     serviceId={serviceId}
                                     testId={savedTestIds.AccuracyOfIrradiationTimeOPG || null}
                                     onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfIrradiationTimeOPG: id }))}
+                                    csvData={csvData?.accuracyOfIrradiationTime}
                                 />,
                             },
                         ]
@@ -466,6 +730,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                                 component: <LinearityOfmALoading
                                     serviceId={serviceId}
                                     testId={savedTestIds.LinearityOfMaLoadingOPG || undefined}
+                                    csvData={csvData?.linearityOfMaLoading}
                                 />,
                             },
                         ]
@@ -477,6 +742,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                                         serviceId={serviceId}
                                         testId={savedTestIds.LinearityOfMaLoadingOPG || null}
                                         onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMaLoadingOPG: id }))}
+                                        csvData={csvData?.linearityOfMasLoading}
                                     />,
                                 },
                             ]
@@ -488,6 +754,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                             serviceId={serviceId}
                             testId={savedTestIds.OutputConsistencyForOPG || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, OutputConsistencyForOPG: id }))}
+                            csvData={csvData?.consistencyOfRadiationOutput}
                         />
                     },
                     {
@@ -495,6 +762,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                         component: <RadiationLeakageLevel
                             serviceId={serviceId}
                             testId={savedTestIds.RadiationLeakageTestOPG || undefined}
+                            csvData={csvData?.radiationLeakageLevel}
                         />
                     },
                     // { title: "Equipment Setting", component: <EquipmentSetting /> },
@@ -505,6 +773,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
                             serviceId={serviceId}
                             testId={savedTestIds.RadiationProtectionSurveyOPG || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, RadiationProtectionSurveyOPG: id }))}
+                            csvData={csvData?.radiationProtectionSurvey}
                         />
                     },
 

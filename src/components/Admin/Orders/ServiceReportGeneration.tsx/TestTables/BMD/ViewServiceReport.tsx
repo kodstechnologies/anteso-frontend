@@ -34,7 +34,7 @@ interface ReportData {
   srfDate?: any;
   testReportNumber?: string;
   issueDate?: any;
-  nomenclature?: string;  
+  nomenclature?: string;
   make?: string;
   model?: string;
   slNumber?: string;
@@ -134,21 +134,21 @@ const ViewServiceReportBMD: React.FC = () => {
               const right = parseFloat(m.right || "0");
               const foot = parseFloat(m.front || m.top || "0"); // Map front/top to foot
               const head = parseFloat(m.back || m.up || "0");   // Map back/up to head
-              
+
               // Calculate max from all directions
               const values = [left, right, foot, head].filter(v => v > 0);
               const max = values.length > 0 ? Math.max(...values).toFixed(3) : "0";
-              
+
               // Calculate result (mR in one hour): (workload × max) / (60 × mA)
               let result = "-";
               if (workloadValue > 0 && parseFloat(max) > 0 && maValue > 0) {
                 const calculatedMR = (workloadValue * parseFloat(max)) / (60 * maValue);
                 result = calculatedMR.toFixed(3);
               }
-              
+
               // Calculate mGy: result / 114
               const mgy = result !== "-" ? (parseFloat(result) / 114).toFixed(4) : "-";
-              
+
               // Determine remark based on tolerance
               let remark = "-";
               const toleranceValue = parseFloat(rawLeakage.tolerance?.value || "1");
@@ -315,30 +315,31 @@ const ViewServiceReportBMD: React.FC = () => {
     fetchReport();
   }, [serviceId]);
 
-  // Fetch ULR Number
+  // Fetch ULR Number (matching ServiceDetails2.tsx approach)
   useEffect(() => {
     const fetchULRNumber = async () => {
       if (!serviceId) return;
       try {
-        // Try to get from service details
+        // First, try to get from service details (qaTests)
         const serviceDetails = await getDetails(serviceId);
         if (serviceDetails?.data?.qaTests && serviceDetails.data.qaTests.length > 0) {
-          // Get the first QA test's ULR number
           const ulr = serviceDetails.data.qaTests[0]?.reportULRNumber;
-          if (ulr) {
+          if (ulr && ulr !== "N/A") {
             setUlrNumber(ulr);
             return;
           }
         }
-        
-        // Fallback: Try to get from localStorage (check all keys that might contain reportNumbers)
+
+        // Second, try to get from localStorage reportNumbers (matching ServiceDetails2 pattern)
+        // The key format is: reportNumbers_${orderId}
+        // We need to search all keys that start with 'reportNumbers_'
         const keys = Object.keys(localStorage);
         for (const key of keys) {
           if (key.startsWith('reportNumbers_')) {
             try {
               const reportNumbers = JSON.parse(localStorage.getItem(key) || '{}');
               const serviceReport = reportNumbers[serviceId];
-              if (serviceReport?.qatest?.reportULRNumber) {
+              if (serviceReport?.qatest?.reportULRNumber && serviceReport.qatest.reportULRNumber !== "N/A") {
                 setUlrNumber(serviceReport.qatest.reportULRNumber);
                 return;
               }
@@ -347,7 +348,7 @@ const ViewServiceReportBMD: React.FC = () => {
             }
           }
         }
-        
+
         // If still not found, set default
         setUlrNumber("N/A");
       } catch (err) {
@@ -372,13 +373,13 @@ const ViewServiceReportBMD: React.FC = () => {
           setPageCount(String(estimatedPages));
         }
       };
-      
+
       // Calculate immediately and after delays to ensure content is rendered
       calculatePages();
       const timer = setTimeout(calculatePages, 500);
       const timer2 = setTimeout(calculatePages, 1000);
       const timer3 = setTimeout(calculatePages, 2000);
-      
+
       return () => {
         clearTimeout(timer);
         clearTimeout(timer2);
@@ -399,7 +400,7 @@ const ViewServiceReportBMD: React.FC = () => {
         const estimatedPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
         setPageCount(String(estimatedPages));
       }
-      
+
       await generatePDF({
         elementId: "report-content",
         filename: `BMD-Report-${report?.testReportNumber || "report"}.pdf`,
@@ -690,7 +691,7 @@ const ViewServiceReportBMD: React.FC = () => {
             {testData.totalFiltration && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold uppercase mb-4 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1.TOTAL FILTRATION</h3>
-                
+
                 {/* kV Measurement at Different mA */}
                 {testData.totalFiltration.measurements && testData.totalFiltration.measurements.length > 0 && (
                   <div className="mb-4 print:mb-1" style={{ marginBottom: '4px' }}>
@@ -776,7 +777,7 @@ const ViewServiceReportBMD: React.FC = () => {
             {testData.accuracyOfIrradiationTimeFull?.irradiationTimes?.length > 0 && (
               <div className="mb-16 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold uppercase mb-4 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. ACCURACY OF IRRADIATION TIME</h3>
-                
+
                 {/* Test Conditions */}
                 {testData.accuracyOfIrradiationTimeFull.testConditions && (
                   <div className="mb-4 print:mb-1" style={{ marginBottom: '4px' }}>
@@ -944,7 +945,7 @@ const ViewServiceReportBMD: React.FC = () => {
             {testData.tubeHousingLeakage?.leakageRows?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold uppercase mb-4 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. RADIATION LEAKAGE LEVEL AT 1M FROM TUBE HOUSING</h3>
-                
+
                 {/* Operating Parameters */}
                 <div className="mb-4 print:mb-1" style={{ marginBottom: '4px' }}>
                   <h4 className="text-sm font-semibold mb-2 print:mb-1 print:text-[9px]" style={{ fontSize: '11px', marginBottom: '2px' }}>Operating parameters:</h4>

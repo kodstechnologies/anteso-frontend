@@ -31,9 +31,11 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: any;
 }
 
-const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -142,6 +144,33 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
     };
     load();
   }, [serviceId, propTestId]);
+
+  // Load CSV data when initialData is provided
+  useEffect(() => {
+    if (initialData && refreshKey !== undefined) {
+      console.log('CongruenceOfRadiation: Loading CSV data', initialData);
+      if (initialData.techniqueRows && initialData.techniqueRows.length > 0) {
+        setTechniqueRows(initialData.techniqueRows.map((t: any, i: number) => ({
+          id: String(i + 1),
+          fcd: String(t.fcd ?? ''),
+          kv: String(t.kv ?? ''),
+          mas: String(t.mas ?? ''),
+        })));
+      }
+      if (initialData.congruenceRows && initialData.congruenceRows.length > 0) {
+        setCongruenceRows(initialData.congruenceRows.map((r: any, i: number) => ({
+          id: i === 0 ? 'x' : i === 1 ? 'y' : String(i + 1),
+          dimension: r.dimension || '',
+          observedShift: String(r.observedShift ?? ''),
+          edgeShift: String(r.edgeShift ?? ''),
+          tolerance: String(r.tolerance ?? ''),
+          percentFED: '',
+          remark: '',
+        })));
+      }
+      setIsEditing(true);
+    }
+  }, [refreshKey, initialData]);
 
   // Save handler
   const handleSave = async () => {

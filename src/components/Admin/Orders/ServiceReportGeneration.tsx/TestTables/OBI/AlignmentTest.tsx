@@ -19,9 +19,16 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  initialData?: {
+    testRows?: Array<{
+      testName: string;
+      sign: string;
+      value: string;
+    }>;
+  };
 }
 
-const AlignmentTest: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const AlignmentTest: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [testRows, setTestRows] = useState<TestRow[]>([
     {
@@ -36,6 +43,30 @@ const AlignmentTest: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+
+  // Load CSV Initial Data
+  useEffect(() => {
+    if (initialData) {
+      console.log('AlignmentTest: initialData received:', initialData);
+      console.log('AlignmentTest: initialData.testRows:', initialData.testRows);
+      if (initialData.testRows && Array.isArray(initialData.testRows) && initialData.testRows.length > 0) {
+        console.log('AlignmentTest: Loading initial data from CSV:', initialData);
+        setTestRows(
+          initialData.testRows.map((row, index) => ({
+            id: `csv-row-${Date.now()}-${index}`,
+            testName: row.testName || '',
+            sign: row.sign || '≤',
+            value: row.value || '',
+          }))
+        );
+        setIsEditing(true);
+        setIsLoading(false);
+        console.log('AlignmentTest: CSV data loaded into form, rows count:', initialData.testRows.length);
+      } else {
+        console.log('AlignmentTest: No testRows found in initialData or empty array');
+      }
+    }
+  }, [initialData]);
 
   const signOptions = [
     { value: '≤', label: '≤ (Less than or equal to)' },
@@ -75,6 +106,11 @@ const AlignmentTest: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
 
   // Load existing test data
   useEffect(() => {
+    // Skip loading if we have initial CSV data
+    if (initialData) {
+      return;
+    }
+
     if (!serviceId) return;
 
     const loadTest = async () => {
@@ -106,7 +142,7 @@ const AlignmentTest: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
     };
 
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, initialData]);
 
   const handleSave = async () => {
     // Validate that all rows have testName and value

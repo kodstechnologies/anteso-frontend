@@ -40,9 +40,10 @@ interface Props {
     testId?: string;
     tubeId?: string | null;
     onRefresh?: () => void;
+    csvData?: any[];
 }
 
-const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
+const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
 
     // Table 1: Fixed single row
@@ -78,6 +79,88 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
     const [isLoading, setIsLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [hasSaved, setHasSaved] = useState(false);
+
+    // === CSV Data Injection ===
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // Table 1: kvp, ma (mAs), SliceThickness
+            const kvp = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
+            const mas = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
+            const slice = csvData.find(r => r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
+
+            if (kvp || mas || slice) {
+                setTable1Row(prev => ({
+                    ...prev,
+                    kvp: kvp || prev.kvp,
+                    mAs: mas || prev.mAs,
+                    sliceThickness: slice || prev.sliceThickness
+                }));
+            }
+
+            // Table 2: CTDI Results
+            // Look for Table2_Type ('Axial Dose CTDIc' or 'Peripheral Dose')
+            const t2Rows = [...new Set(csvData
+                .filter(r => r['Field Name'].startsWith('Table2_'))
+                .map(r => parseInt(r['Row Index']))
+                .filter(i => !isNaN(i) && i > 0)
+            )];
+
+            if (t2Rows.length > 0) {
+                setTable2Rows(prev => {
+                    const newTable2 = [...prev];
+                    const ctdicIdx = newTable2.findIndex(r => r.id === 'ctdic');
+                    const peripheralIdx = newTable2.findIndex(r => r.id === 'peripheral');
+
+                    const peripheralReadings: PeripheralReading[] = [];
+
+                    t2Rows.forEach(idx => {
+                        const type = csvData.find(r => r['Field Name'] === 'Table2_Type' && parseInt(r['Row Index']) === idx)?.['Value'];
+                        const head = csvData.find(r => r['Field Name'] === 'Table2_Head' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+                        const body = csvData.find(r => r['Field Name'] === 'Table2_Body' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+                        const label = csvData.find(r => r['Field Name'] === 'Table2_Label' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+
+                        if (type === 'Axial Dose CTDIc' && ctdicIdx !== -1) {
+                            newTable2[ctdicIdx] = { ...newTable2[ctdicIdx], head, body };
+                        } else if (type === 'Peripheral Dose') {
+                            peripheralReadings.push({
+                                id: Date.now().toString() + label + Math.random(),
+                                label,
+                                head,
+                                body
+                            });
+                        }
+                    });
+
+                    if (peripheralIdx !== -1 && peripheralReadings.length > 0) {
+                        newTable2[peripheralIdx] = { ...newTable2[peripheralIdx], readings: peripheralReadings };
+                        setPeripheralLabels(peripheralReadings.map(r => r.label));
+                    }
+
+                    // Rated Values (usually in the first row of parameters in Excel)
+                    const ratedHead = csvData.find(r => r['Field Name'] === 'Table2_RatedHead')?.['Value'];
+                    const ratedBody = csvData.find(r => r['Field Name'] === 'Table2_RatedBody')?.['Value'];
+                    const ratedIdx = newTable2.findIndex(r => r.id === 'ctdiwRated');
+                    if (ratedIdx !== -1 && (ratedHead || ratedBody)) {
+                        newTable2[ratedIdx] = {
+                            ...newTable2[ratedIdx],
+                            head: ratedHead || newTable2[ratedIdx].head,
+                            body: ratedBody || newTable2[ratedIdx].body
+                        };
+                    }
+
+                    return newTable2;
+                });
+            }
+
+            // Tolerance
+            const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+            if (tol) setTolerance(prev => ({ ...prev, value: tol }));
+
+            if (!testId) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData]);
 
     // === Peripheral Column Handling ===
     const addPeripheralColumn = () => {
@@ -602,10 +685,10 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
                     onClick={isViewMode ? toggleEdit : handleSave}
                     disabled={isSaving || (!isViewMode && !isFormValid)}
                     className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : isViewMode
-                                ? 'bg-orange-600 hover:bg-orange-700'
-                                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : isViewMode
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
                         }`}
                 >
                     {isSaving ? (

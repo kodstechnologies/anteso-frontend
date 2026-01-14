@@ -33,9 +33,10 @@ interface Props {
     testId?: string;
     tubeId?: 'A' | 'B' | null;
     onRefresh?: () => void;
+    csvData?: any[];
 }
 
-const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh }) => {
+const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
 
     // Table 1: Single row
@@ -138,7 +139,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
             const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length) : 0;
             const avgStr = avg > 0 ? avg.toFixed(3) : '—';
-            
+
             // Check each measured output against average with tolerance
             const failedCells: boolean[] = row.measuredOutputs.map((val) => {
                 const numVal = parseFloat(val);
@@ -170,7 +171,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
         return rowsWithX.map((row) => {
             const hasFailedCells = row.failedCells?.some(failed => failed) || false;
             const overallPass = pass && !hasFailedCells;
-            
+
             return {
                 ...row,
                 xMax,
@@ -180,6 +181,68 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             };
         });
     }, [table2Rows, tolerance, table1Row.time]);
+
+    // === CSV Data Injection ===
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // Table 1: kvp, sliceThickness, time
+            const kvp = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
+            const slice = csvData.find(r => r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
+            const time = csvData.find(r => r['Field Name'] === 'Table1_Time')?.['Value'];
+
+            if (kvp || slice || time) {
+                setTable1Row(prev => ({
+                    ...prev,
+                    kvp: kvp || prev.kvp,
+                    sliceThickness: slice || prev.sliceThickness,
+                    time: time || prev.time
+                }));
+            }
+
+            // Table 2
+            const t2Indices = [...new Set(csvData
+                .filter(r => r['Field Name'].startsWith('Table2_'))
+                .map(r => parseInt(r['Row Index']))
+                .filter(i => !isNaN(i) && i > 0)
+            )];
+
+            if (t2Indices.length > 0) {
+                const newRows = t2Indices.map(idx => {
+                    const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+                    const mAsApplied = rowData.find(r => r['Field Name'] === 'Table2_mAsApplied')?.['Value'] || '';
+
+                    // Support multiple measurements (Meas 1, Meas 2, ...)
+                    const outputs = Array(measHeaders.length).fill('');
+                    measHeaders.forEach((_, hIdx) => {
+                        const val = rowData.find(r => r['Field Name'] === `Table2_Result_${hIdx}`)?.['Value'];
+                        if (val) outputs[hIdx] = val;
+                    });
+
+                    return {
+                        id: Date.now().toString() + Math.random(),
+                        mAsApplied,
+                        measuredOutputs: outputs,
+                        average: '',
+                        x: '',
+                        xMax: '',
+                        xMin: '',
+                        col: '',
+                        remarks: '',
+                        failedCells: Array(measHeaders.length).fill(false),
+                    };
+                });
+                setTable2Rows(newRows);
+            }
+
+            // Tolerance
+            const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+            if (tol) setTolerance(tol);
+
+            if (!testId) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData]); // Intentionally not including measHeaders to avoid loops, assume headers stable or default
 
     // === Form Valid ===
     const isFormValid = useMemo(() => {
@@ -248,7 +311,9 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                     setIsEditing(true);
                 }
             } catch (e: any) {
-                if (e.response?.status !== 404) toast.error('Failed to load data');
+                if (e.response?.status !== 404) {
+                    // toast.error('Failed to load data');
+                }
                 setHasSaved(false);
                 setIsEditing(true);
             } finally {

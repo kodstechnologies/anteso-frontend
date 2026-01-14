@@ -2,7 +2,7 @@
  'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Edit3, Save, Loader2 } from 'lucide-react';
+import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addEffectiveFocalSpotForFixedRadioFluro,
@@ -24,14 +24,16 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: any;
 }
 
-const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [fcd, setFcd] = useState<string>('100');
 
@@ -74,10 +76,33 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
     ));
   };
 
+  const addRow = () => {
+    setRows(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        focusType: 'Large Focus',
+        statedWidth: '',
+        statedHeight: '',
+        measuredWidth: '',
+        measuredHeight: '',
+        remark: '',
+      }
+    ]);
+  };
+
+  const removeRow = (id: string) => {
+    if (rows.length <= 1) {
+      toast.error("At least one row is required");
+      return;
+    }
+    setRows(prev => prev.filter(r => r.id !== id));
+  };
+
   // Auto-calculate Pass/Fail
   const processedRows = useMemo(() => {
     const sLimit = parseFloat(smallLimit) || 0.8;
-    const mLower = parseFloat(mediumLower) || 0.8;
+    const mLower = parseFloat(mediumLower) || 0.8; // Not explicitly used in logic but kept for consistency
     const mUpper = parseFloat(mediumUpper) || 1.5;
 
     const tSmall = parseFloat(tolSmallMul) || 0.5;
@@ -98,158 +123,143 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       else if (avgStated > mUpper) multiplier = tLarge;
 
       const allowed = avgStated + avgStated * multiplier;
-      const isPass = avgMeasured <= allowed && mw > 0 && mh > 0;
+      const isPass = avgMeasured <= allowed; // Removed > 0 check for pass/fail calculation itself, but remark requires values
+
+      // Remark logic: only show if measured values are entered
+      const hasMeasured = mw > 0 && mh > 0;
 
       return {
         ...row,
-        remark: mw > 0 && mh > 0
-          ? (isPass ? 'Pass' : 'Fail')
-          : ''
+        remark: hasMeasured ? (isPass ? 'Pass' : 'Fail') : ''
       };
     });
   }, [rows, tolSmallMul, smallLimit, tolMediumMul, mediumLower, mediumUpper, tolLargeMul]);
 
-  const finalResult = processedRows.every(r => r.remark === 'Pass')
+  const finalResult = processedRows.every(r => r.remark === 'Pass' || r.remark === '') && processedRows.some(r => r.remark !== '')
     ? 'PASS'
     : processedRows.some(r => r.remark === 'Fail')
       ? 'FAIL'
       : 'PENDING';
 
-  // Load existing data
+  // Load existing test data
   useEffect(() => {
-    const load = async () => {
-      if (!serviceId) {
-        setIsLoading(false);
-        return;
-      }
+    if (!serviceId) return;
+    const loadTest = async () => {
       try {
         const res = await getEffectiveFocalSpotByServiceIdForFixedRadioFluro(serviceId);
-        const data = res?.data;
-        if (data) {
-          setTestId(data._id || null);
-          setFcd(String(data.fcd ?? '100'));
+        if (res?.data) {
+          const data = res.data;
+          setTestId(data._id);
+          if (data.fcd) setFcd(String(data.fcd));
           if (data.toleranceCriteria) {
-            setTolSmallMul(String(data.toleranceCriteria.small?.multiplier ?? '0.5'));
-            setSmallLimit(String(data.toleranceCriteria.small?.upperLimit ?? '0.8'));
-            setTolMediumMul(String(data.toleranceCriteria.medium?.multiplier ?? '0.4'));
-            setMediumLower(String(data.toleranceCriteria.medium?.lowerLimit ?? '0.8'));
-            setMediumUpper(String(data.toleranceCriteria.medium?.upperLimit ?? '1.5'));
-            setTolLargeMul(String(data.toleranceCriteria.large?.multiplier ?? '0.3'));
+            setTolSmallMul(String(data.toleranceCriteria.small?.multiplier || '0.5'));
+            setSmallLimit(String(data.toleranceCriteria.small?.upperLimit || '0.8'));
+            setTolMediumMul(String(data.toleranceCriteria.medium?.multiplier || '0.4'));
+            setMediumLower(String(data.toleranceCriteria.medium?.lowerLimit || '0.8'));
+            setMediumUpper(String(data.toleranceCriteria.medium?.upperLimit || '1.5'));
+            setTolLargeMul(String(data.toleranceCriteria.large?.multiplier || '0.3'));
           }
-          if (Array.isArray(data.focalSpots) && data.focalSpots.length > 0) {
-            // Create a map of existing rows by focusType
-            const existingRowsMap = new Map<string, FocalSpotRow>(
-              data.focalSpots.map((r: any) => [
-                r.focusType,
-                {
-                  id: r.focusType === 'Large Focus' ? 'large' : r.focusType === 'Small Focus' ? 'small' : String(Date.now()),
-                  focusType: r.focusType || 'Large Focus',
-                  statedWidth: String(r.statedWidth ?? ''),
-                  statedHeight: String(r.statedHeight ?? ''),
-                  measuredWidth: String(r.measuredWidth ?? ''),
-                  measuredHeight: String(r.measuredHeight ?? ''),
-                  remark: (r.remark as any) || '',
-                }
-              ])
-            );
-
-            // Ensure both Large Focus and Small Focus rows exist
-            const loadedRows: FocalSpotRow[] = [];
-            
-            // Add Large Focus (use existing data if available, otherwise use defaults)
-            const largeFocusRow = existingRowsMap.get('Large Focus');
-            if (largeFocusRow) {
-               loadedRows.push(largeFocusRow);
-            } else {
-              loadedRows.push({
-                id: 'large',
-                focusType: 'Large Focus',
-                statedWidth: '1.2',
-                statedHeight: '1.2',
-                measuredWidth: '',
-                measuredHeight: '',
-                remark: '',
-              });
-            }
-
-            // Add Small Focus (use existing data if available, otherwise use defaults)
-            const smallFocusRow = existingRowsMap.get('Small Focus');
-            if (smallFocusRow) {
-               loadedRows.push(smallFocusRow);
-            } else {
-              loadedRows.push({
-                id: 'small',
-                focusType: 'Small Focus',
-                statedWidth: '0.6',
-                statedHeight: '0.6',
-                measuredWidth: '',
-                measuredHeight: '',
-                remark: '',
-              });
-            }
-
-            setRows(loadedRows);
+          if (data.focalSpots && data.focalSpots.length > 0) {
+            setRows(data.focalSpots.map((spot: any) => ({
+              id: spot._id || Date.now().toString() + Math.random(),
+              focusType: spot.focusType || 'Large Focus',
+              statedWidth: String(spot.statedWidth || ''),
+              statedHeight: String(spot.statedHeight || ''),
+              measuredWidth: String(spot.measuredWidth || ''),
+              measuredHeight: String(spot.measuredHeight || ''),
+              remark: spot.remark || '',
+            })));
           }
           setIsSaved(true);
           setIsEditing(false);
-        } else {
-          setIsEditing(true);
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
-          toast.error('Failed to load Effective Focal Spot data');
+          console.error("Failed to load test data:", err);
         }
-        setIsEditing(true);
-      } finally {
-        setIsLoading(false);
       }
     };
-    load();
-  }, [serviceId, propTestId]);
+    loadTest();
+  }, [serviceId]);
+
+  // Load CSV data when initialData is provided
+  useEffect(() => {
+    if (initialData && refreshKey !== undefined) {
+      console.log('EffectiveFocalSpot: Loading CSV data', initialData);
+      if (initialData.fcd) {
+        setFcd(String(initialData.fcd));
+      }
+      if (initialData.tolerance) {
+        if (initialData.tolerance.tolSmallMul) setTolSmallMul(String(initialData.tolerance.tolSmallMul));
+        if (initialData.tolerance.smallLimit) setSmallLimit(String(initialData.tolerance.smallLimit));
+        if (initialData.tolerance.tolMediumMul) setTolMediumMul(String(initialData.tolerance.tolMediumMul));
+        if (initialData.tolerance.mediumLower) setMediumLower(String(initialData.tolerance.mediumLower));
+        if (initialData.tolerance.mediumUpper) setMediumUpper(String(initialData.tolerance.mediumUpper));
+        if (initialData.tolerance.tolLargeMul) setTolLargeMul(String(initialData.tolerance.tolLargeMul));
+      }
+      if (initialData.focalSpots && initialData.focalSpots.length > 0) {
+        setRows(initialData.focalSpots.map((spot: any, i: number) => ({
+          id: spot.id || String(i + 1),
+          focusType: spot.focusType || 'Large Focus',
+          statedWidth: String(spot.statedWidth || ''),
+          statedHeight: String(spot.statedHeight || ''),
+          measuredWidth: String(spot.measuredWidth || ''),
+          measuredHeight: String(spot.measuredHeight || ''),
+          remark: '',
+        })));
+      }
+      setIsEditing(true);
+    }
+  }, [refreshKey, initialData]);
 
   const handleSave = async () => {
     if (!serviceId) return toast.error("Service ID missing");
     setIsSaving(true);
     try {
       const payload = {
-        fcd: parseFloat(fcd) || 0,
+        fcd: parseFloat(fcd) || 100,
         toleranceCriteria: {
-          small: { multiplier: parseFloat(tolSmallMul) || 0.5, upperLimit: parseFloat(smallLimit) || 0.8 },
+          small: {
+            multiplier: parseFloat(tolSmallMul) || 0.5,
+            upperLimit: parseFloat(smallLimit) || 0.8,
+          },
           medium: {
             multiplier: parseFloat(tolMediumMul) || 0.4,
             lowerLimit: parseFloat(mediumLower) || 0.8,
             upperLimit: parseFloat(mediumUpper) || 1.5,
           },
-          large: { multiplier: parseFloat(tolLargeMul) || 0.3, lowerLimit: parseFloat(mediumUpper) || 1.5 },
+          large: {
+            multiplier: parseFloat(tolLargeMul) || 0.3,
+            lowerLimit: parseFloat(mediumUpper) || 1.5,
+          },
         },
-        focalSpots: processedRows.map(r => ({
-          focusType: r.focusType,
-          statedWidth: parseFloat(r.statedWidth) || 0,
-          statedHeight: parseFloat(r.statedHeight) || 0,
-          measuredWidth: parseFloat(r.measuredWidth) || 0,
-          measuredHeight: parseFloat(r.measuredHeight) || 0,
-          remark: r.remark,
+        focalSpots: processedRows.map(row => ({
+          focusType: row.focusType,
+          statedWidth: parseFloat(row.statedWidth) || 0,
+          statedHeight: parseFloat(row.statedHeight) || 0,
+          measuredWidth: parseFloat(row.measuredWidth) || 0,
+          measuredHeight: parseFloat(row.measuredHeight) || 0,
+          remark: row.remark,
         })),
-        finalResult,
+        finalResult: finalResult === 'PENDING' ? 'FAIL' : finalResult,
       };
 
-      let res;
+      let result;
       if (testId) {
-        res = await updateEffectiveFocalSpotForFixedRadioFluro(testId, payload);
-        toast.success('Updated successfully!');
+        result = await updateEffectiveFocalSpotForFixedRadioFluro(testId, payload);
       } else {
-        res = await addEffectiveFocalSpotForFixedRadioFluro(serviceId, payload);
-        const newId = res?.data?._id || res?.data?.data?._id;
-        if (newId) {
-          setTestId(newId);
-          onTestSaved?.(newId);
+        result = await addEffectiveFocalSpotForFixedRadioFluro(serviceId, payload);
+        if (result?.data?._id) {
+          setTestId(result.data._id);
+          onTestSaved?.(result.data._id);
         }
-        toast.success('Saved successfully!');
       }
+
+      toast.success(testId ? "Updated successfully!" : "Saved successfully!");
       setIsSaved(true);
       setIsEditing(false);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Save failed");
+      toast.error(err.response?.data?.message || "Save failed");
     } finally {
       setIsSaving(false);
     }
@@ -310,9 +320,20 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
       {/* Main Table */}
       <div className="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
-        <h3 className="px-6 py-4 text-lg font-bold bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-          Effective Focal Spot Size Measurement
-        </h3>
+        <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+          <h3 className="text-lg font-bold">
+            Effective Focal Spot Size Measurement
+          </h3>
+          {!isViewOnly && (
+            <button
+              onClick={addRow}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Row
+            </button>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead className="bg-purple-50">
@@ -320,45 +341,59 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Focus</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Stated Value (mm × mm)</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Measured Value (mm × mm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase leading-tight">
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span>+</span>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 leading-tight">
+                  <div className="space-y-3 text-sm normal-case">
+                    <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">
+                      <span className="font-bold">+</span>
                       <input type="number" step="0.1" value={tolSmallMul} onChange={(e) => setTolSmallMul(e.target.value)} disabled={isViewOnly}
-                        className="w-14 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>f for f {"<"}</span>
+                        className="w-14 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="font-medium">f for f {"<"}</span>
                       <input type="number" step="0.1" value={smallLimit} onChange={(e) => setSmallLimit(e.target.value)} disabled={isViewOnly}
-                        className="w-16 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>mm</span>
+                        className="w-16 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="text-gray-600">mm</span>
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span>+</span>
+                    <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">
+                      <span className="font-bold">+</span>
                       <input type="number" step="0.1" value={tolMediumMul} onChange={(e) => setTolMediumMul(e.target.value)} disabled={isViewOnly}
-                        className="w-14 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>f for</span>
+                        className="w-14 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="font-medium">f for</span>
                       <input type="number" step="0.1" value={mediumLower} onChange={(e) => setMediumLower(e.target.value)} disabled={isViewOnly}
-                        className="w-16 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>≤ f ≤</span>
+                        className="w-16 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="font-medium">≤ f ≤</span>
                       <input type="number" step="0.1" value={mediumUpper} onChange={(e) => setMediumUpper(e.target.value)} disabled={isViewOnly}
-                        className="w-16 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>mm</span>
+                        className="w-16 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="text-gray-600">mm</span>
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span>+</span>
+                    <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">
+                      <span className="font-bold">+</span>
                       <input type="number" step="0.1" value={tolLargeMul} onChange={(e) => setTolLargeMul(e.target.value)} disabled={isViewOnly}
-                        className="w-14 px-2 py-1 text-center border border-green-600 rounded font-bold text-green-700" />
-                      <span>f for f {">"}</span>
-                      <input type="number" step="0.1" value={mediumUpper} disabled className="w-16 px-2 py-1 text-center bg-gray-100 text-gray-500" />
-                      <span>mm</span>
+                        className="w-14 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
+                      <span className="font-medium">f for f {">"}</span>
+                      <input type="number" step="0.1" value={mediumUpper} disabled className="w-16 px-1 py-0.5 text-center bg-gray-200 text-gray-500 border border-gray-300 rounded font-bold" />
+                      <span className="text-gray-600">mm</span>
                     </div>
                   </div>
                 </th>
+                <th className="px-4 py-4 w-10"></th>
               </tr>
             </thead>
             <tbody>
               {processedRows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50 border-t">
-                  <td className="px-6 py-4 font-bold text-gray-800">{row.focusType}</td>
+                  <td className="px-6 py-4 font-bold text-gray-800">
+                    {isViewOnly ? (
+                      <span className="text-gray-900">{row.focusType}</span>
+                    ) : (
+                      <select
+                        value={row.focusType}
+                        onChange={(e) => updateRow(row.id, 'focusType', e.target.value)}
+                        className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 bg-white"
+                      >
+                        <option value="Large Focus">Large Focus</option>
+                        <option value="Small Focus">Small Focus</option>
+                      </select>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <input type="number" step="0.1" value={row.statedWidth} onChange={(e) => updateRow(row.id, 'statedWidth', e.target.value)} disabled={isViewOnly}
@@ -394,14 +429,25 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-block px-12 py-4 rounded-full text-xl font-bold min-w-36 ${row.remark === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : row.remark === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-600'
+                    <span className={`inline-block px-8 py-3 rounded-full text-lg font-bold min-w-28 ${row.remark === 'Pass'
+                      ? 'bg-green-100 text-green-800'
+                      : row.remark === 'Fail'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-600'
                       }`}>
                       {row.remark || '—'}
                     </span>
+                  </td>
+                  <td className="px-4 py-4 text-center">
+                    {!isViewOnly && rows.length > 1 && (
+                      <button
+                        onClick={() => removeRow(row.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-full transition-colors"
+                        title="Remove row"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -411,7 +457,18 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       </div>
 
       {/* Final Result */}
-   
+      {/* <div className="flex justify-start">
+        <p className="text-xl font-bold text-gray-800">
+          Overall Result:
+          <span className={`ml-3 px-6 py-2 rounded-lg ${finalResult === 'PASS' ? 'bg-green-600 text-white' :
+            finalResult === 'FAIL' ? 'bg-red-600 text-white' :
+              'bg-gray-400 text-white'
+            }`}>
+            {finalResult}
+          </span>
+        </p>
+      </div> */}
+
     </div>
   );
 };

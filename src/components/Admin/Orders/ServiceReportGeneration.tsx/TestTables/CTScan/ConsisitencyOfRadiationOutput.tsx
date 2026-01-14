@@ -20,9 +20,10 @@ interface OutputRow {
 interface Props {
   serviceId: string;
   tubeId?: string | null;
+  csvData?: any[];
 }
 
-const ConsisitencyOfRadiationOutput: React.FC<Props> = ({ serviceId, tubeId }) => {
+const ConsisitencyOfRadiationOutput: React.FC<Props> = ({ serviceId, tubeId, csvData }) => {
   // ---- Table 1: FCD -------------------------------------------------
   const [fcdRows, setFcdRows] = useState<FCDRow[]>([{ id: '1', fcd: '' }]);
 
@@ -61,6 +62,56 @@ const ConsisitencyOfRadiationOutput: React.FC<Props> = ({ serviceId, tubeId }) =
   ]);
 
   const outputColumnsCount = outputHeaders.length;
+
+  // === CSV Data Injection ===
+  React.useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Table 1: FCD (if present)
+      // Standard export doesn't clearly have FCD for this section, checking if user customized it
+      // Leaving FCD manual for now unless inferred.
+
+      // Table 2: Radiation Output
+      // Shared KV and mAs from Table 1 of standard export
+      const kv = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'] || '';
+      const mas = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'] || '';
+
+      // Find Table2_Result rows
+      const t2Indices = [...new Set(csvData
+        .filter(r => r['Field Name'].startsWith('Table2_'))
+        .map(r => parseInt(r['Row Index']))
+        .filter(i => !isNaN(i) && i > 0)
+      )];
+
+      if (t2Indices.length > 0) {
+        const newRows = t2Indices.map(idx => {
+          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+          const kvp = rowData.find(r => r['Field Name'] === 'Table1_kvp' || r['Field Name'] === 'OutputRow_kvp')?.['Value'] || kv;
+          const mAs = rowData.find(r => r['Field Name'] === 'Table1_ma' || r['Field Name'] === 'mAs' || r['Field Name'] === 'TestConditions_mAs')?.['Value'] || mas;
+
+          const outputs = Array(outputColumnsCount).fill('');
+          for (let i = 0; i < outputColumnsCount; i++) {
+            const val = rowData.find(r => r['Field Name'] === `Result_${i}`)?.['Value'] ||
+              (i === 0 ? rowData.find(r => r['Field Name'] === 'Table2_Result')?.['Value'] : '');
+            if (val) outputs[i] = val;
+          }
+
+          return {
+            id: Date.now().toString() + Math.random(),
+            kv: kvp,
+            mas: mAs,
+            outputs,
+            avg: rowData.find(r => r['Field Name'] === 'Average' || r['Field Name'] === 'Mean')?.['Value'] || '',
+            remark: rowData.find(r => r['Field Name'] === 'Remark' || r['Field Name'] === 'Result')?.['Value'] || ''
+          };
+        });
+        setOutputRows(newRows);
+      }
+
+      // Tolerance
+      const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+      if (tol) setTolerance(tol);
+    }
+  }, [csvData]);
 
   // ---- Column handling ------------------------------------------------
   const addOutputColumn = () => {

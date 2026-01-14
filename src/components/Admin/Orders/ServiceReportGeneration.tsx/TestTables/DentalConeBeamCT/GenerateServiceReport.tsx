@@ -1,10 +1,13 @@
 // GenerateReport-CTScan.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForCBCT } from "../../../../../../api";
+import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForCBCT, getAccuracyOfOperatingPotentialByServiceIdForCBCT, getAccuracyOfIrradiationTimeByServiceIdForCBCT, getLinearityOfMaLoadingByServiceIdForCBCT, getConsistencyOfRadiationOutputByServiceIdForCBCT, getRadiationLeakageLevelByServiceIdForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
+import * as XLSX from 'xlsx';
+import { createCBCTUploadableExcel } from './exportCBCTToExcel';
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -64,6 +67,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
         RadiationLeakageTestCBCT?: string;
         RadiationProtectionSurveyCBCT?: string;
     }>({});
+    const [csvData, setCsvData] = useState<any>(null);
+    const [isExporting, setIsExporting] = useState(false);
     const [formData, setFormData] = useState({
         customerName: "",
         address: "",
@@ -375,11 +380,236 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
         );
     }
 
+    const parseHorizontalData = (rows: any[]) => {
+        const result: any = {};
+        let currentSection = '';
+
+        const headerMap: any = {
+            'Applied kVp': 'appliedKvp',
+            'Measured kVp 1': 'measuredKvp1',
+            'Measured kVp 2': 'measuredKvp2',
+            'Set Time': 'setTime',
+            'Measured Time 1': 'measuredTime1',
+            'Time': 'time',
+            'Reading 1': 'reading1',
+            'Area': 'area',
+            'Front': 'front',
+            'Back': 'back',
+            'Left': 'left',
+            'Right': 'right',
+            'Location': 'location',
+            'mR/hr': 'mrPerHr',
+            'Category': 'category',
+            'Parameter': 'parameter',
+            'Specified': 'specified',
+            'Measured': 'measured',
+            'Tolerance': 'tolerance',
+            'Remarks': 'remarks',
+            'mA Station': 'maStation',
+            'mAs Station': 'maStation',
+            'Set Time (mSec)': 'setTime',
+            'Measured Time (mSec)': 'measuredTime',
+            '% Error': 'error',
+            'Measured mR 1': 'reading1',
+            'kVp': 'kvp',
+            'mAs': 'mas',
+            'Mean': 'mean',
+            'CoV': 'cov',
+            'Max Leakage': 'max'
+        };
+
+        const testMarkerToInternalName: any = {
+            'ACCURACY OF OPERATING POTENTIAL': 'accuracyOfOperatingPotential',
+            'TOTAL FILTRATION': 'accuracyOfOperatingPotential', // Merge with Accuracy test
+            'ACCURACY OF IRRADIATION TIME': 'accuracyOfIrradiationTime',
+            'LINEARITY OF mA LOADING': 'linearityOfMaLoading',
+            'LINEARITY OF mAs LOADING': 'linearityOfMasLoading',
+            'CONSISTENCY OF RADIATION OUTPUT': 'consistencyOfRadiationOutput',
+            'RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE': 'radiationLeakageLevel', // Match export
+            'RADIATION LEAKAGE LEVEL': 'radiationLeakageLevel', // Keep for backward compatibility
+            'RADIATION PROTECTION SURVEY REPORT': 'radiationProtectionSurvey', // Match export
+            'DETAILS OF RADIATION PROTECTION SURVEY': 'radiationProtectionSurvey' // Keep for backward compatibility
+        };
+
+        rows.forEach((row, index) => {
+            const firstCell = row[0]?.toString().trim();
+            if (firstCell && firstCell.startsWith('TEST: ')) {
+                const title = firstCell.replace('TEST: ', '').trim();
+                currentSection = testMarkerToInternalName[title] || '';
+                if (currentSection && !result[currentSection]) {
+                    result[currentSection] = [];
+                }
+                return;
+            }
+
+            // If we are in a section, parse rows
+            if (currentSection) {
+                // Skip header row - check if the first cell is a known header name
+                // This prevents filtering out data rows that happen to contain header values (like "Time" in settings row)
+                const firstCell = row[0]?.toString().trim();
+                if (firstCell && Object.keys(headerMap).includes(firstCell)) {
+                    return;
+                }
+
+                // Need to map row array to object based on column order?
+                // Or just pass the raw row array to the component and let it handle parsing?
+                // The existing implementation passes "csvData" which seems to be the raw rows for that section?
+
+                // Making it simple: store all rows for the section. 
+                // But wait, the child components expect `csvData` prop. 
+                // In existing CT Scan, `parseHorizontalData` converts it to an array of objects with 'Field Name' and 'Value' OR 
+                // it passes the raw structure. 
+
+                // Let's look at how we implemented `exportCBCTToExcel`. 
+                // It uses specific column headers.
+
+                // Strategy: Convert each row into an object where keys are the headers.
+                // Since we are iterating rows, we need to know the headers.
+                // Simple approach: Store these rows as "data rows" for the section.
+                // The child component will receive `csvData={csvData.accuracyOfOperatingPotential}` which will be an array of arrays (rows).
+
+                // Actually, it's better to pass objects if possible, but arrays are fine if indices are consistent.
+                // Let's pass the raw row (array of values).
+
+                if (row.length > 0) {
+                    result[currentSection].push(row);
+                }
+            }
+
+            // Handle Global Parameters (like Total Filtration, CoL) that might be outside standard tables
+            if (row[0] === 'Total Filtration') {
+                if (!result.accuracyOfOperatingPotential) result.accuracyOfOperatingPotential = [];
+                result.accuracyOfOperatingPotential.push(['TotalFiltration', ...row.slice(1)]);
+            }
+            if (row[0] === 'Coefficient of Linearity') {
+                // Determine which linearity test
+                // It usually follows the table.
+                if (currentSection === 'linearityOfMaLoading') {
+                    result.linearityOfMaLoading.push(['CoL', ...row.slice(1)]);
+                } else if (currentSection === 'linearityOfMasLoading') {
+                    result.linearityOfMasLoading.push(['CoL', ...row.slice(1)]);
+                }
+            }
+        });
+
+        return result;
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const bstr = evt.target?.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const wsname = wb.SheetNames[0];
+            const ws = wb.Sheets[wsname];
+            const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }); // Array of arrays
+
+            const parsed = parseHorizontalData(jsonData as any[]);
+            console.log("Parsed CSV Data:", parsed);
+            console.log("Radiation Leakage Level rows:", parsed.radiationLeakageLevel);
+            setCsvData(parsed);
+            toast.success("Excel data imported successfully!");
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    const handleExportSavedData = async () => {
+        if (!serviceId) return;
+        setIsExporting(true);
+        try {
+            // Fetch all data
+            const [
+                kvpRes,
+                timeRes,
+                linMaRes,
+                // linMasRes, // Assume one linearity test usually
+                consRes,
+                leakRes,
+                protRes
+            ] = await Promise.all([
+                getAccuracyOfOperatingPotentialByServiceIdForCBCT(serviceId),
+                getAccuracyOfIrradiationTimeByServiceIdForCBCT(serviceId),
+                getLinearityOfMaLoadingByServiceIdForCBCT(serviceId),
+                getConsistencyOfRadiationOutputByServiceIdForCBCT(serviceId),
+                getRadiationLeakageLevelByServiceIdForCBCT(serviceId),
+                getRadiationProtectionSurveyByServiceIdForCBCT(serviceId)
+            ]);
+
+            // Construct data object
+            const exportData = {
+                accuracyOfOperatingPotential: kvpRes?.data,
+                accuracyOfIrradiationTime: timeRes?.data,
+                linearityOfMaLoading: linMaRes?.data, // Determine if it's mA or mAs based on data
+                outputConsistency: consRes?.data,
+                radiationLeakage: leakRes?.data,
+                radiationProtectionSurvey: protRes?.data
+            };
+
+            // Check for mAs linearity if mA is empty or user selected no timer?
+            // Actually `getLinearityOfMaLoadingByServiceIdForCBCT` might handle both or we need `getLinearityOfMasLoading`.
+            // Assuming separate for now if needed.
+            // If hasTimer is false, we might want to check the mAs endpoint. 
+            // But for now let's stick to what's imported.
+
+            const wb = createCBCTUploadableExcel(exportData);
+            XLSX.writeFile(wb, `CBCT_Report_${serviceId}.xlsx`);
+            toast.success("Report data exported!");
+
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to export data");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // Helper to trigger hidden file input
+    const triggerFileInput = () => {
+        document.getElementById('excel-upload')?.click();
+    };
+
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
                 Generate Dental Cone Beam CT QA Test Report
             </h1>
+
+            {/* Excel Actions */}
+            <div className="flex flex-wrap gap-4 justify-center mb-8">
+                {/* <a
+                    href="/templates/Dental_CBCT_Test_Data_Template.csv"
+                    download
+                    className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition shadow"
+                >
+                    Download Excel Template
+                </a> */}
+
+                <div className="relative">
+                    <input
+                        type="file"
+                        id="excel-upload"
+                        accept=".xlsx, .xls ,.csv"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                    />
+                    <button
+                        onClick={triggerFileInput}
+                        className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow"
+                    >
+                        Import Excel Data
+                    </button>
+                </div>
+                <button
+                    onClick={handleExportSavedData}
+                    disabled={isExporting}
+                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    {isExporting ? 'Exporting...' : 'Export Saved Data'}
+                </button>
+            </div>
 
             {/* Customer Info */}
             <section className="mb-10 bg-gray-50 p-6 rounded-lg">
@@ -495,6 +725,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                             serviceId={serviceId}
                             testId={savedTestIds.AccuracyOfOperatingPotentialCBCT || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialCBCT: id }))}
+                            csvData={csvData?.accuracyOfOperatingPotential}
                         />
                     },
                     // { title: "Total Filteration", component: <TotalFilteration /> },
@@ -508,6 +739,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                                     serviceId={serviceId}
                                     testId={savedTestIds.AccuracyOfIrradiationTimeCBCT || null}
                                     onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfIrradiationTimeCBCT: id }))}
+                                    csvData={csvData?.accuracyOfIrradiationTime}
                                 />,
                             },
                         ]
@@ -521,6 +753,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                                 component: <LinearityOfmALoading
                                     serviceId={serviceId}
                                     testId={savedTestIds.LinearityOfMaLoadingCBCT || undefined}
+                                    csvData={csvData?.linearityOfMaLoading}
                                 />,
                             },
                         ]
@@ -532,6 +765,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                                         serviceId={serviceId}
                                         testId={savedTestIds.LinearityOfMaLoadingCBCT || null}
                                         onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMaLoadingCBCT: id }))}
+                                        csvData={csvData?.linearityOfMasLoading}
                                     />,
                                 },
                             ]
@@ -543,6 +777,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                             serviceId={serviceId}
                             testId={savedTestIds.OutputConsistencyForCBCT || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, OutputConsistencyForCBCT: id }))}
+                            csvData={csvData?.consistencyOfRadiationOutput}
                         />
                     },
                     {
@@ -550,6 +785,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                         component: <RadiationLeakageLevel
                             serviceId={serviceId}
                             testId={savedTestIds.RadiationLeakageTestCBCT || undefined}
+                            csvData={csvData?.radiationLeakageLevel}
                         />
                     },
                     // { title: "Equipment Setting", component: <EquipmentSetting /> },
@@ -558,6 +794,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                         title: "Details Of Radiation Protection",
                         component: <DetailsOfRadiationProtection
                             serviceId={serviceId}
+                            csvData={csvData?.radiationProtectionSurvey}
                         />
                     },
 

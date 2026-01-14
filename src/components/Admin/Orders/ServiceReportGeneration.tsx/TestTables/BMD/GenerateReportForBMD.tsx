@@ -4,11 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader, getReportHeaderForBMD } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForBMD, proxyFile } from "../../../../../../api";
 
 // Test-table imports
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -188,8 +189,24 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       const fieldName = (row['Field Name'] || '').trim();
       const firstColumn = (row[headers[0]] || '').trim();
       
-      if (firstColumn.startsWith('==========') && firstColumn.endsWith('==========')) {
-        currentTestName = sectionToTestName[firstColumn] || '';
+      // Check if this is a section header (in Field Name column or first column)
+      const potentialSectionHeader = fieldName || firstColumn;
+      if (potentialSectionHeader.startsWith('==========') && potentialSectionHeader.endsWith('==========')) {
+        // Try exact match first
+        currentTestName = sectionToTestName[potentialSectionHeader] || '';
+        
+        // If no exact match, try to find a matching key
+        if (!currentTestName) {
+          const matchingKey = Object.keys(sectionToTestName).find(key => 
+            potentialSectionHeader.includes(key.replace(/==========/g, '').trim()) ||
+            key.includes(potentialSectionHeader.replace(/==========/g, '').trim())
+          );
+          if (matchingKey) {
+            currentTestName = sectionToTestName[matchingKey];
+          }
+        }
+        
+        console.log(`ParseCSV: Found section header: "${potentialSectionHeader}", mapped to test: "${currentTestName}"`);
         continue;
       }
       
@@ -205,6 +222,8 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       if (currentTestName) {
         row['Test Name'] = currentTestName;
         data.push(row);
+      } else {
+        console.warn(`ParseCSV: Found field "${fieldName}" but no current test name is set`);
       }
     }
     
@@ -410,8 +429,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
                 measurements[rowIndex].measuredValues[colIndex] = value;
               } else if (fieldName === 'AverageKvp') {
                 measurements[rowIndex].averageKvp = value;
-              } else if (fieldName === 'Remarks') {
-                measurements[rowIndex].remarks = value;
+              // Remarks will be calculated automatically by the component
               }
             }
           });
@@ -472,7 +490,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
               else if (fieldName === 'xMax') table2Rows[rowIndex].xMax = value;
               else if (fieldName === 'xMin') table2Rows[rowIndex].xMin = value;
               else if (fieldName === 'col') table2Rows[rowIndex].col = value;
-              else if (fieldName === 'Remarks') table2Rows[rowIndex].remarks = value;
+              // Remarks will be calculated automatically by the component
             }
           });
 
@@ -540,9 +558,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
                 } else {
                   console.warn(`Invalid Meas index for field: ${fieldName}, value: ${value}`);
                 }
-              } else if (fieldNameLower === 'remark') {
-                outputRows[rowIndex].remark = value;
-                console.log(`Set remark for row ${rowIndex}: ${value}`);
+              // Remark will be calculated automatically by the component
               } else {
                 console.warn(`Unknown field name: ${fieldName} for value: ${value}`);
               }
@@ -557,9 +573,8 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
             const hasKv = row.kv && row.kv.trim() !== '';
             const hasMas = row.mas && row.mas.trim() !== '';
             const hasOutputs = row.outputs && row.outputs.length > 0 && row.outputs.some((o: any) => o && o.value && String(o.value).trim() !== '');
-            const hasRemark = row.remark && row.remark.trim() !== '';
-            const isValid = hasKv || hasMas || hasOutputs || hasRemark;
-            console.log(`Row validation:`, { row, hasKv, hasMas, hasOutputs, hasRemark, isValid });
+            const isValid = hasKv || hasMas || hasOutputs;
+            console.log(`Row validation:`, { row, hasKv, hasMas, hasOutputs, isValid });
             return isValid;
           });
 
@@ -768,35 +783,186 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
     }
   };
 
-  // Fetch and process CSV file from URL (passed from ServiceDetails2)
+  // Convert Excel file to CSV format (Field Name, Value, Row Index)
+  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
+    const data: any[] = [];
+    
+    // Get the first sheet
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    
+    // Convert to JSON with header row
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+    
+    if (jsonData.length === 0) return data;
+    
+    // Find header row (should contain "Field Name", "Value", "Row Index")
+    let headerRowIndex = -1;
+    let fieldNameCol = -1;
+    let valueCol = -1;
+    let rowIndexCol = -1;
+    
+    for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+      const row = jsonData[i];
+      for (let j = 0; j < row.length; j++) {
+        const cell = String(row[j] || '').trim().toLowerCase();
+        if (cell === 'field name' || cell === 'fieldname') {
+          headerRowIndex = i;
+          fieldNameCol = j;
+        } else if (cell === 'value') {
+          valueCol = j;
+        } else if (cell === 'row index' || cell === 'rowindex') {
+          rowIndexCol = j;
+        }
+      }
+      if (headerRowIndex !== -1 && valueCol !== -1) break;
+    }
+    
+    // If headers not found, assume first row is headers
+    if (headerRowIndex === -1) {
+      headerRowIndex = 0;
+      fieldNameCol = 0;
+      valueCol = 1;
+      rowIndexCol = 2;
+    }
+    
+    const sectionToTestName: { [key: string]: string } = {
+      '========== ACCURACY OF OPERATING POTENTIAL (KVP) ==========': 'Accuracy of Operating Potential',
+      '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
+      '========== TOTAL FILTRATION ==========': 'Total Filtration',
+      '========== LINEARITY OF MA LOADING ==========': 'Linearity of mA Loading',
+      '========== REPRODUCIBILITY OF RADIATION OUTPUT ==========': 'Reproducibility of Radiation Output',
+      '========== RADIATION LEAKAGE LEVEL AT 1M FROM TUBE HOUSING ==========': 'Tube Housing Leakage',
+      '========== RADIATION PROTECTION SURVEY ==========': 'Radiation Protection Survey',
+    };
+    
+    let currentTestName = '';
+    
+    // Process rows after header
+    for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+      const row = jsonData[i];
+      const fieldName = String(row[fieldNameCol] || '').trim();
+      const value = String(row[valueCol] || '').trim();
+      const rowIndex = String(row[rowIndexCol] || '').trim();
+      
+      // Check if this is a section header
+      if (fieldName.startsWith('==========') && fieldName.endsWith('==========')) {
+        currentTestName = sectionToTestName[fieldName] || '';
+        continue;
+      }
+      
+      // Skip empty rows or separator rows
+      if (!fieldName || fieldName.startsWith('---')) continue;
+      
+      // Check if field name matches known patterns
+      const isKnownField = fieldName.match(/^(Table|Tolerance|TestConditions|IrradiationTime|Measurement|Row|OutputRow|Settings|Workload|LeakageMeasurement|Location|SurveyDate|AppliedCurrent|AppliedVoltage|ExposureTime|mAStations|TotalFiltration|FiltrationTolerance)/);
+      if (!isKnownField) continue;
+      
+      if (currentTestName) {
+        data.push({
+          'Field Name': fieldName,
+          'Value': value,
+          'Row Index': rowIndex,
+          'Test Name': currentTestName,
+        });
+      }
+    }
+    
+    return data;
+  };
+
+  // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2)
   useEffect(() => {
-    const fetchAndProcessCSV = async () => {
-      if (!csvFileUrl) return;
+    const fetchAndProcessFile = async () => {
+      if (!csvFileUrl) {
+        console.log('GenerateReportForBMD: No csvFileUrl provided, skipping file fetch');
+        return;
+      }
+
+      console.log('GenerateReportForBMD: Fetching file from URL:', csvFileUrl);
 
       try {
         setCsvUploading(true);
-        const response = await fetch(csvFileUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch CSV file: ${response.statusText}`);
-        }
+        
+        // Determine file type from URL
+        const urlLower = csvFileUrl.toLowerCase();
+        const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+        
+        let csvData: any[] = [];
 
-        const text = await response.text();
-        const csvData = parseCSV(text);
+        if (isExcel) {
+          console.log('GenerateReportForBMD: Detected Excel file, fetching through proxy...');
+          toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
+          
+          // Use proxy endpoint (uses AWS SDK on backend, same as s3Fetch.js)
+          const response = await proxyFile(csvFileUrl);
+          // response.data is a Blob when using responseType: 'blob'
+          const arrayBuffer = await response.data.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          
+          console.log('GenerateReportForBMD: Excel file parsed, sheets:', workbook.SheetNames);
+          
+          // Convert Excel to CSV format
+          csvData = parseExcelToCSVFormat(workbook);
+          console.log('GenerateReportForBMD: Converted Excel to CSV format, rows:', csvData.length);
+        } else {
+          console.log('GenerateReportForBMD: Detected CSV file, fetching through proxy...');
+          toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
+          
+          // Use proxy endpoint (uses AWS SDK on backend, same as s3Fetch.js)
+          const response = await proxyFile(csvFileUrl);
+          // response.data is a Blob when using responseType: 'blob'
+          const text = await response.data.text();
+          console.log('GenerateReportForBMD: CSV file fetched, length:', text.length);
+          console.log('GenerateReportForBMD: First 500 chars of CSV:', text.substring(0, 500));
+          
+          // Parse CSV
+          csvData = parseCSV(text);
+        }
+        
+        console.log('GenerateReportForBMD: Parsed data, rows:', csvData.length);
+        console.log('GenerateReportForBMD: First few rows:', csvData.slice(0, 5));
         
         if (csvData.length > 0) {
+          console.log('GenerateReportForBMD: Processing data...');
           await processCSVData(csvData);
+          console.log('GenerateReportForBMD: Data processed successfully');
+          toast.success('File data loaded and auto-filled successfully!', { id: 'csv-loading' });
         } else {
-          console.warn('No data found in CSV file');
+          console.warn('GenerateReportForBMD: No data found in file');
+          toast.error('File is empty or could not be parsed', { id: 'csv-loading' });
         }
-      } catch (error: any) {
-        console.error('Error fetching or processing CSV file:', error);
-        toast.error(`Failed to load CSV file: ${error?.message || 'Unknown error'}`);
-      } finally {
-        setCsvUploading(false);
-      }
+          } catch (error: any) {
+            console.error('GenerateReportForBMD: Error fetching or processing file:', error);
+            
+            // Try to extract error message from response
+            let errorMessage = 'Unknown error';
+            if (error?.message) {
+              errorMessage = error.message;
+            } else if (error?.response?.data) {
+              // If error response is a JSON blob, try to parse it
+              if (error.response.data instanceof Blob && error.response.data.type === 'application/json') {
+                try {
+                  const errorText = await error.response.data.text();
+                  const errorJson = JSON.parse(errorText);
+                  errorMessage = errorJson.message || errorMessage;
+                  if (errorJson.details) {
+                    console.error('Error details:', errorJson.details);
+                    errorMessage += ` (Key: ${errorJson.details.key}, Bucket: ${errorJson.details.bucket})`;
+                  }
+                } catch (parseError) {
+                  // If parsing fails, use default message
+                }
+              }
+            }
+            
+            toast.error(`Failed to load file: ${errorMessage}`, { id: 'csv-loading' });
+          } finally {
+            setCsvUploading(false);
+          }
     };
 
-    fetchAndProcessCSV();
+    fetchAndProcessFile();
   }, [csvFileUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -815,12 +981,22 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
 
         setDetails(data);
 
+        // Calculate test due date (2 years from test date)
+        const testDateStr = firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "";
+        let testDueDateStr = "";
+        if (testDateStr) {
+          const testDate = new Date(testDateStr);
+          const dueDate = new Date(testDate);
+          dueDate.setFullYear(dueDate.getFullYear() + 2);
+          testDueDateStr = dueDate.toISOString().split("T")[0];
+        }
+
         // Pre-fill form from service details
         setFormData({
           customerName: data.hospitalName,
           address: data.hospitalAddress,
           srfNumber: data.srfNumber,
-          srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          srfDate: testDateStr,
           testReportNumber: firstTest?.qaTestReportNumber || "",
           issueDate: new Date().toISOString().split("T")[0],
           nomenclature: data.machineType,
@@ -830,8 +1006,8 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
           condition: "OK",
           testingProcedureNumber: "",
           pages: "",
-          testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-          testDueDate: "",
+          testDate: testDateStr,
+          testDueDate: testDueDateStr,
           location: data.hospitalAddress,
           temperature: "",
           humidity: "",
@@ -872,6 +1048,17 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       try {
         const res = await getReportHeaderForBMD(serviceId);
         if (res?.exists && res?.data) {
+          // Calculate test due date if testDate exists but testDueDate is missing
+          let calculatedTestDueDate = res.data.testDueDate;
+          if (res.data.testDate && !res.data.testDueDate) {
+            const testDate = new Date(res.data.testDate);
+            if (!isNaN(testDate.getTime())) {
+              const dueDate = new Date(testDate);
+              dueDate.setFullYear(dueDate.getFullYear() + 2);
+              calculatedTestDueDate = dueDate.toISOString().split("T")[0];
+            }
+          }
+          
           // Update form data from report header
           setFormData(prev => ({
             ...prev,
@@ -889,7 +1076,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
             condition: res.data.condition || prev.condition,
             testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
             testDate: res.data.testDate || prev.testDate,
-            testDueDate: res.data.testDueDate || prev.testDueDate,
+            testDueDate: calculatedTestDueDate || prev.testDueDate,
             location: res.data.location || prev.location,
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
@@ -931,6 +1118,25 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
       [testName]: testId
     }));
   };
+
+  // Auto-calculate test due date when test date changes (2 years from test date)
+  useEffect(() => {
+    if (formData.testDate) {
+      const testDate = new Date(formData.testDate);
+      if (!isNaN(testDate.getTime())) {
+        const dueDate = new Date(testDate);
+        dueDate.setFullYear(dueDate.getFullYear() + 2);
+        const dueDateStr = dueDate.toISOString().split("T")[0];
+        setFormData(prev => {
+          // Only update if it's different to avoid infinite loops
+          if (prev.testDueDate !== dueDateStr) {
+            return { ...prev, testDueDate: dueDateStr };
+          }
+          return prev;
+        });
+      }
+    }
+  }, [formData.testDate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -1239,18 +1445,35 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => 
           <div>
             <h3 className="text-lg font-semibold text-blue-900 mb-2">Upload Test Data from Excel/CSV</h3>
             <p className="text-sm text-blue-700">
-              Upload a CSV file to automatically fill in test data. Download the template below for reference.
+              {csvFileUrl ? (
+                <>
+                  <span className="font-semibold text-green-700">✓ File detected from Service Details. Auto-loading...</span>
+                  {csvUploading && <span className="ml-2 text-blue-600">(Loading data...)</span>}
+                </>
+              ) : (
+                'Upload a CSV or Excel file to automatically fill in test data. Download the template below for reference.'
+              )}
             </p>
           </div>
           <div className="flex gap-3">
-            <a
-              href="/templates/BMD_Test_Data_Template.csv"
-              download="BMD_Test_Data_Template.csv"
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
-            >
-              <CloudArrowUpIcon className="w-5 h-5" />
-              Download Template
-            </a>
+            <div className="flex gap-2">
+              <a
+                href="/templates/BMD_Test_Data_Template.csv"
+                download="BMD_Test_Data_Template.csv"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <CloudArrowUpIcon className="w-5 h-5" />
+                Download Template (With Timer)
+              </a>
+              <a
+                href="/templates/BMD_Test_Data_Template_NoTimer.csv"
+                download="BMD_Test_Data_Template_NoTimer.csv"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <CloudArrowUpIcon className="w-5 h-5" />
+                Download Template (No Timer)
+              </a>
+            </div>
             <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2">
               <CloudArrowUpIcon className="w-5 h-5" />
               {csvUploading ? 'Uploading...' : 'Upload CSV'}

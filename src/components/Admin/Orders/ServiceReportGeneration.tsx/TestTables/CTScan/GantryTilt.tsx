@@ -5,10 +5,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Trash2, Plus, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  addGantryTiltForCTScan,
-  getGantryTiltByServiceIdForCTScan,
-  getGantryTiltByTestIdForCTScan,
-  updateGantryTiltForCTScan,
+    addGantryTiltForCTScan,
+    getGantryTiltByServiceIdForCTScan,
+    getGantryTiltByTestIdForCTScan,
+    updateGantryTiltForCTScan,
 } from '../../../../../../api';
 
 interface Parameter {
@@ -29,9 +29,10 @@ interface Props {
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
     onRefresh?: () => void;
+    csvData?: any[];
 }
 
-const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh }) => {
+const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -141,6 +142,51 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
             setMeasurements(measurements.filter(m => m.id !== id));
         }
     };
+
+    // === CSV Data Injection ===
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // Parameters and Measurements
+            const allIndices = [...new Set(csvData
+                .filter(r => r['Field Name'].startsWith('Table_'))
+                .map(r => parseInt(r['Row Index']))
+                .filter(i => !isNaN(i) && i > 0)
+            )];
+
+            if (allIndices.length > 0) {
+                const newParams: Parameter[] = [];
+                const newMeas: Measurement[] = [];
+
+                allIndices.forEach(idx => {
+                    const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+                    const type = rowData.find(r => r['Field Name'] === 'Table_Type')?.['Value'];
+                    const nameActual = rowData.find(r => r['Field Name'] === 'Table_NameActual')?.['Value'] || '';
+                    const valMeasured = rowData.find(r => r['Field Name'] === 'Table_ValueMeasured')?.['Value'] || '';
+
+                    if (type === 'Parameter') {
+                        newParams.push({
+                            id: Date.now().toString() + nameActual + Math.random(),
+                            name: nameActual,
+                            value: valMeasured
+                        });
+                    } else if (type === 'Measurement') {
+                        newMeas.push({
+                            id: Date.now().toString() + nameActual + Math.random(),
+                            actual: nameActual,
+                            measured: valMeasured
+                        });
+                    }
+                });
+
+                if (newParams.length > 0) setParameters(newParams);
+                if (newMeas.length > 0) setMeasurements(newMeas);
+            }
+
+            if (!testId) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData]);
 
     // Load data from backend
     useEffect(() => {
@@ -275,13 +321,12 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                 <button
                     onClick={isViewMode ? toggleEdit : handleSave}
                     disabled={isSaving}
-                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
-                        isSaving
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : isViewMode
+                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : isViewMode
                             ? 'bg-orange-600 hover:bg-orange-700'
                             : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-                    }`}
+                        }`}
                 >
                     {isSaving ? (
                         <>
@@ -332,9 +377,8 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                                             value={param.name}
                                             onChange={(e) => updateParameter(param.id, 'name', e.target.value)}
                                             disabled={isViewMode}
-                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                                            }`}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                                                }`}
                                             placeholder="Parameter name"
                                         />
                                     </td>
@@ -344,9 +388,8 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                                             value={param.value}
                                             onChange={(e) => updateParameter(param.id, 'value', e.target.value)}
                                             disabled={isViewMode}
-                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                                            }`}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                                                }`}
                                             placeholder="Value"
                                         />
                                     </td>
@@ -404,9 +447,8 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                                             value={measurement.actual}
                                             onChange={(e) => updateMeasurement(measurement.id, 'actual', e.target.value)}
                                             disabled={isViewMode}
-                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                                            }`}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                                                }`}
                                             placeholder="e.g., 0°"
                                         />
                                     </td>
@@ -416,9 +458,8 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                                             value={measurement.measured}
                                             onChange={(e) => updateMeasurement(measurement.id, 'measured', e.target.value)}
                                             disabled={isViewMode}
-                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                                            }`}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                                                }`}
                                             placeholder="e.g., 1.5°"
                                         />
                                     </td>
@@ -429,13 +470,12 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                                     </td>
                                     <td className="p-3">
                                         <span
-                                            className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
-                                                measurement.remark === 'Pass'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : measurement.remark === 'Fail'
+                                            className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${measurement.remark === 'Pass'
+                                                ? 'bg-green-100 text-green-800'
+                                                : measurement.remark === 'Fail'
                                                     ? 'bg-red-100 text-red-800'
                                                     : 'bg-gray-100 text-gray-600'
-                                            }`}
+                                                }`}
                                         >
                                             {measurement.remark || '—'}
                                         </span>
@@ -465,9 +505,8 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                         value={toleranceSign}
                         onChange={(e) => setToleranceSign(e.target.value as '+' | '-' | '±')}
                         disabled={isViewMode}
-                        className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                        }`}
+                        className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                            }`}
                     >
                         <option value="+">+</option>
                         <option value="-">-</option>
@@ -479,9 +518,8 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                         onChange={(e) => setToleranceValue(e.target.value)}
                         disabled={isViewMode}
                         placeholder="Enter tolerance value"
-                        className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
-                        }`}
+                        className={`w-32 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-300'
+                            }`}
                     />
                     <span className="text-sm text-gray-600">°</span>
                 </div>

@@ -27,9 +27,11 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: any;
 }
 
-const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -118,6 +120,28 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
     };
     load();
   }, [serviceId, propTestId]);
+
+  // Load CSV data when initialData is provided
+  useEffect(() => {
+    if (initialData && refreshKey !== undefined) {
+      console.log('CentralBeamAlignment: Loading CSV data', initialData);
+      if (initialData.testConditions) {
+        setTechniqueRow({
+          id: '1',
+          fcd: String(initialData.testConditions.fcd || ''),
+          kv: String(initialData.testConditions.kv || ''),
+          mas: String(initialData.testConditions.mas || ''),
+        });
+      }
+      if (initialData.observedTiltX !== undefined) {
+        setObservedTilt(initialData.observedTiltX);
+      }
+      if (initialData.toleranceValue) {
+        setToleranceValue(String(initialData.toleranceValue));
+      }
+      setIsEditing(true);
+    }
+  }, [refreshKey, initialData]);
 
   // Load existing data
   useEffect(() => {
