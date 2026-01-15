@@ -111,9 +111,9 @@ const GenerateServiceReport: React.FC = () => {
   }
 
   // ---- 6. Render it with serviceId ---------------------------------------
-  // Pass csvFileUrl as prop for mammography, OBI, BMD, FixedRadioFluro, and CT Scan
-  // For Mammography, OBI, BMD, FixedRadioFluro, and CT Scan, always pass csvFileUrl (can be null)
-  if (machineType === "Mammography" || machineType === "OBI" || machineType === "KV Imaging (OBI)" || machineType === "Bone Densitometer (BMD)" || machineType === "BMD" || machineType === "Radiography and Fluoroscopy" || machineType === "Computed Tomography" || machineType === "Dental Cone Beam CT") {
+  // Pass csvFileUrl as prop for mammography, OBI, BMD, FixedRadioFluro, CT Scan, Dental Cone Beam CT, and Dental Intra
+  // For these machine types, always pass csvFileUrl (can be null)
+  if (machineType === "Mammography" || machineType === "OBI" || machineType === "KV Imaging (OBI)" || machineType === "Bone Densitometer (BMD)" || machineType === "BMD" || machineType === "Radiography and Fluoroscopy" || machineType === "Computed Tomography" || machineType === "Dental Cone Beam CT" || machineType === "Dental (Intra Oral)" || machineType === "Dental Intra") {
     return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} createdAt={createdAt} ulrNumber={ulrNumber} csvFileUrl={csvFileUrl || null} />;
   }
   return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} createdAt={createdAt} ulrNumber={ulrNumber} />;

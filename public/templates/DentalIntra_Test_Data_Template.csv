@@ -1,0 +1,41 @@
+TEST: ACCURACY OF OPERATING POTENTIAL
+Applied kVp,mA Station 1 kVp,mA Station 2 kVp
+60,60.1,60.2
+70,70.1,70.2
+
+TEST: ACCURACY OF IRRADIATION TIME
+FCD,kV,mA,Set Time (mSec),mA Station 1 Time,mA Station 2 Time
+100,70,10,100,101,99
+100,70,10,200,201,199
+
+TEST: TOTAL FILTRATION
+Applied kVp,Measured 1,Measured 2
+70,2.1,2.0
+
+TEST: LINEARITY OF TIME
+FCD,kV,mA,Time Station (sec),Measured mR 1,Measured mR 2,Measured mR 3
+100,70,10,0.1,10.1,10.2,10.1
+100,70,10,0.2,20.1,20.2,20.1
+
+TEST: LINEARITY OF mA LOADING
+FCD,kV,Time,mA Station,Measured mR 1,Measured mR 2,Measured mR 3
+100,70,0.1,10,5.1,5.2,5.1
+100,70,0.1,20,10.1,10.2,10.1
+
+TEST: LINEARITY OF mAs LOADING
+FCD,kV,mAs Range,Measured mR 1,Measured mR 2,Measured mR 3
+100,70,10,8.1,8.2,8.1
+100,70,20,16.1,16.2,16.1
+
+TEST: CONSISTENCY OF RADIATION OUTPUT
+FFD,Test kV,Test mAs,Meas 1,Meas 2,Meas 3,Meas 4,Meas 5
+100,70,10,50.1,50.2,50.1,50.3,50.2
+
+TEST: RADIATION LEAKAGE LEVEL
+Distance,kV,mA,Time,Workload,Workload Unit,Tolerance Value,Tolerance Operator,Tolerance Time,Location,Front,Back,Left,Right,Top
+100,70,10,1.0,500,mA*min/wk,1.0,<=,1,Tube Housing,0.01,0.02,0.01,0.01,0.02
+
+TEST: RADIATION PROTECTION SURVEY REPORT
+kV,mA,Time,Workload,Location,mR/hr
+70,10,1.0,500,Control Console,0.02
+70,10,1.0,500,Waiting Area,0.01
