@@ -22,6 +22,7 @@ interface LeakageRow {
   result: string;
   unit: string;
   mgy: string;
+  remark: string;
 }
 
 interface Props {
@@ -42,8 +43,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
   });
 
   const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
-    { location: 'Tube', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '' },
-    { location: 'Collimator', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '' },
+    { location: 'Tube', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '', remark: '' },
+    { location: 'Collimator', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '', remark: '' },
   ]);
 
   const [workload, setWorkload] = useState<string>('');

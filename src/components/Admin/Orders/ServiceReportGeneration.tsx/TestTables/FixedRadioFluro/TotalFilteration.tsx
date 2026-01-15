@@ -210,7 +210,7 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
                     let avg = m.averageKvp || "";
                     if (!avg && measuredVals.length > 0) {
                         const nums = measuredVals.filter((v: string) => v !== "" && !isNaN(Number(v))).map(Number);
-                        avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+                        avg = nums.length > 0 ? (nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(2) : "";
                     }
                     
                     // Calculate average status

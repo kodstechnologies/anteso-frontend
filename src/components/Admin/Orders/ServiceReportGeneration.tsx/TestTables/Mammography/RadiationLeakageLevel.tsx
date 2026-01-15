@@ -39,7 +39,7 @@ interface Props {
     workload?: string;
     leakageMeasurements?: Array<{ location: string; left: string; right: string; front: string; back: string; top: string; unit: string }>;
     toleranceValue?: string;
-    toleranceOperator?: string;
+    toleranceOperator?: any;
     toleranceTime?: string;
   };
 }

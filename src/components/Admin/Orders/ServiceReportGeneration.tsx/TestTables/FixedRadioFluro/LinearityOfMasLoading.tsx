@@ -137,7 +137,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       // Calculate average mGy and round to 4 decimal places
       const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
       const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
-      
+
       const ma = parseFloat(row.ma);
       // Calculate X = mGy / mA and round to 4 decimal places
       const x = avg !== null && ma > 0 ? parseFloat((avg / ma).toFixed(4)) : null;
@@ -152,17 +152,17 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     // Round xMax and xMin to 4 decimal places
     const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
     const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
-    
+
     // Calculate COL: |xMax - xMin| / (xMax + xMin) and round to 4 decimal places
     const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : null;
     const col = hasData && colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
-    
+
     // Determine pass/fail based on tolerance operator and CoL value
     let pass = false;
     let remarks = '—';
-    
+
     if (hasData && col !== '—' && colNum !== null) {
       const colVal = parseFloat(col);
       switch (toleranceOperator) {
@@ -279,7 +279,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           remarks: r.remarks || '',
         })));
       }
-      setIsSaved(false);
+      setHasSaved(false);
     }
   }, [refreshKey, initialData]);
 

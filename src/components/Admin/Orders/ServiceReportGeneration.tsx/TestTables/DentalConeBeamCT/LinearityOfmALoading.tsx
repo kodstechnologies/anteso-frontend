@@ -248,7 +248,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         .filter(r => r['Field Name'] && (r['Field Name'] === 'mA_Station' || r['Field Name'].startsWith('Measured_')))
         .map(r => parseInt(r['Row Index']))
         .filter(i => !isNaN(i) && i >= 0)
-      )];
+      )].sort((a, b) => a - b); // Sort to ensure rows are in correct order
 
       if (rowIndices.length > 0) {
         const newTable2Rows = rowIndices.map(idx => {
