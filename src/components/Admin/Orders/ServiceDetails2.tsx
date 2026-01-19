@@ -2240,7 +2240,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 </div>
                                                                 <div className="grid grid-cols-2 gap-4">
                                                                     <div className="p-3 bg-white rounded-md border">
-                                                                        <label className="text-xs text-gray-500">Report URL Number</label>
+                                                                        <label className="text-xs text-gray-500">Report ULR Number</label>
                                                                         <p className="font-medium">{workType.backendFields?.reportURLNumber || 'N/A'}</p>
                                                                     </div>
                                                                     <div className="p-3 bg-white rounded-md border">
