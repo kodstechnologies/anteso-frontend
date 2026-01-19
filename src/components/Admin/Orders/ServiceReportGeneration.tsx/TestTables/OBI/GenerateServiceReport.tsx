@@ -50,7 +50,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serviceId, csvFileUrl }) => {
+const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, qaTestDate }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -110,11 +110,11 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
         "Name, Address & Contact detail is provided by Customer.",
     ];
     const [notes, setNotes] = useState<string[]>(defaultNotes);
-    
+
     const [csvUploading, setCsvUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [refreshKey, setRefreshKey] = useState(0);
-    
+
     // Store CSV data to pass to components (without auto-saving)
     const [csvDataForComponents, setCsvDataForComponents] = useState<{
         accuracyOfOperatingPotential?: any;
@@ -292,12 +292,12 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
     const parseCSV = (text: string): any[] => {
         const lines = text.split('\n').filter(line => line.trim());
         if (lines.length === 0) return [];
-        
+
         const parseLine = (line: string): string[] => {
             const result: string[] = [];
             let current = '';
             let inQuotes = false;
-            
+
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
                 if (char === '"') {
@@ -312,13 +312,13 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
             result.push(current.trim());
             return result;
         };
-        
+
         const headers = parseLine(lines[0]);
         const data: any[] = [];
-        
+
         // Check if Row Index column exists
         const hasRowIndexColumn = headers.some(h => h.toLowerCase().includes('row index'));
-        
+
         const sectionToTestName: { [key: string]: string } = {
             '========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========': 'Accuracy of Operating Potential',
             '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
@@ -334,11 +334,11 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
             '========== LOW CONTRAST SENSITIVITY ==========': 'Low Contrast Sensitivity',
             '========== ALIGNMENT TEST ==========': 'Alignment Test',
         };
-        
+
         let currentTestName = '';
         let rowIndexCounter: { [testName: string]: number } = {};
         let lastRowStartField: { [testName: string]: string } = {};
-        
+
         // Fields that indicate a new row
         const rowStartFields = [
             'Measurement_AppliedKvp',
@@ -352,18 +352,18 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
             'Location_Location',
             'TestRow_TestName'
         ];
-        
+
         for (let i = 1; i < lines.length; i++) {
             const values = parseLine(lines[i]);
             const row: any = {};
             headers.forEach((header, index) => {
                 row[header] = values[index] || '';
             });
-            
+
             const fieldName = (row['Field Name'] || '').trim();
             const firstColumn = (row[headers[0]] || '').trim();
             const value = (row['Value'] || '').trim();
-            
+
             if (firstColumn.startsWith('==========') && firstColumn.endsWith('==========')) {
                 currentTestName = sectionToTestName[firstColumn] || '';
                 if (currentTestName) {
@@ -372,21 +372,21 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                 }
                 continue;
             }
-            
+
             if (firstColumn.startsWith('---') || firstColumn === '' || !fieldName) {
                 continue;
             }
-            
+
             const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|Table1|Table2|ObservedTilt|FCD|FFD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow)/);
             if (!isKnownField) {
                 continue;
             }
-            
+
             if (currentTestName) {
                 // Auto-generate row index if Row Index column doesn't exist
                 if (!hasRowIndexColumn) {
                     const isRowStart = rowStartFields.some(startField => fieldName === startField);
-                    
+
                     if (isRowStart) {
                         const lastValue = lastRowStartField[currentTestName];
                         if (lastValue === undefined || lastValue === '') {
@@ -401,18 +401,18 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                             rowIndexCounter[currentTestName] = 0;
                         }
                     }
-                    
+
                     row['Row Index'] = String(rowIndexCounter[currentTestName] || 0);
                 } else {
                     // Use existing Row Index from CSV
                     row['Row Index'] = row['Row Index'] || '0';
                 }
-                
+
                 row['Test Name'] = currentTestName;
                 data.push(row);
             }
         }
-        
+
         return data;
     };
 
@@ -440,16 +440,16 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
 
             csvData.forEach(row => {
                 let testName = (row['Test Name'] || '').trim();
-                const normalizedName = Object.keys(testNameMap).find(key => 
-                    key.toLowerCase() === testName.toLowerCase() || 
+                const normalizedName = Object.keys(testNameMap).find(key =>
+                    key.toLowerCase() === testName.toLowerCase() ||
                     testName.toLowerCase().includes(key.toLowerCase()) ||
                     key.toLowerCase().includes(testName.toLowerCase())
                 );
-                
+
                 if (normalizedName) {
                     testName = normalizedName;
                 }
-                
+
                 if (testName) {
                     if (!groupedData[testName]) {
                         groupedData[testName] = [];
@@ -478,7 +478,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                         if (field === 'Tolerance_Value') tolerance.value = value;
                         if (field === 'TotalFiltration_Measured') totalFiltration.measured = value;
                         if (field === 'TotalFiltration_Required') totalFiltration.required = value;
-                        
+
                         if (field === 'MeasHeader') {
                             if (!mAStations.includes(value)) {
                                 mAStations.push(value);
@@ -1083,7 +1083,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
 
                     // Filter out empty rows
                     const filteredRows = testRows.filter(row => row.testName || row.value);
-                    
+
                     const csvData = {
                         testRows: filteredRows.length > 0 ? filteredRows : [],
                     };
@@ -1103,10 +1103,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
 
             const processedTests = Object.keys(groupedData).filter(key => groupedData[key].length > 0);
             console.log(`Processed ${processedTests.length} test(s) from CSV`);
-            
+
             if (processedTests.length > 0) {
                 toast.success(`CSV data loaded successfully! ${processedTests.length} test(s) filled. Please review and save manually.`);
-                
+
                 // Force refresh of all test components to load the CSV data
                 // Use setTimeout to ensure all state updates are batched first
                 setTimeout(() => {
@@ -1128,21 +1128,21 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
     // Convert Excel file to CSV format (Field Name, Value) - Row Index auto-generated
     const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
         const data: any[] = [];
-        
+
         // Get the first sheet
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        
+
         // Convert to JSON with header row
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
-        
+
         if (jsonData.length === 0) return data;
-        
+
         // Find header row (should contain "Field Name", "Value")
         let headerRowIndex = -1;
         let fieldNameCol = -1;
         let valueCol = -1;
-        
+
         for (let i = 0; i < Math.min(10, jsonData.length); i++) {
             const row = jsonData[i];
             for (let j = 0; j < row.length; j++) {
@@ -1156,14 +1156,14 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
             }
             if (headerRowIndex !== -1 && valueCol !== -1) break;
         }
-        
+
         // If headers not found, assume first row is headers
         if (headerRowIndex === -1) {
             headerRowIndex = 0;
             fieldNameCol = 0;
             valueCol = 1;
         }
-        
+
         const sectionToTestName: { [key: string]: string } = {
             '========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========': 'Accuracy of Operating Potential',
             '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
@@ -1179,17 +1179,17 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
             '========== LOW CONTRAST SENSITIVITY ==========': 'Low Contrast Sensitivity',
             '========== ALIGNMENT TEST ==========': 'Alignment Test',
         };
-        
+
         let currentTestName = '';
         let rowIndexCounter: { [testName: string]: number } = {}; // Track row index per test
         let lastRowStartField: { [testName: string]: string } = {}; // Track last row-starting field value per test
-        
+
         // Process rows after header
         for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
             const row = jsonData[i];
             const fieldName = String(row[fieldNameCol] || '').trim();
             const value = String(row[valueCol] || '').trim();
-            
+
             // Check if this is a section header
             if (fieldName.startsWith('==========') && fieldName.endsWith('==========')) {
                 currentTestName = sectionToTestName[fieldName] || '';
@@ -1200,14 +1200,14 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                 }
                 continue;
             }
-            
+
             // Skip empty rows or separator rows
             if (!fieldName || fieldName.startsWith('---')) continue;
-            
+
             // Check if field name matches known patterns
             const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|Table1|Table2|ObservedTilt|FCD|FFD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow)/);
             if (!isKnownField) continue;
-            
+
             if (currentTestName) {
                 // Fields that indicate a new row (first field in a row)
                 const rowStartFields = [
@@ -1222,10 +1222,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                     'Location_Location',
                     'TestRow_TestName'
                 ];
-                
+
                 // Check if this is a row-starting field
                 const isRowStart = rowStartFields.some(startField => fieldName === startField);
-                
+
                 if (isRowStart) {
                     // Check if this is a new row (value changed from last time)
                     const lastValue = lastRowStartField[currentTestName];
@@ -1246,10 +1246,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                         rowIndexCounter[currentTestName] = 0;
                     }
                 }
-                
+
                 // Use the current row index for this test
                 const rowIndex = String(rowIndexCounter[currentTestName] || 0);
-                
+
                 data.push({
                     'Field Name': fieldName,
                     'Value': value,
@@ -1258,7 +1258,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                 });
             }
         }
-        
+
         return data;
     };
 
@@ -1282,7 +1282,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                     const arrayBuffer = e.target?.result as ArrayBuffer;
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                     console.log('Excel file parsed, sheets:', workbook.SheetNames);
-                    
+
                     // Convert Excel to CSV format
                     const csvData = parseExcelToCSVFormat(workbook);
                     console.log('Converted Excel to CSV format, rows:', csvData.length);
@@ -1319,7 +1319,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
             };
             reader.readAsText(file);
         }
-        
+
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -1333,46 +1333,46 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
             try {
                 console.log('Fetching file from URL:', csvFileUrl);
                 setCsvUploading(true);
-                
+
                 // Determine file type from URL
                 const urlLower = csvFileUrl.toLowerCase();
                 const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
-                
+
                 let csvData: any[] = [];
 
                 if (isExcel) {
                     console.log('Detected Excel file, fetching through proxy...');
                     toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-                    
+
                     // Use proxy endpoint
                     const response = await proxyFile(csvFileUrl);
                     // response.data is a Blob when using responseType: 'blob'
                     const arrayBuffer = await response.data.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                    
+
                     console.log('Excel file parsed, sheets:', workbook.SheetNames);
-                    
+
                     // Convert Excel to CSV format
                     csvData = parseExcelToCSVFormat(workbook);
                     console.log('Converted Excel to CSV format, rows:', csvData.length);
                 } else {
                     console.log('Detected CSV file, fetching through proxy...');
                     toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-                    
+
                     // Use proxy endpoint
                     const response = await proxyFile(csvFileUrl);
                     // response.data is a Blob when using responseType: 'blob'
                     const text = await response.data.text();
                     console.log('CSV file fetched, length:', text.length);
                     console.log('First 500 chars of CSV:', text.substring(0, 500));
-                    
+
                     // Parse CSV
                     csvData = parseCSV(text);
                 }
-                
+
                 console.log('Parsed data, rows:', csvData.length);
                 console.log('First few rows:', csvData.slice(0, 5));
-                
+
                 if (csvData.length > 0) {
                     console.log('Processing data...');
                     await processCSVData(csvData);
@@ -1384,7 +1384,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                 }
             } catch (error: any) {
                 console.error('Error fetching or processing file:', error);
-                
+
                 // Try to extract error message from response
                 let errorMessage = 'Unknown error';
                 if (error?.message) {
@@ -1401,7 +1401,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serv
                         }
                     }
                 }
-                
+
                 toast.error(`Failed to load file: ${errorMessage}`, { id: 'csv-loading' });
             } finally {
                 setCsvUploading(false);

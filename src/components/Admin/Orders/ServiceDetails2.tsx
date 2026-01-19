@@ -1546,6 +1546,37 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setSelectedStatuses((prev) => ({ ...prev, [workTypeId]: newStatus }))
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
             saveToLocalStorage(STORAGE_KEYS.selectedStatuses, { ...selectedStatuses, [workTypeId]: newStatus })
+
+            // Auto-navigate to report for specific machines if status is complete
+            if (newStatus === "complete" && ["Mammography", "OBI", "KV Imaging (OBI)", "Bone Densitometer (BMD)", "BMD", "Radiography and Fluoroscopy", "Computed Tomography", "Dental Cone Beam CT", "Dental Intra", "Dental (Intra Oral)", "Dental (Hand-held)", "Dental Hand-held"].includes(parentService.machineType)) {
+                const cleanId = parentService.id.replace(/-0$/, "");
+                const firstQATest = parentService.workTypes.find((wt: any) => wt.name === "QA Raw");
+                const createdAt = workType.qaTestSubmittedAt || firstQATest?.backendFields?.createdAt || null;
+                const ulrNumber = reportNumbers[parentService.id]?.qatest?.reportULRNumber || firstQATest?.backendFields?.reportURLNumber || null;
+
+                const csvFileUrl = response?.data?.linkedReport?.report ||
+                    firstQATest?.backendFields?.uploadFile ||
+                    firstQATest?.backendFields?.fileUrl ||
+                    reportNumbers[parentService.id]?.qatest?.reportUrl ||
+                    null;
+
+                console.log('ServiceDetails2: Auto-navigating to report:', {
+                    machineType: parentService.machineType,
+                    serviceId: cleanId,
+                    csvFileUrl
+                });
+
+                navigate("/admin/orders/generic-service-table", {
+                    state: {
+                        serviceId: cleanId,
+                        machineType: parentService.machineType,
+                        qaTestDate: workType.qaTestSubmittedAt || null,
+                        createdAt: createdAt,
+                        ulrNumber: ulrNumber,
+                        csvFileUrl: csvFileUrl,
+                    },
+                });
+            }
             // console.log("[v0] Status update successful:", { newStatus, workTypeName })
         } catch (error: any) {
             console.error("[v0] Status update failed:", error)
@@ -2530,10 +2561,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                                                                                         // Get file URL for mammography/OBI/BMD/FixedRadioFluro/CT Scan CSV/Excel file
                                                                                         let csvFileUrl = null;
-                                                                                        if (service.machineType === "Mammography" || service.machineType === "OBI" || service.machineType === "KV Imaging (OBI)" || service.machineType === "Bone Densitometer (BMD)" || service.machineType === "BMD" || service.machineType === "Radiography and Fluoroscopy" || service.machineType === "Computed Tomography" || service.machineType === "Dental Cone Beam CT" || service.machineType === "Dental Intra") {
+                                                                                        if (service.machineType === "Mammography" || service.machineType === "OBI" || service.machineType === "KV Imaging (OBI)" || service.machineType === "Bone Densitometer (BMD)" || service.machineType === "BMD" || service.machineType === "Radiography and Fluoroscopy" || service.machineType === "Computed Tomography" || service.machineType === "Dental Cone Beam CT" || service.machineType === "Dental Intra" || service.machineType === "Dental (Intra Oral)") {
                                                                                             // First try to get uploadFile from QA Raw workType's backendFields (this is the file uploaded by engineer)
                                                                                             // Then fallback to reportUrl from reportNumbers (this is the file uploaded by office staff)
                                                                                             csvFileUrl = firstQATest?.backendFields?.uploadFile ||
+                                                                                                firstQATest?.backendFields?.fileUrl ||
                                                                                                 reportNumbers[service.id]?.qatest?.reportUrl ||
                                                                                                 null;
 

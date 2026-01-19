@@ -8,10 +8,10 @@ import toast from "react-hot-toast";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { 
-    getDetails, 
-    getTools, 
-    saveReportHeader, 
+import {
+    getDetails,
+    getTools,
+    saveReportHeader,
     getReportHeaderForMammography,
     addAccuracyOfOperatingPotentialForMammography,
     addLinearityOfMasLLoadingForMammography,
@@ -60,7 +60,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: string | null }> = ({ serviceId, csvFileUrl }) => {
+const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, qaTestDate }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -96,19 +96,19 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         category: "",
     });
     const defaultNotes = [
-      "The Test Report relates only to the above item only.",
-      "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
-      "Corrections/erasing invalidates the Test Report.",
-      "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
-      "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
-      "Results reported are valid at the time of and under the stated conditions of measurements.",
-      "Name, Address & Contact detail is provided by Customer.",
+        "The Test Report relates only to the above item only.",
+        "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
+        "Corrections/erasing invalidates the Test Report.",
+        "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats.",
+        "Any error in this Report should be brought to our knowledge within 30 days from the date of this report.",
+        "Results reported are valid at the time of and under the stated conditions of measurements.",
+        "Name, Address & Contact detail is provided by Customer.",
     ];
     const [notes, setNotes] = useState<string[]>(defaultNotes);
     const [csvUploading, setCsvUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [refreshKey, setRefreshKey] = useState(0);
-    
+
     // Store CSV data to pass to components (without auto-saving)
     const [csvDataForComponents, setCsvDataForComponents] = useState<{
         accuracyOfOperatingPotential?: any;
@@ -126,13 +126,13 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
     const parseCSV = (text: string): any[] => {
         const lines = text.split('\n').filter(line => line.trim());
         if (lines.length === 0) return [];
-        
+
         // Parse header
         const parseLine = (line: string): string[] => {
             const result: string[] = [];
             let current = '';
             let inQuotes = false;
-            
+
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
                 if (char === '"') {
@@ -147,10 +147,10 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             result.push(current.trim());
             return result;
         };
-        
+
         const headers = parseLine(lines[0]);
         const data: any[] = [];
-        
+
         // Map section headers to test names
         const sectionToTestName: { [key: string]: string } = {
             '========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========': 'Accuracy of Operating Potential',
@@ -163,31 +163,31 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             '========== IMAGING PERFORMANCE EVALUATION (PHANTOM) ==========': 'Imaging Phantom',
             '========== RADIATION PROTECTION SURVEY ==========': 'Radiation Protection Survey',
         };
-        
+
         let currentTestName = '';
-        
+
         for (let i = 1; i < lines.length; i++) {
             const values = parseLine(lines[i]);
             const row: any = {};
             headers.forEach((header, index) => {
                 row[header] = values[index] || '';
             });
-            
+
             const fieldName = (row['Field Name'] || '').trim();
             const firstColumn = (row[headers[0]] || '').trim();
-            
+
             // Check if this is a section header
             if (firstColumn.startsWith('==========') && firstColumn.endsWith('==========')) {
                 currentTestName = sectionToTestName[firstColumn] || '';
                 console.log('Found section header:', firstColumn, '-> Test Name:', currentTestName);
                 continue;
             }
-            
+
             // Skip table headers, empty rows, and column header rows
             if (firstColumn.startsWith('---') || firstColumn === '' || !fieldName) {
                 continue;
             }
-            
+
             // Skip column header rows (rows where field name doesn't match known field prefixes)
             // These are the actual table column headers like "Time (ms)", "Slice Thickness (mm)", etc.
             const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TargetWindow|AddedFilter|Result|OutputRow|Settings|Workload|LeakageMeasurement|PhantomRow|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|TestConditions|IrradiationTime|MeasHeader|Table1|Table2)/);
@@ -195,7 +195,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 // This is likely a column header row, skip it
                 continue;
             }
-            
+
             // Add test name to row if we have a current test
             if (currentTestName) {
                 row['Test Name'] = currentTestName;
@@ -205,7 +205,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 continue;
             }
         }
-        
+
         return data;
     };
 
@@ -231,16 +231,16 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             csvData.forEach(row => {
                 let testName = (row['Test Name'] || '').trim();
                 // Try to match with known test names (case-insensitive, handle variations)
-                const normalizedName = Object.keys(testNameMap).find(key => 
-                    key.toLowerCase() === testName.toLowerCase() || 
+                const normalizedName = Object.keys(testNameMap).find(key =>
+                    key.toLowerCase() === testName.toLowerCase() ||
                     testName.toLowerCase().includes(key.toLowerCase()) ||
                     key.toLowerCase().includes(testName.toLowerCase())
                 );
-                
+
                 if (normalizedName) {
                     testName = normalizedName;
                 }
-                
+
                 if (testName) {
                     if (!groupedData[testName]) {
                         groupedData[testName] = [];
@@ -258,59 +258,59 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             // Process Accuracy of Operating Potential
             if (groupedData['Accuracy of Operating Potential'] && groupedData['Accuracy of Operating Potential'].length > 0) {
                 try {
-                const data = groupedData['Accuracy of Operating Potential'];
-                console.log('Processing Accuracy of Operating Potential, rows:', data.length);
-                const table1Row = { time: '', sliceThickness: '' };
-                const table2Rows: any[] = [];
-                let tolerance = { value: '1.5', type: 'absolute' as const, sign: 'both' as const };
+                    const data = groupedData['Accuracy of Operating Potential'];
+                    console.log('Processing Accuracy of Operating Potential, rows:', data.length);
+                    const table1Row = { time: '', sliceThickness: '' };
+                    const table2Rows: any[] = [];
+                    let tolerance = { value: '1.5', type: 'absolute' as const, sign: 'both' as const };
 
-                data.forEach((row, idx) => {
-                    const field = (row['Field Name'] || '').trim();
-                    const value = (row['Value'] || '').trim();
-                    const rowIndexStr = (row['Row Index'] || '').trim();
-                    const rowIndex = rowIndexStr === '' ? 0 : parseInt(rowIndexStr) || 0;
-                    
-                    if (idx < 5) {
-                        console.log(`  Row ${idx}: field="${field}", value="${value}", rowIndex="${rowIndexStr}" -> ${rowIndex}`);
-                    }
+                    data.forEach((row, idx) => {
+                        const field = (row['Field Name'] || '').trim();
+                        const value = (row['Value'] || '').trim();
+                        const rowIndexStr = (row['Row Index'] || '').trim();
+                        const rowIndex = rowIndexStr === '' ? 0 : parseInt(rowIndexStr) || 0;
 
-                    if (field === 'Table1_Time') table1Row.time = value;
-                    if (field === 'Table1_SliceThickness') table1Row.sliceThickness = value;
-                    
-                    if (field.startsWith('Table2_')) {
-                        while (table2Rows.length <= rowIndex) {
-                            table2Rows.push({ setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' });
+                        if (idx < 5) {
+                            console.log(`  Row ${idx}: field="${field}", value="${value}", rowIndex="${rowIndexStr}" -> ${rowIndex}`);
                         }
-                        const fieldName = field.replace('Table2_', '');
-                        if (fieldName === 'SetKV') table2Rows[rowIndex].setKV = value;
-                        if (fieldName === 'ma10') table2Rows[rowIndex].ma10 = value;
-                        if (fieldName === 'ma100') table2Rows[rowIndex].ma100 = value;
-                        if (fieldName === 'ma200') table2Rows[rowIndex].ma200 = value;
-                    }
 
-                    if (field === 'Tolerance_Value') tolerance.value = value;
-                    if (field === 'Tolerance_Type') tolerance.type = value as any;
-                    if (field === 'Tolerance_Sign') tolerance.sign = value as any;
-                });
+                        if (field === 'Table1_Time') table1Row.time = value;
+                        if (field === 'Table1_SliceThickness') table1Row.sliceThickness = value;
 
-                console.log('Accuracy of Operating Potential - table1Row:', table1Row);
-                console.log('Accuracy of Operating Potential - table2Rows:', table2Rows);
-                console.log('Accuracy of Operating Potential - tolerance:', tolerance);
-                
-                if (table1Row.time || table1Row.sliceThickness || table2Rows.length > 0) {
-                    // Store data for component instead of saving
-                    setCsvDataForComponents(prev => ({
-                        ...prev,
-                        accuracyOfOperatingPotential: {
-                            table1: [table1Row],
-                            table2: table2Rows,
-                            tolerance: tolerance,
+                        if (field.startsWith('Table2_')) {
+                            while (table2Rows.length <= rowIndex) {
+                                table2Rows.push({ setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' });
+                            }
+                            const fieldName = field.replace('Table2_', '');
+                            if (fieldName === 'SetKV') table2Rows[rowIndex].setKV = value;
+                            if (fieldName === 'ma10') table2Rows[rowIndex].ma10 = value;
+                            if (fieldName === 'ma100') table2Rows[rowIndex].ma100 = value;
+                            if (fieldName === 'ma200') table2Rows[rowIndex].ma200 = value;
                         }
-                    }));
-                    console.log('✓ Accuracy of Operating Potential data prepared for form');
-                } else {
-                    console.log('⚠ Accuracy of Operating Potential: No data found');
-                }
+
+                        if (field === 'Tolerance_Value') tolerance.value = value;
+                        if (field === 'Tolerance_Type') tolerance.type = value as any;
+                        if (field === 'Tolerance_Sign') tolerance.sign = value as any;
+                    });
+
+                    console.log('Accuracy of Operating Potential - table1Row:', table1Row);
+                    console.log('Accuracy of Operating Potential - table2Rows:', table2Rows);
+                    console.log('Accuracy of Operating Potential - tolerance:', tolerance);
+
+                    if (table1Row.time || table1Row.sliceThickness || table2Rows.length > 0) {
+                        // Store data for component instead of saving
+                        setCsvDataForComponents(prev => ({
+                            ...prev,
+                            accuracyOfOperatingPotential: {
+                                table1: [table1Row],
+                                table2: table2Rows,
+                                tolerance: tolerance,
+                            }
+                        }));
+                        console.log('✓ Accuracy of Operating Potential data prepared for form');
+                    } else {
+                        console.log('⚠ Accuracy of Operating Potential: No data found');
+                    }
                 } catch (error: any) {
                     console.error('Error processing Accuracy of Operating Potential:', error);
                     toast.error(`Failed to process Accuracy of Operating Potential: ${error?.message || 'Unknown error'}`);
@@ -336,7 +336,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         if (field === 'TestConditions_FCD') testConditions.fcd = value;
                         if (field === 'TestConditions_kV') testConditions.kv = value;
                         if (field === 'TestConditions_ma') testConditions.ma = value;
-                        
+
                         if (field === 'Tolerance_Operator') toleranceOperator = value;
                         if (field === 'Tolerance_Value') toleranceValue = value;
 
@@ -381,59 +381,59 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             // Process Linearity of mAs Loading
             if (groupedData['Linearity of mAs Loading'] && groupedData['Linearity of mAs Loading'].length > 0) {
                 try {
-                const data = groupedData['Linearity of mAs Loading'];
-                const exposureCondition = { fcd: '100', kv: '80' };
-                const measurementHeaders: string[] = [];
-                const measurements: any[] = [];
-                let tolerance = '0.1';
+                    const data = groupedData['Linearity of mAs Loading'];
+                    const exposureCondition = { fcd: '100', kv: '80' };
+                    const measurementHeaders: string[] = [];
+                    const measurements: any[] = [];
+                    let tolerance = '0.1';
 
-                data.forEach(row => {
-                    const field = row['Field Name'] || '';
-                    const value = row['Value'] || '';
-                    const rowIndex = parseInt(row['Row Index'] || '0');
+                    data.forEach(row => {
+                        const field = row['Field Name'] || '';
+                        const value = row['Value'] || '';
+                        const rowIndex = parseInt(row['Row Index'] || '0');
 
-                    if (field === 'ExposureCondition_FCD') exposureCondition.fcd = value;
-                    if (field === 'ExposureCondition_kV') exposureCondition.kv = value;
-                    if (field === 'MeasurementHeader') {
-                        if (!measurementHeaders.includes(value)) {
-                            measurementHeaders.push(value);
-                        }
-                    }
-                    if (field === 'Tolerance') tolerance = value;
-
-                    if (field.startsWith('Measurement_')) {
-                        while (measurements.length <= rowIndex) {
-                            measurements.push({ mAsRange: '', measuredOutputs: [] });
-                        }
-                        const fieldName = field.replace('Measurement_', '');
-                        if (fieldName === 'mAsRange') {
-                            measurements[rowIndex].mAsRange = value;
-                        } else if (fieldName.startsWith('Meas')) {
-                            const colIndex = parseInt(fieldName.replace('Meas', '')) - 1;
-                            while (measurements[rowIndex].measuredOutputs.length <= colIndex) {
-                                measurements[rowIndex].measuredOutputs.push(null);
+                        if (field === 'ExposureCondition_FCD') exposureCondition.fcd = value;
+                        if (field === 'ExposureCondition_kV') exposureCondition.kv = value;
+                        if (field === 'MeasurementHeader') {
+                            if (!measurementHeaders.includes(value)) {
+                                measurementHeaders.push(value);
                             }
-                            // Store as string to match component's expected format
-                            measurements[rowIndex].measuredOutputs[colIndex] = value.trim() === '' ? null : value;
                         }
-                    }
-                });
+                        if (field === 'Tolerance') tolerance = value;
 
-                if (measurements.length > 0) {
-                    // Store data for component instead of saving
-                    setCsvDataForComponents(prev => ({
-                        ...prev,
-                        linearityOfMasLoading: {
-                            exposureCondition,
-                            measurementHeaders: measurementHeaders.length > 0 ? measurementHeaders : ['Meas 1', 'Meas 2', 'Meas 3'],
-                            measurements: measurements,
-                            tolerance,
+                        if (field.startsWith('Measurement_')) {
+                            while (measurements.length <= rowIndex) {
+                                measurements.push({ mAsRange: '', measuredOutputs: [] });
+                            }
+                            const fieldName = field.replace('Measurement_', '');
+                            if (fieldName === 'mAsRange') {
+                                measurements[rowIndex].mAsRange = value;
+                            } else if (fieldName.startsWith('Meas')) {
+                                const colIndex = parseInt(fieldName.replace('Meas', '')) - 1;
+                                while (measurements[rowIndex].measuredOutputs.length <= colIndex) {
+                                    measurements[rowIndex].measuredOutputs.push(null);
+                                }
+                                // Store as string to match component's expected format
+                                measurements[rowIndex].measuredOutputs[colIndex] = value.trim() === '' ? null : value;
+                            }
                         }
-                    }));
-                    console.log('✓ Linearity of mAs Loading data prepared for form');
-                } else {
-                    console.log('⚠ Linearity of mAs Loading: No data found');
-                }
+                    });
+
+                    if (measurements.length > 0) {
+                        // Store data for component instead of saving
+                        setCsvDataForComponents(prev => ({
+                            ...prev,
+                            linearityOfMasLoading: {
+                                exposureCondition,
+                                measurementHeaders: measurementHeaders.length > 0 ? measurementHeaders : ['Meas 1', 'Meas 2', 'Meas 3'],
+                                measurements: measurements,
+                                tolerance,
+                            }
+                        }));
+                        console.log('✓ Linearity of mAs Loading data prepared for form');
+                    } else {
+                        console.log('⚠ Linearity of mAs Loading: No data found');
+                    }
                 } catch (error: any) {
                     console.error('Error processing Linearity of mAs Loading:', error);
                     toast.error(`Failed to process Linearity of mAs Loading: ${error?.message || 'Unknown error'}`);
@@ -511,69 +511,69 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             // Process Total Filtration & Aluminium
             if (groupedData['Total Filtration & Aluminium'] && groupedData['Total Filtration & Aluminium'].length > 0) {
                 try {
-                const data = groupedData['Total Filtration & Aluminium'];
-                console.log('Processing Total Filtration & Aluminium, rows:', data.length);
-                let targetWindow = '';
-                let addedFilterThickness = '';
-                const tableRows: any[] = [];
-                let resultHVT28kVp = '';
+                    const data = groupedData['Total Filtration & Aluminium'];
+                    console.log('Processing Total Filtration & Aluminium, rows:', data.length);
+                    let targetWindow = '';
+                    let addedFilterThickness = '';
+                    const tableRows: any[] = [];
+                    let resultHVT28kVp = '';
 
-                data.forEach((row, idx) => {
-                    const field = (row['Field Name'] || '').trim();
-                    const value = (row['Value'] || '').trim();
-                    const rowIndexStr = (row['Row Index'] || '').trim();
-                    const rowIndex = rowIndexStr === '' ? 0 : parseInt(rowIndexStr) || 0;
-                    
-                    if (idx < 5) {
-                        console.log(`  Row ${idx}: field="${field}", value="${value}", rowIndex="${rowIndexStr}" -> ${rowIndex}`);
-                    }
+                    data.forEach((row, idx) => {
+                        const field = (row['Field Name'] || '').trim();
+                        const value = (row['Value'] || '').trim();
+                        const rowIndexStr = (row['Row Index'] || '').trim();
+                        const rowIndex = rowIndexStr === '' ? 0 : parseInt(rowIndexStr) || 0;
 
-                    if (field === 'TargetWindow') targetWindow = value;
-                    if (field === 'AddedFilterThickness') addedFilterThickness = value;
-                    if (field === 'ResultHVT28kVp') resultHVT28kVp = value;
-
-                    if (field.startsWith('Table_')) {
-                        while (tableRows.length <= rowIndex) {
-                            tableRows.push({
-                                kvp: null,
-                                mAs: null,
-                                alEquivalence: null,
-                                hvt: null,
-                                remarks: '',
-                                recommendedValue: { minValue: null, maxValue: null, kvp: null },
-                            });
+                        if (idx < 5) {
+                            console.log(`  Row ${idx}: field="${field}", value="${value}", rowIndex="${rowIndexStr}" -> ${rowIndex}`);
                         }
-                        const fieldName = field.replace('Table_', '');
-                        if (fieldName === 'kVp') tableRows[rowIndex].kvp = parseFloat(value) || null;
-                        if (fieldName === 'mAs') tableRows[rowIndex].mAs = parseFloat(value) || null;
-                        if (fieldName === 'AlEquivalence') tableRows[rowIndex].alEquivalence = parseFloat(value) || null;
-                        if (fieldName === 'HVT') tableRows[rowIndex].hvt = parseFloat(value) || null;
-                        if (fieldName === 'RecommendedValue_Min') tableRows[rowIndex].recommendedValue.minValue = parseFloat(value) || null;
-                        if (fieldName === 'RecommendedValue_Max') tableRows[rowIndex].recommendedValue.maxValue = parseFloat(value) || null;
-                        if (fieldName === 'RecommendedValue_kVp') tableRows[rowIndex].recommendedValue.kvp = parseFloat(value) || null;
-                    }
-                });
 
-                console.log('Total Filtration & Aluminium - targetWindow:', targetWindow);
-                console.log('Total Filtration & Aluminium - addedFilterThickness:', addedFilterThickness);
-                console.log('Total Filtration & Aluminium - tableRows:', tableRows);
-                console.log('Total Filtration & Aluminium - resultHVT28kVp:', resultHVT28kVp);
-                
-                if (tableRows.length > 0 || targetWindow || addedFilterThickness || resultHVT28kVp) {
-                    // Store data for component instead of saving
-                    setCsvDataForComponents(prev => ({
-                        ...prev,
-                        totalFiltration: {
-                            targetWindow: targetWindow || 'Molybdenum target, Beryllium window or Rh/Rh or W/Al',
-                            addedFilterThickness: addedFilterThickness || null,
-                            table: tableRows,
-                            resultHVT28kVp: resultHVT28kVp,
+                        if (field === 'TargetWindow') targetWindow = value;
+                        if (field === 'AddedFilterThickness') addedFilterThickness = value;
+                        if (field === 'ResultHVT28kVp') resultHVT28kVp = value;
+
+                        if (field.startsWith('Table_')) {
+                            while (tableRows.length <= rowIndex) {
+                                tableRows.push({
+                                    kvp: null,
+                                    mAs: null,
+                                    alEquivalence: null,
+                                    hvt: null,
+                                    remarks: '',
+                                    recommendedValue: { minValue: null, maxValue: null, kvp: null },
+                                });
+                            }
+                            const fieldName = field.replace('Table_', '');
+                            if (fieldName === 'kVp') tableRows[rowIndex].kvp = parseFloat(value) || null;
+                            if (fieldName === 'mAs') tableRows[rowIndex].mAs = parseFloat(value) || null;
+                            if (fieldName === 'AlEquivalence') tableRows[rowIndex].alEquivalence = parseFloat(value) || null;
+                            if (fieldName === 'HVT') tableRows[rowIndex].hvt = parseFloat(value) || null;
+                            if (fieldName === 'RecommendedValue_Min') tableRows[rowIndex].recommendedValue.minValue = parseFloat(value) || null;
+                            if (fieldName === 'RecommendedValue_Max') tableRows[rowIndex].recommendedValue.maxValue = parseFloat(value) || null;
+                            if (fieldName === 'RecommendedValue_kVp') tableRows[rowIndex].recommendedValue.kvp = parseFloat(value) || null;
                         }
-                    }));
-                    console.log('✓ Total Filtration & Aluminium data prepared for form');
-                } else {
-                    console.log('⚠ Total Filtration & Aluminium: No data found');
-                }
+                    });
+
+                    console.log('Total Filtration & Aluminium - targetWindow:', targetWindow);
+                    console.log('Total Filtration & Aluminium - addedFilterThickness:', addedFilterThickness);
+                    console.log('Total Filtration & Aluminium - tableRows:', tableRows);
+                    console.log('Total Filtration & Aluminium - resultHVT28kVp:', resultHVT28kVp);
+
+                    if (tableRows.length > 0 || targetWindow || addedFilterThickness || resultHVT28kVp) {
+                        // Store data for component instead of saving
+                        setCsvDataForComponents(prev => ({
+                            ...prev,
+                            totalFiltration: {
+                                targetWindow: targetWindow || 'Molybdenum target, Beryllium window or Rh/Rh or W/Al',
+                                addedFilterThickness: addedFilterThickness || null,
+                                table: tableRows,
+                                resultHVT28kVp: resultHVT28kVp,
+                            }
+                        }));
+                        console.log('✓ Total Filtration & Aluminium data prepared for form');
+                    } else {
+                        console.log('⚠ Total Filtration & Aluminium: No data found');
+                    }
                 } catch (error: any) {
                     console.error('Error processing Total Filtration & Aluminium:', error);
                     toast.error(`Failed to process Total Filtration & Aluminium: ${error?.message || 'Unknown error'}`);
@@ -583,47 +583,47 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             // Process Reproducibility of Output
             if (groupedData['Reproducibility of Output'] && groupedData['Reproducibility of Output'].length > 0) {
                 try {
-                const data = groupedData['Reproducibility of Output'];
-                const outputRows: any[] = [];
-                let tolerance = '5.0';
+                    const data = groupedData['Reproducibility of Output'];
+                    const outputRows: any[] = [];
+                    let tolerance = '5.0';
 
-                data.forEach(row => {
-                    const field = row['Field Name'] || '';
-                    const value = row['Value'] || '';
-                    const rowIndex = parseInt(row['Row Index'] || '0');
+                    data.forEach(row => {
+                        const field = row['Field Name'] || '';
+                        const value = row['Value'] || '';
+                        const rowIndex = parseInt(row['Row Index'] || '0');
 
-                    if (field === 'Tolerance') tolerance = value;
+                        if (field === 'Tolerance') tolerance = value;
 
-                    if (field.startsWith('OutputRow_')) {
-                        while (outputRows.length <= rowIndex) {
-                            outputRows.push({ kv: '', mas: '', outputs: [], avg: '', cov: '', remark: '' });
-                        }
-                        const fieldName = field.replace('OutputRow_', '');
-                        if (fieldName === 'kV') outputRows[rowIndex].kv = value;
-                        if (fieldName === 'mAs') outputRows[rowIndex].mas = value;
-                        if (fieldName.startsWith('Meas')) {
-                            const colIndex = parseInt(fieldName.replace('Meas', '')) - 1;
-                            while (outputRows[rowIndex].outputs.length <= colIndex) {
-                                outputRows[rowIndex].outputs.push('');
+                        if (field.startsWith('OutputRow_')) {
+                            while (outputRows.length <= rowIndex) {
+                                outputRows.push({ kv: '', mas: '', outputs: [], avg: '', cov: '', remark: '' });
                             }
-                            outputRows[rowIndex].outputs[colIndex] = value;
+                            const fieldName = field.replace('OutputRow_', '');
+                            if (fieldName === 'kV') outputRows[rowIndex].kv = value;
+                            if (fieldName === 'mAs') outputRows[rowIndex].mas = value;
+                            if (fieldName.startsWith('Meas')) {
+                                const colIndex = parseInt(fieldName.replace('Meas', '')) - 1;
+                                while (outputRows[rowIndex].outputs.length <= colIndex) {
+                                    outputRows[rowIndex].outputs.push('');
+                                }
+                                outputRows[rowIndex].outputs[colIndex] = value;
+                            }
                         }
-                    }
-                });
+                    });
 
-                if (outputRows.length > 0) {
-                    // Store data for component instead of saving
-                    setCsvDataForComponents(prev => ({
-                        ...prev,
-                        reproducibilityOfOutput: {
-                            outputRows: outputRows,
-                            tolerance,
-                        }
-                    }));
-                    console.log('✓ Reproducibility of Output data prepared for form');
-                } else {
-                    console.log('⚠ Reproducibility of Output: No data found');
-                }
+                    if (outputRows.length > 0) {
+                        // Store data for component instead of saving
+                        setCsvDataForComponents(prev => ({
+                            ...prev,
+                            reproducibilityOfOutput: {
+                                outputRows: outputRows,
+                                tolerance,
+                            }
+                        }));
+                        console.log('✓ Reproducibility of Output data prepared for form');
+                    } else {
+                        console.log('⚠ Reproducibility of Output: No data found');
+                    }
                 } catch (error: any) {
                     console.error('Error processing Reproducibility of Output:', error);
                     toast.error(`Failed to process Reproducibility of Output: ${error?.message || 'Unknown error'}`);
@@ -633,70 +633,70 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             // Process Radiation Leakage Level
             if (groupedData['Radiation Leakage Level'] && groupedData['Radiation Leakage Level'].length > 0) {
                 try {
-                const data = groupedData['Radiation Leakage Level'];
-                const settings = { fcd: '100', kv: '120', ma: '21', time: '2.0' };
-                const leakageMeasurements: any[] = [];
-                let workload = '';
-                let toleranceValue = '';
-                let toleranceOperator: 'less than or equal to' | 'greater than or equal to' | '=' = 'less than or equal to';
-                let toleranceTime = '1';
+                    const data = groupedData['Radiation Leakage Level'];
+                    const settings = { fcd: '100', kv: '120', ma: '21', time: '2.0' };
+                    const leakageMeasurements: any[] = [];
+                    let workload = '';
+                    let toleranceValue = '';
+                    let toleranceOperator: 'less than or equal to' | 'greater than or equal to' | '=' = 'less than or equal to';
+                    let toleranceTime = '1';
 
-                data.forEach(row => {
-                    const field = row['Field Name'] || '';
-                    const value = row['Value'] || '';
-                    const rowIndex = parseInt(row['Row Index'] || '0');
+                    data.forEach(row => {
+                        const field = row['Field Name'] || '';
+                        const value = row['Value'] || '';
+                        const rowIndex = parseInt(row['Row Index'] || '0');
 
-                    if (field === 'Settings_FCD') settings.fcd = value;
-                    if (field === 'Settings_kV') settings.kv = value;
-                    if (field === 'Settings_ma') settings.ma = value;
-                    if (field === 'Settings_time') settings.time = value;
-                    if (field === 'Workload') workload = value;
-                    if (field === 'ToleranceValue') toleranceValue = value;
-                    if (field === 'ToleranceOperator') toleranceOperator = value as any;
-                    if (field === 'ToleranceTime') toleranceTime = value;
+                        if (field === 'Settings_FCD') settings.fcd = value;
+                        if (field === 'Settings_kV') settings.kv = value;
+                        if (field === 'Settings_ma') settings.ma = value;
+                        if (field === 'Settings_time') settings.time = value;
+                        if (field === 'Workload') workload = value;
+                        if (field === 'ToleranceValue') toleranceValue = value;
+                        if (field === 'ToleranceOperator') toleranceOperator = value as any;
+                        if (field === 'ToleranceTime') toleranceTime = value;
 
-                    if (field.startsWith('LeakageMeasurement_')) {
-                        while (leakageMeasurements.length <= rowIndex) {
-                            leakageMeasurements.push({
-                                location: '',
-                                left: 0,
-                                right: 0,
-                                front: 0,
-                                back: 0,
-                                top: 0,
-                                max: '',
-                                result: '',
-                                unit: 'mR/h',
-                                mgy: '',
-                            });
+                        if (field.startsWith('LeakageMeasurement_')) {
+                            while (leakageMeasurements.length <= rowIndex) {
+                                leakageMeasurements.push({
+                                    location: '',
+                                    left: 0,
+                                    right: 0,
+                                    front: 0,
+                                    back: 0,
+                                    top: 0,
+                                    max: '',
+                                    result: '',
+                                    unit: 'mR/h',
+                                    mgy: '',
+                                });
+                            }
+                            const fieldName = field.replace('LeakageMeasurement_', '');
+                            if (fieldName === 'Location') leakageMeasurements[rowIndex].location = value;
+                            if (fieldName === 'Left') leakageMeasurements[rowIndex].left = parseFloat(value) || 0;
+                            if (fieldName === 'Right') leakageMeasurements[rowIndex].right = parseFloat(value) || 0;
+                            if (fieldName === 'Front') leakageMeasurements[rowIndex].front = parseFloat(value) || 0;
+                            if (fieldName === 'Back') leakageMeasurements[rowIndex].back = parseFloat(value) || 0;
+                            if (fieldName === 'Top') leakageMeasurements[rowIndex].top = parseFloat(value) || 0;
                         }
-                        const fieldName = field.replace('LeakageMeasurement_', '');
-                        if (fieldName === 'Location') leakageMeasurements[rowIndex].location = value;
-                        if (fieldName === 'Left') leakageMeasurements[rowIndex].left = parseFloat(value) || 0;
-                        if (fieldName === 'Right') leakageMeasurements[rowIndex].right = parseFloat(value) || 0;
-                        if (fieldName === 'Front') leakageMeasurements[rowIndex].front = parseFloat(value) || 0;
-                        if (fieldName === 'Back') leakageMeasurements[rowIndex].back = parseFloat(value) || 0;
-                        if (fieldName === 'Top') leakageMeasurements[rowIndex].top = parseFloat(value) || 0;
+                    });
+
+                    if (leakageMeasurements.length > 0) {
+                        // Store data for component instead of saving
+                        setCsvDataForComponents(prev => ({
+                            ...prev,
+                            radiationLeakageLevel: {
+                                settings,
+                                workload,
+                                leakageMeasurements: leakageMeasurements,
+                                toleranceValue,
+                                toleranceOperator,
+                                toleranceTime,
+                            }
+                        }));
+                        console.log('✓ Radiation Leakage Level data prepared for form');
+                    } else {
+                        console.log('⚠ Radiation Leakage Level: No data found');
                     }
-                });
-
-                if (leakageMeasurements.length > 0) {
-                    // Store data for component instead of saving
-                    setCsvDataForComponents(prev => ({
-                        ...prev,
-                        radiationLeakageLevel: {
-                            settings,
-                            workload,
-                            leakageMeasurements: leakageMeasurements,
-                            toleranceValue,
-                            toleranceOperator,
-                            toleranceTime,
-                        }
-                    }));
-                    console.log('✓ Radiation Leakage Level data prepared for form');
-                } else {
-                    console.log('⚠ Radiation Leakage Level: No data found');
-                }
                 } catch (error: any) {
                     console.error('Error processing Radiation Leakage Level:', error);
                     toast.error(`Failed to process Radiation Leakage Level: ${error?.message || 'Unknown error'}`);
@@ -706,43 +706,43 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             // Process Imaging Phantom
             if (groupedData['Imaging Phantom'] && groupedData['Imaging Phantom'].length > 0) {
                 try {
-                const data = groupedData['Imaging Phantom'];
-                const rows: any[] = [];
+                    const data = groupedData['Imaging Phantom'];
+                    const rows: any[] = [];
 
-                data.forEach(row => {
-                    const field = row['Field Name'] || '';
-                    const value = row['Value'] || '';
-                    const rowIndex = parseInt(row['Row Index'] || '0');
+                    data.forEach(row => {
+                        const field = row['Field Name'] || '';
+                        const value = row['Value'] || '';
+                        const rowIndex = parseInt(row['Row Index'] || '0');
 
-                    if (field.startsWith('PhantomRow_')) {
-                        while (rows.length <= rowIndex) {
-                            rows.push({
-                                name: '',
-                                visibleCount: 0,
-                                tolerance: { operator: '>=' as const, value: 0 },
-                                remark: '',
-                            });
+                        if (field.startsWith('PhantomRow_')) {
+                            while (rows.length <= rowIndex) {
+                                rows.push({
+                                    name: '',
+                                    visibleCount: 0,
+                                    tolerance: { operator: '>=' as const, value: 0 },
+                                    remark: '',
+                                });
+                            }
+                            const fieldName = field.replace('PhantomRow_', '');
+                            if (fieldName === 'Name') rows[rowIndex].name = value;
+                            if (fieldName === 'VisibleCount') rows[rowIndex].visibleCount = parseInt(value) || 0;
+                            if (fieldName === 'ToleranceOperator') rows[rowIndex].tolerance.operator = value as any;
+                            if (fieldName === 'ToleranceValue') rows[rowIndex].tolerance.value = parseFloat(value) || 0;
                         }
-                        const fieldName = field.replace('PhantomRow_', '');
-                        if (fieldName === 'Name') rows[rowIndex].name = value;
-                        if (fieldName === 'VisibleCount') rows[rowIndex].visibleCount = parseInt(value) || 0;
-                        if (fieldName === 'ToleranceOperator') rows[rowIndex].tolerance.operator = value as any;
-                        if (fieldName === 'ToleranceValue') rows[rowIndex].tolerance.value = parseFloat(value) || 0;
+                    });
+
+                    if (rows.length > 0) {
+                        // Store data for component instead of saving
+                        setCsvDataForComponents(prev => ({
+                            ...prev,
+                            imagingPhantom: {
+                                rows: rows,
+                            }
+                        }));
+                        console.log('✓ Imaging Phantom data prepared for form');
+                    } else {
+                        console.log('⚠ Imaging Phantom: No data found');
                     }
-                });
-
-                if (rows.length > 0) {
-                    // Store data for component instead of saving
-                    setCsvDataForComponents(prev => ({
-                        ...prev,
-                        imagingPhantom: {
-                            rows: rows,
-                        }
-                    }));
-                    console.log('✓ Imaging Phantom data prepared for form');
-                } else {
-                    console.log('⚠ Imaging Phantom: No data found');
-                }
                 } catch (error: any) {
                     console.error('Error processing Imaging Phantom:', error);
                     toast.error(`Failed to process Imaging Phantom: ${error?.message || 'Unknown error'}`);
@@ -752,62 +752,62 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             // Process Radiation Protection Survey
             if (groupedData['Radiation Protection Survey'] && groupedData['Radiation Protection Survey'].length > 0) {
                 try {
-                const data = groupedData['Radiation Protection Survey'];
-                let surveyDate = '';
-                let hasValidCalibration = '';
-                let appliedCurrent = '100';
-                let appliedVoltage = '28';
-                let exposureTime = '0.5';
-                let workload = '5000';
-                const locations: any[] = [];
+                    const data = groupedData['Radiation Protection Survey'];
+                    let surveyDate = '';
+                    let hasValidCalibration = '';
+                    let appliedCurrent = '100';
+                    let appliedVoltage = '28';
+                    let exposureTime = '0.5';
+                    let workload = '5000';
+                    const locations: any[] = [];
 
-                data.forEach(row => {
-                    const field = row['Field Name'] || '';
-                    const value = row['Value'] || '';
-                    const rowIndex = parseInt(row['Row Index'] || '0');
+                    data.forEach(row => {
+                        const field = row['Field Name'] || '';
+                        const value = row['Value'] || '';
+                        const rowIndex = parseInt(row['Row Index'] || '0');
 
-                    if (field === 'SurveyDate') surveyDate = value;
-                    if (field === 'HasValidCalibration') hasValidCalibration = value;
-                    if (field === 'AppliedCurrent') appliedCurrent = value;
-                    if (field === 'AppliedVoltage') appliedVoltage = value;
-                    if (field === 'ExposureTime') exposureTime = value;
-                    if (field === 'Workload') workload = value;
+                        if (field === 'SurveyDate') surveyDate = value;
+                        if (field === 'HasValidCalibration') hasValidCalibration = value;
+                        if (field === 'AppliedCurrent') appliedCurrent = value;
+                        if (field === 'AppliedVoltage') appliedVoltage = value;
+                        if (field === 'ExposureTime') exposureTime = value;
+                        if (field === 'Workload') workload = value;
 
-                    if (field.startsWith('Location_')) {
-                        while (locations.length <= rowIndex) {
-                            locations.push({
-                                location: '',
-                                mRPerHr: '',
-                                mRPerWeek: '',
-                                result: '',
-                                category: 'worker' as const,
-                            });
+                        if (field.startsWith('Location_')) {
+                            while (locations.length <= rowIndex) {
+                                locations.push({
+                                    location: '',
+                                    mRPerHr: '',
+                                    mRPerWeek: '',
+                                    result: '',
+                                    category: 'worker' as const,
+                                });
+                            }
+                            const fieldName = field.replace('Location_', '');
+                            if (fieldName === 'Location') locations[rowIndex].location = value;
+                            if (fieldName === 'mRPerHr') locations[rowIndex].mRPerHr = value;
+                            if (fieldName === 'Category') locations[rowIndex].category = value as any;
                         }
-                        const fieldName = field.replace('Location_', '');
-                        if (fieldName === 'Location') locations[rowIndex].location = value;
-                        if (fieldName === 'mRPerHr') locations[rowIndex].mRPerHr = value;
-                        if (fieldName === 'Category') locations[rowIndex].category = value as any;
+                    });
+
+                    if (locations.length > 0 || surveyDate || hasValidCalibration) {
+                        // Store data for component instead of saving
+                        setCsvDataForComponents(prev => ({
+                            ...prev,
+                            radiationProtectionSurvey: {
+                                surveyDate,
+                                hasValidCalibration,
+                                appliedCurrent,
+                                appliedVoltage,
+                                exposureTime,
+                                workload,
+                                locations: locations,
+                            }
+                        }));
+                        console.log('✓ Radiation Protection Survey data prepared for form');
+                    } else {
+                        console.log('⚠ Radiation Protection Survey: No data found');
                     }
-                });
-
-                if (locations.length > 0 || surveyDate || hasValidCalibration) {
-                    // Store data for component instead of saving
-                    setCsvDataForComponents(prev => ({
-                        ...prev,
-                        radiationProtectionSurvey: {
-                            surveyDate,
-                            hasValidCalibration,
-                            appliedCurrent,
-                            appliedVoltage,
-                            exposureTime,
-                            workload,
-                            locations: locations,
-                        }
-                    }));
-                    console.log('✓ Radiation Protection Survey data prepared for form');
-                } else {
-                    console.log('⚠ Radiation Protection Survey: No data found');
-                }
                 } catch (error: any) {
                     console.error('Error processing Radiation Protection Survey:', error);
                     toast.error(`Failed to process Radiation Protection Survey: ${error?.message || 'Unknown error'}`);
@@ -816,10 +816,10 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
 
             const processedTests = Object.keys(groupedData).filter(key => groupedData[key].length > 0);
             console.log(`Processed ${processedTests.length} test(s) from CSV`);
-            
+
             if (processedTests.length > 0) {
                 toast.success(`CSV data loaded successfully! ${processedTests.length} test(s) filled. Please review and save manually.`);
-                
+
                 // Force refresh of all test components to load the CSV data
                 const newKey = Date.now();
                 console.log('Setting refreshKey to:', newKey);
@@ -889,7 +889,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             toast.error('Failed to read CSV file');
         };
         reader.readAsText(file);
-        
+
         // Reset file input
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
@@ -905,7 +905,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             try {
                 console.log('Fetching CSV file from URL:', csvFileUrl);
                 setCsvUploading(true);
-                
+
                 // Fetch the file from the URL
                 const response = await fetch(csvFileUrl);
                 if (!response.ok) {
@@ -914,12 +914,12 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
 
                 const text = await response.text();
                 console.log('CSV file content fetched, length:', text.length);
-                
+
                 // Parse and process the CSV
                 const csvData = parseCSV(text);
                 console.log('Parsed CSV data:', csvData);
                 console.log('Number of rows parsed:', csvData.length);
-                
+
                 if (csvData.length > 0) {
                     console.log('First row sample:', csvData[0]);
                     await processCSVData(csvData);
@@ -1265,7 +1265,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
 
                 {[
                     { title: "Accuracy of Operating Potential (kVp)", component: <AccuracyOfOperatingPotential key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.accuracyOfOperatingPotential} /> },
-                    
+
                     // Timer Test — Only if user said YES
                     ...(hasTimer === true
                         ? [

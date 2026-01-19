@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { DataTable, type DataTableSortStatus } from 'mantine-datatable';
 import IconPlus from '../../components/Icon/IconPlus';
@@ -11,7 +11,7 @@ import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../store/themeConfigSlice';
 import { getAllOrders, deleteOrder } from '../../api';
 import { showMessage } from '../../components/common/ShowMessage';
-import ConfirmModal from '../../components/common/ConfirmModal'; // ✅ Import Confirm Modal
+import ConfirmModal from '../../components/common/ConfirmModal';
 
 type Order = {
     _id: string;
@@ -40,12 +40,11 @@ const Orders = () => {
     const [records, setRecords] = useState<Order[]>([]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [sortStatus, setSortStatus] = useState({
-        columnAccessor: 'orderId',
-        direction: 'asc' as 'asc',
+    const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
+        columnAccessor: 'srfNumber',
+        direction: 'asc',
     });
-    const [selectedRecords, setSelectedRecords] = useState([]);
-
+    const [selectedRecords, setSelectedRecords] = useState<Order[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
@@ -57,7 +56,7 @@ const Orders = () => {
         const fetchOrders = async () => {
             try {
                 const data = await getAllOrders();
-                console.log("🚀 ~ fetchOrders ~ data:", data)
+                console.log("🚀 ~ fetchOrders ~ data:", data);
                 setRecords(data.orders || []);
             } catch (error) {
                 console.error('Failed to fetch orders:', error);
@@ -100,12 +99,57 @@ const Orders = () => {
         setOrderToDelete(null);
     };
 
-    // ✅ Search Filter
-    const filteredRecords = records.filter((item) =>
-        Object.values(item).some((val) =>
-            String(val).toLowerCase().includes(search.toLowerCase())
-        )
-    );
+    // ✅ Filter records based on search
+    const filteredRecords = useMemo(() => {
+        if (!search.trim()) return records;
+
+        return records.filter((item) => {
+            return Object.values(item).some((val) => {
+                if (val === null || val === undefined) return false;
+                return String(val).toLowerCase().includes(search.toLowerCase());
+            });
+        });
+    }, [records, search]);
+
+    // ✅ Sort filtered records
+    const sortedRecords = useMemo(() => {
+        const data = [...filteredRecords];
+
+        if (sortStatus.columnAccessor) {
+            data.sort((a, b) => {
+                let aValue = a[sortStatus.columnAccessor];
+                let bValue = b[sortStatus.columnAccessor];
+
+                // Handle null/undefined values
+                if (aValue === null || aValue === undefined) aValue = '';
+                if (bValue === null || bValue === undefined) bValue = '';
+
+                // Convert to string for comparison
+                const aString = String(aValue).toLowerCase();
+                const bString = String(bValue).toLowerCase();
+
+                if (sortStatus.direction === 'asc') {
+                    return aString.localeCompare(bString);
+                } else {
+                    return bString.localeCompare(aString);
+                }
+            });
+        }
+
+        return data;
+    }, [filteredRecords, sortStatus]);
+
+    // ✅ Get paginated records
+    const paginatedRecords = useMemo(() => {
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        return sortedRecords.slice(start, end);
+    }, [sortedRecords, page, pageSize]);
+
+    // ✅ Reset to first page when search changes or pageSize changes
+    useEffect(() => {
+        setPage(1);
+    }, [search, pageSize]);
 
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
@@ -140,71 +184,9 @@ const Orders = () => {
 
                     {/* Data Table */}
                     <div className="bg-white/60 dark:bg-white/10 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl shadow-md overflow-auto">
-                        {/* <DataTable
-                            className="whitespace-nowrap table-hover"
-                            records={filteredRecords}
-                            columns={[
-                                {
-                                    accessor: 'srfNumber',
-                                    title: 'SRF NO',
-                                    sortable: true,
-                                    render: (record) => (
-                                        <h4 className="font-semibold">{record.srfNumber}</h4>
-                                    ),
-                                },
-                                { accessor: 'procNoOrPoNo', title: 'PROC NO/PO NO', sortable: true },
-                                { accessor: 'leadOwner', title: 'Lead Owner', sortable: true },
-                                { accessor: 'createdOn', title: 'PROC Expiry Date', sortable: true },
-                                { accessor: 'partyCode', title: 'Party Code/ Sys ID', sortable: true },
-                                { accessor: 'hospitalName', title: 'Institute Name', sortable: true },
-                                { accessor: 'fullAddress', title: 'Address', sortable: true },
-                                { accessor: 'city', title: 'City', sortable: true },
-                                { accessor: 'district', title: 'District', sortable: true },
-                                { accessor: 'state', title: 'State', sortable: true },
-                                { accessor: 'pinCode', title: 'Pin', sortable: true },
-                                { accessor: 'branchName', title: 'Branch Name', sortable: true },
-                                { accessor: 'emailAddress', title: 'Customer Email', sortable: true },
-                                { accessor: 'contactNumber', title: 'Customer Mobile', sortable: true },
-                                { accessor: 'status', title: 'Status', sortable: true },
-                                {
-                                    accessor: 'action',
-                                    title: 'Actions',
-                                    sortable: false,
-                                    textAlignment: 'center',
-                                    render: (record: Order) => (
-                                        <div className="flex gap-4 items-center w-max mx-auto">
-                                            <Link
-                                                to={`/admin/orders/view/${record._id}`}
-                                                className="flex hover:text-info"
-                                            >
-                                                <IconEye className="w-4.5 h-4.5" />
-                                            </Link>
-                                            <button
-                                                type="button"
-                                                className="flex hover:text-danger"
-                                                onClick={() => handleDeleteClick(record._id)}
-                                            >
-                                                <IconTrashLines />
-                                            </button>
-                                        </div>
-                                    ),
-                                },
-                            ]}
-                            highlightOnHover
-                            totalRecords={filteredRecords.length}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={setPage}
-                            recordsPerPageOptions={[5, 10, 25]}
-                            onRecordsPerPageChange={setPageSize}
-                            sortStatus={sortStatus}
-                            paginationText={({ from, to, totalRecords }) =>
-                                `Showing ${from} to ${to} of ${totalRecords} entries`
-                            }
-                        /> */}
                         <DataTable
                             className="whitespace-nowrap table-hover"
-                            records={filteredRecords}
+                            records={paginatedRecords}
                             columns={[
                                 {
                                     accessor: 'srfNumber',
@@ -227,7 +209,8 @@ const Orders = () => {
                                                 year: 'numeric',
                                             })
                                             : '-',
-                                }, { accessor: 'partyCodeOrSysId', title: 'Party Code/ Sys ID', sortable: true, render: (r) => r.partyCodeOrSysId || '-' },
+                                },
+                                { accessor: 'partyCodeOrSysId', title: 'Party Code/ Sys ID', sortable: true, render: (r) => r.partyCodeOrSysId || '-' },
                                 { accessor: 'hospitalName', title: 'Institute Name', sortable: true, render: (r) => r.hospitalName || '-' },
                                 { accessor: 'fullAddress', title: 'Address', sortable: true, render: (r) => r.fullAddress || '-' },
                                 { accessor: 'city', title: 'City', sortable: true, render: (r) => r.city || '-' },
@@ -251,7 +234,6 @@ const Orders = () => {
                                             })
                                             : '-',
                                 },
-
                                 {
                                     accessor: 'action',
                                     title: 'Actions',
@@ -281,14 +263,17 @@ const Orders = () => {
                             recordsPerPage={pageSize}
                             page={page}
                             onPageChange={setPage}
-                            recordsPerPageOptions={[5, 10, 25]}
-                            onRecordsPerPageChange={setPageSize}
+                            recordsPerPageOptions={[10, 20, 30, 40]}
+                            onRecordsPerPageChange={(size) => {
+                                setPageSize(size);
+                                setPage(1);
+                            }}
                             sortStatus={sortStatus}
+                            onSortStatusChange={setSortStatus}
                             paginationText={({ from, to, totalRecords }) =>
                                 `Showing ${from} to ${to} of ${totalRecords} entries`
                             }
                         />
-
                     </div>
                 </div>
             </div>

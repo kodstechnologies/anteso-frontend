@@ -69,6 +69,7 @@ interface ToolsResponse {
 
 interface OArmProps {
   serviceId: string;
+  qaTestDate?: string | null;
 }
 
 const OArm: React.FC<OArmProps> = ({ serviceId }) => {
@@ -117,7 +118,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId }) => {
 
         setDetails(detRes.data);
         const firstTest = detRes.data.qaTests?.[0];
-        
+
         setFormData({
           customerName: detRes.data.hospitalName,
           address: detRes.data.hospitalAddress,
@@ -289,7 +290,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId }) => {
       </div>
     );
   }
-  
+
   if (!details) {
     return <div className="max-w-6xl mx-auto p-8">No data received.</div>;
   }
@@ -430,11 +431,10 @@ const OArm: React.FC<OArmProps> = ({ serviceId }) => {
           type="button"
           onClick={handleSaveHeader}
           disabled={saving}
-          className={`px-6 py-3 rounded-lg font-bold ${
-            saving
+          className={`px-6 py-3 rounded-lg font-bold ${saving
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-green-600 hover:bg-green-700"
-          } text-white`}
+            } text-white`}
         >
           {saving ? "Saving..." : "Save Report Header"}
         </button>

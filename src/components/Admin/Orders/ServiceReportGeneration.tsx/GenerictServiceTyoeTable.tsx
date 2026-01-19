@@ -64,6 +64,7 @@ const REPORT_MAP: Record<string, React.ComponentType<ReportComponentProps>> = {
   'Bone Densitometer (BMD)': BMDReport,
   // 'Dental IOPA': DentalIOPAreport,
   'Dental (Intra Oral)': DentalReport,
+  'Dental Intra': DentalReport,
   'Dental (Hand-held)': DentalHandHeldReport,
   'Radiography (Mobile) with HT': RadiographyMobileHTReport,
   'Radiography (Portable)': RadiographyPortableReport,

@@ -74,9 +74,10 @@ interface ToolsResponse {
 
 interface InventionalRadiologyProps {
   serviceId: string;
+  qaTestDate?: string | null;
 }
 
-const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }) => {
+const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, qaTestDate }) => {
   const navigate = useNavigate();
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -251,7 +252,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
     setShowTubeModal(false);
     // Save tube type to localStorage
     localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, type);
-    
+
     // Always show timer modal after tube type selection
     // Load saved choice if exists, but still show modal to confirm/change
     const savedChoice = localStorage.getItem(`inventional_radiology_timer_choice_${serviceId}`);
@@ -273,7 +274,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
   // Load saved tube type on mount (if exists)
   useEffect(() => {
     if (!serviceId) return;
-    
+
     // Load saved tube type
     const savedTubeType = localStorage.getItem(`inventional_radiology_tube_type_${serviceId}`);
     if (savedTubeType === 'single' || savedTubeType === 'double') {
@@ -632,7 +633,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
           { title: "High Contrast Resolution - Tube Frontal", component: <HighContrastResolution serviceId={serviceId} tubeId="frontal" /> },
           { title: "Exposure Rate at Table Top - Tube Frontal", component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="frontal" /> },
           { title: "Tube Housing Leakage - Tube Frontal", component: <TubeHousingLeakage serviceId={serviceId} tubeId="frontal" /> },
-          
+
           // ===== TUBE LATERAL TESTS =====
           { title: "Central Beam Alignment - Tube Lateral", component: <CentralBeamAlignment serviceId={serviceId} tubeId="lateral" /> },
           { title: "Effective Focal Spot Measurement - Tube Lateral", component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="lateral" /> },
@@ -643,26 +644,26 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId }
           { title: "High Contrast Resolution - Tube Lateral", component: <HighContrastResolution serviceId={serviceId} tubeId="lateral" /> },
           { title: "Exposure Rate at Table Top - Tube Lateral", component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="lateral" /> },
           { title: "Tube Housing Leakage - Tube Lateral", component: <TubeHousingLeakage serviceId={serviceId} tubeId="lateral" /> },
-          
+
           // ===== COMMON TESTS (No Tube ID) =====
           { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} /> },
         ] as any)
-        .map((item: any, idx: number) => (
-          <Disclosure key={idx} defaultOpen={idx === 0}>
-            {({ open }) => (
-              <>
-                <Disclosure.Button className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition">
-                  <span>{item.title}</span>
-                  <ChevronDownIcon className={`w-6 h-6 transition-transform ${open ? "rotate-180" : ""}`} />
-                </Disclosure.Button>
+          .map((item: any, idx: number) => (
+            <Disclosure key={idx} defaultOpen={idx === 0}>
+              {({ open }) => (
+                <>
+                  <Disclosure.Button className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition">
+                    <span>{item.title}</span>
+                    <ChevronDownIcon className={`w-6 h-6 transition-transform ${open ? "rotate-180" : ""}`} />
+                  </Disclosure.Button>
 
-                <Disclosure.Panel className="border border-gray-300 rounded-b-lg p-6 bg-gray-50 mb-6">
-                  {item.component}
-                </Disclosure.Panel>
-              </>
-            )}
-          </Disclosure>
-        ))}
+                  <Disclosure.Panel className="border border-gray-300 rounded-b-lg p-6 bg-gray-50 mb-6">
+                    {item.component}
+                  </Disclosure.Panel>
+                </>
+              )}
+            </Disclosure>
+          ))}
       </div>
     </div>
   );

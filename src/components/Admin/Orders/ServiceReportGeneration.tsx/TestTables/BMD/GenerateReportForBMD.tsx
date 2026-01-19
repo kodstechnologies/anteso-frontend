@@ -77,9 +77,10 @@ interface ToolsResponse {
 interface BMDProps {
   serviceId: string;
   csvFileUrl?: string | null;
+  qaTestDate?: string | null;
 }
 
-const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl }) => {
+const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTestDate }) => {
   const navigate = useNavigate();
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);

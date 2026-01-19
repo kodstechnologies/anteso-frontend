@@ -72,14 +72,14 @@ export const proxyFile = async (fileUrl: string) => {
         return res;
     } catch (error: any) {
         console.error("🚀 ~ proxyFile ~ error:", error);
-        
+
         // If error response is a JSON blob, try to parse it
         if (error.response?.data instanceof Blob && error.response.data.type === 'application/json') {
             try {
                 const errorText = await error.response.data.text();
                 const errorJson = JSON.parse(errorText);
                 console.error("🚀 ~ proxyFile ~ error details:", errorJson);
-                
+
                 // Create a more informative error
                 const enhancedError = new Error(errorJson.message || error.message);
                 (enhancedError as any).details = errorJson.details;
@@ -90,7 +90,7 @@ export const proxyFile = async (fileUrl: string) => {
                 throw error;
             }
         }
-        
+
         throw error;
     }
 };
@@ -8143,7 +8143,87 @@ export const getReportHeaderForDentalHandHeld = async (serviceId: string) => {
     }
 };
 
-// Accuracy of Operating Potential and Time - Dental Hand-held
+export const saveReportHeaderForDentalHandHeld = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-hand-held/report-header/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Accuracy of Operating Potential - Dental Hand-held
+export const addAccuracyOfOperatingPotentialForDentalHandHeld = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-hand-held/accuracy-of-operating-potential/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfOperatingPotentialByServiceIdForDentalHandHeld = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-hand-held/accuracy-of-operating-potential-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateAccuracyOfOperatingPotentialForDentalHandHeld = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-hand-held/accuracy-of-operating-potential/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Accuracy of Irradiation Time - Dental Hand-held
+export const addAccuracyOfIrradiationTimeForDentalHandHeld = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-hand-held/accuracy-of-irradiation-time/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfIrradiationTimeByServiceIdForDentalHandHeld = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-hand-held/accuracy-of-irradiation-time-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateAccuracyOfIrradiationTimeForDentalHandHeld = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-hand-held/accuracy-of-irradiation-time/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Accuracy of Operating Potential and Time - Dental Hand-held (Legacy Combined)
 export const addAccuracyOfOperatingPotentialAndTimeForDentalHandHeld = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
@@ -8202,7 +8282,7 @@ export const getLinearityOfTimeByServiceIdForDentalHandHeld = async (serviceId: 
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-hand-held/linearity-of-time-by-service/${serviceId}`,
+            `/service-report/dental-hand-held/linearity-of-time-by-serviceId/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -8212,19 +8292,124 @@ export const getLinearityOfTimeByServiceIdForDentalHandHeld = async (serviceId: 
     }
 };
 
-export const getLinearityOfTimeByTestIdForDentalHandHeld = async (testId: string) => {
+export const updateLinearityOfTimeForDentalHandHeld = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
-    const res = await api.get(
+    const res = await api.put(
         `/service-report/dental-hand-held/linearity-of-time/${testId}`,
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
 };
 
-export const updateLinearityOfTimeForDentalHandHeld = async (testId: string, payload: any) => {
+// Linearity of mA Loading - Dental Hand-held
+export const addLinearityOfMaLoadingForDentalHandHeld = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-hand-held/linearity-of-ma-loading/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMaLoadingByServiceIdForDentalHandHeld = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-hand-held/linearity-of-ma-loading-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateLinearityOfMaLoadingForDentalHandHeld = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-hand-held/linearity-of-time/${testId}`,
+        `/service-report/dental-hand-held/linearity-of-ma-loading/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Linearity of mAs Loading - Dental Hand-held
+export const addLinearityOfMasLoadingForDentalHandHeld = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-hand-held/linearity-of-mas-loading/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getLinearityOfMasLoadingByServiceIdForDentalHandHeld = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-hand-held/linearity-of-mas-loading-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateLinearityOfMasLoadingForDentalHandHeld = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-hand-held/linearity-of-mas-loading/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+// Consistency of Radiation Output - Dental Hand-held (rename from Reproducibility)
+export const addConsistencyOfRadiationOutputForDentalHandHeld = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/dental-hand-held/consistency-of-radiation-output/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getConsistencyOfRadiationOutputByServiceIdForDentalHandHeld = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/dental-hand-held/consistency-of-radiation-output-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getConsistencyOfRadiationOutputByTestIdForDentalHandHeld = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-hand-held/consistency-of-radiation-output/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateConsistencyOfRadiationOutputForDentalHandHeld = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/dental-hand-held/consistency-of-radiation-output/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );

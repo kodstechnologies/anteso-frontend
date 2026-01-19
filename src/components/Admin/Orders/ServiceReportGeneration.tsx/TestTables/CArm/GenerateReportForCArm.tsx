@@ -73,6 +73,7 @@ interface ToolsResponse {
 
 interface CArmProps {
   serviceId: string;
+  qaTestDate?: string | null;
 }
 
 const CArm: React.FC<CArmProps> = ({ serviceId }) => {
@@ -516,8 +517,8 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
           onClick={handleSaveHeader}
           disabled={saving}
           className={`px-6 py-3 rounded-lg font-bold ${saving
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-green-600 hover:bg-green-700"
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-green-600 hover:bg-green-700"
             } text-white`}
         >
           {saving ? "Saving..." : "Save Report Header"}

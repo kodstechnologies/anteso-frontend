@@ -44,7 +44,7 @@ interface DetailsResponse {
   qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const RadiographyMobileHT: React.FC<{ serviceId: string }> = ({ serviceId }) => {
+const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serviceId, qaTestDate }) => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);

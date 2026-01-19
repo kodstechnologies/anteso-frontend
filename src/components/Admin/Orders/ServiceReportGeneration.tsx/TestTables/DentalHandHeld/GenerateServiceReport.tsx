@@ -1,69 +1,35 @@
-// GenerateReport-DentalHandHeld.tsx
-import React, { useEffect, useState } from "react";
+// src/components/reports/GenerateServiceReportDentalHandHeld.tsx
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import {
+    getReportHeaderForDentalHandHeld,
+    saveReportHeaderForDentalHandHeld,
+    getTools,
+    getDetails
+} from "../../../../../../api";
+import {
+    Disclosure,
+    DisclosureButton,
+    DisclosurePanel
+} from "@headlessui/react";
+import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader, getReportHeaderForDentalHandHeld } from "../../../../../../api";
-
-// Test-table imports
-import AccuracyOfOperatingPotentialAndTime from "./AccuracyOfOperatingPotentialAndTime";
+// Components
+import MainTestTableForDentalHandHeld from "./MainTestTableForDentalHandHeld";
+import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
+import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
 import LinearityOfTime from "./LinearityOfTime";
-import ReproducibilityOfRadiationOutput from "./ReproducibilityOfRadiationOutput";
+import LinearityOfmALoading from "./LinearityOfmALoading";
+import LinearityOfMasLoading from "./LinearityOfMasLoading";
+import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
 import TubeHousingLeakage from "./TubeHousingLeakage";
-import RadiationLeakageLevel from "./RadiationLeakageLevel";
-
-
-export interface Standard {
-    slNumber: string;
-    nomenclature: string;
-    make: string;
-    model: string;
-    SrNo: string;
-    range: string;
-    certificate: string | null;
-    calibrationCertificateNo: string;
-    calibrationValidTill: string;
-    uncertainity: string;
-}
-
-interface DetailsResponse {
-    hospitalName: string;
-    hospitalAddress: string;
-    srfNumber: string;
-    machineType: string;
-    machineModel: string;
-    serialNumber: string;
-    engineerAssigned: {
-        name: string;
-        email: string;
-        designation: string;
-    };
-    qaTests: Array<{
-        qaTestId: string;
-        qaTestReportNumber: string;
-        reportULRNumber: string;
-        createdAt: string;
-    }>;
-}
-
-interface ToolsResponse {
-    toolsAssigned: Array<{
-        _id: string;
-        toolId: string;
-        SrNo: string;
-        nomenclature: string;
-        manufacturer: string;
-        model: string;
-        calibrationCertificateNo: string;
-        calibrationValidTill: string;
-        range: string;
-        certificate: string | null;
-    }>;
-}
+import { CheckCircle2, ChevronUpIcon, FileText, Loader2, Save } from "lucide-react";
+import axios from "axios";
 
 interface DentalHandHeldProps {
     serviceId: string;
@@ -72,14 +38,25 @@ interface DentalHandHeldProps {
 
 const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ serviceId, qaTestDate }) => {
     const navigate = useNavigate();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [details, setDetails] = useState<DetailsResponse | null>(null);
-    const [tools, setTools] = useState<Standard[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [isSavingHeader, setIsSavingHeader] = useState(false);
+    const [headerSaved, setHeaderSaved] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+
+    // CSV/Excel State
+    const [csvFileUrl, setCsvFileUrl] = useState<string | null>(null);
+    const [csvDataForComponents, setCsvDataForComponents] = useState<any[]>([]);
+    const [isParsingCsv, setIsParsingCsv] = useState(false);
+    const [csvUploading, setCsvUploading] = useState(false);
+    const [csvDataVersion, setCsvDataVersion] = useState(0);
+
+    // Tools state
+    const [tools, setTools] = useState<any[]>([]);
+
     const [formData, setFormData] = useState({
         customerName: "",
         address: "",
@@ -87,80 +64,133 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
         srfDate: "",
         testReportNumber: "",
         issueDate: "",
-        nomenclature: "",
+        nomenclature: "Dental X-Ray (Hand-held)",
         make: "",
         model: "",
         slNumber: "",
-        category: "",
-        condition: "OK",
+        condition: "Satisfactory",
         testingProcedureNumber: "",
         pages: "",
-        testDate: "",
+        testDate: qaTestDate || "",
         testDueDate: "",
         location: "",
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+        toolsUsed: [] as any[],
+        csvFileUrl: ""
     });
 
-    const addYearsToDate = (dateStr: string, years: number): string => {
-        if (!dateStr) return "";
-        const base = dateStr.split("T")[0];
-        const d = new Date(base);
-        if (Number.isNaN(d.getTime())) return base;
-        d.setFullYear(d.getFullYear() + years);
-        return d.toISOString().split("T")[0];
+    // --- CSV PARSING LOGIC START ---
+    const parseHorizontalData = (jsonData: any[][]) => {
+        if (!jsonData || jsonData.length === 0) return [];
+
+        const headerRowIndex = jsonData.findIndex(row => row.includes('Sr No') || row.includes('Test Name') || row.includes('Field Name'));
+        if (headerRowIndex === -1) return [];
+
+        const headers = jsonData[headerRowIndex].map(h => String(h || '').trim());
+        const dataRows = jsonData.slice(headerRowIndex + 1);
+
+        const headerMap: { [key: string]: number } = {};
+        headers.forEach((h, i) => { if (h) headerMap[h] = i; });
+
+        return dataRows.map(row => {
+            const obj: any = {};
+            headers.forEach((h, i) => {
+                if (h) obj[h] = row[i] !== undefined ? String(row[i]).trim() : '';
+            });
+            return obj;
+        }).filter(obj => obj['Test Name'] || obj['Field Name']);
     };
 
-    useEffect(() => {
-        if (!serviceId) return;
+    const parseCSV = (text: string): any[] => {
+        const lines = text.split('\n').map(line => line.split(',').map(c => c.trim()));
+        return parseHorizontalData(lines);
+    };
 
-        const fetchAll = async () => {
+    const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+        return parseHorizontalData(jsonData);
+    };
+
+    const processCSVData = async (csvData: any[]) => {
+        setCsvDataForComponents(csvData);
+        setCsvDataVersion(prev => prev + 1);
+        console.log('DentalHandHeld: Processed CSV data for components:', csvData);
+    };
+
+    const fetchAndParseFile = async (url: string) => {
+        if (!url) return;
+        setIsParsingCsv(true);
+        try {
+            const urlWithoutQuery = url.split('?')[0].split('#')[0];
+            const isExcel = urlWithoutQuery.toLowerCase().endsWith('.xlsx') || urlWithoutQuery.toLowerCase().endsWith('.xls');
+
+            if (isExcel) {
+                const response = await axios.get(url, { responseType: 'arraybuffer' });
+                const workbook = XLSX.read(response.data, { type: 'buffer' });
+                const parsed = parseExcelToCSVFormat(workbook);
+                processCSVData(parsed);
+            } else {
+                const response = await axios.get(url);
+                const parsed = parseCSV(response.data);
+                processCSVData(parsed);
+            }
+        } catch (error) {
+            console.error("Error fetching or parsing CSV:", error);
+            toast.error("Failed to parse CSV/Excel data");
+        } finally {
+            setIsParsingCsv(false);
+        }
+    };
+    // --- CSV PARSING LOGIC END ---
+
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            if (!serviceId) return;
             try {
                 setLoading(true);
-                const [detRes, toolRes] = await Promise.all([
-                    getDetails(serviceId),
-                    getTools(serviceId),
-                ]);
 
-                const data = detRes.data;
-                setDetails(data);
-                
-                // Pre-fill form from service details
-                const firstTest = data.qaTests[0];
+                // Fetch service details for basic info
+                const serviceRes = await getDetails(serviceId);
+                const sData = serviceRes?.data;
 
-                const rawTestDate =
-                    qaTestDate ||
-                    firstTest?.createdAt ||
-                    "";
-                const baseTestDate = rawTestDate ? rawTestDate.split("T")[0] : "";
-                const dueDate = baseTestDate ? addYearsToDate(baseTestDate, 5) : "";
+                // Fetch tools
+                const toolsRes = await getTools(serviceId);
 
-                setFormData({
-                    customerName: data.hospitalName,
-                    address: data.hospitalAddress,
-                    srfNumber: data.srfNumber,
-                    srfDate: baseTestDate || "",
-                    testReportNumber: firstTest?.qaTestReportNumber || "",
-                    issueDate: new Date().toISOString().split("T")[0],
-                    nomenclature: data.machineType,
-                    make: "",
-                    model: data.machineModel,
-                    slNumber: data.serialNumber,
-                    category: "",
-                    condition: "OK",
-                    testingProcedureNumber: "",
-                    pages: "",
-                    testDate: baseTestDate,
-                    testDueDate: dueDate,
-                    location: data.hospitalAddress,
-                    temperature: "",
-                    humidity: "",
-                    engineerNameRPId: data.engineerAssigned?.name || "",
-                });
+                if (sData) {
+                    const firstTest = sData.qaTests?.[0];
+                    const rawTestDate = qaTestDate || firstTest?.createdAt || "";
+                    const baseTestDate = rawTestDate ? rawTestDate.split("T")[0] : "";
 
-                const mapped: Standard[] = toolRes.data.toolsAssigned.map(
-                    (t: any, idx: number) => ({
+                    setFormData(prev => ({
+                        ...prev,
+                        customerName: sData.hospitalName || prev.customerName,
+                        address: sData.hospitalAddress || prev.address,
+                        srfNumber: sData.srfNumber || prev.srfNumber,
+                        srfDate: baseTestDate || prev.srfDate,
+                        testReportNumber: firstTest?.qaTestReportNumber || prev.testReportNumber,
+                        issueDate: new Date().toISOString().split("T")[0],
+                        nomenclature: sData.machineType || prev.nomenclature,
+                        model: sData.machineModel || prev.model,
+                        slNumber: sData.serialNumber || prev.slNumber,
+                        location: sData.hospitalAddress || prev.location,
+                        testDate: baseTestDate || prev.testDate,
+                        engineerNameRPId: sData.engineerAssigned?.name || prev.engineerNameRPId,
+                        csvFileUrl: sData.csvFileUrl || ""
+                    }));
+
+                    if (sData.csvFileUrl) {
+                        setCsvFileUrl(sData.csvFileUrl);
+                        fetchAndParseFile(sData.csvFileUrl);
+                    }
+                }
+
+                // Map tools data
+                if (toolsRes?.data?.toolsAssigned) {
+                    const mapped = toolsRes.data.toolsAssigned.map((t: any, idx: number) => ({
                         slNumber: String(idx + 1),
                         nomenclature: t.nomenclature,
                         make: t.manufacturer || t.make,
@@ -171,82 +201,36 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
                         calibrationCertificateNo: t.calibrationCertificateNo,
                         calibrationValidTill: t.calibrationValidTill.split("T")[0],
                         uncertainity: "",
-                    })
-                );
-                setTools(mapped);
-            } catch (err: any) {
-                console.error(err);
-                setError(err?.message ?? "Failed to load report data");
+                    }));
+                    setTools(mapped);
+                }
+
+                // Fetch existing report header
+                const reportRes = await getReportHeaderForDentalHandHeld(serviceId);
+                if (reportRes?.exists && reportRes?.data) {
+                    const rData = reportRes.data;
+                    setFormData(prev => ({
+                        ...prev,
+                        ...rData,
+                        srfDate: rData.srfDate ? rData.srfDate.split('T')[0] : prev.srfDate,
+                        issueDate: rData.issueDate ? rData.issueDate.split('T')[0] : prev.issueDate,
+                        testDate: rData.testDate ? rData.testDate.split('T')[0] : prev.testDate,
+                        testDueDate: rData.testDueDate ? rData.testDueDate.split('T')[0] : prev.testDueDate,
+                    }));
+                    setHeaderSaved(true);
+                    if (rData.csvFileUrl && !sData?.csvFileUrl) {
+                        setCsvFileUrl(rData.csvFileUrl);
+                        fetchAndParseFile(rData.csvFileUrl);
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading initial data:", err);
             } finally {
                 setLoading(false);
             }
         };
-
-        fetchAll();
-    }, [serviceId]);
-
-    const formatDate = (iso: string) => iso.split("T")[0];
-    const [savedTestIds, setSavedTestIds] = useState<Record<string, string>>({});
-
-    // Helper to save testId when a test is saved
-    const handleTestSaved = (testName: string, testId: string) => {
-        setSavedTestIds(prev => ({
-            ...prev,
-            [testName]: testId
-        }));
-    };
-
-    // Load report header and test IDs
-    useEffect(() => {
-        const loadReportHeader = async () => {
-            if (!serviceId) return;
-            try {
-                const res = await getReportHeaderForDentalHandHeld(serviceId);
-                if (res?.exists && res?.data) {
-                    // Update form data from report header
-                    setFormData(prev => ({
-                        ...prev,
-                        customerName: res.data.customerName || prev.customerName,
-                        address: res.data.address || prev.address,
-                        srfNumber: res.data.srfNumber || prev.srfNumber,
-                        srfDate: res.data.srfDate || prev.srfDate,
-                        testReportNumber: res.data.testReportNumber || prev.testReportNumber,
-                        issueDate: res.data.issueDate || prev.issueDate,
-                        nomenclature: res.data.nomenclature || prev.nomenclature,
-                        make: res.data.make || prev.make,
-                        model: res.data.model || prev.model,
-                        slNumber: res.data.slNumber || prev.slNumber,
-                        category: res.data.category || prev.category,
-                        condition: res.data.condition || prev.condition,
-                        testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
-                        testDate: res.data.testDate || prev.testDate,
-                        testDueDate: res.data.testDueDate || prev.testDueDate,
-                        location: res.data.location || prev.location,
-                        temperature: res.data.temperature || prev.temperature,
-                        humidity: res.data.humidity || prev.humidity,
-                        engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
-                    }));
-
-                    // Save test IDs
-                    setSavedTestIds({
-                        AccuracyOfOperatingPotentialAndTimeDentalHandHeld: res.data.AccuracyOfOperatingPotentialAndTimeDentalHandHeld?._id || res.data.AccuracyOfOperatingPotentialAndTimeDentalHandHeld,
-                        LinearityOfTimeDentalHandHeld: res.data.LinearityOfTimeDentalHandHeld?._id || res.data.LinearityOfTimeDentalHandHeld,
-                        ReproducibilityOfRadiationOutputDentalHandHeld: res.data.ReproducibilityOfRadiationOutputDentalHandHeld?._id || res.data.ReproducibilityOfRadiationOutputDentalHandHeld,
-                        TubeHousingLeakageDentalHandHeld: res.data.TubeHousingLeakageDentalHandHeld?._id || res.data.TubeHousingLeakageDentalHandHeld,
-                        RadiationLeakageTestDentalHandHeld: res.data.RadiationLeakageTestDentalHandHeld?._id || res.data.RadiationLeakageTestDentalHandHeld,
-                    });
-                }
-            } catch (err) {
-                console.log("No report header found or failed to load:", err);
-            }
-        };
-        loadReportHeader();
-    }, [serviceId]);
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
+        fetchInitialData();
+    }, [serviceId, qaTestDate]);
 
     const handleSaveHeader = async () => {
         setSaving(true);
@@ -279,15 +263,64 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
                 ],
             };
 
-            await saveReportHeader(serviceId, payload);
+            await saveReportHeaderForDentalHandHeld(serviceId, payload);
+            setHeaderSaved(true);
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
+            toast.success("Report header saved!");
         } catch (err: any) {
             setSaveError(err?.response?.data?.message || "Failed to save report header");
+            toast.error("Failed to save report header");
         } finally {
             setSaving(false);
         }
     };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const fileName = file.name.toLowerCase();
+        const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+        const isCSV = fileName.endsWith('.csv');
+
+        if (!isExcel && !isCSV) {
+            toast.error('Please upload a CSV or Excel file');
+            return;
+        }
+
+        try {
+            setCsvUploading(true);
+            toast.loading('Processing file...', { id: 'csv-upload' });
+
+            if (isExcel) {
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const csvData = parseExcelToCSVFormat(workbook);
+                await processCSVData(csvData);
+            } else {
+                const text = await file.text();
+                const csvData = parseCSV(text);
+                await processCSVData(csvData);
+            }
+
+            toast.success('File uploaded successfully!', { id: 'csv-upload' });
+        } catch (error: any) {
+            console.error('Error uploading file:', error);
+            toast.error('Failed to upload file: ' + (error.message || 'Unknown error'), { id: 'csv-upload' });
+        } finally {
+            setCsvUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
     if (loading) {
         return (
             <div className="max-w-6xl mx-auto p-8 text-center">
@@ -296,221 +329,97 @@ const GenerateReportForDentalHandHeld: React.FC<DentalHandHeldProps> = ({ servic
         );
     }
 
-    if (error) {
-        return (
-            <div className="max-w-6xl mx-auto p-8 text-center text-red-600">
-                <p>{error}</p>
-                <button
-                    onClick={() => navigate(-1)}
-                    className="mt-4 px-4 py-2 bg-gray-600 text-white rounded"
-                >
-                    Go Back
-                </button>
-            </div>
-        );
-    }
-
-    if (!details) {
-        return <div className="max-w-6xl mx-auto p-8">No data received.</div>;
-    }
-
     return (
-        <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Generate QA Test Report - Dental Hand-held
-            </h1>
-
-            {/* 1. Customer Name & Address */}
-            <section className="mb-8">
-                <h2 className="text-lg font-semibold text-blue-700 mb-3">
-                    1. Name and Address of Customer
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Customer Name
-                        </label>
-                        <input
-                            type="text"
-                            name="customerName"
-                            value={formData.customerName}
-                            onChange={handleInputChange}
-                            className="border p-2 rounded-md w-full bg-gray-100"
-                            readOnly
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Customer Address
-                        </label>
-                        <input
-                            type="text"
-                            name="address"
-                            value={formData.address}
-                            onChange={handleInputChange}
-                            className="border p-2 rounded-md w-full bg-gray-100"
-                            readOnly
-                        />
-                    </div>
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Dental Hand-held Service Report</h1>
+                    <p className="text-gray-500 mt-1">Generate and manage QA test reports</p>
                 </div>
-            </section>
-
-            {/* 2. Customer Reference */}
-            <section className="mb-8">
-                <h2 className="text-lg font-semibold text-blue-700 mb-3">
-                    2. Customer Reference
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            2.1 SRF Number
-                        </label>
-                        <input
-                            type="text"
-                            name="srfNumber"
-                            value={formData.srfNumber}
-                            onChange={handleInputChange}
-                            className="border p-2 rounded-md w-full bg-gray-100"
-                            readOnly
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Dated
-                        </label>
-                        <input
-                            type="date"
-                            name="srfDate"
-                            value={formData.srfDate}
-                            onChange={handleInputChange}
-                            className="border p-2 rounded-md w-full"
-                        />
-                    </div>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => window.open(`/admin/orders/view-dental-hand-held?serviceId=${serviceId}`, '_blank')}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition"
+                    >
+                        <FileText className="w-4 h-4" />
+                        View Report
+                    </button>
+                    <button
+                        onClick={handleSaveHeader}
+                        disabled={isSavingHeader}
+                        className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-lg shadow-blue-200 disabled:bg-blue-400"
+                    >
+                        {isSavingHeader ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        {headerSaved ? "Update Header" : "Save Header"}
+                    </button>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            2.2 Test Report Number
-                        </label>
-                        <input
-                            type="text"
-                            name="testReportNumber"
-                            value={formData.testReportNumber}
-                            onChange={handleInputChange}
-                            className="border p-2 rounded-md w-full"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Issue Date
-                        </label>
-                        <input 
-                            type="date" 
-                            name="issueDate"
-                            value={formData.issueDate}
-                            onChange={handleInputChange}
-                            className="border p-2 rounded-md w-full" 
-                        />
-                    </div>
-                </div>
-            </section>
-
-            {/* 3. Device Under Test */}
-            <section className="mb-8">
-                <h2 className="text-lg font-semibold text-blue-700 mb-3">
-                    3. Details of the Device Under Test
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                        { label: "Nomenclature", name: "nomenclature", readOnly: true },
-                        { label: "Make", name: "make" },
-                        { label: "Model", name: "model", readOnly: true },
-                        { label: "Serial Number", name: "slNumber", readOnly: true },
-                        { label: "Category", name: "category" },
-                        { label: "Condition of Test Item", name: "condition" },
-                        { label: "Testing Procedure Number", name: "testingProcedureNumber" },
-                        { label: "No. of Pages", name: "pages" },
-                        { label: "QA Test Date", name: "testDate", type: "date" },
-                        { label: "QA Test Due Date", name: "testDueDate", type: "date" },
-                        { label: "Testing Done At Location", name: "location" },
-                        { label: "Temperature (°C)", name: "temperature", type: "number" },
-                        { label: "Humidity (RH %)", name: "humidity", type: "number" },
-                    ].map((field) => (
-                        <div key={field.name}>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {field.label}
-                            </label>
-                            <input
-                                type={field.type ?? "text"}
-                                name={field.name}
-                                value={(formData as any)[field.name]}
-                                onChange={handleInputChange}
-                                className={`border p-2 rounded-md w-full ${field.readOnly ? "bg-gray-100" : ""}`}
-                                readOnly={field.readOnly}
-                            />
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            <Standards standards={tools} />
-            <Notes />
-
-            {/* Save & View Buttons */}
-            <div className="mt-8 flex justify-end gap-4">
-                {saveSuccess && (
-                    <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-                        Report Header Saved Successfully!
-                    </div>
-                )}
-                {saveError && (
-                    <div className="text-red-600 bg-red-50 px-4 py-3 rounded-lg border border-red-300">
-                        {saveError}
-                    </div>
-                )}
-
-                <button
-                    type="button"
-                    onClick={handleSaveHeader}
-                    disabled={saving}
-                    className={`px-6 py-2 rounded-md font-medium text-white transition ${
-                        saving ? "bg-gray-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-                    }`}
-                >
-                    {saving ? "Saving..." : "Save Report Header"}
-                </button>
-                <button
-                    type="button"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => navigate(`/admin/orders/view-service-report-dental-hand-held?serviceId=${serviceId}`)}
-                >
-                    View Generated Report
-                </button>
             </div>
 
-            <div className="mt-12">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
+            {/* Header Form */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 italic">
+                    <h2 className="text-lg font-semibold text-gray-800">Report Header Information</h2>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Basic Fields */}
+                    {Object.entries(formData).map(([key, value]) => {
+                        if (key === 'toolsUsed' || key === 'csvFileUrl') return null;
+                        const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                        return (
+                            <div key={key}>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                                <input
+                                    type={key.toLowerCase().includes('date') ? 'date' : 'text'}
+                                    value={value as string}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white transition outline-none"
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {isParsingCsv && (
+                <div className="flex items-center gap-3 bg-blue-50 text-blue-700 p-4 rounded-lg animate-pulse">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="font-medium">Auto-populating data from {csvFileUrl?.split('/').pop()}...</span>
+                </div>
+            )}
+
+            {/* QA Tests Section */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                    <h2 className="text-2xl font-bold text-gray-900">Quality Assurance Tests</h2>
+                </div>
 
                 {[
-                    { title: "Accuracy Of Irradiation Time", component: <AccuracyOfOperatingPotentialAndTime serviceId={serviceId} /> },
-                    { title: "Linearity Of Time", component: <LinearityOfTime serviceId={serviceId} /> },
-                    { title: "Reproducibility Of Radiation Output", component: <ReproducibilityOfRadiationOutput serviceId={serviceId} /> },
+                    { title: "Main Test Results (Summary Table)", component: <MainTestTableForDentalHandHeld testData={csvDataForComponents} /> },
+                    { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} csvData={csvDataForComponents} /> },
+                    { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} csvData={csvDataForComponents} /> },
+                    { title: "Linearity Of Time", component: <LinearityOfTime serviceId={serviceId} csvData={csvDataForComponents} /> },
+                    { title: "Linearity Of mA Loading", component: <LinearityOfmALoading serviceId={serviceId} csvData={csvDataForComponents} /> },
+                    { title: "Linearity Of mAs Loading", component: <LinearityOfMasLoading serviceId={serviceId} csvData={csvDataForComponents} /> },
+                    { title: "Consistency of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} csvData={csvDataForComponents} /> },
                     { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
-                    // { title: "Radiation Leakage Level", component: <RadiationLeakageLevel serviceId={serviceId} /> },
-                ].map((item, idx) => (
-                    <Disclosure key={idx} defaultOpen={idx === 0}>
+                ].map((test, idx) => (
+                    <Disclosure key={idx}>
                         {({ open }) => (
-                            <>
-                                <Disclosure.Button className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition">
-                                    <span>{item.title}</span>
-                                    <ChevronDownIcon className={`w-6 h-6 transition-transform ${open ? "rotate-180" : ""}`} />
-                                </Disclosure.Button>
-
-                                <Disclosure.Panel className="border border-gray-300 rounded-b-lg p-6 bg-gray-50 mb-6">
-                                    {item.component}
-                                </Disclosure.Panel>
-                            </>
+                            <div className={`rounded-xl border transition-all duration-200 ${open ? 'border-blue-200 bg-blue-50/10' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                                <DisclosureButton className="flex w-full justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 focus:outline-none">
+                                    <span className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${open ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                                            {idx + 1}
+                                        </div>
+                                        {test.title}
+                                    </span>
+                                    <ChevronUpIcon className={`w-6 h-6 transition-transform duration-200 ${open ? 'rotate-180 text-blue-500' : 'text-gray-400'}`} />
+                                </DisclosureButton>
+                                <DisclosurePanel className="px-6 pb-6 pt-2 border-t border-gray-100">
+                                    {test.component}
+                                </DisclosurePanel>
+                            </div>
                         )}
                     </Disclosure>
                 ))}
