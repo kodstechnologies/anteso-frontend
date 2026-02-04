@@ -1761,9 +1761,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 {machineData.map((service, index) => (
                     <div key={service.id} className="shadow-lg border-0 bg-white rounded-lg overflow-hidden relative">
                         {/* ✅ Add sequential number badge */}
-                        <div className="absolute -top-2 -left-2 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm z-10 shadow-lg">
+                        {/* <div className="absolute -top-2 -left-2 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm z-10 shadow-lg">
                             {index + 1}
-                        </div>
+                        </div> */}
 
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b p-6">
                             <div className="flex items-center justify-between">
