@@ -318,6 +318,15 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             const workTypes = [];
                             const cardId = `${machineData._id}-${index}`;
 
+                            // ✅ Store common fields from machineData
+                            const commonFields = {
+                                workOrderCopy: machineData.workOrderCopy || null,
+                                partyCodeOrSysId: machineData.partyCodeOrSysId || null,
+                                procNoOrPoNo: machineData.procNoOrPoNo || null,
+                                procExpiryDate: machineData.procExpiryDate || null,
+                                formattedProcExpiryDate: machineData.formattedProcExpiryDate || null,
+                            };
+
                             if (workTypeDetail.workType === "Quality Assurance Test") {
                                 // ---- QA Raw ----
                                 workTypes.push({
@@ -336,27 +345,20 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                         qaTestReportNumber: workTypeDetail.QAtest?.qaTestReportNumber || "N/A",
                                         reportStatus: workTypeDetail.QAtest?.reportStatus || "pending",
                                         verificationRemark: workTypeDetail.QAtest?.remark || "",
+                                        // ✅ Include the common fields
                                         workOrderCopy: machineData.workOrderCopy || null,
                                         partyCodeOrSysId: machineData.partyCodeOrSysId || null,
                                         procNoOrPoNo: machineData.procNoOrPoNo || null,
                                         procExpiryDate: machineData.procExpiryDate || null,
+                                        formattedProcExpiryDate: machineData.formattedProcExpiryDate || null,
                                     },
                                     serviceId: machineData._id,
                                     assignedTechnicianId: workTypeDetail.engineer?._id || workTypeDetail.engineer || undefined,
                                     assignedTechnicianName: workTypeDetail.engineer?.name,
                                     assignmentStatus: workTypeDetail.engineer?.status,
                                     assignedAtEngineer: workTypeDetail.assignedAt || undefined,
-                                    workOrderCopy: machineData.workOrderCopy || null,
-                                    partyCodeOrSysId: machineData.partyCodeOrSysId || null,
-                                    procNoOrPoNo: machineData.procNoOrPoNo || null,
-                                    procExpiryDate: machineData.procExpiryDate || null,
-                                    formattedProcExpiryDate: machineData.procExpiryDate
-                                        ? new Date(machineData.procExpiryDate).toLocaleDateString('en-GB', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric',
-                                        })
-                                        : null,
+                                    // ✅ Also include at workType level for easier access
+                                    ...commonFields,
                                 });
 
                                 // ✅ Save assigned Technician
@@ -391,17 +393,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     completedAt: workTypeDetail.completedAt || undefined,
                                     statusHistory: workTypeDetail.QAtest?.statusHistory || workTypeDetail.statusHistory || [],
                                     qaTestSubmittedAt: workTypeDetail.QAtest?.qatestSubmittedAt || undefined,
-                                    workOrderCopy: machineData.workOrderCopy || null,
-                                    partyCodeOrSysId: machineData.partyCodeOrSysId || null,
-                                    procNoOrPoNo: machineData.procNoOrPoNo || null,
-                                    procExpiryDate: machineData.procExpiryDate || null,
-                                    formattedProcExpiryDate: machineData.procExpiryDate
-                                        ? new Date(machineData.procExpiryDate).toLocaleDateString('en-GB', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric',
-                                        })
-                                        : null,
+                                    // ✅ Include the common fields for QA Test too
+                                    ...commonFields,
                                 });
 
                                 // ✅ Save assigned Office Staff for QA Test
@@ -434,18 +427,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     assignedStaffId: workTypeDetail.elora?.officeStaff?._id || undefined,
                                     assignedStaffName: workTypeDetail.elora?.officeStaff?.name,
                                     assignmentStatus: workTypeDetail.elora?.officeStaff?.status,
-                                    workOrderCopy: machineData.workOrderCopy || null,
-                                    partyCodeOrSysId: machineData.partyCodeOrSysId || null,
-                                    procNoOrPoNo: machineData.procNoOrPoNo || null,
-                                    procExpiryDate: machineData.procExpiryDate || null,
-                                    formattedProcExpiryDate: machineData.procExpiryDate
-                                        ? new Date(machineData.procExpiryDate).toLocaleDateString('en-GB', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric',
-                                        })
-                                        : null,
+                                    // ✅ Include the common fields for other work types
+                                    ...commonFields,
                                 });
+
 
                                 // ✅ Save Elora (or any other office staff)
                                 const eloraStaff = workTypeDetail.elora?.officeStaff;
@@ -1781,15 +1766,24 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     <h2 className="text-xl font-semibold text-gray-900">{service.machineType}</h2>
                                     <div className="flex items-center gap-4 text-sm text-gray-600">
                                         <span className="font-medium">Equipment ID: {service.equipmentId}</span>
-                                        <span className="font-medium">Work Type: {service.workTypeName}</span>{" "}
+                                        <span className="font-medium">Work Type: {service.workTypeName}</span>
+                                    </div>
+                                    {/* ✅ Quick summary of important fields */}
+                                    <div className="flex flex-wrap gap-2 mt-2">
                                         {service.partyCodeOrSysId && (
-                                            <span className="font-medium">Party Code: {service.partyCodeOrSysId}</span>
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                Party: {service.partyCodeOrSysId}
+                                            </span>
                                         )}
                                         {service.procNoOrPoNo && (
-                                            <span className="font-medium">PROC/PO No: {service.procNoOrPoNo}</span>
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                PROC: {service.procNoOrPoNo}
+                                            </span>
                                         )}
                                         {service.formattedProcExpiryDate && (
-                                            <span className="font-medium">PROC Exp: {service.formattedProcExpiryDate}</span>
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                Exp: {service.formattedProcExpiryDate}
+                                            </span>
                                         )}
                                     </div>
                                 </div>
@@ -1797,7 +1791,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     {service.status}
                                 </span>
                             </div>
-                            {/* ✅ ADD WORK ORDER COPY LINK IF AVAILABLE */}
+                            {/* ✅ Work Order Copy Link */}
                             {service.workOrderCopy && (
                                 <div className="mt-3 flex items-center gap-2">
                                     <FileText className="h-4 w-4 text-blue-600" />
@@ -1831,6 +1825,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                 }`}
                                         />
                                     </button>
+
                                     <div
                                         className={`overflow-hidden transition-all duration-300 ${expandedItems.includes(workType.id) ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
                                             }`}
@@ -2018,6 +2013,52 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         );
                                                                     })()}
                                                                 </div>
+                                                                {/* Add this AFTER the remark section in QA Raw */}
+                                                                {(workType.procNoOrPoNo || workType.formattedProcExpiryDate || workType.partyCodeOrSysId) && (
+                                                                    <div className="grid grid-cols-2 gap-4 mt-3">
+                                                                        {/* Proc/PO No */}
+                                                                        {workType.procNoOrPoNo && (
+                                                                            <div className="p-3 bg-white rounded-md border">
+                                                                                <label className="text-xs text-gray-500 font-medium">PROC/PO No</label>
+                                                                                <p className="font-medium mt-1">{workType.procNoOrPoNo}</p>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Proc Expiry Date */}
+                                                                        {workType.formattedProcExpiryDate && (
+                                                                            <div className="p-3 bg-white rounded-md border">
+                                                                                <label className="text-xs text-gray-500 font-medium">PROC Expiry Date</label>
+                                                                                <p className="font-medium mt-1">{workType.formattedProcExpiryDate}</p>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Party Code */}
+                                                                        {workType.partyCodeOrSysId && (
+                                                                            <div className="p-3 bg-white rounded-md border">
+                                                                                <label className="text-xs text-gray-500 font-medium">Party Code/Sys ID</label>
+                                                                                <p className="font-medium mt-1">{workType.partyCodeOrSysId}</p>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Work Order Copy Link */}
+                                                                        {workType.workOrderCopy && (
+                                                                            <div className="p-3 bg-white rounded-md border col-span-2">
+                                                                                <label className="text-xs text-gray-500 font-medium">Work Order Copy</label>
+                                                                                <div className="mt-1">
+                                                                                    <a
+                                                                                        href={workType.workOrderCopy}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                        className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 underline"
+                                                                                    >
+                                                                                        <FileText className="h-4 w-4" />
+                                                                                        View Work Order Copy
+                                                                                    </a>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                                 <div className="mt-4 space-y-3">
                                                                     <h4 className="text-sm font-medium text-gray-700">Available Files</h4>
                                                                     {workType.backendFields?.uploadFile && (

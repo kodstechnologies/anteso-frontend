@@ -1317,7 +1317,35 @@ export const getBasicDetailsByOrderId = async (id: any) => {
         );
     }
 }
+export const updateBasicDetailsByOrderId = async (
+    orderId: string,
+    data: any) => {
+    try {
+        const token = Cookies.get('accessToken');
 
+        if (!token) {
+            throw new Error('No authentication token found');
+        }
+
+        const response = await api.put(`/orders/update-details-by-orderId/${orderId}`, data, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        return response.data;
+    } catch (error: any) {
+        console.error('Error updating basic order details:', error);
+
+        const errorMessage =
+            error?.response?.data?.message ||
+            error?.message ||
+            'Failed to update order basic details';
+
+        throw new Error(errorMessage);
+    }
+};
 //orders view
 export const getAdditionalServicesByOrderId = async (id: any) => {
     try {

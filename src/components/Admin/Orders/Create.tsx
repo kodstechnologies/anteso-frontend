@@ -410,11 +410,36 @@ const CreateOrder: React.FC = () => {
 
             // If you want to keep single file upload for backward compatibility
             // You can upload the first service's file as the main workOrderCopy
-            if (values.services[0]?.workOrderCopy) {
-                formData.append("workOrderCopy", values.services[0].workOrderCopy);
-            }
+            // if (values.services[0]?.workOrderCopy) {
+            //     formData.append("workOrderCopy", values.services[0].workOrderCopy);
+            // }
 
-            // Prepare services data without files
+            // // Prepare services data without files
+            // const servicesData = values.services.map(service => ({
+            //     machineType: service.machineType,
+            //     equipmentNo: service.equipmentNo || "",
+            //     workType: service.workType || [],
+            //     machineModel: service.machineModel || "",
+            //     quantity: service.quantity,
+            //     partyCodeOrSysId: service.partyCodeOrSysId,
+            //     procNoOrPoNo: service.procNoOrPoNo || "",
+            //     procExpiryDate: service.procExpiryDate || "",
+            //     // File will be handled separately
+            // }));
+
+            // formData.append("services", JSON.stringify(servicesData));
+            values.services.forEach((service, index) => {
+                if (service.workOrderCopy instanceof File) {
+                    // This format matches what your current backend expects
+                    formData.append(`service_${index}_workOrderCopy`, service.workOrderCopy);
+
+                    // Alternative popular formats (choose ONE):
+                    // formData.append(`services[${index}][workOrderCopy]`, service.workOrderCopy);
+                    // formData.append(`workOrderCopies[${index}]`, service.workOrderCopy);
+                }
+            });
+
+            // Services JSON (keep as-is, but now files are sent separately)
             const servicesData = values.services.map(service => ({
                 machineType: service.machineType,
                 equipmentNo: service.equipmentNo || "",
@@ -424,11 +449,10 @@ const CreateOrder: React.FC = () => {
                 partyCodeOrSysId: service.partyCodeOrSysId,
                 procNoOrPoNo: service.procNoOrPoNo || "",
                 procExpiryDate: service.procExpiryDate || "",
-                // File will be handled separately
+                // ← Do NOT include workOrderCopy here anymore (it's sent as file)
             }));
 
             formData.append("services", JSON.stringify(servicesData));
-
             const additional: { name: string; description: string; totalAmount: number }[] = [];
             for (const [name, description] of Object.entries(values.additionalServices || {})) {
                 if (description !== undefined) {
