@@ -30,6 +30,10 @@ interface Service {
     workType: string[]
     machineModel: string
     quantity: any
+    workOrderCopy?: File | null
+    partyCodeOrSysId: string
+    procNoOrPoNo: string
+    procExpiryDate: string
 }
 
 interface FormValues {
@@ -49,9 +53,6 @@ interface FormValues {
     services: Service[]
     additionalServices: Record<string, string | undefined>
     enquiryID?: string // Optional for generating ENQ ID
-    partyCodeOrSysId: string
-    procNoOrPoNo: string
-    procExpiryDate: string
     instruction: string
 }
 
@@ -285,6 +286,9 @@ const CreateOrder: React.FC = () => {
                         .positive("Must be greater than 0")
                         .integer("Must be a whole number")
                         .required("Quantity is required"),
+                    partyCodeOrSysId: Yup.string().required("Party Code/Sys ID is required"),
+                    procNoOrPoNo: Yup.string(),
+                    procExpiryDate: Yup.date().typeError("Invalid date format"),
                 })
             )
             .min(1, "At least one service is required"),
@@ -295,9 +299,6 @@ const CreateOrder: React.FC = () => {
             }, {}),
         ),
         enquiryID: Yup.string().nullable(),
-        partyCodeOrSysId: Yup.string().required("Please fill the Field"),
-        procNoOrPoNo: Yup.string().required("Please fill the Field"),
-        procExpiryDate: Yup.date().required("Please fill the Expiry Date").typeError("Invalid date format"),
         instruction: Yup.string(),
         urgency: Yup.string()
             .oneOf(['normal', 'tatkal'], 'Select a valid urgency')
@@ -307,6 +308,79 @@ const CreateOrder: React.FC = () => {
 
 
 
+    // const submitForm = async (values: FormValues) => {
+    //     setIsSubmitting(true);
+    //     try {
+    //         const newEnquiryID = `ENQ${String(1).padStart(3, "0")}`;
+
+    //         const formData = new FormData();
+
+    //         // ── BASIC FIELDS ───────────────────────────────────────
+    //         const basic = {
+    //             leadOwner: values.leadOwner,
+    //             hospitalName: values.hospitalName,
+    //             fullAddress: values.fullAddress,
+    //             city: values.city,
+    //             district: values.district || "",
+    //             state: values.state,
+    //             pinCode: values.pinCode,
+    //             branchName: values.branchName || "",
+    //             contactPersonName: values.contactPersonName,
+    //             emailAddress: values.emailAddress,
+    //             contactNumber: values.contactNumber,
+    //             designation: values.designation,
+    //             urgency: values.urgency,
+    //             specialInstructions: values.instruction || "",
+    //             enquiryID: newEnquiryID,
+    //         };
+    //         Object.entries(basic).forEach(([k, v]) => formData.append(k, v as any));
+
+    //         // Append services with their individual fields
+    //         const servicesData = values.services.map(service => ({
+    //             machineType: service.machineType,
+    //             equipmentNo: service.equipmentNo || "",
+    //             workType: service.workType || [],
+    //             machineModel: service.machineModel || "",
+    //             quantity: service.quantity,
+    //             partyCodeOrSysId: service.partyCodeOrSysId,
+    //             procNoOrPoNo: service.procNoOrPoNo || "",
+    //             procExpiryDate: service.procExpiryDate || "",
+    //         }));
+
+    //         formData.append("services", JSON.stringify(servicesData));
+
+    //         // Handle work order copies for each service
+    //         values.services.forEach((service, index) => {
+    //             if (service.workOrderCopy) {
+    //                 formData.append(`service_${index}_workOrderCopy`, service.workOrderCopy);
+    //             }
+    //         });
+
+    //         const additional: { name: string; description: string; totalAmount: number }[] = [];
+    //         for (const [name, description] of Object.entries(values.additionalServices || {})) {
+    //             if (description !== undefined) {  // ← CHANGED: allow empty string
+    //                 additional.push({
+    //                     name,
+    //                     description: description || "",  // ensure string
+    //                     totalAmount: 0
+    //                 });
+    //             }
+    //         }
+    //         formData.append("additionalServices", JSON.stringify(additional));
+
+    //         const response = await createOrder(formData);
+    //         showMessage("Order created successfully", "success");
+    //         navigate("/admin/orders");
+    //     } catch (error: any) {
+    //         showMessage(error.message || "Failed to create order", "error");
+    //     } finally {
+    //         setIsSubmitting(false);
+    //     }
+    // };
+
+
+
+    // In your submitForm function:
     const submitForm = async (values: FormValues) => {
         setIsSubmitting(true);
         try {
@@ -329,36 +403,44 @@ const CreateOrder: React.FC = () => {
                 contactNumber: values.contactNumber,
                 designation: values.designation,
                 urgency: values.urgency,
-                partyCodeOrSysId: values.partyCodeOrSysId,
-                procNoOrPoNo: values.procNoOrPoNo,
-                procExpiryDate: values.procExpiryDate,
                 specialInstructions: values.instruction || "",
                 enquiryID: newEnquiryID,
             };
             Object.entries(basic).forEach(([k, v]) => formData.append(k, v as any));
 
-            const fileInput = document.getElementById("workOrderCopy") as HTMLInputElement;
-            if (fileInput?.files?.[0]) formData.append("workOrderCopy", fileInput.files[0]);
+            // If you want to keep single file upload for backward compatibility
+            // You can upload the first service's file as the main workOrderCopy
+            if (values.services[0]?.workOrderCopy) {
+                formData.append("workOrderCopy", values.services[0].workOrderCopy);
+            }
 
-            formData.append("services", JSON.stringify(values.services));
+            // Prepare services data without files
+            const servicesData = values.services.map(service => ({
+                machineType: service.machineType,
+                equipmentNo: service.equipmentNo || "",
+                workType: service.workType || [],
+                machineModel: service.machineModel || "",
+                quantity: service.quantity,
+                partyCodeOrSysId: service.partyCodeOrSysId,
+                procNoOrPoNo: service.procNoOrPoNo || "",
+                procExpiryDate: service.procExpiryDate || "",
+                // File will be handled separately
+            }));
 
+            formData.append("services", JSON.stringify(servicesData));
 
             const additional: { name: string; description: string; totalAmount: number }[] = [];
             for (const [name, description] of Object.entries(values.additionalServices || {})) {
-                if (description !== undefined) {  // ← CHANGED: allow empty string
+                if (description !== undefined) {
                     additional.push({
                         name,
-                        description: description || "",  // ensure string
+                        description: description || "",
                         totalAmount: 0
                     });
                 }
             }
             formData.append("additionalServices", JSON.stringify(additional));
 
-            // ── SPECIAL INSTRUCTION (already in basic) ───────────────
-            // (nothing else to do)
-
-            // ── CALL API ───────────────────────────────────────────
             const response = await createOrder(formData);
             showMessage("Order created successfully", "success");
             navigate("/admin/orders");
@@ -410,9 +492,18 @@ const CreateOrder: React.FC = () => {
                     emailAddress: "",
                     contactNumber: "",
                     designation: "",
-                    workOrderCopy: null,
                     urgency: "",
-                    services: [{ machineType: "", equipmentNo: "", workType: [], machineModel: "", quantity: "" }],
+                    services: [{
+                        machineType: "",
+                        equipmentNo: "",
+                        workType: [],
+                        machineModel: "",
+                        quantity: "",
+                        workOrderCopy: null,
+                        partyCodeOrSysId: "",
+                        procNoOrPoNo: "",
+                        procExpiryDate: ""
+                    }],
                     additionalServices: serviceOptions.reduce(
                         (acc, service) => {
                             acc[service] = undefined
@@ -421,9 +512,6 @@ const CreateOrder: React.FC = () => {
                         {} as Record<string, string | undefined>,
                     ),
                     enquiryID: "",
-                    partyCodeOrSysId: "",
-                    procNoOrPoNo: "",
-                    procExpiryDate: "",
                     instruction: ""
                 }}
                 validationSchema={SubmittedForm}
@@ -608,81 +696,6 @@ const CreateOrder: React.FC = () => {
                                         <div className="text-danger mt-1">{errors.designation}</div>
                                     ) : null}
                                 </div>
-                                {/* <div className={submitCount && errors.workOrderCopy ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="workOrderCopy">Work Order Copy</label>
-                                    <Field
-                                        name="workOrderCopy"
-                                        type="file"
-                                        id="workOrderCopy"
-                                        placeholder="Enter workOrderCopy"
-                                        className="form-input"
-                                    />
-                                    {submitCount && errors.workOrderCopy ? <div className="text-danger mt-1">{errors.workOrderCopy}</div> : null}
-                                </div> */}
-                                <div className={submitCount && errors.workOrderCopy ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="workOrderCopy">Work Order Copy</label>
-                                    <input
-                                        name="workOrderCopy"
-                                        type="file"
-                                        id="workOrderCopy"
-                                        className="form-input"
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                            setFieldValue("workOrderCopy", e.currentTarget.files?.[0] || null);
-                                        }}
-                                    />
-                                    <ErrorMessage name="workOrderCopy" component="div" className="text-danger mt-1" />
-                                </div>
-
-                                <div className={submitCount && errors.partyCodeOrSysId ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="partyCodeOrSysId">Party Code/Sys ID</label>
-                                    <Field
-                                        name="partyCodeOrSysId"
-                                        type="text"
-                                        id="partyCodeOrSysId"
-                                        placeholder="Enter Party Code/Sys ID"
-                                        className="form-input"
-                                    />
-                                    {submitCount && errors.partyCodeOrSysId ? <div className="text-danger mt-1">{errors.partyCodeOrSysId}</div> : null}
-                                </div>
-                                <div className={submitCount && errors.procNoOrPoNo ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="procNoOrPoNo">PROC NO / PO NO</label>
-                                    <Field
-                                        name="procNoOrPoNo"
-                                        type="text"
-                                        id="procNoOrPoNo"
-                                        placeholder="Enter PROC NO / PO NO"
-                                        className="form-input"
-                                    />
-                                    {submitCount && errors.procNoOrPoNo ? <div className="text-danger mt-1">{errors.procNoOrPoNo}</div> : null}
-                                </div>
-                                {/* <div className={submitCount && errors.procExpiryDate ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="procExpiryDate">PROC Expiry Date</label>
-                                    <Field name="procExpiryDate" type="date" id="procExpiryDate" className="form-input" />
-                                    {submitCount && errors.procExpiryDate ? (
-                                        <div className="text-danger mt-1">{errors.procExpiryDate}</div>
-                                    ) : null}
-                                </div> */}
-                                <div
-                                    className={
-                                        submitCount && errors.procExpiryDate
-                                            ? "has-error"
-                                            : submitCount
-                                                ? "has-success"
-                                                : ""
-                                    }
-                                >
-                                    <label htmlFor="procExpiryDate">PROC Expiry Date</label>
-                                    <Field
-                                        name="procExpiryDate"
-                                        type="date"
-                                        id="procExpiryDate"
-                                        className="form-input"
-                                        min={new Date().toISOString().split("T")[0]} // ✅ disable past dates
-                                    />
-                                    {submitCount && errors.procExpiryDate ? (
-                                        <div className="text-danger mt-1">{errors.procExpiryDate}</div>
-                                    ) : null}
-                                </div>
 
                                 <div className={submitCount && errors.urgency ? "has-error" : submitCount ? "has-success" : ""}>
                                     <label htmlFor="urgency">Urgency</label>
@@ -722,7 +735,7 @@ const CreateOrder: React.FC = () => {
 
                                                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                                                         {/* Machine Type Dropdown */}
-                                                        <div className="md:col-span-4">
+                                                        <div className="md:col-span-3">
                                                             <label className="text-sm font-semibold text-gray-700">Machine Type</label>
                                                             <Field
                                                                 as="select"
@@ -754,7 +767,7 @@ const CreateOrder: React.FC = () => {
 
                                                         {/* Show custom input if "Others" is selected OR user has typed a custom value */}
                                                         {isOthersSelected && (
-                                                            <div className="md:col-span-4">
+                                                            <div className="md:col-span-3">
                                                                 <label className="text-sm font-semibold text-gray-700">
                                                                     Specify Other Machine Type <span className="text-red-500">*</span>
                                                                 </label>
@@ -769,11 +782,6 @@ const CreateOrder: React.FC = () => {
                                                                         setFieldValue(`services.${index}.machineType`, customValue || "Others");
                                                                     }}
                                                                 />
-                                                                {/* {selectedMachineType === "Others" && (
-                                                                    <p className="text-xs text-amber-600 mt-1">
-                                                                        Please type the machine type
-                                                                    </p>
-                                                                )} */}
                                                                 <ErrorMessage
                                                                     name={`services.${index}.machineType`}
                                                                     component="div"
@@ -807,19 +815,65 @@ const CreateOrder: React.FC = () => {
                                                         </div>
 
                                                         {/* Work Type */}
-                                                        <div className="md:col-span-4">
+                                                        <div className="md:col-span-3">
                                                             <label className="text-sm font-semibold text-gray-700">Type Of Work</label>
                                                             <MultiSelectField name={`services.${index}.workType`} options={workTypeOptions} />
                                                         </div>
 
                                                         {/* Machine Model */}
-                                                        <div className="md:col-span-2">
+                                                        <div className="md:col-span-3">
                                                             <label className="text-sm font-semibold text-gray-700">Machine Model</label>
                                                             <Field
                                                                 type="text"
                                                                 name={`services.${index}.machineModel`}
                                                                 placeholder="Enter Model"
                                                                 className="form-input w-full"
+                                                            />
+                                                        </div>
+
+                                                        {/* Party Code/Sys ID - MANDATORY */}
+                                                        <div className="md:col-span-3">
+                                                            <label className="text-sm font-semibold text-gray-700">Party Code/Sys ID <span className="text-red-500">*</span></label>
+                                                            <Field
+                                                                type="text"
+                                                                name={`services.${index}.partyCodeOrSysId`}
+                                                                placeholder="Enter Party Code/Sys ID"
+                                                                className="form-input w-full"
+                                                            />
+                                                            <ErrorMessage name={`services.${index}.partyCodeOrSysId`} component="div" className="text-red-500 text-sm" />
+                                                        </div>
+
+                                                        {/* PROC NO/PO NO - OPTIONAL */}
+                                                        <div className="md:col-span-3">
+                                                            <label className="text-sm font-semibold text-gray-700">PROC NO/PO NO</label>
+                                                            <Field
+                                                                type="text"
+                                                                name={`services.${index}.procNoOrPoNo`}
+                                                                placeholder="Enter PROC NO/PO NO"
+                                                                className="form-input w-full"
+                                                            />
+                                                        </div>
+
+                                                        {/* PROC Expiry Date - OPTIONAL */}
+                                                        <div className="md:col-span-3">
+                                                            <label className="text-sm font-semibold text-gray-700">PROC Expiry Date</label>
+                                                            <Field
+                                                                name={`services.${index}.procExpiryDate`}
+                                                                type="date"
+                                                                className="form-input w-full"
+                                                                min={new Date().toISOString().split("T")[0]}
+                                                            />
+                                                        </div>
+
+                                                        {/* Work Order Copy - OPTIONAL */}
+                                                        <div className="md:col-span-3">
+                                                            <label className="text-sm font-semibold text-gray-700">Work Order Copy</label>
+                                                            <input
+                                                                type="file"
+                                                                className="form-input w-full"
+                                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                                    setFieldValue(`services.${index}.workOrderCopy`, e.currentTarget.files?.[0] || null);
+                                                                }}
                                                             />
                                                         </div>
                                                     </div>
@@ -837,6 +891,10 @@ const CreateOrder: React.FC = () => {
                                                     workType: [],
                                                     machineModel: "",
                                                     quantity: "",
+                                                    workOrderCopy: null,
+                                                    partyCodeOrSysId: "",
+                                                    procNoOrPoNo: "",
+                                                    procExpiryDate: ""
                                                 })
                                             }
                                             className="btn btn-primary w-full sm:w-auto"

@@ -94,6 +94,10 @@ interface MachineData {
             assignedAtEngineer?: string | undefined;  // For QA Raw
             assignedAtStaff?: string | undefined    // For QA Test
             createdAt: string
+            workOrderCopy?: string | null
+            partyCodeOrSysId?: string | null
+            procNoOrPoNo?: string | null
+            procExpiryDate?: string | null
         }
         reportUrl: any
         qaTestSubmittedAt?: string
@@ -117,8 +121,18 @@ interface MachineData {
             updatedAt: string
             remark?: string
         }>
+        workOrderCopy?: string | null
+        partyCodeOrSysId?: string | null
+        procNoOrPoNo?: string | null
+        procExpiryDate?: string | null
+        formattedProcExpiryDate?: string | null
     }>
     rawPhoto?: string[]
+    workOrderCopy?: string | null
+    partyCodeOrSysId?: string | null
+    procNoOrPoNo?: string | null
+    procExpiryDate?: string | null
+    formattedProcExpiryDate?: string | null
 }
 
 interface ServicesCardProps {
@@ -272,330 +286,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     }
     const navigate = useNavigate();
 
-
-
-    // const fetchMachineData = async () => {
-    //     if (!orderId) {
-    //         setError("Order ID is required");
-    //         setLoading(false);
-    //         return;
-    //     }
-
-    //     try {
-    //         setLoading(true);
-    //         setError(null);
-    //         const response = await getMachineDetails(orderId);
-    //         console.log("🚀 ~ fetchMachineData ~ response:", response);
-
-    //         const machinesArray = Array.isArray(response) ? response : [response];
-    //         if (!machinesArray || machinesArray.length === 0) {
-    //             throw new Error("No machine data found");
-    //         }
-
-    //         const allTransformedData: MachineData[] = [];
-    //         const staffAssignments: Record<string, any> = {};
-
-    //         machinesArray.forEach((machineData: any) => {
-    //             const workTypeDetails = machineData.workTypeDetails || [];
-    //             const transformedData: MachineData[] = workTypeDetails.map(
-    //                 (workTypeDetail: any, index: number) => {
-    //                     const createWorkTypes = () => {
-    //                         const workTypes = [];
-    //                         const cardId = `${machineData._id}-${index}`;
-
-    //                         if (workTypeDetail.workType === "Quality Assurance Test") {
-    //                             // ---- QA Raw ----
-    //                             workTypes.push({
-    //                                 id: `${cardId}-qa-raw`,
-    //                                 name: "QA Raw",
-    //                                 description: "",
-    //                                 backendFields: {
-    //                                     serialNo: machineData.serialNumber || machineData.equipmentNo || "N/A",
-    //                                     modelName: machineData.machineModel || "N/A",
-    //                                     remark: machineData.remark || "N/A",
-    //                                     fileUrl: workTypeDetail.viewFile?.[0] || "",
-    //                                     imageUrl: workTypeDetail.viewFile?.[1] || "",
-    //                                     uploadFile: workTypeDetail.uploadFile || "",
-    //                                     viewFile: workTypeDetail.viewFile || [],
-    //                                     reportURLNumber: workTypeDetail.QAtest?.reportULRNumber || "N/A",
-    //                                     qaTestReportNumber: workTypeDetail.QAtest?.qaTestReportNumber || "N/A",
-    //                                     reportStatus: workTypeDetail.QAtest?.reportStatus || "pending",
-    //                                     verificationRemark: workTypeDetail.QAtest?.remark || "",
-    //                                 },
-    //                                 serviceId: machineData._id,
-    //                                 assignedTechnicianId: workTypeDetail.engineer || undefined,
-    //                             });
-
-    //                             // ✅ Save assigned Technician
-    //                             staffAssignments[`${cardId}-qa-raw`] = {
-    //                                 type: "Technician",
-    //                                 id: workTypeDetail.engineer || null,
-    //                             };
-
-    //                             // ---- QA Test ----
-    //                             workTypes.push({
-    //                                 id: `${cardId}-qa-test`,
-    //                                 name: "QA Test",
-    //                                 description: "",
-    //                                 reportNumber: "N/A",
-    //                                 urlNumber: "N/A",
-    //                                 serviceId: machineData._id,
-    //                                 assignedStaffId: workTypeDetail.QAtest?.officeStaff || undefined,
-    //                             });
-
-    //                             // ✅ Save assigned Office Staff
-    //                             staffAssignments[`${cardId}-qa-test`] = {
-    //                                 type: "Office Staff",
-    //                                 id: workTypeDetail.QAtest?.officeStaff || null,
-    //                             };
-    //                         } else {
-    //                             // ---- Other Work Types ----
-    //                             const customId = workTypeDetail.workType
-    //                                 .toLowerCase()
-    //                                 .replace(/[^a-z0-9]/g, "-");
-
-    //                             workTypes.push({
-    //                                 id: `${cardId}-${customId}`,
-    //                                 name: workTypeDetail.workType,
-    //                                 description: "",
-    //                                 reportNumber: "N/A",
-    //                                 urlNumber: "N/A",
-    //                                 serviceId: machineData._id,
-    //                                 assignedStaffId: workTypeDetail.elora || undefined,
-    //                             });
-
-    //                             // ✅ Save Elora (or any other office staff)
-    //                             staffAssignments[`${cardId}-${customId}`] = {
-    //                                 type: "Elora",
-    //                                 id: workTypeDetail.elora || null,
-    //                             };
-    //                         }
-    //                         return workTypes;
-    //                     };
-
-    //                     return {
-    //                         id: `${machineData._id}-${index}`,
-    //                         machineType: machineData.machineType || "Unknown Machine",
-    //                         equipmentId: machineData.equipmentNo || "N/A",
-    //                         workTypeName: workTypeDetail.workType || "General Work",
-    //                         status: workTypeDetail.status || "pending",
-    //                         workTypes: createWorkTypes(),
-    //                         rawPhoto: machineData.rawPhoto || [],
-    //                     };
-    //                 }
-    //             );
-    //             allTransformedData.push(...transformedData);
-    //         });
-
-    //         // ✅ Store the staff assignments in React state
-    //         setAssignedStaffData(staffAssignments);
-    //         console.log("✅ Assigned Staff Data:", staffAssignments);
-
-    //         // ------------------------
-    //         // Machine Data + Reports
-    //         // ------------------------
-    //         setMachineData(allTransformedData);
-
-    //         // Initialize report numbers with proper remark handling
-    //         setReportNumbers((prevReportNumbers) => {
-    //             const mergedReportNumbers = { ...prevReportNumbers };
-
-    //             allTransformedData.forEach((service) => {
-    //                 if (!mergedReportNumbers[service.id]) {
-    //                     mergedReportNumbers[service.id] = {};
-    //                 }
-
-    //                 if (service.workTypeName === "Quality Assurance Test") {
-    //                     const qaRawWorkType = service.workTypes.find(
-    //                         (wt) => wt.name === "QA Raw"
-    //                     );
-
-    //                     if (qaRawWorkType && qaRawWorkType.backendFields) {
-    //                         const currentQatest = mergedReportNumbers[service.id]?.qatest || {
-    //                             qaTestReportNumber: "N/A",
-    //                             reportULRNumber: "N/A",
-    //                             reportStatus: "pending",
-    //                             reportUrl: undefined,
-    //                             remark: "",
-    //                         };
-
-    //                         const updatedQatest: ReportData = {
-    //                             ...currentQatest,
-    //                             reportStatus:
-    //                                 qaRawWorkType.backendFields.reportStatus ||
-    //                                 currentQatest.reportStatus ||
-    //                                 "pending",
-    //                             qaTestReportNumber:
-    //                                 qaRawWorkType.backendFields.qaTestReportNumber ||
-    //                                 currentQatest.qaTestReportNumber ||
-    //                                 "N/A",
-    //                             reportULRNumber:
-    //                                 qaRawWorkType.backendFields.reportURLNumber ||
-    //                                 currentQatest.reportULRNumber ||
-    //                                 "N/A",
-    //                             remark:
-    //                                 qaRawWorkType.backendFields.verificationRemark ||
-    //                                 currentQatest.remark ||
-    //                                 "",
-    //                         };
-
-    //                         mergedReportNumbers[service.id].qatest = updatedQatest;
-    //                     }
-    //                 }
-
-    //                 // Handle other work types (elora)
-    //                 const otherWorkTypes = service.workTypes.filter(wt =>
-    //                     wt.name !== "QA Raw" && wt.name !== "QA Test"
-    //                 );
-
-    //                 if (otherWorkTypes.length > 0) {
-    //                     const workTypeIdentifier = getWorkTypeIdentifier(service.workTypeName);
-    //                     if (!mergedReportNumbers[service.id][workTypeIdentifier]) {
-    //                         mergedReportNumbers[service.id][workTypeIdentifier] = {
-    //                             qaTestReportNumber: "N/A",
-    //                             reportULRNumber: "N/A",
-    //                             reportStatus: "pending",
-    //                             reportUrl: undefined,
-    //                             remark: "",
-    //                         };
-    //                     }
-    //                 }
-    //             });
-
-    //             saveToLocalStorage(STORAGE_KEYS.reportNumbers, mergedReportNumbers);
-    //             return mergedReportNumbers;
-    //         });
-
-    //         const updatedMachineDataWithAssignments = await fetchExistingAssignments();
-
-    //         // ------------------------
-    //         // Enhanced Report Numbers Fetch with better error handling
-    //         // ------------------------
-    //         const fetchAllReportNumbers = async () => {
-    //             const reportPromises = [];
-
-    //             for (const service of updatedMachineDataWithAssignments) {
-    //                 const workTypeIdentifier = getWorkTypeIdentifier(service.workTypeName);
-    //                 if (!["qatest", "elora"].includes(workTypeIdentifier)) continue;
-
-    //                 let assigneeId: string = "";
-    //                 let targetWorkType;
-
-    //                 if (workTypeIdentifier === "qatest") {
-    //                     targetWorkType = service.workTypes.find(
-    //                         (wt) => wt.name === "QA Raw"
-    //                     );
-    //                     assigneeId = targetWorkType?.assignedTechnicianId ||
-    //                         targetWorkType?.assignedStaffId ||
-    //                         "";
-    //                 } else {
-    //                     targetWorkType = service.workTypes.find((wt) =>
-    //                         wt.name.toLowerCase().includes("elora")
-    //                     ) || service.workTypes[0];
-    //                     assigneeId = targetWorkType?.assignedStaffId || "";
-    //                 }
-
-    //                 if (!assigneeId) {
-    //                     console.log(`No assignee found for service ${service.id}, skipping report fetch`);
-    //                     continue;
-    //                 }
-
-    //                 reportPromises.push(
-    //                     getReportNumbers(
-    //                         orderId,
-    //                         service.id,
-    //                         assigneeId,
-    //                         workTypeIdentifier
-    //                     )
-    //                         .then((response) => {
-    //                             if (response?.data?.reportNumbers?.[workTypeIdentifier]) {
-    //                                 const reportData = response.data.reportNumbers[workTypeIdentifier];
-    //                                 console.log(`📊 Report data for ${service.id}-${workTypeIdentifier}:`, reportData);
-
-    //                                 return { serviceId: service.id, identifier: workTypeIdentifier, reportData };
-    //                             }
-    //                             return null;
-    //                         })
-    //                         .catch((error) => {
-    //                             console.error(
-    //                                 `Error fetching report numbers for ${service.id}:`,
-    //                                 error
-    //                             );
-    //                             return null;
-    //                         })
-    //                 );
-    //             }
-
-    //             // Process all report promises
-    //             const reportResults = await Promise.all(reportPromises);
-
-    //             setReportNumbers((prev) => {
-    //                 const updated = { ...prev };
-
-    //                 reportResults.forEach((result) => {
-    //                     if (!result) return;
-
-    //                     const { serviceId, identifier, reportData } = result;
-    //                     const current = updated[serviceId] || {};
-    //                     const currentReport = current[identifier] || {
-    //                         qaTestReportNumber: "N/A",
-    //                         reportULRNumber: "N/A",
-    //                         reportStatus: "pending",
-    //                         reportUrl: undefined,
-    //                         remark: "",
-    //                     };
-
-    //                     const updatedReport: ReportData = {
-    //                         qaTestReportNumber:
-    //                             reportData.qaTestReportNumber ||
-    //                             currentReport.qaTestReportNumber ||
-    //                             "N/A",
-    //                         reportULRNumber:
-    //                             reportData.reportULRNumber ||
-    //                             currentReport.reportULRNumber ||
-    //                             "N/A",
-    //                         reportStatus:
-    //                             reportData.reportStatus ||
-    //                             currentReport.reportStatus ||
-    //                             "pending",
-    //                         reportUrl:
-    //                             reportData.report ||
-    //                             currentReport.reportUrl,
-    //                         remark:
-    //                             reportData.remark || // Ensure remark is always captured
-    //                             currentReport.remark ||
-    //                             "",
-    //                     };
-
-    //                     if (!updated[serviceId]) {
-    //                         updated[serviceId] = {};
-    //                     }
-    //                     updated[serviceId][identifier] = updatedReport;
-    //                 });
-
-    //                 saveToLocalStorage(STORAGE_KEYS.reportNumbers, updated);
-    //                 console.log("📊 Final report numbers after fetch:", updated);
-    //                 return updated;
-    //             });
-    //         };
-
-    //         await fetchAllReportNumbers();
-
-    //         // Force a refresh of assignments to ensure latest data
-    //         setTimeout(() => {
-    //             fetchExistingAssignments();
-    //         }, 1000);
-
-    //     } catch (err: any) {
-    //         console.error("Error fetching machine data:", err);
-    //         setError(err.message || "Failed to fetch machine data");
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
-    // Initialize assignments from assignedStaffData when it changes
-
-
     const fetchMachineData = async () => {
         if (!orderId) {
             setError("Order ID is required");
@@ -646,12 +336,27 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                         qaTestReportNumber: workTypeDetail.QAtest?.qaTestReportNumber || "N/A",
                                         reportStatus: workTypeDetail.QAtest?.reportStatus || "pending",
                                         verificationRemark: workTypeDetail.QAtest?.remark || "",
+                                        workOrderCopy: machineData.workOrderCopy || null,
+                                        partyCodeOrSysId: machineData.partyCodeOrSysId || null,
+                                        procNoOrPoNo: machineData.procNoOrPoNo || null,
+                                        procExpiryDate: machineData.procExpiryDate || null,
                                     },
                                     serviceId: machineData._id,
                                     assignedTechnicianId: workTypeDetail.engineer?._id || workTypeDetail.engineer || undefined,
                                     assignedTechnicianName: workTypeDetail.engineer?.name,
                                     assignmentStatus: workTypeDetail.engineer?.status,
                                     assignedAtEngineer: workTypeDetail.assignedAt || undefined,
+                                    workOrderCopy: machineData.workOrderCopy || null,
+                                    partyCodeOrSysId: machineData.partyCodeOrSysId || null,
+                                    procNoOrPoNo: machineData.procNoOrPoNo || null,
+                                    procExpiryDate: machineData.procExpiryDate || null,
+                                    formattedProcExpiryDate: machineData.procExpiryDate
+                                        ? new Date(machineData.procExpiryDate).toLocaleDateString('en-GB', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                        })
+                                        : null,
                                 });
 
                                 // ✅ Save assigned Technician
@@ -686,6 +391,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     completedAt: workTypeDetail.completedAt || undefined,
                                     statusHistory: workTypeDetail.QAtest?.statusHistory || workTypeDetail.statusHistory || [],
                                     qaTestSubmittedAt: workTypeDetail.QAtest?.qatestSubmittedAt || undefined,
+                                    workOrderCopy: machineData.workOrderCopy || null,
+                                    partyCodeOrSysId: machineData.partyCodeOrSysId || null,
+                                    procNoOrPoNo: machineData.procNoOrPoNo || null,
+                                    procExpiryDate: machineData.procExpiryDate || null,
+                                    formattedProcExpiryDate: machineData.procExpiryDate
+                                        ? new Date(machineData.procExpiryDate).toLocaleDateString('en-GB', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                        })
+                                        : null,
                                 });
 
                                 // ✅ Save assigned Office Staff for QA Test
@@ -718,6 +434,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     assignedStaffId: workTypeDetail.elora?.officeStaff?._id || undefined,
                                     assignedStaffName: workTypeDetail.elora?.officeStaff?.name,
                                     assignmentStatus: workTypeDetail.elora?.officeStaff?.status,
+                                    workOrderCopy: machineData.workOrderCopy || null,
+                                    partyCodeOrSysId: machineData.partyCodeOrSysId || null,
+                                    procNoOrPoNo: machineData.procNoOrPoNo || null,
+                                    procExpiryDate: machineData.procExpiryDate || null,
+                                    formattedProcExpiryDate: machineData.procExpiryDate
+                                        ? new Date(machineData.procExpiryDate).toLocaleDateString('en-GB', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                        })
+                                        : null,
                                 });
 
                                 // ✅ Save Elora (or any other office staff)
@@ -2055,12 +1782,35 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     <div className="flex items-center gap-4 text-sm text-gray-600">
                                         <span className="font-medium">Equipment ID: {service.equipmentId}</span>
                                         <span className="font-medium">Work Type: {service.workTypeName}</span>{" "}
+                                        {service.partyCodeOrSysId && (
+                                            <span className="font-medium">Party Code: {service.partyCodeOrSysId}</span>
+                                        )}
+                                        {service.procNoOrPoNo && (
+                                            <span className="font-medium">PROC/PO No: {service.procNoOrPoNo}</span>
+                                        )}
+                                        {service.formattedProcExpiryDate && (
+                                            <span className="font-medium">PROC Exp: {service.formattedProcExpiryDate}</span>
+                                        )}
                                     </div>
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(service.status)}`}>
                                     {service.status}
                                 </span>
                             </div>
+                            {/* ✅ ADD WORK ORDER COPY LINK IF AVAILABLE */}
+                            {service.workOrderCopy && (
+                                <div className="mt-3 flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-blue-600" />
+                                    <a
+                                        href={service.workOrderCopy}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                        View Work Order Copy
+                                    </a>
+                                </div>
+                            )}
                         </div>
                         <div className="divide-y">
                             {service.workTypes.map((workType) => (
@@ -2151,30 +1901,30 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                         ) : (
                                                             <div className="space-y-4">
                                                                 {/* <div className="flex items-center gap-2 text-green-600">
-                                                                    <Check className="h-4 w-4" />
-                                                                    <span className="font-medium">
-                                                                        Assigned to:{" "}
-                                                                        {workType.assignedTechnicianName ||
-                                                                            technicians.find((tech) => tech._id === assignments[workType.id]?.employeeId)
-                                                                                ?.name ||
-                                                                            "Unknown"}
-                                                                    </span>
-                                                                    {workType.assignmentStatus && (
-                                                                        <span
-                                                                            className={`ml-2 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(workType.assignmentStatus)}`}
-                                                                        >
-                                                                            {workType.assignmentStatus}
+                                                                        <Check className="h-4 w-4" />
+                                                                        <span className="font-medium">
+                                                                            Assigned to:{" "}
+                                                                            {workType.assignedTechnicianName ||
+                                                                                technicians.find((tech) => tech._id === assignments[workType.id]?.employeeId)
+                                                                                    ?.name ||
+                                                                                "Unknown"}
                                                                         </span>
-                                                                    )}
-                                                                    <div className="text-xs text-gray-500 flex items-center gap-1">
-                                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                                                                        </svg>
-                                                                        <span>
-                                                                            Engineer assigned at: {formatDate(workType.assignedAtEngineer)}
-                                                                        </span>
-                                                                    </div>
-                                                                </div> */}
+                                                                        {workType.assignmentStatus && (
+                                                                            <span
+                                                                                className={`ml-2 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(workType.assignmentStatus)}`}
+                                                                            >
+                                                                                {workType.assignmentStatus}
+                                                                            </span>
+                                                                        )}
+                                                                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                                            </svg>
+                                                                            <span>
+                                                                                Engineer assigned at: {formatDate(workType.assignedAtEngineer)}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div> */}
                                                                 <div className="space-y-3">
                                                                     {/* Assigned to + status badge */}
                                                                     <div className="flex items-center gap-3 text-green-600">
@@ -2606,11 +2356,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 </span>
                                                                             </div>
                                                                             {/* {reportNumbers[service.id]?.qatest?.remark && (
-                                                                                <div className="p-2 bg-yellow-50 rounded border col-span-2">
-                                                                                    <label className="text-xs font-medium text-yellow-800">Debug Remark:</label>
-                                                                                    <p className="text-sm text-yellow-900">{reportNumbers[service.id]?.qatest?.remark}</p>
-                                                                                </div>
-                                                                            )} */}
+                                                                                    <div className="p-2 bg-yellow-50 rounded border col-span-2">
+                                                                                        <label className="text-xs font-medium text-yellow-800">Debug Remark:</label>
+                                                                                        <p className="text-sm text-yellow-900">{reportNumbers[service.id]?.qatest?.remark}</p>
+                                                                                    </div>
+                                                                                )} */}
                                                                             {reportNumbers[service.id]?.qatest?.reportStatus === "rejected" && (
                                                                                 <div className="p-2 bg-white rounded border col-span-2">
                                                                                     <label className="text-xs text-gray-500 font-medium">Remark (Rejection Reason)</label>
@@ -2783,11 +2533,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                                                                     </div>
                                                                     {/* <div className="text-xs text-gray-500 flex items-center gap-1">
-                                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                                                                        </svg>
-                                                                        <span>Engineer assigned at: {formatDate(workTypeDetails?.assignedAt)}</span>
-                                                                    </div> */}
+                                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                                            </svg>
+                                                                            <span>Engineer assigned at: {formatDate(workTypeDetails?.assignedAt)}</span>
+                                                                        </div> */}
                                                                     <div className="flex gap-2">
                                                                         <button
                                                                             onClick={() => handleEditToggle(workType.id)}
