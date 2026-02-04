@@ -1758,14 +1758,27 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 <p className="text-gray-600">Manage your equipment and work types</p>
             </div>
             <div className="grid gap-6">
-                {machineData.map((service) => (
-                    <div key={service.id} className="shadow-lg border-0 bg-white rounded-lg overflow-hidden">
+                {machineData.map((service, index) => (
+                    <div key={service.id} className="shadow-lg border-0 bg-white rounded-lg overflow-hidden relative">
+                        {/* ✅ Add sequential number badge */}
+                        <div className="absolute -top-2 -left-2 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm z-10 shadow-lg">
+                            {index + 1}
+                        </div>
+
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b p-6">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-2">
-                                    <h2 className="text-xl font-semibold text-gray-900">{service.machineType}</h2>
+                                    {/* ✅ Show machine number in header too */}
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-lg font-bold text-blue-700">#{index + 1}</span>
+                                        <h2 className="text-xl font-semibold text-gray-900">{service.machineType}</h2>
+                                    </div>
                                     <div className="flex items-center gap-4 text-sm text-gray-600">
                                         <span className="font-medium">Equipment ID: {service.equipmentId}</span>
+                                        {/* ✅ Add Serial Number here */}
+                                        {service.workTypes[0]?.backendFields?.serialNo && service.workTypes[0]?.backendFields?.serialNo !== "N/A" && (
+                                            <span className="font-medium">Serial No: {service.workTypes[0]?.backendFields?.serialNo}</span>
+                                        )}
                                         <span className="font-medium">Work Type: {service.workTypeName}</span>
                                     </div>
                                     {/* ✅ Quick summary of important fields */}

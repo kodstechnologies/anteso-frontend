@@ -41,9 +41,10 @@ const Orders = () => {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'srfNumber',
-        direction: 'asc',
+        columnAccessor: 'createdAt',
+        direction: 'desc',
     });
+
     const [selectedRecords, setSelectedRecords] = useState<Order[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
@@ -117,27 +118,32 @@ const Orders = () => {
 
         if (sortStatus.columnAccessor) {
             data.sort((a, b) => {
-                let aValue = a[sortStatus.columnAccessor];
-                let bValue = b[sortStatus.columnAccessor];
+                const aValue = a[sortStatus.columnAccessor];
+                const bValue = b[sortStatus.columnAccessor];
 
-                // Handle null/undefined values
-                if (aValue === null || aValue === undefined) aValue = '';
-                if (bValue === null || bValue === undefined) bValue = '';
+                // 🔥 Special handling for dates
+                if (sortStatus.columnAccessor === 'createdAt') {
+                    const aDate = aValue ? new Date(aValue).getTime() : 0;
+                    const bDate = bValue ? new Date(bValue).getTime() : 0;
 
-                // Convert to string for comparison
-                const aString = String(aValue).toLowerCase();
-                const bString = String(bValue).toLowerCase();
-
-                if (sortStatus.direction === 'asc') {
-                    return aString.localeCompare(bString);
-                } else {
-                    return bString.localeCompare(aString);
+                    return sortStatus.direction === 'asc'
+                        ? aDate - bDate
+                        : bDate - aDate;
                 }
+
+                // 🔹 Default string sorting
+                const aString = String(aValue ?? '').toLowerCase();
+                const bString = String(bValue ?? '').toLowerCase();
+
+                return sortStatus.direction === 'asc'
+                    ? aString.localeCompare(bString)
+                    : bString.localeCompare(aString);
             });
         }
 
         return data;
     }, [filteredRecords, sortStatus]);
+
 
     // ✅ Get paginated records
     const paginatedRecords = useMemo(() => {
