@@ -876,10 +876,9 @@ export const editEmployee = async (id: string, payload: Record<string, any>) => 
         return res.data;
     } catch (error: any) {
         console.error("🚀 ~ editEmployee ~ error:", error);
-        throw new Error(
-            error?.response?.data?.message || "Failed to update employee"
-        );
+        throw error; // ✅ keep original Axios error
     }
+
 };
 
 export const getAllEmployees = async () => {
