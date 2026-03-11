@@ -86,9 +86,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
     const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
-    const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
     const [showTubeModal, setShowTubeModal] = useState(true); // Show tube selection modal first
-    const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
+    const [showGantryTiltModal, setShowGantryTiltModal] = useState(false);
+    const [hasGantryTilt, setHasGantryTilt] = useState<boolean | null>(null); // null = not answered
     const [tubeType, setTubeType] = useState<'single' | 'double' | null>(null); // null = not selected yet
     const [savedTestIds, setSavedTestIds] = useState<{
         LinearityOfMasLoadingCTScan?: string;
@@ -256,6 +256,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
     const parseHorizontalData = (rows: any[][]): any[] => {
         const data: any[] = [];
         let currentTestName = '';
+        let currentTestNameBase = '';
         let headers: string[] = [];
         let isReadingTest = false;
 
@@ -278,6 +279,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             'GANTRY TILT': 'Gantry Tilt',
             'MAXIMUM RADIATION LEVEL': 'Maximum Radiation Level',
         };
+        const markerUpperToInternal: Record<string, string> = Object.fromEntries(
+            Object.entries(testMarkerToInternalName).map(([k, v]) => [String(k).trim().toUpperCase(), v])
+        );
 
         const headerMap: { [test: string]: { [header: string]: string } } = {
             'Radiation Profile Width': {
@@ -350,11 +354,26 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             const firstCell = row[0];
 
             if (firstCell.startsWith('TEST: ')) {
-                const testTitle = firstCell.replace('TEST: ', '').trim();
-                currentTestName = testMarkerToInternalName[testTitle] || '';
+                const rawTitle = firstCell.replace('TEST: ', '').trim();
+
+                // Detect tube suffix in title
+                const rawUpper = rawTitle.toUpperCase();
+                let tubeSuffix = '';
+                let baseTitle = rawTitle;
+                if (/\bTUBE\s*A\b/i.test(rawTitle)) {
+                    tubeSuffix = ' - Tube A';
+                    baseTitle = rawTitle.replace(/\s*-\s*TUBE\s*A\s*$/i, '').trim();
+                } else if (/\bTUBE\s*B\b/i.test(rawTitle)) {
+                    tubeSuffix = ' - Tube B';
+                    baseTitle = rawTitle.replace(/\s*-\s*TUBE\s*B\s*$/i, '').trim();
+                }
+
+                const internalBase = markerUpperToInternal[baseTitle.trim().toUpperCase()] || '';
+                currentTestNameBase = internalBase;
+                currentTestName = internalBase ? `${internalBase}${tubeSuffix}` : '';
                 isReadingTest = true;
                 headers = [];
-                sectionRowCounter[currentTestName] = 0;
+                if (currentTestName) sectionRowCounter[currentTestName] = 0;
                 continue;
             }
 
@@ -368,12 +387,12 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 continue;
             }
 
-            if (isReadingTest && currentTestName && headers.length > 0) {
-                sectionRowCounter[currentTestName]++;
+            if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
+                sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
                 const rowIdx = sectionRowCounter[currentTestName];
                 row.forEach((value, cellIdx) => {
                     const header = headers[cellIdx];
-                    const internalField = (headerMap[currentTestName] || {})[header];
+                    const internalField = (headerMap[currentTestNameBase] || {})[header];
                     if (internalField && value) {
                         data.push({
                             'Field Name': internalField,
@@ -568,36 +587,24 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 console.log('Measurement of Operating Potential not found or error:', err);
             }
 
-            // 3. Measurement of mA Linearity (if hasTimer === true)
-            if (hasTimer === true) {
-                try {
-                    const malData = await getMeasurementOfMaLinearityByServiceId(serviceId, tubeId);
-                    if (malData) {
-                        exportData.measurementOfMaLinearity = malData;
-                    }
-                } catch (err) {
-                    console.log('Measurement of mA Linearity not found or error:', err);
+            // 3. Measurement of mA Linearity (Timer tables only)
+            try {
+                const malData = await getMeasurementOfMaLinearityByServiceId(serviceId, tubeId);
+                if (malData) {
+                    exportData.measurementOfMaLinearity = malData;
                 }
+            } catch (err) {
+                console.log('Measurement of mA Linearity not found or error:', err);
+            }
 
-                // 4. Timer Accuracy
-                try {
-                    const taData = await getTimerAccuracyByServiceId(serviceId, tubeId);
-                    if (taData) {
-                        exportData.timerAccuracy = taData;
-                    }
-                } catch (err) {
-                    console.log('Timer Accuracy not found or error:', err);
+            // 4. Timer Accuracy (Timer tables only)
+            try {
+                const taData = await getTimerAccuracyByServiceId(serviceId, tubeId);
+                if (taData) {
+                    exportData.timerAccuracy = taData;
                 }
-            } else if (hasTimer === false) {
-                // 5. Linearity of mAs Loading
-                try {
-                    const masData = await getLinearityOfMasLoadingByServiceIdForCTScan(serviceId, tubeId);
-                    if (masData) {
-                        exportData.linearityOfMasLoading = masData;
-                    }
-                } catch (err) {
-                    console.log('Linearity of mAs Loading not found or error:', err);
-                }
+            } catch (err) {
+                console.log('Timer Accuracy not found or error:', err);
             }
 
             // 6. Measurement of CTDI
@@ -671,15 +678,17 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 console.log('Radiation Protection Survey not found or error:', err);
             }
 
-            // 13. Alignment of Table/Gantry
-            try {
-                const alignmentRes = await getAlignmentOfTableGantryByServiceIdForCTScan(serviceId);
-                const alignmentData = alignmentRes?.data || alignmentRes;
-                if (alignmentData) {
-                    exportData.alignmentTableGantry = alignmentData;
+            // 13. Alignment of Table/Gantry (only if enabled)
+            if (hasGantryTilt === true) {
+                try {
+                    const alignmentRes = await getAlignmentOfTableGantryByServiceIdForCTScan(serviceId);
+                    const alignmentData = alignmentRes?.data || alignmentRes;
+                    if (alignmentData) {
+                        exportData.alignmentTableGantry = alignmentData;
+                    }
+                } catch (err) {
+                    console.log('Alignment of Table/Gantry not found or error:', err);
                 }
-            } catch (err) {
-                console.log('Alignment of Table/Gantry not found or error:', err);
             }
 
             // 14. Table Position
@@ -693,15 +702,17 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 console.log('Table Position not found or error:', err);
             }
 
-            // 15. Gantry Tilt
-            try {
-                const gantryTiltRes = await getGantryTiltByServiceIdForCTScan(serviceId);
-                const gantryTiltData = gantryTiltRes?.data || gantryTiltRes;
-                if (gantryTiltData) {
-                    exportData.gantryTilt = gantryTiltData;
+            // 15. Gantry Tilt (only if enabled)
+            if (hasGantryTilt === true) {
+                try {
+                    const gantryTiltRes = await getGantryTiltByServiceIdForCTScan(serviceId);
+                    const gantryTiltData = gantryTiltRes?.data || gantryTiltRes;
+                    if (gantryTiltData) {
+                        exportData.gantryTilt = gantryTiltData;
+                    }
+                } catch (err) {
+                    console.log('Gantry Tilt not found or error:', err);
                 }
-            } catch (err) {
-                console.log('Gantry Tilt not found or error:', err);
             }
 
             // Check if we have any data
@@ -712,7 +723,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             }
 
             // Create Excel with proper table structures
-            const wb = createCTScanUploadableExcel(exportData, hasTimer === true);
+            const wb = createCTScanUploadableExcel(exportData, true);
 
             // Generate filename
             const timestamp = new Date().toISOString().split('T')[0];
@@ -765,29 +776,29 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         loadReportHeader();
     }, [serviceId]);
 
-    // Handle tube type selection - show timer modal after selection
+    // Handle tube type selection - show gantry tilt modal after selection
     const handleTubeTypeSelection = (type: 'single' | 'double') => {
         setTubeType(type);
         setShowTubeModal(false);
         // Save tube type to localStorage
         localStorage.setItem(`ctscan_tube_type_${serviceId}`, type);
 
-        // Always show timer modal after tube type selection
-        // Load saved choice if exists, but still show modal to confirm/change
-        const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
-        if (savedChoice !== null) {
-            setHasTimer(JSON.parse(savedChoice));
+        // Immediately resolve gantry tilt choice (show modal only when not saved yet)
+        const savedGantryTilt = localStorage.getItem(`ctscan_gantry_tilt_choice_${serviceId}`);
+        if (savedGantryTilt !== null) {
+            setHasGantryTilt(JSON.parse(savedGantryTilt));
+            setShowGantryTiltModal(false);
+        } else {
+            setHasGantryTilt(null);
+            setShowGantryTiltModal(true);
         }
-        // Always show timer modal after tube selection
-        setShowTimerModal(true);
     };
 
-    // Close modal and set timer choice
-    const handleTimerChoice = (choice: boolean) => {
-        setHasTimer(choice);
-        setShowTimerModal(false);
-        // Persist choice in localStorage
-        localStorage.setItem(`ctscan_timer_choice_${serviceId}`, JSON.stringify(choice));
+    // Close modal and set gantry tilt choice
+    const handleGantryTiltChoice = (choice: boolean) => {
+        setHasGantryTilt(choice);
+        setShowGantryTiltModal(false);
+        localStorage.setItem(`ctscan_gantry_tilt_choice_${serviceId}`, JSON.stringify(choice));
     };
 
     // Load saved tube type on mount (if exists)
@@ -799,16 +810,22 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         if (savedTubeType === 'single' || savedTubeType === 'double') {
             setTubeType(savedTubeType as 'single' | 'double');
             setShowTubeModal(false);
-            // Load saved timer choice if exists
-            const savedChoice = localStorage.getItem(`ctscan_timer_choice_${serviceId}`);
-            if (savedChoice !== null) {
-                setHasTimer(JSON.parse(savedChoice));
+
+            // Load saved gantry tilt choice (if any), otherwise ask
+            const savedGantryTilt = localStorage.getItem(`ctscan_gantry_tilt_choice_${serviceId}`);
+            if (savedGantryTilt !== null) {
+                setHasGantryTilt(JSON.parse(savedGantryTilt));
+                setShowGantryTiltModal(false);
+            } else {
+                setHasGantryTilt(null);
+                setShowGantryTiltModal(true);
             }
-            // Always show timer modal when tube type is loaded from storage
-            setShowTimerModal(true);
         } else {
             // No saved tube type, show tube selection modal first
             setShowTubeModal(true);
+            // Reset gantry tilt choice until tube is selected
+            setHasGantryTilt(null);
+            setShowGantryTiltModal(false);
         }
     }, [serviceId]);
 
@@ -856,27 +873,27 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         );
     }
 
-    // TIMER TEST AVAILABILITY MODAL - Show after tube type selection
-    if (showTimerModal && tubeType && hasTimer === null) {
+    // GANTRY TILT MODAL - Show after tube type selection
+    if (showGantryTiltModal && tubeType && hasGantryTilt === null) {
         return (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
                 <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105 animate-in fade-in duration-300">
-                    <h3 className="text-2xl font-bold text-gray-800 mb-4">Timer Test Availability</h3>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-4">Gantry Tilt Table</h3>
                     <p className="text-gray-600 mb-8">
-                        Does this CT Scan unit have a selectable <strong>Irradiation Time (Timer)</strong> setting?
+                        Do you want to include the <strong>Gantry Tilt Measurement</strong> table in this CT Scan report?
                     </p>
                     <div className="flex gap-4 justify-center">
                         <button
-                            onClick={() => handleTimerChoice(true)}
+                            onClick={() => handleGantryTiltChoice(true)}
                             className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition transform hover:scale-105"
                         >
-                            Yes, Has Timer
+                            Yes
                         </button>
                         <button
-                            onClick={() => handleTimerChoice(false)}
+                            onClick={() => handleGantryTiltChoice(false)}
                             className="px-8 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition transform hover:scale-105"
                         >
-                            No Timer
+                            No
                         </button>
                     </div>
                 </div>
@@ -884,8 +901,8 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         );
     }
 
-    // Don't show tests until tube type is selected and timer choice is made
-    if (!tubeType || hasTimer === null) {
+    // Don't show tests until tube type is selected and gantry tilt choice is made
+    if (!tubeType || hasGantryTilt === null) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-xl font-medium text-gray-700">Loading...</div>
@@ -1005,24 +1022,13 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                             <CloudArrowUpIcon className="w-5 h-5" />
                             {csvUploading ? 'Uploading...' : 'Upload CSV/Excel File'}
                         </label>
-                        {/* <a
-                            href={hasTimer === true
-                                ? "/templates/CTScan_Test_Data_Template_WithTimer.csv"
-                                : hasTimer === false
-                                    ? "/templates/CTScan_Test_Data_Template_NoTimer.csv"
-                                    : "#"
-                            }
+                        <a
+                            href="/templates/CTScan_Test_Data_Template_DoubleTube.csv"
                             download
-                            className={`px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition ${hasTimer === null ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            onClick={(e) => {
-                                if (hasTimer === null) {
-                                    e.preventDefault();
-                                    toast.error('Please select timer availability first');
-                                }
-                            }}
+                            className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
                         >
-                            Download Template
-                        </a> */}
+                            Download Template (Double Tube)
+                        </a>
                         <button
                             onClick={handleExportToExcel}
                             disabled={csvUploading}
@@ -1099,8 +1105,8 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     <button
                         onClick={() => {
                             setShowTubeModal(true);
-                            setShowTimerModal(false);
-                            setHasTimer(null);
+                            setHasGantryTilt(null);
+                            setShowGantryTiltModal(false);
                         }}
                         className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
                     >
@@ -1131,21 +1137,19 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                         ),
                     },
                     { title: "Measurement of Operating Potential", component: <MeasurementOfOperatingPotential serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Measurement of Operating Potential']} /> },
-                    ...(hasTimer === true ? [
-                        { title: "Measurement of mA Linearity", component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Measurement of mA Linearity']} /> },
-                        { title: "Timer Accuracy", component: <TimerAccuracy serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Timer Accuracy']} /> },
-                    ] : hasTimer === false ? [
-                        { title: "Linearity of mAs Loading", component: <LinearityOfMasLoading serviceId={serviceId} testId={savedTestIds.LinearityOfMasLoadingCTScan || null} tubeId={null} onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMasLoadingCTScan: id }))} csvData={csvDataForComponents['Linearity of mAs Loading']} /> },
-                    ] : []),
+                    { title: "Measurement of mA Linearity", component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Measurement of mA Linearity']} /> },
+                    { title: "Timer Accuracy", component: <TimerAccuracy serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Timer Accuracy']} /> },
                     { title: "Measurement of CTDI", component: <MeasurementOfCTDI serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Measurement of CTDI']} /> },
                     { title: "Total Filtration", component: <TotalFilterationForCTScan serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Total Filtration']} /> },
                     { title: "Radiation Leakage Level", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Radiation Leakage Level']} /> },
                     { title: "Output Consistency", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Output Consistency']} /> },
                     { title: "Low Contrast Resolution", component: <LowContrastResolutionForCT serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Low Contrast Resolution']} /> },
                     { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['High Contrast Resolution']} /> },
-                    { title: "Alignment of Table/Gantry", component: <AlignmentOfTableGantry serviceId={serviceId} csvData={csvDataForComponents['Alignment of Table/Gantry']} /> },
                     { title: "Table Position", component: <TablePosition serviceId={serviceId} csvData={csvDataForComponents['Table Position']} /> },
-                    { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} csvData={csvDataForComponents['Gantry Tilt']} /> },
+                    ...(hasGantryTilt === true ? [
+                        { title: "Alignment of Table/Gantry", component: <AlignmentOfTableGantry serviceId={serviceId} csvData={csvDataForComponents['Alignment of Table/Gantry']} /> },
+                        { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} csvData={csvDataForComponents['Gantry Tilt']} /> },
+                    ] : []),
                     { title: "Maximum Radiation Level", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Maximum Radiation Level']} /> },
                 ] : [
                     // ===== TUBE A TESTS =====
@@ -1156,23 +1160,19 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                                 serviceId={serviceId}
                                 tubeId="A"
                                 onTestSaved={(id: any) => console.log("Radiation Profile Tube A saved:", id)}
-                                csvData={csvDataForComponents['Radiation Profile Width']}
+                                csvData={csvDataForComponents['Radiation Profile Width - Tube A']}
                             />
                         ),
                     },
-                    { title: "Measurement of Operating Potential - Tube A", component: <MeasurementOfOperatingPotential serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Measurement of Operating Potential']} /> },
-                    ...(hasTimer === true ? [
-                        { title: "Measurement of mA Linearity - Tube A", component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Measurement of mA Linearity']} /> },
-                        { title: "Timer Accuracy - Tube A", component: <TimerAccuracy serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Timer Accuracy']} /> },
-                    ] : hasTimer === false ? [
-                        { title: "Linearity of mAs Loading - Tube A", component: <LinearityOfMasLoading serviceId={serviceId} tubeId="A" onTestSaved={(id) => console.log("Tube A saved:", id)} csvData={csvDataForComponents['Linearity of mAs Loading']} /> },
-                    ] : []),
-                    { title: "Measurement of CTDI - Tube A", component: <MeasurementOfCTDI serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Measurement of CTDI']} /> },
-                    { title: "Total Filtration - Tube A", component: <TotalFilterationForCTScan serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Total Filtration']} /> },
-                    { title: "Radiation Leakage Level - Tube A", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Radiation Leakage Level']} /> },
-                    { title: "Output Consistency - Tube A", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Output Consistency']} /> },
-                    { title: "Low Contrast Resolution - Tube A", component: <LowContrastResolutionForCT serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Low Contrast Resolution']} /> },
-                    { title: "High Contrast Resolution - Tube A", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['High Contrast Resolution']} /> },
+                    { title: "Measurement of Operating Potential - Tube A", component: <MeasurementOfOperatingPotential serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Measurement of Operating Potential - Tube A']} /> },
+                    { title: "Measurement of mA Linearity - Tube A", component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Measurement of mA Linearity - Tube A']} /> },
+                    { title: "Timer Accuracy - Tube A", component: <TimerAccuracy serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Timer Accuracy - Tube A']} /> },
+                    { title: "Measurement of CTDI - Tube A", component: <MeasurementOfCTDI serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Measurement of CTDI - Tube A']} /> },
+                    { title: "Total Filtration - Tube A", component: <TotalFilterationForCTScan serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Total Filtration - Tube A']} /> },
+                    { title: "Radiation Leakage Level - Tube A", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Radiation Leakage Level - Tube A']} /> },
+                    { title: "Output Consistency - Tube A", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Output Consistency - Tube A']} /> },
+                    { title: "Low Contrast Resolution - Tube A", component: <LowContrastResolutionForCT serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['Low Contrast Resolution - Tube A']} /> },
+                    { title: "High Contrast Resolution - Tube A", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId="A" csvData={csvDataForComponents['High Contrast Resolution - Tube A']} /> },
 
                     // ===== TUBE B TESTS =====
                     {
@@ -1182,29 +1182,27 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                                 serviceId={serviceId}
                                 tubeId="B"
                                 onTestSaved={(id: any) => console.log("Radiation Profile Tube B saved:", id)}
-                                csvData={csvDataForComponents['Radiation Profile Width']}
+                                csvData={csvDataForComponents['Radiation Profile Width - Tube B']}
                             />
                         ),
                     },
-                    { title: "Measurement of Operating Potential - Tube B", component: <MeasurementOfOperatingPotential serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Measurement of Operating Potential']} /> },
-                    ...(hasTimer === true ? [
-                        { title: "Measurement of mA Linearity - Tube B", component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Measurement of mA Linearity']} /> },
-                        { title: "Timer Accuracy - Tube B", component: <TimerAccuracy serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Timer Accuracy']} /> },
-                    ] : hasTimer === false ? [
-                        { title: "Linearity of mAs Loading - Tube B", component: <LinearityOfMasLoading serviceId={serviceId} tubeId="B" onTestSaved={(id) => console.log("Tube B saved:", id)} csvData={csvDataForComponents['Linearity of mAs Loading']} /> },
-                    ] : []),
-                    { title: "Measurement of CTDI - Tube B", component: <MeasurementOfCTDI serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Measurement of CTDI']} /> },
-                    { title: "Total Filtration - Tube B", component: <TotalFilterationForCTScan serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Total Filtration']} /> },
-                    { title: "Radiation Leakage Level - Tube B", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Radiation Leakage Level']} /> },
-                    { title: "Output Consistency - Tube B", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Output Consistency']} /> },
-                    { title: "Low Contrast Resolution - Tube B", component: <LowContrastResolutionForCT serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Low Contrast Resolution']} /> },
-                    { title: "High Contrast Resolution - Tube B", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['High Contrast Resolution']} /> },
+                    { title: "Measurement of Operating Potential - Tube B", component: <MeasurementOfOperatingPotential serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Measurement of Operating Potential - Tube B']} /> },
+                    { title: "Measurement of mA Linearity - Tube B", component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Measurement of mA Linearity - Tube B']} /> },
+                    { title: "Timer Accuracy - Tube B", component: <TimerAccuracy serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Timer Accuracy - Tube B']} /> },
+                    { title: "Measurement of CTDI - Tube B", component: <MeasurementOfCTDI serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Measurement of CTDI - Tube B']} /> },
+                    { title: "Total Filtration - Tube B", component: <TotalFilterationForCTScan serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Total Filtration - Tube B']} /> },
+                    { title: "Radiation Leakage Level - Tube B", component: <RadiationLeakageLeveFromXRayTube serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Radiation Leakage Level - Tube B']} /> },
+                    { title: "Output Consistency - Tube B", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Output Consistency - Tube B']} /> },
+                    { title: "Low Contrast Resolution - Tube B", component: <LowContrastResolutionForCT serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['Low Contrast Resolution - Tube B']} /> },
+                    { title: "High Contrast Resolution - Tube B", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['High Contrast Resolution - Tube B']} /> },
 
                     // ===== COMMON TESTS (No Tube ID) =====
                     { title: "Radiation Protection Survey Report", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Maximum Radiation Level']} /> },
-                    { title: "Alignment of Table/Gantry", component: <AlignmentOfTableGantry serviceId={serviceId} csvData={csvDataForComponents['Alignment of Table/Gantry']} /> },
                     { title: "Table Position", component: <TablePosition serviceId={serviceId} csvData={csvDataForComponents['Table Position']} /> },
-                    { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} csvData={csvDataForComponents['Gantry Tilt']} /> },
+                    ...(hasGantryTilt === true ? [
+                        { title: "Alignment of Table/Gantry", component: <AlignmentOfTableGantry serviceId={serviceId} csvData={csvDataForComponents['Alignment of Table/Gantry']} /> },
+                        { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} csvData={csvDataForComponents['Gantry Tilt']} /> },
+                    ] : []),
                 ] as any)
                     .map((item: any, i: number) => (
                         <Disclosure key={i} defaultOpen={i === 0}>

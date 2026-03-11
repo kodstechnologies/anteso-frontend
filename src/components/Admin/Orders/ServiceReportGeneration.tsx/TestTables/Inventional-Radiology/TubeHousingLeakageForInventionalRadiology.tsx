@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Edit3, Save } from 'lucide-react';
+import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { 
+  addTubeHousingLeakageForInventionalRadiology, 
+  getTubeHousingLeakageByServiceIdForInventionalRadiology, 
+  updateTubeHousingLeakageForInventionalRadiology 
+} from '../../../../../../api';
 
 interface SettingsRow {
   fcd: string;
@@ -25,15 +30,22 @@ interface LeakageRow {
   remark: string;
 }
 
-interface Props {
-  serviceId: string;
-  testId?: string;
-  tubeId?: string | null;
-  onRefresh?: () => void;
+interface TubeHousingLeakageForInventionalRadiologyProps {
+    serviceId: string;
+    testId?: string | null;
+    tubeId?: string | null;
+    onTestSaved?: (testId: string) => void;
+    csvData?: any[];
 }
 
-export default function TubeHousingLeakage({ serviceId, testId: propTestId, tubeId, onRefresh }: Props) {
-  const [testId, setTestId] = useState<string | null>(propTestId || null);
+const TubeHousingLeakageForInventionalRadiology: React.FC<TubeHousingLeakageForInventionalRadiologyProps> = ({
+    serviceId,
+    testId: initialTestId = null,
+    tubeId,
+    onTestSaved,
+    csvData,
+}) => {
+  const [testId, setTestId] = useState<string | null>(initialTestId);
 
   const [settings, setSettings] = useState<SettingsRow>({
     fcd: '100',
@@ -44,7 +56,6 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
 
   const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
     { location: 'Tube', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '', remark: '' },
-    { location: 'Collimator', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '', remark: '' },
   ]);
 
   const [workload, setWorkload] = useState<string>('');
@@ -53,7 +64,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
@@ -84,14 +95,20 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
   }, [leakageRows, workload, settings.ma]);
 
   // Individual results
-  const tubeResultMR = processedLeakage[0].result ? parseFloat(processedLeakage[0].result) : 0;
-  const collimatorResultMR = processedLeakage[1].result ? parseFloat(processedLeakage[1].result) : 0;
+  const tubeRow = processedLeakage.find(r => r.location === 'Tube');
+  const collimatorRow = processedLeakage.find(r => r.location === 'Collimator');
+
+  const tubeResultMR = tubeRow?.result ? parseFloat(tubeRow.result) : 0;
+  const collimatorResultMR = collimatorRow?.result ? parseFloat(collimatorRow.result) : 0;
 
   const tubeResultMGy = tubeResultMR > 0 ? (tubeResultMR / 114).toFixed(4) : '—';
   const collimatorResultMGy = collimatorResultMR > 0 ? (collimatorResultMR / 114).toFixed(4) : '—';
 
   // Global highest leakage (for final Pass/Fail)
-  const globalMaxResultMR = Math.max(tubeResultMR, collimatorResultMR);
+  const globalMaxResultMR = processedLeakage.reduce((max, row) => {
+      const mr = parseFloat(row.result || '0');
+      return isNaN(mr) ? max : Math.max(max, mr);
+  }, 0);
   const globalMaxResultMGy = globalMaxResultMR > 0 ? (globalMaxResultMR / 114).toFixed(4) : '—';
 
   // Final Pass/Fail
@@ -119,6 +136,16 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
     );
   };
 
+  const addCollimator = () => {
+    if (!leakageRows.some(r => r.location === 'Collimator')) {
+      setLeakageRows(prev => [...prev, { location: 'Collimator', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '', remark: '' }]);
+    }
+  };
+
+  const removeRow = (index: number) => {
+    setLeakageRows(prev => prev.filter((_, i) => i !== index));
+  };
+
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
@@ -134,6 +161,114 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
     );
   }, [serviceId, settings, workload, toleranceValue, leakageRows]);
 
+  // Load existing data
+  useEffect(() => {
+    const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const res = await getTubeHousingLeakageByServiceIdForInventionalRadiology(serviceId, tubeId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          setSettings({
+            fcd: data.fcd || '100',
+            kv: data.kv || '120',
+            ma: data.ma || '21',
+            time: data.time || '2.0',
+          });
+          setWorkload(data.workload || '');
+          setToleranceValue(data.toleranceValue || '');
+          setToleranceOperator(data.toleranceOperator || 'less than or equal to');
+          setToleranceTime(data.toleranceTime || '1');
+          
+          if (Array.isArray(data.leakageMeasurements) && data.leakageMeasurements.length > 0) {
+            setLeakageRows(data.leakageMeasurements.map((m: any) => ({
+              location: m.location || '',
+              left: String(m.left || ''),
+              right: String(m.right || ''),
+              front: String(m.front || ''),
+              back: String(m.back || ''),
+              top: String(m.top || ''),
+              max: String(m.max || ''),
+              result: String(m.result || ''),
+              unit: m.unit || 'mR/h',
+              mgy: String(m.mgy || ''),
+              remark: m.remark || '',
+            })));
+          }
+          setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err.response?.status !== 404) {
+          toast.error('Failed to load Tube Housing Leakage data');
+        }
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId, tubeId]);
+
+  // CSV Data Injection
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Setting technique factors
+      const fcdVal = csvData.find(r => r['Field Name'] === 'Table1_fcd')?.['Value'];
+      const kvVal = csvData.find(r => r['Field Name'] === 'Table1_kv')?.['Value'];
+      const maVal = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
+      const timeVal = csvData.find(r => r['Field Name'] === 'Table1_time')?.['Value'];
+      
+      if (fcdVal || kvVal || maVal || timeVal) {
+        setSettings({
+          fcd: fcdVal || settings.fcd,
+          kv: kvVal || settings.kv,
+          ma: maVal || settings.ma,
+          time: timeVal || settings.time,
+        });
+      }
+
+      // Workload
+      const workloadVal = csvData.find(r => r['Field Name'] === 'Table1_workload')?.['Value'];
+      if (workloadVal) setWorkload(workloadVal);
+
+      // Leakage table
+      const leakageRowsFromCSV = csvData.filter(r => r['Field Name']?.startsWith('Table1_Location') || r['Field Name']?.startsWith('Table1_Left'));
+      if (leakageRowsFromCSV.length > 0) {
+        const rowIndices = Array.from(new Set(leakageRowsFromCSV.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
+        const newLeakageRows = rowIndices.map(idx => {
+          const loc = csvData.find(r => r['Field Name'] === 'Table1_Location' && parseInt(r['Row Index']) === idx)?.['Value'] || 'Tube';
+          const left = csvData.find(r => r['Field Name'] === 'Table1_Left' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+          const right = csvData.find(r => r['Field Name'] === 'Table1_Right' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+          const front = csvData.find(r => r['Field Name'] === 'Table1_Front' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+          const back = csvData.find(r => r['Field Name'] === 'Table1_Back' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+          const top = csvData.find(r => r['Field Name'] === 'Table1_Top' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+
+          return {
+            location: loc,
+            left, right, front, back, top,
+            max: '', result: '', unit: 'mR/h', mgy: '', remark: ''
+          };
+        });
+        if (newLeakageRows.length > 0) setLeakageRows(newLeakageRows);
+      }
+
+      // Tolerance
+      const tolVal = csvData.find(r => r['Field Name'] === 'Table1_toleranceValue')?.['Value'];
+      if (tolVal) setToleranceValue(tolVal);
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData, testId]);
+
   const handleSave = async () => {
     if (!serviceId) {
       toast.error('Service ID is missing');
@@ -145,23 +280,46 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
       return;
     }
 
+    let newId = '';
     setIsSaving(true);
     try {
-      // TODO: Replace with actual API call when available
-      // const payload = { ... };
-      // let result;
-      // if (testId) {
-      //   result = await updateTubeHousingLeakageForInventionalRadiology(testId, payload);
-      // } else {
-      //   result = await addTubeHousingLeakageForInventionalRadiology(serviceId, payload);
-      //   const newId = result?.data?._id || result?.data?.data?._id || result?._id;
-      //   if (newId) setTestId(newId);
-      // }
+      const payload = {
+        fcd: settings.fcd,
+        kv: settings.kv,
+        ma: settings.ma,
+        time: settings.time,
+        workload,
+        leakageMeasurements: processedLeakage.map(row => ({
+          location: row.location,
+          left: parseFloat(row.left) || 0,
+          right: parseFloat(row.right) || 0,
+          front: parseFloat(row.front) || 0,
+          back: parseFloat(row.back) || 0,
+          top: parseFloat(row.top) || 0,
+          max: row.max,
+          result: row.result,
+          unit: row.unit,
+          mgy: row.mgy,
+        })),
+        toleranceValue,
+        toleranceOperator,
+        toleranceTime,
+        remark: finalRemark,
+        tubeId: tubeId || null,
+      };
+
+      if (testId) {
+        await updateTubeHousingLeakageForInventionalRadiology(testId, payload);
+      } else {
+        const result = await addTubeHousingLeakageForInventionalRadiology(serviceId, payload);
+        newId = result?.data?._id || result?.data?.data?._id || result?._id;
+        if (newId) setTestId(newId);
+      }
       
       toast.success('Tube Housing Leakage saved successfully!');
       setHasSaved(true);
       setIsEditing(false);
-      onRefresh?.();
+      onTestSaved?.(newId);
     } catch (err: any) {
       console.error('Save error:', err);
       toast.error(err?.response?.data?.message || err?.message || 'Save failed');
@@ -237,7 +395,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
               <th rowSpan={2} className="px-3 py-2 border-r">Max</th>
               <th rowSpan={2} className="px-3 py-2 border-r">Result (mR/h)</th>
               <th rowSpan={2} className="px-3 py-2 border-r">mGy/h</th>
-              <th rowSpan={2} className="px-3 py-2">Remark</th>
+              <th rowSpan={2} className="px-3 py-2 border-r">Remark</th>
+              {!isViewMode && <th rowSpan={2} className="px-3 py-2">Action</th>}
             </tr>
             <tr>
               {['Left', 'Right', 'Front', 'Back', 'Top'].map(dir => (
@@ -275,7 +434,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
                 <td className="px-3 py-3 text-center font-medium border-r bg-gray-50">{row.max || '—'}</td>
                 <td className="px-3 py-3 text-center font-medium border-r bg-blue-50">{row.result || '—'}</td>
                 <td className="px-3 py-3 text-center font-medium border-r bg-green-50">{row.mgy || '—'}</td>
-                <td className="px-3 py-3 text-center">
+                <td className="px-3 py-3 text-center border-r">
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
                     row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
                     row.remark === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100'
@@ -283,10 +442,35 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
                     {row.remark || '—'}
                   </span>
                 </td>
+                {!isViewMode && (
+                  <td className="px-3 py-3 text-center">
+                    {idx > 0 && (
+                      <button
+                        onClick={() => removeRow(idx)}
+                        className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded transition"
+                        title="Remove Row"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
+        
+        {!isViewMode && !leakageRows.some(r => r.location === 'Collimator') && (
+          <div className="p-4 bg-gray-50 border-t flex justify-end">
+            <button
+              onClick={(e) => { e.preventDefault(); addCollimator(); }}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Add Collimator
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Final Results - Side by Side */}
@@ -299,14 +483,16 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
         </div>
 
         {/* Collimator Leakage */}
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg rounded-lg p-6 border border-purple-200">
-          <h3 className="text-lg font-bold text-purple-900 mb-3">Max Leakage from Collimator</h3>
-          <div className="text-2xl font-bold text-purple-700">{collimatorResultMR.toFixed(4)} mR/h</div>
-          <div className="text-xl font-semibold text-green-700 mt-2">= {collimatorResultMGy} mGy/h</div>
-        </div>
+        {leakageRows.some(r => r.location === 'Collimator') && (
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg rounded-lg p-6 border border-purple-200">
+            <h3 className="text-lg font-bold text-purple-900 mb-3">Max Leakage from Collimator</h3>
+            <div className="text-2xl font-bold text-purple-700">{collimatorResultMR.toFixed(4)} mR/h</div>
+            <div className="text-xl font-semibold text-green-700 mt-2">= {collimatorResultMGy} mGy/h</div>
+          </div>
+        )}
 
         {/* Highest Overall */}
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 shadow-lg rounded-lg p-6 border border-orange-300">
+        <div className={`bg-gradient-to-br from-orange-50 to-orange-100 shadow-lg rounded-lg p-6 border border-orange-300 ${!leakageRows.some(r => r.location === 'Collimator') ? 'md:col-span-2' : ''}`}>
           <h3 className="text-lg font-bold text-orange-900 mb-3">Highest Leakage (Final Result)</h3>
           <div className="text-2xl font-bold text-orange-700">{globalMaxResultMR.toFixed(4)} mR/h</div>
           <div className="text-xl font-semibold text-green-800 mt-2">= {globalMaxResultMGy} mGy/h</div>
@@ -380,3 +566,5 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, tube
     </div>
   );
 }
+
+export default TubeHousingLeakageForInventionalRadiology;

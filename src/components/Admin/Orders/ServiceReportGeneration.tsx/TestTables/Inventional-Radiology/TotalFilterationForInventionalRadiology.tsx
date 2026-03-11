@@ -23,6 +23,7 @@ interface TotalFilterationForInventionalRadiologyProps {
     testId?: string | null;
     tubeId?: string | null;
     onTestSaved?: (testId: string) => void;
+    csvData?: any[];
 }
 
 const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInventionalRadiologyProps> = ({
@@ -30,6 +31,7 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
     testId: initialTestId = null,
     tubeId,
     onTestSaved,
+    csvData,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
     const [isSaved, setIsSaved] = useState(!!initialTestId);
@@ -166,6 +168,47 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
         };
         loadTest();
     }, [serviceId, initialTestId, tubeId]);
+
+    // CSV Data Injection
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // Table 2 Results (mapping to Table Filteration measurements)
+            const table2Results = csvData.filter(r => r['Field Name'] === 'Table2_SetKV' || r['Field Name'] === 'Table2_MeasuredKV');
+            if (table2Results.length > 0) {
+                const rowIndices = Array.from(new Set(table2Results.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
+                const newRows = rowIndices.map(idx => {
+                    const setKV = csvData.find(r => r['Field Name'] === 'Table2_SetKV' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
+                    const measuredKV = csvData.find(r => r['Field Name'] === 'Table2_MeasuredKV' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
+                    
+                    return {
+                        id: Date.now().toString() + Math.random() + idx,
+                        appliedKvp: setKV,
+                        measuredValues: [measuredKV],
+                        measuredValuesStatus: [true],
+                        averageKvp: measuredKV,
+                        averageKvpStatus: true,
+                        remarks: "-" as "PASS" | "FAIL" | "-",
+                    };
+                });
+                if (newRows.length > 0) {
+                    setRows(newRows);
+                    setMAStations(["Result"]);
+                }
+            }
+
+            // Total Filtration
+            const tFil = csvData.find(r => r['Field Name'] === 'Table1_totalFiltration')?.['Value'];
+            if (tFil) {
+                setTotalFiltration(prev => ({ ...prev, measured: tFil }));
+            }
+
+            if (!testId) {
+                // Don't auto-set editing true if we already have a testId from DB
+                // Actually testId is null if not in DB.
+                // setIsSaved(false); // Enable editing
+            }
+        }
+    }, [csvData, testId]);
 
     // Save function
     const saveTest = async () => {

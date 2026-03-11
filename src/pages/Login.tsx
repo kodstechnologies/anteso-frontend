@@ -54,11 +54,17 @@ const Login = () => {
 
                 if (response?.status === 200) {
                     const { accessToken, refreshToken } = response.data.data;
-
+                    console.log("ACCESS TOKEN:", accessToken);
+                    console.log("REFRESH TOKEN:", refreshToken);
 
                     // Store tokens in cookies
-                    Cookies.set('accessToken', accessToken, { expires: 1 });
-                    Cookies.set('refreshToken', refreshToken, { expires: 7 });
+                    // Cookies.set('accessToken', accessToken, { expires: 1 });
+                    // Cookies.set('refreshToken', refreshToken, { expires: 7 });
+
+                    Cookies.set('accessToken', accessToken, { expires: 1, path: '/' });
+                    console.log("COOKIE AFTER LOGIN:", Cookies.get('accessToken'));
+                    Cookies.set('refreshToken', refreshToken, { expires: 7, path: '/' });
+
 
                     // Decode accessToken to get role
                     const decoded: JwtPayload = jwtDecode<JwtPayload>(accessToken);

@@ -11,6 +11,8 @@ import {
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
 interface Table1Row {
@@ -27,7 +29,7 @@ interface Table2Row {
 }
 
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
-  serviceId,
+  serviceId, initialData, csvDataVersion,
 }) => {
   const [testId, setTestId] = useState<string | null>(null); // Mongo _id (optional, not strictly needed)
   const [loading, setLoading] = useState(false);
@@ -51,6 +53,23 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   // Tolerance
   const [toleranceOperator, setToleranceOperator] = useState("<=");
   const [toleranceValue, setToleranceValue] = useState("10");
+
+  // Apply CSV/Excel initial data
+  useEffect(() => {
+    if (!initialData || !csvDataVersion || loading) return;
+    const cond = initialData.testConditions;
+    if (cond) setTable1Row(prev => ({ ...prev, fcd: String(cond.fcd ?? prev.fcd), kv: String(cond.kv ?? prev.kv), ma: String(cond.ma ?? prev.ma) }));
+    if (initialData.irradiationTimes?.length > 0) {
+      setTable2Rows(initialData.irradiationTimes.map((t: any, i: number) => ({
+        id: (i + 1).toString(),
+        setTime: String(t.setTime ?? ''),
+        measuredTime: String(t.measuredTime1 ?? t.measuredTime ?? ''),
+      })));
+    }
+    const tol = initialData.tolerance;
+    if (tol?.operator) setToleranceOperator(String(tol.operator));
+    if (tol?.value !== undefined) setToleranceValue(String(tol.value));
+  }, [csvDataVersion, loading]);
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
     setTable1Row((prev) => ({ ...prev, [field]: value }));

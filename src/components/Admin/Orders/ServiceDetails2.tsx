@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react"
 import Swal from 'sweetalert2';
+import Cookies from "js-cookie";
+import { jwtDecode } from "jwt-decode";
 
 import {
     Wrench,
@@ -17,8 +19,9 @@ import {
     ImageIcon,
     FileText,
     Trash2,
+    Plus,
 } from "lucide-react"
-import { getAssignedStaffName, getMachineDetails } from "../../../api"
+import { getAssignedStaffName, getMachineDetails, deleteMachineFromOrder } from "../../../api"
 import {
     getActiveTechnicians,
     getActiveStaffs,
@@ -32,6 +35,7 @@ import {
     assignToOfficeStaffByElora,
 } from "../../../api"
 import { useNavigate } from "react-router-dom";
+import AddMachineModal from "./AddMachineModal";
 
 const showMessage = (msg = '', type = 'success') => {
     const toast: any = Swal.mixin({
@@ -49,6 +53,17 @@ const showMessage = (msg = '', type = 'success') => {
 };
 
 const statusOptions = ["pending", "in progress", "complete", "generated", "paid"]
+
+const isQAWorkType = (workTypeName: string) => {
+    return workTypeName === "Quality Assurance Test" || workTypeName === "Quality assurance testing";
+}
+
+const getFilteredStatusOptions = (workTypeName: string) => {
+    if (isQAWorkType(workTypeName)) {
+        return statusOptions;
+    }
+    return statusOptions.filter(status => status !== "generated" && status !== "paid");
+}
 
 interface Technician {
     _id: string
@@ -227,6 +242,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [modalMessage, setModalMessage] = useState('');
     const [assignedStaffData, setAssignedStaffData] = useState<Record<string, any>>({});
     const [loadingAssignments, setLoadingAssignments] = useState(true)
+    const [addMachineModalOpen, setAddMachineModalOpen] = useState(false)
+    const [deletingMachineId, setDeletingMachineId] = useState<string | null>(null)
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
 
     type ReportData = {
         qaTestReportNumber: string;
@@ -285,6 +304,52 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         }
     }
     const navigate = useNavigate();
+
+    // Get current user from JWT (for staff: disable assign when not assigned to them)
+    useEffect(() => {
+        const token = Cookies.get("accessToken");
+        if (token) {
+            try {
+                const decoded: { id?: string; role?: string } = jwtDecode(token);
+                setCurrentUserId(decoded.id || null);
+                setCurrentUserRole(decoded.role || null);
+            } catch {
+                setCurrentUserId(null);
+                setCurrentUserRole(null);
+            }
+        }
+    }, []);
+
+    const canAssignQARaw = (workType: { assignedTechnicianId?: string }, parentService: MachineData) => {
+        if (currentUserRole === "admin") return true;
+
+        // If the logged-in user is the QA Test staff for this service, allow them to edit QA Raw as well
+        const qaTestWorkType = parentService.workTypes.find((wt: any) => wt.name === "QA Test");
+        const isAssignedQATestStaff =
+            qaTestWorkType &&
+            qaTestWorkType.assignedStaffId &&
+            currentUserId &&
+            qaTestWorkType.assignedStaffId === currentUserId;
+
+        if (isAssignedQATestStaff) {
+            return true;
+        }
+
+        // Technicians / employees (or staff used for technicians) can manage QA Raw when it's unassigned or assigned to them
+        if (currentUserRole === "Technician" || currentUserRole === "Employee" || currentUserRole === "staff") {
+            return !workType.assignedTechnicianId || workType.assignedTechnicianId === currentUserId;
+        }
+
+        return false;
+    };
+
+    const canAssignQATest = (workType: { assignedStaffId?: string }) => {
+        if (currentUserRole === "admin") return true;
+        if (currentUserRole === "staff" || currentUserRole === "office-staff") {
+            return !workType.assignedStaffId || workType.assignedStaffId === currentUserId;
+        }
+        return true;
+    };
 
     const fetchMachineData = async () => {
         if (!orderId) {
@@ -930,17 +995,19 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         }
     }
 
-    const getAvailableStatuses = (currentStatus: string, isReassigned = false) => {
+    const getAvailableStatuses = (currentStatus: string, workTypeName: string, isReassigned = false) => {
+        const filteredOptions = getFilteredStatusOptions(workTypeName)
         if (isReassigned) {
-            return statusOptions
+            return filteredOptions
         }
-        const currentIndex = statusOptions.indexOf(currentStatus)
-        return statusOptions.slice(currentIndex)
+        const currentIndex = filteredOptions.indexOf(currentStatus)
+        return filteredOptions.slice(currentIndex >= 0 ? currentIndex : 0)
     }
 
-    const canReassign = (currentStatus: string) => {
-        const statusIndex = statusOptions.indexOf(currentStatus)
-        const completeIndex = statusOptions.indexOf("complete")
+    const canReassign = (currentStatus: string, workTypeName: string) => {
+        const filteredOptions = getFilteredStatusOptions(workTypeName)
+        const statusIndex = filteredOptions.indexOf(currentStatus)
+        const completeIndex = filteredOptions.indexOf("complete")
         return statusIndex < completeIndex
     }
 
@@ -1219,7 +1286,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             reportULRNumber: reportData.reportULRNumber || currentReport.reportULRNumber,
                             reportStatus: reportData.reportStatus || currentReport.reportStatus,
                             reportUrl: reportData.report || currentReport.reportUrl,
-                            remark: reportData.remark || currentReport.remark, // Make sure remark is included
+                            remark: reportData.remark || currentReport.remark,
                         };
 
                         const newReportStatus = {
@@ -1260,13 +1327,59 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             saveToLocalStorage(STORAGE_KEYS.selectedStatuses, { ...selectedStatuses, [workTypeId]: newStatus })
 
             // Auto-navigate to report for specific machines if status is complete
-            if (newStatus === "complete" && ["Mammography", "OBI", "KV Imaging (OBI)", "Bone Densitometer (BMD)", "BMD", "Radiography and Fluoroscopy", "Computed Tomography", "Dental Cone Beam CT", "Dental Intra", "Dental (Intra Oral)", "Dental (Hand-held)", "Dental Hand-held"].includes(parentService.machineType)) {
+            if (newStatus === "complete" && [
+                "C-Arm",
+                "Mammography",
+                "OBI",
+                "KV Imaging (OBI)",
+                "Bone Densitometer (BMD)",
+                "BMD",
+                "Radiography and Fluoroscopy",
+                "Computed Tomography",
+                "Dental Cone Beam CT",
+                "Dental Intra",
+                "Dental (Intra Oral)",
+                "Dental Hand-held",
+                "Dental (Hand-held)",
+                "Radiography (Mobile)",
+                "Radiography (Mobile) with HT",
+                "Radiography (Portable)",
+                "Radiography (Fixed)",
+                "Interventional Radiology",
+                "O-Arm",
+                "Ortho Pantomography (OPG)",
+                "Lead Apron/Thyroid Shield/Gonad Shield"
+            ].includes(parentService.machineType)) {
+
+                // Check if we have a valid token before navigating
+                const token = Cookies.get("accessToken");
+                if (!token) {
+                    console.error("No access token found, cannot navigate");
+                    showMessage("Session expired. Please login again.", 'error');
+                    navigate("/login");
+                    return;
+                }
+
+                try {
+                    // Verify token is still valid (optional - you can decode to check expiry)
+                    jwtDecode(token);
+                } catch (error) {
+                    console.error("Invalid token:", error);
+                    showMessage("Session expired. Please login again.", 'error');
+                    navigate("/login");
+                    return;
+                }
+
                 const cleanId = parentService.id.replace(/-0$/, "");
                 const firstQATest = parentService.workTypes.find((wt: any) => wt.name === "QA Raw");
                 const createdAt = workType.qaTestSubmittedAt || firstQATest?.backendFields?.createdAt || null;
                 const ulrNumber = reportNumbers[parentService.id]?.qatest?.reportULRNumber || firstQATest?.backendFields?.reportURLNumber || null;
 
-                const csvFileUrl = response?.data?.linkedReport?.report ||
+                // Prefer uploaded Excel/file URL from complete response so report can pre-fill (e.g. Dental Cone Beam CT)
+                const csvFileUrl = response?.data?.fileUrl ||
+                    response?.data?.uploadedFileUrl ||
+                    response?.data?.linkedReport?.fileUrl ||
+                    response?.data?.linkedReport?.report ||
                     firstQATest?.backendFields?.uploadFile ||
                     firstQATest?.backendFields?.fileUrl ||
                     reportNumbers[parentService.id]?.qatest?.reportUrl ||
@@ -1278,16 +1391,19 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     csvFileUrl
                 });
 
-                navigate("/admin/orders/generic-service-table", {
-                    state: {
-                        serviceId: cleanId,
-                        machineType: parentService.machineType,
-                        qaTestDate: workType.qaTestSubmittedAt || null,
-                        createdAt: createdAt,
-                        ulrNumber: ulrNumber,
-                        csvFileUrl: csvFileUrl,
-                    },
-                });
+                // Use setTimeout to ensure state updates are complete before navigation
+                setTimeout(() => {
+                    navigate("/admin/orders/generic-service-table", {
+                        state: {
+                            serviceId: cleanId,
+                            machineType: parentService.machineType,
+                            qaTestDate: workType.qaTestSubmittedAt || null,
+                            createdAt: createdAt,
+                            ulrNumber: ulrNumber,
+                            csvFileUrl: csvFileUrl,
+                        },
+                    });
+                }, 100);
             }
             // console.log("[v0] Status update successful:", { newStatus, workTypeName })
         } catch (error: any) {
@@ -1490,8 +1606,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
             return newAssignments
         })
+        const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId);
+        const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId));
+        const targetStatus = (parentService && isQAWorkType(parentService.workTypeName)) ? "generated" : "complete";
+
         setTimeout(() => {
-            handleStatusUpdate(workTypeId, "generated")
+            handleStatusUpdate(workTypeId, targetStatus)
         }, 1000)
     }
 
@@ -1502,6 +1622,37 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             return newItems
         })
     }
+
+    const handleDeleteMachine = async (serviceId: string) => {
+        if (!orderId) return;
+
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: "You are about to delete this machine and all its associated reports. This action cannot be undone.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#4f46e5',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel',
+            customClass: {
+                container: 'my-swal'
+            }
+        });
+
+        if (result.isConfirmed) {
+            setDeletingMachineId(serviceId);
+            try {
+                await deleteMachineFromOrder(orderId, serviceId);
+                showMessage("Machine deleted successfully", "success");
+                fetchMachineData();
+            } catch (error: any) {
+                showMessage(error?.message || "Failed to delete machine", "error");
+            } finally {
+                setDeletingMachineId(null);
+            }
+        }
+    };
 
     const getFileTypeAndIcon = (url: string) => {
         const extension = url.split(".").pop()?.toLowerCase()
@@ -1538,6 +1689,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const handleReassign = (workTypeId: string) => {
         const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
         if (!workType) return
+        const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
+        if (!parentService) return
+
         let currentStatus = assignments[workTypeId]?.status || "pending"
         if (workType.name === "QA Raw") {
             const qaTestId = workTypeId.replace('-qa-raw', '-qa-test')
@@ -1547,7 +1701,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 return
             }
         }
-        if (!canReassign(currentStatus)) {
+        if (!canReassign(currentStatus, parentService.workTypeName)) {
             showMessage("Cannot reassign after complete status!", 'warning')
             return
         }
@@ -1753,9 +1907,18 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
     return (
         <div className="space-y-6 p-6">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Services Management</h1>
-                <p className="text-gray-600">Manage your equipment and work types</p>
+            <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Services Management</h1>
+                    <p className="text-gray-600">Manage your equipment and work types</p>
+                </div>
+                <button
+                    onClick={() => setAddMachineModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                    <Plus className="h-5 w-5" />
+                    Add Machine
+                </button>
             </div>
             <div className="grid gap-6">
                 {machineData.map((service, index) => (
@@ -1800,9 +1963,25 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                         )}
                                     </div>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(service.status)}`}>
-                                    {service.status}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(service.status)}`}>
+                                        {service.status}
+                                    </span>
+                                    {machineData.length > 1 && (
+                                        <button
+                                            onClick={() => handleDeleteMachine(service.workTypes[0]?.serviceId || service.id.split("-")[0])}
+                                            disabled={deletingMachineId === (service.workTypes[0]?.serviceId || service.id.split("-")[0])}
+                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title="Delete machine"
+                                        >
+                                            {deletingMachineId === (service.workTypes[0]?.serviceId || service.id.split("-")[0]) ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             {/* ✅ Work Order Copy Link */}
                             {service.workOrderCopy && (
@@ -1848,64 +2027,70 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                 {workType.name === "QA Raw" && service.workTypeName === "Quality Assurance Test" && (
                                                     <div className="space-y-4">
                                                         {(!assignments[workType.id]?.isAssigned || assignments[workType.id]?.isReassigned) ? (
-                                                            <div className="space-y-3">
-                                                                <label className="block text-sm font-medium text-gray-700">
-                                                                    {assignments[workType.id]?.isReassigned ? "Reassign Engineer" : "Assign Engineer"}
-                                                                </label>
-                                                                <div className="flex gap-2">
-                                                                    {technicians.length === 1 ? (
-                                                                        <div className="flex items-center gap-2 flex-1">
-                                                                            <span className="text-sm font-medium text-gray-700">{technicians[0].name}</span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <select
-                                                                            value={selectedEmployees[workType.id] || ""}
-                                                                            onChange={(e) => {
-                                                                                setSelectedEmployees((prev) => {
-                                                                                    const newSelection = { ...prev, [workType.id]: e.target.value }
-                                                                                    saveToLocalStorage(STORAGE_KEYS.selectedEmployees, newSelection)
-                                                                                    return newSelection
-                                                                                })
-                                                                            }}
-                                                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                            disabled={loadingDropdowns || assigningTechnician[workType.id]}
-                                                                        >
-                                                                            <option value="">
-                                                                                {loadingDropdowns ? "Loading engineers..." : "Select Engineer"}
-                                                                            </option>
-                                                                            {technicians.map((tech) => (
-                                                                                <option key={tech._id} value={tech._id}>
-                                                                                    {tech.name}
+                                                            canAssignQARaw(workType, service) ? (
+                                                                <div className="space-y-3">
+                                                                    <label className="block text-sm font-medium text-gray-700">
+                                                                        {assignments[workType.id]?.isReassigned ? "Reassign Engineer" : "Assign Engineer"}
+                                                                    </label>
+                                                                    <div className="flex gap-2">
+                                                                        {technicians.length === 1 ? (
+                                                                            <div className="flex items-center gap-2 flex-1">
+                                                                                <span className="text-sm font-medium text-gray-700">{technicians[0].name}</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <select
+                                                                                value={selectedEmployees[workType.id] || ""}
+                                                                                onChange={(e) => {
+                                                                                    setSelectedEmployees((prev) => {
+                                                                                        const newSelection = { ...prev, [workType.id]: e.target.value }
+                                                                                        saveToLocalStorage(STORAGE_KEYS.selectedEmployees, newSelection)
+                                                                                        return newSelection
+                                                                                    })
+                                                                                }}
+                                                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                                disabled={loadingDropdowns || assigningTechnician[workType.id]}
+                                                                            >
+                                                                                <option value="">
+                                                                                    {loadingDropdowns ? "Loading engineers..." : "Select Engineer"}
                                                                                 </option>
-                                                                            ))}
-                                                                        </select>
-                                                                    )}
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            if (technicians.length === 1) {
-                                                                                setSelectedEmployees((prev) => ({
-                                                                                    ...prev,
-                                                                                    [workType.id]: technicians[0]._id,
-                                                                                }));
-                                                                            }
-                                                                            handleEmployeeAssign(workType.id);
-                                                                        }}
-                                                                        disabled={
-                                                                            technicians.length === 1
-                                                                                ? loadingDropdowns || assigningTechnician[workType.id]
-                                                                                : !selectedEmployees[workType.id] || loadingDropdowns || assigningTechnician[workType.id]
-                                                                        }
-                                                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors flex items-center gap-2"
-                                                                    >
-                                                                        {assigningTechnician[workType.id] && <Loader2 className="h-4 w-4 animate-spin" />}
-                                                                        {assigningTechnician[workType.id] ? "Assigning..." : (
-                                                                            technicians.length === 1
-                                                                                ? `${assignments[workType.id]?.isReassigned ? "Reassign" : "Assign"} ${technicians[0].name}`
-                                                                                : assignments[workType.id]?.isReassigned ? "Reassign" : "Assign"
+                                                                                {technicians.map((tech) => (
+                                                                                    <option key={tech._id} value={tech._id}>
+                                                                                        {tech.name}
+                                                                                    </option>
+                                                                                ))}
+                                                                            </select>
                                                                         )}
-                                                                    </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                if (technicians.length === 1) {
+                                                                                    setSelectedEmployees((prev) => ({
+                                                                                        ...prev,
+                                                                                        [workType.id]: technicians[0]._id,
+                                                                                    }));
+                                                                                }
+                                                                                handleEmployeeAssign(workType.id);
+                                                                            }}
+                                                                            disabled={
+                                                                                technicians.length === 1
+                                                                                    ? loadingDropdowns || assigningTechnician[workType.id]
+                                                                                    : !selectedEmployees[workType.id] || loadingDropdowns || assigningTechnician[workType.id]
+                                                                            }
+                                                                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors flex items-center gap-2"
+                                                                        >
+                                                                            {assigningTechnician[workType.id] && <Loader2 className="h-4 w-4 animate-spin" />}
+                                                                            {assigningTechnician[workType.id] ? "Assigning..." : (
+                                                                                technicians.length === 1
+                                                                                    ? `${assignments[workType.id]?.isReassigned ? "Reassign" : "Assign"} ${technicians[0].name}`
+                                                                                    : assignments[workType.id]?.isReassigned ? "Reassign" : "Assign"
+                                                                            )}
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
+                                                            ) : (
+                                                                <div className="p-3 bg-gray-100 rounded-md text-sm text-gray-600">
+                                                                    Only admin or technicians can assign engineers to QA Raw.
+                                                                </div>
+                                                            )
                                                         ) : (
                                                             <div className="space-y-4">
                                                                 {/* <div className="flex items-center gap-2 text-green-600">
@@ -2006,26 +2191,28 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         <p className="font-medium">{workType.backendFields?.qaTestReportNumber || 'N/A'}</p>
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex gap-2">
-                                                                    {(() => {
-                                                                        const qaTestId = workType.id.replace('-qa-raw', '-qa-test');
-                                                                        const qaTestStatus = assignments[qaTestId]?.status || selectedStatuses[qaTestId] || "pending";
-                                                                        const canReassignRaw = qaTestStatus !== "generated" && qaTestStatus !== "paid";
-                                                                        return (
-                                                                            <button
-                                                                                onClick={() => handleReassign(workType.id)}
-                                                                                disabled={!canReassignRaw}
-                                                                                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${canReassignRaw
-                                                                                    ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
-                                                                                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                                                                    }`}
-                                                                            >
-                                                                                <RefreshCw className="h-4 w-4" />
-                                                                                Reassign
-                                                                            </button>
-                                                                        );
-                                                                    })()}
-                                                                </div>
+                                                                {canAssignQARaw(workType, service) && (
+                                                                    <div className="flex gap-2">
+                                                                        {(() => {
+                                                                            const qaTestId = workType.id.replace('-qa-raw', '-qa-test');
+                                                                            const qaTestStatus = assignments[qaTestId]?.status || selectedStatuses[qaTestId] || "pending";
+                                                                            const canReassignRaw = qaTestStatus !== "generated" && qaTestStatus !== "paid";
+                                                                            return (
+                                                                                <button
+                                                                                    onClick={() => handleReassign(workType.id)}
+                                                                                    disabled={!canReassignRaw}
+                                                                                    className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${canReassignRaw
+                                                                                        ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                                                                                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                                                        }`}
+                                                                                >
+                                                                                    <RefreshCw className="h-4 w-4" />
+                                                                                    Reassign
+                                                                                </button>
+                                                                            );
+                                                                        })()}
+                                                                    </div>
+                                                                )}
                                                                 {/* Add this AFTER the remark section in QA Raw */}
                                                                 {(workType.procNoOrPoNo || workType.formattedProcExpiryDate || workType.partyCodeOrSysId) && (
                                                                     <div className="grid grid-cols-2 gap-4 mt-3">
@@ -2176,60 +2363,66 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                 {workType.name === "QA Test" && service.workTypeName === "Quality Assurance Test" && (
                                                     <div className="space-y-4">
                                                         {!assignments[workType.id]?.isAssigned ? (
-                                                            <div className="space-y-3">
-                                                                <label className="block text-sm font-medium text-gray-700">Assign Staff & Status</label>
-                                                                <div className="flex gap-2">
-                                                                    <select
-                                                                        value={selectedStaff[workType.id] || ""}
-                                                                        onChange={(e) => {
-                                                                            setSelectedStaff((prev) => {
-                                                                                const newSelection = { ...prev, [workType.id]: e.target.value }
-                                                                                saveToLocalStorage(STORAGE_KEYS.selectedStaff, newSelection)
-                                                                                return newSelection
-                                                                            })
-                                                                        }}
-                                                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                        disabled={loadingDropdowns || assigningStaff[workType.id]}
-                                                                    >
-                                                                        <option value="">{loadingDropdowns ? "Loading staff..." : "Select Staff----"}</option>
-                                                                        {officeStaff.map((staff) => (
-                                                                            <option key={staff._id} value={staff._id}>
-                                                                                {staff.name}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                    <select
-                                                                        value={selectedStatuses[workType.id] || "pending"}
-                                                                        onChange={(e) => {
-                                                                            setSelectedStatuses((prev) => {
-                                                                                const newStatuses = { ...prev, [workType.id]: e.target.value }
-                                                                                saveToLocalStorage(STORAGE_KEYS.selectedStatuses, newStatuses)
-                                                                                return newStatuses
-                                                                            })
-                                                                        }}
-                                                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                        disabled={assigningStaff[workType.id]}
-                                                                    >
-                                                                        {statusOptions.map((status) => (
-                                                                            <option key={status} value={status}>
-                                                                                {status.charAt(0).toUpperCase() + status.slice(1)}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                    <button
-                                                                        onClick={() => handleStaffAssign(workType.id)}
-                                                                        disabled={
-                                                                            !selectedStaff[workType.id] || loadingDropdowns || assigningStaff[workType.id]
-                                                                        }
-                                                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors flex items-center gap-2"
-                                                                    >
-                                                                        {assigningStaff[workType.id] && <Loader2 className="h-4 w-4 animate-spin" />}
-                                                                        {assigningStaff[workType.id] ? "Assigning..." : "Assign"}
-                                                                    </button>
+                                                            canAssignQATest(workType) ? (
+                                                                <div className="space-y-3">
+                                                                    <label className="block text-sm font-medium text-gray-700">Assign Staff & Status</label>
+                                                                    <div className="flex gap-2">
+                                                                        <select
+                                                                            value={selectedStaff[workType.id] || ""}
+                                                                            onChange={(e) => {
+                                                                                setSelectedStaff((prev) => {
+                                                                                    const newSelection = { ...prev, [workType.id]: e.target.value }
+                                                                                    saveToLocalStorage(STORAGE_KEYS.selectedStaff, newSelection)
+                                                                                    return newSelection
+                                                                                })
+                                                                            }}
+                                                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            disabled={loadingDropdowns || assigningStaff[workType.id]}
+                                                                        >
+                                                                            <option value="">{loadingDropdowns ? "Loading staff..." : "Select Staff----"}</option>
+                                                                            {officeStaff.map((staff) => (
+                                                                                <option key={staff._id} value={staff._id}>
+                                                                                    {staff.name}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                        <select
+                                                                            value={selectedStatuses[workType.id] || "pending"}
+                                                                            onChange={(e) => {
+                                                                                setSelectedStatuses((prev) => {
+                                                                                    const newStatuses = { ...prev, [workType.id]: e.target.value }
+                                                                                    saveToLocalStorage(STORAGE_KEYS.selectedStatuses, newStatuses)
+                                                                                    return newStatuses
+                                                                                })
+                                                                            }}
+                                                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            disabled={assigningStaff[workType.id]}
+                                                                        >
+                                                                            {getFilteredStatusOptions(service.workTypeName).map((status) => (
+                                                                                <option key={status} value={status}>
+                                                                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                        <button
+                                                                            onClick={() => handleStaffAssign(workType.id)}
+                                                                            disabled={
+                                                                                !selectedStaff[workType.id] || loadingDropdowns || assigningStaff[workType.id]
+                                                                            }
+                                                                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors flex items-center gap-2"
+                                                                        >
+                                                                            {assigningStaff[workType.id] && <Loader2 className="h-4 w-4 animate-spin" />}
+                                                                            {assigningStaff[workType.id] ? "Assigning..." : "Assign"}
+                                                                        </button>
+
+                                                                    </div>
 
                                                                 </div>
-
-                                                            </div>
+                                                            ) : (
+                                                                <div className="p-3 bg-gray-100 rounded-md text-sm text-gray-600">
+                                                                    You don't have permission to assign staff to this work type.
+                                                                </div>
+                                                            )
                                                         ) : (
                                                             <div className="space-y-3">
                                                                 <div className="flex items-center justify-between">
@@ -2250,22 +2443,26 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
 
 
-                                                                    <div className="flex gap-2">
-                                                                        <button
-                                                                            onClick={() => handleEditToggle(workType.id)}
-                                                                            className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                                                                        >
-                                                                            <Edit className="h-3 w-3" />
-                                                                            Edit
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleReassign(workType.id)}
-                                                                            className="flex items-center gap-2 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
-                                                                        >
-                                                                            <RefreshCw className="h-3 w-3" />
-                                                                            Reassign
-                                                                        </button>
-                                                                    </div>
+                                                                    {canAssignQATest(workType) ? (
+                                                                        <div className="flex gap-2">
+                                                                            <button
+                                                                                onClick={() => handleEditToggle(workType.id)}
+                                                                                className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                                                                            >
+                                                                                <Edit className="h-3 w-3" />
+                                                                                Edit
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleReassign(workType.id)}
+                                                                                className="flex items-center gap-2 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                                                            >
+                                                                                <RefreshCw className="h-3 w-3" />
+                                                                                Reassign
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-xs text-gray-500">Only admin or the assigned staff can modify</span>
+                                                                    )}
 
                                                                 </div>
                                                                 <div className="text-xs text-gray-500 flex items-center gap-1">
@@ -2276,7 +2473,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         Staff assigned at: {formatDate(workType.assignedAtStaff)}
                                                                     </span>
                                                                 </div>
-                                                                {editingWorkType[workType.id] && (
+                                                                {canAssignQATest(workType) && editingWorkType[workType.id] && (
                                                                     <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
                                                                         <div className="flex gap-2 items-center">
                                                                             <label className="text-sm font-medium text-blue-700">Update Status:</label>
@@ -2291,7 +2488,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 className="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                                                 disabled={assigningStaff[workType.id]}
                                                                             >
-                                                                                {statusOptions.map((status) => (
+                                                                                {getFilteredStatusOptions(service.workTypeName).map((status) => (
                                                                                     <option key={status} value={status}>
                                                                                         {status.charAt(0).toUpperCase() + status.slice(1)}
                                                                                     </option>
@@ -2314,7 +2511,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         </div>
                                                                     </div>
                                                                 )}
-                                                                {(selectedStatuses[workType.id] === "complete" || selectedStatuses[workType.id] === "generated" || selectedStatuses[workType.id] === "paid") && (
+                                                                {canAssignQATest(workType) && (selectedStatuses[workType.id] === "complete" || selectedStatuses[workType.id] === "generated" || selectedStatuses[workType.id] === "paid") && (
                                                                     <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
                                                                         <label className="block text-sm font-medium text-green-700">
                                                                             Upload File
@@ -2365,7 +2562,29 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                                                                                         // Get file URL for mammography/OBI/BMD/FixedRadioFluro/CT Scan CSV/Excel file
                                                                                         let csvFileUrl = null;
-                                                                                        if (service.machineType === "Mammography" || service.machineType === "OBI" || service.machineType === "KV Imaging (OBI)" || service.machineType === "Bone Densitometer (BMD)" || service.machineType === "BMD" || service.machineType === "Radiography and Fluoroscopy" || service.machineType === "Computed Tomography" || service.machineType === "Dental Cone Beam CT" || service.machineType === "Dental Intra" || service.machineType === "Dental (Intra Oral)") {
+                                                                                        if (
+                                                                                            service.machineType === "C-Arm" ||
+                                                                                            service.machineType === "Mammography" ||
+                                                                                            service.machineType === "OBI" ||
+                                                                                            service.machineType === "KV Imaging (OBI)" ||
+                                                                                            service.machineType === "Bone Densitometer (BMD)" ||
+                                                                                            service.machineType === "BMD" ||
+                                                                                            service.machineType === "Radiography and Fluoroscopy" ||
+                                                                                            service.machineType === "Computed Tomography" ||
+                                                                                            service.machineType === "Dental Cone Beam CT" ||
+                                                                                            service.machineType === "Dental Intra" ||
+                                                                                            service.machineType === "Dental (Intra Oral)" ||
+                                                                                            service.machineType === "Radiography (Mobile)" ||
+                                                                                            service.machineType === "Radiography (Mobile) with HT" ||
+                                                                                            service.machineType === "Radiography (Portable)" ||
+                                                                                            service.machineType === "Radiography (Fixed)" ||
+                                                                                            service.machineType === "Interventional Radiology" ||
+                                                                                            service.machineType === "O-Arm" ||
+                                                                                            service.machineType === "Ortho Pantomography (OPG)" ||
+                                                                                            service.machineType === "Dental (Hand-held)" ||
+                                                                                            service.machineType === "Dental Hand-held" ||
+                                                                                            service.machineType === "Lead Apron/Thyroid Shield/Gonad Shield"
+                                                                                        ) {
                                                                                             // First try to get uploadFile from QA Raw workType's backendFields (this is the file uploaded by engineer)
                                                                                             // Then fallback to reportUrl from reportNumbers (this is the file uploaded by office staff)
                                                                                             csvFileUrl = firstQATest?.backendFields?.uploadFile ||
@@ -2550,7 +2769,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                                         disabled={assigningStaff[workType.id]}
                                                                     >
-                                                                        {statusOptions.map((status) => (
+                                                                        {getFilteredStatusOptions(service.workTypeName).map((status) => (
                                                                             <option key={status} value={status}>
                                                                                 {status.charAt(0).toUpperCase() + status.slice(1)}
                                                                             </option>
@@ -2624,7 +2843,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 className="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                                                 disabled={assigningStaff[workType.id]}
                                                                             >
-                                                                                {statusOptions.map((status) => (
+                                                                                {getFilteredStatusOptions(service.workTypeName).map((status) => (
                                                                                     <option key={status} value={status}>
                                                                                         {status.charAt(0).toUpperCase() + status.slice(1)}
                                                                                     </option>
@@ -2725,6 +2944,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 onClose={hideModal}
                 title={modalTitle}
                 message={modalMessage}
+            />
+            <AddMachineModal
+                open={addMachineModalOpen}
+                onClose={() => setAddMachineModalOpen(false)}
+                orderId={orderId || ""}
+                onSuccess={fetchMachineData}
             />
         </div>
     )

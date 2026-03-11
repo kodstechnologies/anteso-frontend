@@ -21,12 +21,14 @@ interface TotalFilterationProps {
     serviceId: string;
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
+    csvData?: any[];
 }
 
 const TotalFilteration: React.FC<TotalFilterationProps> = ({
     serviceId,
     testId: initialTestId = null,
     onTestSaved,
+    csvData,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
     const [isSaved, setIsSaved] = useState(!!initialTestId);
@@ -89,6 +91,51 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
         loadTestData();
     }, [initialTestId, serviceId]);
+
+    // Process CSV data when it arrives
+    useEffect(() => {
+        if (!csvData || csvData.length === 0) return;
+        console.log('TotalFilteration: Processing CSV data', csvData);
+        try {
+            // Group by row index
+            const rowMap: { [idx: number]: any } = {};
+            csvData.forEach((item: any) => {
+                const idx = item['Row Index'];
+                if (!rowMap[idx]) rowMap[idx] = {};
+                rowMap[idx][item['Field Name']] = item['Value'];
+            });
+
+            const newRows: any[] = [];
+            Object.keys(rowMap).forEach(idxStr => {
+                const r = rowMap[parseInt(idxStr)];
+                const measuredValues: string[] = [];
+                for (let m = 0; m < 5; m++) {
+                    const val = r[`Table2_Meas_${m}`];
+                    if (val !== undefined) measuredValues.push(val);
+                }
+                if (r['Table2_AppliedKvp'] || measuredValues.length > 0) {
+                    newRows.push({
+                        id: Date.now().toString() + Math.random(),
+                        appliedKvp: r['Table2_AppliedKvp'] || '',
+                        measuredValues: measuredValues.length > 0 ? measuredValues : ['', ''],
+                        averageKvp: '',
+                        remarks: '-' as const,
+                    });
+                }
+            });
+
+            if (newRows.length > 0) {
+                // Determine number of mA stations from first row's measured values count
+                const numStations = newRows[0].measuredValues.length;
+                setMAStations(Array.from({ length: numStations }, (_, i) => `Meas ${i + 1}`));
+                setRows(newRows);
+                setIsSaved(false);
+                toast.success('Total Filtration: CSV data loaded');
+            }
+        } catch (err) {
+            console.error('TotalFilteration CSV processing error:', err);
+        }
+    }, [csvData]);
 
     const saveTest = async () => {
         if (!serviceId) {
@@ -224,8 +271,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     onClick={isSaved ? enableEditing : saveTest}
                     disabled={isSaving}
                     className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
-                            ? "bg-gray-600 text-white hover:bg-gray-700"
-                            : "bg-green-600 text-white hover:bg-green-700"
+                        ? "bg-gray-600 text-white hover:bg-gray-700"
+                        : "bg-green-600 text-white hover:bg-green-700"
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     {isSaving ? (
@@ -331,8 +378,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                     </td>
                                     <td className="px-6 py-3 text-center">
                                         <span className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === "PASS" ? "bg-green-100 text-green-800" :
-                                                row.remarks === "FAIL" ? "bg-red-100 text-red-800" :
-                                                    "bg-gray-100 text-gray-600"
+                                            row.remarks === "FAIL" ? "bg-red-100 text-red-800" :
+                                                "bg-gray-100 text-gray-600"
                                             }`}>
                                             {row.remarks}
                                         </span>

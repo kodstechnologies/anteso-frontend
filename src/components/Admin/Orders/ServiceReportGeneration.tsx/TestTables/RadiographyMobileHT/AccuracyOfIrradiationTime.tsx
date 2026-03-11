@@ -11,6 +11,7 @@ import {
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
+  initialData?: { testConditions?: { fcd?: string; kv?: string; ma?: string }; irradiationTimes?: { setTime?: string; measuredTime?: string }[]; tolerance?: { operator?: string; value?: string } };
 }
 
 interface Table1Row {
@@ -28,6 +29,7 @@ interface Table2Row {
 
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -35,7 +37,6 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Test Conditions (Single Row)
   const [table1Row, setTable1Row] = useState<Table1Row>({
     id: "1",
     fcd: "",
@@ -43,14 +44,21 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     ma: "",
   });
 
-  // Irradiation Time Rows
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
     { id: "1", setTime: "", measuredTime: "" },
   ]);
 
-  // Tolerance
   const [toleranceOperator, setToleranceOperator] = useState("<=");
   const [toleranceValue, setToleranceValue] = useState("10");
+
+  useEffect(() => {
+    if (!initialData) return;
+    const tc = initialData.testConditions;
+    if (tc) setTable1Row(prev => ({ ...prev, fcd: tc.fcd ?? prev.fcd, kv: tc.kv ?? prev.kv, ma: tc.ma ?? prev.ma }));
+    if (initialData.irradiationTimes?.length) setTable2Rows(initialData.irradiationTimes.map((t, i) => ({ id: String(i + 1), setTime: t.setTime ?? "", measuredTime: t.measuredTime ?? "" })));
+    if (initialData.tolerance?.value) setToleranceValue(initialData.tolerance.value);
+    if (initialData.tolerance?.operator) setToleranceOperator(initialData.tolerance.operator === ">=" ? ">=" : "<=");
+  }, [initialData]);
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
     setTable1Row((prev) => ({ ...prev, [field]: value }));

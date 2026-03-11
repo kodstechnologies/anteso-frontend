@@ -27,9 +27,11 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
-const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, initialData, csvDataVersion }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -52,6 +54,22 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [toleranceValue, setToleranceValue] = useState<string>('1.5');
 
   const operators = ['<', '>',] as const;
+
+  // Apply CSV/Excel initial data
+  useEffect(() => {
+    if (!initialData || !csvDataVersion) return;
+    if (initialData.techniqueFactors) {
+      setTechniqueRow(prev => ({
+        ...prev,
+        fcd: String(initialData.techniqueFactors.fcd ?? prev.fcd),
+        kv: String(initialData.techniqueFactors.kv ?? prev.kv),
+        mas: String(initialData.techniqueFactors.mas ?? prev.mas),
+      }));
+    }
+    if (initialData.observedTilt?.value !== undefined) setObservedTilt(String(initialData.observedTilt.value));
+    if (initialData.tolerance?.operator) setToleranceOperator(initialData.tolerance.operator as any);
+    if (initialData.tolerance?.value !== undefined) setToleranceValue(String(initialData.tolerance.value));
+  }, [csvDataVersion]);
 
   // Auto-calculate Pass/Fail based on TOLERANCE
   const evaluation = useMemo(() => {

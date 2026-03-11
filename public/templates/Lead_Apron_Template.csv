@@ -1,0 +1,20 @@
+TEST: REPORT DETAILS
+Institution Name,Institution City,Equipment Type,Equipment ID,Person Testing,Service Agency,Test Date,Test Duration
+ABC Hospital,Mumbai,Lead Apron,LA-001,Dr. John Smith,Radiation Safety Services,2024-03-15,2 hours
+
+TEST: OPERATING PARAMETERS: TESTED ON DIRECT RADIATION
+FFD (cm),kV,mAs
+100,80,20
+
+TEST: DOSE MEASUREMENTS
+Parameter,Value
+Neutral (Without Apron),2.5
+Position 1 (With Apron),1.2
+Position 2 (With Apron),1.1
+Position 3 (With Apron),1.3
+Position 4 (With Apron),1.0
+Position 5 (With Apron),1.2
+
+TEST: FOOTER DETAILS
+Place,Date,Signature,Service Engineer Name,Service Agency Name,Service Agency Seal
+Mumbai,2024-03-15,John Smith,Dr. John Smith,Radiation Safety Services,Approved

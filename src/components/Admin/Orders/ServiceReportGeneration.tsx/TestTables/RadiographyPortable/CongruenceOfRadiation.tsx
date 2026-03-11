@@ -31,9 +31,11 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any;
+  refreshKey?: number;
 }
 
-const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, csvData, refreshKey }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -92,6 +94,67 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
   const updateCongruenceRow = (id: string, field: keyof CongruenceRow, value: string) => {
     setCongruenceRows(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
   };
+
+  // === Load CSV Data ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Table 1: Technique Factors
+      const table1Data: any = {};
+      csvData.filter((row: any) => row['Field Name'].startsWith('Table1_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Table1_', '').toLowerCase();
+        table1Data[fieldName] = row.Value;
+      });
+
+      if (Object.keys(table1Data).length > 0) {
+        setTechniqueRows([{
+          id: '1',
+          fcd: table1Data.fcd || table1Data.fcd_cm || '100',
+          kv: table1Data.kv || table1Data.kvp || '80',
+          mas: table1Data.mas || '10',
+        }]);
+      }
+
+      // Table 2: Congruence Measurements
+      const t2DataGrouped: any = {};
+      csvData.filter((row: any) => row['Field Name'].startsWith('Table2_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Table2_', '');
+        const rowIndex = row['Row Index'] || 0;
+        if (!t2DataGrouped[rowIndex]) t2DataGrouped[rowIndex] = {};
+        t2DataGrouped[rowIndex][fieldName] = row.Value;
+      });
+
+      const rowIndices = Object.keys(t2DataGrouped).sort((a, b) => Number(a) - Number(b));
+      if (rowIndices.length > 0) {
+        // Map the first row to X and Y dimensions if possible
+        const firstIdx = rowIndices[0];
+        const rowData = t2DataGrouped[firstIdx];
+
+        setCongruenceRows([
+          {
+            id: 'x',
+            dimension: 'Ι X Ι + Ι X’ Ι',
+            observedShift: rowData.deviationX || '',
+            edgeShift: rowData.edgeShiftX || '',
+            percentFED: '',
+            tolerance: rowData.tolerance || '2',
+            remark: ''
+          },
+          {
+            id: 'y',
+            dimension: 'Ι Y Ι + Ι Y’ Ι',
+            observedShift: rowData.deviationY || '',
+            edgeShift: rowData.edgeShiftY || '',
+            percentFED: '',
+            tolerance: rowData.tolerance || '2',
+            remark: ''
+          },
+        ]);
+      }
+
+      setIsEditing(true);
+      setIsSaved(false);
+    }
+  }, [csvData, refreshKey]);
 
   // Load existing data
   useEffect(() => {

@@ -32,11 +32,11 @@ interface LeakageRow {
 interface Props {
   serviceId: string;
   testId?: string;
-  onRefresh?: () => void;
+  onTestSaved?: (testId: string) => void;
   csvData?: any[];
 }
 
-export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, onRefresh, csvData }: Props) {
+export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, onTestSaved, csvData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Fixed rows
@@ -329,12 +329,12 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         const newTestId = res?.data?.testId || res?.data?._id;
         if (newTestId) {
           setTestId(newTestId);
+          onTestSaved?.(newTestId);
         }
         toast.success('Saved successfully!');
       }
       setHasSaved(true);
       setIsEditing(false);
-      onRefresh?.();
     } catch (e: any) {
       toast.error(e.message || 'Save failed');
     } finally {

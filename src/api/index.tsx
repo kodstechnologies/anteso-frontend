@@ -12,6 +12,7 @@ const otpApi = axios.create({
     baseURL: VITE_BACKEND_API_URL_OTP,
 });
 
+// Attach token to every request so protected routes (e.g. proxy-file, report APIs) don't get 401
 api.interceptors.request.use(
     (config) => {
         const token = Cookies.get('accessToken');
@@ -22,6 +23,22 @@ api.interceptors.request.use(
     },
     (error) => Promise.reject(error)
 );
+
+// api.interceptors.request.use(
+//     (config) => {
+//         const token = Cookies.get('accessToken');
+
+//         console.log("TOKEN FROM COOKIE:", token);
+
+//         if (token) {
+//             config.headers.Authorization = `Bearer ${token}`;
+//         }
+
+//         console.log("REQUEST HEADERS:", config.headers);
+
+//         return config;
+//     }
+// );
 
 // Response interceptor to handle 401 errors
 // api.interceptors.response.use(
@@ -65,9 +82,11 @@ api.interceptors.response.use(
 // Uses AWS SDK on backend (same as s3Fetch.js) but streams through backend
 export const proxyFile = async (fileUrl: string) => {
     try {
+        const token = Cookies.get('accessToken');
         const res = await api.get('/file/proxy-file', {
             params: { fileUrl },
             responseType: 'blob', // Important: get binary data
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         return res;
     } catch (error: any) {
@@ -98,6 +117,7 @@ export const proxyFile = async (fileUrl: string) => {
 export const adminLogin = async (payload: any) => {
     try {
         const res = await api.post('/auth/login', payload)
+        console.log("🚀 ~ adminLogin ~ res:-------->", res)
         return res;
     } catch (error) {
         console.error("🚀 ~ adminLogin ~ error:", error);
@@ -1470,6 +1490,24 @@ export const getAllOfficeStaff = async () => {
         );
     }
 }
+export const getActiveStaffs = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get(`/technician/all-active-staffs`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+        return res.data
+    } catch (error: any) {
+        console.error("🚀 ~ getActiveStaffs ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch active staffs"
+        );
+    }
+}
+
+
 export const updateEmployeeWithStatus = async (orderId: string, serviceId: string, employeeId: string, status: string,) => {
     console.log("🚀 ~ updateEmployeeWithStatus ~ status:", status)
     console.log("🚀 ~ updateEmployeeWithStatus ~ employeeId:", employeeId)
@@ -2086,6 +2124,72 @@ export const getAdditionalServiceReport = async (orderId: any, additionalService
     }
 }
 
+export const assignAdditionalServiceStaff = async (orderId: string, serviceId: string, payload: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.put(
+            `/orders/assign-additional-service-staff/${orderId}/${serviceId}`,
+            payload,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ assignAdditionalServiceStaff ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to assign staff"
+        );
+    }
+};
+
+export const updateAdditionalServiceStatus = async (orderId: string, serviceId: string, payload: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+
+        // If payload is FormData, axios handles Content-Type automatically
+        const res = await api.put(
+            `/orders/update-additional-service-status/${orderId}/${serviceId}`,
+            payload,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    // Don't set Content-Type for FormData to allow browser to set boundary
+                    ...(payload instanceof FormData ? {} : { 'Content-Type': 'application/json' })
+                },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ updateAdditionalServiceStatus ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to update status"
+        );
+    }
+};
+
+export const getAssignedStaffDetailsForAdditionalService = async (orderId: string, serviceId: string) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.get(
+            `/orders/get-assigned-staff-details/${orderId}/${serviceId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ getAssignedStaffDetailsForAdditionalService ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch assigned staff details"
+        );
+    }
+};
+
 export const getPaymentById = async (id: any) => {
     try {
         const token = Cookies.get("accessToken")
@@ -2669,6 +2773,8 @@ export const deleteDealer = async (id: any) => {
 }
 
 export const assignToOfficeStaffByElora = async (orderId: string, serviceId: string, officeStaffId: string, workType: string, status: any) => {
+
+    console.log("🚀 ~ assignToOfficeStaffByElora CALLED------->")
     console.log("🚀 ~ assignToOfficeStaff ~ status:", status)
     console.log("🚀 ~ assignToOfficeStaff ~ workType:", workType)
     console.log("🚀 ~ assignToOfficeStaff ~ officeStaffId:", officeStaffId)
@@ -3285,6 +3391,40 @@ export const getWorkOrderCopy = async (orderId: any) => {
     }
 };
 
+export const addMachineToOrder = async (orderId: string, formData: FormData) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.put(`/orders/add-machine-in-order/${orderId}`, formData, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ addMachineToOrder ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to add machine to order"
+        );
+    }
+};
+
+export const deleteMachineFromOrder = async (orderId: string, serviceId: string) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.delete(`/orders/delete-machine-in-order/${orderId}/${serviceId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ deleteMachineFromOrder ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to delete machine from order"
+        );
+    }
+};
+
 export const getSummary = async () => {
     try {
         const token = Cookies.get('accessToken')
@@ -3463,25 +3603,25 @@ export const getActiveTechnicians = async () => {
         );
     }
 }
-export const getActiveStaffs = async () => {
-    try {
-        const token = Cookies.get('accessToken')
-        // console.log("hi from getAllTechnicianss");
+// export const getActiveStaffs = async () => {
+//     try {
+//         const token = Cookies.get('accessToken')
+//         // console.log("hi from getAllTechnicianss");
 
-        const res = await api.get('/technician/all-active-staffs', {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-        // console.log("🚀 ~ getAllTechnicians ~ res:", res)
-        return res.data
-    } catch (error: any) {
-        console.error("🚀 ~ all  technicians ~ error:", error);
-        throw new Error(
-            error?.response?.data?.message || "Failed to fetch technician data"
-        );
-    }
-}
+//         const res = await api.get('/technician/all-active-staffs', {
+//             headers: {
+//                 Authorization: `Bearer ${token}`,
+//             },
+//         })
+//         // console.log("🚀 ~ getAllTechnicians ~ res:", res)
+//         return res.data
+//     } catch (error: any) {
+//         console.error("🚀 ~ all  technicians ~ error:", error);
+//         throw new Error(
+//             error?.response?.data?.message || "Failed to fetch technician data"
+//         );
+//     }
+// }
 export const getAllActiveEmployees = async () => {
     try {
         const token = Cookies.get('accessToken')
@@ -5147,6 +5287,41 @@ export const updateLinearityOfMasLoadingStationsForMammography = async (testId: 
     return res.data;
 };
 
+// Maximum Radiation Level for Mammography
+export const addMaximumRadiationLevelForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/mammography/maximum-radiation-level/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getMaximumRadiationLevelByServiceIdForMammography = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/mammography/maximum-radiation-level-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const updateMaximumRadiationLevelForMammography = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/mammography/maximum-radiation-level/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 //Linearity of mAs Loading
 export const addLinearityOfMasLLoadingForMammography = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
@@ -5557,6 +5732,49 @@ export const getReportHeaderForInventionalRadiology = async (serviceId: string, 
         console.error("Error fetching Interventional Radiology report:", error);
         throw error;
     }
+};
+
+// Accuracy of Operating Potential - Inventional Radiology
+export const addAccuracyOfOperatingPotentialForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/inventional-radiology/accuracy-of-operating-potential/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+export const getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? 'null' : tubeId;
+        }
+        const res = await api.get(`/service-report/inventional-radiology/accuracy-of-operating-potential-by-service/${serviceId}`, {
+            params,
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return { data: null };
+        throw error;
+    }
+};
+
+export const getAccuracyOfOperatingPotentialByTestIdForInventionalRadiology = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(`/service-report/inventional-radiology/accuracy-of-operating-potential/${testId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+export const updateAccuracyOfOperatingPotentialForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/inventional-radiology/accuracy-of-operating-potential/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
 };
 
 // Accuracy of Irradiation Time - C-Arm
@@ -7850,7 +8068,7 @@ export const updateTubeHousingLeakageForDentalIntra = async (testId: string, pay
 export const addAccuracyOfOperatingPotentialForDentalIntra = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/dental-intra/accuracy-of-operating-potential/${serviceId}`,
+        `/service-report/dental-intra/accuracy-of-operating-potential-and-time/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -7861,7 +8079,7 @@ export const getAccuracyOfOperatingPotentialByServiceIdForDentalIntra = async (s
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-intra/accuracy-of-operating-potential-by-serviceId/${serviceId}`,
+            `/service-report/dental-intra/accuracy-of-operating-potential-and-time-by-service/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -7874,7 +8092,7 @@ export const getAccuracyOfOperatingPotentialByServiceIdForDentalIntra = async (s
 export const getAccuracyOfOperatingPotentialByTestIdForDentalIntra = async (testId: string) => {
     const token = Cookies.get("accessToken");
     const res = await api.get(
-        `/service-report/dental-intra/accuracy-of-operating-potential/${testId}`,
+        `/service-report/dental-intra/accuracy-of-operating-potential-and-time/${testId}`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
@@ -7883,7 +8101,7 @@ export const getAccuracyOfOperatingPotentialByTestIdForDentalIntra = async (test
 export const updateAccuracyOfOperatingPotentialForDentalIntra = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-intra/accuracy-of-operating-potential/${testId}`,
+        `/service-report/dental-intra/accuracy-of-operating-potential-and-time/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -7894,7 +8112,7 @@ export const updateAccuracyOfOperatingPotentialForDentalIntra = async (testId: s
 export const addAccuracyOfIrradiationTimeForDentalIntra = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/dental-intra/accuracy-of-irradiation-time/${serviceId}`,
+        `/service-report/dental-intra/accuracy-of-operating-potential-and-time/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -7905,7 +8123,7 @@ export const getAccuracyOfIrradiationTimeByServiceIdForDentalIntra = async (serv
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-intra/accuracy-of-irradiation-time-by-serviceId/${serviceId}`,
+            `/service-report/dental-intra/accuracy-of-operating-potential-and-time-by-service/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -7918,7 +8136,7 @@ export const getAccuracyOfIrradiationTimeByServiceIdForDentalIntra = async (serv
 export const getAccuracyOfIrradiationTimeByTestIdForDentalIntra = async (testId: string) => {
     const token = Cookies.get("accessToken");
     const res = await api.get(
-        `/service-report/dental-intra/accuracy-of-irradiation-time/${testId}`,
+        `/service-report/dental-intra/accuracy-of-operating-potential-and-time/${testId}`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
@@ -7927,7 +8145,7 @@ export const getAccuracyOfIrradiationTimeByTestIdForDentalIntra = async (testId:
 export const updateAccuracyOfIrradiationTimeForDentalIntra = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-intra/accuracy-of-irradiation-time/${testId}`,
+        `/service-report/dental-intra/accuracy-of-operating-potential-and-time/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -7982,7 +8200,7 @@ export const updateTotalFiltrationForDentalIntra = async (testId: string, payloa
 export const addLinearityOfMaLoadingForDentalIntra = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/dental-intra/linearity-of-ma-loading/${serviceId}`,
+        `/service-report/dental-intra/linearity-of-time/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -7993,7 +8211,7 @@ export const getLinearityOfMaLoadingByServiceIdForDentalIntra = async (serviceId
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-intra/linearity-of-ma-loading-by-serviceId/${serviceId}`,
+            `/service-report/dental-intra/linearity-of-time-by-service/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -8006,7 +8224,7 @@ export const getLinearityOfMaLoadingByServiceIdForDentalIntra = async (serviceId
 export const getLinearityOfMaLoadingByTestIdForDentalIntra = async (testId: string) => {
     const token = Cookies.get("accessToken");
     const res = await api.get(
-        `/service-report/dental-intra/linearity-of-ma-loading/${testId}`,
+        `/service-report/dental-intra/linearity-of-time/${testId}`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
@@ -8015,7 +8233,7 @@ export const getLinearityOfMaLoadingByTestIdForDentalIntra = async (testId: stri
 export const updateLinearityOfMaLoadingForDentalIntra = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-intra/linearity-of-ma-loading/${testId}`,
+        `/service-report/dental-intra/linearity-of-time/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8070,7 +8288,7 @@ export const updateLinearityOfMasLoadingForDentalIntra = async (testId: string, 
 export const addConsistencyOfRadiationOutputForDentalIntra = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/dental-intra/consistency-of-radiation-output/${serviceId}`,
+        `/service-report/dental-intra/reproducibility-of-radiation-output/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8081,7 +8299,7 @@ export const getConsistencyOfRadiationOutputByServiceIdForDentalIntra = async (s
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-intra/consistency-of-radiation-output-by-serviceId/${serviceId}`,
+            `/service-report/dental-intra/reproducibility-of-radiation-output-by-service/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -8094,7 +8312,7 @@ export const getConsistencyOfRadiationOutputByServiceIdForDentalIntra = async (s
 export const getConsistencyOfRadiationOutputByTestIdForDentalIntra = async (testId: string) => {
     const token = Cookies.get("accessToken");
     const res = await api.get(
-        `/service-report/dental-intra/consistency-of-radiation-output/${testId}`,
+        `/service-report/dental-intra/reproducibility-of-radiation-output/${testId}`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
@@ -8103,7 +8321,7 @@ export const getConsistencyOfRadiationOutputByTestIdForDentalIntra = async (test
 export const updateConsistencyOfRadiationOutputForDentalIntra = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-intra/consistency-of-radiation-output/${testId}`,
+        `/service-report/dental-intra/reproducibility-of-radiation-output/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8180,11 +8398,11 @@ export const saveReportHeaderForDentalHandHeld = async (serviceId: string, paylo
     return res.data;
 };
 
-// Accuracy of Operating Potential - Dental Hand-held
+// Accuracy of Operating Potential - Dental Hand-held (uses same endpoint as accuracy-of-operating-potential-and-time)
 export const addAccuracyOfOperatingPotentialForDentalHandHeld = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/dental-hand-held/accuracy-of-operating-potential/${serviceId}`,
+        `/service-report/dental-hand-held/accuracy-of-operating-potential-and-time/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8195,7 +8413,7 @@ export const getAccuracyOfOperatingPotentialByServiceIdForDentalHandHeld = async
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-hand-held/accuracy-of-operating-potential-by-serviceId/${serviceId}`,
+            `/service-report/dental-hand-held/accuracy-of-operating-potential-and-time-by-service/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -8205,10 +8423,19 @@ export const getAccuracyOfOperatingPotentialByServiceIdForDentalHandHeld = async
     }
 };
 
+export const getAccuracyOfOperatingPotentialByTestIdForDentalHandHeld = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-hand-held/accuracy-of-operating-potential-and-time/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 export const updateAccuracyOfOperatingPotentialForDentalHandHeld = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-hand-held/accuracy-of-operating-potential/${testId}`,
+        `/service-report/dental-hand-held/accuracy-of-operating-potential-and-time/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8219,7 +8446,7 @@ export const updateAccuracyOfOperatingPotentialForDentalHandHeld = async (testId
 export const addAccuracyOfIrradiationTimeForDentalHandHeld = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/dental-hand-held/accuracy-of-irradiation-time/${serviceId}`,
+        `/service-report/dental-hand-held/accuracy-of-operating-potential-and-time/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8230,7 +8457,7 @@ export const getAccuracyOfIrradiationTimeByServiceIdForDentalHandHeld = async (s
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-hand-held/accuracy-of-irradiation-time-by-serviceId/${serviceId}`,
+            `/service-report/dental-hand-held/accuracy-of-operating-potential-and-time-by-service/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -8240,10 +8467,19 @@ export const getAccuracyOfIrradiationTimeByServiceIdForDentalHandHeld = async (s
     }
 };
 
+export const getAccuracyOfIrradiationTimeByTestIdForDentalHandHeld = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-hand-held/accuracy-of-operating-potential-and-time/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 export const updateAccuracyOfIrradiationTimeForDentalHandHeld = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-hand-held/accuracy-of-irradiation-time/${testId}`,
+        `/service-report/dental-hand-held/accuracy-of-operating-potential-and-time/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8333,7 +8569,7 @@ export const updateLinearityOfTimeForDentalHandHeld = async (testId: string, pay
 export const addLinearityOfMaLoadingForDentalHandHeld = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/dental-hand-held/linearity-of-ma-loading/${serviceId}`,
+        `/service-report/dental-hand-held/linearity-of-time/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8344,7 +8580,7 @@ export const getLinearityOfMaLoadingByServiceIdForDentalHandHeld = async (servic
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-hand-held/linearity-of-ma-loading-by-serviceId/${serviceId}`,
+            `/service-report/dental-hand-held/linearity-of-time-by-service/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -8354,10 +8590,19 @@ export const getLinearityOfMaLoadingByServiceIdForDentalHandHeld = async (servic
     }
 };
 
+export const getLinearityOfMaLoadingByTestIdForDentalHandHeld = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-hand-held/linearity-of-time/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 export const updateLinearityOfMaLoadingForDentalHandHeld = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-hand-held/linearity-of-ma-loading/${testId}`,
+        `/service-report/dental-hand-held/linearity-of-time/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8389,6 +8634,15 @@ export const getLinearityOfMasLoadingByServiceIdForDentalHandHeld = async (servi
     }
 };
 
+export const getLinearityOfMasLoadingByTestIdForDentalHandHeld = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/dental-hand-held/linearity-of-mas-loading/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 export const updateLinearityOfMasLoadingForDentalHandHeld = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
@@ -8403,7 +8657,7 @@ export const updateLinearityOfMasLoadingForDentalHandHeld = async (testId: strin
 export const addConsistencyOfRadiationOutputForDentalHandHeld = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/dental-hand-held/consistency-of-radiation-output/${serviceId}`,
+        `/service-report/dental-hand-held/reproducibility-of-radiation-output/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8414,7 +8668,7 @@ export const getConsistencyOfRadiationOutputByServiceIdForDentalHandHeld = async
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-hand-held/consistency-of-radiation-output-by-serviceId/${serviceId}`,
+            `/service-report/dental-hand-held/reproducibility-of-radiation-output-by-service/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -8427,7 +8681,7 @@ export const getConsistencyOfRadiationOutputByServiceIdForDentalHandHeld = async
 export const getConsistencyOfRadiationOutputByTestIdForDentalHandHeld = async (testId: string) => {
     const token = Cookies.get("accessToken");
     const res = await api.get(
-        `/service-report/dental-hand-held/consistency-of-radiation-output/${testId}`,
+        `/service-report/dental-hand-held/reproducibility-of-radiation-output/${testId}`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
@@ -8436,7 +8690,7 @@ export const getConsistencyOfRadiationOutputByTestIdForDentalHandHeld = async (t
 export const updateConsistencyOfRadiationOutputForDentalHandHeld = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-hand-held/consistency-of-radiation-output/${testId}`,
+        `/service-report/dental-hand-held/reproducibility-of-radiation-output/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8528,6 +8782,36 @@ export const updateTubeHousingLeakageForDentalHandHeld = async (testId: string, 
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
+    return res.data;
+};
+
+// Radiation Protection Survey - Dental Hand-held
+export const addRadiationProtectionSurveyForDentalHandHeld = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(`/service-report/dental-hand-held/radiation-protection-survey/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+
+export const getRadiationProtectionSurveyByServiceIdForDentalHandHeld = async (serviceId: string) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/dental-hand-held/radiation-protection-survey-by-serviceId/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getRadiationProtectionSurveyByTestIdForDentalHandHeld = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/dental-hand-held/radiation-protection-survey/${testId}`, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+
+export const updateRadiationProtectionSurveyForDentalHandHeld = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(`/service-report/dental-hand-held/radiation-protection-survey/${testId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
 
@@ -11034,5 +11318,127 @@ export const getHighContrastResolutionByServiceIdForInventionalRadiology = async
 export const updateHighContrastResolutionForInventionalRadiology = async (testId: string, payload: any) => {
     const token = Cookies.get('accessToken');
     const res = await api.put(`/service-report/inventional-radiology/high-contrast-resolution/${testId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    return res.data;
+};
+
+// Machine APIs
+export const addMachine = async (hospitalId: string, payload: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        console.log("🚀 ~ addMachine ~ hospitalId:", hospitalId)
+        const res = await otpApi.post(`/machines/add/${hospitalId}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...(payload instanceof FormData ? {} : { 'Content-Type': 'application/json' })
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ addMachine ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to add machine");
+    }
+};
+
+export const getMachinesByHospitalId = async (hospitalId: string) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await otpApi.get(`/machines/get-machine-by-hospital/${hospitalId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("🚀 ~ getMachinesByHospitalId ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to fetch machines");
+    }
+};
+
+export const getMachineById = async (id: string, hospitalId: string) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await otpApi.get(`/machines/get-by-id/${id}/${hospitalId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("🚀 ~ getMachineById ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to fetch machine details");
+    }
+};
+
+export const updateMachine = async (id: string, payload: any) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await otpApi.put(`/machines/update/${id}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...(payload instanceof FormData ? {} : { 'Content-Type': 'application/json' })
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ updateMachine ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to update machine");
+    }
+};
+
+export const searchMachinesByType = async (hospitalId: string, type: string) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await otpApi.get(`/machines/search-by-type/${hospitalId}`, {
+            params: { type },
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data.data;
+    } catch (error: any) {
+        console.error("🚀 ~ searchMachinesByType ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to search machines");
+    }
+};
+
+export const deleteMachine = async (id: string) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await otpApi.delete(`/machines/delete-by-id/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ deleteMachine ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to delete machine");
+    }
+};
+
+
+export const addTubeHousingLeakageForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(`/service-report/inventional-radiology/tube-housing-leakage/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
+export const getTubeHousingLeakageByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const params: any = {};
+        if (tubeId !== undefined) {
+            params.tubeId = tubeId === null ? "null" : tubeId;
+        }
+        const res = await api.get(`/service-report/inventional-radiology/tube-housing-leakage-by-service/${serviceId}`, {
+            params,
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return { data: null };
+        throw error;
+    }
+};
+
+export const updateTubeHousingLeakageForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/inventional-radiology/tube-housing-leakage/${testId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
     return res.data;
 };

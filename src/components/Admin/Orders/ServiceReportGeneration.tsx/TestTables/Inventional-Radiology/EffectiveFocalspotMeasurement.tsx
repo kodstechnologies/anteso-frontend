@@ -25,9 +25,10 @@ interface Props {
     testId?: string | null;
     tubeId?: string | null;
     onTestSaved?: (testId: string) => void;
+    csvData?: any[];
 }
 
-const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved }) => {
+const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
     const [isSaved, setIsSaved] = useState(!!propTestId);
     const [isEditing, setIsEditing] = useState(false);
@@ -150,7 +151,47 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tu
             }
         };
         loadTest();
-    }, [serviceId, tubeId]);
+    }, [serviceId, tubeId, propTestId]);
+
+    // CSV Data Injection
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // FCD
+            const tKv = csvData.find(r => r['Field Name'] === 'Table1_kv')?.['Value'];
+            const tMa = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
+            const fSpot = csvData.find(r => r['Field Name'] === 'Table1_focalSpotSize')?.['Value'];
+
+            // Measured Dimensions
+            const mWidth = csvData.find(r => r['Field Name'] === 'Table2_MeasuredWidth')?.['Value'];
+            const mLength = csvData.find(r => r['Field Name'] === 'Table2_MeasuredLength')?.['Value'];
+
+            if (mWidth || mLength) {
+                setRows(prev => prev.map(row => {
+                    // Logic to decide which row to update: large or small? 
+                    // Usually Excel might have one row per test section.
+                    // If multiple rows needed, mapping logic would be more complex.
+                    // For now, mapping to 'large' if only one result.
+                    if (row.id === 'large') {
+                        return {
+                            ...row,
+                            measuredWidth: mWidth || row.measuredWidth,
+                            measuredHeight: mLength || row.measuredHeight,
+                        };
+                    }
+                    return row;
+                }));
+            }
+
+            // Tolerance
+            const tW = csvData.find(r => r['Field Name'] === 'ToleranceWidth')?.['Value'];
+            const tL = csvData.find(r => r['Field Name'] === 'ToleranceLength')?.['Value'];
+            // These might map to local tol state or just be for info.
+
+            if (!testId) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData, testId]);
 
     const handleSave = async () => {
         if (!serviceId) return toast.error("Service ID missing");

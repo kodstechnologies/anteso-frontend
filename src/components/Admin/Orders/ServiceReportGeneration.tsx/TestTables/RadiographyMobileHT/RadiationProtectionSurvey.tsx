@@ -21,10 +21,10 @@ interface LocationData {
 }
 interface Props {
   serviceId: string;
+  initialData?: any;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
-  // Get today's date in YYYY-MM-DD format
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData }) => {
   const getTodayDate = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -54,6 +54,17 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
     { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
   ]);
+
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.surveyDate) setSurveyDate(initialData.surveyDate);
+    if (initialData.hasValidCalibration) setHasValidCalibration(initialData.hasValidCalibration);
+    if (initialData.appliedCurrent) setAppliedCurrent(initialData.appliedCurrent);
+    if (initialData.appliedVoltage) setAppliedVoltage(initialData.appliedVoltage);
+    if (initialData.exposureTime) setExposureTime(initialData.exposureTime);
+    if (initialData.workload) setWorkload(initialData.workload);
+    if (initialData.locations?.length) setLocations(initialData.locations.map((l: any, i: number) => ({ id: String(i + 1), location: l.location ?? '', mRPerHr: l.mRPerHr ?? '', mRPerWeek: '', result: '', category: (l.category === 'public' ? 'public' : 'worker') as 'worker' | 'public' })));
+  }, [initialData]);
 
   // Formula: mR/week = (Workload × mR/hr) / (60 × mA used)
   const calculateMRPerWeek = (mRPerHr: string) => {

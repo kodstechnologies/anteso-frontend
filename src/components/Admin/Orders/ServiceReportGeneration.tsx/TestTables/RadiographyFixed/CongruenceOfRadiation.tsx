@@ -31,9 +31,11 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
-const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, initialData, csvDataVersion }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -50,6 +52,31 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
     { id: 'x', dimension: 'Ι X Ι + Ι X’ Ι', observedShift: '', edgeShift: '', percentFED: '', tolerance: '2', remark: '' },
     { id: 'y', dimension: 'Ι Y Ι + Ι Y’ Ι', observedShift: '', edgeShift: '', percentFED: '', tolerance: '2', remark: '' },
   ]);
+
+  // Apply CSV/Excel initial data
+  useEffect(() => {
+    if (!initialData || !csvDataVersion) return;
+    if (initialData.techniqueFactors?.length > 0) {
+      setTechniqueRows(initialData.techniqueFactors.map((t: any, i: number) => ({
+        id: (i + 1).toString(),
+        fcd: String(t.fcd ?? '100'),
+        kv: String(t.kv ?? '80'),
+        mas: String(t.mas ?? '10'),
+      })));
+    }
+    if (initialData.congruenceMeasurements?.length > 0) {
+      setCongruenceRows(prev => prev.map((existing, i) => {
+        const m = initialData.congruenceMeasurements[i];
+        if (!m) return existing;
+        return {
+          ...existing,
+          observedShift: String(m.observedShift ?? existing.observedShift),
+          edgeShift: String(m.edgeShift ?? existing.edgeShift),
+          tolerance: String(m.tolerance ?? existing.tolerance),
+        };
+      }));
+    }
+  }, [csvDataVersion]);
 
   // Auto-calculate % FED = (Observed Shift + Edge Shift) / FCD × 100
   const processedRows = useMemo(() => {

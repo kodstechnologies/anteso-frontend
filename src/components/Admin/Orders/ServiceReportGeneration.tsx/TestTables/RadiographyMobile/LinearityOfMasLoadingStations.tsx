@@ -31,9 +31,17 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: {
+    table1?: { fcd: string; kv: string }[];
+    table2?: { mAsRange: string; measuredOutputs: string[]; average: string; x: string }[];
+    tolerance?: string;
+    toleranceOperator?: string;
+    measHeaders?: string[];
+  } | null;
 }
 
-const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,10 +52,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
   const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-    { id: '1', mAsRange: '5 - 10', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '2', mAsRange: '10 - 20', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '3', mAsRange: '20 - 50', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '4', mAsRange: '50 - 100', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '1', mAsRange: '5', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '2', mAsRange: '10', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '3', mAsRange: '20', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '4', mAsRange: '50', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
@@ -61,8 +69,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const removeMeasColumn = (idx: number) => {
     if (measHeaders.length <= 1) return;
     setMeasHeaders(p => p.filter((_, i) => i !== idx));
-    setTable2Rows(p => p.map(r => ({ 
-      ...r, 
+    setTable2Rows(p => p.map(r => ({
+      ...r,
       measuredOutputs: r.measuredOutputs.filter((_, i) => i !== idx),
       measuredOutputsStatus: (r.measuredOutputsStatus || []).filter((_, i) => i !== idx)
     })));
@@ -71,17 +79,17 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const addTable2Row = () => {
     setTable2Rows(p => [
       ...p,
-      { 
-        id: Date.now().toString(), 
-        mAsRange: '', 
-        measuredOutputs: Array(measHeaders.length).fill(''), 
+      {
+        id: Date.now().toString(),
+        mAsRange: '',
+        measuredOutputs: Array(measHeaders.length).fill(''),
         measuredOutputsStatus: Array(measHeaders.length).fill(true),
-        average: '', 
-        x: '', 
-        xMax: '', 
-        xMin: '', 
-        col: '', 
-        remarks: '' 
+        average: '',
+        x: '',
+        xMax: '',
+        xMin: '',
+        col: '',
+        remarks: ''
       },
     ]);
   };
@@ -110,6 +118,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   useEffect(() => {
     const load = async () => {
       if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      // If we have uploaded Excel data, don't overwrite it by reloading from API
+      if (initialData) {
         setIsLoading(false);
         return;
       }
@@ -153,7 +166,35 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
+
+  // Pre-fill from Excel initialData
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.table1?.length) {
+      setExposureCondition({
+        fcd: String(initialData.table1[0].fcd ?? '100'),
+        kv: String(initialData.table1[0].kv ?? '80'),
+      });
+    }
+    if (initialData.measHeaders?.length) {
+      setMeasHeaders(initialData.measHeaders);
+    }
+    if (initialData.table2?.length) {
+      setTable2Rows(initialData.table2.map((r, i) => ({
+        id: String(i + 1),
+        mAsRange: String(r.mAsRange ?? ''),
+        measuredOutputs: (r.measuredOutputs || []).map(v => String(v ?? '')),
+        measuredOutputsStatus: [],
+        average: '', x: '', xMax: '', xMin: '', col: '', remarks: ''
+      })));
+    }
+    if (initialData.tolerance) setTolerance(String(initialData.tolerance));
+    if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
+
+    setHasSaved(false);
+    setIsEditing(true);
+  }, [initialData]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -296,15 +337,15 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
         const numVal = parseFloat(val);
         // Empty or invalid values don't fail
         if (isNaN(numVal) || numVal <= 0) return true;
-        
+
         // If CoL fails, all measured values fail
         if (!pass && hasData && col !== '—') {
           return false;
         }
-        
+
         return true; // Default to pass
       });
-      
+
       return { ...row, measuredOutputsStatus: measuredStatus };
     });
 
@@ -331,10 +372,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -461,10 +502,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                   </td>
                   {p.measuredOutputs.map((val, idx) => {
                     const hasValue = val !== "" && !isNaN(parseFloat(val)) && parseFloat(val) > 0;
-                    const isValid = p.measuredOutputsStatus && p.measuredOutputsStatus.length > idx 
-                      ? p.measuredOutputsStatus[idx] 
+                    const isValid = p.measuredOutputsStatus && p.measuredOutputsStatus.length > idx
+                      ? p.measuredOutputsStatus[idx]
                       : true;
-                    
+
                     return (
                       <td key={idx} className={`px-3 py-4 text-center border-r ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
                         <input
@@ -473,13 +514,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                           value={val}
                           onChange={e => updateCell(p.id, idx, e.target.value)}
                           disabled={isViewMode}
-                          className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${
-                            isViewMode 
-                              ? 'bg-gray-50 text-gray-500 cursor-not-allowed' 
-                              : hasValue && !isValid
-                                ? 'border-red-500 bg-red-50'
-                                : ''
-                          }`}
+                          className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode
+                            ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                            : hasValue && !isValid
+                              ? 'border-red-500 bg-red-50'
+                              : ''
+                            }`}
                         />
                       </td>
                     );
@@ -499,8 +539,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                       </td>
                       <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center align-middle">
                         <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${processedTable2.summary.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
-                            processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-600'
+                          processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-600'
                           }`}>
                           {processedTable2.summary.remarks || '—'}
                         </span>

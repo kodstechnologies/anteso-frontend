@@ -12,6 +12,7 @@ import {
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
   tubeId?: string | null;
+  csvData?: any[];
 }
 
 interface Table1Row {
@@ -30,7 +31,8 @@ interface Table2Row {
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
   tubeId,
-}) => {
+  csvData,
+}: AccuracyOfIrradiationTimeProps) => {
   const [testId, setTestId] = useState<string | null>(null); // Mongo _id (optional, not strictly needed)
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -143,6 +145,49 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
     fetchData();
   }, [serviceId, tubeId]);
+
+  // CSV Data Injection
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Table 1
+      const t1Fcd = csvData.find((r: any) => r['Field Name'] === 'Table1_fcd')?.['Value'];
+      const t1Kv = csvData.find((r: any) => r['Field Name'] === 'Table1_kv')?.['Value'];
+      const t1Ma = csvData.find((r: any) => r['Field Name'] === 'Table1_ma')?.['Value'];
+
+      if (t1Fcd || t1Kv || t1Ma) {
+        setTable1Row(prev => ({
+          ...prev,
+          fcd: t1Fcd || prev.fcd,
+          kv: t1Kv || prev.kv,
+          ma: t1Ma || prev.ma
+        }));
+      }
+
+      // Table 2
+      const table2Results = csvData.filter((r: any) => r['Field Name'] === 'Table2_SetTime' || r['Field Name'] === 'Table2_MeasuredTime');
+      if (table2Results.length > 0) {
+        const rowIndices = Array.from(new Set(table2Results.map((r: any) => parseInt(r['Row Index'])))).sort((a: any, b: any) => a - b);
+        const newRows = rowIndices.map(idx => {
+          return {
+            id: String(idx),
+            setTime: csvData.find((r: any) => r['Field Name'] === 'Table2_SetTime' && parseInt(r['Row Index']) === idx)?.['Value'] || "",
+            measuredTime: csvData.find((r: any) => r['Field Name'] === 'Table2_MeasuredTime' && parseInt(r['Row Index']) === idx)?.['Value'] || "",
+          };
+        });
+        if (newRows.length > 0) setTable2Rows(newRows);
+      }
+
+      // Tolerance
+      const tolOp = csvData.find((r: any) => r['Field Name'] === 'ToleranceOperator')?.['Value'];
+      const tolVal = csvData.find((r: any) => r['Field Name'] === 'ToleranceValue')?.['Value'];
+      if (tolOp) setToleranceOperator(tolOp);
+      if (tolVal) setToleranceValue(tolVal);
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData, testId]); // Added testId to dependencies as its value affects the logic inside this effect
 
   // Save / Update
   const handleSave = async () => {

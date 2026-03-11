@@ -11,6 +11,12 @@ import {
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
+  refreshKey?: number;
+  initialData?: {
+    testConditions?: { fcd: string; kv: string; ma: string };
+    irradiationTimes?: { setTime: string; measuredTime: string }[];
+    tolerance?: { operator: string; value: string };
+  } | null;
 }
 
 interface Table1Row {
@@ -28,6 +34,8 @@ interface Table2Row {
 
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
+  refreshKey,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(null); // Mongo _id (optional, not strictly needed)
   const [loading, setLoading] = useState(false);
@@ -106,6 +114,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   useEffect(() => {
     const fetchData = async () => {
       if (!serviceId) return;
+      // If we have uploaded Excel data, don't overwrite it by reloading from API
+      if (initialData) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobile(serviceId);
@@ -138,7 +151,33 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     };
 
     fetchData();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
+
+  // Pre-fill from Excel initialData
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.testConditions) {
+      setTable1Row({
+        id: "1",
+        fcd: String(initialData.testConditions.fcd ?? ""),
+        kv: String(initialData.testConditions.kv ?? ""),
+        ma: String(initialData.testConditions.ma ?? ""),
+      });
+    }
+    if (initialData.irradiationTimes?.length) {
+      setTable2Rows(initialData.irradiationTimes.map((t, i) => ({
+        id: String(i + 1),
+        setTime: String(t.setTime ?? ""),
+        measuredTime: String(t.measuredTime ?? ""),
+      })));
+    }
+    if (initialData.tolerance) {
+      setToleranceOperator(initialData.tolerance.operator || "<=");
+      setToleranceValue(initialData.tolerance.value || "10");
+    }
+    setIsSaved(false);
+    setIsEditing(true);
+  }, [initialData]);
 
   // Save / Update
   const handleSave = async () => {

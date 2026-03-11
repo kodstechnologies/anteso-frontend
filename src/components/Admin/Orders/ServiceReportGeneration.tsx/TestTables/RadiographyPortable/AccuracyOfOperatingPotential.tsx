@@ -27,9 +27,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  csvData?: any;
+  refreshKey?: number;
 }
 
-const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, csvData, refreshKey }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: Only 1 row
@@ -128,6 +130,60 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
       table2Rows.every((r) => r.setKV.trim() && (r.ma10.trim() || r.ma100.trim() || r.ma200.trim()))
     );
   }, [serviceId, table1Row, table2Rows]);
+
+  // === Load CSV Data ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Table 1: Time, Slice Thickness
+      const table1Data: any = {};
+      csvData.filter((row: any) => row['Field Name'].startsWith('Table1_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Table1_', '').toLowerCase();
+        table1Data[fieldName] = row.Value;
+      });
+
+      if (Object.keys(table1Data).length > 0) {
+        setTable1Row({
+          time: table1Data.time || '100',
+          sliceThickness: table1Data.slicethickness || '5.0',
+        });
+      }
+
+      // Table 2: kV Measurements
+      const t2DataGrouped: any = {};
+      csvData.filter((row: any) => row['Field Name'].startsWith('Table2_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Table2_', '');
+        const rowIndex = row['Row Index'] || 0;
+        if (!t2DataGrouped[rowIndex]) t2DataGrouped[rowIndex] = {};
+        t2DataGrouped[rowIndex][fieldName] = row.Value;
+      });
+
+      const rowIndices = Object.keys(t2DataGrouped).sort((a, b) => Number(a) - Number(b));
+      if (rowIndices.length > 0) {
+        const newRows = rowIndices.map((idx, i) => {
+          const r = t2DataGrouped[idx];
+          return {
+            id: String(i + 1),
+            setKV: r.setKV || '',
+            ma10: r.ma10 || '',
+            ma100: r.ma100 || '',
+            ma200: r.ma200 || '',
+            avgKvp: r.avgKvp || '',
+            remarks: r.remarks || '',
+          };
+        });
+        setTable2Rows(newRows as Table2Row[]);
+      }
+
+      // Tolerance
+      const tolData = csvData.find((row: any) => row['Field Name'] === 'Tolerance_Value');
+      if (tolData) {
+        setToleranceValue(tolData.Value);
+      }
+
+      setIsEditing(true);
+      setHasSaved(false);
+    }
+  }, [csvData, refreshKey]);
 
   // === Load Existing Data ===
   useEffect(() => {

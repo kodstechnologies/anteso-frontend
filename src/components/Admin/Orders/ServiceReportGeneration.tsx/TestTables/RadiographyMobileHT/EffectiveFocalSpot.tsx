@@ -24,9 +24,10 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  initialData?: { fcd?: string; focalSpots?: any[] };
 }
 
-const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -87,6 +88,22 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       }
     ]);
   };
+
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.fcd) setFcd(initialData.fcd);
+    if (initialData.focalSpots?.length) {
+      setRows(initialData.focalSpots.map((s: any, i: number) => ({
+        id: String(i),
+        focusType: s.focusType || (i === 0 ? 'Small Focus' : 'Large Focus'),
+        statedWidth: s.statedWidth ?? '',
+        statedHeight: s.statedHeight ?? '',
+        measuredWidth: s.measuredWidth ?? '',
+        measuredHeight: s.measuredHeight ?? '',
+        remark: (s.remark as 'Pass' | 'Fail' | '') ?? '',
+      })));
+    }
+  }, [initialData]);
 
   const removeRow = (id: string) => {
     if (rows.length <= 1) {

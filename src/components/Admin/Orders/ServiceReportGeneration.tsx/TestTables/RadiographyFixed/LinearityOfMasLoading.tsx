@@ -32,9 +32,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
-const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, initialData, csvDataVersion }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +57,31 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const [tolerance, setTolerance] = useState<string>('0.1');
   const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
+  // Apply CSV/Excel initial data
+  useEffect(() => {
+    if (!initialData || !csvDataVersion) return;
+    const ec = initialData.table1;
+    if (ec) setExposureCondition(prev => ({ ...prev, fcd: String(ec.fcd ?? prev.fcd), kv: String(ec.kv ?? prev.kv) }));
+    if (initialData.table2?.length > 0) {
+      const maxOutputs = Math.max(...initialData.table2.map((r: any) => (r.measuredOutputs ?? []).length));
+      const headerCount = Math.max(maxOutputs, 1);
+      setMeasHeaders(Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`));
+      setTable2Rows(initialData.table2.map((r: any, i: number) => {
+        const outputs = (r.measuredOutputs ?? []).map(String);
+        while (outputs.length < headerCount) outputs.push('');
+        return {
+          id: (i + 1).toString(),
+          mAsRange: String(r.mAsRange ?? r.mAsApplied ?? ''),
+          measuredOutputs: outputs,
+          measuredOutputsStatus: [],
+          average: '', x: '', xMax: '', xMin: '', col: '', remarks: '',
+        };
+      }));
+    }
+    if (initialData.tolerance !== undefined) setTolerance(String(initialData.tolerance));
+    if (initialData.toleranceOperator) setToleranceOperator(String(initialData.toleranceOperator));
+  }, [csvDataVersion]);
+
   // Handlers
   const addMeasColumn = () => {
     setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
@@ -64,8 +91,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const removeMeasColumn = (idx: number) => {
     if (measHeaders.length <= 1) return;
     setMeasHeaders(p => p.filter((_, i) => i !== idx));
-    setTable2Rows(p => p.map(r => ({ 
-      ...r, 
+    setTable2Rows(p => p.map(r => ({
+      ...r,
       measuredOutputs: r.measuredOutputs.filter((_, i) => i !== idx),
       measuredOutputsStatus: (r.measuredOutputsStatus || []).filter((_, i) => i !== idx)
     })));
@@ -74,17 +101,17 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const addTable2Row = () => {
     setTable2Rows(p => [
       ...p,
-      { 
-        id: Date.now().toString(), 
-        mAsRange: '', 
-        measuredOutputs: Array(measHeaders.length).fill(''), 
+      {
+        id: Date.now().toString(),
+        mAsRange: '',
+        measuredOutputs: Array(measHeaders.length).fill(''),
         measuredOutputsStatus: Array(measHeaders.length).fill(true),
-        average: '', 
-        x: '', 
-        xMax: '', 
-        xMin: '', 
-        col: '', 
-        remarks: '' 
+        average: '',
+        x: '',
+        xMax: '',
+        xMin: '',
+        col: '',
+        remarks: ''
       },
     ]);
   };
@@ -305,15 +332,15 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
         const numVal = parseFloat(val);
         // Empty or invalid values don't fail
         if (isNaN(numVal) || numVal <= 0) return true;
-        
+
         // If CoL fails, all measured values fail
         if (!pass && hasData && col !== '—') {
           return false;
         }
-        
+
         return true; // Default to pass
       });
-      
+
       return { ...row, measuredOutputsStatus: measuredStatus };
     });
 
@@ -472,10 +499,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                   </td>
                   {p.measuredOutputs.map((val, idx) => {
                     const hasValue = val !== "" && !isNaN(parseFloat(val)) && parseFloat(val) > 0;
-                    const isValid = p.measuredOutputsStatus && p.measuredOutputsStatus.length > idx 
-                      ? p.measuredOutputsStatus[idx] 
+                    const isValid = p.measuredOutputsStatus && p.measuredOutputsStatus.length > idx
+                      ? p.measuredOutputsStatus[idx]
                       : true;
-                    
+
                     return (
                       <td key={idx} className={`px-3 py-4 text-center border-r ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
                         <input
@@ -484,13 +511,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                           value={val}
                           onChange={e => updateCell(p.id, idx, e.target.value)}
                           disabled={isViewMode}
-                          className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${
-                            isViewMode 
-                              ? 'bg-gray-50 text-gray-500 cursor-not-allowed' 
-                              : hasValue && !isValid
-                                ? 'border-red-500 bg-red-50'
-                                : ''
-                          }`}
+                          className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode
+                            ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                            : hasValue && !isValid
+                              ? 'border-red-500 bg-red-50'
+                              : ''
+                            }`}
                         />
                       </td>
                     );

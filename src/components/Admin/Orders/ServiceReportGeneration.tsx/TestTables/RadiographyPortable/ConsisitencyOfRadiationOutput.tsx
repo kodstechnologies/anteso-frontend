@@ -35,12 +35,16 @@ interface Props {
   serviceId: string;
   testId?: string;
   onTestSaved?: (testId: string) => void;
+  csvData?: any;
+  refreshKey?: number;
 }
 
 const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   serviceId,
   testId: propTestId,
-  onTestSaved
+  onTestSaved,
+  csvData,
+  refreshKey
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -197,7 +201,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     );
     setIsSaved(false);
   };
-  
+
 
   const updateMeasurement = (rowId: string, index: number, value: string) => {
     setOutputRows(prev =>
@@ -210,6 +214,69 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     );
     setIsSaved(false);
   };
+
+  // === Load CSV Data ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // FCD
+      const fcdData = csvData.find((row: any) => row['Field Name'] === 'FCD');
+      if (fcdData) {
+        setFFD({ value: fcdData.Value });
+      }
+
+      // Measurements
+      const measDataGrouped: any = {};
+      csvData.filter((row: any) => row['Field Name'].startsWith('Measurement_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Measurement_', '');
+        const rowIndex = row['Row Index'] || 0;
+        if (!measDataGrouped[rowIndex]) measDataGrouped[rowIndex] = {};
+        measDataGrouped[rowIndex][fieldName] = row.Value;
+      });
+
+      const rowIndices = Object.keys(measDataGrouped).sort((a, b) => Number(a) - Number(b));
+
+      let maxMeas = 5;
+      rowIndices.forEach(idx => {
+        const r = measDataGrouped[idx];
+        for (let i = 10; i >= 1; i--) {
+          if (r[`reading${i}`]) {
+            maxMeas = Math.max(maxMeas, i);
+            break;
+          }
+        }
+      });
+      setMeasurementCount(maxMeas);
+
+      if (rowIndices.length > 0) {
+        const newRows = rowIndices.map((idx, i) => {
+          const r = measDataGrouped[idx];
+          const outputs = [];
+          for (let j = 1; j <= maxMeas; j++) {
+            outputs.push({ value: r[`reading${j}`] || '' });
+          }
+          return {
+            id: String(i + 1),
+            kv: r.kvp || '',
+            mas: r.mas || '',
+            outputs,
+            avg: r.mean || '',
+            cv: r.cov || '',
+            remark: r.remarks || '',
+          };
+        });
+        setOutputRows(newRows as OutputRow[]);
+      }
+
+      // Tolerance
+      const tolData = csvData.find((row: any) => row['Field Name'] === 'Tolerance_Value');
+      if (tolData) {
+        setTolerance({ ...tolerance, value: tolData.Value });
+      }
+
+      setIsEditing(true);
+      setIsSaved(false);
+    }
+  }, [csvData, refreshKey]);
 
   // Load existing test data
   useEffect(() => {

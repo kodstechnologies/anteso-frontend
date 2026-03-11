@@ -21,9 +21,13 @@ interface Table2Row {
 
 interface Props {
     serviceId: string;
+    testId?: string | null;
+    tubeId?: string | null;
+    onTestSaved?: (testId: string) => void;
+    csvData?: any[];
 }
 
-const LinearityOfmAsLoading: React.FC<Props> = ({ serviceId }) => {
+const LinearityOfmAsLoading: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData }) => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
@@ -145,6 +149,46 @@ const LinearityOfmAsLoading: React.FC<Props> = ({ serviceId }) => {
         };
         loadData();
     }, [serviceId]);
+
+    // CSV Data Injection
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // Table 1 mapping
+            const fcdVal = csvData.find(r => r['Field Name'] === 'Table1_fcd')?.['Value'] || '';
+            const kvVal = csvData.find(r => r['Field Name'] === 'Table1_kv')?.['Value'] || '';
+            const timeVal = csvData.find(r => r['Field Name'] === 'Table1_time')?.['Value'] || '';
+            if (fcdVal || kvVal || timeVal) {
+                setTable1([{ fcd: fcdVal, kv: kvVal, time: timeVal }]);
+            }
+
+            // Table 2 mapping
+            const table2Rows = csvData.filter(r => r['Field Name'] === 'Table2_mAsApplied' || r['Field Name']?.startsWith('Table2_MeasuredOutput'));
+            if (table2Rows.length > 0) {
+                const rowIndices = Array.from(new Set(table2Rows.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
+                const newTable2 = rowIndices.map(idx => {
+                    const mAs = csvData.find(r => r['Field Name'] === 'Table2_mAsApplied' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+                    const ms = [1, 2, 3, 4].map(mIdx => {
+                        return csvData.find(r => r['Field Name'] === `Table2_MeasuredOutput${mIdx}` && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+                    });
+                    return {
+                        mAsApplied: mAs,
+                        measuredOutputs: ms,
+                        average: '',
+                        x: ''
+                    };
+                });
+                if (newTable2.length > 0) setTable2(newTable2);
+            }
+
+            // Tolerance
+            const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+            if (tol) setTolerance(tol);
+
+            if (!isSaved) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData, isSaved]);
 
     const handleSave = async () => {
         if (!serviceId) return toast.error("Service ID missing");

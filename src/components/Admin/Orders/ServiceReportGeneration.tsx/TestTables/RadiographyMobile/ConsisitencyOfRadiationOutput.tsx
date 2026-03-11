@@ -35,12 +35,20 @@ interface Props {
   serviceId: string;
   testId?: string;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: {
+    ffd?: { value: string };
+    outputRows?: { kv: string; mas: string; outputs: { value: string }[]; avg: string; remark: string }[];
+    tolerance?: { operator: string; value: string };
+  } | null;
 }
 
 const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   serviceId,
   testId: propTestId,
-  onTestSaved
+  onTestSaved,
+  refreshKey,
+  initialData
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -214,6 +222,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       setIsLoading(false);
       return;
     }
+    // If we have uploaded Excel data, don't overwrite it by reloading from API
+    if (initialData) {
+      setIsLoading(false);
+      return;
+    }
 
     const loadTest = async () => {
       setIsLoading(true);
@@ -257,7 +270,35 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
+
+  // Pre-fill from Excel initialData
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.ffd) setFFD({ value: String(initialData.ffd.value ?? '') });
+    if (initialData.outputRows?.length) {
+      const firstRow = initialData.outputRows[0];
+      const numMeas = firstRow.outputs?.length || measurementCount;
+      setMeasurementCount(numMeas);
+      setOutputRows(initialData.outputRows.map((r, i) => ({
+        id: String(i + 1),
+        kv: String(r.kv ?? ''),
+        mas: String(r.mas ?? ''),
+        outputs: r.outputs?.map(o => ({ value: String(o.value ?? '') })) || Array(numMeas).fill({ value: '' }),
+        avg: String(r.avg ?? ''),
+        cv: '',
+        remark: (r.remark as any) || '',
+      })));
+    }
+    if (initialData.tolerance) {
+      setTolerance({
+        operator: (initialData.tolerance.operator as any) || '<=',
+        value: String(initialData.tolerance.value ?? '0.05'),
+      });
+    }
+    setIsSaved(false);
+    setIsEditing(true);
+  }, [initialData]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -351,7 +392,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       </div>
 
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        
+
         <div className="p-6 flex items-center gap-4">
           <label className="w-48 text-sm font-medium text-gray-700">FFD(cm):</label>
           <input

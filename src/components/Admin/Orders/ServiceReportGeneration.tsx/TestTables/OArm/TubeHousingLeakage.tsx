@@ -41,9 +41,10 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestId, onRefresh, csvData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
@@ -140,6 +141,58 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
     };
     load();
   }, [serviceId, propTestId, testId]);
+
+  // Process CSV data
+  useEffect(() => {
+    if (!csvData || csvData.length === 0) return;
+    console.log('TubeHousingLeakage: Processing CSV data', csvData);
+    try {
+      const rowMap: { [idx: number]: any } = {};
+      csvData.forEach((item: any) => {
+        const idx = item['Row Index'];
+        if (!rowMap[idx]) rowMap[idx] = {};
+        rowMap[idx][item['Field Name']] = item['Value'];
+      });
+
+      // Extract settings from first row
+      const firstRow = rowMap[1] || {};
+      if (firstRow['Settings_FCD'] || firstRow['Settings_KV'] || firstRow['Settings_MA'] || firstRow['Settings_Time']) {
+        setSettings({
+          fcd: firstRow['Settings_FCD'] || '100',
+          kv: firstRow['Settings_KV'] || '120',
+          ma: firstRow['Settings_MA'] || '21',
+          time: firstRow['Settings_Time'] || '2.0',
+        });
+      }
+      if (firstRow['Workload']) setWorkload(firstRow['Workload']);
+
+      // Extract leakage rows
+      const newLeakageRows: LeakageRow[] = [];
+      Object.keys(rowMap).forEach(idxStr => {
+        const r = rowMap[parseInt(idxStr)];
+        if (r['Leakage_Location']) {
+          newLeakageRows.push({
+            location: r['Leakage_Location'] === 'Collimator' ? 'Collimator' : 'Tube',
+            left: r['Leakage_Left'] || '',
+            right: r['Leakage_Right'] || '',
+            front: r['Leakage_Front'] || '',
+            back: r['Leakage_Back'] || '',
+            top: r['Leakage_Top'] || '',
+          });
+        }
+      });
+
+      if (newLeakageRows.length > 0) {
+        setLeakageRows(newLeakageRows);
+      }
+
+      setHasSaved(false);
+      setIsEditing(true);
+      toast.success('Tube Housing Leakage: CSV data loaded');
+    } catch (err) {
+      console.error('TubeHousingLeakage CSV processing error:', err);
+    }
+  }, [csvData]);
 
   const maValue = parseFloat(settings.ma) || 0;
   const workloadValue = parseFloat(workload) || 0;

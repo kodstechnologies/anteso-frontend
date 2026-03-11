@@ -128,24 +128,24 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           setOutputRows(
             data.outputRows?.map((row: any, i: number) => {
               const covVal = row.cov ? parseFloat(row.cov) : 0;
-              const tolVal = data.tolerance ? parseFloat(data.tolerance) : 0.05;
+              const tolVal = (data.tolerance?.value) ? parseFloat(data.tolerance.value) : 0.05;
               let remarks: 'Pass' | 'Fail' | '' = '';
               if (!isNaN(covVal) && !isNaN(tolVal)) {
                 remarks = covVal <= tolVal ? 'Pass' : 'Fail';
               }
               return {
                 id: String(i + 1),
-                kvp: row.kvp || '',
+                kvp: row.kv || '',
                 mas: row.mas || '',
-                outputs: row.outputs || Array(headers.length).fill(''),
-                mean: row.mean || '',
+                outputs: row.outputs?.map((o: any) => o.value) || Array(headers.length).fill(''),
+                mean: row.avg || '',
                 cov: row.cov || '',
                 remarks,
               };
             }) || outputRows
           );
           setHeaders(data.measurementHeaders || headers);
-          setTolerance(data.tolerance || '0.05');
+          setTolerance(data.tolerance?.value || '0.05');
           setIsSaved(true);
         } else {
           setIsSaved(false);
@@ -222,15 +222,18 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     const payload = {
       ffd: ffd.trim(),
       outputRows: processedRows.map((row) => ({
-        kvp: row.kvp.trim(),
+        kv: row.kvp.trim(),
         mas: row.mas.trim(),
-        outputs: row.outputs.map(v => v.trim()),
-        mean: row.mean || "",
+        outputs: row.outputs.map(v => ({ value: v.trim() })),
+        avg: row.mean || "",
         cov: row.cov || "",
-        remarks: row.remarks || "",
+        remark: row.remarks || "",
       })),
       measurementHeaders: headers,
-      tolerance: tolerance.trim(),
+      tolerance: {
+        operator: "<=",
+        value: tolerance.trim()
+      },
     };
 
     try {

@@ -24,9 +24,11 @@ interface EquipmentSetting {
 interface Props {
     serviceId: string;
     onRefresh?: () => void;
+    refreshKey?: number;
+    initialData?: any;
 }
 
-const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
+const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, initialData }) => {
     const [testId, setTestId] = useState<string | null>(null);
 
     const [settings, setSettings] = useState<EquipmentSetting>({
@@ -56,7 +58,11 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
             }
 
             try {
-                const data = await getEquipmentSettingByServiceIdForMammography(serviceId);
+                let data = initialData;
+                if (!data) {
+                    data = await getEquipmentSettingByServiceIdForMammography(serviceId);
+                }
+
                 if (data) {
                     setSettings({
                         appliedCurrent: data.appliedCurrent || '',
@@ -71,17 +77,19 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
                     setTestId(data._id);
                     setHasSaved(true);
                     setIsEditing(false);
+                } else {
+                    setIsEditing(true);
                 }
             } catch (err) {
                 console.error('Failed to load equipment settings:', err);
-                toast.error('Failed to load equipment settings');
+                // toast.error('Failed to load equipment settings');
             } finally {
                 setIsLoading(false);
             }
         };
 
         load();
-    }, [serviceId]);
+    }, [serviceId, refreshKey, initialData]);
 
     const handleSave = async () => {
         // Basic validation - at least one field should be filled
@@ -196,8 +204,8 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
                                 readOnly={isViewMode}
                                 placeholder="e.g. 100"
                                 className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                                        : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
                                     }`}
                             />
                         </td>
@@ -214,8 +222,8 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
                                 readOnly={isViewMode}
                                 placeholder="e.g. 28"
                                 className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                                        : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
                                     }`}
                             />
                         </td>
@@ -232,8 +240,8 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
                                 readOnly={isViewMode}
                                 placeholder="e.g. 500"
                                 className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                                        : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
                                     }`}
                             />
                         </td>
@@ -250,8 +258,8 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
                                 readOnly={isViewMode}
                                 placeholder="e.g. 0.3 / 0.1"
                                 className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                                        : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
                                     }`}
                             />
                         </td>
@@ -268,8 +276,8 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
                                 readOnly={isViewMode}
                                 placeholder="e.g. 0.03 Mo + 0.5 Al"
                                 className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                                        : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
                                     }`}
                             />
                         </td>
@@ -284,8 +292,8 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
                                 onChange={(e) => updateField('collimation', e.target.value)}
                                 disabled={isViewMode}
                                 className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                                        : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
                                     }`}
                             >
                                 <option value="">Select...</option>
@@ -306,8 +314,8 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
                                 readOnly={isViewMode}
                                 placeholder="e.g. 15, 30"
                                 className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                                        : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
                                     }`}
                             />
                         </td>
@@ -324,8 +332,8 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh }) => {
                                 readOnly={isViewMode}
                                 placeholder="e.g. 5, 10"
                                 className={`w-full px-4 py-2.5 border rounded-md text-sm font-medium transition ${isViewMode
-                                        ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
-                                        : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+                                    ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
+                                    : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
                                     }`}
                             />
                         </td>

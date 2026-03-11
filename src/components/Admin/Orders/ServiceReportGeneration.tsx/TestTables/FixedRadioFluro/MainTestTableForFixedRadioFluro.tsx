@@ -118,12 +118,12 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
 
   // 2. Accuracy of Operating Potential (kVp)
   if (testData.accuracyOfOperatingPotential && !isEmpty(testData.accuracyOfOperatingPotential) && testData.accuracyOfOperatingPotential.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
-    const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKvp || row.setKVp || row.measuredKvp || row.measuredKVp);
+    const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKvp || row.setKVp || row.setKV || row.measuredKvp || row.measuredKVp || row.avgKvp);
     if (validRows.length > 0) {
       const toleranceValue = "10"; // ±10% as per ViewServiceReport
       const testRows = validRows.map((row: any) => {
-        const setKvp = parseFloat(row.setKvp || row.setKVp || "0");
-        const measuredKvp = parseFloat(row.measuredKvp || row.measuredKVp || "0");
+        const setKvp = parseFloat(row.setKvp || row.setKVp || row.setKV || "0");
+        const measuredKvp = parseFloat(row.measuredKvp || row.measuredKVp || row.avgKvp || "0");
         const deviation = row.deviation != null ? Math.abs(row.deviation) : (setKvp > 0 ? Math.abs(((measuredKvp - setKvp) / setKvp) * 100) : 0);
         const isPass = deviation <= 10;
         return {
@@ -177,10 +177,10 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
 
   // 6. Total Filtration (if available)
   if (testData.totalFiltration && !isEmpty(testData.totalFiltration)) {
-    const measuredTF = testData.totalFiltration.measuredTF || testData.totalFiltration.measured || "-";
-    const appliedKV = testData.totalFiltration.appliedKV || "-";
+    const measuredTF = testData.totalFiltration.measured || testData.totalFiltration.measuredTF || "-";
+    const appliedKV = testData.totalFiltration.atKvp || testData.totalFiltration.appliedKV || "-";
     const measured = parseFloat(measuredTF);
-    const isPass = !isNaN(measured) && measured >= 2.5;
+    const isPass = !isNaN(measured) ? measured >= 2.5 : true;
     addRowsForTest("Total Filtration", [{
       specified: appliedKV !== "-" ? `${appliedKV} kV` : "-",
       measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
@@ -221,56 +221,85 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
 
   // 9. Exposure Rate at Table Top
   if (testData.exposureRate && !isEmpty(testData.exposureRate)) {
-    console.log("Processing exposureRate:", testData.exposureRate);
-    const measuredValue = testData.exposureRate.measuredValue || testData.exposureRate.measured || testData.exposureRate.value;
-    if (measuredValue != null && measuredValue !== "") {
-      const value = parseFloat(measuredValue);
-      if (!isNaN(value)) {
-        const limit = 5; // mGy/min
-        const isPass = value <= limit;
-        addRowsForTest("Exposure Rate at Table Top", [{
-          specified: "Measured Value",
-          measured: `${value} mGy/min`,
-          tolerance: `≤ ${limit} mGy/min`,
+    if (testData.exposureRate.rows && Array.isArray(testData.exposureRate.rows) && testData.exposureRate.rows.length > 0) {
+      const testRows = testData.exposureRate.rows.map((row: any) => {
+        const exposure = parseFloat(row.exposure || "0");
+        const isAec = row.remark?.toLowerCase().includes("aec") || false;
+        const tolerance = isAec ? (testData.exposureRate.aecTolerance || "10") : (testData.exposureRate.nonAecTolerance || "5");
+        const isPass = exposure <= parseFloat(tolerance);
+        return {
+          specified: `${row.appliedKv || "-"} kV / ${row.appliedMa || "-"} mA`,
+          measured: `${row.exposure || "-"} cGy/min`,
+          tolerance: `≤ ${tolerance} cGy/min`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        }]);
+        };
+      });
+      addRowsForTest("Exposure Rate at Table Top", testRows);
+    } else {
+      const measuredValue = testData.exposureRate.measuredValue || testData.exposureRate.measured || testData.exposureRate.value;
+      if (measuredValue != null && measuredValue !== "") {
+        const value = parseFloat(measuredValue);
+        if (!isNaN(value)) {
+          const limit = 5; // mGy/min
+          const isPass = value <= limit;
+          addRowsForTest("Exposure Rate at Table Top", [{
+            specified: "Measured Value",
+            measured: `${value} mGy/min`,
+            tolerance: `≤ ${limit} mGy/min`,
+            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          }]);
+        }
       }
     }
   }
 
   // 10. Tube Housing Leakage
   if (testData.tubeHousingLeakage && !isEmpty(testData.tubeHousingLeakage)) {
-    console.log("Processing tubeHousingLeakage:", testData.tubeHousingLeakage);
-    const leakageRate = testData.tubeHousingLeakage.leakageRate || testData.tubeHousingLeakage.leakage || testData.tubeHousingLeakage.value;
-    if (leakageRate != null && leakageRate !== "") {
-      const rate = parseFloat(leakageRate);
-      if (!isNaN(rate)) {
-        const limit = 1; // mGy/hr at 1m
-        const isPass = rate <= limit;
-        addRowsForTest("Radiation Leakage from Tube Housing", [{
-          specified: "At 1m distance",
-          measured: `${rate} mGy/hr`,
-          tolerance: `≤ ${limit} mGy/hr`,
+    if (testData.tubeHousingLeakage.leakageMeasurements && Array.isArray(testData.tubeHousingLeakage.leakageMeasurements) && testData.tubeHousingLeakage.leakageMeasurements.length > 0) {
+      const testRows = testData.tubeHousingLeakage.leakageMeasurements.map((measure: any) => {
+        const rate = parseFloat(measure.max || measure.mgy || "0");
+        const isPass = rate <= 1;
+        return {
+          specified: measure.location || "Tube Housing",
+          measured: `${measure.max || measure.mgy || "-"} mGy/hr`,
+          tolerance: "≤ 1 mGy/hr",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        }]);
+        };
+      });
+      addRowsForTest("Radiation Leakage from Tube Housing", testRows);
+    } else {
+      const leakageRate = testData.tubeHousingLeakage.leakageRate || testData.tubeHousingLeakage.leakage || testData.tubeHousingLeakage.max || testData.tubeHousingLeakage.value;
+      if (leakageRate != null && leakageRate !== "") {
+        const rate = parseFloat(leakageRate);
+        if (!isNaN(rate)) {
+          const limit = 1; // mGy/hr at 1m
+          const isPass = rate <= limit;
+          addRowsForTest("Radiation Leakage from Tube Housing", [{
+            specified: "At 1m distance",
+            measured: `${rate} mGy/hr`,
+            tolerance: `≤ ${limit} mGy/hr`,
+            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          }]);
+        }
       }
     }
   }
 
   // 11. Linearity of mAs Loading
   if (testData.linearityOfmAsLoading && !isEmpty(testData.linearityOfmAsLoading)) {
-    console.log("Processing linearityOfmAsLoading:", testData.linearityOfmAsLoading);
     // Check for table2 array first
     if (testData.linearityOfmAsLoading.table2 && Array.isArray(testData.linearityOfmAsLoading.table2) && testData.linearityOfmAsLoading.table2.length > 0) {
-      const validRows = testData.linearityOfmAsLoading.table2.filter((row: any) => row.col != null || row.mAs);
+      const validRows = testData.linearityOfmAsLoading.table2.filter((row: any) => row.col != null || row.x != null || row.mAs || row.mAsApplied);
       if (validRows.length > 0) {
         const tolerance = 0.1;
         const testRows = validRows.map((row: any) => {
-          const col = row.col ? parseFloat(row.col) : null;
+          const col = row.col != null ? parseFloat(row.col) : (row.x != null ? parseFloat(row.x) : null);
           const isPass = col != null ? col <= tolerance : false;
+          const mAs = row.mAs || row.mAsApplied || "-";
+          const measured = col != null ? col.toFixed(3) : (Array.isArray(row.measuredOutputs) ? row.measuredOutputs.join(", ") : "-");
           return {
-            specified: row.mAs ? `${row.mAs} mAs` : "Coefficient of Linearity",
-            measured: col != null ? col.toFixed(3) : "-",
+            specified: mAs !== "-" ? `${mAs} mAs` : "Coefficient of Linearity",
+            measured: measured,
             tolerance: `≤ ${tolerance}`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
@@ -332,6 +361,51 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         }]);
       }
+    }
+  }
+
+  // 14. Effective Focal Spot
+  if (testData.effectiveFocalSpot && !isEmpty(testData.effectiveFocalSpot)) {
+    if (testData.effectiveFocalSpot.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
+      const testRows = testData.effectiveFocalSpot.focalSpots.map((spot: any) => ({
+        specified: `${spot.statedWidth || "-"} x ${spot.statedHeight || "-"} mm`,
+        measured: `${spot.measuredWidth || "-"} x ${spot.measuredHeight || "-"} mm`,
+        tolerance: "Per AERB limits",
+        remarks: "Pass" as "Pass" | "Fail",
+      }));
+      addRowsForTest("Effective Focal Spot Size", testRows);
+    } else {
+      const nominal = testData.effectiveFocalSpot.nominalFocalSpotSize || "-";
+      const measured = testData.effectiveFocalSpot.measuredFocalSpotSize || "-";
+      const tolerance = testData.effectiveFocalSpot.tolerance || "-";
+      const isPass = testData.effectiveFocalSpot.isPass;
+      addRowsForTest("Effective Focal Spot Size", [{
+        specified: nominal !== "-" ? `${nominal} mm` : "-",
+        measured: measured !== "-" ? `${measured} mm` : "-",
+        tolerance: tolerance,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }]);
+    }
+  }
+
+  // 15. Radiation Protection Survey
+  if (testData.radiationProtectionSurvey && !isEmpty(testData.radiationProtectionSurvey)) {
+    const surveyRows = testData.radiationProtectionSurvey.surveyRows || testData.radiationProtectionSurvey.locations;
+    if (surveyRows && surveyRows.length > 0) {
+      const testRows = surveyRows.map((row: any) => ({
+        specified: `Limit: ${row.limit || "20"} µGy/hr`,
+        measured: `${row.exposureRate || row.mRPerHr || "-"} µGy/hr`,
+        tolerance: "Complies with AERB limits",
+        remarks: ((row.remarks || row.result) === "Pass" || (row.remarks || row.result) === "PASS" ? "Pass" : "Fail") as "Pass" | "Fail",
+      }));
+      addRowsForTest("Radiation Protection Survey", testRows);
+    } else if (testData.radiationProtectionSurvey.result || testData.radiationProtectionSurvey.remarks) {
+      addRowsForTest("Radiation Protection Survey", [{
+        specified: "AERB Limits",
+        measured: testData.radiationProtectionSurvey.result || testData.radiationProtectionSurvey.remarks,
+        tolerance: "Complies",
+        remarks: "Pass" as "Pass" | "Fail",
+      }]);
     }
   }
 

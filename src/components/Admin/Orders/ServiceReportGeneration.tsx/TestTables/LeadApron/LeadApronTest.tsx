@@ -1,6 +1,5 @@
 // components/TestTables/LeadApron/LeadApronTest.tsx
 'use client';
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -14,12 +13,16 @@ interface LeadApronTestProps {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any;
+  refreshKey?: number;
 }
 
 const LeadApronTest: React.FC<LeadApronTestProps> = ({
   serviceId,
   testId: initialTestId = null,
   onTestSaved,
+  csvData,
+  refreshKey,
 }) => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
@@ -32,7 +35,6 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
   const [saving, setSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(!!initialTestId);
   const [isEditing, setIsEditing] = useState(false);
-
   const isViewMode = isSaved && !isEditing;
 
   // Report Details
@@ -79,26 +81,21 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
     const positionValues = doseMeasurements.positions
       .map(p => parseFloat(p.value))
       .filter(v => !isNaN(v) && v > 0);
-
     // Calculate average value
     const averageValue = positionValues.length > 0
       ? positionValues.reduce((a, b) => a + b, 0) / positionValues.length
       : 0;
-
     const avg = averageValue > 0 ? averageValue.toFixed(4) : '';
-
     // % reduction formula = (neutral value - average value) / neutral value * 100
     const percentReduction = neutral > 0 && averageValue > 0
       ? (((neutral - averageValue) / neutral) * 100).toFixed(2)
       : '';
-
     // Determine remark based on % reduction (typically >= 99% is Pass)
     let remark = '';
     if (percentReduction) {
       const reduction = parseFloat(percentReduction);
       remark = reduction >= 99 ? 'Pass, Can use further' : 'Fail';
     }
-
     return { avg, percentReduction, remark };
   }, [doseMeasurements.neutral, doseMeasurements.positions]);
 
@@ -142,7 +139,7 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
           // Handle backward compatibility: convert old position1/2/3 to positions array
           const doseData = data.doseMeasurements || {};
           let positions: Array<{ position: string; value: string }> = [];
-          
+
           if (doseData.positions && Array.isArray(doseData.positions) && doseData.positions.length > 0) {
             // New format: positions array
             positions = doseData.positions;
@@ -156,7 +153,7 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
               positions = [{ position: 'Position 1', value: '' }];
             }
           }
-          
+
           setDoseMeasurements({
             neutral: doseData.neutral || '',
             positions: positions,
@@ -190,9 +187,144 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
         setLoading(false);
       }
     };
-
     fetchData();
   }, [serviceId]);
+
+  // Process CSV data when available – Updated for better Dose parsing
+  useEffect(() => {
+    if (!csvData || Object.keys(csvData).length === 0) return;
+
+    console.log('LeadApronTest: Processing CSV data', csvData);
+
+    try {
+      // Process Report Details
+      const reportDetailsData = csvData['Report Details'] || [];
+      if (reportDetailsData.length > 0) {
+        const reportDetailsMap: any = {};
+        reportDetailsData.forEach((row: any) => {
+          if (row['Field Name'] && row['Value']) {
+            reportDetailsMap[row['Field Name']] = row['Value'];
+          } else if (row['Institution Name'] && row[1]) { // Fallback for horizontal format
+            reportDetailsMap.institutionName = row[0] || '';
+            reportDetailsMap.institutionCity = row[1] || '';
+            reportDetailsMap.equipmentType = row[2] || 'Lead Apron';
+            reportDetailsMap.equipmentId = row[3] || '';
+            reportDetailsMap.personTesting = row[4] || '';
+            reportDetailsMap.serviceAgency = row[5] || '';
+            reportDetailsMap.testDate = row[6] || '';
+            reportDetailsMap.testDuration = row[7] || '';
+          }
+        });
+
+        console.log('LeadApronTest: Report Details Map:', reportDetailsMap);
+
+        setReportDetails(prev => ({
+          ...prev,
+          institutionName: reportDetailsMap.institutionName || prev.institutionName,
+          institutionCity: reportDetailsMap.institutionCity || prev.institutionCity,
+          equipmentType: reportDetailsMap.equipmentType || prev.equipmentType,
+          equipmentId: reportDetailsMap.equipmentId || prev.equipmentId,
+          personTesting: reportDetailsMap.personTesting || prev.personTesting,
+          serviceAgency: reportDetailsMap.serviceAgency || prev.serviceAgency,
+          testDate: reportDetailsMap.testDate || prev.testDate,
+          testDuration: reportDetailsMap.testDuration || prev.testDuration,
+        }));
+      }
+
+      // Process Operating Parameters
+      const operatingParamsData = csvData['Operating Parameters'] || [];
+      if (operatingParamsData.length > 0) {
+        const operatingParamsMap: any = {};
+        operatingParamsData.forEach((row: any) => {
+          if (row['Field Name'] && row['Value']) {
+            operatingParamsMap[row['Field Name']] = row['Value'];
+          } else if (row['FFD (cm)'] && row[1]) { // Fallback for horizontal format
+            operatingParamsMap.ffd = row[0] || '';
+            operatingParamsMap.kv = row[1] || '';
+            operatingParamsMap.mas = row[2] || '';
+          }
+        });
+
+        console.log('LeadApronTest: Operating Parameters Map:', operatingParamsMap);
+
+        setOperatingParameters(prev => ({
+          ...prev,
+          ffd: operatingParamsMap.ffd || prev.ffd,
+          kv: operatingParamsMap.kv || prev.kv,
+          mas: operatingParamsMap.mas || prev.mas,
+        }));
+      }
+
+      // Process Dose Measurements – rows now come as {Parameter, Value} pairs
+      const doseMeasurementsData = csvData['Dose Measurements'] || [];
+      if (doseMeasurementsData.length > 0) {
+        let neutralValue = '';
+        const positions: Array<{ position: string; value: string }> = [];
+
+        doseMeasurementsData.forEach((row: any) => {
+          const param = (row['Parameter'] || row['Field Name'] || '').trim();
+          const value = (row['Value'] || '').trim();
+          if (!param || !value) return;
+
+          const paramLower = param.toLowerCase();
+          if (paramLower.includes('neutral') || paramLower.includes('without apron')) {
+            neutralValue = value;
+          } else if (paramLower.includes('position')) {
+            // Extract position number from label like "Position 1 (With Apron)"
+            const match = param.match(/position\s*(\d+)/i);
+            const posNum = match ? match[1] : String(positions.length + 1);
+            positions.push({
+              position: `Position ${posNum}`,
+              value: value,
+            });
+          }
+        });
+
+        console.log('LeadApronTest: Extracted Neutral:', neutralValue, 'Positions:', positions);
+
+        setDoseMeasurements(prev => ({
+          ...prev,
+          neutral: neutralValue || prev.neutral,
+          positions: positions.length > 0 ? positions : prev.positions,
+        }));
+      }
+
+      // Process Footer Details
+      const footerData = csvData['Footer Details'] || [];
+      if (footerData.length > 0) {
+        const footerMap: any = {};
+        footerData.forEach((row: any) => {
+          if (row['Field Name'] && row['Value']) {
+            footerMap[row['Field Name']] = row['Value'];
+          } else if (row['Place'] && row[1]) { // Fallback for horizontal format
+            footerMap.place = row[0] || '';
+            footerMap.date = row[1] || '';
+            footerMap.signature = row[2] || '';
+            footerMap.serviceEngineerName = row[3] || '';
+            footerMap.serviceAgencyName = row[4] || '';
+            footerMap.serviceAgencySeal = row[5] || '';
+          }
+        });
+
+        console.log('LeadApronTest: Footer Details Map:', footerMap);
+
+        setFooter(prev => ({
+          ...prev,
+          place: footerMap.place || prev.place,
+          date: footerMap.date || prev.date,
+          signature: footerMap.signature || prev.signature,
+          serviceEngineerName: footerMap.serviceEngineerName || prev.serviceEngineerName,
+          serviceAgencyName: footerMap.serviceAgencyName || prev.serviceAgencyName,
+          serviceAgencySeal: footerMap.serviceAgencySeal || prev.serviceAgencySeal,
+        }));
+      }
+
+      toast.success('Excel data populated successfully!');
+    } catch (error: any) {
+      console.error('Error processing CSV data in LeadApronTest:', error);
+      toast.error('Failed to populate Excel data: ' + (error.message || 'Unknown error'));
+    }
+  }, [csvData, refreshKey]); // Removed doseMeasurements.positions to avoid infinite loop
 
   // Save / Update
   const handleSave = async () => {
@@ -200,7 +332,6 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
       toast.error('Service ID is missing');
       return;
     }
-
     const payload = {
       reportDetails: {
         ...reportDetails,
@@ -215,11 +346,10 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
         remark: calculations.remark,
       },
       // footer: {
-      //   ...footer,
-      //   date: footer.date ? new Date(footer.date).toISOString() : null,
+      // ...footer,
+      // date: footer.date ? new Date(footer.date).toISOString() : null,
       // },
     };
-
     setSaving(true);
     try {
       let result;
@@ -267,13 +397,12 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
         <button
           onClick={isViewMode ? startEditing : handleSave}
           disabled={saving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
-            saving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${saving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
               ? 'bg-orange-600 hover:bg-orange-700'
               : 'bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300'
-          }`}
+            }`}
         >
           {saving ? (
             <>
@@ -541,11 +670,10 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
                 <div className="flex items-center justify-center gap-2">
                   <span>{calculations.percentReduction || '—'}</span>
                   {calculations.remark && (
-                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                      calculations.remark.includes('Pass')
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${calculations.remark.includes('Pass')
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                      }`}>
                       {calculations.remark}
                     </span>
                   )}
@@ -556,79 +684,12 @@ const LeadApronTest: React.FC<LeadApronTestProps> = ({
         </table>
       </div>
 
-      {/* Footer Section */}
+      {/* Footer Section – Uncomment if needed */}
       {/* <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
-        <div className="px-4 py-3 bg-blue-50 border-b border-gray-300">
-          <h3 className="text-sm font-semibold text-blue-900 uppercase tracking-wider">
-            Footer Details
-          </h3>
-        </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Place</label>
-            <input
-              type="text"
-              value={footer.place}
-              onChange={(e) => setFooter({ ...footer, place: e.target.value })}
-              disabled={isViewMode}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input
-              type="date"
-              value={footer.date}
-              onChange={(e) => setFooter({ ...footer, date: e.target.value })}
-              disabled={isViewMode}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
-            <input
-              type="text"
-              value={footer.signature}
-              onChange={(e) => setFooter({ ...footer, signature: e.target.value })}
-              disabled={isViewMode}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name of the Service Engineer</label>
-            <input
-              type="text"
-              value={footer.serviceEngineerName}
-              onChange={(e) => setFooter({ ...footer, serviceEngineerName: e.target.value })}
-              disabled={isViewMode}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name of Service Agency</label>
-            <input
-              type="text"
-              value={footer.serviceAgencyName}
-              onChange={(e) => setFooter({ ...footer, serviceAgencyName: e.target.value })}
-              disabled={isViewMode}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Seal of Service Agency</label>
-            <input
-              type="text"
-              value={footer.serviceAgencySeal}
-              onChange={(e) => setFooter({ ...footer, serviceAgencySeal: e.target.value })}
-              disabled={isViewMode}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-            />
-          </div>
-        </div>
+        ... (existing footer code)
       </div> */}
     </div>
   );
 };
 
 export default LeadApronTest;
-

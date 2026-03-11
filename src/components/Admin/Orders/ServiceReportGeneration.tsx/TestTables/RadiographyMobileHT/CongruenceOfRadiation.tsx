@@ -29,9 +29,10 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  initialData?: { techniqueRows?: any[]; congruenceRows?: any[] };
 }
 
-const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -96,6 +97,30 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       prev.map(row => (row.id === id ? { ...row, [field]: value } : row))
     );
   };
+
+  // Apply initial data from CSV/Excel upload
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.techniqueRows?.length) {
+      setTechniqueRows(initialData.techniqueRows.map((t: any, i: number) => ({
+        id: String(i + 1),
+        fcd: String(t.fcd ?? '100'),
+        kv: String(t.kv ?? '80'),
+        mas: String(t.mas ?? '10'),
+      })));
+    }
+    if (initialData.congruenceRows?.length) {
+      setCongruenceRows(initialData.congruenceRows.map((r: any, i: number) => ({
+        id: i === 0 ? 'x' : i === 1 ? 'y' : String(i),
+        dimension: r.dimension || '',
+        observedShift: r.observedShift || '',
+        edgeShift: r.edgeShift || '',
+        percentFED: r.percentFED || '',
+        tolerance: r.tolerance || '2',
+        remark: (r.remark as 'Pass' | 'Fail' | '') || '',
+      })));
+    }
+  }, [initialData]);
 
   // Load existing data
   useEffect(() => {

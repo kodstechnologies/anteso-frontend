@@ -29,12 +29,16 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: any[];
 }
 
 const OutputConsistencyForCArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  refreshKey,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -64,6 +68,57 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.02'); // Decimal: 2% = 0.02
+
+  // Handle CSV initial data
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      try {
+        const p: Parameters = { id: '1', ffd: '100', time: '1.0' };
+        const rows: OutputRow[] = [];
+        let tol = '0.02';
+        const h: string[] = [];
+
+        initialData.forEach(row => {
+          const field = row['Field Name'];
+          const val = row['Value'];
+          const rowIndex = row['Row Index'];
+
+          if (field === 'Parameters_FFD') p.ffd = val;
+          if (field === 'Parameters_Time') p.time = val;
+          if (field === 'Output_Tolerance') tol = val;
+          if (field.startsWith('Header_')) {
+            const idx = parseInt(field.replace('Header_', '')) - 1;
+            while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
+            h[idx] = val;
+          }
+
+          if (field.startsWith('Output_')) {
+            while (rows.length <= rowIndex) {
+              rows.push({ id: (rows.length + 1).toString(), kvp: "", ma: "", outputs: [], mean: "", cov: "", remark: "" });
+            }
+            const subField = field.replace('Output_', '');
+            if (subField === 'kV') rows[rowIndex].kvp = val;
+            if (subField === 'mA') rows[rowIndex].ma = val;
+            if (subField.startsWith('Meas')) {
+              const colIdx = parseInt(subField.replace('Meas', '')) - 1;
+              while (rows[rowIndex].outputs.length <= colIdx) {
+                rows[rowIndex].outputs.push("");
+              }
+              rows[rowIndex].outputs[colIdx] = val;
+            }
+          }
+        });
+
+        if (p.ffd || p.time) setParameters(p);
+        if (rows.length > 0) setOutputRows(rows);
+        if (h.length > 0) setHeaders(h);
+        setTolerance(tol);
+        setIsSaved(false);
+      } catch (err) {
+        console.error("Error mapping CSV data for Output Consistency:", err);
+      }
+    }
+  }, [initialData, refreshKey]);
 
   // Auto-calculate Mean, COV (decimal), and Remark per row
   const processedRows = useMemo(() => {
@@ -106,6 +161,13 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
   // Load test data
   useEffect(() => {
     const loadTest = async () => {
+      if (!serviceId || (initialData && initialData.length > 0)) {
+        if (initialData && initialData.length > 0) {
+          setIsSaved(false);
+        }
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         let data = null;
@@ -261,8 +323,8 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
           onClick={isViewMode ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving ? 'bg-gray-400 cursor-not-allowed' :
-              isViewMode ? 'bg-orange-600 hover:bg-orange-700' :
-                'bg-teal-600 hover:bg-teal-700'
+            isViewMode ? 'bg-orange-600 hover:bg-orange-700' :
+              'bg-teal-600 hover:bg-teal-700'
             }`}
         >
           {isSaving ? (
@@ -404,8 +466,8 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                   </td>
                   <td className="px-4 py-2 border-r text-center">
                     <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full ${row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
-                        row.remark === 'Fail' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-500'
+                      row.remark === 'Fail' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-500'
                       }`}>
                       {row.remark || '—'}
                     </span>
@@ -453,8 +515,8 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-gray-700">Final Result:</span>
           <span className={`inline-flex px-6 py-3 text-lg font-bold rounded-full ${finalRemark === 'Pass' ? 'bg-green-100 text-green-800' :
-              finalRemark === 'Fail' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-500'
+            finalRemark === 'Fail' ? 'bg-red-100 text-red-800' :
+              'bg-gray-100 text-gray-500'
             }`}>
             {finalRemark || '—'}
           </span>

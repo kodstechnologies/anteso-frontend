@@ -26,9 +26,11 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any;
+  refreshKey?: number;
 }
 
-const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, csvData, refreshKey }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -74,49 +76,41 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const finalResult = evaluation.remark === 'Pass' ? 'PASS' :
     evaluation.remark === 'Fail' ? 'FAIL' : 'PENDING';
 
-  // Load existing data
+  // === Load CSV Data ===
   useEffect(() => {
-    const load = async () => {
-      if (!serviceId) {
-        setIsLoading(false);
-        return;
+    if (csvData && csvData.length > 0) {
+      // Table 1: Technique Factors
+      const table1Data: any = {};
+      csvData.filter((row: any) => row['Field Name'].startsWith('Table1_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Table1_', '').toLowerCase();
+        table1Data[fieldName] = row.Value;
+      });
+
+      if (Object.keys(table1Data).length > 0) {
+        setTechniqueRow({
+          id: '1',
+          fcd: table1Data.fcd || '100',
+          kv: table1Data.kv || '80',
+          mas: table1Data.mas || '10',
+        });
       }
-      try {
-        const res = await getCentralBeamAlignmentByServiceIdForRadiographyPortable(serviceId);
-        const data = res?.data;
-        if (data) {
-          setTestId(data._id || null);
-          if (data.techniqueFactors) {
-            setTechniqueRow({
-              id: '1',
-              fcd: String(data.techniqueFactors.fcd ?? ''),
-              kv: String(data.techniqueFactors.kv ?? ''),
-              mas: String(data.techniqueFactors.mas ?? ''),
-            });
-          }
-          if (data.observedTilt) {
-            setObservedTilt(String(data.observedTilt.value ?? ''));
-          }
-          if (data.tolerance) {
-            setToleranceOperator(data.tolerance.operator || '<=');
-            setToleranceValue(String(data.tolerance.value ?? '2'));
-          }
-          setIsSaved(true);
-          setIsEditing(false);
-        } else {
-          setIsEditing(true);
-        }
-      } catch (err: any) {
-        if (err.response?.status !== 404) {
-          toast.error('Failed to load Central Beam Alignment data');
-        }
-        setIsEditing(true);
-      } finally {
-        setIsLoading(false);
+
+      // Table 2: Observed Tilt
+      const t2Data = csvData.find((row: any) => row['Field Name'] === 'Table2_observedTilt');
+      if (t2Data) {
+        setObservedTilt(t2Data.Value);
       }
-    };
-    load();
-  }, [serviceId, propTestId]);
+
+      // Tolerance
+      const tolData = csvData.find((row: any) => row['Field Name'] === 'Tolerance_Value');
+      if (tolData) {
+        setToleranceValue(tolData.Value);
+      }
+
+      setIsEditing(true);
+      setIsSaved(false);
+    }
+  }, [csvData, refreshKey]);
 
   // Load existing data
   useEffect(() => {

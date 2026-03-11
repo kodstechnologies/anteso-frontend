@@ -1,0 +1,118 @@
+Field Name,Value
+========== CONGRUENCE OF RADIATION ==========,
+TechniqueFactors_FCD,100
+TechniqueFactors_kV,80
+TechniqueFactors_mAs,10
+CongruenceMeasurement_Dimension,Length
+CongruenceMeasurement_ObservedShift,0.25
+CongruenceMeasurement_EdgeShift,0.1
+CongruenceMeasurement_PercentFED,0.6
+CongruenceMeasurement_Tolerance,2
+CongruenceMeasurement_Dimension,Width
+CongruenceMeasurement_ObservedShift,0.35
+CongruenceMeasurement_EdgeShift,0.1
+CongruenceMeasurement_PercentFED,0.5
+CongruenceMeasurement_Tolerance,2
+========== CENTRAL BEAM ALIGNMENT ==========,
+TechniqueFactors_FCD,100
+TechniqueFactors_kV,80
+TechniqueFactors_mAs,10
+ObservedTilt_Value,0.4
+ObservedTilt_Operator,<=
+Tolerance_Value,1.5
+Tolerance_Operator,<=
+========== EFFECTIVE FOCAL SPOT ==========,
+FCD,60
+FocalSpot_FocusType,Small
+FocalSpot_StatedWidth,0.6
+FocalSpot_StatedHeight,0.6
+FocalSpot_MeasuredWidth,0.64
+FocalSpot_MeasuredHeight,0.64
+FocalSpot_FocusType,Large
+FocalSpot_StatedWidth,1.2
+FocalSpot_StatedHeight,1.2
+FocalSpot_MeasuredWidth,1.28
+FocalSpot_MeasuredHeight,1.28
+========== ACCURACY OF OPERATING POTENTIAL (kVp) & TOTAL FILTRATION ==========,
+Tolerance_Sign,±
+Tolerance_Value,2.0
+TotalFiltration_Measured,2.68
+TotalFiltration_Required,2.5
+MeasHeader,50 mA
+MeasHeader,100 mA
+Measurement_AppliedKvp,60
+Measurement_Meas1,60.1
+Measurement_Meas2,59.9
+Measurement_AppliedKvp,80
+Measurement_Meas1,80.2
+Measurement_Meas2,79.8
+Measurement_AppliedKvp,100
+Measurement_Meas1,100.5
+Measurement_Meas2,99.5
+Measurement_AppliedKvp,120
+Measurement_Meas1,120.3
+Measurement_Meas2,119.7
+========== LINEARITY OF mAs LOADING STATIONS ==========,
+Table1_FCD,100
+Table1_kV,80
+Tolerance,0.1
+ToleranceOperator,<=
+MeasHeader,Meas 1
+MeasHeader,Meas 2
+MeasHeader,Meas 3
+Table2_mAsApplied,5
+Table2_Meas1,0.43
+Table2_Meas2,0.42
+Table2_Meas3,0.43
+Table2_mAsApplied,10
+Table2_Meas1,0.86
+Table2_Meas2,0.85
+Table2_Meas3,0.87
+Table2_mAsApplied,20
+Table2_Meas1,1.72
+Table2_Meas2,1.71
+Table2_Meas3,1.73
+========== OUTPUT CONSISTENCY ==========,
+FFD,100
+Tolerance_Operator,<=
+Tolerance_Value,0.05
+OutputRow_kV,80
+OutputRow_mAs,10
+OutputRow_Meas1,0.86
+OutputRow_Meas2,0.85
+OutputRow_Meas3,0.87
+OutputRow_Meas4,0.86
+OutputRow_Meas5,0.86
+========== RADIATION LEAKAGE LEVEL ==========,
+Settings_FCD,100
+Settings_kV,125
+Settings_ma,20
+Settings_Time,2
+Workload,20
+ToleranceValue,1
+ToleranceOperator,less than or equal to
+LeakageMeasurement_Location,Tube - Left
+LeakageMeasurement_Left,0.04
+LeakageMeasurement_Right,0.05
+LeakageMeasurement_Front,0.05
+LeakageMeasurement_Back,0.04
+LeakageMeasurement_Top,0.06
+LeakageMeasurement_Location,Collimator - Left
+LeakageMeasurement_Left,0.03
+LeakageMeasurement_Right,0.02
+LeakageMeasurement_Front,0.03
+LeakageMeasurement_Back,0.02
+LeakageMeasurement_Top,0.03
+========== RADIATION PROTECTION SURVEY ==========,
+SurveyDate,2024-01-15
+HasValidCalibration,Yes
+AppliedCurrent,100
+AppliedVoltage,80
+ExposureTime,1.0
+Workload,5000
+Location_Location,Control Room
+Location_mRPerHr,0.5
+Location_Category,worker
+Location_Location,Corridor
+Location_mRPerHr,0.2
+Location_Category,public

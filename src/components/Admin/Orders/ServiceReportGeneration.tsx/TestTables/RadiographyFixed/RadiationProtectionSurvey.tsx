@@ -21,9 +21,11 @@ interface LocationData {
 }
 interface Props {
   serviceId: string;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, csvDataVersion }) => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
@@ -76,6 +78,26 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     );
   }, [locations.map(l => l.mRPerHr).join(), appliedCurrent, workload]);
 
+  // Apply CSV/Excel initial data
+  useEffect(() => {
+    if (!initialData || !csvDataVersion) return;
+    if (initialData.surveyDate) setSurveyDate(initialData.surveyDate);
+    if (initialData.appliedCurrent) setAppliedCurrent(String(initialData.appliedCurrent));
+    if (initialData.appliedVoltage) setAppliedVoltage(String(initialData.appliedVoltage));
+    if (initialData.exposureTime) setExposureTime(String(initialData.exposureTime));
+    if (initialData.workload) setWorkload(String(initialData.workload));
+    if (initialData.locations?.length > 0) {
+      setLocations(initialData.locations.map((l: any, i: number) => ({
+        id: (i + 1).toString(),
+        location: String(l.location ?? ''),
+        mRPerHr: String(l.mRPerHr ?? ''),
+        mRPerWeek: '',
+        result: '',
+        category: (l.category ?? 'worker') as 'worker' | 'public',
+      })));
+    }
+  }, [csvDataVersion]);
+
   const addRow = (category: "worker" | "public") => {
     const newRow: LocationData = {
       id: Date.now().toString(),
@@ -106,7 +128,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
     const locVal = parseFloat(loc.mRPerWeek) || 0;
     return locVal > maxVal ? loc : max;
   }, workerLocations[0] || { mRPerHr: '', location: '' });
-  
+
   const maxPublicLocation = publicLocations.reduce((max, loc) => {
     const maxVal = parseFloat(max.mRPerWeek) || 0;
     const locVal = parseFloat(loc.mRPerWeek) || 0;
@@ -123,29 +145,29 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
       try {
         const toolsRes = await getTools(serviceId);
         const tools = toolsRes?.data?.toolsAssigned || [];
-        
+
         if (tools.length > 0) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          
+
           let hasCalibrationDates = false;
           let allValid = true;
           let hasExpired = false;
-          
+
           // Check all tools for calibration dates
           for (const tool of tools) {
             if (tool.calibrationValidTill) {
               hasCalibrationDates = true;
               const validTill = new Date(tool.calibrationValidTill);
               validTill.setHours(0, 0, 0, 0);
-              
+
               if (validTill < today) {
                 hasExpired = true;
                 allValid = false;
               }
             }
           }
-          
+
           // Set calibration status based on check
           if (hasCalibrationDates) {
             if (hasExpired) {
@@ -167,7 +189,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
         // Don't set calibration status if check fails
       }
     };
-    
+
     checkCalibration();
   }, [serviceId]);
 
@@ -399,7 +421,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                 {workerLocations.map((row, index) => (
                   <tr key={row.id} className="hover:bg-blue-50">
                     <td className="px-6 py-4">
-                        <input
+                      <input
                         type="text"
                         value={row.location}
                         onChange={e => updateRow(row.id, "location", e.target.value)}
@@ -423,7 +445,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
@@ -475,7 +497,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
@@ -506,11 +528,11 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId }) => {
           {!isDisabled && (
             <div className="flex justify-center gap-8 mt-8">
               <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-5 h-5" /> Add Worker Location
-            </button>
-            <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-              <Plus className="w-5 h-5" /> Add Public Location
-            </button>
+                <Plus className="w-5 h-5" /> Add Worker Location
+              </button>
+              <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <Plus className="w-5 h-5" /> Add Public Location
+              </button>
             </div>
           )}
 

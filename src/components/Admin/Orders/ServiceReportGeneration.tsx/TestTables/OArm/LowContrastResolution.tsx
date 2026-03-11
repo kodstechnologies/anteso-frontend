@@ -13,12 +13,14 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
 const LowContrastResolutionForOArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  csvData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -73,6 +75,23 @@ const LowContrastResolutionForOArm: React.FC<Props> = ({
 
     loadTest();
   }, [propTestId, serviceId]);
+
+  // Process CSV data
+  useEffect(() => {
+    if (!csvData || csvData.length === 0) return;
+    console.log('LowContrastResolution: Processing CSV data', csvData);
+    try {
+      csvData.forEach((item: any) => {
+        if (item['Field Name'] === 'SmallestHoleSize') setSmallestHoleSize(item['Value']);
+        if (item['Field Name'] === 'RecommendedStandard') setRecommendedStandard(item['Value']);
+      });
+      setIsSaved(false);
+      setIsEditing(true);
+      toast.success('Low Contrast Resolution: CSV data loaded');
+    } catch (err) {
+      console.error('LowContrastResolution CSV processing error:', err);
+    }
+  }, [csvData]);
 
   // Save / Update
   const handleSave = async () => {
@@ -141,10 +160,10 @@ const LowContrastResolutionForOArm: React.FC<Props> = ({
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewOnly
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewOnly
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700'
             }`}
         >
           {isSaving ? (
@@ -227,10 +246,10 @@ const LowContrastResolutionForOArm: React.FC<Props> = ({
             <span className="text-xl font-bold text-gray-700">Result:</span>
             <span
               className={`inline-flex px-12 py-5 text-md font-extrabold rounded-full shadow-lg ${remark === 'PASS'
-                  ? 'bg-green-100 text-green-800 border-4 border-green-300'
-                  : remark === 'FAIL'
-                    ? 'bg-red-100 text-red-800 border-4 border-red-300'
-                    : 'bg-gray-100 text-gray-600'
+                ? 'bg-green-100 text-green-800 border-4 border-green-300'
+                : remark === 'FAIL'
+                  ? 'bg-red-100 text-red-800 border-4 border-red-300'
+                  : 'bg-gray-100 text-gray-600'
                 }`}
             >
               {remark || '—'}

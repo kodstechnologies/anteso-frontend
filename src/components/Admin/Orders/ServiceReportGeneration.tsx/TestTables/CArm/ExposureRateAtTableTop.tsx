@@ -22,12 +22,16 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: any[];
 }
 
 const ExposureRateTableTopForCArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  refreshKey,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -42,6 +46,49 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
   const [aecTolerance, setAecTolerance] = useState("10");
   const [nonAecTolerance, setNonAecTolerance] = useState("5");
   const [minFocusDistance, setMinFocusDistance] = useState("30");
+
+  // Handle CSV initial data
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      try {
+        const r: Row[] = [];
+        let aecTol = "10";
+        let nonAecTol = "5";
+        let minFocus = "30";
+
+        initialData.forEach(row => {
+          const field = row['Field Name'];
+          const val = row['Value'];
+          const rowIndex = row['Row Index'];
+
+          if (field === 'ExposureRate_AecTolerance') aecTol = val;
+          if (field === 'ExposureRate_NonAecTolerance') nonAecTol = val;
+          if (field === 'ExposureRate_MinFocusDistance') minFocus = val;
+
+          if (field.startsWith('ExposureRate_')) {
+            while (r.length <= rowIndex) {
+              r.push({ id: (r.length + 1).toString(), distance: "", appliedKv: "", appliedMa: "", exposure: "", remark: "" });
+            }
+            const subField = field.replace('ExposureRate_', '');
+            if (subField === 'Distance') r[rowIndex].distance = val;
+            if (subField === 'kVp') r[rowIndex].appliedKv = val;
+            if (subField === 'mA') r[rowIndex].appliedMa = val;
+            if (subField === 'Exposure') r[rowIndex].exposure = val;
+            if (subField === 'Mode') r[rowIndex].remark = val as any;
+          }
+        });
+
+        if (r.length > 0) setRows(r);
+        setAecTolerance(aecTol);
+        setNonAecTolerance(nonAecTol);
+        setMinFocusDistance(minFocus);
+        setIsSaved(false);
+        setIsEditing(true);
+      } catch (err) {
+        console.error("Error mapping CSV data for Exposure Rate:", err);
+      }
+    }
+  }, [initialData, refreshKey]);
 
   // Compute PASS/FAIL for each row
   const rowsWithResult = useMemo(() => {
@@ -65,6 +112,14 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
   // Load existing test
   useEffect(() => {
     const loadTest = async () => {
+      if (!serviceId || (initialData && initialData.length > 0)) {
+        if (initialData && initialData.length > 0) {
+          setIsSaved(false);
+          setIsEditing(true);
+        }
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         let data = null;
@@ -193,10 +248,10 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving
-              ? "bg-gray-400 cursor-not-allowed"
-              : isViewOnly
-                ? "bg-orange-600 hover:bg-orange-700"
-                : "bg-teal-600 hover:bg-teal-700"
+            ? "bg-gray-400 cursor-not-allowed"
+            : isViewOnly
+              ? "bg-orange-600 hover:bg-orange-700"
+              : "bg-teal-600 hover:bg-teal-700"
             }`}
         >
           {isSaving ? (
@@ -277,8 +332,8 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
                       onChange={(e) => updateRow(row.id, "remark", e.target.value)}
                       disabled={isViewOnly}
                       className={`w-full px-4 py-2 text-center rounded-lg font-medium text-sm appearance-none ${row.remark === "AEC Mode" ? "bg-green-100 text-green-800"
-                          : row.remark === "Manual Mode" ? "bg-amber-100 text-amber-800"
-                            : "bg-gray-100 text-gray-600"
+                        : row.remark === "Manual Mode" ? "bg-amber-100 text-amber-800"
+                          : "bg-gray-100 text-gray-600"
                         } ${isViewOnly ? "opacity-80" : "cursor-pointer"}`}
                     >
                       <option value="">Select</option>
@@ -348,8 +403,8 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
                 onChange={(e) => setNonAecTolerance(e.target.value)}
                 disabled={isViewOnly}
                 className={`w-32 px-4 py-3 text-center border-2 rounded-lg font-bold text-2xl ${isViewOnly
-                    ? "border-gray-300 bg-gray-100 text-gray-500"
-                    : "border-indigo-400 text-indigo-900 bg-white"
+                  ? "border-gray-300 bg-gray-100 text-gray-500"
+                  : "border-indigo-400 text-indigo-900 bg-white"
                   }`}
               />
               <span className="text-lg">cGy/Min</span>
@@ -366,8 +421,8 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
                 onChange={(e) => setAecTolerance(e.target.value)}
                 disabled={isViewOnly}
                 className={`w-32 px-4 py-3 text-center border-2 rounded-lg font-bold text-2xl ${isViewOnly
-                    ? "border-gray-300 bg-gray-100 text-gray-500"
-                    : "border-indigo-400 text-indigo-900 bg-white"
+                  ? "border-gray-300 bg-gray-100 text-gray-500"
+                  : "border-indigo-400 text-indigo-900 bg-white"
                   }`}
               />
               <span className="text-lg">cGy/Min</span>
@@ -384,8 +439,8 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
                 onChange={(e) => setMinFocusDistance(e.target.value)}
                 disabled={isViewOnly}
                 className={`w-28 px-4 py-3 text-center border-2 rounded-lg font-bold text-2xl ${isViewOnly
-                    ? "border-gray-300 bg-gray-100 text-gray-500"
-                    : "border-purple-400 text-purple-900 bg-white"
+                  ? "border-gray-300 bg-gray-100 text-gray-500"
+                  : "border-purple-400 text-purple-900 bg-white"
                   }`}
               />
               <span className="text-lg font-bold text-purple-800">cm</span>

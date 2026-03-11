@@ -27,9 +27,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
-const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, initialData, csvDataVersion }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: Only 1 row
@@ -185,6 +187,25 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
     };
     load();
   }, [serviceId]);
+
+  // === Apply CSV / Excel initial data ===
+  useEffect(() => {
+    if (!initialData || !csvDataVersion || isLoading) return;
+    // Apply table2 rows from Excel
+    if (initialData.table2?.length > 0) {
+      setTable2Rows(initialData.table2.map((r: any, i: number) => ({
+        id: (i + 1).toString(),
+        setKV: String(r.setKV ?? ''),
+        ma10: String(r.ma10 ?? ''),
+        ma100: String(r.ma100 ?? ''),
+        ma200: String(r.ma200 ?? ''),
+        avgKvp: '',
+        remarks: '' as const,
+      })));
+    }
+    // Apply tolerance if provided
+    if (initialData.toleranceValue) setToleranceValue(String(initialData.toleranceValue));
+  }, [csvDataVersion, isLoading]);
 
   // === Save / Update ===
   const handleSave = async () => {

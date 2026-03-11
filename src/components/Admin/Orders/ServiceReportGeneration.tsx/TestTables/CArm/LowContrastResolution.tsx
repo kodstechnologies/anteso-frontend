@@ -13,12 +13,16 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: any[];
 }
 
 const LowContrastResolutionForCArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  refreshKey,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -28,6 +32,20 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
 
   const [smallestHoleSize, setSmallestHoleSize] = useState<string>('');
   const [recommendedStandard, setRecommendedStandard] = useState<string>('3.0');
+
+  // Handle CSV initial data
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      initialData.forEach(row => {
+        const field = row['Field Name'];
+        const val = row['Value'];
+        if (field === 'LowContrast_HoleSize') setSmallestHoleSize(val);
+        if (field === 'LowContrast_Standard') setRecommendedStandard(val);
+      });
+      setIsSaved(false);
+      setIsEditing(true);
+    }
+  }, [initialData, refreshKey]);
 
   // Simple PASS/FAIL: smaller hole = better
   const remark = useMemo(() => {
@@ -42,6 +60,14 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
   // Load existing test
   useEffect(() => {
     const loadTest = async () => {
+      if (!serviceId || (initialData && initialData.length > 0)) {
+        if (initialData && initialData.length > 0) {
+          setIsSaved(false);
+          setIsEditing(true);
+        }
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         let data = null;
@@ -141,10 +167,10 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewOnly
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewOnly
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700'
             }`}
         >
           {isSaving ? (
@@ -227,10 +253,10 @@ const LowContrastResolutionForCArm: React.FC<Props> = ({
             <span className="text-xl font-bold text-gray-700">Result:</span>
             <span
               className={`inline-flex px-12 py-5 text-md font-extrabold rounded-full shadow-lg ${remark === 'PASS'
-                  ? 'bg-green-100 text-green-800 border-4 border-green-300'
-                  : remark === 'FAIL'
-                    ? 'bg-red-100 text-red-800 border-4 border-red-300'
-                    : 'bg-gray-100 text-gray-600'
+                ? 'bg-green-100 text-green-800 border-4 border-green-300'
+                : remark === 'FAIL'
+                  ? 'bg-red-100 text-red-800 border-4 border-red-300'
+                  : 'bg-gray-100 text-gray-600'
                 }`}
             >
               {remark || '—'}

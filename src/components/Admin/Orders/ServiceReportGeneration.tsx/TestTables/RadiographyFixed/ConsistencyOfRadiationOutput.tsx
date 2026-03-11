@@ -37,12 +37,14 @@ interface Props {
   serviceId: string;
   testId?: string;
   onTestSaved?: (testId: string) => void;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
-const ConsistencyOfRadiationOutput: React.FC<Props> = ({ 
-  serviceId, 
+const ConsistencyOfRadiationOutput: React.FC<Props> = ({
+  serviceId,
   testId: propTestId,
-  onTestSaved 
+  onTestSaved, initialData, csvDataVersion,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -68,6 +70,34 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       remark: '',
     },
   ]);
+
+  // Apply CSV/Excel initial data
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.ffd != null) setFFD({ value: String(initialData.ffd?.value ?? initialData.ffd) });
+    const tol = initialData.tolerance;
+    if (tol) setTolerance({ operator: (tol.operator ?? '<=') as any, value: String(tol.value ?? '0.05') });
+    if (initialData.outputRows?.length > 0) {
+      // Find max outputs count and update measurementCount
+      const maxOutputs = Math.max(...initialData.outputRows.map((r: any) => (r.outputs ?? []).length));
+      const count = Math.max(maxOutputs, 1);
+      setMeasurementCount(count);
+      setOutputRows(initialData.outputRows.map((r: any, i: number) => {
+        const rawOutputs = (r.outputs ?? []).map((o: any) => ({ value: String(o?.value ?? o ?? '') }));
+        // Pad to match count
+        while (rawOutputs.length < count) rawOutputs.push({ value: '' });
+        return {
+          id: (i + 1).toString(),
+          kv: String(r.kv ?? ''),
+          mas: String(r.mas ?? ''),
+          outputs: rawOutputs,
+          avg: '',
+          cv: '',
+          remark: '' as const,
+        };
+      }));
+    }
+  }, [csvDataVersion, initialData]);
 
   // Calculate avg, CoV and remark – pure calculation, no state mutation needed
   const rowsWithCalc = useMemo(() => {
@@ -329,10 +359,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -356,7 +386,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       {/* FCD */}
       <div className="bg-white rounded-lg border shadow-sm">
-        
+
         <div className="p-6 flex items-center gap-4">
           <label className="w-48 text-sm font-medium text-gray-700">FFD(cm):</label>
           <input
@@ -468,13 +498,12 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   </td>
                   <td className="px-5 py-4 text-center">
                     <span
-                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${
-                        row.remark === 'Pass'
-                          ? 'bg-green-100 text-green-800'
-                          : row.remark === 'Fail'
+                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${row.remark === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : row.remark === 'Fail'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-600'
-                      }`}
+                        }`}
                     >
                       {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
                     </span>

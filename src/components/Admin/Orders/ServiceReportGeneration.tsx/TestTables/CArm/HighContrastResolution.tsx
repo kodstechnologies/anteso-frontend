@@ -13,12 +13,16 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: any[];
 }
 
 const HighContrastResolutionForCArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  refreshKey,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -28,6 +32,20 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
 
   const [measuredLpPerMm, setMeasuredLpPerMm] = useState<string>('');
   const [recommendedStandard, setRecommendedStandard] = useState<string>('1.50');
+
+  // Handle CSV initial data
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      initialData.forEach(row => {
+        const field = row['Field Name'];
+        const val = row['Value'];
+        if (field === 'HighContrast_LpMm') setMeasuredLpPerMm(val);
+        if (field === 'HighContrast_Standard') setRecommendedStandard(val);
+      });
+      setIsSaved(false);
+      setIsEditing(true);
+    }
+  }, [initialData, refreshKey]);
 
   // PASS if Measured > Recommended Standard (higher resolution = better)
   const remark = useMemo(() => {
@@ -42,6 +60,14 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
   // Load existing test data
   useEffect(() => {
     const loadTest = async () => {
+      if (!serviceId || (initialData && initialData.length > 0)) {
+        if (initialData && initialData.length > 0) {
+          setIsSaved(false);
+          setIsEditing(true);
+        }
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         let data = null;
@@ -138,10 +164,10 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewOnly
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewOnly
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
             }`}
         >
           {isSaving ? (
@@ -226,10 +252,10 @@ const HighContrastResolutionForCArm: React.FC<Props> = ({
               <span className="text-xl font-bold text-gray-700 mb-4">Result</span>
               <span
                 className={`inline-flex px-16 py-6 text-md font-extrabold rounded-full shadow-xl border-4 ${remark === 'PASS'
-                    ? 'bg-green-100 text-green-800 border-green-400'
-                    : remark === 'FAIL'
-                      ? 'bg-red-100 text-red-800 border-red-400'
-                      : 'bg-gray-100 text-gray-600 border-gray-300'
+                  ? 'bg-green-100 text-green-800 border-green-400'
+                  : remark === 'FAIL'
+                    ? 'bg-red-100 text-red-800 border-red-400'
+                    : 'bg-gray-100 text-gray-600 border-gray-300'
                   }`}
               >
                 {remark || '—'}

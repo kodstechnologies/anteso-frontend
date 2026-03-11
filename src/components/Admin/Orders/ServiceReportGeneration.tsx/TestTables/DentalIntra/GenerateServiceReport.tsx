@@ -260,6 +260,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                         AccuracyOfOperatingPotentialAndTimeDentalIntra: res.data.AccuracyOfOperatingPotentialAndTimeDentalIntra?._id || res.data.AccuracyOfOperatingPotentialAndTimeDentalIntra,
                         LinearityOfTimeDentalIntra: res.data.LinearityOfTimeDentalIntra?._id || res.data.LinearityOfTimeDentalIntra,
                         LinearityOfMaLoadingDentalIntra: res.data.LinearityOfMaLoadingDentalIntra?._id || res.data.LinearityOfMaLoadingDentalIntra,
+                        LinearityOfmAsLoadingDentalIntra: res.data.LinearityOfmAsLoadingDentalIntra?._id || res.data.LinearityOfmAsLoadingDentalIntra,
                         ConsistencyOfRadiationOutputDentalIntra: res.data.ConsistencyOfRadiationOutputDentalIntra?._id || res.data.ConsistencyOfRadiationOutputDentalIntra,
                         ReproducibilityOfRadiationOutputDentalIntra: res.data.ReproducibilityOfRadiationOutputDentalIntra?._id || res.data.ReproducibilityOfRadiationOutputDentalIntra,
                         RadiationLeakageLevelDentalIntra: res.data.RadiationLeakageLevelDentalIntra?._id || res.data.RadiationLeakageLevelDentalIntra,
@@ -1018,7 +1019,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 <button
                     type="button"
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => navigate(`/admin/orders/view-service-report?serviceId=${serviceId}`)}
+                    onClick={() => navigate(`/admin/orders/view-service-report-dental-intra?serviceId=${serviceId}`)}
                 >
                     View Generated Report
                 </button>
@@ -1059,6 +1060,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                                 component: <LinearityOfmALoading
                                     serviceId={serviceId}
                                     testId={savedTestIds.LinearityOfMaLoadingDentalIntra || undefined}
+                                    onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMaLoadingDentalIntra: id }))}
                                     csvData={csvDataForComponents['linearityOfMaLoading']}
                                 />,
                             },
@@ -1069,8 +1071,8 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                                     title: "Linearity Of mAs Loading",
                                     component: <LinearityOfMasLoading
                                         serviceId={serviceId}
-                                        testId={savedTestIds.LinearityOfMaLoadingDentalIntra || null}
-                                        onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfMaLoadingDentalIntra: id }))}
+                                        testId={savedTestIds.LinearityOfmAsLoadingDentalIntra || null}
+                                        onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfmAsLoadingDentalIntra: id }))}
                                         csvData={csvDataForComponents['linearityOfMasLoading']}
                                     />,
                                 },
@@ -1090,6 +1092,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                         component: <RadiationLeakageLevel
                             serviceId={serviceId}
                             testId={savedTestIds.RadiationLeakageLevelDentalIntra || undefined}
+                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, RadiationLeakageLevelDentalIntra: id }))}
                             csvData={csvDataForComponents['radiationLeakageLevel']}
                         />
                     },
@@ -1097,6 +1100,8 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                         title: "Details Of Radiation Protection",
                         component: <DetailsOfRadiationProtection
                             serviceId={serviceId}
+                            testId={savedTestIds.RadiationProtectionSurveyDentalIntra || null}
+                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, RadiationProtectionSurveyDentalIntra: id }))}
                             csvData={csvDataForComponents['radiationProtectionSurvey']}
                         />
                     },

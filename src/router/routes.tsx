@@ -111,12 +111,14 @@ import ViewCourierCompany from '../components/Admin/Master/CourierCompanies/View
 import AddHospital from '../components/Admin/Master/Clients/AddHospital';
 import AddRso from '../components/Admin/Master/Clients/AddRso';
 import AddInstitute from '../components/Admin/Master/Clients/AddInstitute';
+import AddMachine from '../components/Admin/Master/Clients/AddMachine';
 
 
 //edit hospital,rso,institute
 import EditHospital from '../components/Admin/Master/Clients/EditHospital'
 import EditInstitute from '../components/Admin/Master/Clients/EditInstitute'
 import EditRso from '../components/Admin/Master/Clients/EditRso';
+import EditMachine from '../components/Admin/Master/Clients/EditMachine';
 
 import Payslip from '../pages/Admin/Payslip';
 import GenerateReportCTScan from '../components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/CTScan/GenerateReport-CTScan';
@@ -278,6 +280,14 @@ const routes = [
         ),
     },
     {
+        path: '/admin/clients/preview/:clientId/:hospitalId/add-machine',
+        element: (
+            <AdminProtected>
+                <AddMachine />
+            </AdminProtected>
+        ),
+    },
+    {
         path: '/admin/clients/preview/:clientId/edit-hospital/:hospitalId',
         element: (
             <AdminProtected>
@@ -299,6 +309,14 @@ const routes = [
         element: (
             <AdminProtected>
                 <EditRso />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/clients/preview/:clientId/:hospitalId/edit-machine/:machineId',
+        element: (
+            <AdminProtected>
+                <EditMachine />
             </AdminProtected>
         ),
     },

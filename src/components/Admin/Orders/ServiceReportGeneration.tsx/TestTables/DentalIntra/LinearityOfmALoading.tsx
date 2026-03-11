@@ -32,11 +32,11 @@ interface Table2Row {
 interface Props {
   serviceId: string;
   testId?: string;
-  onRefresh?: () => void;
+  onTestSaved?: (testId: string) => void;
   csvData?: any[];
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, csvData }) => {
+const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   const [table1Row, setTable1Row] = useState<Table1Row>({ fcd: '', kv: '', time: '' });
@@ -177,13 +177,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           setTable1Row({
             fcd: data.table1?.fcd || '',
             kv: data.table1?.kv || '',
-            time: data.table1?.time || '',
+            time: data.table1?.ma || '', // Map backend ma to frontend time
           });
           if (Array.isArray(data.table2) && data.table2.length > 0) {
             setTable2Rows(
               data.table2.map((r: any, i: number) => ({
                 id: String(i + 1),
-                ma: r.ma || '',
+                ma: r.time || '', // Map backend time to frontend ma
                 measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
                 average: r.average || '',
                 x: r.x || '',
@@ -287,10 +287,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         table1: {
           fcd: table1Row.fcd,
           kv: table1Row.kv,
-          time: table1Row.time,
+          ma: table1Row.time, // Map frontend time to backend ma
         },
         table2: processedTable2.map(r => ({
-          ma: r.ma,
+          time: r.ma, // Map frontend ma to backend time
           measuredOutputs: r.measuredOutputs.map(v => {
             const val = v.trim();
             return val === '' ? '' : val;
@@ -303,6 +303,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           remarks: r.remarks || '',
         })),
         tolerance,
+        xMax: processedTable2[0]?.xMax || '',
+        xMin: processedTable2[0]?.xMin || '',
+        col: processedTable2[0]?.col || '',
+        remarks: processedTable2[0]?.remarks || '',
       };
 
       let result;
@@ -328,12 +332,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         const newId = result?.data?._id || result?.data?.data?._id || result?._id;
         if (newId) {
           setTestId(newId);
+          onTestSaved?.(newId);
         }
         toast.success('Saved successfully!');
       }
       setHasSaved(true);
       setIsEditing(false);
-      onRefresh?.();
     } catch (err: any) {
       console.error('Save error:', err);
       toast.error(err?.response?.data?.message || err?.message || 'Save failed');

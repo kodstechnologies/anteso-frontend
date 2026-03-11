@@ -33,9 +33,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  csvData?: any;
+  refreshKey?: number;
 }
 
-export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh, csvData, refreshKey }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   const [settings, setSettings] = useState<SettingsRow>({
@@ -136,6 +138,66 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       )
     );
   }, [serviceId, settings, workload, toleranceValue, leakageRows]);
+
+  // === Load CSV Data ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Settings
+      const settingsData = { fcd: '100', kv: '120', ma: '21', time: '2.0' };
+      csvData.filter((row: any) => row['Field Name'].startsWith('Settings_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Settings_', '').toLowerCase();
+        if (fieldName === 'fcd') settingsData.fcd = row.Value;
+        if (fieldName === 'kvp') settingsData.kv = row.Value;
+        if (fieldName === 'mas') settingsData.ma = row.Value;
+        if (fieldName === 'time') settingsData.time = row.Value;
+      });
+      setSettings(settingsData);
+
+      // Workload
+      const workData = csvData.find((row: any) => row['Field Name'] === 'Workload');
+      if (workData) {
+        setWorkload(workData.Value);
+      }
+
+      // Leakage Measurements
+      const measDataGrouped: any = {};
+      csvData.filter((row: any) => row['Field Name'].startsWith('Measurement_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Measurement_', '');
+        const rowIndex = row['Row Index'] || 0;
+        if (!measDataGrouped[rowIndex]) measDataGrouped[rowIndex] = {};
+        measDataGrouped[rowIndex][fieldName] = row.Value;
+      });
+
+      const rowIndices = Object.keys(measDataGrouped).sort((a, b) => Number(a) - Number(b));
+      if (rowIndices.length > 0) {
+        const newRows = rowIndices.map((idx) => {
+          const r = measDataGrouped[idx];
+          return {
+            location: r.location || '',
+            left: r.left || '',
+            right: r.right || '',
+            front: r.front || '',
+            back: r.back || '',
+            top: r.top || '',
+            max: '',
+            result: '',
+            unit: 'mR/h',
+            mgy: '',
+          };
+        });
+        setLeakageRows(newRows as LeakageRow[]);
+      }
+
+      // Tolerance
+      const tolData = csvData.find((row: any) => row['Field Name'] === 'Tolerance_Value');
+      if (tolData) {
+        setToleranceValue(tolData.Value);
+      }
+
+      setIsEditing(true);
+      setHasSaved(false);
+    }
+  }, [csvData, refreshKey]);
 
   // Load existing data
   useEffect(() => {

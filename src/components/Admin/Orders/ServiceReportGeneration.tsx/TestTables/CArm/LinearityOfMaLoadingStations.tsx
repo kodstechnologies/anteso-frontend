@@ -1,5 +1,5 @@
 // components/TestTables/LinearityOfMaLoading.tsx
- 'use client';
+'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
@@ -32,9 +32,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: any[];
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: FCD, kV, Time (sec)
@@ -55,6 +57,58 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+
+  // Handle CSV initial data
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      try {
+        const t1: Table1Row = { fcd: "", kv: "", time: "" };
+        const rows: Table2Row[] = [];
+        let tol = "0.1";
+        const h: string[] = [];
+
+        initialData.forEach(row => {
+          const field = row['Field Name'];
+          const val = row['Value'];
+          const rowIndex = row['Row Index'];
+
+          if (field === 'Linearity_FCD') t1.fcd = val;
+          if (field === 'Linearity_kV') t1.kv = val;
+          if (field === 'Linearity_Time') t1.time = val;
+          if (field === 'Linearity_Tolerance') tol = val;
+          if (field.startsWith('Header_')) {
+            const idx = parseInt(field.replace('Header_', '')) - 1;
+            while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
+            h[idx] = val;
+          }
+
+          if (field.startsWith('Linearity_')) {
+            while (rows.length <= rowIndex) {
+              rows.push({ id: (rows.length + 1).toString(), ma: "", measuredOutputs: [], average: "", x: "", xMax: "", xMin: "", col: "", remarks: "" });
+            }
+            const subField = field.replace('Linearity_', '');
+            if (subField === 'mA') rows[rowIndex].ma = val;
+            if (subField.startsWith('Meas')) {
+              const colIdx = parseInt(subField.replace('Meas', '')) - 1;
+              while (rows[rowIndex].measuredOutputs.length <= colIdx) {
+                rows[rowIndex].measuredOutputs.push("");
+              }
+              rows[rowIndex].measuredOutputs[colIdx] = val;
+            }
+          }
+        });
+
+        if (t1.fcd || t1.kv || t1.time) setTable1Row(t1);
+        if (rows.length > 0) setTable2Rows(rows);
+        if (h.length > 0) setMeasHeaders(h);
+        setTolerance(tol);
+        setHasSaved(false);
+        setIsEditing(true);
+      } catch (err) {
+        console.error("Error mapping CSV data for Linearity of mA:", err);
+      }
+    }
+  }, [initialData, refreshKey]);
 
   // === Column Handling ===
   const addMeasColumn = () => {
@@ -170,7 +224,11 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   // === Load Data from backend ===
   useEffect(() => {
     const load = async () => {
-      if (!serviceId) {
+      if (!serviceId || (initialData && initialData.length > 0)) {
+        if (initialData && initialData.length > 0) {
+          setHasSaved(false);
+          setIsEditing(true);
+        }
         setIsLoading(false);
         return;
       }
@@ -221,23 +279,23 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   // === Save Handler (connected to Fixed Radio Fluoro API) ===
   const handleSave = async () => {
     console.log('handleSave called', { isFormValid, serviceId, testId, table1Row, table2Rows: table2Rows.length });
-    
+
     if (!serviceId) {
       toast.error('Service ID is missing');
       return;
     }
-    
+
     if (!isFormValid) {
       toast.error('Please fill all required fields');
-      console.log('Form validation failed:', { 
-        fcd: table1Row.fcd, 
-        kv: table1Row.kv, 
+      console.log('Form validation failed:', {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
         time: table1Row.time,
         table2Rows: table2Rows.map(r => ({ ma: r.ma, hasOutputs: r.measuredOutputs.some(v => v.trim()) }))
       });
       return;
     }
-    
+
     setIsSaving(true);
     try {
       console.log('Starting save...', { serviceId, testId });
@@ -260,7 +318,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         measHeaders,
         tolerance,
       };
-      
+
       let result;
       let currentTestId = testId;
 
@@ -278,7 +336,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
 
       console.log('Payload prepared:', payload);
-      
+
       if (currentTestId) {
         // Update existing
         console.log('Updating with testId:', currentTestId);

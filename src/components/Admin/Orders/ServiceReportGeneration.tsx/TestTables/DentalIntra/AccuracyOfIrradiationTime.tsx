@@ -115,20 +115,21 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setTable1Row(data.testConditions || { id: "1", fcd: "", kv: "", ma: "" });
           setTable2Rows(
-            data.irradiationTimes && data.irradiationTimes.length > 0
-              ? data.irradiationTimes.map((t: any, i: number) => ({
+            data.rows && data.rows.length > 0
+              ? data.rows.map((t: any, i: number) => ({
                 id: String(i + 1),
                 setTime: t.setTime || "",
-                measuredTime: t.measuredTime || "",
+                measuredTime: t.maStations?.[0]?.time || "",
               }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
-          setToleranceOperator(data.tolerance?.operator || "");
-          setToleranceValue(data.tolerance?.value || "10");
+          setToleranceOperator(data.timeToleranceSign || "<=");
+          setToleranceValue(data.timeToleranceValue || "10");
           setIsSaved(true);
           setIsEditing(false);
+          // Keep track of full data for merging on save
+          (window as any).accuracyOfOperatingPotentialAndTimeFullData = data;
         } else {
           setIsSaved(false);
           setIsEditing(true);
@@ -187,20 +188,27 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       return;
     }
 
+    const fullData = (window as any).accuracyOfOperatingPotentialAndTimeFullData || {};
+    const existingRows = fullData.rows || [];
+
     const payload = {
-      testConditions: {
-        fcd: table1Row.fcd,
-        kv: table1Row.kv,
-        ma: table1Row.ma,
-      },
-      irradiationTimes: table2Rows.map((r) => ({
-        setTime: r.setTime,
-        measuredTime: r.measuredTime,
-      })),
-      tolerance: {
-        operator: toleranceOperator,
-        value: toleranceValue,
-      },
+      // Merge with existing rows if possible, or create new ones
+      rows: table2Rows.map((r, i) => {
+        const existingRow = existingRows[i] || {};
+        return {
+          ...existingRow,
+          setTime: r.setTime,
+          maStations: [
+            {
+              ...(existingRow.maStations?.[0] || {}),
+              time: r.measuredTime
+            },
+            ...(existingRow.maStations?.slice(1) || [])
+          ]
+        };
+      }),
+      timeToleranceSign: toleranceOperator,
+      timeToleranceValue: toleranceValue,
     };
 
     setSaving(true);

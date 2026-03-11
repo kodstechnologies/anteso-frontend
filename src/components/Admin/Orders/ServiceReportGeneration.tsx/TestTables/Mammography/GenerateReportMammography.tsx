@@ -20,6 +20,7 @@ import {
     addRadiationLeakageLevelForMammography,
     addImagingPhantomForMammography,
     addRadiationProtectionSurveyForMammography,
+    proxyFile,
 } from "../../../../../../api";
 
 // Mammography Test Components
@@ -897,44 +898,50 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
     };
 
 
-    // Fetch and process CSV file from URL (passed from ServiceDetails2)
+    // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2 when complete / Generate Report)
+    // Uses proxyFile so the request is authenticated and avoids CORS/401 redirect to login
     useEffect(() => {
-        const fetchAndProcessCSV = async () => {
+        const fetchAndProcessFile = async () => {
             if (!csvFileUrl) return;
 
             try {
-                console.log('Fetching CSV file from URL:', csvFileUrl);
+                console.log('Mammography: Fetching file from URL:', csvFileUrl);
                 setCsvUploading(true);
+                toast.loading('Loading data from file...', { id: 'mammo-csv-load' });
 
-                // Fetch the file from the URL
-                const response = await fetch(csvFileUrl);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch CSV file: ${response.statusText}`);
+                const response = await proxyFile(csvFileUrl);
+                const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                const urlLower = csvFileUrl.toLowerCase();
+                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+
+                let text: string;
+                if (isExcel) {
+                    const XLSX = await import('xlsx');
+                    const arrayBuffer = await blob.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    const ws = workbook.Sheets[workbook.SheetNames[0]];
+                    text = XLSX.utils.sheet_to_csv(ws);
+                } else {
+                    text = await blob.text();
                 }
 
-                const text = await response.text();
-                console.log('CSV file content fetched, length:', text.length);
-
-                // Parse and process the CSV
                 const csvData = parseCSV(text);
-                console.log('Parsed CSV data:', csvData);
-                console.log('Number of rows parsed:', csvData.length);
-
                 if (csvData.length > 0) {
-                    console.log('First row sample:', csvData[0]);
                     await processCSVData(csvData);
+                    toast.success('File loaded successfully!', { id: 'mammo-csv-load' });
                 } else {
-                    console.warn('No data found in CSV file');
+                    console.warn('No data found in file');
+                    toast.error('No data found in file', { id: 'mammo-csv-load' });
                 }
             } catch (error: any) {
-                console.error('Error fetching or processing CSV file:', error);
-                toast.error(`Failed to load CSV file: ${error?.message || 'Unknown error'}`);
+                console.error('Error fetching or processing file:', error);
+                toast.error(error?.message || 'Failed to load file', { id: 'mammo-csv-load' });
             } finally {
                 setCsvUploading(false);
             }
         };
 
-        fetchAndProcessCSV();
+        fetchAndProcessFile();
     }, [csvFileUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
@@ -1299,8 +1306,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     { title: "Radiation Leakage Level (5 cm from Tube Housing)", component: <RadiationLeakageLevel key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.radiationLeakageLevel} /> },
                     { title: "Imaging Performance Evaluation (Phantom)", component: <ImagingPhantom key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.imagingPhantom} /> },
                     { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.radiationProtectionSurvey} /> },
-                    // { title: "Equipment Settings Verification", component: <EquipementSetting serviceId={serviceId} /> },
-                    // { title: "Maximum Radiation Levels at Different Locations", component: <MaximumRadiationLevel serviceId={serviceId} /> },
+                    { title: "Equipment Settings Verification", component: <EquipementSetting key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} /> },
+                    { title: "Maximum Radiation Levels at Different Locations", component: <MaximumRadiationLevel key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} /> },
                 ].map((item, i) => (
                     <Disclosure key={i} defaultOpen={i === 0}>
                         {({ open }) => (

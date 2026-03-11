@@ -27,9 +27,10 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  initialData?: { techniqueFactors?: { fcd?: string; kv?: string; mAs?: string }; observedTilt?: { value?: string; operator?: string }; tolerance?: { value?: string; operator?: string } };
 }
 
-const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -74,6 +75,16 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   const finalResult = evaluation.remark === 'Pass' ? 'PASS' :
     evaluation.remark === 'Fail' ? 'FAIL' : 'PENDING';
+
+  useEffect(() => {
+    if (!initialData) return;
+    const tf = initialData.techniqueFactors;
+    if (tf) setTechniqueRow(prev => ({ ...prev, fcd: tf.fcd ?? prev.fcd, kv: tf.kv ?? prev.kv, mas: tf.mAs ?? prev.mas }));
+    if (initialData.observedTilt?.value) setObservedTilt(initialData.observedTilt.value);
+    if (initialData.tolerance?.value) setToleranceValue(initialData.tolerance.value);
+    if (initialData.tolerance?.operator === '<=' || initialData.tolerance?.operator === '<') setToleranceOperator('<');
+    if (initialData.tolerance?.operator === '>') setToleranceOperator('>');
+  }, [initialData]);
 
   // Load existing data
   useEffect(() => {

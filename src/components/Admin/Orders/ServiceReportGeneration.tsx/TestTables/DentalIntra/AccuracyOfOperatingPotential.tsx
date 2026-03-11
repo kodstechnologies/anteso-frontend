@@ -74,7 +74,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     setMAStations(data.mAStations || ["50 mA", "100 mA"]);
                     setFfd(data.ffd || "");
                     setRows(
-                        data.measurements?.map((m: any, i: number) => ({
+                        data.rows?.map((m: any, i: number) => ({
                             id: String(i + 1),
                             appliedKvp: m.appliedKvp || "",
                             measuredValues: m.measuredValues || [],
@@ -82,8 +82,8 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                             remarks: m.remarks || "-",
                         })) || rows
                     );
-                    setToleranceSign(data.tolerance?.type || "±");
-                    setToleranceValue(data.tolerance?.value || "2.0");
+                    setToleranceSign(data.kvpToleranceSign || "±");
+                    setToleranceValue(data.kvpToleranceValue || "2.0");
                     setTotalFiltration({
                         measured: data.totalFiltration?.measured || "",
                         required: data.totalFiltration?.required || "",
@@ -103,6 +103,8 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     if (data._id && !initialTestId) {
                         onTestSaved?.(data._id);
                     }
+                    // Keep track of full data for merging on save
+                    (window as any).accuracyOfOperatingPotentialAndTimeFullData = data;
                 } else {
                     setIsSaved(false);
                     setIsEditing(true);
@@ -184,16 +186,28 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             return;
         }
 
+        const fullData = (window as any).accuracyOfOperatingPotentialAndTimeFullData || {};
+        const existingRows = fullData.rows || [];
+
         const payload = {
             mAStations,
             ffd,
-            measurements: rows.map(r => ({
-                appliedKvp: r.appliedKvp,
-                measuredValues: r.measuredValues,
-                averageKvp: r.averageKvp,
-                remarks: r.remarks,
-            })),
-            tolerance: { type: toleranceSign, value: toleranceValue },
+            // Merge with existing rows to preserve Time data
+            rows: rows.map((r, i) => {
+                const existingRow = existingRows[i] || {};
+                return {
+                    ...existingRow,
+                    appliedKvp: r.appliedKvp,
+                    avgKvp: r.averageKvp,
+                    remark: r.remarks,
+                    maStations: r.measuredValues.map((val, j) => ({
+                        ...(existingRow.maStations?.[j] || {}),
+                        kvp: val
+                    }))
+                };
+            }),
+            kvpToleranceSign: toleranceSign,
+            kvpToleranceValue: toleranceValue,
             totalFiltration,
             filtrationTolerance,
         };

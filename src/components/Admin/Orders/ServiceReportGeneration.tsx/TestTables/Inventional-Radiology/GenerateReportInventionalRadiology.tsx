@@ -1,14 +1,15 @@
 // GenerateReport-InventionalRadiology.tsx
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader, getReportHeaderForInventionalRadiology } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForInventionalRadiology, proxyFile } from "../../../../../../api";
 
 // Test-table imports
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -16,12 +17,14 @@ import CentralBeamAlignment from "./CentralBeamAlignment";
 import EffectiveFocalspotMeasurement from "./EffectiveFocalspotMeasurement";
 import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
 import TotalFilteration from "./TotalFilterationForInventionalRadiology";
-import LowContrastResolution from "./LowContrastResolution";
-import HighContrastResolution from "./HighContrastResolution";
+import LowContrastResolution from "./LowContrastResolutionInventionalRadiology";
+import HighContrastResolution from "./HighContrastResolutionForInventionalRadiology";
 import ExposureRateAtTableTop from "./ExposureRateAtTableTop";
 import TubeHousingLeakage from "./TubeHousingLeakageForInventionalRadiology";
 import RadiationProtectionInterventionalRadiology from "./RadiationProtectionInventionalRadiology";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
+
+import { handleExportToExcel as exportToExcel } from "../../../../../../utils/exportInventionalRadiologyToExcel";
 // import EquipmentSettingForInterventionalRadiology from "./EquipmentSettingForInventionalRadiology";
 // import MaxRadiationLevel from "./MaxRadiationLevel";
 export interface Standard {
@@ -75,10 +78,21 @@ interface ToolsResponse {
 interface InventionalRadiologyProps {
   serviceId: string;
   qaTestDate?: string | null;
+  csvFileUrl?: string | null;
 }
 
-const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, qaTestDate }) => {
+const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, qaTestDate, csvFileUrl: csvFileUrlProp }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // CSV/Excel related state
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvDataForComponents, setCsvDataForComponents] = useState<{ [key: string]: any[] }>({});
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Get csvFileUrl from prop (from GenericServiceTable) or location state (passed from ServiceDetails2 when complete / Generate Report)
+  const csvFileUrl = csvFileUrlProp ?? location.state?.csvFileUrl ?? null;
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
   const [tools, setTools] = useState<Standard[]>([]);
@@ -88,9 +102,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
   const [showTubeModal, setShowTubeModal] = useState(true); // Show tube selection modal first
-  const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
   const [tubeType, setTubeType] = useState<'single' | 'double' | null>(null); // null = not selected yet
 
   const [formData, setFormData] = useState({
@@ -115,6 +127,351 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     engineerNameRPId: "",
     category: "",
   });
+
+  // --- CSV/Excel Parsing Logic ---
+  const parseHorizontalData = (rows: any[][]): any[] => {
+    const data: any[] = [];
+    let currentTestName = "";
+    let currentTestNameBase = "";
+    let headers: string[] = [];
+    let isReadingTest = false;
+
+    const markerUpperToInternal: { [key: string]: string } = {
+      'ACCURACY OF IRRADIATION TIME': 'Accuracy Of Irradiation Time',
+      'CENTRAL BEAM ALIGNMENT': 'Central Beam Alignment',
+      'EFFECTIVE FOCAL SPOT SIZE': 'Effective Focal Spot Size',
+      'ACCURACY OF OPERATING POTENTIAL': 'Accuracy Of Operating Potential',
+      'TOTAL FILTRATION': 'Total Filtration',
+      'CONSISTENCY OF RADIATION OUTPUT': 'Consistency Of Radiation Output',
+      'LOW CONTRAST RESOLUTION': 'Low Contrast Resolution',
+      'HIGH CONTRAST RESOLUTION': 'High Contrast Resolution',
+      'EXPOSURE RATE AT TABLE TOP': 'Exposure Rate At Table Top',
+      'TUBE HOUSING LEAKAGE': 'Tube Housing Leakage',
+      'RADIATION PROTECTION SURVEY REPORT': 'Radiation Protection Survey Report',
+    };
+
+    const headerMap: { [key: string]: { [key: string]: string } } = {
+      'Accuracy Of Irradiation Time': {
+        'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'mA': 'Table1_ma',
+        'Set Time (mSec)': 'Table2_SetTime', 'Measured Time (mSec)': 'Table2_MeasuredTime',
+        'Tolerance Operator': 'ToleranceOperator', 'Tolerance Value': 'ToleranceValue'
+      },
+      'Central Beam Alignment': {
+        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
+        'Result': 'Table2_Result', 'Tolerance': 'Tolerance'
+      },
+      'Effective Focal Spot Size': {
+         'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Focal Spot Size': 'Table1_focalSpotSize',
+         'Measured Dimension (W)': 'Table2_MeasuredWidth', 'Measured Dimension (L)': 'Table2_MeasuredLength',
+         'Tolerance Width': 'ToleranceWidth', 'Tolerance Length': 'ToleranceLength'
+      },
+      'Accuracy Of Operating Potential': {
+        'mA': 'Table1_ma', 'Time': 'Table1_time',
+        'Set kV': 'Table2_SetKV', 'Measured kV': 'Table2_MeasuredKV',
+        'Tolerance Operator': 'ToleranceOperator', 'Tolerance Value': 'ToleranceValue'
+      },
+      'Total Filtration': {
+        'Applied KV': 'Table1_kv', 'Applied MA': 'Table1_ma', 'Added Filtration': 'Table1_addedFiltration',
+        'Measured TF': 'Table2_Result', 'Criteria': 'Criteria'
+      },
+      'Consistency Of Radiation Output': {
+        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
+        'Exposure 1': 'Table2_Exp1', 'Exposure 2': 'Table2_Exp2', 'Exposure 3': 'Table2_Exp3',
+        'Exposure 4': 'Table2_Exp4', 'Exposure 5': 'Table2_Exp5',
+        'Average': 'Table2_Average', 'COV': 'Table2_COV', 'Tolerance': 'Tolerance'
+      },
+      'Low Contrast Resolution': {
+        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
+        'Observed Resolution': 'Table2_Result', 'Criteria': 'Criteria'
+      },
+      'High Contrast Resolution': {
+        'kV/mAs': 'Table1_kvmAs',
+        'Measured Resolution': 'Table2_Result', 'Criteria': 'Criteria'
+      },
+      'Exposure Rate At Table Top': {
+        'kV': 'Table1_kv', 'mA': 'Table1_ma',
+        'Mode': 'Table2_Mode', 'Measured Rate': 'Table2_MeasuredRate', 'Criteria': 'Criteria'
+      },
+      'Tube Housing Leakage': {
+        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time', 'FCD (cm)': 'Table1_fcd', 'Workload': 'Table1_workload',
+        'Location': 'Table1_Location', 
+        'Left': 'Table1_Left', 'Right': 'Table1_Right', 'Front': 'Table1_Front', 'Back': 'Table1_Back', 'Top': 'Table1_Top',
+        'Tolerance Operator': 'ToleranceOperator', 'Tolerance Value': 'Table1_toleranceValue'
+      },
+      'Radiation Protection Survey Report': {
+        'Location': 'Table1_location', 'mR/hr': 'Table1_mRPerHr', 'Category': 'Table1_category',
+        'Applied Voltage': 'Table1_appliedVoltage', 'Applied Current': 'Table1_appliedCurrent', 'Exposure Time': 'Table1_exposureTime',
+        'Survey Date': 'Table1_surveyDate', 'Calibration Valid': 'Table1_hasValidCalibration', 'Workload': 'Table1_workload'
+      }
+    };
+
+    const sectionRowCounter: { [key: string]: number } = {};
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i].map(c => String(c || '').trim());
+      const firstCell = row[0];
+
+      if (firstCell.startsWith('TEST: ')) {
+        // Always reset state when we see a new TEST: marker
+        isReadingTest = false;
+        headers = [];
+
+        const rawTitle = firstCell.replace('TEST: ', '').trim();
+        let tubeSuffix = '';
+        let baseTitle = rawTitle;
+
+        if (/\bTUBE\s*A\b/i.test(rawTitle) || /\bFRONTAL\b/i.test(rawTitle)) {
+           tubeSuffix = ' - Frontal';
+           baseTitle = rawTitle.replace(/\s*-\s*TUBE\s*A\s*$/i, '').replace(/\s*-\s*FRONTAL\s*$/i, '').trim();
+        } else if (/\bTUBE\s*B\b/i.test(rawTitle) || /\bLATERAL\b/i.test(rawTitle)) {
+           tubeSuffix = ' - Lateral';
+           baseTitle = rawTitle.replace(/\s*-\s*TUBE\s*B\s*$/i, '').replace(/\s*-\s*LATERAL\s*$/i, '').trim();
+        }
+
+        const internalBase = markerUpperToInternal[baseTitle.trim().toUpperCase()] || '';
+        currentTestNameBase = internalBase;
+        currentTestName = internalBase ? `${internalBase}${tubeSuffix}` : '';
+        isReadingTest = !!internalBase;
+        headers = [];
+        if (currentTestName) sectionRowCounter[currentTestName] = 0;
+        if (!internalBase) {
+          console.warn(`[IR CSV] Unknown test marker: "${baseTitle.trim().toUpperCase()}"`);
+        }
+        continue;
+      }
+
+      if (isReadingTest && headers.length === 0 && row.some(c => c)) {
+        headers = row;
+        continue;
+      }
+
+      if (isReadingTest && row.every(c => !c)) {
+        isReadingTest = false;
+        continue;
+      }
+
+      if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
+        sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
+        const rowIdx = sectionRowCounter[currentTestName];
+        row.forEach((value, cellIdx) => {
+          const header = headers[cellIdx];
+          const internalField = (headerMap[currentTestNameBase] || {})[header];
+          if (internalField && value) {
+            data.push({
+              'Field Name': internalField,
+              'Value': value,
+              'Row Index': rowIdx,
+              'Test Name': currentTestName,
+            });
+          }
+        });
+      }
+    }
+    console.log('[IR CSV] Parsed field count:', data.length, 'Tests found:', [...new Set(data.map(d => d['Test Name']))]);
+    return data;
+  };
+
+  // Map export template Component names -> internal Test Name (single tube)
+  const componentToTestName: { [key: string]: string } = {
+    'AccuracyOfIrradiationTime': 'Accuracy Of Irradiation Time',
+    'CentralBeamAlignment': 'Central Beam Alignment',
+    'EffectiveFocalSpot': 'Effective Focal Spot Size',
+    'AccuracyOfOperatingPotential': 'Accuracy Of Operating Potential',
+    'TotalFilteration': 'Total Filtration',
+    'ConsistencyOfRadiationOutput': 'Consistency Of Radiation Output',
+    'LinearityOfmAsLoading': 'Linearity Of mAs Loading',
+    'ExposureRateAtTableTop': 'Exposure Rate At Table Top',
+    'TubeHousingLeakage': 'Tube Housing Leakage',
+    'RadiationProtectionInterventionalRadiology': 'Radiation Protection Survey Report',
+    'HighContrastResolution': 'High Contrast Resolution',
+    'LowContrastResolution': 'Low Contrast Resolution',
+  };
+
+  // Normalize field names from export template to what components expect
+  const normalizeFieldName = (component: string, fieldName: string, rowIndex: string | number): string => {
+    const idx = typeof rowIndex === 'string' ? parseInt(rowIndex, 10) : rowIndex;
+    if (component === 'EffectiveFocalSpot') {
+      if (fieldName === 'MeasuredDimension1') return 'Table2_MeasuredWidth';
+      if (fieldName === 'MeasuredDimension2') return 'Table2_MeasuredLength';
+    }
+    if (component === 'ConsistencyOfRadiationOutput') {
+      if (fieldName === 'Table1_fdd') return 'Table1_fcd';
+      if (fieldName === 'Table1_mAs') return 'Table1_mas';
+      if (fieldName === 'Table1_Output') return `Table1_Meas${(isNaN(idx) ? 0 : idx) + 1}`;
+    }
+    if (component === 'TotalFilteration') {
+      if (fieldName === 'Table2_Output') return 'Table2_MeasuredKV';
+      if (fieldName === 'Table2_Thickness') return 'Table1_totalFiltration';
+      if (fieldName === 'Table1_kv') return 'Table2_SetKV';
+    }
+    if (component === 'HighContrastResolution') {
+      if (fieldName === 'MeasuredLpPerMm') return 'Table1_measuredLpPerMm';
+      if (fieldName === 'RecommendedStandard') return 'Table1_recommendedStandard';
+      if (fieldName === 'Tolerance') return 'Table1_tolerance';
+    }
+    if (component === 'LowContrastResolution') {
+      if (fieldName === 'SmallestHoleSize') return 'Table1_smallestHoleSize';
+      if (fieldName === 'RecommendedStandard') return 'Table1_recommendedStandard';
+      if (fieldName === 'Tolerance') return 'Table1_tolerance';
+    }
+    return fieldName;
+  };
+
+  const parseVerticalData = (rows: any[][]): any[] => {
+    if (rows.length < 2) return [];
+    const headerRow = rows[0].map((c: any) => String(c || '').trim());
+    const compIdx = headerRow.findIndex((h: string) => /component/i.test(h));
+    const fieldIdx = headerRow.findIndex((h: string) => /field\s*name/i.test(h));
+    const rowIdx = headerRow.findIndex((h: string) => /row\s*index/i.test(h));
+    const valIdx = headerRow.findIndex((h: string) => /value/i.test(h) && !/field/i.test(h));
+    if (compIdx < 0 || fieldIdx < 0 || valIdx < 0) return [];
+    const ri = rowIdx >= 0 ? rowIdx : fieldIdx;
+    const data: any[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i].map((c: any) => String(c ?? '').trim());
+      const comp = row[compIdx]?.trim() || '';
+      const baseComp = comp.replace(/\s*-\s*(Frontal|Lateral|TUBE\s*A|TUBE\s*B)$/i, '').trim();
+      let testName = componentToTestName[baseComp] || '';
+      if (/Frontal|TUBE\s*A/i.test(comp)) testName = testName ? `${testName} - Frontal` : '';
+      if (/Lateral|TUBE\s*B/i.test(comp)) testName = testName ? `${testName} - Lateral` : '';
+      if (!testName) continue;
+      const fieldName = row[fieldIdx] || '';
+      const value = row[valIdx] ?? '';
+      if (!fieldName) continue;
+      const rowIndex = rowIdx >= 0 ? (row[ri] || '0') : '0';
+      const normalizedField = normalizeFieldName(baseComp, fieldName, rowIndex);
+      data.push({
+        'Field Name': normalizedField,
+        'Value': value,
+        'Row Index': rowIndex,
+        'Test Name': testName,
+      });
+    }
+    return data;
+  };
+
+  const parseCSV = (text: string): any[] => {
+    const lines = text.split('\n').map(line => line.split(',').map(c => c.trim()));
+    const asRows = lines as any[][];
+    const vertical = parseVerticalData(asRows);
+    if (vertical.length > 0) return vertical;
+    return parseHorizontalData(asRows);
+  };
+
+  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+    const vertical = parseVerticalData(jsonData);
+    if (vertical.length > 0) return vertical;
+    return parseHorizontalData(jsonData);
+  };
+
+  const processCSVData = async (csvData: any[]) => {
+    try {
+      setCsvUploading(true);
+      const groupedData: { [key: string]: any[] } = {};
+
+      csvData.forEach((row) => {
+        const testName = row['Test Name'];
+        if (testName && testName.trim()) {
+          if (!groupedData[testName]) {
+            groupedData[testName] = [];
+          }
+          groupedData[testName].push(row);
+        }
+      });
+
+      console.log('IR CSV Data grouped:', groupedData);
+      setCsvDataForComponents(groupedData);
+      setRefreshKey(prev => prev + 1);
+      toast.success('CSV/Excel data loaded successfully!');
+    } catch (error: any) {
+      console.error('Error processing CSV data:', error);
+      toast.error('Failed to process data: ' + (error.message || 'Unknown error'));
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
+  const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+    const isCSV = fileName.endsWith('.csv');
+
+    if (!isExcel && !isCSV) {
+      toast.error('Please upload a CSV or Excel file');
+      return;
+    }
+
+    try {
+      setCsvUploading(true);
+      toast.loading('Processing file...', { id: 'csv-upload' });
+
+      if (isExcel) {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const csvData = parseExcelToCSVFormat(workbook);
+        await processCSVData(csvData);
+      } else {
+        const text = await file.text();
+        const csvData = parseCSV(text);
+        await processCSVData(csvData);
+      }
+
+      toast.success('File uploaded successfully!', { id: 'csv-upload' });
+    } catch (error: any) {
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file', { id: 'csv-upload' });
+    } finally {
+      setCsvUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleExportTemplate = () => {
+    exportToExcel(details, tools);
+  };
+
+  // Auto-fill effect when csvFileUrl is present
+  useEffect(() => {
+    const fetchAndProcessFile = async () => {
+      if (!csvFileUrl) return;
+
+      try {
+        setCsvUploading(true);
+        const urlLower = csvFileUrl.toLowerCase();
+        const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+
+        toast.loading('Loading data from file...', { id: 'csv-loading' });
+        const response = await proxyFile(csvFileUrl);
+        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+
+        let csvData: any[] = [];
+        if (isExcel) {
+          const arrayBuffer = await blob.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          csvData = parseExcelToCSVFormat(workbook);
+        } else {
+          const text = await blob.text();
+          csvData = parseCSV(text);
+        }
+
+        await processCSVData(csvData);
+        toast.success('File loaded successfully!', { id: 'csv-loading' });
+      } catch (error: any) {
+        console.error('Error fetching file:', error);
+        toast.error('Failed to load file', { id: 'csv-loading' });
+      } finally {
+        setCsvUploading(false);
+      }
+    };
+
+    fetchAndProcessFile();
+  }, [csvFileUrl]);
   const defaultNotes = [
     "The Test Report relates only to the above item only.",
     "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
@@ -246,29 +603,12 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     }));
   };
 
-  // Handle tube type selection - show timer modal after selection
+  // Handle tube type selection
   const handleTubeTypeSelection = (type: 'single' | 'double') => {
     setTubeType(type);
     setShowTubeModal(false);
     // Save tube type to localStorage
     localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, type);
-
-    // Always show timer modal after tube type selection
-    // Load saved choice if exists, but still show modal to confirm/change
-    const savedChoice = localStorage.getItem(`inventional_radiology_timer_choice_${serviceId}`);
-    if (savedChoice !== null) {
-      setHasTimer(JSON.parse(savedChoice));
-    }
-    // Always show timer modal after tube selection
-    setShowTimerModal(true);
-  };
-
-  // Close modal and set timer choice
-  const handleTimerChoice = (choice: boolean) => {
-    setHasTimer(choice);
-    setShowTimerModal(false);
-    // Persist choice in localStorage
-    localStorage.setItem(`inventional_radiology_timer_choice_${serviceId}`, JSON.stringify(choice));
   };
 
   // Load saved tube type on mount (if exists)
@@ -280,13 +620,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     if (savedTubeType === 'single' || savedTubeType === 'double') {
       setTubeType(savedTubeType as 'single' | 'double');
       setShowTubeModal(false);
-      // Load saved timer choice if exists
-      const savedChoice = localStorage.getItem(`inventional_radiology_timer_choice_${serviceId}`);
-      if (savedChoice !== null) {
-        setHasTimer(JSON.parse(savedChoice));
-      }
-      // Always show timer modal when tube type is loaded from storage
-      setShowTimerModal(true);
     } else {
       // No saved tube type, show tube selection modal first
       setShowTubeModal(true);
@@ -398,36 +731,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     );
   }
 
-  // TIMER TEST AVAILABILITY MODAL - Show after tube type selection
-  if (showTimerModal && tubeType && hasTimer === null) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105 animate-in fade-in duration-300">
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">Timer Test Availability</h3>
-          <p className="text-gray-600 mb-8">
-            Does this Interventional Radiology unit have a selectable <strong>Irradiation Time (Timer)</strong> setting?
-          </p>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={() => handleTimerChoice(true)}
-              className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition transform hover:scale-105"
-            >
-              Yes, Has Timer
-            </button>
-            <button
-              onClick={() => handleTimerChoice(false)}
-              className="px-8 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition transform hover:scale-105"
-            >
-              No Timer
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't show tests until tube type is selected and timer choice is made
-  if (!tubeType || hasTimer === null) {
+  // Don't show tests until tube type is selected
+  if (!tubeType) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-xl font-medium text-gray-700">Loading...</div>
@@ -575,6 +880,42 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         </div>
       </section>
 
+      {/* CSV/Excel Upload Section */}
+      <section className="mb-10 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+        <h2 className="text-xl font-semibold text-blue-700 mb-4">Upload Test Data (CSV/Excel)</h2>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleCSVUpload}
+              className="hidden"
+              id="csv-upload-input"
+            />
+            <label
+              htmlFor="csv-upload-input"
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
+            >
+              <CloudArrowUpIcon className="w-5 h-5" />
+              {csvUploading ? 'Uploading...' : 'Upload CSV/Excel File'}
+            </label>
+              <button
+                onClick={handleExportTemplate}
+                className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition shadow-md font-medium"
+              >
+              <CloudArrowUpIcon className="w-5 h-5 rotate-180" />
+              Export Saved Data to Excel
+            </button>
+          </div>
+          {csvFileUrl && (
+            <p className="text-sm text-gray-600">
+              File loaded from: <span className="font-mono text-xs">{csvFileUrl}</span>
+            </p>
+          )}
+        </div>
+      </section>
+
       <Standards standards={tools} />
       <Notes initialNotes={notes} onChange={setNotes} />
 
@@ -612,42 +953,207 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {(tubeType === 'single' ? [
-          { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} tubeId={null} /> },
-          { title: "Effective Focal Spot Measurement", component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId={null} /> },
-          { title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId={null} /> },
-          { title: "Total Filtration", component: <TotalFilteration serviceId={serviceId} tubeId={null} /> },
-          { title: "Consistency of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId={null} /> },
-          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} tubeId={null} /> },
-          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} tubeId={null} /> },
-          { title: "Exposure Rate at Table Top", component: <ExposureRateAtTableTop serviceId={serviceId} tubeId={null} /> },
-          { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} tubeId={null} /> },
-          { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} /> },
-        ] : [
-          // ===== TUBE FRONTAL TESTS =====
-          { title: "Central Beam Alignment - Tube Frontal", component: <CentralBeamAlignment serviceId={serviceId} tubeId="frontal" /> },
-          { title: "Effective Focal Spot Measurement - Tube Frontal", component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="frontal" /> },
-          { title: "Accuracy of Irradiation Time - Tube Frontal", component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="frontal" /> },
-          { title: "Total Filtration - Tube Frontal", component: <TotalFilteration serviceId={serviceId} tubeId="frontal" /> },
-          { title: "Consistency of Radiation Output - Tube Frontal", component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="frontal" /> },
-          { title: "Low Contrast Resolution - Tube Frontal", component: <LowContrastResolution serviceId={serviceId} tubeId="frontal" /> },
-          { title: "High Contrast Resolution - Tube Frontal", component: <HighContrastResolution serviceId={serviceId} tubeId="frontal" /> },
-          { title: "Exposure Rate at Table Top - Tube Frontal", component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="frontal" /> },
-          { title: "Tube Housing Leakage - Tube Frontal", component: <TubeHousingLeakage serviceId={serviceId} tubeId="frontal" /> },
+            {
+              title: "Accuracy of Irradiation Time",
+              component: (
+                <AccuracyOfIrradiationTime
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Accuracy Of Irradiation Time']}
+                />
+              ),
+            },
+            {
+              title: "Central Beam Alignment",
+              component: (
+                <CentralBeamAlignment
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Central Beam Alignment']}
+                />
+              ),
+            },
+            {
+              title: "Effective Focal Spot Size",
+              component: (
+                <EffectiveFocalspotMeasurement
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Effective Focal Spot Size']}
+                />
+              ),
+            },
+            {
+              title: "Accuracy of Operating Potential",
+              component: (
+                <AccuracyOfOperatingPotential
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Accuracy Of Operating Potential']}
+                />
+              ),
+            },
+            {
+              title: "Total Filtration",
+              component: (
+                <TotalFilteration
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Total Filtration']}
+                />
+              ),
+            },
+            {
+              title: "Consistency of Radiation Output",
+              component: (
+                <ConsistencyOfRadiationOutput
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Consistency Of Radiation Output']}
+                />
+              ),
+            },
+            {
+              title: "Low Contrast Resolution",
+              component: (
+                <LowContrastResolution
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Low Contrast Resolution']}
+                />
+              ),
+            },
+            {
+              title: "High Contrast Resolution",
+              component: (
+                <HighContrastResolution
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['High Contrast Resolution']}
+                />
+              ),
+            },
+            {
+              title: "Exposure Rate at Table Top",
+              component: (
+                <ExposureRateAtTableTop
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Exposure Rate At Table Top']}
+                />
+              ),
+            },
+            {
+              title: "Tube Housing Leakage",
+              component: (
+                <TubeHousingLeakage
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Tube Housing Leakage']}
+                />
+              ),
+            },
+            {
+              title: "Radiation Protection Survey Report",
+              component: (
+                <RadiationProtectionInterventionalRadiology
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Radiation Protection Survey Report']}
+                />
+              ),
+            },
+          ] : [
+            // ===== FRONTAL TUBE TESTS =====
+            {
+              title: "Accuracy of Irradiation Time - Frontal",
+              component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Frontal']} />,
+            },
+            {
+              title: "Central Beam Alignment - Frontal",
+              component: <CentralBeamAlignment serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Central Beam Alignment - Frontal']} />,
+            },
+            {
+              title: "Effective Focal Spot Size - Frontal",
+              component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Effective Focal Spot Size - Frontal']} />,
+            },
+            {
+              title: "Accuracy of Operating Potential - Frontal",
+              component: <AccuracyOfOperatingPotential serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Accuracy Of Operating Potential - Frontal']} />,
+            },
+            {
+              title: "Total Filtration - Frontal",
+              component: <TotalFilteration serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Total Filtration - Frontal']} />,
+            },
+            {
+              title: "Consistency of Radiation Output - Frontal",
+              component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Consistency Of Radiation Output - Frontal']} />,
+            },
+            {
+              title: "Low Contrast Resolution - Frontal",
+              component: <LowContrastResolution serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Low Contrast Resolution - Frontal']} />,
+            },
+            {
+              title: "High Contrast Resolution - Frontal",
+              component: <HighContrastResolution serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['High Contrast Resolution - Frontal']} />,
+            },
+            {
+              title: "Exposure Rate at Table Top - Frontal",
+              component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Exposure Rate At Table Top - Frontal']} />,
+            },
+            {
+              title: "Tube Housing Leakage - Frontal",
+              component: <TubeHousingLeakage serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Tube Housing Leakage - Frontal']} />,
+            },
 
-          // ===== TUBE LATERAL TESTS =====
-          { title: "Central Beam Alignment - Tube Lateral", component: <CentralBeamAlignment serviceId={serviceId} tubeId="lateral" /> },
-          { title: "Effective Focal Spot Measurement - Tube Lateral", component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="lateral" /> },
-          { title: "Accuracy of Irradiation Time - Tube Lateral", component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="lateral" /> },
-          { title: "Total Filtration - Tube Lateral", component: <TotalFilteration serviceId={serviceId} tubeId="lateral" /> },
-          { title: "Consistency of Radiation Output - Tube Lateral", component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="lateral" /> },
-          { title: "Low Contrast Resolution - Tube Lateral", component: <LowContrastResolution serviceId={serviceId} tubeId="lateral" /> },
-          { title: "High Contrast Resolution - Tube Lateral", component: <HighContrastResolution serviceId={serviceId} tubeId="lateral" /> },
-          { title: "Exposure Rate at Table Top - Tube Lateral", component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="lateral" /> },
-          { title: "Tube Housing Leakage - Tube Lateral", component: <TubeHousingLeakage serviceId={serviceId} tubeId="lateral" /> },
+            // ===== LATERAL TUBE TESTS =====
+            {
+              title: "Accuracy of Irradiation Time - Lateral",
+              component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Lateral']} />,
+            },
+            {
+              title: "Central Beam Alignment - Lateral",
+              component: <CentralBeamAlignment serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Central Beam Alignment - Lateral']} />,
+            },
+            {
+              title: "Effective Focal Spot Size - Lateral",
+              component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Effective Focal Spot Size - Lateral']} />,
+            },
+            {
+              title: "Accuracy of Operating Potential - Lateral",
+              component: <AccuracyOfOperatingPotential serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Accuracy Of Operating Potential - Lateral']} />,
+            },
+            {
+              title: "Total Filtration - Lateral",
+              component: <TotalFilteration serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Total Filtration - Lateral']} />,
+            },
+            {
+              title: "Consistency of Radiation Output - Lateral",
+              component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Consistency Of Radiation Output - Lateral']} />,
+            },
+            {
+              title: "Low Contrast Resolution - Lateral",
+              component: <LowContrastResolution serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Low Contrast Resolution - Lateral']} />,
+            },
+            {
+              title: "High Contrast Resolution - Lateral",
+              component: <HighContrastResolution serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['High Contrast Resolution - Lateral']} />,
+            },
+            {
+              title: "Exposure Rate at Table Top - Lateral",
+              component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Exposure Rate At Table Top - Lateral']} />,
+            },
+            {
+              title: "Tube Housing Leakage - Lateral",
+              component: <TubeHousingLeakage serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Tube Housing Leakage - Lateral']} />,
+            },
 
-          // ===== COMMON TESTS (No Tube ID) =====
-          { title: "Radiation Protection Survey", component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} /> },
-        ] as any)
+            // ===== COMMON TESTS =====
+            {
+              title: "Radiation Protection Survey Report",
+              component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Radiation Protection Survey Report']} />,
+            },
+          ] as any)
           .map((item: any, idx: number) => (
             <Disclosure key={idx} defaultOpen={idx === 0}>
               {({ open }) => (

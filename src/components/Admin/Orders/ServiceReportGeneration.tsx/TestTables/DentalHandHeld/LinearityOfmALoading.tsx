@@ -28,14 +28,21 @@ interface Table2Row {
     remarks: string;
 }
 
-interface Props {
+interface LinearityOfMaLoadingProps {
     serviceId: string;
-    testId?: string;
+    testId?: string | null;
+    onTestSaved?: (testId: string) => void;
     onRefresh?: () => void;
     csvData?: any[];
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, csvData }) => {
+const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
+    serviceId,
+    testId: propTestId,
+    onTestSaved,
+    onRefresh,
+    csvData
+}) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
 
     const [table1Row, setTable1Row] = useState<Table1Row>({ fcd: '', kv: '', time: '' });

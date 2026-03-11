@@ -214,16 +214,16 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
         SUMMARY OF QA TEST RESULTS
       </h2>
 
-      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-        <table className="w-full border-2 border-black text-xs print:text-xxs print:min-w-full" style={{ width: 'auto' }}>
+      <div className="overflow-x-auto shadow-lg print:shadow-none print:overflow-visible">
+        <table className="w-full border-2 border-black text-xs print:text-[9px] mx-auto">
           <thead className="bg-gray-200">
             <tr>
-              <th className="border border-black px-3 py-3 w-12 text-center">Sr. No.</th>
-              <th className="border border-black px-4 py-3 text-left w-72">Parameters Used</th>
-              <th className="border border-black px-4 py-3 text-center w-32">Specified Values</th>
-              <th className="border border-black px-4 py-3 text-center w-32">Measured Values</th>
-              <th className="border border-black px-4 py-3 text-center w-40">Tolerance</th>
-              <th className="border border-black px-4 py-3 text-center bg-green-100 w-24">Remarks</th>
+              <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center">Sr. No.</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-left w-72">Parameters Used</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32">Specified Values</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32">Measured Values</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-40">Tolerance</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-green-100 w-24">Remarks</th>
             </tr>
           </thead>
           <tbody>
@@ -233,32 +233,30 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
                 (row.hasToleranceRowSpan && row.isFirstRow);
 
               return (
-                <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                <tr key={index}>
                   {row.isFirstRow && (
-                    <td rowSpan={row.rowSpan} className="border border-black px-3 py-3 text-center font-bold">
+                    <td rowSpan={row.rowSpan} className="border border-black px-3 py-3 print:px-2 print:py-1.5 text-center font-bold">
                       {row.srNo}
                     </td>
                   )}
                   {row.isFirstRow && (
-                    <td rowSpan={row.rowSpan} className="border border-black px-4 py-3 text-left font-medium leading-tight">
+                    <td rowSpan={row.rowSpan} className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-left font-medium leading-tight">
                       {row.parameter}
                     </td>
                   )}
-                  <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
-                  <td className="border border-black px-4 py-3 text-center font-semibold">{row.measured}</td>
+                  <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center">{row.specified}</td>
+                  <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold">{row.measured}</td>
                   {shouldRenderTolerance && (
                     <td
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
-                      className="border border-black px-4 py-3 text-center text-xs leading-tight"
+                      className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center leading-tight"
                     >
                       {row.tolerance}
                     </td>
                   )}
-                  <td className="border border-black px-4 py-3 text-center">
-                    <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                      }`}>
-                      {row.remarks}
-                    </span>
+                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-bold ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}>
+                    {row.remarks}
                   </td>
                 </tr>
               );

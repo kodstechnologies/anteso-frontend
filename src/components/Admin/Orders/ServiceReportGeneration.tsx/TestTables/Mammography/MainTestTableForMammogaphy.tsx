@@ -20,9 +20,9 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     toleranceRowSpan: boolean = false
   ) => {
     if (testRows.length === 0) return;
-    
+
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
-    
+
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null,
@@ -50,12 +50,12 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
         const measuredTime = parseFloat(row.measuredTime);
         let error = "-";
         let isPass = false;
-        
+
         if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
           error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
           const errorVal = parseFloat(error);
           const tol = parseFloat(toleranceValue);
-          
+
           if (toleranceOperator === "<=") {
             isPass = errorVal <= tol;
           } else if (toleranceOperator === ">=") {
@@ -64,7 +64,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
             isPass = Math.abs(errorVal - tol) < 0.01;
           }
         }
-        
+
         return {
           specified: row.setTime || "-",
           measured: row.measuredTime || "-",
@@ -127,6 +127,25 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
+  // 3. Linearity of mA Loading Stations
+  if (testData.maLoadingStations?.table2 && Array.isArray(testData.maLoadingStations.table2)) {
+    const validRows = testData.maLoadingStations.table2.filter((row: any) => row.mAsApplied || row.x);
+    if (validRows.length > 0) {
+      const tolerance = testData.maLoadingStations.tolerance || "0.1";
+      const testRows = validRows.map((row: any) => {
+        const x = row.x ? parseFloat(row.x).toFixed(4) : "-";
+        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
+        return {
+          specified: row.mAsApplied || "-",
+          measured: x,
+          tolerance: `≤ ${tolerance}`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Linearity of mA Loading Stations (Coefficient of Linearity)", testRows);
+    }
+  }
+
   // 4. Total Filtration & Aluminium Equivalence
   if (testData.totalFiltrationAndAluminium?.table && Array.isArray(testData.totalFiltrationAndAluminium.table)) {
     const validRows = testData.totalFiltrationAndAluminium.table.filter((row: any) => row.kvp || row.hvt);
@@ -157,13 +176,13 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
         // Extract CV from remark if available
         let cvValue = "-";
         let isPass = false;
-        
+
         if (row.remark) {
           const cvMatch = row.remark.match(/CV:\s*([\d.]+)%/i);
           if (cvMatch) {
             cvValue = cvMatch[1];
           }
-          
+
           if (row.remark.includes("Pass") || row.remark.includes("PASS")) {
             isPass = true;
           } else if (row.remark.includes("Fail") || row.remark.includes("FAIL")) {
@@ -171,7 +190,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
           } else if (cvValue !== "-") {
             const cv = parseFloat(cvValue);
             const tol = parseFloat(toleranceValue);
-            
+
             if (toleranceOperator === "<=") {
               isPass = cv <= tol;
             } else if (toleranceOperator === ">=") {
@@ -181,7 +200,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
             }
           }
         }
-        
+
         return {
           specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "Varies",
           measured: cvValue !== "-" ? `${cvValue}%` : "-",
@@ -194,14 +213,14 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
   }
 
   // 5. Radiation Leakage Level
-  if (testData.radiationLeakageLevel?.leakageLocations && Array.isArray(testData.radiationLeakageLevel.leakageLocations)) {
-    const validRows = testData.radiationLeakageLevel.leakageLocations.filter((location: any) => location.location || location.max);
+  if (testData.radiationLeakageLevel?.leakageMeasurements && Array.isArray(testData.radiationLeakageLevel.leakageMeasurements)) {
+    const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter((location: any) => location.location || location.max);
     if (validRows.length > 0) {
       const toleranceValue = testData.radiationLeakageLevel.toleranceLimit || "0.1";
       const testRows = validRows.map((location: any) => {
         const max = location.max || "-";
-        const result = location.resultMR || location.resultMGy || "-";
-        const isPass = result === "Pass" || (max !== "-" && parseFloat(max) < parseFloat(toleranceValue));
+        const result = location.result || "-";
+        const isPass = location.remark === "Pass" || location.remark === "PASS" || (max !== "-" && parseFloat(max) < parseFloat(toleranceValue));
         return {
           specified: location.location || "-",
           measured: max !== "-" ? `${max} ${location.unit || "mGy/h"}` : "-",
@@ -222,7 +241,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
         const toleranceValue = row.tolerance?.value || 0;
         const toleranceOperator = row.tolerance?.operator || ">=";
         let isPass = false;
-        
+
         if (toleranceOperator === ">=") {
           isPass = visibleCount >= toleranceValue;
         } else if (toleranceOperator === ">") {
@@ -234,7 +253,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
         } else if (toleranceOperator === "=") {
           isPass = visibleCount === toleranceValue;
         }
-        
+
         return {
           specified: row.name || "-",
           measured: visibleCount.toString(),
@@ -305,7 +324,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
       </h2>
 
       <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-        <table className="w-full border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
+        <table className="mx-auto border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
           <thead className="bg-gray-200">
             <tr>
               <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center print:text-[9px]">Sr. No.</th>
@@ -318,10 +337,10 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
           </thead>
           <tbody>
             {rows.map((row, index) => {
-              const shouldRenderTolerance = 
-                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) || 
+              const shouldRenderTolerance =
+                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) ||
                 (row.hasToleranceRowSpan && row.isFirstRow);
-              
+
               return (
                 <tr key={index}>
                   {row.isFirstRow && (
@@ -337,16 +356,15 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
                   <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.specified}</td>
                   <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.measured}</td>
                   {shouldRenderTolerance && (
-                    <td 
+                    <td
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
                       className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent"
                     >
                       {row.tolerance}
                     </td>
                   )}
-                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px] print:leading-tight ${
-                    row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                  }`}>
+                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px] print:leading-tight ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}>
                     {row.remarks}
                   </td>
                 </tr>

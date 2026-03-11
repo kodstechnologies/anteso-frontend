@@ -1,0 +1,94 @@
+{
+  "Congruence of Radiation": [
+    {
+      "Field Name": "Tolerance_Value",
+      "Value": "1.0",
+      "Row Index": 1,
+      "Test Name": "Congruence of Radiation"
+    }
+  ],
+  "Central Beam Alignment": [
+    {
+      "Field Name": "Tolerance_Value",
+      "Value": "1.0",
+      "Row Index": 1,
+      "Test Name": "Central Beam Alignment"
+    }
+  ],
+  "Effective Focal Spot": [
+    {
+      "Field Name": "Table2_focusType",
+      "Value": "Longitudinal",
+      "Row Index": 1,
+      "Test Name": "Effective Focal Spot"
+    },
+    {
+      "Field Name": "Table2_focusType",
+      "Value": "Transverse",
+      "Row Index": 2,
+      "Test Name": "Effective Focal Spot"
+    }
+  ],
+  "Accuracy of Irradiation Time": [
+    {
+      "Field Name": "Tolerance_Value",
+      "Value": "5",
+      "Row Index": 1,
+      "Test Name": "Accuracy of Irradiation Time"
+    }
+  ],
+  "Accuracy of Operating Potential": [
+    {
+      "Field Name": "Tolerance_Value",
+      "Value": "5",
+      "Row Index": 1,
+      "Test Name": "Accuracy of Operating Potential"
+    }
+  ],
+  "Consistency of Radiation Output": [
+    {
+      "Field Name": "Table2_reading3",
+      "Value": "5",
+      "Row Index": 1,
+      "Test Name": "Consistency of Radiation Output"
+    }
+  ],
+  "Radiation Leakage Level": [
+    {
+      "Field Name": "Workload",
+      "Value": "1 mA",
+      "Row Index": 1,
+      "Test Name": "Radiation Leakage Level"
+    },
+    {
+      "Field Name": "Table2_location",
+      "Value": "Operator Position",
+      "Row Index": 1,
+      "Test Name": "Radiation Leakage Level"
+    },
+    {
+      "Field Name": "Tolerance_Value",
+      "Value": "1.0",
+      "Row Index": 1,
+      "Test Name": "Radiation Leakage Level"
+    },
+    {
+      "Field Name": "Workload",
+      "Value": "1 mA",
+      "Row Index": 2,
+      "Test Name": "Radiation Leakage Level"
+    },
+    {
+      "Field Name": "Table2_location",
+      "Value": "Patient Position",
+      "Row Index": 2,
+      "Test Name": "Radiation Leakage Level"
+    },
+    {
+      "Field Name": "Tolerance_Value",
+      "Value": "1.0",
+      "Row Index": 2,
+      "Test Name": "Radiation Leakage Level"
+    }
+  ]
+}

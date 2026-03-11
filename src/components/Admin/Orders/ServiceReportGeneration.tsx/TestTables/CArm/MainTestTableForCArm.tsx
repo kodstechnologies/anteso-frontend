@@ -222,15 +222,17 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
   }
 
   // 9. Linearity of mA Loading
-  if (testData.linearityOfMaLoading?.table2Rows && Array.isArray(testData.linearityOfMaLoading.table2Rows)) {
-    const validRows = testData.linearityOfMaLoading.table2Rows.filter((row: any) => row.ma || row.col);
+  const maLinearityRows = testData.linearityOfMaLoading?.table2Rows || testData.linearityOfMaLoading?.table2;
+  if (maLinearityRows && Array.isArray(maLinearityRows)) {
+    const validRows = maLinearityRows.filter((row: any) => row.ma || row.mAsApplied || row.col);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
       const testRows = validRows.map((row: any) => {
         const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
         const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
+        const maVal = row.ma || row.mAsApplied;
         return {
-          specified: row.ma ? `${row.ma} mA` : "-",
+          specified: maVal ? `${maVal} mA` : "-",
           measured: col,
           tolerance: `≤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",

@@ -4,8 +4,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG } from "../../../../../../api";
-import { getDetails, getTools } from "../../../../../../api";
+import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG, getDetails, getTools, proxyFile } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createOPGUploadableExcel } from './exportOPGToExcel';
 
@@ -46,7 +45,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serviceId, qaTestDate }) => {
+const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -109,6 +108,92 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
         if (Number.isNaN(d.getTime())) return base;
         d.setFullYear(d.getFullYear() + years);
         return d.toISOString().split("T")[0];
+    };
+
+    // Parse Excel rows into sectioned data (used by file upload and csvFileUrl load); must be defined before useEffects
+    const parseHorizontalData = (rows: any[]) => {
+        const result: any = {};
+        let currentSection = '';
+        const headerMap: any = {
+            'Applied kVp': 'appliedKvp',
+            'Measured kVp 1': 'measuredKvp1',
+            'Measured kVp 2': 'measuredKvp2',
+            'Set Time': 'setTime',
+            'Measured Time 1': 'measuredTime1',
+            'Time': 'time',
+            'Reading 1': 'reading1',
+            'Area': 'area',
+            'Location': 'location',
+            'mR/hr': 'mrPerHr',
+            'Category': 'category',
+            'Parameter': 'parameter',
+            'Specified': 'specified',
+            'Measured': 'measured',
+            'Tolerance': 'tolerance',
+            'Remarks': 'remarks',
+            'mA Station': 'maStation',
+            'mAs Station': 'maStation',
+            'Set Time (mSec)': 'setTime',
+            'Measured Time (mSec)': 'measuredTime',
+            '% Error': 'error',
+            'Measured mR 1': 'reading1',
+            'kVp': 'kvp',
+            'mAs': 'mas',
+            'Mean': 'mean',
+            'CoV': 'cov',
+            'Max Leakage': 'max'
+        };
+        const testMarkerToInternalName: any = {
+            'ACCURACY OF OPERATING POTENTIAL': 'accuracyOfOperatingPotential',
+            'TOTAL FILTRATION': 'accuracyOfOperatingPotential',
+            'ACCURACY OF IRRADIATION TIME': 'accuracyOfIrradiationTime',
+            'LINEARITY OF mA LOADING': 'linearityOfMaLoading',
+            'LINEARITY OF mAs LOADING': 'linearityOfMasLoading',
+            'CONSISTENCY OF RADIATION OUTPUT': 'consistencyOfRadiationOutput',
+            'RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE': 'radiationLeakageLevel',
+            'RADIATION LEAKAGE LEVEL': 'radiationLeakageLevel',
+            'RADIATION PROTECTION SURVEY REPORT': 'radiationProtectionSurvey',
+            'DETAILS OF RADIATION PROTECTION SURVEY': 'radiationProtectionSurvey'
+        };
+        rows.forEach((row, index) => {
+            const firstCell = row[0]?.toString().trim();
+            if (firstCell && firstCell.startsWith('TEST: ')) {
+                const title = firstCell.replace('TEST: ', '').trim();
+                currentSection = testMarkerToInternalName[title] || '';
+                if (currentSection && !result[currentSection]) {
+                    result[currentSection] = [];
+                }
+                return;
+            }
+            if (currentSection) {
+                const headerOnlyMarkers = ['Applied kVp', 'Set Time (mSec)', 'mA Station', 'mAs Range', 'kVp', 'Location', 'LOCATION', 'LOCATION', 'Survey Date'];
+                if (firstCell && headerOnlyMarkers.includes(firstCell)) {
+                    return;
+                }
+                if (row.length > 0) {
+                    if (currentSection === 'linearityOfMaLoading' || currentSection === 'linearityOfMasLoading') {
+                        if (!result.linearityOfMaLoading) result.linearityOfMaLoading = [];
+                        if (!result.linearityOfMasLoading) result.linearityOfMasLoading = [];
+                        result.linearityOfMaLoading.push(row);
+                        result.linearityOfMasLoading.push(row);
+                    } else {
+                        result[currentSection].push(row);
+                    }
+                }
+            }
+            if (row[0] === 'Total Filtration') {
+                if (!result.accuracyOfOperatingPotential) result.accuracyOfOperatingPotential = [];
+                result.accuracyOfOperatingPotential.push(['TotalFiltration', ...row.slice(1)]);
+            }
+            if (row[0] === 'Coefficient of Linearity') {
+                if (currentSection === 'linearityOfMaLoading') {
+                    result.linearityOfMaLoading.push(['CoL', ...row.slice(1)]);
+                } else if (currentSection === 'linearityOfMasLoading') {
+                    result.linearityOfMasLoading.push(['CoL', ...row.slice(1)]);
+                }
+            }
+        });
+        return result;
     };
 
     // Only fetch initial service details and tools — NOT saved report
@@ -335,6 +420,31 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
         };
         if (serviceId) load();
     }, [serviceId]);
+
+    // Load Excel from URL when navigating from ServiceDetails2 (Complete or Generate Report). Uses proxyFile to avoid 401/login redirect.
+    useEffect(() => {
+        const loadFileFromUrl = async () => {
+            if (!csvFileUrl) return;
+            try {
+                toast.loading('Loading Excel data...', { id: 'opg-csv-load' });
+                const response = await proxyFile(csvFileUrl);
+                const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                const arrayBuffer = await blob.arrayBuffer();
+                const wb = XLSX.read(arrayBuffer, { type: 'array' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[];
+                const parsed = parseHorizontalData(jsonData);
+                setCsvData(parsed);
+                toast.success('Excel data loaded.', { id: 'opg-csv-load' });
+            } catch (err: any) {
+                console.error('OPG: Failed to load file from URL', err);
+                toast.error(err?.message || 'Failed to load file', { id: 'opg-csv-load' });
+            }
+        };
+        loadFileFromUrl();
+    }, [csvFileUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -379,104 +489,6 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serv
             </div>
         );
     }
-
-    const parseHorizontalData = (rows: any[]) => {
-        const result: any = {};
-        let currentSection = '';
-
-        const headerMap: any = {
-            'Applied kVp': 'appliedKvp',
-            'Measured kVp 1': 'measuredKvp1',
-            'Measured kVp 2': 'measuredKvp2',
-            'Set Time': 'setTime',
-            'Measured Time 1': 'measuredTime1',
-            'Time': 'time',
-            'Reading 1': 'reading1',
-            'Area': 'area',
-            'Location': 'location',
-            'mR/hr': 'mrPerHr',
-            'Category': 'category',
-            'Parameter': 'parameter',
-            'Specified': 'specified',
-            'Measured': 'measured',
-            'Tolerance': 'tolerance',
-            'Remarks': 'remarks',
-            'mA Station': 'maStation',
-            'mAs Station': 'maStation',
-            'Set Time (mSec)': 'setTime',
-            'Measured Time (mSec)': 'measuredTime',
-            '% Error': 'error',
-            'Measured mR 1': 'reading1',
-            'kVp': 'kvp',
-            'mAs': 'mas',
-            'Mean': 'mean',
-            'CoV': 'cov',
-            'Max Leakage': 'max'
-        };
-
-        const testMarkerToInternalName: any = {
-            'ACCURACY OF OPERATING POTENTIAL': 'accuracyOfOperatingPotential',
-            'TOTAL FILTRATION': 'accuracyOfOperatingPotential',
-            'ACCURACY OF IRRADIATION TIME': 'accuracyOfIrradiationTime',
-            'LINEARITY OF mA LOADING': 'linearityOfMaLoading',
-            'LINEARITY OF mAs LOADING': 'linearityOfMasLoading',
-            'CONSISTENCY OF RADIATION OUTPUT': 'consistencyOfRadiationOutput',
-            'RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE': 'radiationLeakageLevel',
-            'RADIATION LEAKAGE LEVEL': 'radiationLeakageLevel',
-            'RADIATION PROTECTION SURVEY REPORT': 'radiationProtectionSurvey',
-            'DETAILS OF RADIATION PROTECTION SURVEY': 'radiationProtectionSurvey'
-        };
-
-        rows.forEach((row, index) => {
-            const firstCell = row[0]?.toString().trim();
-            if (firstCell && firstCell.startsWith('TEST: ')) {
-                const title = firstCell.replace('TEST: ', '').trim();
-                currentSection = testMarkerToInternalName[title] || '';
-                if (currentSection && !result[currentSection]) {
-                    result[currentSection] = [];
-                }
-                return;
-            }
-
-            // If we are in a section, parse rows
-            if (currentSection) {
-                // Skip header row - only if EXACT match with KNOWN header-only markers
-                const headerOnlyMarkers = ['Applied kVp', 'Set Time (mSec)', 'mA Station', 'mAs Range', 'kVp', 'Location', 'LOCATION', 'LOCATION', 'Survey Date'];
-                if (firstCell && headerOnlyMarkers.includes(firstCell)) {
-                    return;
-                }
-
-                if (row.length > 0) {
-                    // Robust mapping for Linearity
-                    if (currentSection === 'linearityOfMaLoading' || currentSection === 'linearityOfMasLoading') {
-                        if (!result.linearityOfMaLoading) result.linearityOfMaLoading = [];
-                        if (!result.linearityOfMasLoading) result.linearityOfMasLoading = [];
-                        result.linearityOfMaLoading.push(row);
-                        result.linearityOfMasLoading.push(row);
-                    } else {
-                        result[currentSection].push(row);
-                    }
-                }
-            }
-
-            // Handle Global Parameters (like Total Filtration, CoL) that might be outside standard tables
-            if (row[0] === 'Total Filtration') {
-                if (!result.accuracyOfOperatingPotential) result.accuracyOfOperatingPotential = [];
-                result.accuracyOfOperatingPotential.push(['TotalFiltration', ...row.slice(1)]);
-            }
-            if (row[0] === 'Coefficient of Linearity') {
-                // Determine which linearity test
-                // It usually follows the table.
-                if (currentSection === 'linearityOfMaLoading') {
-                    result.linearityOfMaLoading.push(['CoL', ...row.slice(1)]);
-                } else if (currentSection === 'linearityOfMasLoading') {
-                    result.linearityOfMasLoading.push(['CoL', ...row.slice(1)]);
-                }
-            }
-        });
-
-        return result;
-    };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

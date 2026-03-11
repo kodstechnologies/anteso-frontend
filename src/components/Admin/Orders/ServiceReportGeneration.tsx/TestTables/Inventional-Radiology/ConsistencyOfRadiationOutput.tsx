@@ -25,6 +25,7 @@ interface Props {
     testId?: string | null;
     tubeId?: string | null;
     onTestSaved?: (testId: string) => void;
+    csvData?: any[];
 }
 
 const ConsistencyOfRadiationOutput: React.FC<Props> = ({
@@ -32,6 +33,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     testId: propTestId = null,
     tubeId,
     onTestSaved,
+    csvData,
 }) => {
     const [testId, setTestId] = useState<string | null>(propTestId);
     const [isSaved, setIsSaved] = useState(false);
@@ -170,6 +172,47 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
         loadTest();
     }, [propTestId, serviceId, tubeId]);
+
+    // CSV Data Injection
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            // Mapping table rows from CSV
+            const tableRows = csvData.filter(r => r['Field Name'] === 'Table1_kv' || r['Field Name'] === 'Table1_mas' || r['Field Name']?.startsWith('Table1_Meas'));
+            if (tableRows.length > 0) {
+                const rowIndices = Array.from(new Set(tableRows.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
+                const newRows = rowIndices.map((idx, i) => {
+                    const kv = csvData.find(r => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+                    const mas = csvData.find(r => r['Field Name'] === 'Table1_mas' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+                    const outputs = headers.map((_, hIdx) => {
+                        return csvData.find(r => r['Field Name'] === `Table1_Meas${hIdx + 1}` && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+                    });
+
+                    return {
+                        id: String(i + 1),
+                        kvp: kv,
+                        mas,
+                        outputs,
+                        mean: '',
+                        cov: '',
+                        remarks: '' as 'Pass' | 'Fail' | '',
+                    };
+                });
+                if (newRows.length > 0) setOutputRows(newRows);
+            }
+
+            // FDD
+            const fddVal = csvData.find(r => r['Field Name'] === 'Table1_fcd')?.['Value']; // FCD/FDD usually same in context
+            if (fddVal) setFdd(fddVal);
+
+            // Tolerance
+            const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+            if (tol) setTolerance(tol);
+
+            if (!testId) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData, testId, headers]);
 
     // Save / Update
     const handleSave = async () => {

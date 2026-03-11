@@ -23,15 +23,17 @@ interface LocationData {
 }
 interface Props {
   serviceId: string;
+  testId?: string | null;
+  onTestSaved?: (testId: string) => void;
   csvData?: any[];
 }
 
-const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, csvData }) => {
-  const [testId, setTestId] = useState<string | null>(null);
-  const [isSaved, setIsSaved] = useState(false);
-  const [isEditing, setIsEditing] = useState(true);
+const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, csvData }) => {
+  const [testId, setTestId] = useState<string | null>(propTestId);
+  const [isSaved, setIsSaved] = useState(!!propTestId);
+  const [isEditing, setIsEditing] = useState(!propTestId);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!!propTestId);
   const [surveyDate, setSurveyDate] = useState<string>("");
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
@@ -300,7 +302,10 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, csvData }) =
       } else {
         res = await addRadiationProtectionSurveyForDentalIntra(serviceId, payload);
         const newId = res?.data?._id || res?.data?.data?._id;
-        if (newId) setTestId(newId);
+        if (newId) {
+          setTestId(newId);
+          onTestSaved?.(newId);
+        }
         toast.success("Saved successfully");
       }
       setIsSaved(true);

@@ -21,12 +21,16 @@ interface TotalFilterationProps {
     serviceId: string;
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
+    refreshKey?: number;
+    initialData?: any[];
 }
 
 const TotalFilteration: React.FC<TotalFilterationProps> = ({
     serviceId,
     testId: initialTestId = null,
     onTestSaved,
+    refreshKey,
+    initialData,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
     const [isSaved, setIsSaved] = useState(!!initialTestId); // true = read-only, false = editing
@@ -45,9 +49,69 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     const [toleranceValue, setToleranceValue] = useState("2.0");
     const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "" });
 
+    // Handle CSV initial data
+    useEffect(() => {
+        if (initialData && initialData.length > 0) {
+            try {
+                const stations: string[] = [];
+                const measurements: RowData[] = [];
+                let tSign: "+" | "-" | "±" = "±";
+                let tVal = "2.0";
+                let tfMeas = "";
+                let tfReq = "";
+
+                initialData.forEach(row => {
+                    const field = row['Field Name'];
+                    const val = row['Value'];
+                    const rowIndex = row['Row Index'];
+
+                    if (field === 'mAStations') {
+                        if (!stations.includes(val)) stations.push(val);
+                    }
+                    if (field === 'Tolerance_Sign') tSign = val as any;
+                    if (field === 'Tolerance_Value') tVal = val;
+                    if (field === 'TotalFiltration_Measured') tfMeas = val;
+                    if (field === 'TotalFiltration_Required') tfReq = val;
+
+                    if (field.startsWith('Measurement_')) {
+                        while (measurements.length <= rowIndex) {
+                            measurements.push({ id: (measurements.length + 1).toString(), appliedKvp: "", measuredValues: [], averageKvp: "", remarks: "-" });
+                        }
+                        const subField = field.replace('Measurement_', '');
+                        if (subField === 'AppliedKvp') measurements[rowIndex].appliedKvp = val;
+                        if (subField === 'AverageKvp') measurements[rowIndex].averageKvp = val;
+                        if (subField.startsWith('Meas')) {
+                            const colIdx = parseInt(subField.replace('Meas', '')) - 1;
+                            while (measurements[rowIndex].measuredValues.length <= colIdx) {
+                                measurements[rowIndex].measuredValues.push("");
+                            }
+                            measurements[rowIndex].measuredValues[colIdx] = val;
+                        }
+                    }
+                });
+
+                if (stations.length > 0) setMAStations(stations);
+                if (measurements.length > 0) setRows(measurements);
+                setToleranceSign(tSign);
+                setToleranceValue(tVal);
+                setTotalFiltration({ measured: tfMeas, required: tfReq });
+                setIsSaved(false);
+            } catch (err) {
+                console.error("Error mapping CSV data for Total Filtration:", err);
+            }
+        }
+    }, [initialData, refreshKey]);
+
     // Load test data on mount (by testId if available, otherwise by serviceId)
     useEffect(() => {
         const loadTestData = async () => {
+            if (!serviceId || (initialData && initialData.length > 0)) {
+                if (initialData && initialData.length > 0) {
+                    setIsSaved(false);
+                }
+                setIsLoading(false);
+                return;
+            }
             setIsLoading(true);
             try {
                 let data = null;
@@ -232,8 +296,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     onClick={isSaved ? enableEditing : saveTest}
                     disabled={isSaving}
                     className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
-                            ? "bg-gray-600 text-white hover:bg-gray-700"
-                            : "bg-green-600 text-white hover:bg-green-700"
+                        ? "bg-gray-600 text-white hover:bg-gray-700"
+                        : "bg-green-600 text-white hover:bg-green-700"
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     {isSaving ? (
@@ -341,8 +405,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                     </td>
                                     <td className="px-6 py-3 text-center">
                                         <span className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === "PASS" ? "bg-green-100 text-green-800" :
-                                                row.remarks === "FAIL" ? "bg-red-100 text-red-800" :
-                                                    "bg-gray-100 text-gray-600"
+                                            row.remarks === "FAIL" ? "bg-red-100 text-red-800" :
+                                                "bg-gray-100 text-gray-600"
                                             }`}>
                                             {row.remarks}
                                         </span>

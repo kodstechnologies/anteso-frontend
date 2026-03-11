@@ -1236,7 +1236,8 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
 
                     const response = await proxyFile(csvFileUrl);
-                    const arrayBuffer = await response.data.arrayBuffer();
+                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                    const arrayBuffer = await blob.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
                     console.log('GenerateServiceReport: Excel file parsed, sheets:', workbook.SheetNames);
@@ -1248,7 +1249,8 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
 
                     const response = await proxyFile(csvFileUrl);
-                    const text = await response.data.text();
+                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                    const text = await blob.text();
                     console.log('GenerateServiceReport: CSV file fetched, length:', text.length);
 
                     csvData = parseCSV(text);

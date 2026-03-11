@@ -22,12 +22,14 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
 const ExposureRateTableTopForOArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  csvData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -105,6 +107,42 @@ const ExposureRateTableTopForOArm: React.FC<Props> = ({
     };
     loadTest();
   }, [propTestId, serviceId]);
+
+  // Process CSV data
+  useEffect(() => {
+    if (!csvData || csvData.length === 0) return;
+    console.log('ExposureRate: Processing CSV data', csvData);
+    try {
+      const rowMap: { [idx: number]: any } = {};
+      csvData.forEach((item: any) => {
+        const idx = item['Row Index'];
+        if (!rowMap[idx]) rowMap[idx] = {};
+        rowMap[idx][item['Field Name']] = item['Value'];
+      });
+
+      const newRows: Row[] = [];
+      Object.keys(rowMap).forEach(idxStr => {
+        const r = rowMap[parseInt(idxStr)];
+        newRows.push({
+          id: Date.now().toString() + Math.random(),
+          distance: r['Row_Distance'] || '100',
+          appliedKv: r['Row_AppliedKv'] || '80',
+          appliedMa: r['Row_AppliedMa'] || '100',
+          exposure: r['Row_Exposure'] || '',
+          remark: (r['Row_Mode'] === 'AEC Mode' || r['Row_Mode'] === 'Manual Mode') ? r['Row_Mode'] : '',
+        });
+      });
+
+      if (newRows.length > 0) {
+        setRows(newRows);
+        setIsSaved(false);
+        setIsEditing(true);
+        toast.success('Exposure Rate: CSV data loaded');
+      }
+    } catch (err) {
+      console.error('ExposureRate CSV processing error:', err);
+    }
+  }, [csvData]);
 
   // Save handler
   const handleSave = async () => {
@@ -193,10 +231,10 @@ const ExposureRateTableTopForOArm: React.FC<Props> = ({
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving
-              ? "bg-gray-400 cursor-not-allowed"
-              : isViewOnly
-                ? "bg-orange-600 hover:bg-orange-700"
-                : "bg-teal-600 hover:bg-teal-700"
+            ? "bg-gray-400 cursor-not-allowed"
+            : isViewOnly
+              ? "bg-orange-600 hover:bg-orange-700"
+              : "bg-teal-600 hover:bg-teal-700"
             }`}
         >
           {isSaving ? (
@@ -277,8 +315,8 @@ const ExposureRateTableTopForOArm: React.FC<Props> = ({
                       onChange={(e) => updateRow(row.id, "remark", e.target.value)}
                       disabled={isViewOnly}
                       className={`w-full px-4 py-2 text-center rounded-lg font-medium text-sm appearance-none ${row.remark === "AEC Mode" ? "bg-green-100 text-green-800"
-                          : row.remark === "Manual Mode" ? "bg-amber-100 text-amber-800"
-                            : "bg-gray-100 text-gray-600"
+                        : row.remark === "Manual Mode" ? "bg-amber-100 text-amber-800"
+                          : "bg-gray-100 text-gray-600"
                         } ${isViewOnly ? "opacity-80" : "cursor-pointer"}`}
                     >
                       <option value="">Select</option>
@@ -348,8 +386,8 @@ const ExposureRateTableTopForOArm: React.FC<Props> = ({
                 onChange={(e) => setNonAecTolerance(e.target.value)}
                 disabled={isViewOnly}
                 className={`w-32 px-4 py-3 text-center border-2 rounded-lg font-bold text-2xl ${isViewOnly
-                    ? "border-gray-300 bg-gray-100 text-gray-500"
-                    : "border-indigo-400 text-indigo-900 bg-white"
+                  ? "border-gray-300 bg-gray-100 text-gray-500"
+                  : "border-indigo-400 text-indigo-900 bg-white"
                   }`}
               />
               <span className="text-lg">cGy/Min</span>
@@ -366,8 +404,8 @@ const ExposureRateTableTopForOArm: React.FC<Props> = ({
                 onChange={(e) => setAecTolerance(e.target.value)}
                 disabled={isViewOnly}
                 className={`w-32 px-4 py-3 text-center border-2 rounded-lg font-bold text-2xl ${isViewOnly
-                    ? "border-gray-300 bg-gray-100 text-gray-500"
-                    : "border-indigo-400 text-indigo-900 bg-white"
+                  ? "border-gray-300 bg-gray-100 text-gray-500"
+                  : "border-indigo-400 text-indigo-900 bg-white"
                   }`}
               />
               <span className="text-lg">cGy/Min</span>
@@ -384,8 +422,8 @@ const ExposureRateTableTopForOArm: React.FC<Props> = ({
                 onChange={(e) => setMinFocusDistance(e.target.value)}
                 disabled={isViewOnly}
                 className={`w-28 px-4 py-3 text-center border-2 rounded-lg font-bold text-2xl ${isViewOnly
-                    ? "border-gray-300 bg-gray-100 text-gray-500"
-                    : "border-purple-400 text-purple-900 bg-white"
+                  ? "border-gray-300 bg-gray-100 text-gray-500"
+                  : "border-purple-400 text-purple-900 bg-white"
                   }`}
               />
               <span className="text-lg font-bold text-purple-800">cm</span>

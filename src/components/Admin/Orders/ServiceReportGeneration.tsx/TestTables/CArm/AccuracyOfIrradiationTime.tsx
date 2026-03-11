@@ -12,6 +12,8 @@ import {
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
+  refreshKey?: number;
+  initialData?: any[];
 }
 
 interface Table1Row {
@@ -29,6 +31,8 @@ interface Table2Row {
 
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
+  refreshKey,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(null); // Mongo _id (optional, not strictly needed)
   const [loading, setLoading] = useState(false);
@@ -52,6 +56,46 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   // Tolerance
   const [toleranceOperator, setToleranceOperator] = useState("<=");
   const [toleranceValue, setToleranceValue] = useState("10");
+
+  // Handle CSV initial data
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      try {
+        const t1: Table1Row = { id: "1", fcd: "", kv: "", ma: "" };
+        const t2: Table2Row[] = [];
+        let tolOp = "<=";
+        let tolVal = "10";
+
+        initialData.forEach(row => {
+          const field = row['Field Name'];
+          const val = row['Value'];
+          const rowIndex = row['Row Index'];
+
+          if (field === 'TestConditions_FCD') t1.fcd = val;
+          if (field === 'TestConditions_kV') t1.kv = val;
+          if (field === 'TestConditions_ma') t1.ma = val;
+          if (field === 'Tolerance_Operator') tolOp = val;
+          if (field === 'Tolerance_Value') tolVal = val;
+
+          if (field === 'IrradiationTime_SetTime' || field === 'IrradiationTime_MeasuredTime') {
+            while (t2.length <= rowIndex) {
+              t2.push({ id: (t2.length + 1).toString(), setTime: "", measuredTime: "" });
+            }
+            if (field === 'IrradiationTime_SetTime') t2[rowIndex].setTime = val;
+            if (field === 'IrradiationTime_MeasuredTime') t2[rowIndex].measuredTime = val;
+          }
+        });
+
+        if (t1.fcd || t1.kv || t1.ma) setTable1Row(t1);
+        if (t2.length > 0) setTable2Rows(t2.filter(r => r.setTime || r.measuredTime));
+        setToleranceOperator(tolOp);
+        setToleranceValue(tolVal);
+        setIsSaved(false); // Enable saving for imported data
+      } catch (err) {
+        console.error("Error mapping CSV data for Accuracy of Irradiation Time:", err);
+      }
+    }
+  }, [initialData, refreshKey]);
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
     setTable1Row((prev) => ({ ...prev, [field]: value }));
@@ -95,18 +139,24 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">":  return err > tol ? "FAIL" : "PASS";
-      case "<":  return err < tol ? "PASS" : "FAIL";
+      case ">": return err > tol ? "FAIL" : "PASS";
+      case "<": return err < tol ? "PASS" : "FAIL";
       case ">=": return err >= tol ? "FAIL" : "PASS";
       case "<=": return err <= tol ? "PASS" : "FAIL";
-      default:   return "-";
+      default: return "-";
     }
   };
 
   // Load saved data
   useEffect(() => {
     const fetchData = async () => {
-      if (!serviceId) return;
+      if (!serviceId || (initialData && initialData.length > 0)) {
+        if (initialData && initialData.length > 0) {
+          setIsSaved(false);
+          setIsEditing(true);
+        }
+        return;
+      }
       setLoading(true);
       try {
         const res = await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId);
@@ -117,10 +167,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           setTable2Rows(
             data.irradiationTimes && data.irradiationTimes.length > 0
               ? data.irradiationTimes.map((t: any, i: number) => ({
-                  id: String(i + 1),
-                  setTime: t.setTime || "",
-                  measuredTime: t.measuredTime || "",
-                }))
+                id: String(i + 1),
+                setTime: t.setTime || "",
+                measuredTime: t.measuredTime || "",
+              }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
           setToleranceOperator(data.tolerance?.operator || "<=");

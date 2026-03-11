@@ -598,12 +598,13 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
 
                 if (isExcel) {
                     const response = await proxyFile(csvFileUrl);
-                    const arrayBuffer = await response.data.arrayBuffer();
+                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                    const arrayBuffer = await blob.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
                     const wsname = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[wsname];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
 
                     const parsed = parseHorizontalData(jsonData as any[]);
                     const grouped = processCSVData(parsed);
@@ -611,7 +612,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                     toast.success('Excel data loaded successfully!', { id: 'csv-loading' });
                 } else {
                     const response = await proxyFile(csvFileUrl);
-                    const text = await response.data.text();
+                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                    const text = await blob.text();
 
                     // Simple CSV to array of arrays
                     const rows = text.split('\n').map((line: any) => line.split(','));

@@ -1,0 +1,123 @@
+TEST: RADIATION PROFILE WIDTH FOR CT SCAN - TUBE A
+Applied,Measured,kVp,mA
+0.6,0.62,120,200
+1.25,1.27,,
+3.0,3.05,,
+
+TEST: MEASUREMENT OF OPERATING POTENTIAL - TUBE A
+Set kV,@ mA 10,@ mA 100,@ mA 200,Time (ms),Slice Thickness (mm),Tol Value,Tol Type,Tol Sign
+80,80.1,80.2,80.3,100,5,5,%,±
+100,100.2,100.1,100.3,,,,,
+120,120.5,120.4,120.6,,,,,
+
+TEST: MEASUREMENT OF MA LINEARITY - TUBE A
+kVp,Slice Thickness (mm),Time (ms),mA Applied,Meas 1,Meas 2,Meas 3
+80,5.0,100,10,10.1,10.2,10.3
+80,5.0,100,20,20.2,20.1,20.3
+80,5.0,100,50,50.5,50.4,50.6
+80,5.0,100,100,101.0,100.8,101.2
+
+TEST: TIMER ACCURACY - TUBE A
+kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%)
+80,5.0,100,100,98.5,5
+80,5.0,100,200,199,
+
+TEST: MEASUREMENT OF CTDI - TUBE A
+kVp,mAs,Slice Thickness (mm),CTDIw (Rated) Head,CTDIw (Rated) Body,Tol Value,Tol Sign,Type,Label,Head,Body
+120,100,5.0,15.5,12.2,5,±,Axial Dose CTDIc,,16.0,13.0
+,,,,,,,Peripheral Dose,A,15.5,12.5
+,,,,,,,Peripheral Dose,B,15.7,12.7
+,,,,,,,Peripheral Dose,C,15.6,12.6
+
+TEST: TOTAL FILTRATION - TUBE A
+Applied KV,Applied MA,Time,Slice Thickness,Measured TF
+120,100,1.0,5,7.5
+
+TEST: OUTPUT CONSISTENCY - TUBE A
+mAs,Slice Thickness (mm),Time (s),kVp,Meas 1,Meas 2,Meas 3,Meas 4,Meas 5,COV,Tolerance
+100,5,1.0,120,100.5,100.3,100.6,100.4,100.5,,0.05
+
+TEST: RADIATION LEAKAGE LEVEL - TUBE A
+kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right
+120,100,1.0,500,mA·min/week,1.0,less than or equal to,1,Tube,0.05,0.03,0.06,0.04
+,,,,,,,,Collimator,0.02,0.02,0.03,0.01
+
+TEST: LOW CONTRAST RESOLUTION - TUBE A
+Observed Size,Contrast Level,kVp,mA,Slice Thickness,WW
+3.0,1.0,120,200,5,400
+
+TEST: HIGH CONTRAST RESOLUTION - TUBE A
+Observed Size,Contrast Difference,kVp,mAs,Slice Thickness,WW
+0.5,5.0,120,200,5,400
+
+TEST: RADIATION PROFILE WIDTH FOR CT SCAN - TUBE B
+Applied,Measured,kVp,mA
+0.6,0.61,120,200
+1.25,1.26,,
+3.0,3.02,,
+
+TEST: MEASUREMENT OF OPERATING POTENTIAL - TUBE B
+Set kV,@ mA 10,@ mA 100,@ mA 200,Time (ms),Slice Thickness (mm),Tol Value,Tol Type,Tol Sign
+80,80.0,80.1,80.2,100,5,5,%,±
+100,100.1,100.0,100.2,,,,,
+120,120.3,120.2,120.4,,,,,
+
+TEST: MEASUREMENT OF MA LINEARITY - TUBE B
+kVp,Slice Thickness (mm),Time (ms),mA Applied,Meas 1,Meas 2,Meas 3
+80,5.0,100,10,10.0,10.2,10.1
+80,5.0,100,20,20.1,20.0,20.2
+80,5.0,100,50,50.4,50.5,50.6
+80,5.0,100,100,100.9,101.1,101.0
+
+TEST: TIMER ACCURACY - TUBE B
+kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%)
+80,5.0,100,100,99.0,5
+80,5.0,100,200,201,
+
+TEST: MEASUREMENT OF CTDI - TUBE B
+kVp,mAs,Slice Thickness (mm),CTDIw (Rated) Head,CTDIw (Rated) Body,Tol Value,Tol Sign,Type,Label,Head,Body
+120,100,5.0,15.3,12.0,5,±,Axial Dose CTDIc,,15.8,12.9
+,,,,,,,Peripheral Dose,A,15.3,12.3
+,,,,,,,Peripheral Dose,B,15.5,12.5
+,,,,,,,Peripheral Dose,C,15.4,12.4
+
+TEST: TOTAL FILTRATION - TUBE B
+Applied KV,Applied MA,Time,Slice Thickness,Measured TF
+120,100,1.0,5,7.4
+
+TEST: OUTPUT CONSISTENCY - TUBE B
+mAs,Slice Thickness (mm),Time (s),kVp,Meas 1,Meas 2,Meas 3,Meas 4,Meas 5,COV,Tolerance
+100,5,1.0,120,100.3,100.2,100.4,100.1,100.3,,0.05
+
+TEST: RADIATION LEAKAGE LEVEL - TUBE B
+kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right
+120,100,1.0,500,mA·min/week,1.0,less than or equal to,1,Tube,0.04,0.03,0.05,0.04
+,,,,,,,,Collimator,0.02,0.02,0.03,0.01
+
+TEST: LOW CONTRAST RESOLUTION - TUBE B
+Observed Size,Contrast Level,kVp,mA,Slice Thickness,WW
+3.2,1.0,120,200,5,400
+
+TEST: HIGH CONTRAST RESOLUTION - TUBE B
+Observed Size,Contrast Difference,kVp,mAs,Slice Thickness,WW
+0.5,5.0,120,200,5,400
+
+TEST: ALIGNMENT OF TABLE/GANTRY
+Result,Tolerance
+2.0,±2.0
+
+TEST: TABLE POSITION
+Table Position,Expected,Measured,Initial Pos,Load,kVp,mA,Slice Thickness
+10,10,10.1,0,100,120,200,5.0
+20,20,19.9,,,,,
+
+TEST: GANTRY TILT
+Type,Name/Actual,Value/Measured
+Parameter,Tilt Param,45
+Measurement,0,0.5
+Measurement,30,30.2
+
+TEST: MAXIMUM RADIATION LEVEL
+Location,mR/hr,Category,Date,Calibrated,mA,kV,Time,Workload
+Control Console,0.02,worker,2024-01-01,Yes,100,80,0.5,5000
+Patient Entrance Door,0.05,worker,,,,,,

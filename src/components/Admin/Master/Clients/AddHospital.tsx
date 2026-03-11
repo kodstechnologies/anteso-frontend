@@ -11,7 +11,9 @@ import {
   getAllRsosByhospitalId,
   deleteInstituteByHospitalIdAndInstituteId,
   deleteRsoByHospitalIdAndRsoId,
-  getAllMachinesByHospitalId,
+  getMachinesByHospitalId,
+  deleteMachine,
+  searchMachinesByType,
 } from "../../../../api"
 
 // Define interfaces
@@ -70,6 +72,7 @@ const AddHospital = () => {
   const [rsos, setRsos] = useState<RSO[]>([])
   const [machines, setMachines] = useState<Machine[]>([])
   const [activeTab, setActiveTab] = useState<"institutes" | "rsos" | "machines">("institutes")
+  const [machineSearch, setMachineSearch] = useState("")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteItem, setDeleteItem] = useState<{ type: string; id: number | string; name: string } | null>(null)
   const [currentPageInstitutes, setCurrentPageInstitutes] = useState(1)
@@ -95,14 +98,14 @@ const AddHospital = () => {
           const [instituteData, rsoData, machineData] = await Promise.all([
             getAllIstitutesByhospitalId(hospitalId),
             getAllRsosByhospitalId(hospitalId),
-            getAllMachinesByHospitalId(hospitalId),
+            getMachinesByHospitalId(hospitalId),
           ])
           console.log("🚀 ~ fetchData ~ rsoData:", rsoData)
           console.log("🚀 ~ fetchData ~ machineData:", machineData)
 
-          setInstitutes(instituteData.data || [])
-          setRsos(rsoData.data || [])
-          setMachines(machineData.data || [])
+          setInstitutes(instituteData.data || instituteData || [])
+          setRsos(rsoData.data || rsoData || [])
+          setMachines(machineData || [])
         } catch (error) {
           console.error("Error fetching data:", error)
           setInstitutes([])
@@ -113,6 +116,23 @@ const AddHospital = () => {
     }
     fetchData()
   }, [hospitalId])
+
+  const handleMachineSearch = async (val: string) => {
+    setMachineSearch(val)
+    if (!hospitalId) return
+    if (val.trim() === "") {
+      const data = await getMachinesByHospitalId(hospitalId)
+      setMachines(data || [])
+      return
+    }
+    try {
+      const results = await searchMachinesByType(hospitalId, val)
+      setMachines(results || [])
+    } catch (error) {
+      console.error("Search failed:", error)
+      setMachines([])
+    }
+  }
 
   useEffect(() => {
     setCurrentPageInstitutes(1)
@@ -164,6 +184,11 @@ const AddHospital = () => {
           await deleteRsoByHospitalIdAndRsoId(hospitalId, deleteItem.id)
           setRsos(rsos.filter((r) => (r._id || r.id) !== deleteItem.id))
           showMessage("RSO deleted successfully!", "success")
+          break
+        case "machine":
+          await deleteMachine(deleteItem.id as string)
+          setMachines(machines.filter((m) => m._id !== deleteItem.id))
+          showMessage("Machine deleted successfully!", "success")
           break
         default:
           console.error("Unknown delete type:", deleteItem.type)
@@ -584,9 +609,26 @@ const AddHospital = () => {
           {/* Machines Tab */}
           {activeTab === "machines" && (
             <>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Machines</h3>
-
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                  <h3 className="text-lg font-semibold text-gray-900 whitespace-nowrap">Machines</h3>
+                  <div className="relative w-full md:w-64">
+                    <input
+                      type="text"
+                      placeholder="Search by type..."
+                      value={machineSearch}
+                      onChange={(e) => handleMachineSearch(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleAddEntity("machine")}
+                  className="w-full md:w-auto inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Machine
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -618,6 +660,9 @@ const AddHospital = () => {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Attachments
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
                       </th>
                     </tr>
                   </thead>
@@ -676,6 +721,22 @@ const AddHospital = () => {
                             ) : (
                               <span className="text-gray-400 italic text-xs">No attachments</span>
                             )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => handleEditEntity(machine._id, "machine")}
+                              className="text-indigo-600 hover:text-indigo-900 mr-3"
+                              title="Edit Machine"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick("machine", machine._id, `${machine.make} ${machine.model}`)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete Machine"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </td>
                         </tr>
                       );

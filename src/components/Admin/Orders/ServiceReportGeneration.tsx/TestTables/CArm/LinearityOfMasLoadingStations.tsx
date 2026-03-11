@@ -31,14 +31,70 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: any[];
 }
 
-const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+
+  // Handle CSV initial data
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      try {
+        const cond = { fcd: '100', kv: '80' };
+        const rows: Table2Row[] = [];
+        let tol = '0.1';
+        let tolOp = '<=';
+        const h: string[] = [];
+
+        initialData.forEach(row => {
+          const field = row['Field Name'];
+          const val = row['Value'];
+          const rowIndex = row['Row Index'];
+
+          if (field === 'Linearity_FCD') cond.fcd = val;
+          if (field === 'Linearity_kV') cond.kv = val;
+          if (field === 'Linearity_ToleranceValue') tol = val;
+          if (field === 'Linearity_ToleranceOperator') tolOp = val;
+          if (field.startsWith('Header_')) {
+            const idx = parseInt(field.replace('Header_', '')) - 1;
+            while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
+            h[idx] = val;
+          }
+
+          if (field.startsWith('Linearity_')) {
+            while (rows.length <= rowIndex) {
+              rows.push({ id: (rows.length + 1).toString(), mAsRange: "", measuredOutputs: [], average: "", x: "", xMax: "", xMin: "", col: "", remarks: "" });
+            }
+            const subField = field.replace('Linearity_', '');
+            if (subField === 'mAsRange') rows[rowIndex].mAsRange = val;
+            if (subField.startsWith('Meas')) {
+              const colIdx = parseInt(subField.replace('Meas', '')) - 1;
+              while (rows[rowIndex].measuredOutputs.length <= colIdx) {
+                rows[rowIndex].measuredOutputs.push("");
+              }
+              rows[rowIndex].measuredOutputs[colIdx] = val;
+            }
+          }
+        });
+
+        setExposureCondition(cond);
+        if (rows.length > 0) setTable2Rows(rows);
+        if (h.length > 0) setMeasHeaders(h);
+        setTolerance(tol);
+        setToleranceOperator(tolOp);
+        setHasSaved(false);
+        setIsEditing(true);
+      } catch (err) {
+        console.error("Error mapping CSV data for Linearity of mAs:", err);
+      }
+    }
+  }, [initialData, refreshKey]);
 
   // Exposure Conditions
   const [exposureCondition, setExposureCondition] = useState<ExposureCondition>({ fcd: '100', kv: '80' });
@@ -97,7 +153,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   // Load data from backend
   useEffect(() => {
     const load = async () => {
-      if (!serviceId) {
+      if (!serviceId || (initialData && initialData.length > 0)) {
+        if (initialData && initialData.length > 0) {
+          setHasSaved(false);
+          setIsEditing(true);
+        }
         setIsLoading(false);
         return;
       }
@@ -241,13 +301,13 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
     const hasData = xValues.length > 0;
     const xMax = hasData ? Math.max(...xValues).toFixed(4) : '—';
     const xMin = hasData ? Math.min(...xValues).toFixed(4) : '—';
-    
+
     // Calculate COL: |xMax - xMin| / (xMax + xMin)
     const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : 0;
     const col = hasData && colNum > 0 ? colNum.toFixed(3) : '—';
-    
+
     // Determine pass/fail based on tolerance operator
     let pass = false;
     if (hasData && col !== '—') {
@@ -298,10 +358,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -456,8 +516,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                       </td>
                       <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center align-middle">
                         <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${processedTable2.summary.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
-                            processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-600'
+                          processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-600'
                           }`}>
                           {processedTable2.summary.remarks || '—'}
                         </span>

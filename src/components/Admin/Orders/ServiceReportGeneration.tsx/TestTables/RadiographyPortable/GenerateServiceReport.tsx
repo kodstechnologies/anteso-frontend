@@ -1,9 +1,12 @@
 // GenerateServiceReport.tsx for RadiographyPortable
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyPortable } from "../../../../../../api";
+import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyPortable, proxyFile } from "../../../../../../api";
+import { createRadiographyPortableUploadableExcel, RadiographyPortableExportData } from "./exportRadiographyPortableToExcel";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -42,18 +45,25 @@ interface DetailsResponse {
   qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serviceId, qaTestDate }) => {
+const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
   const [tools, setTools] = useState<Standard[]>([]);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
   const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
+
+  // State to store CSV data for components
+  const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
+  const [csvDataVersion, setCsvDataVersion] = useState(0); // Track CSV data updates to force re-render
+  const [refreshKey, setRefreshKey] = useState(0); // Force re-render of child components
 
   const [formData, setFormData] = useState({
     customerName: "",
@@ -279,6 +289,294 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
     }
   };
 
+  // Parse horizontal format into structured vertical data
+  const parseHorizontalData = (rows: any[][]): any[] => {
+    const data: any[] = [];
+    let currentTestName = '';
+    let currentTestNameBase = '';
+    let headers: string[] = [];
+    let isReadingTest = false;
+
+    const testMarkerToInternalName: { [key: string]: string } = {
+      'CONGRUENCE OF RADIATION & OPTICAL FIELD': 'Congruence of Radiation',
+      'CENTRAL BEAM ALIGNMENT': 'Central Beam Alignment',
+      'EFFECTIVE FOCAL SPOT MEASUREMENT': 'Effective Focal Spot',
+      'ACCURACY OF IRRADIATION TIME': 'Accuracy of Irradiation Time',
+      'ACCURACY OF OPERATING POTENTIAL': 'Accuracy of Operating Potential',
+      'LINEARITY OF mAs LOADING STATIONS': 'Linearity of mAs Loading Stations',
+      'CONSISTENCY OF RADIATION OUTPUT': 'Consistency of Radiation Output',
+      'TUBE HOUSING LEAKAGE LEVEL': 'Radiation Leakage Level',
+    };
+    const markerUpperToInternal: Record<string, string> = Object.fromEntries(
+      Object.entries(testMarkerToInternalName).map(([k, v]) => [String(k).trim().toUpperCase(), v])
+    );
+
+    const headerMap: { [test: string]: { [header: string]: string } } = {
+      'Congruence of Radiation': {
+        'FCD (cm)': 'Table1_FCD', 'kVp': 'Table1_kvp', 'mAs': 'Table1_mas', 'Field Size (cm)': 'Table1_fieldSize',
+        'Deviation X (cm)': 'Table2_deviationX', 'Deviation Y (cm)': 'Table2_deviationY', 'Total Deviation (cm)': 'Table2_totalDeviation',
+        'Tolerance (cm)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+      },
+      'Central Beam Alignment': {
+        'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'mAs': 'Table1_mas',
+        'Observed Tilt (deg)': 'Table2_observedTilt', 'Tolerance (deg)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+      },
+      'Effective Focal Spot': {
+        'FCD (cm)': 'Table1_fcd', 'Focus Type': 'Table2_focusType',
+        'Stated Width': 'Table2_statedWidth', 'Stated Height': 'Table2_statedHeight',
+        'Measured Width': 'Table2_measuredWidth', 'Measured Height': 'Table2_measuredHeight', 'Remarks': 'Table2_remark'
+      },
+      'Accuracy of Irradiation Time': {
+        'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'mA': 'Table1_ma',
+        'Set Time (ms)': 'Table2_setTime', 'Measured Time (ms)': 'Table2_measuredTime', '% Error': 'Table2_percentError',
+        'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+      },
+      'Accuracy of Operating Potential': {
+        'Time (ms)': 'Table1_time', 'Slice Thickness (mm)': 'Table1_sliceThickness',
+        'Set kVp': 'Table2_setKV', '@ mA 10': 'Table2_ma10', '@ mA 100': 'Table2_ma100', '@ mA 200': 'Table2_ma200', 'Measured kVp': 'Table2_avgKvp',
+        'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+      },
+      'Linearity of mAs Loading Stations': {
+        'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv',
+        'mAs Range': 'Table2_mAsRange', 'Meas 1': 'Table2_meas1', 'Meas 2': 'Table2_meas2', 'Meas 3': 'Table2_meas3',
+        'Average': 'Table2_average', 'X (mGy/mAs)': 'Table2_x',
+        'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+      },
+      'Consistency of Radiation Output': {
+        'FCD (cm)': 'Table1_value', 'kVp': 'Table2_kv', 'mAs': 'Table2_mas',
+        'Reading 1': 'Table2_reading1', 'Reading 2': 'Table2_reading2', 'Reading 3': 'Table2_reading3', 'Reading 4': 'Table2_reading4', 'Reading 5': 'Table2_reading5',
+        'Mean': 'Table2_average', 'COV (%)': 'Table2_cv', 'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+      },
+      'Radiation Leakage Level': {
+        'FCD (cm)': 'Table1_fcd', 'kVp': 'Table1_kv', 'mA': 'Table1_ma', 'Time (s)': 'Table1_time',
+        'Workload': 'Workload', 'Location': 'Table2_location', 'Front (mR/h)': 'Table2_front', 'Back (mR/h)': 'Table2_back',
+        'Left (mR/h)': 'Table2_left', 'Right (mR/h)': 'Table2_right', 'Top (mR/h)': 'Table2_top',
+        'Tolerance (mR/h)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+      }
+    };
+
+    const sectionRowCounter: { [key: string]: number } = {};
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i].map(c => String(c || '').trim());
+      const firstCell = row[0];
+
+      if (firstCell.startsWith('TEST: ')) {
+        const rawTitle = firstCell.replace('TEST: ', '').trim();
+        const internalBase = markerUpperToInternal[rawTitle.trim().toUpperCase()] || '';
+        currentTestNameBase = internalBase;
+        currentTestName = internalBase;
+        isReadingTest = true;
+        headers = [];
+        if (currentTestName) sectionRowCounter[currentTestName] = 0;
+        continue;
+      }
+
+      if (isReadingTest && headers.length === 0 && row.some(c => c)) {
+        headers = row;
+        continue;
+      }
+
+      if (isReadingTest && row.every(c => !c)) {
+        isReadingTest = false;
+        continue;
+      }
+
+      if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
+        sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
+        const rowIdx = sectionRowCounter[currentTestName];
+        row.forEach((value, cellIdx) => {
+          const header = headers[cellIdx];
+          const internalField = (headerMap[currentTestNameBase] || {})[header];
+          if (internalField && value) {
+            data.push({
+              'Field Name': internalField,
+              'Value': value,
+              'Row Index': rowIdx,
+              'Test Name': currentTestName,
+            });
+          }
+        });
+      }
+    }
+    return data;
+  };
+
+  const parseCSV = (text: string): any[] => {
+    const lines = text.split('\n').map(line => line.split(',').map(c => c.trim()));
+    return parseHorizontalData(lines);
+  };
+
+  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+    return parseHorizontalData(jsonData);
+  };
+
+  // Process CSV data and fill test tables
+  const processCSVData = async (csvData: any[]) => {
+    try {
+      setCsvUploading(true);
+      const groupedData: { [key: string]: any[] } = {};
+
+      csvData.forEach((row) => {
+        const testName = row['Test Name'];
+        if (testName && testName.trim()) {
+          if (!groupedData[testName]) {
+            groupedData[testName] = [];
+          }
+          groupedData[testName].push(row);
+        }
+      });
+
+      console.log('Radiography Portable CSV Data grouped:', groupedData);
+
+      setCsvDataForComponents(groupedData);
+      setCsvDataVersion(prev => prev + 1);
+      setRefreshKey(prev => prev + 1);
+      toast.success('CSV data loaded successfully!');
+    } catch (error: any) {
+      console.error('Error processing CSV data:', error);
+      toast.error('Failed to process CSV data: ' + (error.message || 'Unknown error'));
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
+  // Handle CSV file upload
+  const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+    const isCSV = fileName.endsWith('.csv');
+
+    if (!isExcel && !isCSV) {
+      toast.error('Please upload a CSV or Excel file');
+      return;
+    }
+
+    try {
+      setCsvUploading(true);
+      toast.loading('Processing file...', { id: 'csv-upload' });
+
+      if (isExcel) {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const csvData = parseExcelToCSVFormat(workbook);
+        await processCSVData(csvData);
+      } else {
+        const text = await file.text();
+        const csvData = parseCSV(text);
+        await processCSVData(csvData);
+      }
+
+      toast.success('File uploaded successfully!', { id: 'csv-upload' });
+    } catch (error: any) {
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file: ' + (error.message || 'Unknown error'), { id: 'csv-upload' });
+    } finally {
+      setCsvUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Fetch and process CSV/Excel file from URL
+  useEffect(() => {
+    const fetchAndProcessFile = async () => {
+      if (!csvFileUrl) {
+        console.log('Radiography Portable: No csvFileUrl provided, skipping file fetch');
+        return;
+      }
+
+      console.log('Radiography Portable: Fetching file from URL:', csvFileUrl);
+
+      try {
+        setCsvUploading(true);
+
+        const urlLower = csvFileUrl.toLowerCase();
+        const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+
+        let csvData: any[] = [];
+
+        if (isExcel) {
+          console.log('Radiography Portable: Detected Excel file, fetching through proxy...');
+          toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
+
+          const response = await proxyFile(csvFileUrl);
+          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+          const arrayBuffer = await blob.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+          console.log('Radiography Portable: Excel file parsed, sheets:', workbook.SheetNames);
+
+          csvData = parseExcelToCSVFormat(workbook);
+          console.log('Radiography Portable: Converted Excel to CSV format, rows:', csvData.length);
+        } else {
+          console.log('Radiography Portable: Detected CSV file, fetching through proxy...');
+          toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
+
+          const response = await proxyFile(csvFileUrl);
+          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+          const text = await blob.text();
+          console.log('Radiography Portable: CSV file fetched, length:', text.length);
+
+          csvData = parseCSV(text);
+        }
+
+        console.log('Radiography Portable: Processed CSV data, total rows:', csvData.length);
+        await processCSVData(csvData);
+        toast.success('File loaded successfully!', { id: 'csv-loading' });
+      } catch (error: any) {
+        console.error('Radiography Portable: Error fetching/processing file:', error);
+        toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
+      } finally {
+        setCsvUploading(false);
+      }
+    };
+
+    fetchAndProcessFile();
+  }, [csvFileUrl]);
+
+  // Export saved data to Excel with proper table structures
+  const handleExportToExcel = async () => {
+    if (!serviceId) {
+      toast.error('Service ID is missing');
+      return;
+    }
+
+    try {
+      toast.loading('Exporting data to Excel...', { id: 'export-excel' });
+      setCsvUploading(true);
+
+      // Collect all test data in proper structure
+      const exportData: RadiographyPortableExportData = {};
+
+      // Add API calls to fetch actual data here similar to CT Scan
+      // For now, we'll create a template
+
+      // Create Excel with proper table structures
+      const wb = createRadiographyPortableUploadableExcel(exportData, hasTimer || false);
+
+      // Generate filename
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `Radiography_Portable_Test_Data_${timestamp}.xlsx`;
+
+      // Download
+      XLSX.writeFile(wb, filename);
+      toast.success('Data exported successfully!', { id: 'export-excel' });
+    } catch (error: any) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to export data: ' + (error.message || 'Unknown error'), { id: 'export-excel' });
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -437,32 +735,68 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       <Notes />
 
       {/* Save & View */}
-      <div className="my-10 flex justify-end gap-6">
-        {saveSuccess && (
-          <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            Report Header Saved Successfully!
+      <div className="my-10 flex justify-between items-center">
+        <div className="flex gap-4">
+          {/* Excel Upload Section */}
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".xlsx,.xls,.csv"
+              onChange={handleCSVUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={csvUploading}
+              className={`px-6 py-3 rounded-lg font-medium text-white transition flex items-center gap-2 ${csvUploading
+                ? "bg-gray-500 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-700"
+                }`}
+            >
+              <CloudArrowUpIcon className="w-5 h-5" />
+              {csvUploading ? "Processing..." : "Upload Excel/CSV"}
+            </button>
+            <button
+              onClick={handleExportToExcel}
+              disabled={csvUploading}
+              className={`px-6 py-3 rounded-lg font-medium text-white transition ${csvUploading
+                ? "bg-gray-500 cursor-not-allowed"
+                : "bg-purple-600 hover:bg-purple-700"
+                }`}
+            >
+              {csvUploading ? "Exporting..." : "Export Template"}
+            </button>
           </div>
-        )}
-        {saveError && (
-          <div className="text-red-600 bg-red-50 px-4 py-3 rounded-lg border border-red-300">
-            {saveError}
-          </div>
-        )}
+        </div>
 
-        <button
-          onClick={handleSaveHeader}
-          disabled={saving}
-          className={`px-8 py-3 rounded-lg font-bold text-white transition ${saving ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"
-            }`}
-        >
-          {saving ? "Saving..." : "Save Report Header"}
-        </button>
-        <button
-          onClick={() => navigate(`/admin/orders/view-service-report-radiography-portable?serviceId=${serviceId}`)}
-          className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
-        >
-          View Generated Report
-        </button>
+        <div className="flex gap-6">
+          {saveSuccess && (
+            <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+              Report Header Saved Successfully!
+            </div>
+          )}
+          {saveError && (
+            <div className="text-red-600 bg-red-50 px-4 py-3 rounded-lg border border-red-300">
+              {saveError}
+            </div>
+          )}
+
+          <button
+            onClick={handleSaveHeader}
+            disabled={saving}
+            className={`px-8 py-3 rounded-lg font-bold text-white transition ${saving ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"
+              }`}
+          >
+            {saving ? "Saving..." : "Save Report Header"}
+          </button>
+          <button
+            onClick={() => navigate(`/admin/orders/view-service-report-radiography-portable?serviceId=${serviceId}`)}
+            className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+          >
+            View Generated Report
+          </button>
+        </div>
       </div>
 
       {/* QA TESTS - Now Conditional */}
@@ -471,25 +805,25 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         {[
           {
             title: "Congruence of radiation & Optical Field",
-            component: <CongruenceOfRadiation serviceId={serviceId} />,
+            component: <CongruenceOfRadiation serviceId={serviceId} csvData={csvDataForComponents['Congruence of Radiation']} refreshKey={refreshKey} />,
           },
-          { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
-          { title: "Effective Focal Spot Measurement", component: <EffectiveFocalSpot serviceId={serviceId} /> },
+          { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} csvData={csvDataForComponents['Central Beam Alignment']} refreshKey={refreshKey} /> },
+          { title: "Effective Focal Spot Measurement", component: <EffectiveFocalSpot serviceId={serviceId} csvData={csvDataForComponents['Effective Focal Spot']} refreshKey={refreshKey} /> },
 
           // Timer Test — Only if user said YES
           ...(hasTimer === true
             ? [
               {
                 title: "Accuracy Of Irradiation Time",
-                component: <AccuracyOfIrradiationTime serviceId={serviceId} />,
+                component: <AccuracyOfIrradiationTime serviceId={serviceId} csvData={csvDataForComponents['Accuracy of Irradiation Time']} refreshKey={refreshKey} />,
               },
             ]
             : []),
 
-          { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
-          { title: "Linearity Of mAs Loading Stations", component: <LinearityOfMasLoadingStations serviceId={serviceId} /> },
-          { title: "Consistency of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} /> },
-          { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} /> },
+          { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} csvData={csvDataForComponents['Accuracy of Operating Potential']} refreshKey={refreshKey} /> },
+          { title: "Linearity Of mAs Loading Stations", component: <LinearityOfMasLoadingStations serviceId={serviceId} csvData={csvDataForComponents['Linearity of mAs Loading Stations']} refreshKey={refreshKey} /> },
+          { title: "Consistency of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} csvData={csvDataForComponents['Consistency of Radiation Output']} refreshKey={refreshKey} /> },
+          { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} csvData={csvDataForComponents['Radiation Leakage Level']} refreshKey={refreshKey} /> },
         ].map((item, i) => (
           <Disclosure key={i} defaultOpen={i === 0}>
             {({ open }) => (

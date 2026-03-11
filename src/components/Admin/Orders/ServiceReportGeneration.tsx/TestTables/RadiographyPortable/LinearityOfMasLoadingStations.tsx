@@ -30,9 +30,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  csvData?: any;
+  refreshKey?: number;
 }
 
-const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, csvData, refreshKey }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,10 +46,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
   const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-    { id: '1', mAsRange: '5 - 10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '2', mAsRange: '10 - 20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '3', mAsRange: '20 - 50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '4', mAsRange: '50 - 100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '1', mAsRange: '5', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '2', mAsRange: '10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '3', mAsRange: '20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '4', mAsRange: '50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
@@ -93,53 +95,82 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
     );
   };
 
-  // Load data from backend
+  // === Load CSV Data ===
   useEffect(() => {
-    const load = async () => {
-      if (!serviceId) {
-        setIsLoading(false);
-        return;
+    if (csvData && csvData.length > 0) {
+      // Table 1: Exposure Conditions
+      const table1Data: any = {};
+      csvData.filter((row: any) => row['Field Name'].startsWith('Table1_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Table1_', '').toLowerCase();
+        table1Data[fieldName] = row.Value;
+      });
+
+      if (Object.keys(table1Data).length > 0) {
+        setExposureCondition({
+          fcd: table1Data.fcd || '100',
+          kv: table1Data.kv || '80',
+        });
       }
-      try {
-        const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId);
-        const data = res?.data;
-        if (data) {
-          setTestId(data._id || null);
-          if (data.table1 && data.table1.length > 0) {
-            setExposureCondition({
-              fcd: data.table1[0].fcd || '100',
-              kv: data.table1[0].kv || '80',
-            });
+
+      // Table 2: mAs Linearity Measurements
+      const t2DataGrouped: any = {};
+      csvData.filter((row: any) => row['Field Name'].startsWith('Table2_')).forEach((row: any) => {
+        const fieldName = row['Field Name'].replace('Table2_', '');
+        const rowIndex = row['Row Index'] || 0;
+        if (!t2DataGrouped[rowIndex]) t2DataGrouped[rowIndex] = {};
+        t2DataGrouped[rowIndex][fieldName] = row.Value;
+      });
+
+      const rowIndices = Object.keys(t2DataGrouped).sort((a, b) => Number(a) - Number(b));
+
+      // Determine max number of measurements up to 5 for columns
+      let maxMeas = 3;
+      rowIndices.forEach(idx => {
+        const r = t2DataGrouped[idx];
+        if (r.meas5) maxMeas = Math.max(maxMeas, 5);
+        else if (r.meas4) maxMeas = Math.max(maxMeas, 4);
+        else if (r.meas3) maxMeas = Math.max(maxMeas, 3);
+        else if (r.meas2) maxMeas = Math.max(maxMeas, 2);
+        else if (r.meas1) maxMeas = Math.max(maxMeas, 1);
+      });
+
+      const newHeaders = Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`);
+      setMeasHeaders(newHeaders);
+
+      if (rowIndices.length > 0) {
+        const newRows = rowIndices.map((idx, i) => {
+          const r = t2DataGrouped[idx];
+          const measuredOutputs = [];
+          for (let j = 1; j <= maxMeas; j++) {
+            measuredOutputs.push(r[`meas${j}`] || '');
           }
-          setMeasHeaders(data.measHeaders && data.measHeaders.length > 0 ? data.measHeaders : ['Meas 1', 'Meas 2', 'Meas 3']);
-          if (Array.isArray(data.table2) && data.table2.length > 0) {
-            setTable2Rows(
-              data.table2.map((r: any) => ({
-                id: Date.now().toString() + Math.random(),
-                mAsRange: r.mAsApplied || r.mAsRange || '',
-                measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
-                // Don't load average and x - they will be recalculated by processedTable2
-              }))
-            );
-          }
-          setTolerance(data.tolerance || '0.1');
-          setToleranceOperator(data.toleranceOperator || '<=');
-          setHasSaved(true);
-          setIsEditing(false);
-        } else {
-          setIsEditing(true);
-        }
-      } catch (err: any) {
-        if (err.response?.status !== 404) {
-          toast.error('Failed to load mAs linearity data');
-        }
-        setIsEditing(true);
-      } finally {
-        setIsLoading(false);
+          return {
+            id: String(i + 1),
+            mAsRange: r.mAsRange || '',
+            measuredOutputs,
+            average: r.average || '',
+            x: r.x || '',
+            xMax: '',
+            xMin: '',
+            col: '',
+            remarks: r.remarks || '',
+          };
+        });
+        setTable2Rows(newRows as Table2Row[]);
       }
-    };
-    load();
-  }, [serviceId]);
+
+      // Tolerance
+      const tolData = csvData.find((row: any) => row['Field Name'] === 'Tolerance_Value');
+      if (tolData) {
+        setTolerance(tolData.Value);
+      }
+
+      setIsEditing(true);
+      setHasSaved(false);
+    }
+  }, [csvData, refreshKey]);
+
+  // Load data from backend
 
   // Save handler
   const handleSave = async () => {
@@ -240,13 +271,13 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
     const hasData = xValues.length > 0;
     const xMax = hasData ? Math.max(...xValues).toFixed(4) : '—';
     const xMin = hasData ? Math.min(...xValues).toFixed(4) : '—';
-    
+
     // Calculate COL: |xMax - xMin| / (xMax + xMin)
     const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : 0;
     const col = hasData && colNum > 0 ? colNum.toFixed(3) : '—';
-    
+
     // Determine pass/fail based on tolerance operator
     let pass = false;
     if (hasData && col !== '—') {
@@ -297,10 +328,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -455,8 +486,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                       </td>
                       <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center align-middle">
                         <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${processedTable2.summary.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
-                            processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-600'
+                          processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-600'
                           }`}>
                           {processedTable2.summary.remarks || '—'}
                         </span>

@@ -1,6 +1,13 @@
 'use client';
 
+import { Loader2, Edit3, Save } from "lucide-react";
 import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
+import {
+  addMaximumRadiationLevelForMammography,
+  getMaximumRadiationLevelByServiceIdForMammography,
+  updateMaximumRadiationLevelForMammography,
+} from "../../../../../../api";
 
 interface LocationData {
   location: string;
@@ -8,7 +15,21 @@ interface LocationData {
   result: "Pass" | "Fail" | "";
 }
 
-const MaximumRadiationLevel: React.FC = () => {
+interface Props {
+  serviceId: string;
+  testId?: string;
+  onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: any;
+}
+
+const MaximumRadiationLevel: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
+  const [testId, setTestId] = useState<string | null>(propTestId || null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
+
   // Updated locations as per your requirement
   const fixedLocations = [
     "Control Console (Operator Position)",
@@ -26,6 +47,37 @@ const MaximumRadiationLevel: React.FC = () => {
     }))
   );
 
+  // Load Data
+  useEffect(() => {
+    const load = async () => {
+      if (!serviceId) return;
+      setIsLoading(true);
+      try {
+        let existingData = initialData;
+        if (!existingData) {
+          const response = await getMaximumRadiationLevelByServiceIdForMammography(serviceId);
+          existingData = response?.data;
+        }
+
+        if (existingData) {
+          setTestId(existingData._id || null);
+          if (existingData.readings && Array.isArray(existingData.readings)) {
+            setData(existingData.readings);
+          }
+          setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err) {
+        console.error("Load error:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId, refreshKey, initialData]);
+
   // Auto-calculate Pass/Fail
   useEffect(() => {
     const updated = data.map((item) => {
@@ -42,8 +94,12 @@ const MaximumRadiationLevel: React.FC = () => {
 
       return { ...item, result };
     });
-    setData(updated);
-  }, [data.map((d) => d.mRPerHr).join()]);
+    // Prevent infinite loop by checking if data actually changed
+    const isDifferent = updated.some((item, idx) => item.result !== data[idx].result);
+    if (isDifferent) {
+      setData(updated);
+    }
+  }, [data]);
 
   const handleInputChange = (index: number, value: string) => {
     const newData = [...data];
@@ -61,12 +117,74 @@ const MaximumRadiationLevel: React.FC = () => {
   const weeklyDoses = data.map((item) => calculateWeeklyDose(item.mRPerHr));
   const maxWeeklyDose = Math.max(...weeklyDoses.map(Number), 0).toFixed(3);
 
+  const handleSave = async () => {
+    if (!serviceId) {
+      toast.error("Service ID is missing");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        readings: data,
+        maxWeeklyDose,
+      };
+
+      if (testId) {
+        await updateMaximumRadiationLevelForMammography(testId, payload);
+        toast.success("Updated successfully!");
+      } else {
+        const result = await addMaximumRadiationLevelForMammography(serviceId, payload);
+        const newId = result?.data?._id || result?.data?.data?._id || result?._id;
+        if (newId) setTestId(newId);
+        toast.success("Saved successfully!");
+      }
+      setHasSaved(true);
+      setIsEditing(false);
+      onRefresh?.();
+    } catch (err: any) {
+      console.error("Save error:", err);
+      toast.error(err?.response?.data?.message || "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isViewMode = hasSaved && !isEditing;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-6">
-      {/* Title */}
-      <h2 className="text-2xl font-bold text-gray-800">
-        Maximum Radiation Level Survey
-      </h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">
+          Maximum Radiation Level Survey
+        </h2>
+        <button
+          onClick={isViewMode ? () => setIsEditing(true) : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-all ${isViewMode
+              ? "bg-blue-600 hover:bg-blue-700 font-semibold shadow-md"
+              : "bg-green-600 hover:bg-green-700 font-bold shadow-lg transform active:scale-95"
+            } ${isSaving ? "opacity-70 cursor-not-allowed" : ""}`}
+        >
+          {isSaving ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : isViewMode ? (
+            <Edit3 className="w-5 h-5" />
+          ) : (
+            <Save className="w-5 h-5" />
+          )}
+          {isSaving ? "Saving..." : isViewMode ? "Edit Result" : testId ? "Update Result" : "Save Result"}
+        </button>
+      </div>
 
       {/* Main Table */}
       <div className="bg-white rounded-lg border border-gray-300 overflow-hidden shadow-sm">
@@ -96,7 +214,9 @@ const MaximumRadiationLevel: React.FC = () => {
                     step="0.001"
                     value={row.mRPerHr}
                     onChange={(e) => handleInputChange(idx, e.target.value)}
-                    className="w-full max-w-xs mx-auto px-3 py-2 text-center border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={isViewMode}
+                    className={`w-full max-w-xs mx-auto px-3 py-2 text-center border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-50 cursor-not-allowed border-gray-200" : "border-gray-300"
+                      }`}
                     placeholder="0.000"
                   />
                 </td>

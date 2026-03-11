@@ -19,10 +19,13 @@ interface LocationData {
 }
 interface Props {
     serviceId: string;
+    testId?: string | null;
     tubeId?: string | null;
+    onTestSaved?: (testId: string) => void;
+    csvData?: any[];
 }
 
-const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId, tubeId }) => {
+const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData }) => {
     const [testId, setTestId] = useState<string | null>(null);
     const [isSaved, setIsSaved] = useState(false);
     const [isEditing, setIsEditing] = useState(true);
@@ -219,6 +222,55 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
         load();
     }, [serviceId, tubeId]);
 
+    // CSV Data Injection
+    useEffect(() => {
+        if (csvData && csvData.length > 0) {
+            const surveyDateVal = csvData.find(r => r['Field Name'] === 'Table1_surveyDate')?.['Value'];
+            if (surveyDateVal) setSurveyDate(surveyDateVal);
+
+            const calibVal = csvData.find(r => r['Field Name'] === 'Table1_hasValidCalibration')?.['Value'];
+            if (calibVal) setHasValidCalibration(calibVal);
+
+            const maVal = csvData.find(r => r['Field Name'] === 'Table1_appliedCurrent')?.['Value'];
+            if (maVal) setAppliedCurrent(maVal);
+
+            const kvVal = csvData.find(r => r['Field Name'] === 'Table1_appliedVoltage')?.['Value'];
+            if (kvVal) setAppliedVoltage(kvVal);
+
+            const timeVal = csvData.find(r => r['Field Name'] === 'Table1_exposureTime')?.['Value'];
+            if (timeVal) setExposureTime(timeVal);
+
+            const workloadVal = csvData.find(r => r['Field Name'] === 'Table1_workload')?.['Value'];
+            if (workloadVal) setWorkload(workloadVal);
+
+            // Locations
+            const locationRows = csvData.filter(r => r['Field Name'] === 'Table1_location' || r['Field Name'] === 'Table1_mRPerHr');
+            if (locationRows.length > 0) {
+                const rowIndices = Array.from(new Set(locationRows.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
+                const newLocations = rowIndices.map((idx, i) => {
+                    const loc = csvData.find(r => r['Field Name'] === 'Table1_location' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
+                    const mrhr = csvData.find(r => r['Field Name'] === 'Table1_mRPerHr' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
+                    const cat = csvData.find(r => r['Field Name'] === 'Table1_category' && parseInt(r['Row Index']) === idx)?.['Value'] || "worker";
+
+                    return {
+                        id: Date.now().toString() + i,
+                        location: loc,
+                        mRPerHr: mrhr,
+                        mRPerWeek: "",
+                        result: "",
+                        calculatedResult: "",
+                        category: cat as any
+                    };
+                });
+                if (newLocations.length > 0) setLocations(newLocations);
+            }
+
+            if (!isSaved) {
+                setIsEditing(true);
+            }
+        }
+    }, [csvData, isSaved]);
+
     const handleSave = async () => {
         if (!serviceId) {
             toast.error("Service ID missing");
@@ -232,10 +284,9 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
             toast.error("Please select calibration status");
             return;
         }
-        // Prevent submission if calibration is "No"
+        // Allow saving even if calibration is "No", but show a warning
         if (hasValidCalibration === "No") {
-            toast.error("Cannot submit test: Calibration certificate is expired. Please ensure all tools have valid calibration certificates.");
-            return;
+            toast.error("Warning: Calibration certificate is expired. Proceeding with save.");
         }
 
         const payload = {
@@ -270,7 +321,6 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
     };
 
     const isViewMode = isSaved && !isEditing;
-    const isDisabled = isViewMode || hasValidCalibration === "No";
 
     if (isLoading) {
         return (
@@ -283,9 +333,9 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
     return (
         <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
             {hasValidCalibration === "No" && (
-                <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 mb-4">
-                    <p className="text-red-800 font-semibold">
-                        ⚠️ Calibration certificate is expired. All fields are disabled until valid calibration certificates are provided for all tools.
+                <div className="bg-yellow-50 border-2 border-yellow-500 rounded-lg p-4 mb-4">
+                    <p className="text-yellow-800 font-semibold">
+                        ⚠️ Calibration certificate is expired. Please ensure valid calibration certificates are provided for all tools as soon as possible.
                     </p>
                 </div>
             )}
@@ -295,8 +345,8 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                 </h1>
                 <button
                     onClick={isViewMode ? () => setIsEditing(true) : handleSave}
-                    disabled={isSaving || isDisabled}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving || isDisabled ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
                 >
                     {isSaving ? (
                         <>
@@ -320,14 +370,14 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Survey</label>
                         <input type="date" value={surveyDate} onChange={e => setSurveyDate(e.target.value)}
-                            disabled={isDisabled}
-                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} />
+                            disabled={isViewMode}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} />
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Valid Calibration Certificate?</label>
                         <select value={hasValidCalibration} onChange={e => setHasValidCalibration(e.target.value)}
-                            disabled={isDisabled}
-                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}>
+                            disabled={isViewMode}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}>
                             <option value="">Select</option>
                             <option value="Yes">Yes</option>
                             <option value="No">No</option>
@@ -345,26 +395,26 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Applied Current (mA)</label>
                         <input type="number" value={appliedCurrent} onChange={e => setAppliedCurrent(e.target.value)}
-                            disabled={isDisabled}
-                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="100" />
+                            disabled={isViewMode}
+                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="100" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Applied Voltage (kV)</label>
                         <input type="number" value={appliedVoltage} onChange={e => setAppliedVoltage(e.target.value)}
-                            disabled={isDisabled}
-                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="80" />
+                            disabled={isViewMode}
+                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="80" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Exposure Time (s)</label>
                         <input type="number" step="0.001" value={exposureTime} onChange={e => setExposureTime(e.target.value)}
-                            disabled={isDisabled}
-                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="0.5" />
+                            disabled={isViewMode}
+                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="0.5" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
                         <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
-                            disabled={isDisabled}
-                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
+                            disabled={isViewMode}
+                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
                     </div>
                 </div>
             </section>
@@ -394,8 +444,8 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                                 type="text"
                                                 value={row.location}
                                                 onChange={e => updateRow(row.id, "location", e.target.value)}
-                                                disabled={isDisabled}
-                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                                disabled={isViewMode}
+                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                                             />
                                         </td>
                                         <td className="px-6 py-4 text-center">
@@ -404,8 +454,8 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                                 step="0.001"
                                                 value={row.mRPerHr}
                                                 onChange={e => updateRow(row.id, "mRPerHr", e.target.value)}
-                                                disabled={isDisabled}
-                                                className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                                disabled={isViewMode}
+                                                className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                                                 placeholder="0.000"
                                             />
                                         </td>
@@ -429,7 +479,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                                 </div>
                                             </td>
                                         )}
-                                        {!isDisabled && (
+                                        {!isViewMode && (
                                             <td className="px-3 py-4 text-center bg-blue-100">
                                                 <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
                                                     <Trash2 className="w-5 h-5" />
@@ -446,8 +496,8 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                                 type="text"
                                                 value={row.location}
                                                 onChange={e => updateRow(row.id, "location", e.target.value)}
-                                                disabled={isDisabled}
-                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                                disabled={isViewMode}
+                                                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                                             />
                                         </td>
                                         <td className="px-6 py-4 text-center">
@@ -456,8 +506,8 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                                 step="0.001"
                                                 value={row.mRPerHr}
                                                 onChange={e => updateRow(row.id, "mRPerHr", e.target.value)}
-                                                disabled={isDisabled}
-                                                className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                                                disabled={isViewMode}
+                                                className={`w-28 px-3 py-2 text-center border border-gray-300 rounded-md ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                                                 placeholder="0.000"
                                             />
                                         </td>
@@ -481,7 +531,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                                 </div>
                                             </td>
                                         )}
-                                        {!isDisabled && (
+                                        {!isViewMode && (
                                             <td className="px-3 py-4 text-center bg-purple-100">
                                                 <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
                                                     <Trash2 className="w-5 h-5" />
@@ -494,7 +544,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                         </table>
                     </div>
 
-                    {!isDisabled && (
+                    {!isViewMode && (
                         <div className="flex justify-center gap-8 mt-8">
                             <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                                 <Plus className="w-5 h-5" /> Add Worker Location

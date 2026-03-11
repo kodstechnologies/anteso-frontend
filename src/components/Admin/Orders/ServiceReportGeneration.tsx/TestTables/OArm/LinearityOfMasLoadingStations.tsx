@@ -31,9 +31,10 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  csvData?: any[];
 }
 
-const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,10 +46,10 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
 
   const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-    { id: '1', mAsRange: '5 - 10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '2', mAsRange: '10 - 20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '3', mAsRange: '20 - 50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '4', mAsRange: '50 - 100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '1', mAsRange: '5', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '2', mAsRange: '10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '3', mAsRange: '20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '4', mAsRange: '50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
@@ -141,6 +142,58 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
     };
     load();
   }, [serviceId]);
+
+  // Process CSV data
+  useEffect(() => {
+    if (!csvData || csvData.length === 0) return;
+    console.log('LinearityOfMasLoading: Processing CSV data', csvData);
+    try {
+      const rowMap: { [idx: number]: any } = {};
+      csvData.forEach((item: any) => {
+        const idx = item['Row Index'];
+        if (!rowMap[idx]) rowMap[idx] = {};
+        rowMap[idx][item['Field Name']] = item['Value'];
+      });
+
+      // Extract exposure conditions from first row
+      const firstRow = rowMap[1] || {};
+      if (firstRow['Exposure_FCD'] || firstRow['Exposure_KV']) {
+        setExposureCondition({
+          fcd: firstRow['Exposure_FCD'] || '100',
+          kv: firstRow['Exposure_KV'] || '80',
+        });
+      }
+
+      const newRows: Table2Row[] = [];
+      Object.keys(rowMap).forEach(idxStr => {
+        const r = rowMap[parseInt(idxStr)];
+        const measuredOutputs: string[] = [];
+        for (let m = 0; m < 5; m++) {
+          const val = r[`Row_Meas_${m}`];
+          if (val !== undefined) measuredOutputs.push(val);
+        }
+        if (r['Row_mAsRange'] || measuredOutputs.length > 0) {
+          newRows.push({
+            id: Date.now().toString() + Math.random(),
+            mAsRange: r['Row_mAsRange'] || '',
+            measuredOutputs: measuredOutputs.length > 0 ? measuredOutputs : Array(measHeaders.length).fill(''),
+            average: '', x: '', xMax: '', xMin: '', col: '', remarks: '',
+          });
+        }
+      });
+
+      if (newRows.length > 0) {
+        const numHeaders = newRows[0].measuredOutputs.length;
+        setMeasHeaders(Array.from({ length: numHeaders }, (_, i) => `Meas ${i + 1}`));
+        setTable2Rows(newRows);
+        setHasSaved(false);
+        setIsEditing(true);
+        toast.success('Linearity of mAs Loading: CSV data loaded');
+      }
+    } catch (err) {
+      console.error('LinearityOfMasLoading CSV processing error:', err);
+    }
+  }, [csvData]);
 
   // Save handler
   const handleSave = async () => {
@@ -241,13 +294,13 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
     const hasData = xValues.length > 0;
     const xMax = hasData ? Math.max(...xValues).toFixed(4) : '—';
     const xMin = hasData ? Math.min(...xValues).toFixed(4) : '—';
-    
+
     // Calculate COL: |xMax - xMin| / (xMax + xMin)
     const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : 0;
     const col = hasData && colNum > 0 ? colNum.toFixed(3) : '—';
-    
+
     // Determine pass/fail based on tolerance operator
     let pass = false;
     if (hasData && col !== '—') {
@@ -298,10 +351,10 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -456,8 +509,8 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
                       </td>
                       <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center align-middle">
                         <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${processedTable2.summary.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
-                            processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-600'
+                          processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-600'
                           }`}>
                           {processedTable2.summary.remarks || '—'}
                         </span>

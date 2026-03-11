@@ -1,0 +1,117 @@
+Field Name,Value
+========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========,
+Tolerance_Sign,±
+Tolerance_Value,2.0
+TotalFiltration_Measured,2.65
+TotalFiltration_Required,2.5
+MeasHeader,50 mA
+MeasHeader,100 mA
+Measurement_AppliedKvp,60
+Measurement_Meas1,59.8
+Measurement_Meas2,60.2
+Measurement_AppliedKvp,80
+Measurement_Meas1,79.5
+Measurement_Meas2,80.5
+Measurement_AppliedKvp,100
+Measurement_Meas1,99.2
+Measurement_Meas2,100.8
+Measurement_AppliedKvp,120
+Measurement_Meas1,119.5
+Measurement_Meas2,120.5
+========== ACCURACY OF IRRADIATION TIME ==========,
+TestConditions_FCD,100
+TestConditions_kV,80
+TestConditions_ma,100
+Tolerance_Operator,<=
+Tolerance_Value,5
+IrradiationTime_SetTime,0.1
+IrradiationTime_MeasuredTime,0.102
+IrradiationTime_SetTime,0.2
+IrradiationTime_MeasuredTime,0.198
+IrradiationTime_SetTime,0.5
+IrradiationTime_MeasuredTime,0.505
+========== OUTPUT CONSISTENCY ==========,
+FFD,100
+Tolerance_Operator,<=
+Tolerance_Value,0.05
+OutputRow_kV,80
+OutputRow_mAs,10
+OutputRow_Meas1,0.85
+OutputRow_Meas2,0.84
+OutputRow_Meas3,0.86
+OutputRow_Meas4,0.85
+OutputRow_Meas5,0.85
+========== CENTRAL BEAM ALIGNMENT ==========,
+TechniqueFactors_FCD,100
+TechniqueFactors_kV,80
+TechniqueFactors_mAs,10
+ObservedTilt_Value,0.5
+ObservedTilt_Operator,<=
+Tolerance_Value,1.5
+Tolerance_Operator,<=
+========== CONGRUENCE OF RADIATION ==========,
+TechniqueFactors_FCD,100
+TechniqueFactors_kV,80
+TechniqueFactors_mAs,10
+CongruenceMeasurement_Dimension,Length
+CongruenceMeasurement_ObservedShift,0.2
+CongruenceMeasurement_EdgeShift,0.1
+CongruenceMeasurement_PercentFED,0.5
+CongruenceMeasurement_Tolerance,2
+CongruenceMeasurement_Dimension,Width
+CongruenceMeasurement_ObservedShift,0.3
+CongruenceMeasurement_EdgeShift,0.1
+CongruenceMeasurement_PercentFED,0.4
+CongruenceMeasurement_Tolerance,2
+========== EFFECTIVE FOCAL SPOT ==========,
+FCD,60
+FocalSpot_FocusType,Small
+FocalSpot_StatedWidth,0.6
+FocalSpot_StatedHeight,0.6
+FocalSpot_MeasuredWidth,0.65
+FocalSpot_MeasuredHeight,0.65
+FocalSpot_FocusType,Large
+FocalSpot_StatedWidth,1.2
+FocalSpot_StatedHeight,1.2
+FocalSpot_MeasuredWidth,1.3
+FocalSpot_MeasuredHeight,1.3
+========== LINEARITY OF mAs LOADING STATIONS ==========,
+Table1_FCD,100
+Table1_kV,80
+Tolerance,0.1
+ToleranceOperator,<=
+MeasHeader,Meas 1
+MeasHeader,Meas 2
+MeasHeader,Meas 3
+Table2_mAsApplied,5
+Table2_Meas1,0.42
+Table2_Meas2,0.43
+Table2_Meas3,0.42
+Table2_mAsApplied,10
+Table2_Meas1,0.85
+Table2_Meas2,0.84
+Table2_Meas3,0.86
+Table2_mAsApplied,20
+Table2_Meas1,1.71
+Table2_Meas2,1.70
+Table2_Meas3,1.72
+========== RADIATION LEAKAGE LEVEL ==========,
+Settings_FCD,100
+Settings_kV,125
+Settings_ma,20
+Settings_Time,2
+Workload,20
+ToleranceValue,1
+ToleranceOperator,less than or equal to
+LeakageMeasurement_Location,Tube - Left
+LeakageMeasurement_Left,0.05
+LeakageMeasurement_Right,0.04
+LeakageMeasurement_Front,0.06
+LeakageMeasurement_Back,0.05
+LeakageMeasurement_Top,0.04
+LeakageMeasurement_Location,Collimator - Left
+LeakageMeasurement_Left,0.02
+LeakageMeasurement_Right,0.03
+LeakageMeasurement_Front,0.02
+LeakageMeasurement_Back,0.03
+LeakageMeasurement_Top,0.02

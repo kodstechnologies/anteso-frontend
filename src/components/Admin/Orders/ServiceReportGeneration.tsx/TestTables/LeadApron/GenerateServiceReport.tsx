@@ -1,10 +1,13 @@
 // GenerateServiceReport.tsx for Lead Apron
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { saveReportHeaderForLeadApron, getReportHeaderForLeadApron } from "../../../../../../api";
+import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
+import { saveReportHeaderForLeadApron, getReportHeaderForLeadApron, proxyFile } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
+import { createLeadApronUploadableExcel, LeadApronExportData } from "./exportLeadApronToExcel";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -36,19 +39,26 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null }> = ({ serviceId, qaTestDate, createdAt, ulrNumber }) => {
+const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, createdAt, ulrNumber, csvFileUrl }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [csvUploading, setCsvUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
     const [tools, setTools] = useState<Standard[]>([]);
     const [savedTestIds, setSavedTestIds] = useState<{
         LeadApronTest?: string;
     }>({});
+
+    // State to store CSV data for components
+    const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
+    const [csvDataVersion, setCsvDataVersion] = useState(0); // Track CSV data updates to force re-render
+    const [refreshKey, setRefreshKey] = useState(0); // Force re-render of child components
     const [formData, setFormData] = useState({
         customerName: "",
         address: "",
@@ -91,12 +101,12 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                 setDetails(data);
 
                 // Use createdAt prop for SRF date, or fallback to firstTest createdAt
-                const srfDateValue = createdAt ? (new Date(createdAt).toISOString().split("T")[0]) : 
-                                         (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+                const srfDateValue = createdAt ? (new Date(createdAt).toISOString().split("T")[0]) :
+                    (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
 
                 // Use qaTestDate for test date, or fallback to firstTest createdAt
                 const testDateValue = qaTestDate ? (new Date(qaTestDate).toISOString().split("T")[0]) :
-                                      (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+                    (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
 
                 // Calculate due date as 2 years from test date
                 let testDueDateValue = "";
@@ -203,6 +213,282 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
             setSaveError(err?.response?.data?.message || "Failed to save report header");
         } finally {
             setSaving(false);
+        }
+    };
+
+    // Parse horizontal format into structured vertical data
+    const parseHorizontalData = (rows: any[][]): any[] => {
+        const data: any[] = [];
+        let currentTestName = '';
+        let headers: string[] = [];
+        let isReadingTest = false;
+
+        const testMarkerToInternalName: { [key: string]: string } = {
+            'REPORT DETAILS': 'Report Details',
+            'OPERATING PARAMETERS: TESTED ON DIRECT RADIATION': 'Operating Parameters',
+            'DOSE MEASUREMENTS': 'Dose Measurements',
+            'FOOTER DETAILS': 'Footer Details',
+        };
+        const markerUpperToInternal: Record<string, string> = Object.fromEntries(
+            Object.entries(testMarkerToInternalName).map(([k, v]) => [String(k).trim().toUpperCase(), v])
+        );
+
+        const headerMap: { [test: string]: { [header: string]: string } } = {
+            'Report Details': {
+                'Institution Name': 'institutionName',
+                'Institution City': 'institutionCity',
+                'Equipment Type': 'equipmentType',
+                'Equipment ID': 'equipmentId',
+                'Person Testing': 'personTesting',
+                'Service Agency': 'serviceAgency',
+                'Test Date': 'testDate',
+                'Test Duration': 'testDuration'
+            },
+            'Operating Parameters': {
+                'FFD (cm)': 'ffd',
+                'kV': 'kv',
+                'mAs': 'mas'
+            },
+            'Dose Measurements': {
+                'Parameter': 'parameter',
+                'Value': 'value'
+            },
+            'Footer Details': {
+                'Place': 'place',
+                'Date': 'date',
+                'Signature': 'signature',
+                'Service Engineer Name': 'serviceEngineerName',
+                'Service Agency Name': 'serviceAgencyName',
+                'Service Agency Seal': 'serviceAgencySeal'
+            }
+        };
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i].map(c => String(c || '').trim());
+            const firstCell = row[0];
+
+            if (firstCell.startsWith('TEST: ')) {
+                const rawTitle = firstCell.replace('TEST: ', '').trim();
+                const internalBase = markerUpperToInternal[rawTitle.trim().toUpperCase()] || '';
+                currentTestName = internalBase;
+                isReadingTest = true;
+                headers = [];
+                continue;
+            }
+
+            if (isReadingTest && headers.length === 0 && row.some(c => c)) {
+                headers = row;
+                continue;
+            }
+
+            if (isReadingTest && row.every(c => !c)) {
+                isReadingTest = false;
+                continue;
+            }
+
+            if (isReadingTest && currentTestName && headers.length > 0) {
+                // Special handling for Dose Measurements: keep rows as Parameter/Value pairs
+                if (currentTestName === 'Dose Measurements' && headers.length >= 2) {
+                    const parameter = row[0];
+                    const value = row[1];
+                    if (parameter && value) {
+                        data.push({
+                            'Field Name': 'doseRow',
+                            'Parameter': parameter,
+                            'Value': value,
+                            'Test Name': currentTestName,
+                        });
+                    }
+                } else {
+                    row.forEach((value, cellIdx) => {
+                        const header = headers[cellIdx];
+                        const internalField = (headerMap[currentTestName] || {})[header];
+                        if (internalField && value) {
+                            data.push({
+                                'Field Name': internalField,
+                                'Value': value,
+                                'Test Name': currentTestName,
+                            });
+                        }
+                    });
+                }
+            }
+        }
+        return data;
+    };
+
+    const parseCSV = (text: string): any[] => {
+        const lines = text.split('\n').map(line => line.split(',').map(c => c.trim()));
+        return parseHorizontalData(lines);
+    };
+
+    const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+        return parseHorizontalData(jsonData);
+    };
+
+    // Process CSV data and fill test tables
+    const processCSVData = async (csvData: any[]) => {
+        try {
+            setCsvUploading(true);
+            const groupedData: { [key: string]: any[] } = {};
+
+            csvData.forEach((row) => {
+                const testName = row['Test Name'];
+                if (testName && testName.trim()) {
+                    if (!groupedData[testName]) {
+                        groupedData[testName] = [];
+                    }
+                    groupedData[testName].push(row);
+                }
+            });
+
+            console.log('Lead Apron CSV Data grouped:', groupedData);
+
+            setCsvDataForComponents(groupedData);
+            setCsvDataVersion(prev => prev + 1);
+            setRefreshKey(prev => prev + 1);
+            toast.success('CSV data loaded successfully!');
+        } catch (error: any) {
+            console.error('Error processing CSV data:', error);
+            toast.error('Failed to process CSV data: ' + (error.message || 'Unknown error'));
+        } finally {
+            setCsvUploading(false);
+        }
+    };
+
+    // Handle CSV file upload
+    const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const fileName = file.name.toLowerCase();
+        const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+        const isCSV = fileName.endsWith('.csv');
+
+        if (!isExcel && !isCSV) {
+            toast.error('Please upload a CSV or Excel file');
+            return;
+        }
+
+        try {
+            setCsvUploading(true);
+            toast.loading('Processing file...', { id: 'csv-upload' });
+
+            if (isExcel) {
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const csvData = parseExcelToCSVFormat(workbook);
+                await processCSVData(csvData);
+            } else {
+                const text = await file.text();
+                const csvData = parseCSV(text);
+                await processCSVData(csvData);
+            }
+
+            toast.success('File uploaded successfully!', { id: 'csv-upload' });
+        } catch (error: any) {
+            console.error('Error uploading file:', error);
+            toast.error('Failed to upload file: ' + (error.message || 'Unknown error'), { id: 'csv-upload' });
+        } finally {
+            setCsvUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    // Fetch and process CSV/Excel file from URL
+    useEffect(() => {
+        const fetchAndProcessFile = async () => {
+            if (!csvFileUrl) {
+                console.log('Lead Apron: No csvFileUrl provided, skipping file fetch');
+                return;
+            }
+
+            console.log('Lead Apron: Fetching file from URL:', csvFileUrl);
+
+            try {
+                setCsvUploading(true);
+
+                const urlLower = csvFileUrl.toLowerCase();
+                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+
+                let csvData: any[] = [];
+
+                if (isExcel) {
+                    console.log('Lead Apron: Detected Excel file, fetching through proxy...');
+                    toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
+
+                    const response = await proxyFile(csvFileUrl);
+                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                    const arrayBuffer = await blob.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+                    console.log('Lead Apron: Excel file parsed, sheets:', workbook.SheetNames);
+
+                    csvData = parseExcelToCSVFormat(workbook);
+                    console.log('Lead Apron: Converted Excel to CSV format, rows:', csvData.length);
+                } else {
+                    console.log('Lead Apron: Detected CSV file, fetching through proxy...');
+                    toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
+
+                    const response = await proxyFile(csvFileUrl);
+                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                    const text = await blob.text();
+                    console.log('Lead Apron: CSV file fetched, length:', text.length);
+
+                    csvData = parseCSV(text);
+                }
+
+                console.log('Lead Apron: Processed CSV data, total rows:', csvData.length);
+                await processCSVData(csvData);
+                toast.success('File loaded successfully!', { id: 'csv-loading' });
+            } catch (error: any) {
+                console.error('Lead Apron: Error fetching/processing file:', error);
+                toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
+            } finally {
+                setCsvUploading(false);
+            }
+        };
+
+        fetchAndProcessFile();
+    }, [csvFileUrl]);
+
+    // Export saved data to Excel with proper table structures
+    const handleExportToExcel = async () => {
+        if (!serviceId) {
+            toast.error('Service ID is missing');
+            return;
+        }
+
+        try {
+            toast.loading('Exporting data to Excel...', { id: 'export-excel' });
+            setCsvUploading(true);
+
+            // Collect all test data in proper structure
+            const exportData: LeadApronExportData = {};
+
+            // Add API calls to fetch actual data here similar to other components
+            // For now, we'll create a template
+
+            // Create Excel with proper table structures
+            const wb = createLeadApronUploadableExcel(exportData);
+
+            // Generate filename
+            const timestamp = new Date().toISOString().split('T')[0];
+            const filename = `Lead_Apron_Test_Data_${timestamp}.xlsx`;
+
+            // Download
+            XLSX.writeFile(wb, filename);
+            toast.success('Data exported successfully!', { id: 'export-excel' });
+        } catch (error: any) {
+            console.error('Error exporting to Excel:', error);
+            toast.error('Failed to export data: ' + (error.message || 'Unknown error'), { id: 'export-excel' });
+        } finally {
+            setCsvUploading(false);
         }
     };
 
@@ -348,32 +634,68 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
             <Notes />
 
             {/* Save & View */}
-            <div className="my-10 flex justify-end gap-6">
-                {saveSuccess && (
-                    <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-                        Report Header Saved Successfully!
+            <div className="my-10 flex justify-between items-center">
+                <div className="flex gap-4">
+                    {/* Excel Upload Section */}
+                    <div className="flex items-center gap-3">
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept=".xlsx,.xls,.csv"
+                            onChange={handleCSVUpload}
+                            className="hidden"
+                        />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={csvUploading}
+                            className={`px-6 py-3 rounded-lg font-medium text-white transition flex items-center gap-2 ${csvUploading
+                                ? "bg-gray-500 cursor-not-allowed"
+                                : "bg-indigo-600 hover:bg-indigo-700"
+                                }`}
+                        >
+                            <CloudArrowUpIcon className="w-5 h-5" />
+                            {csvUploading ? "Processing..." : "Upload Excel/CSV"}
+                        </button>
+                        <button
+                            onClick={handleExportToExcel}
+                            disabled={csvUploading}
+                            className={`px-6 py-3 rounded-lg font-medium text-white transition ${csvUploading
+                                ? "bg-gray-500 cursor-not-allowed"
+                                : "bg-purple-600 hover:bg-purple-700"
+                                }`}
+                        >
+                            {csvUploading ? "Exporting..." : "Export Template"}
+                        </button>
                     </div>
-                )}
-                {saveError && (
-                    <div className="text-red-600 bg-red-50 px-4 py-3 rounded-lg border border-red-300">
-                        {saveError}
-                    </div>
-                )}
+                </div>
 
-                <button
-                    onClick={handleSaveHeader}
-                    disabled={saving}
-                    className={`px-8 py-3 rounded-lg font-bold text-white transition ${saving ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"
-                        }`}
-                >
-                    {saving ? "Saving..." : "Save Report Header"}
-                </button>
-                <button
-                    onClick={() => navigate(`/admin/orders/view-service-report-lead-apron?serviceId=${serviceId}`)}
-                    className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
-                >
-                    View Generated Report
-                </button>
+                <div className="flex gap-6">
+                    {saveSuccess && (
+                        <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+                            Report Header Saved Successfully!
+                        </div>
+                    )}
+                    {saveError && (
+                        <div className="text-red-600 bg-red-50 px-4 py-3 rounded-lg border border-red-300">
+                            {saveError}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleSaveHeader}
+                        disabled={saving}
+                        className={`px-8 py-3 rounded-lg font-bold text-white transition ${saving ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"
+                            }`}
+                    >
+                        {saving ? "Saving..." : "Save Report Header"}
+                    </button>
+                    <button
+                        onClick={() => navigate(`/admin/orders/view-service-report-lead-apron?serviceId=${serviceId}`)}
+                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+                    >
+                        View Generated Report
+                    </button>
+                </div>
             </div>
 
             {/* Test Tables */}
@@ -385,6 +707,8 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                         component: <LeadApronTest
                             serviceId={serviceId}
                             testId={savedTestIds.LeadApronTest || null}
+                            csvData={csvDataForComponents}
+                            refreshKey={refreshKey}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LeadApronTest: id }))}
                         />
                     },

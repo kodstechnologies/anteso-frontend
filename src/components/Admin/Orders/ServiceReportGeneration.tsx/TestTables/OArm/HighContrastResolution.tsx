@@ -13,12 +13,14 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
 const HighContrastResolutionForOArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  csvData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -73,6 +75,23 @@ const HighContrastResolutionForOArm: React.FC<Props> = ({
 
     loadTest();
   }, [propTestId, serviceId]);
+
+  // Process CSV data
+  useEffect(() => {
+    if (!csvData || csvData.length === 0) return;
+    console.log('HighContrastResolution: Processing CSV data', csvData);
+    try {
+      csvData.forEach((item: any) => {
+        if (item['Field Name'] === 'MeasuredLpPerMm') setMeasuredLpPerMm(item['Value']);
+        if (item['Field Name'] === 'RecommendedStandard') setRecommendedStandard(item['Value']);
+      });
+      setIsSaved(false);
+      setIsEditing(true);
+      toast.success('High Contrast Resolution: CSV data loaded');
+    } catch (err) {
+      console.error('HighContrastResolution CSV processing error:', err);
+    }
+  }, [csvData]);
 
   // Save / Update
   const handleSave = async () => {
@@ -138,10 +157,10 @@ const HighContrastResolutionForOArm: React.FC<Props> = ({
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewOnly
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewOnly
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
             }`}
         >
           {isSaving ? (
@@ -226,10 +245,10 @@ const HighContrastResolutionForOArm: React.FC<Props> = ({
               <span className="text-xl font-bold text-gray-700 mb-4">Result</span>
               <span
                 className={`inline-flex px-16 py-6 text-md font-extrabold rounded-full shadow-xl border-4 ${remark === 'PASS'
-                    ? 'bg-green-100 text-green-800 border-green-400'
-                    : remark === 'FAIL'
-                      ? 'bg-red-100 text-red-800 border-red-400'
-                      : 'bg-gray-100 text-gray-600 border-gray-300'
+                  ? 'bg-green-100 text-green-800 border-green-400'
+                  : remark === 'FAIL'
+                    ? 'bg-red-100 text-red-800 border-red-400'
+                    : 'bg-gray-100 text-gray-600 border-gray-300'
                   }`}
               >
                 {remark || '—'}

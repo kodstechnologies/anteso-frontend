@@ -1,14 +1,15 @@
 // GenerateReport-OArm.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader, getReportHeaderForOArm } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForOArm, proxyFile } from "../../../../../../api";
 
 // Test-table imports
 import TotalFilteration from "./TotalFilteration";
@@ -70,9 +71,10 @@ interface ToolsResponse {
 interface OArmProps {
   serviceId: string;
   qaTestDate?: string | null;
+  csvFileUrl?: string | null;
 }
 
-const OArm: React.FC<OArmProps> = ({ serviceId }) => {
+const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
   const navigate = useNavigate();
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -82,6 +84,13 @@ const OArm: React.FC<OArmProps> = ({ serviceId }) => {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // State to store CSV data for components
+  const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
+  const [csvDataVersion, setCsvDataVersion] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [formData, setFormData] = useState({
     customerName: "",
@@ -269,6 +278,216 @@ const OArm: React.FC<OArmProps> = ({ serviceId }) => {
       setSaving(false);
     }
   };
+
+  // ── CSV/Excel Parsing Infrastructure ─────────────────────────────────────
+  const parseHorizontalData = (rows: any[][]): any[] => {
+    const data: any[] = [];
+    let currentTestName = '';
+    let currentTestNameBase = '';
+    let headers: string[] = [];
+    let isReadingTest = false;
+
+    const testMarkerToInternalName: { [key: string]: string } = {
+      'TOTAL FILTRATION': 'Total Filtration',
+      'OUTPUT CONSISTENCY': 'Output Consistency',
+      'HIGH CONTRAST RESOLUTION': 'High Contrast Resolution',
+      'LOW CONTRAST RESOLUTION': 'Low Contrast Resolution',
+      'EXPOSURE RATE AT TABLE TOP': 'Exposure Rate At Table Top',
+      'TUBE HOUSING LEAKAGE': 'Tube Housing Leakage',
+      'LINEARITY OF MAS LOADING': 'Linearity of mAs Loading',
+    };
+    const markerUpperToInternal: Record<string, string> = Object.fromEntries(
+      Object.entries(testMarkerToInternalName).map(([k, v]) => [String(k).trim().toUpperCase(), v])
+    );
+
+    const headerMap: { [test: string]: { [header: string]: string } } = {
+      'Total Filtration': {
+        'Applied KVp': 'Table2_AppliedKvp',
+        'Meas 1': 'Table2_Meas_0', 'Meas 2': 'Table2_Meas_1', 'Meas 3': 'Table2_Meas_2',
+        'Meas 4': 'Table2_Meas_3', 'Meas 5': 'Table2_Meas_4',
+      },
+      'Output Consistency': {
+        'FFD': 'Param_FFD', 'Time': 'Param_Time',
+        'kVp': 'Row_kvp', 'mA': 'Row_ma',
+        'Meas 1': 'Row_Output_0', 'Meas 2': 'Row_Output_1', 'Meas 3': 'Row_Output_2',
+        'Meas 4': 'Row_Output_3', 'Meas 5': 'Row_Output_4',
+      },
+      'High Contrast Resolution': {
+        'Measured lp/mm': 'MeasuredLpPerMm', 'Recommended Standard': 'RecommendedStandard',
+      },
+      'Low Contrast Resolution': {
+        'Smallest Hole Size': 'SmallestHoleSize', 'Recommended Standard': 'RecommendedStandard',
+      },
+      'Exposure Rate At Table Top': {
+        'Distance': 'Row_Distance', 'Applied kV': 'Row_AppliedKv', 'Applied mA': 'Row_AppliedMa',
+        'Exposure': 'Row_Exposure', 'Mode': 'Row_Mode',
+      },
+      'Tube Housing Leakage': {
+        'FCD': 'Settings_FCD', 'kV': 'Settings_KV', 'mA': 'Settings_MA', 'Time': 'Settings_Time',
+        'Workload': 'Workload',
+        'Location': 'Leakage_Location', 'Left': 'Leakage_Left', 'Right': 'Leakage_Right',
+        'Front': 'Leakage_Front', 'Back': 'Leakage_Back', 'Top': 'Leakage_Top',
+      },
+      'Linearity of mAs Loading': {
+        'FCD': 'Exposure_FCD', 'kV': 'Exposure_KV',
+        'mAs Range': 'Row_mAsRange',
+        'Meas 1': 'Row_Meas_0', 'Meas 2': 'Row_Meas_1', 'Meas 3': 'Row_Meas_2',
+        'Meas 4': 'Row_Meas_3', 'Meas 5': 'Row_Meas_4',
+      },
+    };
+
+    const sectionRowCounter: { [key: string]: number } = {};
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i].map(c => String(c || '').trim());
+      const firstCell = row[0];
+
+      if (firstCell.startsWith('TEST: ')) {
+        const rawTitle = firstCell.replace('TEST: ', '').trim();
+        const rawUpper = rawTitle.toUpperCase();
+        const internalBase = markerUpperToInternal[rawUpper] || '';
+        currentTestNameBase = internalBase;
+        currentTestName = internalBase;
+        isReadingTest = true;
+        headers = [];
+        if (currentTestName) sectionRowCounter[currentTestName] = 0;
+        continue;
+      }
+
+      if (isReadingTest && headers.length === 0 && row.some(c => c)) {
+        headers = row;
+        continue;
+      }
+
+      if (isReadingTest && row.every(c => !c)) {
+        isReadingTest = false;
+        continue;
+      }
+
+      if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
+        sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
+        const rowIdx = sectionRowCounter[currentTestName];
+        row.forEach((value, cellIdx) => {
+          const header = headers[cellIdx];
+          const internalField = (headerMap[currentTestNameBase] || {})[header];
+          if (internalField && value) {
+            data.push({
+              'Field Name': internalField,
+              'Value': value,
+              'Row Index': rowIdx,
+              'Test Name': currentTestName,
+            });
+          }
+        });
+      }
+    }
+    return data;
+  };
+
+  const parseCSV = (text: string): any[] => {
+    const lines = text.split('\n').map(line => line.split(',').map(c => c.trim()));
+    return parseHorizontalData(lines);
+  };
+
+  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+    return parseHorizontalData(jsonData);
+  };
+
+  const processCSVData = async (csvData: any[]) => {
+    try {
+      setCsvUploading(true);
+      const groupedData: { [key: string]: any[] } = {};
+      csvData.forEach((row) => {
+        const testName = row['Test Name'];
+        if (testName && testName.trim()) {
+          if (!groupedData[testName]) groupedData[testName] = [];
+          groupedData[testName].push(row);
+        }
+      });
+      console.log('O-Arm CSV Data grouped:', groupedData);
+      setCsvDataForComponents(groupedData);
+      setCsvDataVersion(prev => prev + 1);
+      setRefreshKey(prev => prev + 1);
+      toast.success('CSV data loaded successfully!');
+    } catch (error: any) {
+      console.error('Error processing CSV data:', error);
+      toast.error('Failed to process CSV data: ' + (error.message || 'Unknown error'));
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
+  const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const fileName = file.name.toLowerCase();
+    const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+    const isCSV = fileName.endsWith('.csv');
+    if (!isExcel && !isCSV) {
+      toast.error('Please upload a CSV or Excel file');
+      return;
+    }
+    try {
+      setCsvUploading(true);
+      toast.loading('Processing file...', { id: 'csv-upload' });
+      if (isExcel) {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const csvData = parseExcelToCSVFormat(workbook);
+        await processCSVData(csvData);
+      } else {
+        const text = await file.text();
+        const csvData = parseCSV(text);
+        await processCSVData(csvData);
+      }
+      toast.success('File uploaded successfully!', { id: 'csv-upload' });
+    } catch (error: any) {
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file: ' + (error.message || 'Unknown error'), { id: 'csv-upload' });
+    } finally {
+      setCsvUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2)
+  useEffect(() => {
+    const fetchAndProcessFile = async () => {
+      if (!csvFileUrl) return;
+      console.log('O-Arm: Fetching file from URL:', csvFileUrl);
+      try {
+        setCsvUploading(true);
+        const urlLower = csvFileUrl.toLowerCase();
+        const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+        let csvData: any[] = [];
+        if (isExcel) {
+          toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
+          const response = await proxyFile(csvFileUrl);
+          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+          const arrayBuffer = await blob.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          csvData = parseExcelToCSVFormat(workbook);
+        } else {
+          toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
+          const response = await proxyFile(csvFileUrl);
+          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+          const text = await blob.text();
+          csvData = parseCSV(text);
+        }
+        await processCSVData(csvData);
+        toast.success('File loaded successfully!', { id: 'csv-loading' });
+      } catch (error: any) {
+        console.error('O-Arm: Error fetching/processing file:', error);
+        toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
+      } finally {
+        setCsvUploading(false);
+      }
+    };
+    fetchAndProcessFile();
+  }, [csvFileUrl]);
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto p-8 text-center">
@@ -422,6 +641,42 @@ const OArm: React.FC<OArmProps> = ({ serviceId }) => {
         </div>
       </section>
 
+      {/* CSV/Excel Upload Section */}
+      <section className="mb-10 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+        <h2 className="text-xl font-semibold text-blue-700 mb-4">Upload Test Data (CSV/Excel)</h2>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleCSVUpload}
+              className="hidden"
+              id="csv-upload-input-oarm"
+            />
+            <label
+              htmlFor="csv-upload-input-oarm"
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
+            >
+              <CloudArrowUpIcon className="w-5 h-5" />
+              {csvUploading ? 'Uploading...' : 'Upload CSV/Excel File'}
+            </label>
+            <a
+              href="/templates/OArm_Test_Data_Template.csv"
+              download
+              className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
+            >
+              Download Template
+            </a>
+          </div>
+          {csvFileUrl && (
+            <p className="text-sm text-gray-600">
+              File loaded from: <span className="font-mono text-xs">{csvFileUrl}</span>
+            </p>
+          )}
+        </div>
+      </section>
+
       <Standards standards={tools} />
       <Notes />
 
@@ -432,8 +687,8 @@ const OArm: React.FC<OArmProps> = ({ serviceId }) => {
           onClick={handleSaveHeader}
           disabled={saving}
           className={`px-6 py-3 rounded-lg font-bold ${saving
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-green-600 hover:bg-green-700"
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-green-600 hover:bg-green-700"
             } text-white`}
         >
           {saving ? "Saving..." : "Save Report Header"}
@@ -462,13 +717,13 @@ const OArm: React.FC<OArmProps> = ({ serviceId }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} /> },
-          { title: "Consistency Of Radiation Output", component: <OutputConsisitency serviceId={serviceId} /> },
-          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
-          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
-          { title: "Exposure Rate At Table Top", component: <ExposureRateAtTableTop serviceId={serviceId} /> },
-          { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
-          { title: "Linearity Of mAs Loading", component: <LinearityOfMasLoadingStations serviceId={serviceId} /> },
+          { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} /> },
+          { title: "Consistency Of Radiation Output", component: <OutputConsisitency serviceId={serviceId} csvData={csvDataForComponents['Output Consistency']} /> },
+          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} csvData={csvDataForComponents['High Contrast Resolution']} /> },
+          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} csvData={csvDataForComponents['Low Contrast Resolution']} /> },
+          { title: "Exposure Rate At Table Top", component: <ExposureRateAtTableTop serviceId={serviceId} csvData={csvDataForComponents['Exposure Rate At Table Top']} /> },
+          { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} csvData={csvDataForComponents['Tube Housing Leakage']} /> },
+          { title: "Linearity Of mAs Loading", component: <LinearityOfMasLoadingStations serviceId={serviceId} csvData={csvDataForComponents['Linearity of mAs Loading']} /> },
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
             {({ open }) => (

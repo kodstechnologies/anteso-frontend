@@ -19,14 +19,14 @@ interface OutputRow {
     remarks: 'Pass' | 'Fail' | '';
 }
 
-interface Props {
+interface ConsistencyOfRadiationOutputProps {
     serviceId: string;
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
     csvData?: any[];
 }
 
-const ConsistencyOfRadiationOutput: React.FC<Props> = ({
+const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> = ({
     serviceId,
     testId: propTestId = null,
     onTestSaved,

@@ -22,12 +22,14 @@ interface TotalFilterationProps {
     serviceId: string;
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
+    initialData?: any;
 }
 
 const TotalFilteration: React.FC<TotalFilterationProps> = ({
     serviceId,
     testId: initialTestId = null,
     onTestSaved,
+    initialData,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
     const [isSaved, setIsSaved] = useState(!!initialTestId);
@@ -73,6 +75,23 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             return diff <= tolerance;
         }
     };
+
+    useEffect(() => {
+        if (!initialData) return;
+        if (initialData.mAStations?.length) setMAStations(initialData.mAStations);
+        if (initialData.measurements?.length) setRows(initialData.measurements.map((m: any, i: number) => ({
+            id: String(i + 1),
+            appliedKvp: m.appliedKvp ?? "",
+            measuredValues: m.measuredValues ?? [],
+            measuredValuesStatus: [],
+            averageKvp: m.averageKvp ?? "",
+            remarks: (m.remarks as "PASS" | "FAIL" | "-") ?? "-",
+        })));
+        if (initialData.tolerance?.sign) setToleranceSign(initialData.tolerance.sign);
+        if (initialData.tolerance?.value) setToleranceValue(initialData.tolerance.value);
+        if (initialData.totalFiltration?.measured) setTotalFiltration(prev => ({ ...prev, measured: initialData.totalFiltration.measured }));
+        if (initialData.totalFiltration?.required) setTotalFiltration(prev => ({ ...prev, required: initialData.totalFiltration.required }));
+    }, [initialData]);
 
     // Load existing test data
     useEffect(() => {

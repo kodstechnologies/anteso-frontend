@@ -4,11 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
+import { CloudArrowUpIcon } from "@heroicons/react/24/outline";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader, getReportHeaderForCArm, getAccuracyOfIrradiationTimeByServiceIdForCArm } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForCArm, getAccuracyOfIrradiationTimeByServiceIdForCArm, proxyFile } from "../../../../../../api";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -74,9 +76,10 @@ interface ToolsResponse {
 interface CArmProps {
   serviceId: string;
   qaTestDate?: string | null;
+  csvFileUrl?: string | null;
 }
 
-const CArm: React.FC<CArmProps> = ({ serviceId }) => {
+const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
   const navigate = useNavigate();
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -111,6 +114,11 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
     humidity: "",
     engineerNameRPId: "",
   });
+
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
+  const [refreshKey, setRefreshKey] = useState(0);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!serviceId) return;
 
@@ -321,6 +329,193 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
       setSaving(false);
     }
   };
+
+  // Close modal and set timer choice
+  const handleTimerChoice = (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+    // Persist choice in localStorage
+    localStorage.setItem(`carm_timer_choice_${serviceId}`, JSON.stringify(choice));
+  };
+
+  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
+    const data: any[] = [];
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+
+    if (jsonData.length === 0) return data;
+
+    let fieldNameCol = -1;
+    let valueCol = -1;
+    let headerRowIndex = -1;
+
+    for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+      const row = jsonData[i];
+      for (let j = 0; j < row.length; j++) {
+        const cell = String(row[j] || '').trim().toLowerCase();
+        if (cell === 'field name' || cell === 'fieldname') {
+          headerRowIndex = i;
+          fieldNameCol = j;
+        } else if (cell === 'value') {
+          valueCol = j;
+        }
+      }
+      if (fieldNameCol !== -1 && valueCol !== -1) break;
+    }
+
+    if (headerRowIndex === -1) {
+      headerRowIndex = 0;
+      fieldNameCol = 0;
+      valueCol = 1;
+    }
+
+    const sectionToTestName: { [key: string]: string } = {
+      '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
+      '========== TOTAL FILTRATION ==========': 'Total Filtration',
+      '========== CONSISTENCY OF RADIATION OUTPUT ==========': 'Consistency of Radiation Output',
+      '========== LOW CONTRAST RESOLUTION ==========': 'Low Contrast Resolution',
+      '========== HIGH CONTRAST RESOLUTION ==========': 'High Contrast Resolution',
+      '========== EXPOSURE RATE AT TABLE TOP ==========': 'Exposure Rate At Table Top',
+      '========== TUBE HOUSING LEAKAGE ==========': 'Tube Housing Leakage',
+      '========== LINEARITY OF MA LOADING ==========': 'Linearity of mA Loading',
+      '========== LINEARITY OF MAS LOADING ==========': 'Linearity of mAs Loading',
+    };
+
+    let currentTestName = '';
+    const rowIndexCounter: { [key: string]: number } = {};
+    const lastRowStartField: { [key: string]: string } = {};
+
+    for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+      const row = jsonData[i];
+      const fieldName = String(row[fieldNameCol] || '').trim();
+      const value = String(row[valueCol] || '').trim();
+
+      if (fieldName.startsWith('==========') && fieldName.endsWith('==========')) {
+        currentTestName = sectionToTestName[fieldName] || '';
+        rowIndexCounter[currentTestName] = 0;
+        lastRowStartField[currentTestName] = '';
+        continue;
+      }
+
+      if (!fieldName || fieldName.startsWith('---')) continue;
+
+      if (currentTestName) {
+        const rowStartFields = [
+          'IrradiationTime_SetTime',
+          'Measurement_AppliedKvp',
+          'Linearity_mA',
+          'Linearity_mAs',
+          'Output_kV',
+          'LowContrast_HoleSize',
+          'HighContrast_LpMm',
+          'ExposureRate_Distance',
+          'Leakage_Location'
+        ];
+
+        const isRowStart = rowStartFields.some(startField => fieldName.startsWith(startField));
+
+        if (isRowStart) {
+          rowIndexCounter[currentTestName] = (rowIndexCounter[currentTestName] || 0) + 1;
+        }
+
+        data.push({
+          'Field Name': fieldName,
+          'Value': value,
+          'Row Index': (rowIndexCounter[currentTestName] || 0) - 1,
+          'Test Name': currentTestName,
+        });
+      }
+    }
+    return data;
+  };
+
+  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCsvUploading(true);
+    const reader = new FileReader();
+
+    reader.onload = async (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const parsedData = parseExcelToCSVFormat(workbook);
+
+        if (parsedData.length > 0) {
+          await processCSVData(parsedData);
+          setRefreshKey(prev => prev + 1);
+          toast.success("File data uploaded and processed!");
+        } else {
+          toast.error("No valid test data found in the file.");
+        }
+      } catch (error) {
+        console.error("Error processing file:", error);
+        toast.error("Failed to process the uploaded file.");
+      } finally {
+        setCsvUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+
+    reader.readAsBinaryString(file);
+  };
+
+  // Auto-load Excel from URL when csvFileUrl is passed (e.g. after complete status / Generate Report from ServiceDetails2)
+  // Uses proxyFile so the request is authenticated and avoids CORS/401 redirect to login
+  useEffect(() => {
+    if (!csvFileUrl) return;
+
+    const loadFromUrl = async () => {
+      try {
+        setCsvUploading(true);
+        toast.loading("Loading Excel data from file...", { id: "carm-csv-load" });
+        const response = await proxyFile(csvFileUrl);
+        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+        const arrayBuffer = await blob.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const parsedData = parseExcelToCSVFormat(workbook);
+        if (parsedData.length > 0) {
+          await processCSVData(parsedData);
+          setRefreshKey((prev) => prev + 1);
+          toast.success("Excel data loaded from file", { id: "carm-csv-load" });
+        } else {
+          toast.error("No valid test data found in the file", { id: "carm-csv-load" });
+        }
+      } catch (err: any) {
+        console.error("C-Arm: Error loading file from URL", err);
+        toast.error(err?.message || "Failed to load Excel from file", { id: "carm-csv-load" });
+      } finally {
+        setCsvUploading(false);
+      }
+    };
+
+    loadFromUrl();
+  }, [csvFileUrl]);
+
+  const processCSVData = async (csvData: any[]) => {
+    const groupedData: { [key: string]: any[] } = {};
+    csvData.forEach(row => {
+      const testName = row['Test Name'];
+      if (testName) {
+        if (!groupedData[testName]) groupedData[testName] = [];
+        groupedData[testName].push(row);
+      }
+    });
+
+    const processed: any = {};
+
+    // Helper to extract data for specific components
+    // (This will be expanded as we see the specific structure needed by each component)
+    Object.keys(groupedData).forEach(testName => {
+      processed[testName] = groupedData[testName];
+    });
+
+    setCsvDataForComponents(processed);
+  };
+
+  // Conditional returns after all hooks so hook count is consistent every render
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto p-8 text-center">
@@ -343,13 +538,6 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
     );
   }
 
-  // Close modal and set timer choice
-  const handleTimerChoice = (choice: boolean) => {
-    setHasTimer(choice);
-    setShowTimerModal(false);
-    // Persist choice in localStorage
-    localStorage.setItem(`carm_timer_choice_${serviceId}`, JSON.stringify(choice));
-  };
   if (!details) {
     return <div className="max-w-6xl mx-auto p-8">No data received.</div>;
   }
@@ -542,29 +730,147 @@ const CArm: React.FC<CArmProps> = ({ serviceId }) => {
         </button>
       </div>
 
+      {/* CSV/Excel Upload Section */}
+      <div className="mt-12 mb-8 p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">Upload Test Data</h3>
+            <p className="text-sm text-blue-700">
+              Upload a CSV or Excel file to auto-fill test data. Download templates below.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex gap-2">
+              <a
+                href="/templates/CArm_Test_Data_Template_WithTimer.csv"
+                download="CArm_Test_Data_Template_WithTimer.csv"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+              >
+                <CloudArrowUpIcon className="w-5 h-5" />
+                Template (With Timer)
+              </a>
+              <a
+                href="/templates/CArm_Test_Data_Template_NoTimer.csv"
+                download="CArm_Test_Data_Template_NoTimer.csv"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
+              >
+                <CloudArrowUpIcon className="w-5 h-5" />
+                Template (No Timer)
+              </a>
+              <a
+                href="/templates/CArm_Template.xlsx"
+                download="CArm_Template.xlsx"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+              >
+                <CloudArrowUpIcon className="w-5 h-5" />
+                ⬇ Excel Template (.xlsx)
+              </a>
+            </div>
+            <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2 text-sm">
+              <CloudArrowUpIcon className="w-5 h-5" />
+              {csvUploading ? 'Uploading...' : 'Upload CSV/Excel'}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleCSVUpload}
+                className="hidden"
+                disabled={csvUploading}
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+
       {/* QA Tests - Conditional Linearity */}
       <div className="mt-12">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          { title: "Accuracy Of Irradiation Time", component: <AccuracyOfIrradiationTime serviceId={serviceId} /> },
-          { title: "Accuracy Of Operating Potential", component: <TotalFilteration serviceId={serviceId} /> },
-          { title: "Consistency Of Radiation Output", component: <ConsisitencyOfRadiationOutput serviceId={serviceId} /> },
-          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} /> },
-          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} /> },
-          { title: "Exposure Rate At Table Top", component: <ExposureRateAtTableTop serviceId={serviceId} /> },
-          { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} /> },
+          {
+            title: "Accuracy Of Irradiation Time",
+            component: <AccuracyOfIrradiationTime
+              key={`timer-${refreshKey}`}
+              serviceId={serviceId}
+              refreshKey={refreshKey}
+              initialData={csvDataForComponents['Accuracy of Irradiation Time']}
+            />
+          },
+          {
+            title: "Total Filtration",
+            component: <TotalFilteration
+              key={`total-filtration-${refreshKey}`}
+              serviceId={serviceId}
+              refreshKey={refreshKey}
+              initialData={csvDataForComponents['Total Filtration']}
+            />
+          },
+          {
+            title: "Consistency Of Radiation Output",
+            component: <ConsisitencyOfRadiationOutput
+              key={`output-${refreshKey}`}
+              serviceId={serviceId}
+              refreshKey={refreshKey}
+              initialData={csvDataForComponents['Consistency of Radiation Output']}
+            />
+          },
+          {
+            title: "Low Contrast Resolution",
+            component: <LowContrastResolution
+              key={`low-contrast-${refreshKey}`}
+              serviceId={serviceId}
+              refreshKey={refreshKey}
+              initialData={csvDataForComponents['Low Contrast Resolution']}
+            />
+          },
+          {
+            title: "High Contrast Resolution",
+            component: <HighContrastResolution
+              key={`high-contrast-${refreshKey}`}
+              serviceId={serviceId}
+              refreshKey={refreshKey}
+              initialData={csvDataForComponents['High Contrast Resolution']}
+            />
+          },
+          {
+            title: "Exposure Rate At Table Top",
+            component: <ExposureRateAtTableTop
+              key={`exposure-rate-${refreshKey}`}
+              serviceId={serviceId}
+              refreshKey={refreshKey}
+              initialData={csvDataForComponents['Exposure Rate At Table Top']}
+            />
+          },
+          {
+            title: "Tube Housing Leakage",
+            component: <TubeHousingLeakage
+              key={`tube-leakage-${refreshKey}`}
+              serviceId={serviceId}
+              refreshKey={refreshKey}
+              initialData={csvDataForComponents['Tube Housing Leakage']}
+            />
+          },
 
           // Conditional Linearity Test
           ...(hasTimer === true
             ? [{
               title: "Linearity Of mA Loading",
-              component: <LinearityOfMaLoading serviceId={serviceId} />
+              component: <LinearityOfMaLoading
+                key={`linearity-ma-${refreshKey}`}
+                serviceId={serviceId}
+                refreshKey={refreshKey}
+                initialData={csvDataForComponents['Linearity of mA Loading']}
+              />
             }]
             : hasTimer === false
               ? [{
                 title: "Linearity Of mAs Loading",
-                component: <LinearityOfMasLoading serviceId={serviceId} />
+                component: <LinearityOfMasLoading
+                  key={`linearity-mas-${refreshKey}`}
+                  serviceId={serviceId}
+                  refreshKey={refreshKey}
+                  initialData={csvDataForComponents['Linearity of mAs Loading']}
+                />
               }]
               : []
           ),

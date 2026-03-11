@@ -28,13 +28,21 @@ interface LeakageRow {
   remark: string;
 }
 
-interface Props {
+interface TubeHousingLeakageProps {
   serviceId: string;
-  testId?: string;
+  testId?: string | null;
   onRefresh?: () => void;
+  onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
-export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function TubeHousingLeakage({
+  serviceId,
+  testId: propTestId,
+  onRefresh,
+  onTestSaved,
+  csvData
+}: TubeHousingLeakageProps) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   const [settings, setSettings] = useState<SettingsRow>({
@@ -86,7 +94,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     const maVal = parseFloat(settings.ma) || 0;
     const timeVal = parseFloat(settings.time) || 0;
     const workloadInputVal = parseFloat(workloadInput) || 0;
-    
+
     if (processedLeakage.length > 0 && workloadInputVal > 0 && maVal > 0 && timeVal > 0) {
       const maxValue = Math.max(...processedLeakage.map(r => parseFloat(r.max) || 0));
       if (maxValue > 0) {
@@ -145,7 +153,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   // Load existing test data
   useEffect(() => {
     if (!serviceId) return;
-    
+
     const loadTest = async () => {
       setIsLoading(true);
       try {
@@ -153,7 +161,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         if (data?.data) {
           const testData = data.data;
           setTestId(testData._id);
-          
+
           // Map measurementSettings (backend) to settings (frontend)
           if (testData.measurementSettings) {
             setSettings({
@@ -163,7 +171,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               time: testData.measurementSettings.time || '',
             });
           }
-          
+
           // Map leakageMeasurements (backend) to leakageRows (frontend)
           if (testData.leakageMeasurements && testData.leakageMeasurements.length > 0) {
             setLeakageRows(testData.leakageMeasurements.map((row: any) => ({
@@ -178,25 +186,25 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               remark: row.remark || '',
             })));
           }
-          
+
           // Map workload (backend has {value, unit}) to separate state
           if (testData.workload) {
             setWorkload(testData.workload.value || '');
             setWorkloadUnit(testData.workload.unit || 'mA·min/week');
           }
-          
+
           // Load workloadInput for max leakage calculation
           if (testData.workloadInput) {
             setWorkloadInput(testData.workloadInput);
           }
-          
+
           // Map tolerance (backend has {value, operator, time}) to separate state
           if (testData.tolerance) {
             setToleranceValue(testData.tolerance.value || '');
             setToleranceOperator(testData.tolerance.operator || 'less than or equal to');
             setToleranceTime(testData.tolerance.time || '1');
           }
-          
+
           setHasSaved(true);
           setIsEditing(false);
         }
@@ -208,9 +216,54 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         setIsLoading(false);
       }
     };
-    
+
     loadTest();
   }, [serviceId]);
+
+  // === CSV Injection ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      const distVal = csvData.find(r => r['Field Name'] === 'Distance')?.['Value'];
+      const kvVal = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
+      const maVal = csvData.find(r => r['Field Name'] === 'mA')?.['Value'];
+      const timeVal = csvData.find(r => r['Field Name'] === 'Time')?.['Value'];
+
+      if (distVal || kvVal || maVal || timeVal) {
+        setSettings(prev => ({
+          distance: distVal || prev.distance,
+          kv: kvVal || prev.kv,
+          ma: maVal || prev.ma,
+          time: timeVal || prev.time
+        }));
+      }
+
+      const workloadVal = csvData.find(r => r['Field Name'] === 'Workload')?.['Value'];
+      if (workloadVal) setWorkload(workloadVal);
+
+      const workloadInputVal = csvData.find(r => r['Field Name'] === 'WorkloadInput')?.['Value'];
+      if (workloadInputVal) setWorkloadInput(workloadInputVal);
+
+      const rowIdx = csvData.find(r => r['Field Name'] === 'Location' && r['Value'] === 'Tube Housing')?.['Row Index'];
+      if (rowIdx !== undefined) {
+        const rowData = csvData.filter(r => r['Row Index'] === rowIdx);
+        const front = rowData.find(r => r['Field Name'] === 'Front')?.['Value'] || '';
+        const back = rowData.find(r => r['Field Name'] === 'Back')?.['Value'] || '';
+        const left = rowData.find(r => r['Field Name'] === 'Left')?.['Value'] || '';
+        const right = rowData.find(r => r['Field Name'] === 'Right')?.['Value'] || '';
+        const top = rowData.find(r => r['Field Name'] === 'Top')?.['Value'] || '';
+
+        setLeakageRows([{
+          location: 'Tube Housing',
+          front, back, left, right, top,
+          max: '',
+          unit: 'mGy/h',
+          remark: ''
+        }]);
+      }
+
+      if (!testId) setIsEditing(true);
+    }
+  }, [csvData, testId]);
 
   const handleSave = async () => {
     if (!isFormValid) {
@@ -264,8 +317,10 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         result = await updateTubeHousingLeakageForDentalHandHeld(testId, payload);
       } else {
         result = await addTubeHousingLeakageForDentalHandHeld(serviceId, payload);
-        if (result?.data?._id || result?.data?.testId) {
-          setTestId(result.data._id || result.data.testId);
+        const newId = result?.data?._id || result?.data?.testId;
+        if (newId) {
+          setTestId(newId);
+          onTestSaved?.(newId);
         }
       }
 
@@ -490,10 +545,10 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
                 <td className="px-4 py-2">
                   <span
                     className={`inline-block w-full px-2 py-1 text-sm text-center font-medium rounded ${finalRemark === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : finalRemark === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100'
+                      ? 'bg-green-100 text-green-800'
+                      : finalRemark === 'Fail'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100'
                       }`}
                   >
                     {finalRemark || '—'}
@@ -531,7 +586,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               </span>
             </div>
           )}
-          
+
           {/* Final result */}
           <div className="flex items-center gap-3 pt-2 border-t">
             <span className="font-semibold">Max Leakage Result:</span>
@@ -603,10 +658,10 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving || (!isViewMode && !isFormValid)}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (

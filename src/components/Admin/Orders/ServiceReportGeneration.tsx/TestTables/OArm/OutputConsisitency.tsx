@@ -29,12 +29,14 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
 const OutputConsistencyForOArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  csvData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -149,6 +151,56 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
     loadTest();
   }, [propTestId, serviceId]);
 
+  // Process CSV data
+  useEffect(() => {
+    if (!csvData || csvData.length === 0) return;
+    console.log('OutputConsistency: Processing CSV data', csvData);
+    try {
+      const rowMap: { [idx: number]: any } = {};
+      csvData.forEach((item: any) => {
+        const idx = item['Row Index'];
+        if (!rowMap[idx]) rowMap[idx] = {};
+        rowMap[idx][item['Field Name']] = item['Value'];
+      });
+
+      // Extract parameters from first row
+      const firstRow = rowMap[1] || {};
+      if (firstRow['Param_FFD']) setParameters(p => ({ ...p, ffd: firstRow['Param_FFD'] }));
+      if (firstRow['Param_Time']) setParameters(p => ({ ...p, time: firstRow['Param_Time'] }));
+
+      const newRows: any[] = [];
+      Object.keys(rowMap).forEach(idxStr => {
+        const r = rowMap[parseInt(idxStr)];
+        const outputs: string[] = [];
+        for (let m = 0; m < 5; m++) {
+          const val = r[`Row_Output_${m}`];
+          if (val !== undefined) outputs.push(val);
+        }
+        if (r['Row_kvp'] || outputs.length > 0) {
+          newRows.push({
+            id: Date.now().toString() + Math.random(),
+            kvp: r['Row_kvp'] || '',
+            ma: r['Row_ma'] || '100',
+            outputs: outputs.length > 0 ? outputs : Array(headers.length).fill(''),
+            mean: '',
+            cov: '',
+            remark: '',
+          });
+        }
+      });
+
+      if (newRows.length > 0) {
+        const numHeaders = newRows[0].outputs.length;
+        setHeaders(Array.from({ length: numHeaders }, (_, i) => `Meas ${i + 1}`));
+        setOutputRows(newRows);
+        setIsSaved(false);
+        toast.success('Output Consistency: CSV data loaded');
+      }
+    } catch (err) {
+      console.error('OutputConsistency CSV processing error:', err);
+    }
+  }, [csvData]);
+
   // Save / Update
   const handleSave = async () => {
     if (!serviceId) return toast.error('Service ID is missing');
@@ -261,8 +313,8 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
           onClick={isViewMode ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving ? 'bg-gray-400 cursor-not-allowed' :
-              isViewMode ? 'bg-orange-600 hover:bg-orange-700' :
-                'bg-teal-600 hover:bg-teal-700'
+            isViewMode ? 'bg-orange-600 hover:bg-orange-700' :
+              'bg-teal-600 hover:bg-teal-700'
             }`}
         >
           {isSaving ? (
@@ -404,8 +456,8 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
                   </td>
                   <td className="px-4 py-2 border-r text-center">
                     <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full ${row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
-                        row.remark === 'Fail' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-500'
+                      row.remark === 'Fail' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-500'
                       }`}>
                       {row.remark || '—'}
                     </span>
@@ -453,8 +505,8 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-gray-700">Final Result:</span>
           <span className={`inline-flex px-6 py-3 text-lg font-bold rounded-full ${finalRemark === 'Pass' ? 'bg-green-100 text-green-800' :
-              finalRemark === 'Fail' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-500'
+            finalRemark === 'Fail' ? 'bg-red-100 text-red-800' :
+              'bg-gray-100 text-gray-500'
             }`}>
             {finalRemark || '—'}
           </span>

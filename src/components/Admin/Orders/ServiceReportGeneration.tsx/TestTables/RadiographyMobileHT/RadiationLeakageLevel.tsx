@@ -33,9 +33,10 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  initialData?: any;
 }
 
-export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function RadiationLeakageLevel({ serviceId, testId: propTestId, onRefresh, initialData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   const [settings, setSettings] = useState<SettingsRow>({
@@ -60,6 +61,15 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.settings) setSettings(prev => ({ ...prev, fcd: initialData.settings.fcd ?? prev.fcd, kv: initialData.settings.kv ?? prev.kv, ma: initialData.settings.ma ?? prev.ma, time: initialData.settings.time ?? prev.time }));
+    if (initialData.workload) setWorkload(initialData.workload);
+    if (initialData.toleranceValue) setToleranceValue(initialData.toleranceValue);
+    if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
+    if (initialData.leakageMeasurements?.length) setLeakageRows(initialData.leakageMeasurements.map((r: any) => ({ location: r.location || 'Tube', left: r.left ?? '', right: r.right ?? '', front: r.front ?? '', back: r.back ?? '', top: r.top ?? '', max: '', result: '', unit: 'mR/h', mgy: '' })));
+  }, [initialData]);
 
   const maValue = parseFloat(settings.ma) || 0;
   const workloadValue = parseFloat(workload) || 0;

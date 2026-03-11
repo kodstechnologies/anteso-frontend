@@ -233,6 +233,28 @@ const ViewServiceReportCBCT: React.FC = () => {
             radiationSurvey: data.RadiationProtectionSurveyCBCT || null,
             totalFiltration: operatingPotentialData?.totalFiltration || null,
           });
+
+          // Transform LinearityOfMaLoadingCBCT data
+          const linearityData = data.LinearityOfMaLoadingCBCT;
+          if (linearityData && Array.isArray(linearityData.table2)) {
+            setTestData((prev: any) => ({
+              ...prev,
+              linearityOfMaLoading: {
+                ...linearityData,
+                table2Rows: linearityData.table2.map((r: any, i: number) => ({
+                  id: String(i + 1),
+                  ma: r.ma || '-',
+                  measuredOutputs: r.measuredOutputs || [],
+                  average: r.average || '-',
+                  x: r.x || '-',
+                  xMax: r.xMax || '-',
+                  xMin: r.xMin || '-',
+                  col: r.col || '-',
+                  remarks: r.remarks || '-',
+                }))
+              }
+            }));
+          }
         } else {
           setNotFound(true);
         }

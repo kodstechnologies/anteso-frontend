@@ -24,9 +24,19 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: {
+    fcd?: string;
+    toleranceCriteria?: {
+      small?: { multiplier: string; upperLimit: string };
+      medium?: { multiplier: string; lowerLimit: string; upperLimit: string };
+      large?: { multiplier: string; lowerLimit: string };
+    };
+    focalSpots?: { focusType: string; statedWidth: string; statedHeight: string; measuredWidth: string; measuredHeight: string; remark: string }[];
+  } | null;
 }
 
-const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -142,6 +152,8 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
   useEffect(() => {
     if (!serviceId) return;
     const loadTest = async () => {
+      // If we have uploaded Excel data, don't overwrite it by reloading from API
+      if (initialData) return;
       try {
         const res = await getEffectiveFocalSpotByServiceIdForRadiographyMobile(serviceId);
         if (res?.data) {
@@ -177,7 +189,41 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       }
     };
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
+
+  // Pre-fill from Excel initialData
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.fcd) setFcd(String(initialData.fcd));
+    if (initialData.toleranceCriteria) {
+      const tc = initialData.toleranceCriteria;
+      if (tc.small) {
+        setTolSmallMul(String(tc.small.multiplier ?? '0.5'));
+        setSmallLimit(String(tc.small.upperLimit ?? '0.8'));
+      }
+      if (tc.medium) {
+        setTolMediumMul(String(tc.medium.multiplier ?? '0.4'));
+        setMediumLower(String(tc.medium.lowerLimit ?? '0.8'));
+        setMediumUpper(String(tc.medium.upperLimit ?? '1.5'));
+      }
+      if (tc.large) {
+        setTolLargeMul(String(tc.large.multiplier ?? '0.3'));
+      }
+    }
+    if (initialData.focalSpots?.length) {
+      setRows(initialData.focalSpots.map((spot, i) => ({
+        id: String(i + 1),
+        focusType: spot.focusType || 'Large Focus',
+        statedWidth: String(spot.statedWidth ?? ''),
+        statedHeight: String(spot.statedHeight ?? ''),
+        measuredWidth: String(spot.measuredWidth ?? ''),
+        measuredHeight: String(spot.measuredHeight ?? ''),
+        remark: (spot.remark as any) || '',
+      })));
+    }
+    setIsSaved(false);
+    setIsEditing(true);
+  }, [initialData]);
 
   const handleSave = async () => {
     if (!serviceId) return toast.error("Service ID missing");

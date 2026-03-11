@@ -32,9 +32,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, initialData, csvDataVersion }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: FCD, kV, Time (sec)
@@ -56,6 +58,33 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+
+  // Apply CSV/Excel initial data
+  useEffect(() => {
+    if (!initialData) return;
+    const t1 = initialData.table1;
+    if (t1) setTable1Row(prev => ({ ...prev, fcd: String(t1.fcd ?? prev.fcd), kv: String(t1.kv ?? prev.kv), time: String(t1.time ?? prev.time) }));
+    if (initialData.table2?.length > 0) {
+      // Find max number of measurement outputs across all rows
+      const maxOutputs = Math.max(...initialData.table2.map((r: any) => (r.measuredOutputs ?? []).length));
+      const headerCount = Math.max(maxOutputs, 1);
+      setMeasHeaders(Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`));
+      setTable2Rows(initialData.table2.map((r: any, i: number) => {
+        const outputs = (r.measuredOutputs ?? []).map(String);
+        // Pad to match header count
+        while (outputs.length < headerCount) outputs.push('');
+        return {
+          id: (i + 1).toString(),
+          ma: String(r.mAApplied ?? r.ma ?? ''),
+          measuredOutputs: outputs,
+          average: '', x: '', xMax: '', xMin: '', col: '', remarks: '',
+        };
+      }));
+    }
+    if (initialData.tolerance !== undefined) setTolerance(String(initialData.tolerance));
+    if (initialData.toleranceOperator) setToleranceOperator(String(initialData.toleranceOperator));
+  }, [csvDataVersion, initialData]);
+
 
   // === Column Handling ===
   const addMeasColumn = () => {
@@ -135,7 +164,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       // Calculate average mGy and round to 4 decimal places
       const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
       const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
-      
+
       const ma = parseFloat(row.ma);
       // Calculate X = mGy / mA and round to 4 decimal places
       const x = avg !== null && ma > 0 ? parseFloat((avg / ma).toFixed(4)) : null;
@@ -150,17 +179,17 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     // Round xMax and xMin to 4 decimal places
     const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
     const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
-    
+
     // Calculate COL: |xMax - xMin| / (xMax + xMin) and round to 4 decimal places
     const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : null;
     const col = hasData && colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
-    
+
     // Determine pass/fail based on tolerance operator and CoL value
     let pass = false;
     let remarks = '—';
-    
+
     if (hasData && col !== '—' && colNum !== null) {
       const colVal = parseFloat(col);
       switch (toleranceOperator) {

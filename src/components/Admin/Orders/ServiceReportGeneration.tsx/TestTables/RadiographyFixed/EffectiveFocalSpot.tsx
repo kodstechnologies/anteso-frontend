@@ -24,9 +24,11 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
-const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, initialData, csvDataVersion }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -65,6 +67,32 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       remark: '',
     },
   ]);
+
+  // Apply CSV/Excel initial data
+  useEffect(() => {
+    if (!initialData || !csvDataVersion) return;
+    if (initialData.fcd) setFcd(String(initialData.fcd));
+    const tol = initialData.toleranceCriteria;
+    if (tol) {
+      if (tol.tolSmallMul) setTolSmallMul(String(tol.tolSmallMul));
+      if (tol.smallLimit) setSmallLimit(String(tol.smallLimit));
+      if (tol.tolMediumMul) setTolMediumMul(String(tol.tolMediumMul));
+      if (tol.mediumLower) setMediumLower(String(tol.mediumLower));
+      if (tol.mediumUpper) setMediumUpper(String(tol.mediumUpper));
+      if (tol.tolLargeMul) setTolLargeMul(String(tol.tolLargeMul));
+    }
+    if (initialData.focalSpots?.length > 0) {
+      setRows(initialData.focalSpots.map((s: any, i: number) => ({
+        id: i === 0 ? 'large' : 'small',
+        focusType: String(s.focusType ?? (i === 0 ? 'Large Focus' : 'Small Focus')),
+        statedWidth: String(s.statedWidth ?? ''),
+        statedHeight: String(s.statedHeight ?? ''),
+        measuredWidth: String(s.measuredWidth ?? ''),
+        measuredHeight: String(s.measuredHeight ?? ''),
+        remark: '' as const,
+      })));
+    }
+  }, [csvDataVersion]);
 
   // Update any field in a row
   const updateRow = (id: string, field: keyof FocalSpotRow, value: string) => {

@@ -37,12 +37,14 @@ interface Props {
   serviceId: string;
   testId?: string;
   onTestSaved?: (testId: string) => void;
+  initialData?: any;
 }
 
 const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   serviceId,
   testId: propTestId,
-  onTestSaved
+  onTestSaved,
+  initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -68,6 +70,26 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       remark: '',
     },
   ]);
+
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.ffd) setFFD({ value: String(initialData.ffd) });
+    if (initialData.tolerance?.operator) setTolerance(prev => ({ ...prev, operator: initialData.tolerance.operator }));
+    if (initialData.tolerance?.value) setTolerance(prev => ({ ...prev, value: initialData.tolerance.value }));
+    if (initialData.outputRows?.length) {
+      const rows = initialData.outputRows.map((r: any, i: number) => ({
+        id: String(i + 1),
+        kv: r.kv ?? '80',
+        mas: r.mAs ?? '100',
+        outputs: (r.meas || []).map((v: string) => ({ value: v })),
+        avg: r.avg ?? '',
+        cv: r.cv ?? '',
+        remark: r.remark ?? '',
+      }));
+      setOutputRows(rows);
+      if (rows[0]?.outputs?.length) setMeasurementCount(rows[0].outputs.length);
+    }
+  }, [initialData]);
 
   // Calculate avg, CoV and remark – pure calculation, no state mutation needed
   const rowsWithCalc = useMemo(() => {

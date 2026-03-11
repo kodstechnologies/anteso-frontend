@@ -32,9 +32,10 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  initialData?: any;
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: FCD, kV, Time (sec)
@@ -51,6 +52,26 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   const [tolerance, setTolerance] = useState<string>('0.1');
   const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.table1?.fcd) setTable1Row(prev => ({ ...prev, fcd: initialData.table1.fcd }));
+    if (initialData.table1?.kv) setTable1Row(prev => ({ ...prev, kv: initialData.table1.kv }));
+    if (initialData.measHeaders?.length) setMeasHeaders(initialData.measHeaders);
+    if (initialData.tolerance) setTolerance(initialData.tolerance);
+    if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
+    if (initialData.table2Rows?.length) setTable2Rows(initialData.table2Rows.map((r: any, i: number) => ({
+      id: String(i + 1),
+      ma: r.mAsApplied ?? '',
+      measuredOutputs: r.meas ?? [],
+      average: '',
+      x: '',
+      xMax: '',
+      xMin: '',
+      col: '',
+      remarks: '',
+    })));
+  }, [initialData]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

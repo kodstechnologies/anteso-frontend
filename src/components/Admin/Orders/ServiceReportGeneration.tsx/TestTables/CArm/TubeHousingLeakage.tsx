@@ -36,13 +36,16 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  refreshKey?: number;
+  initialData?: any[];
 }
 
-export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [settings, setSettings] = useState<SettingsRow>({
     fcd: '100',
@@ -60,6 +63,56 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const [toleranceValue, setToleranceValue] = useState<string>('1.0');
   const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
   const [toleranceTime] = useState<string>('1');
+
+  // Handle CSV initial data
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      try {
+        const s: SettingsRow = { fcd: "100", kv: "120", ma: "21", time: "2.0" };
+        const rows: LeakageRow[] = [
+          { location: 'Tube', left: '', right: '', front: '', back: '', top: '' },
+          { location: 'Collimator', left: '', right: '', front: '', back: '', top: '' },
+        ];
+        let w = "";
+        let tVal = "1.0";
+        let tOp: any = "less than or equal to";
+
+        initialData.forEach(row => {
+          const field = row['Field Name'];
+          const val = row['Value'];
+          const rowIndex = row['Row Index'];
+
+          if (field === 'Leakage_FCD') s.fcd = val;
+          if (field === 'Leakage_kV') s.kv = val;
+          if (field === 'Leakage_mA') s.ma = val;
+          if (field === 'Leakage_Time') s.time = val;
+          if (field === 'Leakage_Workload') w = val;
+          if (field === 'Leakage_ToleranceValue') tVal = val;
+          if (field === 'Leakage_ToleranceOperator') tOp = val;
+
+          if (field.startsWith('Leakage_')) {
+            const loc = field.includes('Tube') ? 0 : field.includes('Collimator') ? 1 : -1;
+            if (loc !== -1) {
+              const subField = field.split('_')[1].toLowerCase() as keyof Omit<LeakageRow, 'location'>;
+              if (['left', 'right', 'front', 'back', 'top'].includes(subField)) {
+                rows[loc][subField] = val;
+              }
+            }
+          }
+        });
+
+        setSettings(s);
+        setLeakageRows(rows);
+        setWorkload(w);
+        setToleranceValue(tVal);
+        setToleranceOperator(tOp);
+        setHasSaved(false);
+        setIsEditing(true);
+      } catch (err) {
+        console.error("Error mapping CSV data for Tube Housing Leakage:", err);
+      }
+    }
+  }, [initialData, refreshKey]);
 
   const maValue = parseFloat(settings.ma) || 0;
   const workloadValue = parseFloat(workload) || 0;
@@ -140,6 +193,14 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   // Load data on mount or when serviceId/propTestId changes
   useEffect(() => {
     const loadData = async () => {
+      if (!serviceId || (initialData && initialData.length > 0)) {
+        if (initialData && initialData.length > 0) {
+          setHasSaved(false);
+          setIsEditing(true);
+        }
+        setIsLoading(false);
+        return;
+      }
       try {
         let data = null;
 
@@ -194,9 +255,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           setHasSaved(false);
           setIsEditing(true);
         }
-      } catch (error) {
-        console.error("Error loading Tube Housing Leakage:", error);
-        toast.error("Failed to load test data");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -259,6 +319,16 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   };
 
   const isViewMode = hasSaved && !isEditing;
+  const isViewOnly = hasSaved && !isEditing;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
 

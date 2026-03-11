@@ -26,9 +26,15 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: {
+    techniqueFactors?: { fcd: string; kv: string; mas: string };
+    observedTilt?: { value: string; remark: string };
+    tolerance?: { operator: string; value: string };
+  } | null;
 }
 
-const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -74,6 +80,11 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         setIsLoading(false);
         return;
       }
+      // If we have uploaded Excel data, don't overwrite it by reloading from API
+      if (initialData) {
+        setIsLoading(false);
+        return;
+      }
       try {
         const res = await getCentralBeamAlignmentByServiceIdForRadiographyMobile(serviceId);
         const data = res?.data;
@@ -109,7 +120,29 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
     };
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, refreshKey, initialData]);
+
+  // Pre-fill from Excel initialData
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.techniqueFactors) {
+      setTechniqueRow({
+        id: '1',
+        fcd: String(initialData.techniqueFactors.fcd ?? '100'),
+        kv: String(initialData.techniqueFactors.kv ?? '80'),
+        mas: String(initialData.techniqueFactors.mas ?? '10'),
+      });
+    }
+    if (initialData.observedTilt) {
+      setObservedTilt(String(initialData.observedTilt.value ?? ''));
+    }
+    if (initialData.tolerance) {
+      setToleranceOperator((initialData.tolerance.operator as any) || '<');
+      setToleranceValue(String(initialData.tolerance.value ?? '1.5'));
+    }
+    setIsSaved(false);
+    setIsEditing(true);
+  }, [initialData]);
 
   const updateTechnique = (field: keyof TechniqueRow, value: string) => {
     setTechniqueRow(prev => ({ ...prev, [field]: value }));

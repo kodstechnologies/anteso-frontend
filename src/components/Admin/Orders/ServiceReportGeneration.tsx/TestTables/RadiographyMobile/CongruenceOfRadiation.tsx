@@ -31,9 +31,14 @@ interface Props {
   serviceId: string;
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
+  refreshKey?: number;
+  initialData?: {
+    techniqueFactors?: TechniqueRow[];
+    congruenceMeasurements?: { dimension: string; observedShift: string; edgeShift: string; tolerance: string; remark: string }[];
+  } | null;
 }
 
-const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved }) => {
+const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -89,6 +94,11 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
   };
 
   useEffect(() => {
+    // If we have uploaded Excel data, don't overwrite it by reloading from API
+    if (initialData) {
+      setIsLoading(false);
+      return;
+    }
     const load = async () => {
       if (!serviceId) return;
       setIsLoading(true);
@@ -135,7 +145,33 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       }
     };
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, refreshKey, initialData]);
+
+  // Pre-fill from Excel initialData
+  useEffect(() => {
+    if (!initialData) return;
+    if (initialData.techniqueFactors?.length) {
+      setTechniqueRows(initialData.techniqueFactors.map((t, i) => ({
+        id: String(i + 1),
+        fcd: String(t.fcd ?? ''),
+        kv: String(t.kv ?? ''),
+        mas: String(t.mas ?? ''),
+      })));
+    }
+    if (initialData.congruenceMeasurements?.length) {
+      setCongruenceRows(initialData.congruenceMeasurements.map((r, i) => ({
+        id: i === 0 ? 'x' : i === 1 ? 'y' : String(i + 1),
+        dimension: r.dimension || '',
+        observedShift: String(r.observedShift ?? ''),
+        edgeShift: String(r.edgeShift ?? ''),
+        percentFED: '',
+        tolerance: String(r.tolerance ?? '2'),
+        remark: (r.remark as any) || '',
+      })));
+    }
+    setIsSaved(false);
+    setIsEditing(true);
+  }, [initialData]);
 
   const handleSave = async () => {
     if (!serviceId) return toast.error("Service ID missing");

@@ -289,6 +289,26 @@ const ViewServiceReportBMD: React.FC = () => {
           let transformedTotalFiltration = null;
           if (data.totalFiltration) {
             transformedTotalFiltration = data.totalFiltration;
+
+            // For BMD, accuracyOfOperatingPotential is captured via the Total Filtration table's 'measurements'.
+            // Map it if accuracyOfOperatingPotential is missing.
+            if (!transformedAccuracyOfOperatingPotential && data.totalFiltration.measurements && data.totalFiltration.measurements.length > 0) {
+              transformedAccuracyOfOperatingPotential = {
+                rows: data.totalFiltration.measurements.map((m: any) => ({
+                  appliedKvp: m.appliedKvp,
+                  setTime: "",
+                  avgKvp: m.averageKvp || "",
+                  avgTime: "",
+                  remark: m.remarks || "-",
+                  measuredValues: m.measuredValues || [],
+                })),
+                mAStations: data.totalFiltration.mAStations || ["50 mA", "100 mA"],
+                kvpToleranceSign: data.totalFiltration.tolerance?.sign || "±",
+                kvpToleranceValue: data.totalFiltration.tolerance?.value || "2.0",
+                timeToleranceSign: "±",
+                timeToleranceValue: "10"
+              };
+            }
           }
 
           setTestData({

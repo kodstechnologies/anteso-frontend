@@ -3,7 +3,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyFixed, getRadiationProfileWidthByServiceId } from "../../../../../../api";
+import toast from "react-hot-toast";
+import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyFixed, getRadiationProfileWidthByServiceId, proxyFile } from "../../../../../../api";
+import * as XLSX from "xlsx";
+import { CloudArrowUpIcon } from "@heroicons/react/24/outline";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -44,7 +47,7 @@ interface DetailsResponse {
   qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null }> = ({ serviceId, qaTestDate }) => {
+const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -57,6 +60,12 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
   const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
   const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
+
+  // Excel/CSV State
+  const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
+  const [csvDataVersion, setCsvDataVersion] = useState(0);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     customerName: "",
@@ -249,6 +258,551 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // --- CSV/Excel Logic ---
+
+  const parseCSV = (text: string): any[] => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return [];
+
+    const parseLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
+
+    const rawHeaders = parseLine(lines[0]);
+    // Normalize: if first column is 'Field Name' (mobile template), treat it as 'Key'
+    const headers = rawHeaders.map(h => h.trim() === 'Field Name' ? 'Key' : h.trim() === 'Description / Instructions' ? 'Description' : h);
+    const data: any[] = [];
+    let currentTestName = '';
+
+    const sectionMap: { [key: string]: string } = {
+      '========== DEVICE DETAILS ==========': 'Device Details',
+      '========== CONGRUENCE OF RADIATION ==========': 'Congruence Of Radiation',
+      '========== CENTRAL BEAM ALIGNMENT ==========': 'Central Beam Alignment',
+      '========== EFFECTIVE FOCAL SPOT ==========': 'Effective Focal Spot',
+      '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy Of Irradiation Time',
+      '========== TOTAL FILTRATION ==========': 'Total Filtration',
+      // Template uses these exact headers:
+      '========== ACCURACY OF OPERATING POTENTIAL (KVP) ==========': 'Accuracy Of Operating Potential',
+      '========== LINEARITY OF MAS LOADING STATIONS ==========': 'Linearity Of mA Loading',
+      '========== OUTPUT CONSISTENCY ==========': 'Consistency Of Radiation Output',
+      // Legacy / alternate headers
+      '========== LINEARITY OF MA LOADING ==========': 'Linearity Of mA Loading',
+      '========== LINEARITY OF MAS LOADING ==========': 'Linearity Of mAs Loading',
+      '========== CONSISTENCY OF RADIATION OUTPUT ==========': 'Consistency Of Radiation Output',
+      '========== RADIATION LEAKAGE LEVEL ==========': 'Radiation Leakage Level',
+      '========== RADIATION PROTECTION SURVEY ==========': 'Radiation Protection Survey',
+    };
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseLine(lines[i]);
+      const row: any = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+
+      const key = (row['Key'] || '').trim();
+      if (key.startsWith('==========') && key.endsWith('==========')) {
+        currentTestName = sectionMap[key.toUpperCase()] || '';
+        continue;
+      }
+
+      if (currentTestName) {
+        row['Test Name'] = currentTestName;
+        data.push(row);
+      }
+    }
+    return data;
+  };
+
+  const processCSVData = async (csvData: any[]) => {
+    try {
+      setCsvUploading(true);
+      const groupedData: { [key: string]: any[] } = {};
+
+      csvData.forEach(row => {
+        const testName = row['Test Name'];
+        if (testName) {
+          if (!groupedData[testName]) groupedData[testName] = [];
+          groupedData[testName].push(row);
+        }
+      });
+
+      const newDataForComponents: any = {};
+
+      // Device Details
+      if (groupedData['Device Details']) {
+        const details = groupedData['Device Details'];
+        setFormData(prev => {
+          const updated = { ...prev };
+          details.forEach(row => {
+            const key = row['Key'];
+            const val = row['Value'];
+            if (key in updated) (updated as any)[key] = val;
+          });
+          return updated;
+        });
+      }
+
+      // Congruence
+      if (groupedData['Congruence Of Radiation']) {
+        const data = groupedData['Congruence Of Radiation'];
+        const techniqueFactors: any[] = [];
+        const measurements: any[] = [];
+        data.forEach(row => {
+          const key = row['Key'];
+          const val = row['Value'];
+          const idx = parseInt(row['Index']) || 0;
+          if (key.startsWith('TechniqueFactors_')) {
+            if (!techniqueFactors[idx]) techniqueFactors[idx] = {};
+            techniqueFactors[idx][key.split('_')[1]] = val;
+          } else if (key.startsWith('Measurement_')) {
+            if (!measurements[idx]) measurements[idx] = {};
+            measurements[idx][key.split('_')[1]] = val;
+          }
+        });
+        newDataForComponents.congruence = { techniqueFactors, congruenceMeasurements: measurements };
+      }
+
+      // Central Beam Alignment
+      if (groupedData['Central Beam Alignment']) {
+        const data = groupedData['Central Beam Alignment'];
+        const tech: any = {};
+        const obs: any = {};
+        const tol: any = {};
+        data.forEach(row => {
+          const key = row['Key'];
+          const val = row['Value'];
+          if (key.startsWith('TechniqueFactors_')) tech[key.split('_')[1]] = val;
+          else if (key.startsWith('ObservedTilt_')) obs[key.split('_')[1]] = val;
+          else if (key.startsWith('Tolerance_')) tol[key.split('_')[1]] = val;
+        });
+        newDataForComponents.centralBeamAlignment = { techniqueFactors: tech, observedTilt: obs, tolerance: tol };
+      }
+
+      // Focal Spot
+      if (groupedData['Effective Focal Spot']) {
+        const data = groupedData['Effective Focal Spot'];
+        let fcd = '100';
+        const tol: any = {};
+        const spots: any[] = [];
+        data.forEach(row => {
+          const key = row['Key'];
+          const val = row['Value'];
+          const idx = parseInt(row['Index']) || 0;
+          if (key === 'FCD') fcd = val;
+          else if (key.startsWith('ToleranceCriteria_')) tol[key.split('_')[1]] = val;
+          else if (key.startsWith('FocalSpot_')) {
+            if (!spots[idx]) spots[idx] = {};
+            spots[idx][key.split('_')[1]] = val;
+          }
+        });
+        newDataForComponents.effectiveFocalSpot = { fcd, toleranceCriteria: tol, focalSpots: spots };
+      }
+
+      // Accuracy Of Irradiation Time
+      if (groupedData['Accuracy Of Irradiation Time']) {
+        const data = groupedData['Accuracy Of Irradiation Time'];
+        const cond: any = {};
+        const times: any[] = [];
+        const tol: any = {};
+        data.forEach(row => {
+          const key = row['Key'];
+          const val = row['Value'];
+          const idx = parseInt(row['Index']) || 0;
+          if (key.startsWith('TestConditions_')) cond[key.split('_')[1]] = val;
+          else if (key.startsWith('IrradiationTime_')) {
+            if (!times[idx]) times[idx] = {};
+            const field = key.split('_')[1]; // setTime or measuredTime
+            times[idx][field] = val;
+          }
+          else if (key.startsWith('Tolerance_')) tol[key.split('_')[1]] = val;
+        });
+        newDataForComponents.accuracyOfIrradiationTime = { testConditions: cond, irradiationTimes: times, tolerance: tol };
+      }
+
+      // Accuracy of Operating Potential (kVp) — from template section
+      if (groupedData['Accuracy Of Operating Potential']) {
+        const data = groupedData['Accuracy Of Operating Potential'];
+        const measHeaders: string[] = [];
+        const kVpMeasurements: any[] = [];
+        const tol: any = {};
+        const total: any = {};
+        let currentBlock: any = null;
+        data.forEach(row => {
+          const key = (row['Key'] || '').trim();
+          const val = (row['Value'] || '').trim();
+          if (key === 'MeasHeader') {
+            measHeaders.push(val);
+          } else if (key === 'Measurement_AppliedKvp') {
+            // Start a new measurement block
+            currentBlock = { setKV: val, measurements: [] };
+            kVpMeasurements.push(currentBlock);
+          } else if (key.startsWith('Measurement_Meas') && currentBlock) {
+            currentBlock.measurements.push(val);
+          } else if (key.startsWith('Tolerance_')) {
+            tol[key.split('_')[1]] = val;
+          } else if (key.startsWith('TotalFiltration_')) {
+            total[key.split('_')[1]] = val;
+          }
+        });
+        // Convert to table2 format for AccuracyOfOperatingPotential component
+        const table2 = kVpMeasurements.map(block => {
+          const row: any = { setKV: block.setKV };
+          if (block.measurements[0] !== undefined) row.ma10 = block.measurements[0];
+          if (block.measurements[1] !== undefined) row.ma100 = block.measurements[1];
+          if (block.measurements[2] !== undefined) row.ma200 = block.measurements[2];
+          return row;
+        });
+        // Also store in totalFiltration format for TotalFilteration component
+        const tfMeasurements = kVpMeasurements.map(block => ({
+          appliedKvp: block.setKV,
+          measuredValues: block.measurements,
+        }));
+        const tfTotalFiltration = {
+          measured: total.Measured || total.measured || '',
+          required: total.Required || total.required || '',
+          atKvp: total.AtKvp || total.atKvp || '',
+        };
+        newDataForComponents.totalFiltration = {
+          mAStations: measHeaders,
+          measurements: tfMeasurements,
+          tolerance: { sign: tol.Sign || tol.sign || '±', value: tol.Value || tol.value || '2.0' },
+          totalFiltration: tfTotalFiltration,
+        };
+      }
+
+      // Total Filtration / Accuracy of kVp (template: mAStations, Measurement_appliedKvp, Measurement_measuredValue1/2/3, TotalFiltration_*)
+      if (groupedData['Total Filtration']) {
+        const data = groupedData['Total Filtration'];
+        const ma: string[] = [];
+        const meas: any[] = [];
+        const tol: any = {};
+        const total: any = {};
+        let currentMeasIdx = -1;
+        let currentMeas: any = null;
+        data.forEach(row => {
+          const key = (row['Key'] || '').trim();
+          const val = (row['Value'] || '').trim();
+          const idx = parseInt(row['Index']) || 0;
+          if (key === 'mAStations') {
+            if (!ma.includes(val)) ma.push(val);
+          } else if (key === 'Measurement_appliedKvp') {
+            currentMeasIdx++;
+            currentMeas = { appliedKvp: val, measuredValues: [] };
+            meas[currentMeasIdx] = currentMeas;
+          } else if (key.startsWith('Measurement_measuredValue') && currentMeas) {
+            const m = key.match(/^Measurement_measuredValue(\d+)$/);
+            if (m) {
+              const mIdx = parseInt(m[1]) - 1;
+              while (currentMeas.measuredValues.length <= mIdx) currentMeas.measuredValues.push('');
+              currentMeas.measuredValues[mIdx] = val;
+            }
+          } else if (key.startsWith('Measurement_')) {
+            if (!meas[idx]) meas[idx] = { appliedKvp: '', measuredValues: [] };
+            const field = key.split('_')[1];
+            const measMatch = field.match(/^Meas(\d+)$/);
+            const measValMatch = field.match(/^measuredValue(\d+)$/);
+            if (measMatch) {
+              const mIdx = parseInt(measMatch[1]) - 1;
+              meas[idx].measuredValues[mIdx] = val;
+            } else if (measValMatch) {
+              const mIdx = parseInt(measValMatch[1]) - 1;
+              while (meas[idx].measuredValues.length <= mIdx) meas[idx].measuredValues.push('');
+              meas[idx].measuredValues[mIdx] = val;
+            } else {
+              meas[idx][field] = val;
+            }
+          } else if (key.startsWith('Tolerance_')) tol[key.split('_')[1]] = val;
+          else if (key.startsWith('TotalFiltration_')) total[key.split('_')[1]] = val;
+        });
+        newDataForComponents.totalFiltration = {
+          mAStations: ma.length ? ma : ['50', '100'],
+          measurements: meas.filter(Boolean),
+          tolerance: { sign: tol.Sign || tol.sign || '±', value: tol.Value || tol.value || '2.0' },
+          totalFiltration: { measured: total.Measured || total.measured || '', required: total.Required || total.required || '', atKvp: total.AtKvp || total.atKvp || '' },
+        };
+      }
+
+      // Linearity of mA Loading (template: LINEARITY OF MA LOADING — ExposureCondition_*, Table2_mAApplied, Table2_measuredOutput1/2)
+      if (groupedData['Linearity Of mA Loading']) {
+        const data = groupedData['Linearity Of mA Loading'];
+        const cond: any = {};
+        const rows: any[] = [];
+        let tol = '';
+        let tolOp = '<=';
+        let currentRow: any = null;
+        let currentRowIdx = -1;
+        data.forEach(row => {
+          const key = (row['Key'] || '').trim();
+          const val = (row['Value'] || '').trim();
+          const idx = parseInt(row['Index']) || 0;
+          if (key.startsWith('ExposureCondition_')) {
+            cond[key.split('_')[1]] = val;
+          } else if (key.startsWith('Table1_')) {
+            cond[key.split('_')[1]] = val;
+          } else if (key === 'Table2_mAApplied' || key === 'Table2_mAsApplied') {
+            currentRowIdx++;
+            currentRow = { mAApplied: val, measuredOutputs: [] };
+            rows[currentRowIdx] = currentRow;
+          } else if ((key.startsWith('Table2_measuredOutput') || key.startsWith('Table2_Meas')) && currentRow) {
+            const m1 = key.match(/^Table2_measuredOutput(\d+)$/);
+            const m2 = key.match(/^Table2_Meas(\d+)$/);
+            const mIdx = m1 ? parseInt(m1[1]) - 1 : m2 ? parseInt(m2[1]) - 1 : -1;
+            if (mIdx >= 0) {
+              while (currentRow.measuredOutputs.length <= mIdx) currentRow.measuredOutputs.push('');
+              currentRow.measuredOutputs[mIdx] = val;
+            }
+          } else if (key.startsWith('Table2_')) {
+            if (!rows[idx]) rows[idx] = { mAApplied: '', measuredOutputs: [] };
+            const field = key.split('_')[1];
+            const measMatch = field.match(/^Meas(\d+)$/);
+            if (measMatch) {
+              const mIdx = parseInt(measMatch[1]) - 1;
+              rows[idx].measuredOutputs[mIdx] = val;
+            } else {
+              rows[idx][field] = val;
+            }
+          } else if (key === 'Tolerance') {
+            tol = val;
+          } else if (key === 'ToleranceOperator') {
+            tolOp = val;
+          } else if (key.startsWith('Tolerance_')) {
+            if (key === 'Tolerance_value') tol = val;
+            else if (key === 'Tolerance_operator') tolOp = val;
+          }
+        });
+        newDataForComponents.linearityOfMaLoading = { table1: cond, table2: rows.filter(Boolean), tolerance: tol, toleranceOperator: tolOp };
+      }
+
+      // Linearity of mAs Loading
+      if (groupedData['Linearity Of mAs Loading']) {
+        const data = groupedData['Linearity Of mAs Loading'];
+        const cond: any = {};
+        const rows: any[] = [];
+        const tol: any = {};
+        data.forEach(row => {
+          const key = row['Key'];
+          const val = row['Value'];
+          const idx = parseInt(row['Index']) || 0;
+          if (key.startsWith('Table1_')) cond[key.split('_')[1]] = val;
+          else if (key.startsWith('Table2_')) {
+            if (!rows[idx]) rows[idx] = { measuredOutputs: [] };
+            const field = key.split('_')[1];
+            const measMatch = field.match(/^Meas(\d+)$/);
+            if (measMatch) {
+              const mIdx = parseInt(measMatch[1]) - 1;
+              rows[idx].measuredOutputs[mIdx] = val;
+            } else {
+              rows[idx][field] = val;
+            }
+          }
+          else if (key.startsWith('Tolerance_')) tol[key.split('_')[1]] = val;
+        });
+        newDataForComponents.linearityOfMasLoading = { table1: cond, table2: rows, tolerance: tol.value, toleranceOperator: tol.operator };
+      }
+
+      // Reproducibility of Radiation Output / Consistency (template: FFD, Measurement_kv, Measurement_mas, Measurement_output1/2, Tolerance)
+      if (groupedData['Consistency Of Radiation Output']) {
+        const data = groupedData['Consistency Of Radiation Output'];
+        let ffd = '100';
+        const rows: any[] = [];
+        let tol = '0.05';
+        let tolOp = '<=';
+        let currentRow: any = null;
+        let currentRowIdx = -1;
+        data.forEach(row => {
+          const key = (row['Key'] || '').trim();
+          const val = (row['Value'] || '').trim();
+          const idx = parseInt(row['Index']) || 0;
+          if (key === 'FFD') ffd = val;
+          else if (key === 'Tolerance_Value' || key === 'Tolerance_value') tol = val;
+          else if (key === 'Tolerance') tol = val;
+          else if (key === 'Tolerance_Operator' || key === 'Tolerance_operator' || key === 'ToleranceOperator') tolOp = val;
+          else if (key === 'Measurement_kv') {
+            currentRowIdx++;
+            currentRow = { kv: val, mas: '', outputs: [] };
+            rows[currentRowIdx] = currentRow;
+          } else if (key === 'Measurement_mas' && currentRow) {
+            currentRow.mas = val;
+          } else if (key.startsWith('Measurement_output') && currentRow) {
+            const m = key.match(/^Measurement_output(\d+)$/);
+            if (m) {
+              const oIdx = parseInt(m[1]) - 1;
+              while (currentRow.outputs.length <= oIdx) currentRow.outputs.push({ value: '' });
+              currentRow.outputs[oIdx] = { value: val };
+            }
+          } else if (key === 'OutputRow_kV') {
+            currentRowIdx++;
+            currentRow = { kv: val, mas: '', outputs: [] };
+            rows[currentRowIdx] = currentRow;
+          } else if (key === 'OutputRow_mAs' && currentRow) {
+            currentRow.mas = val;
+          } else if (key.startsWith('OutputRow_Meas') && currentRow) {
+            const measMatch = key.match(/^OutputRow_Meas(\d+)$/);
+            if (measMatch) {
+              const oIdx = parseInt(measMatch[1]) - 1;
+              currentRow.outputs[oIdx] = { value: val };
+            }
+          } else if (key.startsWith('OutputRow_')) {
+            if (!rows[idx]) rows[idx] = { kv: '', mas: '', outputs: [] };
+            const field = key.split('_')[1];
+            const measMatch = field.match(/^Meas(\d+)$/);
+            if (measMatch) {
+              const oIdx = parseInt(measMatch[1]) - 1;
+              rows[idx].outputs[oIdx] = { value: val };
+            } else {
+              rows[idx][field] = val;
+            }
+          }
+        });
+        data.forEach(row => {
+          if ((row['Key'] || '').trim() === 'Tolerance_Value' || (row['Key'] || '').trim() === 'Tolerance') tol = (row['Value'] || '').trim();
+        });
+        newDataForComponents.consistencyOfRadiationOutput = { ffd, outputRows: rows.filter(Boolean), tolerance: { value: tol, operator: tolOp } };
+      }
+
+      // Leakage
+      if (groupedData['Radiation Leakage Level']) {
+        const data = groupedData['Radiation Leakage Level'];
+        const set: any = {};
+        const rows: any[] = [];
+        let wl = '';
+        const tol: any = {};
+        let currentLeakage: any = null;
+        let currentLeakageIdx = -1;
+        data.forEach(row => {
+          const key = (row['Key'] || '').trim();
+          const val = (row['Value'] || '').trim();
+          const idx = parseInt(row['Index']) || 0;
+          if (key.startsWith('Settings_')) set[key.split('_')[1]] = val;
+          else if (key === 'Workload') wl = val;
+          else if (key === 'LeakageMeasurement_Location') {
+            // New leakage block
+            currentLeakageIdx++;
+            currentLeakage = { Location: val };
+            rows[currentLeakageIdx] = currentLeakage;
+          } else if (key.startsWith('LeakageMeasurement_') && currentLeakage) {
+            const field = key.split('_')[1];
+            currentLeakage[field] = val;
+          } else if (key.startsWith('Leakage_')) {
+            if (!rows[idx]) rows[idx] = {};
+            rows[idx][key.split('_')[1]] = val;
+          } else if (key === 'ToleranceValue') tol.value = val;
+          else if (key === 'ToleranceOperator') tol.operator = val;
+          else if (key.startsWith('Tolerance_')) tol[key.split('_')[1]] = val;
+        });
+        newDataForComponents.radiationLeakageLevel = { settings: set, leakageMeasurements: rows.filter(Boolean), workload: wl, toleranceValue: tol.value, toleranceOperator: tol.operator, toleranceTime: tol.time };
+      }
+
+      // Survey
+      if (groupedData['Radiation Protection Survey']) {
+        const data = groupedData['Radiation Protection Survey'];
+        let date = '';
+        let curr = '';
+        let volt = '';
+        let time = '';
+        let wl = '';
+        const locs: any[] = [];
+        data.forEach(row => {
+          const key = row['Key'];
+          const val = row['Value'];
+          const idx = parseInt(row['Index']) || 0;
+          if (key === 'surveyDate') date = val;
+          else if (key === 'appliedCurrent') curr = val;
+          else if (key === 'appliedVoltage') volt = val;
+          else if (key === 'exposureTime') time = val;
+          else if (key === 'workload') wl = val;
+          else if (key.startsWith('Location_')) {
+            if (!locs[idx]) locs[idx] = {};
+            locs[idx][key.split('_')[1]] = val;
+          }
+        });
+        newDataForComponents.radiationProtectionSurvey = { surveyDate: date, appliedCurrent: curr, appliedVoltage: volt, exposureTime: time, workload: wl, locations: locs };
+      }
+
+      console.log('[CSV Debug] groupedData keys:', Object.keys(groupedData));
+      console.log('[CSV Debug] newDataForComponents:', JSON.stringify(newDataForComponents, null, 2));
+      setCsvDataForComponents(newDataForComponents);
+      setCsvDataVersion(v => v + 1);
+      toast.success('Excel data processed successfully!');
+    } catch (err: any) {
+      toast.error('Failed to process Excel data');
+      console.error(err);
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
+  const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.match(/\.(csv|xlsx|xls)$/)) {
+      toast.error('Please upload a CSV or Excel file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const arrayBuffer = e.target?.result as ArrayBuffer;
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const csv = XLSX.utils.sheet_to_csv(worksheet);
+        const csvData = parseCSV(csv);
+        await processCSVData(csvData);
+      } catch (error: any) {
+        toast.error('Failed to read file');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Auto-upload from CSV/Excel file URL (passed from ServiceDetails2 when status is complete)
+  // Uses proxyFile so the request is authenticated and avoids CORS/401 redirect to login
+  useEffect(() => {
+    if (!csvFileUrl) return;
+    const autoLoad = async () => {
+      try {
+        setCsvUploading(true);
+        toast.loading('Auto-loading Excel data from file...', { id: 'auto-load' });
+        const response = await proxyFile(csvFileUrl);
+        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+        const arrayBuffer = await blob.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const ws = workbook.Sheets[workbook.SheetNames[0]];
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        const parsed = parseCSV(csv);
+        await processCSVData(parsed);
+        toast.success('Excel data auto-loaded!', { id: 'auto-load' });
+      } catch (err: any) {
+        console.error('Auto-upload failed:', err);
+        toast.error(err?.message || 'Failed to auto-load Excel data', { id: 'auto-load' });
+      } finally {
+        setCsvUploading(false);
+      }
+    };
+    autoLoad();
+  }, [csvFileUrl]);
+
   // In RadioFluro.tsx - handleSaveHeader function
   const handleSaveHeader = async () => {
     setSaving(true);
@@ -347,9 +901,39 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
 
   return (
     <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
-      <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
-        Generate Radiography (Fixed) QA Test Report
-      </h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Generate Radiography (Fixed) QA Test Report
+        </h1>
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <button
+            onClick={() => {
+              const templateName = hasTimer
+                ? 'RadiographyFixed_Template_WithTimer.csv'
+                : 'RadiographyFixed_Template_NoTimer.csv';
+              window.open(`/templates/${templateName}`, '_blank');
+            }}
+            className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium border border-blue-200"
+          >
+            Download Template
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={csvUploading}
+            className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition text-sm font-medium border border-green-200 disabled:opacity-50"
+          >
+            <CloudArrowUpIcon className="h-4 w-4" />
+            {csvUploading ? 'Uploading...' : 'Import Excel'}
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleCSVUpload}
+            accept=".csv,.xlsx,.xls"
+            className="hidden"
+          />
+        </div>
+      </div>
 
       {/* Customer Info */}
       <section className="mb-10 bg-gray-50 p-6 rounded-lg">
@@ -496,49 +1080,64 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             component: (
               <CongruenceOfRadiation
                 serviceId={serviceId}
+                initialData={csvDataForComponents.congruence}
+                csvDataVersion={csvDataVersion}
               />
             ),
           },
-          { title: "Central Beam Alignment", component: <CentralBeamAlignment serviceId={serviceId} /> },
-          { title: "Effective Focal Spot Measurement", component: <EffectiveFocalSpot serviceId={serviceId} /> },
+          {
+            title: "Central Beam Alignment",
+            component: <CentralBeamAlignment serviceId={serviceId} initialData={csvDataForComponents.centralBeamAlignment} csvDataVersion={csvDataVersion} />,
+          },
+          {
+            title: "Effective Focal Spot Measurement",
+            component: <EffectiveFocalSpot serviceId={serviceId} initialData={csvDataForComponents.effectiveFocalSpot} csvDataVersion={csvDataVersion} />,
+          },
 
           // Timer Test — Only if user said YES
           ...(hasTimer === true
             ? [
               {
                 title: "Accuracy Of Irradiation Time",
-                component: <AccuracyOfIrradiationTime serviceId={serviceId} />,
+                component: <AccuracyOfIrradiationTime serviceId={serviceId} initialData={csvDataForComponents.accuracyOfIrradiationTime} csvDataVersion={csvDataVersion} />,
               },
             ]
             : []),
 
-          { title: "Accuracy Of Operating Potential & Total Filtration", component: <TotalFilteration serviceId={serviceId} /> },
+          {
+            title: "Accuracy Of Operating Potential & Total Filtration",
+            component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration} csvDataVersion={csvDataVersion} />,
+          },
 
           // Linearity Test — Conditional
           ...(hasTimer === true
             ? [
               {
                 title: "Linearity Of mA Loading",
-                component: <LinearityOfMaLoading serviceId={serviceId} />,
+                component: <LinearityOfMaLoading serviceId={serviceId} initialData={csvDataForComponents.linearityOfMaLoading} csvDataVersion={csvDataVersion} />,
               },
             ]
             : hasTimer === false
               ? [
                 {
                   title: "Linearity Of mAs Loading",
-                  component: <LinearityOfMasLoading serviceId={serviceId} />,
+                  component: <LinearityOfMasLoading serviceId={serviceId} initialData={csvDataForComponents.linearityOfMasLoading} csvDataVersion={csvDataVersion} />,
                 },
               ]
               : []),
 
-          { title: "Output Consistency", component: <ConsistencyOfRadiationOutput serviceId={serviceId} /> },
-
-          { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} /> },
+          {
+            title: "Output Consistency",
+            component: <ConsistencyOfRadiationOutput serviceId={serviceId} initialData={csvDataForComponents.consistencyOfRadiationOutput} csvDataVersion={csvDataVersion} />,
+          },
+          {
+            title: "Tube Housing Leakage",
+            component: <RadiationLeakageLevel serviceId={serviceId} initialData={csvDataForComponents.radiationLeakageLevel} csvDataVersion={csvDataVersion} />,
+          },
           {
             title: "Details Of Radiation Protection Survey of the Installation",
-            component: <RadiationProtectionSurvey serviceId={serviceId} />,
+            component: <RadiationProtectionSurvey serviceId={serviceId} initialData={csvDataForComponents.radiationProtectionSurvey} csvDataVersion={csvDataVersion} />,
           },
-          // { title: "Equipment Setting", component: <EquipementSetting serviceId={serviceId} /> },
         ].map((item, i) => (
           <Disclosure key={i} defaultOpen={i === 0}>
             {({ open }) => (

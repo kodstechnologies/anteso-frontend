@@ -29,13 +29,21 @@ interface LeakageRow {
   remark: string;
 }
 
-interface Props {
+interface RadiationLeakageLevelProps {
   serviceId: string;
-  testId?: string;
+  testId?: string | null;
   onRefresh?: () => void;
+  onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
-export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, onRefresh }: Props) {
+export default function RadiationLeakageLevelFromXRay({
+  serviceId,
+  testId: propTestId,
+  onRefresh,
+  onTestSaved,
+  csvData
+}: RadiationLeakageLevelProps) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Fixed rows
@@ -194,6 +202,48 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     load();
   }, [serviceId]);
 
+  // === CSV Injection ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      const ffdVal = csvData.find(r => r['Field Name'] === 'FFD')?.['Value'];
+      const kvpVal = csvData.find(r => r['Field Name'] === 'kVp')?.['Value'];
+      const maVal = csvData.find(r => r['Field Name'] === 'mA')?.['Value'];
+      const timeVal = csvData.find(r => r['Field Name'] === 'Time')?.['Value'];
+
+      if (ffdVal || kvpVal || maVal || timeVal) {
+        setSettings(prev => ({
+          ffd: ffdVal || prev.ffd,
+          kvp: kvpVal || prev.kvp,
+          ma: maVal || prev.ma,
+          time: timeVal || prev.time
+        }));
+      }
+
+      const workloadVal = csvData.find(r => r['Field Name'] === 'Workload')?.['Value'];
+      if (workloadVal) setWorkload(workloadVal);
+
+      const rowIdx = csvData.find(r => r['Field Name'] === 'Location' && r['Value'] === 'Tube')?.['Row Index'];
+      if (rowIdx !== undefined) {
+        const rowData = csvData.filter(r => r['Row Index'] === rowIdx);
+        const left = rowData.find(r => r['Field Name'] === 'Left')?.['Value'] || '';
+        const right = rowData.find(r => r['Field Name'] === 'Right')?.['Value'] || '';
+        const top = rowData.find(r => r['Field Name'] === 'Top')?.['Value'] || '';
+        const up = rowData.find(r => r['Field Name'] === 'Up')?.['Value'] || '';
+        const down = rowData.find(r => r['Field Name'] === 'Down')?.['Value'] || '';
+
+        setLeakageRows([{
+          location: 'Tube',
+          left, right, top, up, down,
+          max: '',
+          unit: 'mGy/h',
+          remark: ''
+        }]);
+      }
+
+      if (!testId) setIsEditing(true);
+    }
+  }, [csvData, testId]);
+
   // === Save / Update ===
   const handleSave = async () => {
     if (!isFormValid) return;
@@ -236,6 +286,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         const newTestId = res?.data?.testId || res?.data?._id;
         if (newTestId) {
           setTestId(newTestId);
+          onTestSaved?.(newTestId);
         }
         toast.success('Saved successfully!');
       }
@@ -452,10 +503,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                 <td className="px-4 py-2">
                   <span
                     className={`inline-block w-full px-2 py-1 text-sm text-center font-medium rounded ${finalRemark === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : finalRemark === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100'
+                      ? 'bg-green-100 text-green-800'
+                      : finalRemark === 'Fail'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100'
                       }`}
                   >
                     {finalRemark || '—'}
@@ -550,10 +601,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving || (!isViewMode && !isFormValid)}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (

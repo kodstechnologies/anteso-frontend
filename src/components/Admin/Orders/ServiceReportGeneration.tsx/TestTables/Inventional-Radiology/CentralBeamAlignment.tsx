@@ -27,9 +27,10 @@ interface Props {
   testId?: string | null;
   tubeId?: string | null;
   onTestSaved?: (testId: string) => void;
+  csvData?: any[];
 }
 
-const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved }) => {
+const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -111,6 +112,36 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
     };
     load();
   }, [serviceId, propTestId, tubeId]);
+
+  // CSV Data Injection
+  useEffect(() => {
+    if (csvData && csvData.length > 0) {
+      // Technique Factors
+      const tKv = csvData.find(r => r['Field Name'] === 'Table1_kv')?.['Value'];
+      const tMa = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
+      const tTime = csvData.find(r => r['Field Name'] === 'Table1_time')?.['Value'];
+
+      if (tKv || tMa || tTime) {
+        setTechniqueRow(prev => ({
+          ...prev,
+          kv: tKv || prev.kv,
+          mas: tMa || prev.mas, // Mapping mA/mSec logic might be needed but for now simple mapping
+        }));
+      }
+
+      // Observed Tilt
+      const tilt = csvData.find(r => r['Field Name'] === 'Table2_Result')?.['Value'];
+      if (tilt) setObservedTilt(tilt);
+
+      // Tolerance
+      const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+      if (tol) setToleranceValue(tol);
+
+      if (!testId) {
+        setIsEditing(true);
+      }
+    }
+  }, [csvData, testId]);
 
   const updateTechnique = (field: keyof TechniqueRow, value: string) => {
     setTechniqueRow(prev => ({ ...prev, [field]: value }));

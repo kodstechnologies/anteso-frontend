@@ -20,9 +20,9 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     toleranceRowSpan: boolean = false
   ) => {
     if (testRows.length === 0) return;
-    
+
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
-    
+
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null,
@@ -58,7 +58,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
           const appliedKvp = parseFloat(row.appliedKvp || row.appliedkVp) || 0;
           const avgKvp = parseFloat(row.avgKvp) || 0;
           let isPass = false;
-          
+
           if (row.remark === "PASS" || row.remark === "Pass") {
             isPass = true;
           } else if (row.remark === "FAIL" || row.remark === "Fail") {
@@ -68,7 +68,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
             const tol = parseFloat(toleranceValue);
             isPass = deviation <= tol;
           }
-          
+
           return {
             specified: row.appliedKvp || row.appliedkVp || "-",
             measured: row.avgKvp || "-",
@@ -81,56 +81,24 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 2. Total Filtration (if available)
+  // 2. Total Filtration
   if (testData.totalFiltration && !isEmpty(testData.totalFiltration)) {
     const test = testData.totalFiltration;
-    if (test.measurements && Array.isArray(test.measurements) && test.measurements.length > 0) {
-      const validMeasurements = test.measurements.filter((m: any) => m.appliedKvp || m.averageKvp);
-      if (validMeasurements.length > 0) {
-        // Clean tolerance sign to remove encoding issues (e.g., "Â±" -> "±")
-        let toleranceSign = test.tolerance?.sign || "±";
-        // Remove encoding artifacts like "Â" before "±"
-        toleranceSign = toleranceSign.replace(/Â/g, '').trim();
-        // Normalize to standard symbols
-        if (toleranceSign.includes('±') || toleranceSign === '\u00B1') {
-          toleranceSign = "±";
-        } else if (toleranceSign.includes('+')) {
-          toleranceSign = "+";
-        } else if (toleranceSign.includes('-')) {
-          toleranceSign = "-";
-        } else {
-          toleranceSign = "±"; // Default
+    if (test.totalFiltration) {
+      const tf = test.totalFiltration;
+      if (tf.measured || tf.required || tf.atKvp) {
+        let isPass = false;
+        let remark = "Fail";
+        if (tf.measured && tf.required) {
+          isPass = parseFloat(tf.measured) >= parseFloat(tf.required);
+          remark = isPass ? "Pass" : "Fail";
         }
-        const toleranceValue = test.tolerance?.value || "2.0";
-        const testRows = validMeasurements.map((m: any) => {
-          const appliedKvp = parseFloat(m.appliedKvp) || 0;
-          const avgKvp = parseFloat(m.averageKvp) || 0;
-          let isPass = false;
-          
-          if (m.remarks === "PASS" || m.remarks === "Pass") {
-            isPass = true;
-          } else if (m.remarks === "FAIL" || m.remarks === "Fail") {
-            isPass = false;
-          } else if (appliedKvp > 0 && avgKvp > 0) {
-            // Check if average kVp is within tolerance
-            const deviation = Math.abs(avgKvp - appliedKvp);
-            const tol = parseFloat(toleranceValue);
-            if (toleranceSign === "±") {
-              isPass = deviation <= tol;
-            } else if (toleranceSign === "+") {
-              isPass = (avgKvp - appliedKvp) <= tol;
-            } else if (toleranceSign === "-") {
-              isPass = (appliedKvp - avgKvp) <= tol;
-            }
-          }
-          
-          return {
-            specified: m.appliedKvp || "-",
-            measured: m.averageKvp || "-",
-            tolerance: `${toleranceSign}${toleranceValue} kV`,
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          };
-        });
+        const testRows = [{
+          specified: tf.required && tf.atKvp ? `≥ ${tf.required} mm Al at ${tf.atKvp} kVp` : "-",
+          measured: tf.measured ? `${tf.measured} mm Al` : "-",
+          tolerance: "-",
+          remarks: remark as "Pass" | "Fail",
+        }];
         addRowsForTest("Total Filtration", testRows);
       }
     }
@@ -148,7 +116,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
           const setTime = parseFloat(row.setTime) || 0;
           const avgTime = parseFloat(row.avgTime) || 0;
           let isPass = false;
-          
+
           if (row.remark === "PASS" || row.remark === "Pass") {
             isPass = true;
           } else if (row.remark === "FAIL" || row.remark === "Fail") {
@@ -158,7 +126,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
             const tol = parseFloat(toleranceValue);
             isPass = error <= tol;
           }
-          
+
           return {
             specified: row.setTime || "-",
             measured: row.avgTime || "-",
@@ -176,13 +144,13 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     const test = testData.reproducibilityOfRadiationOutput;
     // Get CoV from top-level test.cov (calculated in ViewServiceReport)
     const cv = test.cov ? parseFloat(test.cov) : null;
-    
+
     // Check if we have valid data (either cov or outputRows/measurements)
     if (cv !== null && !isNaN(cv) || (test.outputRows && Array.isArray(test.outputRows) && test.outputRows.length > 0) || (test.measurements && Array.isArray(test.measurements) && test.measurements.length > 0)) {
       const tolerance = test.tolerance || { operator: "<=", value: "5.0" };
       const tolValue = tolerance.value || "5.0";
       const tolOp = tolerance.operator || "<=";
-      
+
       let isPass = false;
       if (test.result === "Pass" || test.result === "PASS") {
         isPass = true;
@@ -196,15 +164,15 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
           isPass = cv >= tol;
         }
       }
-      
+
       // Get specified values from test data
-      const specified = test.kv && test.ma ? `${test.kv} kV, ${test.ma} mAs` : 
-                       test.kv ? `${test.kv} kV` : 
-                       test.outputRows && test.outputRows[0] ? 
-                         (test.outputRows[0].kv && test.outputRows[0].mas ? `${test.outputRows[0].kv} kV, ${test.outputRows[0].mas} mAs` : 
-                          test.outputRows[0].kv ? `${test.outputRows[0].kv} kV` : "-") : 
-                       "-";
-      
+      const specified = test.kv && test.ma ? `${test.kv} kV, ${test.ma} mAs` :
+        test.kv ? `${test.kv} kV` :
+          test.outputRows && test.outputRows[0] ?
+            (test.outputRows[0].kv && test.outputRows[0].mas ? `${test.outputRows[0].kv} kV, ${test.outputRows[0].mas} mAs` :
+              test.outputRows[0].kv ? `${test.outputRows[0].kv} kV` : "-") :
+            "-";
+
       const testRows = [{
         specified: specified,
         measured: cv !== null && !isNaN(cv) ? cv.toFixed(4) : "-",
@@ -225,7 +193,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
         const testRows = validRows.map((row: any) => {
           const coefficient = row.coefficient ? parseFloat(row.coefficient) : null;
           let isPass = false;
-          
+
           if (row.remark === "Pass" || row.remark === "PASS") {
             isPass = true;
           } else if (row.remark === "Fail" || row.remark === "FAIL") {
@@ -234,7 +202,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
             const tol = parseFloat(tolerance);
             isPass = coefficient <= tol;
           }
-          
+
           return {
             specified: row.ma ? `${row.ma} mA` : "-",
             measured: coefficient !== null ? coefficient.toFixed(3) : "-",
@@ -259,7 +227,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
         const testRows = validRows.map((row: any) => {
           const max = row.max || "-";
           let isPass = false;
-          
+
           if (row.remark === "Pass" || row.remark === "PASS") {
             isPass = true;
           } else if (row.remark === "Fail" || row.remark === "FAIL") {
@@ -269,7 +237,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
             const tol = parseFloat(toleranceValue);
             isPass = maxVal <= tol;
           }
-          
+
           return {
             specified: row.location || "-",
             measured: max !== "-" ? `${max} ${row.unit || "mGy/h"}` : "-",
@@ -292,7 +260,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
   //         const mRPerWeek = loc.mRPerWeek || "-";
   //         const limit = loc.category === "worker" ? 40 : 2;
   //         let isPass = false;
-          
+
   //         if (loc.result === "PASS" || loc.result === "Pass") {
   //           isPass = true;
   //         } else if (loc.result === "FAIL" || loc.result === "Fail") {
@@ -301,7 +269,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
   //           const val = parseFloat(mRPerWeek);
   //           isPass = val <= limit;
   //         }
-          
+
   //         return {
   //           specified: loc.location || "-",
   //           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
@@ -338,10 +306,10 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
           </thead>
           <tbody>
             {rows.map((row, index) => {
-              const shouldRenderTolerance = 
-                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) || 
+              const shouldRenderTolerance =
+                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) ||
                 (row.hasToleranceRowSpan && row.isFirstRow);
-              
+
               return (
                 <tr key={index}>
                   {row.isFirstRow && (
@@ -357,7 +325,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
                   <td className="border border-black px-4 py-3 text-center bg-transparent print:bg-transparent">{row.specified}</td>
                   <td className="border border-black px-4 py-3 text-center font-semibold bg-transparent print:bg-transparent">{row.measured}</td>
                   {shouldRenderTolerance && (
-                    <td 
+                    <td
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
                       className="border border-black px-4 py-3 text-center text-xs leading-tight bg-transparent print:bg-transparent"
                     >
@@ -365,9 +333,8 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
                     </td>
                   )}
                   <td className="border border-black px-4 py-3 text-center bg-transparent print:bg-transparent">
-                    <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${
-                      row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}>
+                    <span className={`inline-block px-3 py-1 text-sm font-bold rounded ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}>
                       {row.remarks}
                     </span>
                   </td>
