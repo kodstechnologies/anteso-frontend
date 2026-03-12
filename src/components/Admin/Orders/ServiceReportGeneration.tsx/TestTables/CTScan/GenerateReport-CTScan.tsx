@@ -21,7 +21,6 @@ import {
     getLowContrastResolutionByServiceIdForCTScan,
     getHighContrastResolutionByServiceIdForCTScan,
     getRadiationProtectionSurveyByServiceIdForCTScan,
-    getAlignmentOfTableGantryByServiceIdForCTScan,
     getTablePositionByServiceIdForCTScan,
     getGantryTiltByServiceIdForCTScan,
 } from "../../../../../../api";
@@ -46,7 +45,6 @@ import LowContrastResolutionForCT from "./LowContrastResolutionForCTScan";
 // import MeasureMaxRadiationLevel from "./MeasureMaxRadiationLevel";
 import DetailsOfRadiationProtection from "./DetailsOfRadiationProtection";
 import LinearityOfMasLoading from "./LinearityOfMasLoading";
-import AlignmentOfTableGantry from "./AlignmentOfTableGantry";
 import TablePosition from "./TablePosition";
 import GantryTilt from "./GantryTilt";
 interface Standard {
@@ -274,7 +272,6 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             'Reproducibility of Radiation Output (Consistency Test)': 'Output Consistency',
             'LOW CONTRAST RESOLUTION': 'Low Contrast Resolution',
             'HIGH CONTRAST RESOLUTION': 'High Contrast Resolution',
-            'ALIGNMENT OF TABLE/GANTRY': 'Alignment of Table/Gantry',
             'TABLE POSITION': 'Table Position',
             'GANTRY TILT': 'Gantry Tilt',
             'MAXIMUM RADIATION LEVEL': 'Maximum Radiation Level',
@@ -330,9 +327,6 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             'High Contrast Resolution': {
                 'Observed Size': 'Table2_Result', 'Contrast Difference': 'Table2_Contrast',
                 'kVp': 'Table1_kvp', 'mAs': 'Table1_mAs', 'Slice Thickness': 'Table1_SliceThickness', 'WW': 'Table1_WW'
-            },
-            'Alignment of Table/Gantry': {
-                'Result': 'Table1_Result', 'Tolerance': 'Tolerance'
             },
             'Table Position': {
                 'Table Position': 'Table3_TablePosition', 'Expected': 'Table3_Expected', 'Measured': 'Table3_Measured',
@@ -678,20 +672,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 console.log('Radiation Protection Survey not found or error:', err);
             }
 
-            // 13. Alignment of Table/Gantry (only if enabled)
-            if (hasGantryTilt === true) {
-                try {
-                    const alignmentRes = await getAlignmentOfTableGantryByServiceIdForCTScan(serviceId);
-                    const alignmentData = alignmentRes?.data || alignmentRes;
-                    if (alignmentData) {
-                        exportData.alignmentTableGantry = alignmentData;
-                    }
-                } catch (err) {
-                    console.log('Alignment of Table/Gantry not found or error:', err);
-                }
-            }
-
-            // 14. Table Position
+            // 13. Table Position
             try {
                 const tablePosRes = await getTablePositionByServiceIdForCTScan(serviceId);
                 const tablePosData = tablePosRes?.data || tablePosRes;
@@ -1147,7 +1128,6 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     { title: "High Contrast Resolution", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['High Contrast Resolution']} /> },
                     { title: "Table Position", component: <TablePosition serviceId={serviceId} csvData={csvDataForComponents['Table Position']} /> },
                     ...(hasGantryTilt === true ? [
-                        { title: "Alignment of Table/Gantry", component: <AlignmentOfTableGantry serviceId={serviceId} csvData={csvDataForComponents['Alignment of Table/Gantry']} /> },
                         { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} csvData={csvDataForComponents['Gantry Tilt']} /> },
                     ] : []),
                     { title: "Maximum Radiation Level", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Maximum Radiation Level']} /> },
@@ -1200,7 +1180,6 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     { title: "Radiation Protection Survey Report", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Maximum Radiation Level']} /> },
                     { title: "Table Position", component: <TablePosition serviceId={serviceId} csvData={csvDataForComponents['Table Position']} /> },
                     ...(hasGantryTilt === true ? [
-                        { title: "Alignment of Table/Gantry", component: <AlignmentOfTableGantry serviceId={serviceId} csvData={csvDataForComponents['Alignment of Table/Gantry']} /> },
                         { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} csvData={csvDataForComponents['Gantry Tilt']} /> },
                     ] : []),
                 ] as any)

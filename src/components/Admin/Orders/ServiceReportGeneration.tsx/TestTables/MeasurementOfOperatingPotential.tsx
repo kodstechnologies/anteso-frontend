@@ -14,20 +14,14 @@ interface Table1Row {
     sliceThickness: string;
 }
 
+// mA columns are dynamic: maColumnLabels e.g. ["10", "100", "200"], row.ma keyed by label
 interface Table2Row {
     id: string;
     setKV: string;
-    ma10: string;
-    ma100: string;
-    ma200: string;
+    ma: Record<string, string>;
     avgKvp: string;
     remarks: 'Pass' | 'Fail' | '';
-    failedCells?: {
-        ma10: boolean;
-        ma100: boolean;
-        ma200: boolean;
-        avgKvp: boolean;
-    };
+    failedCells?: Record<string, boolean>;
 }
 
 interface Props {
@@ -44,9 +38,13 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
     // Table 1: Only 1 row
     const [table1Row, setTable1Row] = useState<Table1Row>({ time: '', sliceThickness: '' });
 
-    // Table 2: Dynamic rows
+    // mA column labels (addable/removable), e.g. ["10", "100", "200"]
+    const [maColumnLabels, setMaColumnLabels] = useState<string[]>(['10', '100', '200']);
+    // Table 2: Dynamic rows; each row has ma: { [label]: value }
+    const emptyMa = (labels: string[]) => labels.reduce((acc, l) => ({ ...acc, [l]: '' }), {} as Record<string, string>);
+    const emptyFailed = (labels: string[]) => ({ ...Object.fromEntries(labels.map(l => [l, false])), avgKvp: false });
     const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-        { id: '1', setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '', failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false } },
+        { id: '1', setKV: '', ma: { '10': '', '100': '', '200': '' }, avgKvp: '', remarks: '', failedCells: { '10': false, '100': false, '200': false, avgKvp: false } },
     ]);
 
     const [toleranceValue, setToleranceValue] = useState<string>('5');
@@ -58,19 +56,17 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
     const [isEditing, setIsEditing] = useState(false);
     const [hasSaved, setHasSaved] = useState(false);
 
-    // === Table 2: Add/Remove ===
+    // === Table 2: Add/Remove rows ===
     const addTable2Row = () => {
         setTable2Rows((prev) => [
             ...prev,
             {
                 id: Date.now().toString(),
                 setKV: '',
-                ma10: '',
-                ma100: '',
-                ma200: '',
+                ma: emptyMa(maColumnLabels),
                 avgKvp: '',
                 remarks: '',
-                failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false },
+                failedCells: emptyFailed(maColumnLabels),
             },
         ]);
     };
@@ -78,6 +74,35 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
     const removeTable2Row = (id: string) => {
         if (table2Rows.length <= 1) return;
         setTable2Rows((prev) => prev.filter((r) => r.id !== id));
+    };
+
+    // === mA columns: Add/Remove ===
+    const addMaColumn = () => {
+        const last = maColumnLabels[maColumnLabels.length - 1];
+        const num = Number(last);
+        const newLabel = !isNaN(num) ? String(num + (num >= 100 ? 100 : 10)) : `mA${maColumnLabels.length + 1}`;
+        setMaColumnLabels((prev) => [...prev, newLabel]);
+        setTable2Rows((prev) =>
+            prev.map((r) => ({
+                ...r,
+                ma: { ...r.ma, [newLabel]: '' },
+                failedCells: { ...(r.failedCells || {}), [newLabel]: false },
+            }))
+        );
+    };
+
+    const removeMaColumn = (index: number) => {
+        if (maColumnLabels.length <= 1) return;
+        const label = maColumnLabels[index];
+        setMaColumnLabels((prev) => prev.filter((_, i) => i !== index));
+        setTable2Rows((prev) =>
+            prev.map((r) => {
+                const { [label]: _, ...restMa } = r.ma;
+                const failed = { ...(r.failedCells || {}) };
+                delete failed[label];
+                return { ...r, ma: restMa, failedCells: failed };
+            })
+        );
     };
 
     // Helper function to check if a value is within tolerance
@@ -98,48 +123,36 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
         }
     }, [toleranceValue, toleranceType, toleranceSign]);
 
-    // Helper function to calculate row values (avg, remarks, failedCells)
+    // Helper function to calculate row values (avg, remarks, failedCells) using dynamic mA columns
     const calculateRowValues = useCallback((row: Table2Row): Table2Row => {
         const setKV = parseFloat(row.setKV);
+        const labels = maColumnLabels;
         if (isNaN(setKV) || setKV <= 0) {
-            return { ...row, avgKvp: '', remarks: '', failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false } };
+            return { ...row, avgKvp: '', remarks: '', failedCells: emptyFailed(labels) };
         }
 
-        // Check each mA value individually
-        const ma10Value = parseFloat(row.ma10);
-        const ma100Value = parseFloat(row.ma100);
-        const ma200Value = parseFloat(row.ma200);
-
-        const ma10Pass = isNaN(ma10Value) || checkTolerance(ma10Value, setKV);
-        const ma100Pass = isNaN(ma100Value) || checkTolerance(ma100Value, setKV);
-        const ma200Pass = isNaN(ma200Value) || checkTolerance(ma200Value, setKV);
-
-        // Calculate average
-        const values = [ma10Value, ma100Value, ma200Value]
-            .filter((v) => !isNaN(v));
+        const failedCells: Record<string, boolean> = {};
+        let allPass = true;
+        const values: number[] = [];
+        for (const label of labels) {
+            const val = parseFloat(row.ma[label] ?? '');
+            const pass = isNaN(val) || checkTolerance(val, setKV);
+            failedCells[label] = !isNaN(val) && !pass;
+            if (!pass) allPass = false;
+            if (!isNaN(val)) values.push(val);
+        }
         const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
-
-        // Check average value
         const avgPass = avg === '' || checkTolerance(parseFloat(avg), setKV);
-
-        // Determine failed cells
-        const failedCells = {
-            ma10: !isNaN(ma10Value) && !ma10Pass,
-            ma100: !isNaN(ma100Value) && !ma100Pass,
-            ma200: !isNaN(ma200Value) && !ma200Pass,
-            avgKvp: avg !== '' && !avgPass,
-        };
-
-        // Overall pass/fail: if any cell fails, the entire row fails
-        const overallPass = ma10Pass && ma100Pass && ma200Pass && avgPass;
+        failedCells.avgKvp = avg !== '' && !avgPass;
+        if (!avgPass) allPass = false;
 
         return {
             ...row,
             avgKvp: avg,
-            remarks: overallPass ? 'Pass' : 'Fail',
+            remarks: allPass ? 'Pass' : 'Fail',
             failedCells,
         };
-    }, [checkTolerance]);
+    }, [checkTolerance, maColumnLabels]);
 
     // === Auto-calculate Avg & Pass/Fail when tolerance settings change ===
     useEffect(() => {
@@ -148,16 +161,15 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
         );
     }, [calculateRowValues]);
 
-    const updateTable2 = (
-        id: string,
-        field: 'setKV' | 'ma10' | 'ma100' | 'ma200',
-        value: string
-    ) => {
+    const updateTable2 = (id: string, field: 'setKV' | string, value: string) => {
         setTable2Rows((prev) =>
             prev.map((row) => {
-                if (row.id === id) {
-                    const updatedRow = { ...row, [field]: value };
-                    return calculateRowValues(updatedRow);
+                if (row.id !== id) return row;
+                if (field === 'setKV') {
+                    return calculateRowValues({ ...row, setKV: value });
+                }
+                if (maColumnLabels.includes(field)) {
+                    return calculateRowValues({ ...row, ma: { ...row.ma, [field]: value } });
                 }
                 return row;
             })
@@ -191,24 +203,22 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
             )];
 
             if (t2Indices.length > 0) {
+                const labels = maColumnLabels;
                 const newRows = t2Indices.map(idx => {
                     const setKV = csvData.find(r => r['Field Name'] === 'Table2_SetKV' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
-                    // Try to finding specific columns first, fallback to generic Result -> ma100
-                    const ma10 = csvData.find(r => r['Field Name'] === 'Table2_ma10' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
-                    const ma100 = csvData.find(r => r['Field Name'] === 'Table2_ma100' && parseInt(r['Row Index']) === idx)?.['Value']
-                        || csvData.find(r => r['Field Name'] === 'Table2_Result' && parseInt(r['Row Index']) === idx)?.['Value']
-                        || '';
-                    const ma200 = csvData.find(r => r['Field Name'] === 'Table2_ma200' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
-
+                    const ma: Record<string, string> = {};
+                    for (const label of labels) {
+                        ma[label] = csvData.find(r => (r['Field Name'] === `Table2_ma${label}` || r['Field Name'] === `Table2_ma_${label}`) && parseInt(r['Row Index']) === idx)?.['Value']
+                            || (label === '100' ? csvData.find(r => r['Field Name'] === 'Table2_Result' && parseInt(r['Row Index']) === idx)?.['Value'] : undefined)
+                            || '';
+                    }
                     const row: Table2Row = {
                         id: Date.now().toString() + Math.random(),
                         setKV,
-                        ma10,
-                        ma100,
-                        ma200,
+                        ma,
                         avgKvp: '',
                         remarks: '',
-                        failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false }
+                        failedCells: emptyFailed(labels)
                     };
                     return calculateRowValues(row);
                 });
@@ -236,9 +246,9 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
             !!serviceId &&
             table1Row.time.trim() &&
             table1Row.sliceThickness.trim() &&
-            table2Rows.every((r) => r.setKV.trim() && (r.ma10.trim() || r.ma100.trim() || r.ma200.trim()))
+            table2Rows.every((r) => r.setKV.trim() && maColumnLabels.some((l) => (r.ma[l] || '').trim()))
         );
-    }, [serviceId, table1Row, table2Rows]);
+    }, [serviceId, table1Row, table2Rows, maColumnLabels]);
 
     // === Load Existing Data ===
     useEffect(() => {
@@ -269,19 +279,31 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                         });
                     }
 
-                    // Table 2
+                    // Table 2: support maColumnLabels + row.ma, or legacy ma10/ma100/ma200
                     if (Array.isArray(rec.table2) && rec.table2.length > 0) {
+                        const labels = Array.isArray(rec.maColumnLabels) && rec.maColumnLabels.length > 0
+                            ? rec.maColumnLabels.map((l: any) => String(l))
+                            : ['10', '100', '200'];
+                        setMaColumnLabels(labels);
                         setTable2Rows(
-                            rec.table2.map((r: any) => ({
-                                id: Date.now().toString() + Math.random(),
-                                setKV: String(r.setKV || ''),
-                                ma10: String(r.ma10 || ''),
-                                ma100: String(r.ma100 || ''),
-                                ma200: String(r.ma200 || ''),
-                                avgKvp: '',
-                                remarks: r.remarks || '',
-                                failedCells: { ma10: false, ma100: false, ma200: false, avgKvp: false },
-                            }))
+                            rec.table2.map((r: any) => {
+                                const ma: Record<string, string> = {};
+                                if (r.ma && typeof r.ma === 'object') {
+                                    labels.forEach((l: string) => { ma[l] = String(r.ma[l] ?? ''); });
+                                } else {
+                                    ma['10'] = String(r.ma10 ?? '');
+                                    ma['100'] = String(r.ma100 ?? '');
+                                    ma['200'] = String(r.ma200 ?? '');
+                                }
+                                return {
+                                    id: Date.now().toString() + Math.random(),
+                                    setKV: String(r.setKV ?? ''),
+                                    ma,
+                                    avgKvp: '',
+                                    remarks: r.remarks || '',
+                                    failedCells: emptyFailed(labels),
+                                };
+                            })
                         );
                     }
 
@@ -318,28 +340,29 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
 
         const payload = {
             table1: [table1Row],
+            maColumnLabels,
             table2: table2Rows.map((r) => {
-                const values = [r.ma10, r.ma100, r.ma200]
-                    .map(v => parseFloat(v))
-                    .filter(v => !isNaN(v));
-
+                const values = maColumnLabels
+                    .map((l) => parseFloat(r.ma[l] || ''))
+                    .filter((v) => !isNaN(v));
                 const avgKvp = values.length > 0
                     ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
                     : null;
-
                 const setKV = parseFloat(r.setKV);
                 let deviation = null;
                 if (avgKvp && !isNaN(setKV)) {
                     deviation = ((parseFloat(avgKvp) - setKV) / setKV * 100).toFixed(2);
                 }
-
+                const maObj: Record<string, number | null> = {};
+                maColumnLabels.forEach((l) => {
+                    const v = parseFloat(r.ma[l] || '');
+                    maObj[l] = isNaN(v) ? null : v;
+                });
                 return {
                     setKV: setKV,
-                    ma10: parseFloat(r.ma10) || null,
-                    ma100: parseFloat(r.ma100) || null,
-                    ma200: parseFloat(r.ma200) || null,
-                    avgKvp: avgKvp ? parseFloat(avgKvp) : null,        // ← NOW SAVED
-                    deviation: deviation ? parseFloat(deviation) : null, // ← Optional: useful for PDF
+                    ma: maObj,
+                    avgKvp: avgKvp ? parseFloat(avgKvp) : null,
+                    deviation: deviation ? parseFloat(deviation) : null,
                     remarks: r.remarks,
                 };
             }),
@@ -457,15 +480,33 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     Set kV
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
-                                    @ mA 10
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
-                                    @ mA 100
-                                </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
-                                    @ mA 200
-                                </th>
+                                {maColumnLabels.map((label, idx) => (
+                                    <th key={label} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r relative group">
+                                        @ mA {label}
+                                        {!isViewMode && maColumnLabels.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => removeMaColumn(idx)}
+                                                className="absolute -top-0.5 -right-1 p-0.5 text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded"
+                                                title="Remove mA column"
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </th>
+                                ))}
+                                {!isViewMode && (
+                                    <th className="px-2 py-3 border-r">
+                                        <button
+                                            type="button"
+                                            onClick={addMaColumn}
+                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                            title="Add mA column"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </th>
+                                )}
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                                     Avg kVp
                                 </th>
@@ -491,42 +532,20 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                                             placeholder="80"
                                         />
                                     </td>
-                                    <td className={`px-4 py-2 border-r ${row.failedCells?.ma10 ? 'bg-red-100' : ''}`}>
-                                        <input
-                                            type="text"
-                                            value={row.ma10}
-                                            onChange={(e) => updateTable2(row.id, 'ma10', e.target.value)}
-                                            disabled={isViewMode}
-                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${row.failedCells?.ma10 ? 'bg-red-50 border-red-300 text-red-700 font-semibold' : isViewMode
-                                                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                                                : 'border-gray-300'
-                                                }`}
-                                        />
-                                    </td>
-                                    <td className={`px-4 py-2 border-r ${row.failedCells?.ma100 ? 'bg-red-100' : ''}`}>
-                                        <input
-                                            type="text"
-                                            value={row.ma100}
-                                            onChange={(e) => updateTable2(row.id, 'ma100', e.target.value)}
-                                            disabled={isViewMode}
-                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${row.failedCells?.ma100 ? 'bg-red-50 border-red-300 text-red-700 font-semibold' : isViewMode
-                                                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                                                : 'border-gray-300'
-                                                }`}
-                                        />
-                                    </td>
-                                    <td className={`px-4 py-2 border-r ${row.failedCells?.ma200 ? 'bg-red-100' : ''}`}>
-                                        <input
-                                            type="text"
-                                            value={row.ma200}
-                                            onChange={(e) => updateTable2(row.id, 'ma200', e.target.value)}
-                                            disabled={isViewMode}
-                                            className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${row.failedCells?.ma200 ? 'bg-red-50 border-red-300 text-red-700 font-semibold' : isViewMode
-                                                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                                                : 'border-gray-300'
-                                                }`}
-                                        />
-                                    </td>
+                                    {maColumnLabels.map((label) => (
+                                        <td key={label} className={`px-4 py-2 border-r ${row.failedCells?.[label] ? 'bg-red-100' : ''}`}>
+                                            <input
+                                                type="text"
+                                                value={row.ma[label] ?? ''}
+                                                onChange={(e) => updateTable2(row.id, label, e.target.value)}
+                                                disabled={isViewMode}
+                                                className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${row.failedCells?.[label] ? 'bg-red-50 border-red-300 text-red-700 font-semibold' : isViewMode
+                                                    ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                                                    : 'border-gray-300'
+                                                    }`}
+                                            />
+                                        </td>
+                                    ))}
                                     <td className={`px-4 py-2 border-r font-medium text-center ${row.failedCells?.avgKvp ? 'bg-red-100 text-red-700 font-bold' : 'bg-gray-50'}`}>
                                         {row.avgKvp || '-'}
                                     </td>

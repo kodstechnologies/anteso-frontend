@@ -77,15 +77,17 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
             );
         }
 
-        // Set KV vs Measured KV Table
+        // Set KV vs Measured KV Table (dynamic mA columns)
         if (data.measurementOfOperatingPotential.table2 && data.measurementOfOperatingPotential.table2.length > 0) {
+            const maLabels = (Array.isArray(data.measurementOfOperatingPotential.maColumnLabels) && data.measurementOfOperatingPotential.maColumnLabels.length > 0)
+                ? data.measurementOfOperatingPotential.maColumnLabels
+                : ['10', '100', '200'];
+            const getMa = (row: any, l: string) => row?.ma?.[l] ?? row?.[`ma${l}`] ?? '';
             const table2Rows = data.measurementOfOperatingPotential.table2.map((row: any) => [
                 row.setKV || '',
-                row.ma10 || '',
-                row.ma100 || '',
-                row.ma200 || ''
+                ...maLabels.map((l: string) => getMa(row, l))
             ]);
-            addTable(['Set kV', '@ mA 10', '@ mA 100', '@ mA 200'], table2Rows);
+            addTable(['Set kV', ...maLabels.map((l: string) => `@ mA ${l}`)], table2Rows);
         }
 
         // Tolerance
@@ -536,14 +538,16 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
         addSection('RADIATION PROFILE WIDTH FOR CT SCAN', ['Applied', 'Measured', 'kVp', 'mA'], rows);
     }
 
-    // 2. MEASUREMENT OF OPERATING POTENTIAL
+    // 2. MEASUREMENT OF OPERATING POTENTIAL (dynamic mA columns)
     if (data.measurementOfOperatingPotential) {
         const t1 = data.measurementOfOperatingPotential.table1?.[0] || {};
+        const maLabels = (Array.isArray(data.measurementOfOperatingPotential.maColumnLabels) && data.measurementOfOperatingPotential.maColumnLabels.length > 0)
+            ? data.measurementOfOperatingPotential.maColumnLabels
+            : ['10', '100', '200'];
+        const getMa = (row: any, l: string) => row?.ma?.[l] ?? row?.[`ma${l}`] ?? '';
         const rows = (data.measurementOfOperatingPotential.table2 || []).map((row: any) => [
             row.setKV || '',
-            row.ma10 || '',
-            row.ma100 || '',
-            row.ma200 || '',
+            ...maLabels.map((l: string) => getMa(row, l)),
             t1.time || '',
             t1.sliceThickness || '',
             data.measurementOfOperatingPotential.toleranceValue || '',
@@ -551,9 +555,9 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
             data.measurementOfOperatingPotential.toleranceSign || ''
         ]);
         if (rows.length === 0 && (t1.time || t1.sliceThickness)) {
-            rows.push(['', '', '', '', t1.time, t1.sliceThickness, data.measurementOfOperatingPotential.toleranceValue || '', data.measurementOfOperatingPotential.toleranceType || '', data.measurementOfOperatingPotential.toleranceSign || '']);
+            rows.push(['', ...maLabels.map(() => ''), t1.time, t1.sliceThickness, data.measurementOfOperatingPotential.toleranceValue || '', data.measurementOfOperatingPotential.toleranceType || '', data.measurementOfOperatingPotential.toleranceSign || '']);
         }
-        addSection('MEASUREMENT OF OPERATING POTENTIAL', ['Set kV', '@ mA 10', '@ mA 100', '@ mA 200', 'Time (ms)', 'Slice Thickness (mm)', 'Tol Value', 'Tol Type', 'Tol Sign'], rows);
+        addSection('MEASUREMENT OF OPERATING POTENTIAL', ['Set kV', ...maLabels.map((l: string) => `@ mA ${l}`), 'Time (ms)', 'Slice Thickness (mm)', 'Tol Value', 'Tol Type', 'Tol Sign'], rows);
     }
 
     // 3. MEASUREMENT OF MA LINEARITY
