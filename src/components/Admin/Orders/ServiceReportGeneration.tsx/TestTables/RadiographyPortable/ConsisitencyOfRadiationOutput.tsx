@@ -218,19 +218,29 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   // === Load CSV Data ===
   useEffect(() => {
     if (csvData && csvData.length > 0) {
-      // FCD
-      const fcdData = csvData.find((row: any) => row['Field Name'] === 'FCD');
+      // FCD (parser sends Table1_value, export may use FCD)
+      const fcdData = csvData.find((row: any) => row['Field Name'] === 'FCD' || row['Field Name'] === 'Table1_value');
       if (fcdData) {
-        setFFD({ value: fcdData.Value });
+        setFFD({ value: String(fcdData.Value ?? '') });
       }
 
-      // Measurements
+      // Measurements: accept Measurement_* (legacy) and Table2_* (Excel parser output)
       const measDataGrouped: any = {};
-      csvData.filter((row: any) => row['Field Name'].startsWith('Measurement_')).forEach((row: any) => {
-        const fieldName = row['Field Name'].replace('Measurement_', '');
+      csvData.forEach((row: any) => {
+        const fn = row['Field Name'];
         const rowIndex = row['Row Index'] || 0;
-        if (!measDataGrouped[rowIndex]) measDataGrouped[rowIndex] = {};
-        measDataGrouped[rowIndex][fieldName] = row.Value;
+        const val = row.Value;
+        const strVal = val !== undefined && val !== null ? String(val) : '';
+        if (fn?.startsWith('Measurement_')) {
+          const fieldName = fn.replace('Measurement_', '');
+          if (!measDataGrouped[rowIndex]) measDataGrouped[rowIndex] = {};
+          measDataGrouped[rowIndex][fieldName] = strVal;
+        }
+        if (fn?.startsWith('Table2_')) {
+          const fieldName = fn.replace('Table2_', '');
+          if (!measDataGrouped[rowIndex]) measDataGrouped[rowIndex] = {};
+          measDataGrouped[rowIndex][fieldName] = strVal;
+        }
       });
 
       const rowIndices = Object.keys(measDataGrouped).sort((a, b) => Number(a) - Number(b));
@@ -256,12 +266,12 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           }
           return {
             id: String(i + 1),
-            kv: r.kvp || '',
+            kv: r.kv || r.kvp || '',
             mas: r.mas || '',
             outputs,
-            avg: r.mean || '',
+            avg: r.mean || r.average || '',
             cv: r.cov || '',
-            remark: r.remarks || '',
+            remark: r.remark || r.remarks || '',
           };
         });
         setOutputRows(newRows as OutputRow[]);
@@ -270,7 +280,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       // Tolerance
       const tolData = csvData.find((row: any) => row['Field Name'] === 'Tolerance_Value');
       if (tolData) {
-        setTolerance({ ...tolerance, value: tolData.Value });
+        setTolerance((prev) => ({ ...prev, value: String(tolData.Value ?? '') }));
       }
 
       setIsEditing(true);
@@ -278,12 +288,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     }
   }, [csvData, refreshKey]);
 
-  // Load existing test data
+  // Load existing test data (skip when CSV/Excel data is present so we don't overwrite)
   useEffect(() => {
     if (!serviceId) {
       setIsLoading(false);
       return;
     }
+    if (csvData && csvData.length > 0) return;
 
     const loadTest = async () => {
       setIsLoading(true);
@@ -327,7 +338,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, csvData]);
 
   const handleSave = async () => {
     if (!serviceId) {

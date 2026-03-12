@@ -120,32 +120,38 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
         const fieldName = row['Field Name'].replace('Table2_', '');
         const rowIndex = row['Row Index'] || 0;
         if (!t2DataGrouped[rowIndex]) t2DataGrouped[rowIndex] = {};
-        t2DataGrouped[rowIndex][fieldName] = row.Value;
+        const val = row.Value;
+        t2DataGrouped[rowIndex][fieldName] = val !== undefined && val !== null ? String(val) : '';
       });
 
       const rowIndices = Object.keys(t2DataGrouped).sort((a, b) => Number(a) - Number(b));
       if (rowIndices.length > 0) {
-        // Map the first row to X and Y dimensions if possible
         const firstIdx = rowIndices[0];
-        const rowData = t2DataGrouped[firstIdx];
+        const secondIdx = rowIndices[1];
+        const row1 = t2DataGrouped[firstIdx] || {};
+        const row2 = secondIdx != null ? t2DataGrouped[secondIdx] : row1;
+        // X row: deviationX, edgeShift from edgeShiftX or edgeShift (or row1.edgeShift for single-row template)
+        const edgeShiftX = row1.edgeShiftX ?? row1.edgeShift ?? '';
+        // Y row: deviationY, edgeShift from edgeShiftY or row2.edgeShift
+        const edgeShiftY = row2.edgeShiftY ?? row2.edgeShift ?? '';
 
         setCongruenceRows([
           {
             id: 'x',
             dimension: 'Ι X Ι + Ι X’ Ι',
-            observedShift: rowData.deviationX || '',
-            edgeShift: rowData.edgeShiftX || '',
+            observedShift: row1.deviationX || '',
+            edgeShift: edgeShiftX,
             percentFED: '',
-            tolerance: rowData.tolerance || '2',
+            tolerance: row1.tolerance || row2.tolerance || '2',
             remark: ''
           },
           {
             id: 'y',
             dimension: 'Ι Y Ι + Ι Y’ Ι',
-            observedShift: rowData.deviationY || '',
-            edgeShift: rowData.edgeShiftY || '',
+            observedShift: row2.deviationY || row1.deviationY || '',
+            edgeShift: edgeShiftY,
             percentFED: '',
-            tolerance: rowData.tolerance || '2',
+            tolerance: row2.tolerance || row1.tolerance || '2',
             remark: ''
           },
         ]);
@@ -156,10 +162,11 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
     }
   }, [csvData, refreshKey]);
 
-  // Load existing data
+  // Load existing data (skip when CSV upload has provided data so we don't overwrite)
   useEffect(() => {
     const load = async () => {
       if (!serviceId) return;
+      if (csvData && csvData.length > 0) return; // Keep CSV-applied data; don't overwrite with API
       setIsLoading(true);
       try {
         const res = await getCongruenceByServiceIdForRadiographyPortable(serviceId);
@@ -204,7 +211,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       }
     };
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, propTestId, csvData]);
 
   // Save handler
   const handleSave = async () => {

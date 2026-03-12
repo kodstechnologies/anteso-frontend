@@ -34,13 +34,15 @@ export const createRadiographyPortableUploadableExcel = (data: RadiographyPortab
             row.deviationX || '',
             row.deviationY || '',
             row.totalDeviation || '',
+            row.edgeShiftX ?? row.edgeShift ?? '',
+            row.edgeShiftY ?? row.edgeShift ?? '',
             data.congruenceOfRadiation.tolerance?.value || '',
             row.remarks || ''
         ]);
         if (rows.length === 0 && (settings.fcd || settings.kvp)) {
-            rows.push([settings.fcd || '', settings.kvp || '', settings.mas || '', settings.fieldSize || '', '', '', '', data.congruenceOfRadiation.tolerance?.value || '', '']);
+            rows.push([settings.fcd || '', settings.kvp || '', settings.mas || '', settings.fieldSize || '', '', '', '', '', '', data.congruenceOfRadiation.tolerance?.value || '', '']);
         }
-        addSection('CONGRUENCE OF RADIATION & OPTICAL FIELD', ['FCD (cm)', 'kVp', 'mAs', 'Field Size (cm)', 'Deviation X (cm)', 'Deviation Y (cm)', 'Total Deviation (cm)', 'Tolerance (cm)', 'Remarks'], rows);
+        addSection('CONGRUENCE OF RADIATION & OPTICAL FIELD', ['FCD (cm)', 'kVp', 'mAs', 'Field Size (cm)', 'Deviation X (cm)', 'Deviation Y (cm)', 'Total Deviation (cm)', 'Shift in Edges X (cm)', 'Shift in Edges Y (cm)', 'Tolerance (cm)', 'Remarks'], rows);
     }
 
     // 2. CENTRAL BEAM ALIGNMENT

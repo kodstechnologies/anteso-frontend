@@ -1407,8 +1407,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             }
             // console.log("[v0] Status update successful:", { newStatus, workTypeName })
         } catch (error: any) {
-            console.error("[v0] Status update failed:", error)
-            showModal('Error', `Failed to update status: ${error.message}`);
+            console.error("[v0] Status update failed:", error);
+            if (error?.response?.status === 401) {
+                showMessage("Session expired. Please login again.", 'error');
+                navigate("/login");
+            } else {
+                showModal('Error', `Failed to update status: ${error?.message || 'Unknown error'}`);
+            }
         } finally {
             setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
         }

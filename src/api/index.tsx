@@ -60,6 +60,12 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
+            // Let the caller handle redirect (e.g. show message then navigate)
+            if (error.config?.skipAuthRedirect) {
+                Cookies.remove('accessToken');
+                Cookies.remove('refreshToken');
+                return Promise.reject(error);
+            }
             // Check if it's a public route
             const publicRoutes = ['/enquiry_form'];
             const currentPath = window.location.pathname;
@@ -1931,11 +1937,11 @@ export const completeStatusAndReport = async (
             headers["Content-Type"] = "application/json";
         }
 
-        // Make sure to include reportType in the URL
+        // skipAuthRedirect: on 401 let caller handle (show message + navigate) instead of hard redirect
         const res = await api.post(
-            `/orders/completed-status-report/${technicianId}/${orderId}/${serviceId}/${workType}/${status}/${reportType}`,
+            `/orders/completed-status-report/${technicianId}/${orderId}/${serviceId}/${workType}/${status}/${reportType ?? 'qatest'}`,
             dataToSend,
-            { headers }
+            { headers, skipAuthRedirect: true } as any
         );
 
         console.log("🚀 ~ completeStatusAndReport ~ res:", res)

@@ -171,6 +171,65 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   }, [csvData, refreshKey]);
 
   // Load data from backend
+  useEffect(() => {
+    const load = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId);
+        const data = res?.data;
+        if (data) {
+          setTestId(data._id || null);
+          if (data.table1?.[0]) {
+            setExposureCondition({
+              fcd: data.table1[0].fcd || '100',
+              kv: data.table1[0].kv || '80',
+            });
+          }
+          if (data.measHeaders && data.measHeaders.length > 0) {
+            setMeasHeaders(data.measHeaders);
+          }
+          if (Array.isArray(data.table2) && data.table2.length > 0) {
+            const numCols = (data.measHeaders && data.measHeaders.length) || 3;
+            setTable2Rows(
+              data.table2.map((r: any, i: number) => {
+                const outputs = (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : ''));
+                while (outputs.length < numCols) outputs.push('');
+                return {
+                  id: String(i + 1),
+                  mAsRange: r.mAsApplied || r.mAsRange || '',
+                  measuredOutputs: outputs.slice(0, numCols),
+                  average: r.average || '',
+                  x: r.x || '',
+                  xMax: r.xMax || '',
+                  xMin: r.xMin || '',
+                  col: r.col || '',
+                  remarks: r.remarks || '',
+                };
+              })
+            );
+          }
+          if (data.tolerance != null && data.tolerance !== '') {
+            setTolerance(String(data.tolerance));
+          }
+          setHasSaved(true);
+          setIsEditing(false);
+        } else {
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err?.response?.status !== 404) {
+          toast.error('Failed to load mAs linearity data');
+        }
+        setIsEditing(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, [serviceId]);
 
   // Save handler
   const handleSave = async () => {

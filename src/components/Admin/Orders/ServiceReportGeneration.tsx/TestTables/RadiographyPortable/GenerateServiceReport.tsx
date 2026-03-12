@@ -299,12 +299,14 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
 
     const testMarkerToInternalName: { [key: string]: string } = {
       'CONGRUENCE OF RADIATION & OPTICAL FIELD': 'Congruence of Radiation',
+      'CONGRUENCE OF RADIATION & LIGHT FIELD': 'Congruence of Radiation',
       'CENTRAL BEAM ALIGNMENT': 'Central Beam Alignment',
       'EFFECTIVE FOCAL SPOT MEASUREMENT': 'Effective Focal Spot',
       'ACCURACY OF IRRADIATION TIME': 'Accuracy of Irradiation Time',
       'ACCURACY OF OPERATING POTENTIAL': 'Accuracy of Operating Potential',
       'LINEARITY OF mAs LOADING STATIONS': 'Linearity of mAs Loading Stations',
       'CONSISTENCY OF RADIATION OUTPUT': 'Consistency of Radiation Output',
+      'REPRODUCIBILITY OF RADIATION OUTPUT (CONSISTENCY TEST)': 'Consistency of Radiation Output',
       'TUBE HOUSING LEAKAGE LEVEL': 'Radiation Leakage Level',
     };
     const markerUpperToInternal: Record<string, string> = Object.fromEntries(
@@ -315,6 +317,8 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       'Congruence of Radiation': {
         'FCD (cm)': 'Table1_FCD', 'kVp': 'Table1_kvp', 'mAs': 'Table1_mas', 'Field Size (cm)': 'Table1_fieldSize',
         'Deviation X (cm)': 'Table2_deviationX', 'Deviation Y (cm)': 'Table2_deviationY', 'Total Deviation (cm)': 'Table2_totalDeviation',
+        'Shift in Edges (cm)': 'Table2_edgeShift', 'Edge Shift X (cm)': 'Table2_edgeShiftX', 'Edge Shift Y (cm)': 'Table2_edgeShiftY',
+        'Shift in Edges X (cm)': 'Table2_edgeShiftX', 'Shift in Edges Y (cm)': 'Table2_edgeShiftY',
         'Tolerance (cm)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
       },
       'Central Beam Alignment': {
@@ -343,8 +347,9 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
       },
       'Consistency of Radiation Output': {
-        'FCD (cm)': 'Table1_value', 'kVp': 'Table2_kv', 'mAs': 'Table2_mas',
+        'FCD (cm)': 'Table1_value', 'kVp': 'Table2_kv', 'kV': 'Table2_kv', 'mAs': 'Table2_mas',
         'Reading 1': 'Table2_reading1', 'Reading 2': 'Table2_reading2', 'Reading 3': 'Table2_reading3', 'Reading 4': 'Table2_reading4', 'Reading 5': 'Table2_reading5',
+        'Meas 1': 'Table2_reading1', 'Meas 2': 'Table2_reading2', 'Meas 3': 'Table2_reading3', 'Meas 4': 'Table2_reading4', 'Meas 5': 'Table2_reading5',
         'Mean': 'Table2_average', 'COV (%)': 'Table2_cv', 'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
       },
       'Radiation Leakage Level': {
@@ -358,7 +363,7 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
     const sectionRowCounter: { [key: string]: number } = {};
 
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i].map(c => String(c || '').trim());
+      const row = rows[i].map(c => (c !== undefined && c !== null ? String(c) : '').trim());
       const firstCell = row[0];
 
       if (firstCell.startsWith('TEST: ')) {
@@ -386,12 +391,25 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
         const rowIdx = sectionRowCounter[currentTestName];
         row.forEach((value, cellIdx) => {
-          const header = headers[cellIdx];
-          const internalField = (headerMap[currentTestNameBase] || {})[header];
-          if (internalField && value) {
+          const header = (headers[cellIdx] || '').trim();
+          let internalField = (headerMap[currentTestNameBase] || {})[header];
+          // Congruence: flexible "Shift in Edges" match by header text
+          if (!internalField && currentTestNameBase === 'Congruence of Radiation') {
+            const h = header.toLowerCase();
+            if (h.includes('shift') && h.includes('edge')) {
+              internalField = 'Table2_edgeShift';
+            }
+            // Congruence: 9th column (index 8) = "Shift in Edges (cm)" when template has no header for it
+            if (!internalField && cellIdx === 8) {
+              internalField = 'Table2_edgeShift';
+            }
+          }
+          const strVal = String(value ?? '').trim();
+          const hasValue = strVal !== '';
+          if (internalField && hasValue) {
             data.push({
               'Field Name': internalField,
-              'Value': value,
+              'Value': strVal,
               'Row Index': rowIdx,
               'Test Name': currentTestName,
             });
@@ -411,6 +429,23 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+    // Inject "Shift in Edges (cm)" column into Congruence section if missing (so 9th column is parsed)
+    const edgeShiftHeader = 'Shift in Edges (cm)';
+    for (let i = 0; i < jsonData.length; i++) {
+      const row0 = String(jsonData[i]?.[0] ?? '');
+      if (row0.startsWith('TEST: ') && row0.toUpperCase().includes('CONGRUENCE') && row0.toUpperCase().includes('RADIATION')) {
+        const headerRow = jsonData[i + 1];
+        if (Array.isArray(headerRow) && !headerRow.some((h: any) => /shift.*edge|edge.*shift/i.test(String(h).trim()))) {
+          const insertAt = Math.max(0, headerRow.findIndex((h: any) => String(h).trim() === 'Total Deviation (cm)') + 1) || headerRow.length;
+          headerRow.splice(insertAt, 0, edgeShiftHeader);
+          const dataRow = jsonData[i + 2];
+          if (Array.isArray(dataRow) && dataRow.length === headerRow.length - 1) {
+            dataRow.splice(insertAt, 0, '');
+          }
+        }
+        break;
+      }
+    }
     return parseHorizontalData(jsonData);
   };
 
@@ -485,15 +520,15 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
     }
   };
 
-  // Fetch and process CSV/Excel file from URL
+  // When csvFileUrl is provided (e.g. from ServiceDetails2 after "complete" status or "Generate Report"),
+  // fetch the Excel/CSV and auto-fill all test tables so the report is pre-filled.
   useEffect(() => {
     const fetchAndProcessFile = async () => {
       if (!csvFileUrl) {
-        console.log('Radiography Portable: No csvFileUrl provided, skipping file fetch');
         return;
       }
 
-      console.log('Radiography Portable: Fetching file from URL:', csvFileUrl);
+      console.log('Radiography Portable: Fetching file from URL (auto-fill from complete status):', csvFileUrl);
 
       try {
         setCsvUploading(true);
