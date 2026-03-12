@@ -1972,7 +1972,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(service.status)}`}>
                                         {service.status}
                                     </span>
-                                    {machineData.length > 1 && (
+                                    {machineData.length > 1 && currentUserRole !== 'staff' && (
                                         <button
                                             onClick={() => handleDeleteMachine(service.workTypes[0]?.serviceId || service.id.split("-")[0])}
                                             disabled={deletingMachineId === (service.workTypes[0]?.serviceId || service.id.split("-")[0])}
