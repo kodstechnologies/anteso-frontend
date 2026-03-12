@@ -800,7 +800,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           Generate Radiography (Mobile) QA Test Report
         </h1>
         {/* Download templates */}
-        <div className="flex gap-2">
+        {/* <div className="flex gap-2">
           <a
             href="/templates/RadiographyMobile_Timer_Template.csv"
             download
@@ -822,11 +822,11 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           >
             ⬇ XLSX Template
           </a>
-        </div>
+        </div> */}
         {/* Upload Excel */}
         <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition cursor-pointer text-sm font-medium ${excelUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}>
           <CloudArrowUpIcon className="w-5 h-5" />
-          {excelUploading ? "Uploading..." : "Upload Excel / CSV"}
+          {excelUploading ? "Uploading..." : "Upload Excel"}
           <input
             ref={fileInputRef}
             type="file"

@@ -741,7 +741,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           </div>
           <div className="flex gap-3">
             <div className="flex gap-2">
-              <a
+              {/* <a
                 href="/templates/CArm_Test_Data_Template_WithTimer.csv"
                 download="CArm_Test_Data_Template_WithTimer.csv"
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
@@ -756,19 +756,19 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
               >
                 <CloudArrowUpIcon className="w-5 h-5" />
                 Template (No Timer)
-              </a>
-              <a
+              </a> */}
+              {/* <a
                 href="/templates/CArm_Template.xlsx"
                 download="CArm_Template.xlsx"
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
               >
                 <CloudArrowUpIcon className="w-5 h-5" />
                 ⬇ Excel Template (.xlsx)
-              </a>
+              </a> */}
             </div>
             <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2 text-sm">
               <CloudArrowUpIcon className="w-5 h-5" />
-              {csvUploading ? 'Uploading...' : 'Upload CSV/Excel'}
+              {csvUploading ? 'Uploading...' : 'Upload Excel'}
               <input
                 ref={fileInputRef}
                 type="file"

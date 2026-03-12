@@ -783,13 +783,13 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                         Import Excel Data
                     </button>
                 </div>
-                <button
+                {/* <button
                     onClick={handleExportSavedData}
                     disabled={isExporting}
                     className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     {isExporting ? 'Exporting...' : 'Export Saved Data'}
-                </button>
+                </button> */}
             </div>
 
             {/* Customer Info */}

@@ -1545,7 +1545,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     Generate On-Board Imaging (OBI) QA Test Report
                 </h1>
                 <div className="flex items-center gap-4">
-                    <a
+                    {/* <a
                         href="/templates/OBI_Test_Data_Template_WithTimer.csv"
                         download
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
@@ -1558,10 +1558,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
                     >
                         Download Template (No Timer)
-                    </a>
+                    </a> */}
                     <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
                         <CloudArrowUpIcon className="w-5 h-5" />
-                        {csvUploading ? 'Uploading...' : 'Upload CSV/Excel'}
+                        {csvUploading ? 'Uploading...' : 'Upload Excel'}
                         <input
                             ref={fileInputRef}
                             type="file"

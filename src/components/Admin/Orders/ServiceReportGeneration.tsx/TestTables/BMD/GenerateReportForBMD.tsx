@@ -1466,18 +1466,18 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
                 <CloudArrowUpIcon className="w-5 h-5" />
                 Download Template (With Timer)
               </a> */}
-              <a
+              {/* <a
                 href="/templates/BMD_Test_Data_Template_NoTimer.csv"
                 download="BMD_Test_Data_Template_NoTimer.csv"
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
               >
                 <CloudArrowUpIcon className="w-5 h-5" />
                 Download Template (No Timer)
-              </a>
+              </a> */}
             </div>
             <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2">
               <CloudArrowUpIcon className="w-5 h-5" />
-              {csvUploading ? 'Uploading...' : 'Upload CSV'}
+              {csvUploading ? 'Uploading...' : 'Upload Excel'}
               <input
                 ref={fileInputRef}
                 type="file"

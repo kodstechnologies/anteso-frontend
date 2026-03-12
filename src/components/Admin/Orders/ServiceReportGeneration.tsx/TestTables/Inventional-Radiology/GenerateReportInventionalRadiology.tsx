@@ -898,15 +898,15 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
             >
               <CloudArrowUpIcon className="w-5 h-5" />
-              {csvUploading ? 'Uploading...' : 'Upload CSV/Excel File'}
+              {csvUploading ? 'Uploading...' : 'Upload Excel'}
             </label>
-              <button
+              {/* <button
                 onClick={handleExportTemplate}
                 className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition shadow-md font-medium"
               >
               <CloudArrowUpIcon className="w-5 h-5 rotate-180" />
               Export Saved Data to Excel
-            </button>
+            </button> */}
           </div>
           {csvFileUrl && (
             <p className="text-sm text-gray-600">

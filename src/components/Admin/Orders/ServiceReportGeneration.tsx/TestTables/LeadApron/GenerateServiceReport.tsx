@@ -654,9 +654,9 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                                 }`}
                         >
                             <CloudArrowUpIcon className="w-5 h-5" />
-                            {csvUploading ? "Processing..." : "Upload Excel/CSV"}
+                            {csvUploading ? "Processing..." : "Upload Excel"}
                         </button>
-                        <button
+                        {/* <button
                             onClick={handleExportToExcel}
                             disabled={csvUploading}
                             className={`px-6 py-3 rounded-lg font-medium text-white transition ${csvUploading
@@ -665,7 +665,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                                 }`}
                         >
                             {csvUploading ? "Exporting..." : "Export Template"}
-                        </button>
+                        </button> */}
                     </div>
                 </div>
 

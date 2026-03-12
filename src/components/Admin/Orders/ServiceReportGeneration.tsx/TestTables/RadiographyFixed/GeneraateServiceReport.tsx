@@ -906,7 +906,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           Generate Radiography (Fixed) QA Test Report
         </h1>
         <div className="flex flex-wrap gap-2 print:hidden">
-          <button
+          {/* <button
             onClick={() => {
               const templateName = hasTimer
                 ? 'RadiographyFixed_Template_WithTimer.csv'
@@ -916,7 +916,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium border border-blue-200"
           >
             Download Template
-          </button>
+          </button> */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={csvUploading}

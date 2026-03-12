@@ -661,13 +661,13 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
               <CloudArrowUpIcon className="w-5 h-5" />
               {csvUploading ? 'Uploading...' : 'Upload CSV/Excel File'}
             </label>
-            <a
+            {/* <a
               href="/templates/OArm_Test_Data_Template.csv"
               download
               className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
             >
               Download Template
-            </a>
+            </a> */}
           </div>
           {csvFileUrl && (
             <p className="text-sm text-gray-600">

@@ -831,7 +831,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           Generate Radiography (Mobile) with HT QA Test Report
         </h1>
         <div className="flex flex-wrap items-center gap-3">
-          <a
+          {/* <a
             href="/templates/RadiographyMobileHT_Test_Data_Template_WithTimer.csv"
             download
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
@@ -844,10 +844,10 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
           >
             Download Template (No Timer)
-          </a>
+          </a> */}
           <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-sm font-medium">
             <CloudArrowUpIcon className="w-5 h-5" />
-            {csvUploading ? "Loading…" : "Upload CSV/Excel"}
+            {csvUploading ? "Loading…" : "Upload Excel"}
             <input
               ref={fileInputRef}
               type="file"

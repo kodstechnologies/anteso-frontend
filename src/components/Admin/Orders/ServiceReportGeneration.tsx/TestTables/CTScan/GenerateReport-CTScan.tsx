@@ -1020,23 +1020,23 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
                         >
                             <CloudArrowUpIcon className="w-5 h-5" />
-                            {csvUploading ? 'Uploading...' : 'Upload CSV/Excel File'}
+                            {csvUploading ? 'Uploading...' : 'Upload Excel'}
                         </label>
-                        <a
+                        {/* <a
                             href="/templates/CTScan_Test_Data_Template_DoubleTube.csv"
                             download
                             className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
                         >
                             Download Template (Double Tube)
-                        </a>
-                        <button
+                        </a> */}
+                        {/* <button
                             onClick={handleExportToExcel}
                             disabled={csvUploading}
                             className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <CloudArrowUpIcon className="w-5 h-5 rotate-180" />
                             {csvUploading ? 'Exporting...' : 'Export Saved Data to Excel'}
-                        </button>
+                        </button> */}
                     </div>
                     {csvFileUrl && (
                         <p className="text-sm text-gray-600">

@@ -929,7 +929,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
 
             {/* CSV/Excel Upload Section */}
             <section className="mb-10 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
-                <h2 className="text-xl font-semibold text-blue-700 mb-4">Upload Test Data (CSV/Excel)</h2>
+                <h2 className="text-xl font-semibold text-blue-700 mb-4">Upload Excel</h2>
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-4">
                         <input
@@ -945,10 +945,10 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
                         >
                             <CloudArrowUpIcon className="w-5 h-5" />
-                            {csvUploading ? 'Uploading...' : 'Upload CSV/Excel File'}
+                            {csvUploading ? 'Uploading...' : 'Upload Excel'}
                         </label>
 
-                        <button
+                        {/* <button
                             type="button"
                             onClick={handleExportToExcel}
                             disabled={csvUploading}
@@ -956,7 +956,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                         >
                             <CloudArrowUpIcon className="w-5 h-5 rotate-180" />
                             {csvUploading ? 'Exporting...' : 'Export Saved Data to Excel'}
-                        </button>
+                        </button> */}
                     </div>
                 </div>
             </section>
