@@ -206,8 +206,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
         if (data) {
           setTestId(data._id || null);
           setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
-          // Calibration status is set by the tools check useEffect, don't override it here
-          // (The tools check will run and set it based on current calibration dates)
+          if (data.hasValidCalibration) setHasValidCalibration(data.hasValidCalibration);
           setAppliedCurrent(data.appliedCurrent || "100");
           setAppliedVoltage(data.appliedVoltage || "80");
           setExposureTime(data.exposureTime || "0.5");
@@ -254,11 +253,6 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
       toast.error("Please select calibration status");
       return;
     }
-    // Prevent submission if calibration is "No"
-    if (hasValidCalibration === "No") {
-      toast.error("Cannot submit test: Calibration certificate is expired. Please ensure all tools have valid calibration certificates.");
-      return;
-    }
 
     const payload = {
       surveyDate,
@@ -298,7 +292,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
   };
 
   const isViewMode = isSaved && !isEditing;
-  const isDisabled = isViewMode || hasValidCalibration === "No";
+  const isDisabled = isViewMode;
+  const isButtonDisabled = isSaving;
 
   if (isLoading) {
     return (
@@ -311,9 +306,9 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
       {hasValidCalibration === "No" && (
-        <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 mb-4">
-          <p className="text-red-800 font-semibold">
-            ⚠️ Calibration certificate is expired. All fields are disabled until valid calibration certificates are provided for all tools.
+        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-4 mb-4">
+          <p className="text-amber-800 font-semibold">
+            ⚠️ Calibration certificate is expired. You can still edit and save; ensure valid calibration certificates are provided for all tools when possible.
           </p>
         </div>
       )}
@@ -323,8 +318,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
         </h1>
         <button
           onClick={isViewMode ? () => setIsEditing(true) : handleSave}
-          disabled={isSaving || isDisabled}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving || isDisabled ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
+          disabled={isButtonDisabled}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isButtonDisabled ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
         >
           {isSaving ? (
             <>

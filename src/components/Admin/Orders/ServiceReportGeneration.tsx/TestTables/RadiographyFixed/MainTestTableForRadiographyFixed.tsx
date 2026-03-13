@@ -114,28 +114,54 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
 
   // 2.5. Total Filtration - Accuracy of Operating Potential
   if (testData.totalFilteration?.measurements && Array.isArray(testData.totalFilteration.measurements)) {
-    const validRows = testData.totalFilteration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
+    const validRows = testData.totalFilteration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
     if (validRows.length > 0) {
       const toleranceSign = testData.totalFilteration.tolerance?.sign || "±";
       const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
+        // Derive average kVp either from stored averageKvp or from measuredValues array
+        let avgKvpNum: number | null = null;
+        if (row.averageKvp !== undefined && row.averageKvp !== null && row.averageKvp !== "") {
+          const val = parseFloat(row.averageKvp);
+          if (!isNaN(val)) avgKvpNum = val;
+        }
+        if (avgKvpNum === null && Array.isArray(row.measuredValues) && row.measuredValues.length > 0) {
+          const vals = row.measuredValues
+            .map((v: any) => parseFloat(v))
+            .filter((v: number) => !isNaN(v));
+          if (vals.length > 0) {
+            avgKvpNum = vals.reduce((a: number, b: number) => a + b, 0) / vals.length;
+          }
+        }
+        let measuredDisplay: string;
+        if (avgKvpNum !== null) {
+          measuredDisplay = avgKvpNum.toFixed(2);
+        } else if (Array.isArray(row.measuredValues) && row.measuredValues.length > 0) {
+          // Fallback: show the entered measured values joined, so something always appears
+          measuredDisplay = row.measuredValues.filter((v: any) => v !== undefined && v !== null && v !== "").join(", ") || "-";
+        } else {
+          measuredDisplay = "-";
+        }
+
         let isPass = false;
         if (row.remarks === "PASS" || row.remarks === "Pass") {
           isPass = true;
         } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
           isPass = false;
-        } else {
+        } else if (avgKvpNum !== null) {
           const appliedKvp = parseFloat(row.appliedKvp);
-          const avgKvp = parseFloat(row.averageKvp);
-          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
+          if (!isNaN(appliedKvp) && appliedKvp > 0) {
+            const deviation = Math.abs(((avgKvpNum - appliedKvp) / appliedKvp) * 100);
             const tol = parseFloat(toleranceValue);
-            isPass = deviation <= tol;
+            if (!isNaN(tol)) {
+              isPass = deviation <= tol;
+            }
           }
         }
+
         return {
           specified: row.appliedKvp || "-",
-          measured: row.averageKvp || "-",
+          measured: measuredDisplay,
           tolerance: `${toleranceSign}${toleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -146,18 +172,48 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
 
   // 2.6. Total Filtration Result
   if (testData.totalFilteration?.totalFiltration) {
-    const measured = testData.totalFilteration.totalFiltration.measured || "-";
-    const required = testData.totalFilteration.totalFiltration.required || "-";
-    const measuredVal = parseFloat(measured);
-    const requiredVal = parseFloat(required);
-    const isPass = !isNaN(measuredVal) && !isNaN(requiredVal) && measuredVal >= requiredVal;
+    const measuredStr = testData.totalFilteration.totalFiltration.required || "-"; // this is the measured mm Al value in UI
+    const requiredStr = testData.totalFilteration.totalFiltration.measured || "-"; // not used in UI, keep for compatibility
+    const atKvp = testData.totalFilteration.totalFiltration.atKvp || "-";
+
+    const kvp = parseFloat(atKvp);
+    const measuredVal = parseFloat(measuredStr);
+
+    // Reuse the same tolerance logic as TotalFilteration.tsx (filtrationTolerance block)
+    const ft = testData.totalFilteration.filtrationTolerance || {
+      forKvGreaterThan70: "1.5",
+      forKvBetween70And100: "2.0",
+      forKvGreaterThan100: "2.5",
+      kvThreshold1: "70",
+      kvThreshold2: "100",
+    };
+
+    const threshold1 = parseFloat(ft.kvThreshold1);
+    const threshold2 = parseFloat(ft.kvThreshold2);
+
+    let isPass = false;
+    if (!isNaN(kvp) && !isNaN(measuredVal)) {
+      let requiredTolerance: number;
+      if (kvp < threshold1) {
+        requiredTolerance = parseFloat(ft.forKvGreaterThan70);
+      } else if (kvp >= threshold1 && kvp <= threshold2) {
+        requiredTolerance = parseFloat(ft.forKvBetween70And100);
+      } else {
+        requiredTolerance = parseFloat(ft.forKvGreaterThan100);
+      }
+
+      if (!isNaN(requiredTolerance)) {
+        isPass = measuredVal >= requiredTolerance;
+      }
+    }
     
     // Build tolerance string - show all ranges as per standard
     const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
     
     addRowsForTest("Total Filtration", [{
-      specified: required !== "-" ? `${required} mm Al` : "-",
-      measured: measured !== "-" ? `${measured} mm Al` : "-",
+      specified: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
+      // Show the kVp at which total filtration is specified
+      measured: atKvp !== "-" ? `${atKvp} kVp` : "-",
       tolerance: toleranceStr,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
@@ -312,18 +368,20 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Linearity of mA/mAs Loading (Coefficient of Linearity)", testRows, false, true);
+      // Use row span for both tolerance and measured value so they appear once for the group
+      addRowsForTest("Linearity of mA/mAs Loading (Coefficient of Linearity)", testRows, true, true);
     }
   }
 
-  // 7. Consistency of Radiation Output (COV)
+  // 7. Consistency of Radiation Output (CoV)
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kv || row.cv || row.remark);
     if (validRows.length > 0) {
       const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
-      const toleranceValue = testData.outputConsistency.tolerance?.value || "5.0";
+      // Tolerance is stored as decimal (e.g., 0.05)
+      const toleranceValue = testData.outputConsistency.tolerance?.value || "0.05";
       const testRows = validRows.map((row: any) => {
-        // Use CV value directly from row.cv
+        // Use CoV value directly from row.cv
         let cvValue = row.cv || "-";
         let isPass = false;
         
@@ -333,7 +391,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
         } else if (row.remark === "Fail" || row.remark === "FAIL") {
           isPass = false;
         } else if (cvValue !== "-") {
-          // Calculate pass/fail based on CV vs tolerance
+          // Calculate pass/fail based on CoV vs tolerance
           const cv = parseFloat(String(cvValue));
           const tol = parseFloat(toleranceValue);
           
@@ -352,19 +410,19 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
           }
         }
         
-        // Format CV value for display
+        // Format CoV value for display (numeric CoV as decimal, e.g. 0.004)
         const formattedCv = cvValue !== "-" && cvValue !== undefined && cvValue !== null && cvValue !== ""
-          ? (typeof cvValue === 'number' ? cvValue.toFixed(2) : parseFloat(String(cvValue)).toFixed(2)) + "%"
+          ? (typeof cvValue === 'number' ? cvValue.toFixed(3) : parseFloat(String(cvValue)).toFixed(3))
           : "-";
         
         return {
-          specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "Varies",
+          specified: row.kv ? `${row.kv} kV` : "Varies",
           measured: formattedCv,
-          tolerance: `${toleranceOperator} ${toleranceValue}%`,
+          tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Consistency of Radiation Output (CV)", testRows, true);
+      addRowsForTest("Consistency of Radiation Output (CoV)", testRows, true);
     }
   }
 

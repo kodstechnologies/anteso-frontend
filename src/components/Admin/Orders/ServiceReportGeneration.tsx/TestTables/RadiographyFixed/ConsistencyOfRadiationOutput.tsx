@@ -101,8 +101,8 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
   // Calculate avg, CoV and remark – pure calculation, no state mutation needed
   const rowsWithCalc = useMemo(() => {
-    // Tolerance value is already in percentage (e.g., 5.0 for 5%)
-    const tolValuePercent = parseFloat(tolerance.value) || 5.0;
+    // Tolerance value is a decimal (e.g., 0.05 for 5%)
+    const tolValueDecimal = parseFloat(tolerance.value) || 0.05;
 
     return outputRows.map((row): OutputRow => {
       const values = row.outputs
@@ -118,20 +118,19 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
       const stdDev = Math.sqrt(variance);
       const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal
-      const covPercent = covDecimal * 100; // CoV as percentage
 
-      // Compare CoV (percentage) with tolerance (percentage)
+      // Compare CoV (decimal) with tolerance (decimal, e.g. 0.05)
       const passes =
         tolerance.operator === '<=' || tolerance.operator === '<'
-          ? covPercent <= tolValuePercent
-          : covPercent >= tolValuePercent;
+          ? covDecimal <= tolValueDecimal
+          : covDecimal >= tolValueDecimal;
 
       const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
 
       return {
         ...row,
         avg: avg.toFixed(4),
-        cv: covPercent.toFixed(4), // Display CoV as percentage
+        cv: covDecimal.toFixed(3), // Store CoV as decimal (e.g., 0.004)
         remark,
       };
     });
@@ -263,15 +262,15 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             const firstRow = testData.outputRows[0];
             const numMeas = firstRow.outputs?.length || 5;
             setMeasurementCount(numMeas);
-            setOutputRows(testData.outputRows.map((r: any) => ({
-              id: Date.now().toString() + Math.random(),
-              kv: r.kv || '',
-              mas: r.mas || '',
-              outputs: r.outputs?.map((o: any) => ({ value: o.value || '' })) || Array(numMeas).fill({ value: '' }),
-              avg: r.avg || '',
-              cv: '',
-              remark: r.remark || '',
-            })));
+          setOutputRows(testData.outputRows.map((r: any) => ({
+            id: Date.now().toString() + Math.random(),
+            kv: r.kv || '',
+            mas: r.mas || '',
+            outputs: r.outputs?.map((o: any) => ({ value: o.value || '' })) || Array(numMeas).fill({ value: '' }),
+            avg: r.avg || '',
+            cv: r.cv || '',
+            remark: r.remark || '',
+          })));
           }
           if (testData.tolerance) {
             setTolerance({
@@ -308,6 +307,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           mas: r.mas,
           outputs: r.outputs,
           avg: r.avg,
+          cv: r.cv,
           remark: r.remark,
         })),
         tolerance,

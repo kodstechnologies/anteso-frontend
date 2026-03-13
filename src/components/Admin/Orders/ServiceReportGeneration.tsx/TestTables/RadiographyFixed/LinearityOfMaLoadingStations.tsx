@@ -161,13 +161,15 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      // Calculate average mGy and round to 4 decimal places
+      // Calculate average output (mGy) and round to 4 decimal places
       const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
       const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
 
       const ma = parseFloat(row.ma);
-      // Calculate X = mGy / mA and round to 4 decimal places
-      const x = avg !== null && ma > 0 ? parseFloat((avg / ma).toFixed(4)) : null;
+      const timeSec = parseFloat(table1Row.time);
+      const mAs = !isNaN(ma) && ma > 0 && !isNaN(timeSec) && timeSec > 0 ? ma * timeSec : null;
+      // X should be mGy / mAs (where mAs = mA × s)
+      const x = avg !== null && mAs && mAs > 0 ? parseFloat((avg / mAs).toFixed(4)) : null;
       const xDisplay = x !== null ? x.toFixed(4) : '—';
 
       if (x !== null) xValues.push(x);

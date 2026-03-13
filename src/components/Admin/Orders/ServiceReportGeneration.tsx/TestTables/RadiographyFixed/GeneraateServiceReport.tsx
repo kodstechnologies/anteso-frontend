@@ -4,9 +4,27 @@ import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
-import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyFixed, getRadiationProfileWidthByServiceId, proxyFile } from "../../../../../../api";
+import {
+  getDetails,
+  getTools,
+  saveReportHeader,
+  getReportHeaderForRadiographyFixed,
+  getRadiationProfileWidthByServiceId,
+  proxyFile,
+  getAccuracyOfIrradiationTimeByServiceIdForRadiographyFixed,
+  getAccuracyOfOperatingPotentialByServiceIdForRadiographyFixed,
+  getTotalFiltrationByServiceIdForRadiographyFixed,
+  getCentralBeamAlignmentByServiceIdForRadiographyFixed,
+  getCongruenceByServiceIdForRadiographyFixed,
+  getEffectiveFocalSpotByServiceIdForRadiographyFixed,
+  getLinearityOfMasLoadingStationsByServiceIdForRadiographyFixed,
+  getOutputConsistencyByServiceIdForRadiographyFixed,
+  getRadiationLeakageLevelByServiceIdForRadiographyFixed,
+  getRadiationProtectionSurveyByServiceIdForRadiographyFixed,
+} from "../../../../../../api";
 import * as XLSX from "xlsx";
 import { CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { createRadiographyFixedUploadableExcel, RadiographyFixedExportData } from "./exportRadiographyFixedToExcel";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -789,6 +807,130 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // Export saved data to Excel (currently creates a basic workbook; can be expanded to include all test tables)
+  const handleExportToExcel = async () => {
+    if (!serviceId) {
+      toast.error('Service ID is missing');
+      return;
+    }
+
+    try {
+      toast.loading('Exporting data to Excel...', { id: 'export-excel' });
+      setCsvUploading(true);
+
+      const exportData: Record<string, unknown> = {};
+
+      // 0. Report Header
+      try {
+        const headerRes = await getReportHeaderForRadiographyFixed(serviceId);
+        if (headerRes?.data || headerRes?.exists) {
+          exportData.reportHeader = headerRes;
+        }
+      } catch (err) {
+        console.log("Radiography Fixed report header not found or error:", err);
+      }
+
+      // 1. Accuracy of Irradiation Time
+      try {
+        const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyFixed(serviceId);
+        if (res) exportData.accuracyOfIrradiationTime = res;
+      } catch (err) {
+        console.log("Accuracy of Irradiation Time not found or error:", err);
+      }
+
+      // 2. Accuracy of Operating Potential
+      try {
+        const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyFixed(serviceId);
+        if (res) exportData.accuracyOfOperatingPotential = res;
+      } catch (err) {
+        console.log("Accuracy of Operating Potential not found or error:", err);
+      }
+
+      // 3. Total Filtration
+      try {
+        const res = await getTotalFiltrationByServiceIdForRadiographyFixed(serviceId);
+        if (res && (res.data || res.totalFiltration || res.measurements)) {
+          exportData.totalFiltration = res;
+        }
+      } catch (err) {
+        console.log("Total Filtration not found or error:", err);
+      }
+
+      // 4. Central Beam Alignment
+      try {
+        const res = await getCentralBeamAlignmentByServiceIdForRadiographyFixed(serviceId);
+        if (res) exportData.centralBeamAlignment = res;
+      } catch (err) {
+        console.log("Central Beam Alignment not found or error:", err);
+      }
+
+      // 5. Congruence of Radiation & Optical Field
+      try {
+        const res = await getCongruenceByServiceIdForRadiographyFixed(serviceId);
+        if (res) exportData.congruence = res;
+      } catch (err) {
+        console.log("Congruence of Radiation not found or error:", err);
+      }
+
+      // 6. Effective Focal Spot
+      try {
+        const res = await getEffectiveFocalSpotByServiceIdForRadiographyFixed(serviceId);
+        if (res) exportData.effectiveFocalSpot = res;
+      } catch (err) {
+        console.log("Effective Focal Spot not found or error:", err);
+      }
+
+      // 7. Linearity of mAs Loading
+      try {
+        const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyFixed(serviceId);
+        if (res) exportData.linearityOfMasLoading = res;
+      } catch (err) {
+        console.log("Linearity of mAs Loading not found or error:", err);
+      }
+
+      // 8. Output Consistency
+      try {
+        const res = await getOutputConsistencyByServiceIdForRadiographyFixed(serviceId);
+        if (res) exportData.outputConsistency = res;
+      } catch (err) {
+        console.log("Output Consistency not found or error:", err);
+      }
+
+      // 9. Radiation Leakage Level
+      try {
+        const res = await getRadiationLeakageLevelByServiceIdForRadiographyFixed(serviceId);
+        if (res) exportData.radiationLeakageLevel = res;
+      } catch (err) {
+        console.log("Radiation Leakage Level not found or error:", err);
+      }
+
+      // 10. Radiation Protection Survey
+      try {
+        const res = await getRadiationProtectionSurveyByServiceIdForRadiographyFixed(serviceId);
+        if (res) exportData.radiationProtectionSurvey = res;
+      } catch (err) {
+        console.log("Radiation Protection Survey not found or error:", err);
+      }
+
+      // If no data collected, show message
+      if (Object.keys(exportData).length === 0) {
+        toast.error('No data found to export. Please save test data first.', { id: 'export-excel' });
+        return;
+      }
+      const wb = createRadiographyFixedUploadableExcel(exportData as RadiographyFixedExportData);
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `Radiography_Fixed_Test_Data_${timestamp}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+      toast.success('Data exported successfully!', { id: 'export-excel' });
+    } catch (error: any) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to export data: ' + (error.message || 'Unknown error'), { id: 'export-excel' });
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
   // Auto-upload from CSV/Excel file URL (passed from ServiceDetails2 when status is complete)
   // Uses proxyFile so the request is authenticated and avoids CORS/401 redirect to login
   useEffect(() => {
@@ -816,6 +958,58 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     autoLoad();
   }, [csvFileUrl]);
 
+  // Check which test tables are not saved; returns list of display names.
+  const getUnsavedTestNames = async (): Promise<string[]> => {
+    // Backend can return: { success: true, data: document }, { success: true, data: { _id } }, { success: true, data: null }, or document with _id
+    const isSaved = (raw: any): boolean => {
+      if (raw == null) return false;
+      if (typeof raw !== "object") return false;
+      // Any success with non-null data (including update shape: { success: true, message: "...", data: { _id } })
+      if (raw.success && raw.data != null) return true;
+      // Minimal data shape: { data: { _id: "..." } } (e.g. from update response)
+      if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+      const data = raw.data !== undefined ? raw.data : raw;
+      if (data == null || typeof data !== "object") return false;
+      if ((data as any)._id) return true;
+      if ((data as any).data && (data as any).data._id) return true;
+      if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+      if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+      if ((data as any).totalFiltration != null && typeof (data as any).totalFiltration === "object") return true;
+      return false;
+    };
+    const checks: { name: string; check: () => Promise<boolean> }[] = [
+      { name: "Congruence of radiation & Optical Field", check: async () => { try { return isSaved(await getCongruenceByServiceIdForRadiographyFixed(serviceId)); } catch { return false; } } },
+      { name: "Central Beam Alignment", check: async () => { try { return isSaved(await getCentralBeamAlignmentByServiceIdForRadiographyFixed(serviceId)); } catch { return false; } } },
+      { name: "Effective Focal Spot Measurement", check: async () => { try { return isSaved(await getEffectiveFocalSpotByServiceIdForRadiographyFixed(serviceId)); } catch { return false; } } },
+      {
+        name: "Accuracy Of Operating Potential & Total Filtration",
+        check: async () => {
+          try {
+            const [aop] = await Promise.all([
+              // getAccuracyOfOperatingPotentialByServiceIdForRadiographyFixed(serviceId),
+              getTotalFiltrationByServiceIdForRadiographyFixed(serviceId),
+            ]);
+            return isSaved(aop)
+          } catch {
+            return false;
+          }
+        },
+      },
+      { name: "Linearity (mA/mAs Loading)", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForRadiographyFixed(serviceId)); } catch { return false; } } },
+      { name: "Output Consistency", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForRadiographyFixed(serviceId)); } catch { return false; } } },
+      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForRadiographyFixed(serviceId)); } catch { return false; } } },
+      { name: "Details Of Radiation Protection Survey", check: async () => { try { return isSaved(await getRadiationProtectionSurveyByServiceIdForRadiographyFixed(serviceId)); } catch { return false; } } },
+    ];
+    if (hasTimer === true) {
+      checks.push({
+        name: "Accuracy Of Irradiation Time",
+        check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForRadiographyFixed(serviceId)); } catch { return false; } },
+      });
+    }
+    const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+    return results.filter((r) => !r.saved).map((r) => r.name);
+  };
+
   // In RadioFluro.tsx - handleSaveHeader function
   const handleSaveHeader = async () => {
     setSaving(true);
@@ -823,6 +1017,18 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     setSaveError(null);
 
     try {
+      const unsaved = await getUnsavedTestNames();
+      if (unsaved.length > 0) {
+        const message =
+          unsaved.length === 1
+            ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+            : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+        setSaveError(message);
+        toast.error(message, { duration: 5000 });
+        setSaving(false);
+        return;
+      }
+
       const payload = {
         ...formData,
         toolsUsed: tools.map((t) => ({
@@ -948,6 +1154,13 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           >
             <CloudArrowUpIcon className="h-4 w-4" />
             {csvUploading ? 'Uploading...' : 'Import Excel'}
+          </button>
+          <button
+            onClick={handleExportToExcel}
+            disabled={csvUploading}
+            className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium border border-blue-200 disabled:opacity-50"
+          >
+            {csvUploading ? 'Exporting...' : 'Export Excel'}
           </button>
           <input
             type="file"
@@ -1088,7 +1301,18 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           {saving ? "Saving..." : "Save Report Header"}
         </button>
         <button
-          onClick={() => navigate(`/admin/orders/view-service-report-radiography-fixed?serviceId=${serviceId}`)}
+          onClick={async () => {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+              const message =
+                unsaved.length === 1
+                  ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                  : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+              toast.error(message, { duration: 5000 });
+              return;
+            }
+            navigate(`/admin/orders/view-service-report-radiography-fixed?serviceId=${serviceId}`);
+          }}
           className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
         >
           View Generated Report

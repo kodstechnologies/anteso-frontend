@@ -3400,7 +3400,7 @@ export const getWorkOrderCopy = async (orderId: any) => {
 export const addMachineToOrder = async (orderId: string, formData: FormData) => {
     try {
         const token = Cookies.get("accessToken");
-        const res = await api.put(`/orders/add-machine-in-order/${orderId}`, formData, {
+        const res = await api.post(`/orders/add-machine-in-order/${orderId}`, formData, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
