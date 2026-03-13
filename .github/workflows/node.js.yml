@@ -13,6 +13,7 @@ jobs:
         node-version: [18.x]
 
     steps:
+
     - name: Checkout Code
       uses: actions/checkout@v4
 
@@ -20,44 +21,41 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+        cache: npm
 
-    # Install dependencies
     - name: Install dependencies
       run: npm ci --legacy-peer-deps
 
-    # Create .env from secret
     - name: Setup environment
       run: |
-        touch .env
         echo "${{ secrets.ANTESOFE }}" > .env
 
-    # Build frontend
     - name: Build frontend
       run: NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
-    # Remove old build from EC2
-    - name: Clean old build on server
+    # Clean server folder
+    - name: Clean server folder
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ubuntu
         key: ${{ secrets.EC2_KEY }}
         script: |
-          rm -rf /home/ubuntu/anteso-frontend/dist/*
+          rm -rf /home/ubuntu/anteso-frontend/dist
+          mkdir -p /home/ubuntu/anteso-frontend/dist
 
-    # Upload new dist
-    - name: Upload new build
+    # Upload build
+    - name: Upload build
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ubuntu
         key: ${{ secrets.EC2_KEY }}
-        source: "dist/*"
-        target: "/home/ubuntu/anteso-frontend/dist"
+        source: "dist/"
+        target: "/home/ubuntu/anteso-frontend"
 
     # Restart nginx
-    - name: Restart Nginx
+    - name: Restart nginx
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
