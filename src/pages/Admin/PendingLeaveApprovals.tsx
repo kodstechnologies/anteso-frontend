@@ -17,7 +17,7 @@ interface LeaveRequest {
     leaveType: string;
     reason: string;
     status: string;
-    employee: Employee;
+    employee: Employee | null;
     createdAt: string;
 }
 
@@ -44,7 +44,8 @@ const PendingLeaveApprovals: React.FC = () => {
         fetchPendingLeaves();
     }, []);
 
-    const handleViewClick = (employeeId: string) => {
+    const handleViewClick = (employeeId?: string | null) => {
+        if (!employeeId) return;
         navigate(`/admin/hrms/leave-management-view/${employeeId}`);
     };
 
@@ -135,9 +136,9 @@ const PendingLeaveApprovals: React.FC = () => {
                                         <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                         </svg>
-                                        {leave.employee.name}
+                                        {leave.employee?.name || 'Unknown Employee'}
                                     </h3>
-                                    <p className="text-sm text-gray-500">{leave.employee.email}</p>
+                                    <p className="text-sm text-gray-500">{leave.employee?.email || 'N/A'}</p>
                                 </div>
                                 <span
                                     className={`text-xs font-medium px-2.5 py-1 rounded-full border ${getLeaveTypeColor(
@@ -178,8 +179,12 @@ const PendingLeaveApprovals: React.FC = () => {
                         {/* Card Footer */}
                         <div className="p-4 pt-0">
                             <button
-                                onClick={() => handleViewClick(leave.employee._id)}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors"
+                                onClick={() => handleViewClick(leave.employee?._id)}
+                                disabled={!leave.employee?._id}
+                                className={`w-full font-medium py-2.5 px-4 rounded-lg transition-colors ${leave.employee?._id
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    }`}
                             >
                                 View Details
                             </button>

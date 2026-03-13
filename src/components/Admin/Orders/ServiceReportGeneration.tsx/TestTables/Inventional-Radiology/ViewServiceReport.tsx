@@ -157,7 +157,7 @@ const ViewServiceReport: React.FC = () => {
             }
 
             // Update with individual test data for Tube Frontal
-            setTestDataFrontal(prev => ({
+            setTestDataFrontal((prev: any) => ({
               ...prev,
               centralBeamAlignment: centralBeamFrontal?.data || null,
               effectiveFocalSpot: effectiveFocalFrontal?.data || null,
@@ -181,7 +181,7 @@ const ViewServiceReport: React.FC = () => {
             }
 
             // Update with individual test data for Tube Lateral
-            setTestDataLateral(prev => ({
+            setTestDataLateral((prev: any) => ({
               ...prev,
               centralBeamAlignment: centralBeamLateral?.data || null,
               effectiveFocalSpot: effectiveFocalLateral?.data || null,

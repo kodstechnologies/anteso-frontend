@@ -194,13 +194,13 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
     }
     
     // Format specified value (use tolerance value as specified)
-    const specifiedValue = `${toleranceOperator} ${toleranceValue} degrees`;
+    const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
     // Format tolerance display
-    const toleranceDisplay = `${toleranceOperator} ${toleranceValue} degrees`;
+    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
     
     addRowsForTest("Central Beam Alignment", [{
       specified: specifiedValue,
-      measured: tiltValue !== "-" ? `${tiltValue} degrees` : "-",
+      measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
       tolerance: toleranceDisplay,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
