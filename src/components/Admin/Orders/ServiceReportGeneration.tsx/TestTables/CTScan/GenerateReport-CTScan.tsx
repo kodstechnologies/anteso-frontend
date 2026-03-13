@@ -416,7 +416,8 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
     };
 
     // Process CSV data and fill test tables
-    const processCSVData = async (csvData: any[]) => {
+    // When applyConfigFromExcel is true (e.g. file from ServiceDetails2 redirect), infer tube type and gantry tilt from Excel and skip modals
+    const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
         try {
             setCsvUploading(true);
             const groupedData: { [key: string]: any[] } = {};
@@ -433,9 +434,15 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
 
             console.log('CT Scan CSV Data grouped:', groupedData);
 
-            // Process each test section
-            // Note: This is a simplified version - you'll need to implement full processing for each test component
-            // Similar to how FixedRadioFluro does it
+            if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+                const keys = Object.keys(groupedData);
+                const hasDoubleTube = keys.some((k) => / - Tube A\s*$/.test(k) || / - Tube B\s*$/.test(k));
+                const hasGantryTilt = keys.some((k) => k.trim() === 'Gantry Tilt' || k.startsWith('Gantry Tilt'));
+                setTubeType(hasDoubleTube ? 'double' : 'single');
+                setHasGantryTilt(!!hasGantryTilt);
+                setShowTubeModal(false);
+                setShowGantryTiltModal(false);
+            }
 
             setCsvDataForComponents(groupedData);
             setCsvDataVersion(prev => prev + 1);
@@ -532,7 +539,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 }
 
                 console.log('CT Scan: Processed CSV data, total rows:', csvData.length);
-                await processCSVData(csvData);
+                await processCSVData(csvData, true);
                 toast.success('File loaded successfully!', { id: 'csv-loading' });
             } catch (error: any) {
                 console.error('CT Scan: Error fetching/processing file:', error);
@@ -782,9 +789,15 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         localStorage.setItem(`ctscan_gantry_tilt_choice_${serviceId}`, JSON.stringify(choice));
     };
 
-    // Load saved tube type on mount (if exists)
+    // Load saved tube type on mount (if exists). When csvFileUrl is provided (redirect from ServiceDetails2 with Excel), skip modals — config will be set from Excel in processCSVData.
     useEffect(() => {
         if (!serviceId) return;
+
+        if (csvFileUrl) {
+            setShowTubeModal(false);
+            setShowGantryTiltModal(false);
+            return;
+        }
 
         // Load saved tube type
         const savedTubeType = localStorage.getItem(`ctscan_tube_type_${serviceId}`);
@@ -808,7 +821,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             setHasGantryTilt(null);
             setShowGantryTiltModal(false);
         }
-    }, [serviceId]);
+    }, [serviceId, csvFileUrl]);
 
     if (loading) {
         return (
@@ -882,11 +895,13 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         );
     }
 
-    // Don't show tests until tube type is selected and gantry tilt choice is made
+    // Don't show tests until tube type is selected and gantry tilt choice is made (or set from Excel when csvFileUrl is provided)
     if (!tubeType || hasGantryTilt === null) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-xl font-medium text-gray-700">Loading...</div>
+                <div className="text-xl font-medium text-gray-700">
+                    {csvFileUrl ? 'Loading Excel data and configuring report...' : 'Loading...'}
+                </div>
             </div>
         );
     }

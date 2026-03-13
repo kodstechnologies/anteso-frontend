@@ -121,7 +121,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         const arrayBuffer = await blob.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: "array" });
         const csvData = parseExcelToCSVFormat(workbook);
-        await processExcelData(csvData);
+        await processExcelData(csvData, true);
         toast.success("Excel data loaded from file", { id: "excel-url-load" });
       } catch (err: any) {
         console.error("URL Excel upload error:", err);
@@ -135,17 +135,21 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
   }, [csvFileUrl]);
 
   // ── Timer preference ──────────────────────────────────────────────────────
+  // When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processExcelData.
   useEffect(() => {
-    if (serviceId) {
-      const stored = localStorage.getItem(`radiography-mobile-timer-${serviceId}`);
-      if (stored !== null) {
-        setHasTimer(stored === "true");
-        setShowTimerModal(false);
-      } else {
-        setShowTimerModal(true);
-      }
+    if (!serviceId) return;
+    if (csvFileUrl) {
+      setShowTimerModal(false);
+      return;
     }
-  }, [serviceId]);
+    const stored = localStorage.getItem(`radiography-mobile-timer-${serviceId}`);
+    if (stored !== null) {
+      setHasTimer(stored === "true");
+      setShowTimerModal(false);
+    } else {
+      setShowTimerModal(true);
+    }
+  }, [serviceId, csvFileUrl]);
 
   const handleTimerChoice = (choice: boolean) => {
     setHasTimer(choice);
@@ -415,8 +419,9 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     return data;
   };
 
-  // Process the parsed rows and dispatch to component state (single state update so all sections apply)
-  const processExcelData = async (csvData: any[]) => {
+  // Process the parsed rows and dispatch to component state (single state update so all sections apply).
+  // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
+  const processExcelData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
     try {
       setExcelUploading(true);
 
@@ -425,6 +430,15 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         const name = (row["Test Name"] || "").trim();
         if (name) { if (!grouped[name]) grouped[name] = []; grouped[name].push(row); }
       });
+
+      if (applyConfigFromExcel && Object.keys(grouped).length > 0) {
+        const hasTimerSection = !!(grouped["Accuracy of Irradiation Time"]?.length);
+        setHasTimer(hasTimerSection);
+        setShowTimerModal(false);
+        if (serviceId) {
+          localStorage.setItem(`radiography-mobile-timer-${serviceId}`, String(hasTimerSection));
+        }
+      }
 
       const nextState: Record<string, any> = {};
 
@@ -786,6 +800,17 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
               No Timer
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // When Excel is loading from URL, show loading until timer config is inferred
+  if (csvFileUrl && hasTimer === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl font-medium text-gray-700">
+          Loading Excel data and configuring report...
         </div>
       </div>
     );

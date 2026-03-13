@@ -137,18 +137,21 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         console.log('csvDataForComponents updated:', csvDataForComponents);
     }, [csvDataForComponents]);
 
-    // Check localStorage for timer preference on mount
+    // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
     useEffect(() => {
-        if (serviceId) {
-            const stored = localStorage.getItem(`obi-timer-${serviceId}`);
-            if (stored !== null) {
-                setHasTimer(stored === 'true');
-                setShowTimerModal(false);
-            } else {
-                setShowTimerModal(true);
-            }
+        if (!serviceId) return;
+        if (csvFileUrl) {
+            setShowTimerModal(false);
+            return;
         }
-    }, [serviceId]);
+        const stored = localStorage.getItem(`obi-timer-${serviceId}`);
+        if (stored !== null) {
+            setHasTimer(stored === 'true');
+            setShowTimerModal(false);
+        } else {
+            setShowTimerModal(true);
+        }
+    }, [serviceId, csvFileUrl]);
 
     // Close modal and set timer choice
     const handleTimerChoice = (choice: boolean) => {
@@ -416,8 +419,8 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         return data;
     };
 
-    // Process CSV data and fill test tables
-    const processCSVData = async (csvData: any[]) => {
+    // Process CSV data and fill test tables. When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
+    const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
         try {
             setCsvUploading(true);
 
@@ -457,6 +460,15 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     groupedData[testName].push(row);
                 }
             });
+
+            if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+                const hasTimerSection = !!(groupedData['Accuracy of Irradiation Time']?.length);
+                setHasTimer(hasTimerSection);
+                setShowTimerModal(false);
+                if (serviceId) {
+                    localStorage.setItem(`obi-timer-${serviceId}`, String(hasTimerSection));
+                }
+            }
 
             // Process Accuracy of Operating Potential
             if (groupedData['Accuracy of Operating Potential'] && groupedData['Accuracy of Operating Potential'].length > 0) {
@@ -1375,7 +1387,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
 
                 if (csvData.length > 0) {
                     console.log('Processing data...');
-                    await processCSVData(csvData);
+                    await processCSVData(csvData, true);
                     console.log('Data processed successfully');
                     toast.success('File data loaded and auto-filled successfully!', { id: 'csv-loading' });
                 } else {
@@ -1510,7 +1522,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         );
     }
 
-    // MODAL POPUP
+    // MODAL POPUP — only when not coming from Excel URL (csvFileUrl)
     if (showTimerModal && hasTimer === null) {
         return (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
@@ -1533,6 +1545,17 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             No Timer
                         </button>
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    // When Excel is loading from URL, show loading until timer config is inferred
+    if (csvFileUrl && hasTimer === null) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-xl font-medium text-gray-700">
+                    Loading Excel data and configuring report...
                 </div>
             </div>
         );

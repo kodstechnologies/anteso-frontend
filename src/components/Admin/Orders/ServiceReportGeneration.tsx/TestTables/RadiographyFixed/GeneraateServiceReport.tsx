@@ -100,18 +100,21 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
   ];
   const [notes, setNotes] = useState<string[]>(defaultNotes);
 
-  // Check localStorage for timer preference on mount
+  // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
   useEffect(() => {
-    if (serviceId) {
-      const stored = localStorage.getItem(`radiography-fixed-timer-${serviceId}`);
-      if (stored !== null) {
-        setHasTimer(stored === 'true');
-        setShowTimerModal(false);
-      } else {
-        setShowTimerModal(true);
-      }
+    if (!serviceId) return;
+    if (csvFileUrl) {
+      setShowTimerModal(false);
+      return;
     }
-  }, [serviceId]);
+    const stored = localStorage.getItem(`radiography-fixed-timer-${serviceId}`);
+    if (stored !== null) {
+      setHasTimer(stored === 'true');
+      setShowTimerModal(false);
+    } else {
+      setShowTimerModal(true);
+    }
+  }, [serviceId, csvFileUrl]);
 
   // Close modal and set timer choice
   const handleTimerChoice = (choice: boolean) => {
@@ -330,7 +333,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     return data;
   };
 
-  const processCSVData = async (csvData: any[]) => {
+  // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal
+  const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
     try {
       setCsvUploading(true);
       const groupedData: { [key: string]: any[] } = {};
@@ -342,6 +346,15 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           groupedData[testName].push(row);
         }
       });
+
+      if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+        const hasTimerSection = !!groupedData['Accuracy Of Irradiation Time'];
+        setHasTimer(hasTimerSection);
+        setShowTimerModal(false);
+        if (serviceId) {
+          localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(hasTimerSection));
+        }
+      }
 
       const newDataForComponents: any = {};
 
@@ -791,7 +804,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         const ws = workbook.Sheets[workbook.SheetNames[0]];
         const csv = XLSX.utils.sheet_to_csv(ws);
         const parsed = parseCSV(csv);
-        await processCSVData(parsed);
+        await processCSVData(parsed, true);
         toast.success('Excel data auto-loaded!', { id: 'auto-load' });
       } catch (err: any) {
         console.error('Auto-upload failed:', err);
@@ -870,7 +883,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     );
   }
 
-  // MODAL POPUP
+  // MODAL POPUP — only when not coming from Excel URL (csvFileUrl)
   if (showTimerModal && hasTimer === null) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
@@ -894,6 +907,17 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             </button>
           </div>
 
+        </div>
+      </div>
+    );
+  }
+
+  // When Excel is loading from URL, show loading until timer config is inferred
+  if (csvFileUrl && hasTimer === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl font-medium text-gray-700">
+          Loading Excel data and configuring report...
         </div>
       </div>
     );

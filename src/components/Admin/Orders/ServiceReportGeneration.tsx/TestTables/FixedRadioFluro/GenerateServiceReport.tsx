@@ -207,10 +207,14 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
         if (serviceId) load();
     }, [serviceId]);
 
-    // Check for existing timer test and localStorage choice
+    // Check for existing timer test and localStorage choice. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
     useEffect(() => {
         const checkTimerTest = async () => {
             if (!serviceId) return;
+            if (csvFileUrl) {
+                setShowTimerModal(false);
+                return;
+            }
             try {
                 const res = await getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro(serviceId);
                 if (res?.data) {
@@ -242,7 +246,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             }
         };
         checkTimerTest();
-    }, [serviceId]);
+    }, [serviceId, csvFileUrl]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -460,8 +464,9 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
         return data;
     };
 
-    // Process CSV data and populate component states
-    const processCSVData = async (csvData: any[]) => {
+    // Process CSV data and populate component states.
+    // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
+    const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
         try {
             setCsvUploading(true);
 
@@ -502,6 +507,15 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     groupedData[testName].push(row);
                 }
             });
+
+            if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+                const hasTimerSection = !!(groupedData['Accuracy of Irradiation Time']?.length);
+                setHasTimer(hasTimerSection);
+                setShowTimerModal(false);
+                if (serviceId) {
+                    localStorage.setItem(`fixedradiofluro_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+                }
+            }
 
             // Process Congruence of Radiation
             if (groupedData['Congruence of Radiation'] && groupedData['Congruence of Radiation'].length > 0) {
@@ -1260,7 +1274,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
 
                 if (csvData.length > 0) {
                     console.log('GenerateServiceReport: Processing data...');
-                    await processCSVData(csvData);
+                    await processCSVData(csvData, true);
                     console.log('GenerateServiceReport: Data processed successfully');
                     toast.success('File data loaded and auto-filled successfully!', { id: 'csv-loading' });
                 } else {
@@ -1349,7 +1363,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
         );
     }
 
-    // MODAL POPUP
+    // MODAL POPUP — only when not coming from Excel URL (csvFileUrl)
     if (showTimerModal && hasTimer === null) {
         return (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
@@ -1373,6 +1387,17 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         </button>
                     </div>
 
+                </div>
+            </div>
+        );
+    }
+
+    // When Excel is loading from URL, show loading until timer config is inferred
+    if (csvFileUrl && hasTimer === null) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-xl font-medium text-gray-700">
+                    Loading Excel data and configuring report...
                 </div>
             </div>
         );

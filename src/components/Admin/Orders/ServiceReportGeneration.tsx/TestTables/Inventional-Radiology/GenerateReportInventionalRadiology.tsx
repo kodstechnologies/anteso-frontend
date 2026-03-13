@@ -367,7 +367,9 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     return parseHorizontalData(jsonData);
   };
 
-  const processCSVData = async (csvData: any[]) => {
+  // Process CSV data and populate component states.
+  // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer tubeType (single vs double) from Excel and skip tube modal.
+  const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
     try {
       setCsvUploading(true);
       const groupedData: { [key: string]: any[] } = {};
@@ -383,6 +385,16 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       });
 
       console.log('IR CSV Data grouped:', groupedData);
+
+      if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+        const keys = Object.keys(groupedData);
+        const hasDoubleTube = keys.some((k) => / - Frontal\s*$/i.test(k) || / - Lateral\s*$/i.test(k));
+        const inferredType: 'single' | 'double' = hasDoubleTube ? 'double' : 'single';
+        setTubeType(inferredType);
+        setShowTubeModal(false);
+        localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, inferredType);
+      }
+
       setCsvDataForComponents(groupedData);
       setRefreshKey(prev => prev + 1);
       toast.success('CSV/Excel data loaded successfully!');
@@ -460,7 +472,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           csvData = parseCSV(text);
         }
 
-        await processCSVData(csvData);
+        await processCSVData(csvData, true);
         toast.success('File loaded successfully!', { id: 'csv-loading' });
       } catch (error: any) {
         console.error('Error fetching file:', error);
@@ -611,9 +623,14 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, type);
   };
 
-  // Load saved tube type on mount (if exists)
+  // Load saved tube type on mount (if exists). When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
   useEffect(() => {
     if (!serviceId) return;
+
+    if (csvFileUrl) {
+      setShowTubeModal(false);
+      return;
+    }
 
     // Load saved tube type
     const savedTubeType = localStorage.getItem(`inventional_radiology_tube_type_${serviceId}`);
@@ -624,7 +641,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       // No saved tube type, show tube selection modal first
       setShowTubeModal(true);
     }
-  }, [serviceId]);
+  }, [serviceId, csvFileUrl]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

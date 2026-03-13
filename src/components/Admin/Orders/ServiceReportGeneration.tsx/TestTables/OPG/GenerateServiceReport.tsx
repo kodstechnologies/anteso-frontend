@@ -277,6 +277,11 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
         localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(choice));
     };
 
+    // When csvFileUrl is provided (redirect from ServiceDetails2), don't show timer modal — config will be set from Excel in loadFileFromUrl
+    useEffect(() => {
+        if (csvFileUrl) setShowTimerModal(false);
+    }, [csvFileUrl]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -326,6 +331,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
     useEffect(() => {
         const loadReportHeader = async () => {
             if (!serviceId) return;
+            if (csvFileUrl) return; // Timer/config will be set from Excel in loadFileFromUrl
             try {
                 const res = await getReportHeaderForOPG(serviceId);
                 if (res?.exists && res?.data) {
@@ -411,7 +417,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
             }
         };
         loadReportHeader();
-    }, [serviceId]);
+    }, [serviceId, csvFileUrl]);
 
     useEffect(() => {
         const load = async () => {
@@ -436,6 +442,16 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
                 const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[];
                 const parsed = parseHorizontalData(jsonData);
                 setCsvData(parsed);
+
+                if (parsed && Object.keys(parsed).length > 0) {
+                    const hasTimerSection = !!(parsed.accuracyOfIrradiationTime?.length);
+                    setHasTimer(hasTimerSection);
+                    setShowTimerModal(false);
+                    if (serviceId) {
+                        localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+                    }
+                }
+
                 toast.success('Excel data loaded.', { id: 'opg-csv-load' });
             } catch (err: any) {
                 console.error('OPG: Failed to load file from URL', err);

@@ -182,20 +182,24 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     fetchAll();
   }, [serviceId]);
 
-  // Check localStorage for timer preference on mount
+  // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
   useEffect(() => {
-    if (serviceId) {
-      const stored = localStorage.getItem(`carm_timer_choice_${serviceId}`);
-      if (stored !== null) {
-        setHasTimer(JSON.parse(stored));
-        setShowTimerModal(false);
-      }
+    if (!serviceId) return;
+    if (csvFileUrl) {
+      setShowTimerModal(false);
+      return;
     }
-  }, [serviceId]);
+    const stored = localStorage.getItem(`carm_timer_choice_${serviceId}`);
+    if (stored !== null) {
+      setHasTimer(JSON.parse(stored));
+      setShowTimerModal(false);
+    }
+  }, [serviceId, csvFileUrl]);
 
   useEffect(() => {
     const loadReportHeader = async () => {
       if (!serviceId) return;
+      if (csvFileUrl) return; // Timer/config will be set from Excel in processCSVData
       try {
         const res = await getReportHeaderForCArm(serviceId);
         if (res?.exists && res?.data) {
@@ -262,7 +266,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       }
     };
     loadReportHeader();
-  }, [serviceId]);
+  }, [serviceId, csvFileUrl]);
 
   const formatDate = (iso: string) => iso.split("T")[0];
   const [savedTestIds, setSavedTestIds] = useState<Record<string, string>>({});
@@ -477,7 +481,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         const workbook = XLSX.read(arrayBuffer, { type: "array" });
         const parsedData = parseExcelToCSVFormat(workbook);
         if (parsedData.length > 0) {
-          await processCSVData(parsedData);
+          await processCSVData(parsedData, true);
           setRefreshKey((prev) => prev + 1);
           toast.success("Excel data loaded from file", { id: "carm-csv-load" });
         } else {
@@ -494,7 +498,8 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     loadFromUrl();
   }, [csvFileUrl]);
 
-  const processCSVData = async (csvData: any[]) => {
+  // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
+  const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
     const groupedData: { [key: string]: any[] } = {};
     csvData.forEach(row => {
       const testName = row['Test Name'];
@@ -503,6 +508,15 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         groupedData[testName].push(row);
       }
     });
+
+    if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+      const hasTimerSection = !!(groupedData['Accuracy of Irradiation Time']?.length);
+      setHasTimer(hasTimerSection);
+      setShowTimerModal(false);
+      if (serviceId) {
+        localStorage.setItem(`carm_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+      }
+    }
 
     const processed: any = {};
 
@@ -567,6 +581,18 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       </div>
     );
   }
+
+  // When Excel is loading from URL, show loading until timer config is inferred
+  if (csvFileUrl && hasTimer === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl font-medium text-gray-700">
+          Loading Excel data and configuring report...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">

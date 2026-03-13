@@ -86,6 +86,8 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [csvUploading, setCsvUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [hasTimer, setHasTimer] = useState<boolean | null>(null);
+  const [showTimerModal, setShowTimerModal] = useState(false);
 
   // State to store CSV data for components
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
@@ -176,6 +178,28 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
     fetchAll();
   }, [serviceId]);
+
+  // Timer preference: when csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+  useEffect(() => {
+    if (!serviceId) return;
+    if (csvFileUrl) {
+      setShowTimerModal(false);
+      return;
+    }
+    const stored = localStorage.getItem(`oarm_timer_choice_${serviceId}`);
+    if (stored !== null) {
+      setHasTimer(JSON.parse(stored));
+      setShowTimerModal(false);
+    } else {
+      setShowTimerModal(true);
+    }
+  }, [serviceId, csvFileUrl]);
+
+  const handleTimerChoice = (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+    if (serviceId) localStorage.setItem(`oarm_timer_choice_${serviceId}`, JSON.stringify(choice));
+  };
 
   useEffect(() => {
     const loadReportHeader = async () => {
@@ -295,6 +319,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       'EXPOSURE RATE AT TABLE TOP': 'Exposure Rate At Table Top',
       'TUBE HOUSING LEAKAGE': 'Tube Housing Leakage',
       'LINEARITY OF MAS LOADING': 'Linearity of mAs Loading',
+      'ACCURACY OF IRRADIATION TIME': 'Accuracy of Irradiation Time',
     };
     const markerUpperToInternal: Record<string, string> = Object.fromEntries(
       Object.entries(testMarkerToInternalName).map(([k, v]) => [String(k).trim().toUpperCase(), v])
@@ -333,6 +358,11 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         'mAs Range': 'Row_mAsRange',
         'Meas 1': 'Row_Meas_0', 'Meas 2': 'Row_Meas_1', 'Meas 3': 'Row_Meas_2',
         'Meas 4': 'Row_Meas_3', 'Meas 5': 'Row_Meas_4',
+      },
+      'Accuracy of Irradiation Time': {
+        'FCD': 'Table1_fcd', 'kV': 'Table1_kv', 'mA': 'Table1_ma',
+        'Set Time (ms)': 'Table2_setTime', 'Measured Time (ms)': 'Table2_measuredTime',
+        'Tolerance': 'Tolerance_Value',
       },
     };
 
@@ -396,7 +426,8 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     return parseHorizontalData(jsonData);
   };
 
-  const processCSVData = async (csvData: any[]) => {
+  // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
+  const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
     try {
       setCsvUploading(true);
       const groupedData: { [key: string]: any[] } = {};
@@ -408,6 +439,16 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         }
       });
       console.log('O-Arm CSV Data grouped:', groupedData);
+
+      if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+        const hasTimerSection = !!(groupedData['Accuracy of Irradiation Time']?.length);
+        setHasTimer(hasTimerSection);
+        setShowTimerModal(false);
+        if (serviceId) {
+          localStorage.setItem(`oarm_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+        }
+      }
+
       setCsvDataForComponents(groupedData);
       setCsvDataVersion(prev => prev + 1);
       setRefreshKey(prev => prev + 1);
@@ -477,7 +518,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
           const text = await blob.text();
           csvData = parseCSV(text);
         }
-        await processCSVData(csvData);
+        await processCSVData(csvData, true);
         toast.success('File loaded successfully!', { id: 'csv-loading' });
       } catch (error: any) {
         console.error('O-Arm: Error fetching/processing file:', error);
@@ -513,6 +554,44 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
   if (!details) {
     return <div className="max-w-6xl mx-auto p-8">No data received.</div>;
   }
+
+  if (showTimerModal && hasTimer === null) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform scale-105">
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">Timer Availability</h3>
+          <p className="text-gray-600 mb-8 text-center">
+            Does this O-Arm unit have a selectable <strong>Irradiation Time (Timer)</strong> setting?
+          </p>
+          <div className="flex gap-6 justify-center">
+            <button
+              onClick={() => handleTimerChoice(true)}
+              className="px-8 py-4 bg-green-600 text-white font-bold text-lg rounded-xl hover:bg-green-700 transition"
+            >
+              Yes, Has Timer
+            </button>
+            <button
+              onClick={() => handleTimerChoice(false)}
+              className="px-8 py-4 bg-red-600 text-white font-bold text-lg rounded-xl hover:bg-red-700 transition"
+            >
+              No Timer
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (csvFileUrl && hasTimer === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl font-medium text-gray-700">
+          Loading Excel data and configuring report...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">

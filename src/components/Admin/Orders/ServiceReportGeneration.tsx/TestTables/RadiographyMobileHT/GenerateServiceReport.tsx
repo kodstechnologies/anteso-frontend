@@ -109,24 +109,26 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
   ];
   const [notes, setNotes] = useState<string[]>(defaultNotes);
 
-  // Check localStorage for timer preference on mount
+  // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
   useEffect(() => {
-    if (serviceId) {
-      const stored = localStorage.getItem(`radiography-mobile-ht-timer-${serviceId}`);
-      if (stored !== null) {
-        setHasTimer(stored === 'true');
-        setShowTimerModal(false);
-      } else {
-        // No stored preference - show modal
-        setShowTimerModal(true);
-        setHasTimer(null); // Ensure it's null
-      }
+    if (!serviceId) {
+      setShowTimerModal(true);
+      setHasTimer(null);
+      return;
+    }
+    if (csvFileUrl) {
+      setShowTimerModal(false);
+      return;
+    }
+    const stored = localStorage.getItem(`radiography-mobile-ht-timer-${serviceId}`);
+    if (stored !== null) {
+      setHasTimer(stored === 'true');
+      setShowTimerModal(false);
     } else {
-      // No serviceId yet - keep modal ready to show
       setShowTimerModal(true);
       setHasTimer(null);
     }
-  }, [serviceId]);
+  }, [serviceId, csvFileUrl]);
 
   // Close modal and set timer choice
   const handleTimerChoice = (choice: boolean) => {
@@ -399,7 +401,8 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
     return data;
   };
 
-  const processCSVData = async (csvData: any[]) => {
+  // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
+  const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
     try {
       setCsvUploading(true);
       const grouped: Record<string, any[]> = {};
@@ -410,6 +413,15 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           grouped[name].push(row);
         }
       });
+
+      if (applyConfigFromExcel && Object.keys(grouped).length > 0) {
+        const hasTimerSection = !!(grouped["Accuracy of Irradiation Time"]?.length);
+        setHasTimer(hasTimerSection);
+        setShowTimerModal(false);
+        if (serviceId) {
+          localStorage.setItem(`radiography-mobile-ht-timer-${serviceId}`, String(hasTimerSection));
+        }
+      }
 
       if (grouped["Congruence of Radiation"]?.length) {
         const data = grouped["Congruence of Radiation"];
@@ -708,7 +720,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           csvData = parseCSV(text);
         }
         if (csvData.length > 0) {
-          await processCSVData(csvData);
+        await processCSVData(csvData, true);
           toast.success("File data loaded and filled.");
         } else {
           toast.error("File is empty or could not be parsed.");
@@ -779,7 +791,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
     }
   };
 
-  // MODAL POPUP - Check this FIRST before any other returns
+  // MODAL POPUP — only when not coming from Excel URL (csvFileUrl)
   if (showTimerModal && hasTimer === null && serviceId) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
@@ -803,6 +815,17 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             </button>
           </div>
 
+        </div>
+      </div>
+    );
+  }
+
+  // When Excel is loading from URL, show loading until timer config is inferred
+  if (csvFileUrl && hasTimer === null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl font-medium text-gray-700">
+          Loading Excel data and configuring report...
         </div>
       </div>
     );

@@ -213,6 +213,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
     useEffect(() => {
         const loadReportHeader = async () => {
             if (!serviceId) return;
+            if (csvFileUrlFromProps) return; // Timer/config will be set from Excel in fetchAndProcessFile
             try {
                 const res = await getReportHeaderForDentalHandHeld(serviceId);
                 if (res?.exists && res?.data) {
@@ -290,7 +291,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
             }
         };
         loadReportHeader();
-    }, [serviceId]);
+    }, [serviceId, csvFileUrlFromProps]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -542,7 +543,8 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
         return parseHorizontalData(jsonData);
     };
 
-    const processCSVData = async (csvData: any[]) => {
+    // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
+    const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
         const grouped: { [testName: string]: any[] } = {};
         csvData.forEach(item => {
             const testName = item['Test Name'];
@@ -553,6 +555,13 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 grouped[testName].push(item);
             }
         });
+
+        if (applyConfigFromExcel && Object.keys(grouped).length > 0) {
+            const hasTimerSection = !!(grouped['accuracyOfIrradiationTime']?.length);
+            setHasTimer(hasTimerSection);
+            setShowTimerModal(false);
+            localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+        }
 
         setCsvDataForComponents(grouped);
         setCsvDataVersion(prev => prev + 1);
@@ -598,7 +607,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                     csvData = parseCSV(text);
                 }
 
-                await processCSVData(csvData);
+                await processCSVData(csvData, true);
                 toast.success('File loaded successfully!', { id: 'csv-loading' });
             } catch (error: any) {
                 console.error('DentalHandHeld: Error fetching/processing file:', error);
@@ -760,7 +769,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
         localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(choice));
     };
 
-    // MODAL POPUP
+    // MODAL POPUP — only when not coming from Excel URL (csvFileUrlFromProps)
     if (showTimerModal && hasTimer === null) {
         return (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
@@ -783,6 +792,17 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                             No Timer
                         </button>
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    // When Excel is loading from URL, show loading until timer config is inferred
+    if ((csvFileUrlFromProps || formData.csvFileUrl) && hasTimer === null) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-xl font-medium text-gray-700">
+                    Loading Excel data and configuring report...
                 </div>
             </div>
         );
