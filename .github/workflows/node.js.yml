@@ -1,51 +1,67 @@
-name: Frontend Node.js CI
+name: Frontend CI/CD
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-  build:
-    runs-on: self-hosted
+  build-deploy:
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
         node-version: [18.x]
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
 
-    # Install frontend dependencies
+    # Install dependencies
     - name: Install dependencies
       run: npm ci --legacy-peer-deps
 
-    # Create .env file from secret
+    # Create .env from secret
     - name: Setup environment
       run: |
         touch .env
         echo "${{ secrets.ANTESOFE }}" > .env
 
-    # Fix permissions (important if self-hosted runner writes as root sometimes)
-    - name: Fix permissions before build
-      run: |
-        sudo chown -R $USER:$USER .
-        sudo chmod -R u+rwX,go+rX .
-
-    # Build React frontend
+    # Build frontend
     - name: Build frontend
-      run: NODE_OPTIONS="--max-old-space-size=3072" npm run build
+      run: NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
-    # Serve with PM2
-    - name: Serve React build with PM2
-      run: |
-        pm2 delete FrontendServer || true
-        pm2 serve dist 8080 --name FrontendServer --spa
-        pm2 save
+    # Remove old build from EC2
+    - name: Clean old build on server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_KEY }}
+        script: |
+          rm -rf /home/ubuntu/anteso-frontend/dist/*
+
+    # Upload new dist
+    - name: Upload new build
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_KEY }}
+        source: "dist/*"
+        target: "/home/ubuntu/anteso-frontend/dist"
+
+    # Restart nginx
+    - name: Restart Nginx
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_KEY }}
+        script: |
+          sudo systemctl restart nginx
