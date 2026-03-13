@@ -106,7 +106,7 @@ const Login = () => {
                         <div className="mx-auto w-full max-w-[440px]">
                             <div className="mb-10 text-center">
                                 <img src={logo} alt="anteso logo" className="h-14 w-14 mx-auto mb-4" />
-                                <h1 className="text-xl font-extrabold uppercase text-primary leading-snug">Adminn Sign in</h1>
+                                <h1 className="text-xl font-extrabold uppercase text-primary leading-snug">Admin Sign in</h1>
                                 <p className="text-base font-medium text-white-dark">Enter your email and password to login</p>
                             </div>
 
