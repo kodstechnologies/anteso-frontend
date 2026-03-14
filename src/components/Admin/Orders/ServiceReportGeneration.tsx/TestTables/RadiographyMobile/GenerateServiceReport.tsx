@@ -5,7 +5,22 @@ import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
-import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyMobile, proxyFile } from "../../../../../../api";
+import {
+  getDetails,
+  getTools,
+  saveReportHeader,
+  getReportHeaderForRadiographyMobile,
+  proxyFile,
+  getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobile,
+  getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile,
+  getCentralBeamAlignmentByServiceIdForRadiographyMobile,
+  getCongruenceByServiceIdForRadiographyMobile,
+  getEffectiveFocalSpotByServiceIdForRadiographyMobile,
+  getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobile,
+  getConsistencyOfRadiationOutputByServiceIdForRadiographyMobile,
+  getRadiationLeakageLevelByServiceIdForRadiographyMobile,
+} from "../../../../../../api";
+import { createRadiographyMobileUploadableExcel, RadiographyMobileExportData } from "./exportRadiographyMobileToExcel";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -767,6 +782,103 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     }
   };
 
+  // ── Export saved data to Excel (all test tables) ───────────────────────────
+  const handleExportToExcel = async () => {
+    if (!serviceId) {
+      toast.error("Service ID is missing");
+      return;
+    }
+
+    try {
+      toast.loading("Exporting data to Excel...", { id: "export-excel" });
+      setExcelUploading(true);
+
+      const exportData: Record<string, unknown> = {};
+
+      try {
+        const headerRes = await getReportHeaderForRadiographyMobile(serviceId);
+        if (headerRes?.data || headerRes?.exists) {
+          exportData.reportHeader = headerRes;
+        }
+      } catch (err) {
+        console.log("Radiography Mobile report header not found or error:", err);
+      }
+
+      try {
+        const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobile(serviceId);
+        if (res) exportData.accuracyOfIrradiationTime = res;
+      } catch (err) {
+        console.log("Accuracy of Irradiation Time not found or error:", err);
+      }
+
+      try {
+        const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile(serviceId);
+        if (res) exportData.accuracyOfOperatingPotential = res;
+      } catch (err) {
+        console.log("Accuracy of Operating Potential not found or error:", err);
+      }
+
+      try {
+        const res = await getCentralBeamAlignmentByServiceIdForRadiographyMobile(serviceId);
+        if (res) exportData.centralBeamAlignment = res;
+      } catch (err) {
+        console.log("Central Beam Alignment not found or error:", err);
+      }
+
+      try {
+        const res = await getCongruenceByServiceIdForRadiographyMobile(serviceId);
+        if (res) exportData.congruence = res;
+      } catch (err) {
+        console.log("Congruence not found or error:", err);
+      }
+
+      try {
+        const res = await getEffectiveFocalSpotByServiceIdForRadiographyMobile(serviceId);
+        if (res) exportData.effectiveFocalSpot = res;
+      } catch (err) {
+        console.log("Effective Focal Spot not found or error:", err);
+      }
+
+      try {
+        const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobile(serviceId);
+        if (res) exportData.linearityOfMasLoading = res;
+      } catch (err) {
+        console.log("Linearity of mAs Loading not found or error:", err);
+      }
+
+      try {
+        const res = await getConsistencyOfRadiationOutputByServiceIdForRadiographyMobile(serviceId);
+        if (res) exportData.outputConsistency = res;
+      } catch (err) {
+        console.log("Output Consistency not found or error:", err);
+      }
+
+      try {
+        const res = await getRadiationLeakageLevelByServiceIdForRadiographyMobile(serviceId);
+        if (res) exportData.radiationLeakageLevel = res;
+      } catch (err) {
+        console.log("Radiation Leakage Level not found or error:", err);
+      }
+
+      if (Object.keys(exportData).length === 0) {
+        toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+        return;
+      }
+
+      const wb = createRadiographyMobileUploadableExcel(exportData as RadiographyMobileExportData);
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `Radiography_Mobile_Test_Data_${timestamp}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+      toast.success("Data exported successfully!", { id: "export-excel" });
+    } catch (error: any) {
+      console.error("Error exporting to Excel:", error);
+      toast.error("Failed to export data: " + (error?.message || "Unknown error"), { id: "export-excel" });
+    } finally {
+      setExcelUploading(false);
+    }
+  };
+
   // ── Guard renders ─────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -848,19 +960,28 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             ⬇ XLSX Template
           </a>
         </div> */}
-        {/* Upload Excel */}
-        <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition cursor-pointer text-sm font-medium ${excelUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}>
-          <CloudArrowUpIcon className="w-5 h-5" />
-          {excelUploading ? "Uploading..." : "Upload Excel"}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={handleExcelUpload}
-            className="hidden"
+        <div className="flex flex-wrap gap-2">
+          <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition cursor-pointer text-sm font-medium ${excelUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}>
+            <CloudArrowUpIcon className="w-5 h-5" />
+            {excelUploading ? "Uploading..." : "Import Excel"}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleExcelUpload}
+              className="hidden"
+              disabled={excelUploading}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleExportToExcel}
             disabled={excelUploading}
-          />
-        </label>
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition text-sm font-medium ${excelUploading ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}
+          >
+            {excelUploading ? "Exporting..." : "Export Excel"}
+          </button>
+        </div>
       </div>
 
       {/* ── Form sections ── */}

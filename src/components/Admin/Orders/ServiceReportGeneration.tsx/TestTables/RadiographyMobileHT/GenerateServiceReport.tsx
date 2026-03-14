@@ -5,7 +5,24 @@ import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
-import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyMobileHT, proxyFile } from "../../../../../../api";
+import {
+  getDetails,
+  getTools,
+  saveReportHeader,
+  getReportHeaderForRadiographyMobileHT,
+  proxyFile,
+  getCongruenceByServiceIdForRadiographyMobileHT,
+  getCentralBeamAlignmentByServiceIdForRadiographyMobileHT,
+  getEffectiveFocalSpotByServiceIdForRadiographyMobileHT,
+  getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobileHT,
+  getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobileHT,
+  getTotalFiltrationByServiceIdForRadiographyMobileHT,
+  getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobileHT,
+  getOutputConsistencyByServiceIdForRadiographyMobileHT,
+  getRadiationLeakageLevelByServiceIdForRadiographyMobileHT,
+  getRadiationProtectionSurveyByServiceIdForRadiographyMobileHT,
+} from "../../../../../../api";
+import { createRadiographyMobileHTUploadableExcel, RadiographyMobileHTExportData } from "./exportRadiographyMobileHTToExcel";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -740,13 +757,172 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // In RadioFluro.tsx - handleSaveHeader function
+  // Check which test tables are not saved; returns list of display names (mirrors RadiographyFixed).
+  const getUnsavedTestNames = async (): Promise<string[]> => {
+    const isSaved = (raw: any): boolean => {
+      if (raw == null) return false;
+      if (typeof raw !== "object") return false;
+      if (raw.success && raw.data != null) return true;
+      if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+      const data = raw.data !== undefined ? raw.data : raw;
+      if (data == null || typeof data !== "object") return false;
+      if ((data as any)._id) return true;
+      if ((data as any).data && (data as any).data._id) return true;
+      if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+      if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+      if ((data as any).totalFiltration != null && typeof (data as any).totalFiltration === "object") return true;
+      return false;
+    };
+    const checks: { name: string; check: () => Promise<boolean> }[] = [
+      { name: "Congruence of radiation & Optical Field", check: async () => { try { return isSaved(await getCongruenceByServiceIdForRadiographyMobileHT(serviceId)); } catch { return false; } } },
+      { name: "Central Beam Alignment", check: async () => { try { return isSaved(await getCentralBeamAlignmentByServiceIdForRadiographyMobileHT(serviceId)); } catch { return false; } } },
+      { name: "Effective Focal Spot Measurement", check: async () => { try { return isSaved(await getEffectiveFocalSpotByServiceIdForRadiographyMobileHT(serviceId)); } catch { return false; } } },
+      {
+        name: "Accuracy Of Operating Potential & Total Filtration",
+        check: async () => {
+          try {
+            const res = await getTotalFiltrationByServiceIdForRadiographyMobileHT(serviceId);
+            return isSaved(res);
+          } catch {
+            return false;
+          }
+        },
+      },
+      { name: "Linearity (mA/mAs Loading)", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobileHT(serviceId)); } catch { return false; } } },
+      { name: "Output Consistency", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForRadiographyMobileHT(serviceId)); } catch { return false; } } },
+      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForRadiographyMobileHT(serviceId)); } catch { return false; } } },
+      { name: "Details Of Radiation Protection Survey", check: async () => { try { return isSaved(await getRadiationProtectionSurveyByServiceIdForRadiographyMobileHT(serviceId)); } catch { return false; } } },
+    ];
+    if (hasTimer === true) {
+      checks.push({
+        name: "Accuracy Of Irradiation Time",
+        check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobileHT(serviceId)); } catch { return false; } },
+      });
+    }
+    const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+    return results.filter((r) => !r.saved).map((r) => r.name);
+  };
+
+  // Export saved data to Excel (mirrors RadiographyFixed).
+  const handleExportToExcel = async () => {
+    if (!serviceId) {
+      toast.error("Service ID is missing");
+      return;
+    }
+    try {
+      toast.loading("Exporting data to Excel...", { id: "export-excel" });
+      setCsvUploading(true);
+
+      const exportData: Record<string, unknown> = {};
+
+      try {
+        const headerRes = await getReportHeaderForRadiographyMobileHT(serviceId);
+        if (headerRes?.data || headerRes?.exists) {
+          exportData.reportHeader = headerRes;
+        }
+      } catch (err) {
+        console.log("Radiography Mobile HT report header not found or error:", err);
+      }
+
+      try {
+        const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobileHT(serviceId);
+        if (res) exportData.accuracyOfIrradiationTime = res;
+      } catch (err) {
+        console.log("Accuracy of Irradiation Time not found or error:", err);
+      }
+      try {
+        const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobileHT(serviceId);
+        if (res) exportData.accuracyOfOperatingPotential = res;
+      } catch (err) {
+        console.log("Accuracy of Operating Potential not found or error:", err);
+      }
+      try {
+        const res = await getTotalFiltrationByServiceIdForRadiographyMobileHT(serviceId);
+        if (res && (res.data || res.totalFiltration || res.measurements)) {
+          exportData.totalFiltration = res;
+        }
+      } catch (err) {
+        console.log("Total Filtration not found or error:", err);
+      }
+      try {
+        const res = await getCentralBeamAlignmentByServiceIdForRadiographyMobileHT(serviceId);
+        if (res) exportData.centralBeamAlignment = res;
+      } catch (err) {
+        console.log("Central Beam Alignment not found or error:", err);
+      }
+      try {
+        const res = await getCongruenceByServiceIdForRadiographyMobileHT(serviceId);
+        if (res) exportData.congruence = res;
+      } catch (err) {
+        console.log("Congruence of Radiation not found or error:", err);
+      }
+      try {
+        const res = await getEffectiveFocalSpotByServiceIdForRadiographyMobileHT(serviceId);
+        if (res) exportData.effectiveFocalSpot = res;
+      } catch (err) {
+        console.log("Effective Focal Spot not found or error:", err);
+      }
+      try {
+        const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobileHT(serviceId);
+        if (res) exportData.linearityOfMaLoading = res;
+      } catch (err) {
+        console.log("Linearity of mAs Loading not found or error:", err);
+      }
+      try {
+        const res = await getOutputConsistencyByServiceIdForRadiographyMobileHT(serviceId);
+        if (res) exportData.outputConsistency = res;
+      } catch (err) {
+        console.log("Output Consistency not found or error:", err);
+      }
+      try {
+        const res = await getRadiationLeakageLevelByServiceIdForRadiographyMobileHT(serviceId);
+        if (res) exportData.radiationLeakageLevel = res;
+      } catch (err) {
+        console.log("Radiation Leakage Level not found or error:", err);
+      }
+      try {
+        const res = await getRadiationProtectionSurveyByServiceIdForRadiographyMobileHT(serviceId);
+        if (res) exportData.radiationProtectionSurvey = res;
+      } catch (err) {
+        console.log("Radiation Protection Survey not found or error:", err);
+      }
+
+      if (Object.keys(exportData).length === 0) {
+        toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+        return;
+      }
+      const wb = createRadiographyMobileHTUploadableExcel(exportData as RadiographyMobileHTExportData);
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `Radiography_Mobile_HT_Test_Data_${timestamp}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      toast.success("Data exported successfully!", { id: "export-excel" });
+    } catch (error: any) {
+      console.error("Error exporting to Excel:", error);
+      toast.error("Failed to export data: " + (error.message || "Unknown error"), { id: "export-excel" });
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
+  // In RadioFluro.tsx - handleSaveHeader function (with validation: save header only after all test tables are saved)
   const handleSaveHeader = async () => {
     setSaving(true);
     setSaveSuccess(false);
     setSaveError(null);
 
     try {
+      const unsaved = await getUnsavedTestNames();
+      if (unsaved.length > 0) {
+        const message =
+          unsaved.length === 1
+            ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+            : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+        setSaveError(message);
+        toast.error(message, { duration: 5000 });
+        setSaving(false);
+        return;
+      }
+
       const payload = {
         ...formData,
         toolsUsed: tools.map((t) => ({
@@ -854,23 +1030,9 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           Generate Radiography (Mobile) with HT QA Test Report
         </h1>
         <div className="flex flex-wrap items-center gap-3">
-          {/* <a
-            href="/templates/RadiographyMobileHT_Test_Data_Template_WithTimer.csv"
-            download
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
-          >
-            Download Template (With Timer)
-          </a>
-          <a
-            href="/templates/RadiographyMobileHT_Test_Data_Template_NoTimer.csv"
-            download
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
-          >
-            Download Template (No Timer)
-          </a> */}
-          <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-sm font-medium">
+          <label className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition cursor-pointer text-sm font-medium border border-green-200 disabled:opacity-50">
             <CloudArrowUpIcon className="w-5 h-5" />
-            {csvUploading ? "Loading…" : "Upload Excel"}
+            {csvUploading ? "Uploading…" : "Import Excel"}
             <input
               ref={fileInputRef}
               type="file"
@@ -880,6 +1042,13 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
               disabled={csvUploading}
             />
           </label>
+          <button
+            onClick={handleExportToExcel}
+            disabled={csvUploading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium border border-blue-200 disabled:opacity-50"
+          >
+            {csvUploading ? "Exporting…" : "Export Excel"}
+          </button>
         </div>
       </div>
 
@@ -1012,7 +1181,18 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           {saving ? "Saving..." : "Save Report Header"}
         </button>
         <button
-          onClick={() => navigate(`/admin/orders/view-service-report-radiography-mobile-ht?serviceId=${serviceId}`)}
+          onClick={async () => {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+              const message =
+                unsaved.length === 1
+                  ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                  : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+              toast.error(message, { duration: 5000 });
+              return;
+            }
+            navigate(`/admin/orders/view-service-report-radiography-mobile-ht?serviceId=${serviceId}`);
+          }}
           className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
         >
           View Generated Report

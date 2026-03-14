@@ -40,12 +40,12 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
                             },
                             success: {
                                 style: { background: '#f0fdf4', color: '#166534', border: '1px solid #86efac' },
-                                iconTheme: { primary: '#22c55e' },
+                                iconTheme: { primary: '#22c55e', secondary: '#f0fdf4' },
                             },
                             error: {
                                 duration: 5500,
                                 style: { background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' },
-                                iconTheme: { primary: '#dc2626' },
+                                iconTheme: { primary: '#dc2626', secondary: '#fef2f2' },
                             },
                         }}
                     />
