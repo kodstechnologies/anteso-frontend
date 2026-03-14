@@ -58,11 +58,12 @@ interface DetailsResponse {
   hospitalName: string;
   hospitalAddress: string;
   srfNumber: string;
+  orderCreatedAt?: string;
   machineType: string;
   machineModel: string;
   serialNumber: string;
   engineerAssigned: { name: string };
-  qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
+  qaTests: Array<{ createdAt: string; qaTestReportNumber: string; qatestSubmittedAt?: string; reportULRNumber?: string }>;
 }
 
 const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
@@ -90,6 +91,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     address: "",
     srfNumber: "",
     srfDate: "",
+    reportULRNumber: "",
     testReportNumber: "",
     issueDate: "",
     nomenclature: "",
@@ -161,13 +163,14 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
 
         setDetails(data);
 
-        // Calculate test due date (2 years from QA test date)
+        // SRF date = order created at; Test date = QA test submitted at (or createdAt)
+        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         let testDate = "";
         let testDueDate = "";
-        if (firstTest?.createdAt) {
-          const qaTestDate = new Date(firstTest.createdAt);
+        if (testDateSource) {
+          const qaTestDate = new Date(testDateSource);
           testDate = qaTestDate.toISOString().split("T")[0];
-          // Add 2 years
           const dueDate = new Date(qaTestDate);
           dueDate.setFullYear(dueDate.getFullYear() + 2);
           testDueDate = dueDate.toISOString().split("T")[0];
@@ -178,7 +181,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           customerName: data.hospitalName,
           address: data.hospitalAddress,
           srfNumber: data.srfNumber,
-          srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          srfDate: srfDateStr,
+          reportULRNumber: firstTest?.reportULRNumber || "",
           testReportNumber: firstTest?.qaTestReportNumber || "",
           issueDate: new Date().toISOString().split("T")[0],
           nomenclature: data.machineType,
@@ -226,6 +230,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               address: reportData.address || prev.address,
               srfNumber: reportData.srfNumber || prev.srfNumber,
               srfDate: reportData.srfDate || prev.srfDate,
+              reportULRNumber: reportData.reportULRNumber || prev.reportULRNumber,
               testReportNumber: reportData.testReportNumber || prev.testReportNumber,
               issueDate: reportData.issueDate || prev.issueDate,
               nomenclature: reportData.nomenclature || prev.nomenclature,

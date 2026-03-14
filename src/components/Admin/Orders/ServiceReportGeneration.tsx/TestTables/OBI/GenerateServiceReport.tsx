@@ -117,6 +117,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+        reportULRNumber: "",
     });
     const defaultNotes = [
         "The Test Report relates only to the above item only.",
@@ -200,13 +201,14 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
 
                 setDetails(data);
 
-                // Calculate test due date (2 years from QA test date)
+                // SRF date = order created at; Test date = QA test submitted at (or createdAt)
+                const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+                const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
                 let testDate = "";
                 let testDueDate = "";
-                if (firstTest?.createdAt) {
-                    const qaTestDate = new Date(firstTest.createdAt);
+                if (testDateSource) {
+                    const qaTestDate = new Date(testDateSource);
                     testDate = qaTestDate.toISOString().split("T")[0];
-                    // Add 2 years
                     const dueDate = new Date(qaTestDate);
                     dueDate.setFullYear(dueDate.getFullYear() + 2);
                     testDueDate = dueDate.toISOString().split("T")[0];
@@ -217,7 +219,8 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
-                    srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    srfDate: srfDateStr,
+                    reportULRNumber: firstTest?.reportULRNumber || "",
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
@@ -266,6 +269,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             address: reportData.address || prev.address,
                             srfNumber: reportData.srfNumber || prev.srfNumber,
                             srfDate: reportData.srfDate || prev.srfDate,
+                            reportULRNumber: reportData.reportULRNumber || prev.reportULRNumber,
                             testReportNumber: reportData.testReportNumber || prev.testReportNumber,
                             issueDate: reportData.issueDate || prev.issueDate,
                             nomenclature: reportData.nomenclature || prev.nomenclature,

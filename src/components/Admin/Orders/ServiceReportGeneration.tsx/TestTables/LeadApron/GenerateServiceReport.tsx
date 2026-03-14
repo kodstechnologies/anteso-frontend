@@ -100,13 +100,10 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
 
                 setDetails(data);
 
-                // Use createdAt prop for SRF date, or fallback to firstTest createdAt
-                const srfDateValue = createdAt ? (new Date(createdAt).toISOString().split("T")[0]) :
-                    (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
-
-                // Use qaTestDate for test date, or fallback to firstTest createdAt
-                const testDateValue = qaTestDate ? (new Date(qaTestDate).toISOString().split("T")[0]) :
-                    (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+                // SRF date = order created at; Test date = QA test submitted at (or createdAt)
+                const srfDateValue = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (createdAt ? new Date(createdAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : ""));
+                const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt || qaTestDate;
+                const testDateValue = testDateSource ? (typeof testDateSource === "string" ? new Date(testDateSource).toISOString().split("T")[0] : "") : "";
 
                 // Calculate due date as 2 years from test date
                 let testDueDateValue = "";
@@ -139,7 +136,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                     temperature: prev.temperature || "",
                     humidity: prev.humidity || "",
                     engineerNameRPId: data.engineerAssigned?.name || prev.engineerNameRPId,
-                    ulrNumber: ulrNumber || prev.ulrNumber || "N/A",
+                    ulrNumber: firstTest?.reportULRNumber || ulrNumber || prev.ulrNumber || "N/A",
                 }));
 
                 // Map tools

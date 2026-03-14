@@ -73,6 +73,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
         address: "",
         srfNumber: "",
         srfDate: "",
+        reportULRNumber: "",
         testReportNumber: "",
         issueDate: "",
         nomenclature: "",
@@ -213,11 +214,9 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
 
                 setDetails(data);
 
-                const rawTestDate =
-                    qaTestDate ||
-                    firstTest?.createdAt ||
-                    "";
-                const baseTestDate = rawTestDate ? rawTestDate.split("T")[0] : "";
+                const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : "";
+                const rawTestDate = firstTest?.qatestSubmittedAt || firstTest?.createdAt || qaTestDate || "";
+                const baseTestDate = rawTestDate ? (typeof rawTestDate === "string" ? rawTestDate.split("T")[0] : "") : "";
                 const dueDate = baseTestDate ? addYearsToDate(baseTestDate, 5) : "";
 
                 // Pre-fill form from service details
@@ -225,7 +224,8 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
-                    srfDate: baseTestDate || "",
+                    srfDate: srfDateStr || baseTestDate || "",
+                    reportULRNumber: firstTest?.reportULRNumber || "",
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
@@ -388,6 +388,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
                         address: res.data.address || prev.address,
                         srfNumber: res.data.srfNumber || prev.srfNumber,
                         srfDate: res.data.srfDate || prev.srfDate,
+                        reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
                         testReportNumber: res.data.testReportNumber || prev.testReportNumber,
                         issueDate: res.data.issueDate || prev.issueDate,
                         nomenclature: res.data.nomenclature || prev.nomenclature,

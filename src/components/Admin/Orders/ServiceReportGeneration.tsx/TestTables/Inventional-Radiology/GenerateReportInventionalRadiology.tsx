@@ -148,6 +148,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     humidity: "",
     engineerNameRPId: "",
     category: "",
+    reportULRNumber: "",
   });
 
   // --- CSV/Excel Parsing Logic ---
@@ -589,12 +590,23 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         const firstTest = data.qaTests?.[0];
         setDetails(data);
 
+        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
+        const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
+        let testDueDateStr = "";
+        if (testDateStr) {
+          const d = new Date(testDateStr);
+          d.setFullYear(d.getFullYear() + 2);
+          testDueDateStr = d.toISOString().split("T")[0];
+        }
+
         // Pre-fill form from service details
         setFormData({
           customerName: data.hospitalName,
           address: data.hospitalAddress,
           srfNumber: data.srfNumber,
-          srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          srfDate: srfDateStr,
+          reportULRNumber: firstTest?.reportULRNumber || "",
           testReportNumber: firstTest?.qaTestReportNumber || "",
           issueDate: new Date().toISOString().split("T")[0],
           nomenclature: data.machineType,
@@ -604,8 +616,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           condition: "OK",
           testingProcedureNumber: "",
           pages: "",
-          testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-          testDueDate: "",
+          testDate: testDateStr,
+          testDueDate: testDueDateStr,
           location: data.hospitalAddress,
           temperature: "",
           humidity: "",
@@ -642,6 +654,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
               address: reportData.address || prev.address,
               srfNumber: reportData.srfNumber || prev.srfNumber,
               srfDate: reportData.srfDate || prev.srfDate,
+              reportULRNumber: reportData.reportULRNumber || prev.reportULRNumber,
               testReportNumber: reportData.testReportNumber || prev.testReportNumber,
               issueDate: reportData.issueDate || prev.issueDate,
               nomenclature: reportData.nomenclature || prev.nomenclature,

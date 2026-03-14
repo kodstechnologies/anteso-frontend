@@ -93,6 +93,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     address: "",
     srfNumber: "",
     srfDate: "",
+    reportULRNumber: "",
     testReportNumber: "",
     issueDate: "",
     nomenclature: "",
@@ -189,10 +190,12 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         const firstTest = data.qaTests?.[0];
         setDetails(data);
 
+        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         let testDate = "";
         let testDueDate = "";
-        if (firstTest?.createdAt) {
-          const qaDate = new Date(firstTest.createdAt);
+        if (testDateSource) {
+          const qaDate = new Date(testDateSource);
           testDate = qaDate.toISOString().split("T")[0];
           const due = new Date(qaDate);
           due.setFullYear(due.getFullYear() + 2);
@@ -203,7 +206,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           customerName: data.hospitalName,
           address: data.hospitalAddress,
           srfNumber: data.srfNumber,
-          srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          srfDate: srfDateStr,
+          reportULRNumber: firstTest?.reportULRNumber || "",
           testReportNumber: firstTest?.qaTestReportNumber || "",
           issueDate: new Date().toISOString().split("T")[0],
           nomenclature: data.machineType,
@@ -258,6 +262,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             srfNumber: res.data.srfNumber || prev.srfNumber,
             category: res.data.category || prev.category,
             srfDate: res.data.srfDate || prev.srfDate,
+            reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
             testReportNumber: res.data.testReportNumber || prev.testReportNumber,
             issueDate: res.data.issueDate || prev.issueDate,
             nomenclature: res.data.nomenclature || prev.nomenclature,

@@ -101,6 +101,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         humidity: "",
         engineerNameRPId: "",
         category: "",
+        reportULRNumber: "",
     });
     const defaultNotes = [
         "The Test Report relates only to the above item only.",
@@ -980,11 +981,22 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
 
                 setDetails(data);
 
+                const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+                const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
+                const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
+                let testDueDateStr = "";
+                if (testDateStr) {
+                    const d = new Date(testDateStr);
+                    d.setFullYear(d.getFullYear() + 2);
+                    testDueDateStr = d.toISOString().split("T")[0];
+                }
+
                 setFormData({
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
-                    srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    srfDate: srfDateStr,
+                    reportULRNumber: firstTest?.reportULRNumber || "",
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: "Mammography Unit",
@@ -994,8 +1006,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     condition: "OK",
                     testingProcedureNumber: "AERB/MAMMO/2023",
                     pages: "",
-                    testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-                    testDueDate: "",
+                    testDate: testDateStr,
+                    testDueDate: testDueDateStr,
                     location: data.hospitalAddress,
                     temperature: "",
                     humidity: "",
@@ -1030,6 +1042,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                             address: reportData.address || prev.address,
                             srfNumber: reportData.srfNumber || prev.srfNumber,
                             srfDate: reportData.srfDate || prev.srfDate,
+                            reportULRNumber: reportData.reportULRNumber || prev.reportULRNumber,
                             testReportNumber: reportData.testReportNumber || prev.testReportNumber,
                             issueDate: reportData.issueDate || prev.issueDate,
                             nomenclature: reportData.nomenclature || prev.nomenclature,

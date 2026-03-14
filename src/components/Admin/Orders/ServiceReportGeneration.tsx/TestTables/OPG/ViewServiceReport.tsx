@@ -31,6 +31,7 @@ interface ReportData {
   address?: string;
   srfNumber?: string;
   srfDate?: any;
+  reportULRNumber?: string;
   testReportNumber?: string;
   issueDate?: any;
   nomenclature?: string;
@@ -96,6 +97,7 @@ const ViewServiceReportOPG: React.FC = () => {
             address: data.address || "N/A",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || "",
+            reportULRNumber: data.reportULRNumber || "N/A",
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",
             nomenclature: data.nomenclature || "OPG",
@@ -449,7 +451,7 @@ const ViewServiceReportOPG: React.FC = () => {
                   <tbody>
                     <tr><td className="border px-3 py-1 font-bold">SRF No.</td><td className="border px-3 py-1">{report.srfNumber}</td></tr>
                     <tr><td className="border px-3 py-1 font-bold">SRF Date</td><td className="border px-3 py-1">{formatDate(report.srfDate)}</td></tr>
-                    <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">TC9A43250001485F</td></tr>
+                    <tr><td className="border px-3 py-1 font-bold">ULR No.</td><td className="border px-3 py-1">{report.reportULRNumber || "N/A"}</td></tr>
                   </tbody>
                 </table>
               </div>

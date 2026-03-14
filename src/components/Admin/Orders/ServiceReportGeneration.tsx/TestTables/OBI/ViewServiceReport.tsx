@@ -30,6 +30,7 @@ interface ReportData {
   address?: string;
   srfNumber?: string;
   srfDate?: any;
+  reportULRNumber?: string;
   testReportNumber?: string;
   issueDate?: any;
   nomenclature?: string;
@@ -105,6 +106,7 @@ const ViewServiceReportOBI: React.FC = () => {
             address: data.address || "N/A",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || "",
+            reportULRNumber: data.reportULRNumber || "N/A",
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",
             nomenclature: data.nomenclature || "On-Board Imaging (OBI)",
@@ -505,7 +507,7 @@ const ViewServiceReportOBI: React.FC = () => {
                   </tr>
                   <tr style={{ height: 'auto', minHeight: '0', lineHeight: '0.9', padding: '0', margin: '0', verticalAlign: 'middle' }}>
                     <td className="border px-3 py-1 print:px-1 print:py-0.5 font-bold" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>ULR No.</td>
-                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{ulrNumber}</td>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{report?.reportULRNumber || ulrNumber}</td>
                   </tr>
                 </tbody>
               </table>

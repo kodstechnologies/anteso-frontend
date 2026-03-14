@@ -98,6 +98,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
     address: "",
     srfNumber: "",
     srfDate: "",
+    reportULRNumber: "",
     testReportNumber: "",
     issueDate: "",
     nomenclature: "",
@@ -171,6 +172,15 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
 
         const data = detailsRes.data;
         const firstTest = data.qaTests[0];
+        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
+        const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
+        let testDueDateStr = "";
+        if (testDateStr) {
+          const d = new Date(testDateStr);
+          d.setFullYear(d.getFullYear() + 2);
+          testDueDateStr = d.toISOString().split("T")[0];
+        }
 
         setDetails(data);
 
@@ -179,7 +189,8 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           customerName: data.hospitalName,
           address: data.hospitalAddress,
           srfNumber: data.srfNumber,
-          srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          srfDate: srfDateStr,
+          reportULRNumber: firstTest?.reportULRNumber || "",
           testReportNumber: firstTest?.qaTestReportNumber || "",
           issueDate: new Date().toISOString().split("T")[0],
           nomenclature: data.machineType,
@@ -189,8 +200,8 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           condition: "OK",
           testingProcedureNumber: "",
           pages: "",
-          testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-          testDueDate: "",
+          testDate: testDateStr,
+          testDueDate: testDueDateStr,
           location: data.hospitalAddress,
           temperature: "",
           humidity: "",
@@ -237,6 +248,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             address: res.data.address || prev.address,
             srfNumber: res.data.srfNumber || prev.srfNumber,
             srfDate: res.data.srfDate || prev.srfDate,
+            reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
             testReportNumber: res.data.testReportNumber || prev.testReportNumber,
             issueDate: res.data.issueDate || prev.issueDate,
             nomenclature: res.data.nomenclature || prev.nomenclature,

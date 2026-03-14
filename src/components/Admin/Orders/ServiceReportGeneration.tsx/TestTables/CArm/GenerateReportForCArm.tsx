@@ -113,6 +113,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     address: "",
     srfNumber: "",
     srfDate: "",
+    reportULRNumber: "",
     testReportNumber: "",
     issueDate: "",
     nomenclature: "",
@@ -147,25 +148,36 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         ]);
 
         setDetails(detRes.data);
-        const firstTest = detRes.data.qaTests?.[0];
+        const data = detRes.data;
+        const firstTest = data.qaTests?.[0];
+        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
+        const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
+        let testDueDateStr = "";
+        if (testDateStr) {
+          const d = new Date(testDateStr);
+          d.setFullYear(d.getFullYear() + 2);
+          testDueDateStr = d.toISOString().split("T")[0];
+        }
 
         setFormData({
-          customerName: detRes.data.hospitalName,
-          address: detRes.data.hospitalAddress,
-          srfNumber: detRes.data.srfNumber,
-          srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          customerName: data.hospitalName,
+          address: data.hospitalAddress,
+          srfNumber: data.srfNumber,
+          srfDate: srfDateStr,
+          reportULRNumber: firstTest?.reportULRNumber || "",
           testReportNumber: firstTest?.qaTestReportNumber || "",
           issueDate: new Date().toISOString().split("T")[0],
-          nomenclature: detRes.data.machineType,
+          nomenclature: data.machineType,
           make: "",
-          model: detRes.data.machineModel,
-          slNumber: detRes.data.serialNumber,
+          model: data.machineModel,
+          slNumber: data.serialNumber,
           category: "",
           condition: "OK",
           testingProcedureNumber: "",
           pages: "",
-          testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
-          testDueDate: "",
+          testDate: testDateStr,
+          testDueDate: testDueDateStr,
           location: detRes.data.hospitalAddress,
           temperature: "",
           humidity: "",
@@ -225,6 +237,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
             address: res.data.address || prev.address,
             srfNumber: res.data.srfNumber || prev.srfNumber,
             srfDate: res.data.srfDate || prev.srfDate,
+            reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
             testReportNumber: res.data.testReportNumber || prev.testReportNumber,
             issueDate: res.data.issueDate || prev.issueDate,
             nomenclature: res.data.nomenclature || prev.nomenclature,

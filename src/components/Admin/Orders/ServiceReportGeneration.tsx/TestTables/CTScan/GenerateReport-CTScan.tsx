@@ -112,6 +112,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         address: "",
         srfNumber: "",
         srfDate: "",
+        reportULRNumber: "",
         testReportNumber: "",
         issueDate: "",
         nomenclature: "",
@@ -147,12 +148,10 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
 
                 setDetails(data);
 
-                // Calculate dates
-                const srfDateValue = createdAt ? (new Date(createdAt).toISOString().split("T")[0]) :
-                    (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
-
-                const rawTestDate = qaTestDate || firstTest?.createdAt || "";
-                const testDateValue = rawTestDate ? rawTestDate.split("T")[0] : "";
+                // SRF date = order created at; Test date = QA test submitted at (or createdAt)
+                const srfDateValue = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (createdAt ? new Date(createdAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : ""));
+                const rawTestDate = firstTest?.qatestSubmittedAt || firstTest?.createdAt || qaTestDate || "";
+                const testDateValue = rawTestDate ? (typeof rawTestDate === "string" ? rawTestDate.split("T")[0] : "") : "";
                 const testDueDateValue = testDateValue ? addYearsToDate(testDateValue, 2) : "";
 
                 // Pre-fill form from service details
@@ -161,6 +160,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
                     srfDate: srfDateValue,
+                    reportULRNumber: firstTest?.reportULRNumber || "",
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
@@ -833,6 +833,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                         address: res.data.address || prev.address,
                         srfNumber: res.data.srfNumber || prev.srfNumber,
                         srfDate: res.data.srfDate || prev.srfDate,
+                        reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
                         testReportNumber: res.data.testReportNumber || prev.testReportNumber,
                         issueDate: res.data.issueDate || prev.issueDate,
                         nomenclature: res.data.nomenclature || prev.nomenclature,

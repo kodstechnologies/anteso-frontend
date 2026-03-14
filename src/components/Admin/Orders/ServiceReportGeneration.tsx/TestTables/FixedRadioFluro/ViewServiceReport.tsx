@@ -48,6 +48,7 @@ interface ReportData {
   toolsUsed?: Tool[];
   notes?: Note[];
   category: string;
+  reportULRNumber?: string;
   // Test documents
   accuracyOfOperatingPotentialFixedRadioFluoro?: any;
   OutputConsistencyForFixedRadioFlouro?: any;
@@ -336,7 +337,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                   </tr>
                   <tr style={{ height: 'auto', minHeight: '0', lineHeight: '0.9', padding: '0', margin: '0', verticalAlign: 'middle' }}>
                     <td className="border px-3 py-1 print:px-1 print:py-0.5 font-bold" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle', borderColor: '#000000' }}>ULR No.</td>
-                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle', borderColor: '#000000' }}>{ulrNumber}</td>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle', borderColor: '#000000' }}>{report?.reportULRNumber || ulrNumber}</td>
                   </tr>
                 </tbody>
               </table>

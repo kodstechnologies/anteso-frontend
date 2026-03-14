@@ -118,6 +118,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     address: "",
     srfNumber: "",
     srfDate: "",
+    reportULRNumber: "",
     testReportNumber: "",
     issueDate: "",
     nomenclature: "",
@@ -997,8 +998,10 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
 
         setDetails(data);
 
-        // Calculate test due date (2 years from test date)
-        const testDateStr = firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "";
+        // SRF date = order created at; Test date = QA test submitted at (or createdAt)
+        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
+        const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
         let testDueDateStr = "";
         if (testDateStr) {
           const testDate = new Date(testDateStr);
@@ -1012,7 +1015,8 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           customerName: data.hospitalName,
           address: data.hospitalAddress,
           srfNumber: data.srfNumber,
-          srfDate: testDateStr,
+          srfDate: srfDateStr,
+          reportULRNumber: firstTest?.reportULRNumber || "",
           testReportNumber: firstTest?.qaTestReportNumber || "",
           issueDate: new Date().toISOString().split("T")[0],
           nomenclature: data.machineType,
@@ -1082,6 +1086,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             address: res.data.address || prev.address,
             srfNumber: res.data.srfNumber || prev.srfNumber,
             srfDate: res.data.srfDate || prev.srfDate,
+            reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
             testReportNumber: res.data.testReportNumber || prev.testReportNumber,
             issueDate: res.data.issueDate || prev.issueDate,
             nomenclature: res.data.nomenclature || prev.nomenclature,

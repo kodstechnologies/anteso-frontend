@@ -104,6 +104,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
         address: "",
         srfNumber: "",
         srfDate: "",
+        reportULRNumber: "",
         testReportNumber: "",
         issueDate: "",
         nomenclature: "",
@@ -157,9 +158,10 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
 
                 setDetails(data);
 
-                // Calculate test due date (2 years from test date)
-                // Use qaTestDate if provided, otherwise use firstTest.createdAt
-                const testDateStr = qaTestDate ? qaTestDate.split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+                // SRF date = order created at; Test date = QA test submitted at (or createdAt)
+                const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+                const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt || (qaTestDate ? qaTestDate : "");
+                const testDateStr = testDateSource ? (typeof testDateSource === "string" ? testDateSource.split("T")[0] : "") : "";
                 let testDueDateStr = "";
                 if (testDateStr) {
                     const testDate = new Date(testDateStr);
@@ -173,7 +175,8 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
-                    srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+                    srfDate: srfDateStr,
+                    reportULRNumber: firstTest?.reportULRNumber || "",
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: data.machineType,
