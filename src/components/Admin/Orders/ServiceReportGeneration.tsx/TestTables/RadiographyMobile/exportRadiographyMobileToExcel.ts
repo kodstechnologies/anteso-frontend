@@ -32,7 +32,7 @@ export const createRadiographyMobileUploadableExcel = (
     addBlank();
   };
 
-  // 1. Accuracy of Operating Potential
+  // 1. Accuracy of Operating Potential (same as RadiographyFixed)
   const aop = unwrap(data.accuracyOfOperatingPotential);
   if (aop?.table2 && Array.isArray(aop.table2) && aop.table2.length > 0) {
     const rows = aop.table2.map((row: any) => [

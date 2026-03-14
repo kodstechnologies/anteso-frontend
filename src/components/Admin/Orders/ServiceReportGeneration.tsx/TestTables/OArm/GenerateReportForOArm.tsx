@@ -9,7 +9,21 @@ import * as XLSX from "xlsx";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader, getReportHeaderForOArm, proxyFile } from "../../../../../../api";
+import {
+  getDetails,
+  getTools,
+  saveReportHeader,
+  getReportHeaderForOArm,
+  getTotalFilterationByServiceIdForOArm,
+  getOutputConsistencyByServiceIdForOArm,
+  getHighContrastResolutionByServiceIdForOArm,
+  getLowContrastResolutionByServiceIdForOArm,
+  getExposureRateByServiceIdForOArm,
+  getTubeHousingLeakageByServiceIdForOArm,
+  getLinearityOfMasLoadingStationByServiceIdForOArm,
+  proxyFile,
+} from "../../../../../../api";
+import { createOArmUploadableExcel, OArmExportData } from "./exportOArmToExcel";
 
 // Test-table imports
 import TotalFilteration from "./TotalFilteration";
@@ -252,12 +266,53 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const isSaved = (raw: any): boolean => {
+    if (raw == null) return false;
+    if (typeof raw !== "object") return false;
+    if (raw.success && raw.data != null) return true;
+    if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+    const data = raw.data !== undefined ? raw.data : raw;
+    if (data == null || typeof data !== "object") return false;
+    if ((data as any)._id) return true;
+    if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+    if (Array.isArray((data as any).readings) && (data as any).readings.length > 0) return true;
+    if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+    if ((data as any).totalFiltration != null && typeof (data as any).totalFiltration === "object") return true;
+    return false;
+  };
+
+  const getUnsavedTestNames = async (): Promise<string[]> => {
+    const checks: { name: string; check: () => Promise<boolean> }[] = [
+      { name: "Total Filteration", check: async () => { try { return isSaved(await getTotalFilterationByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "Exposure Rate At Table Top", check: async () => { try { return isSaved(await getExposureRateByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId)); } catch { return false; } } },
+    ];
+    const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+    return results.filter((r) => !r.saved).map((r) => r.name);
+  };
+
   const handleSaveHeader = async () => {
     setSaving(true);
     setSaveSuccess(false);
     setSaveError(null);
 
     try {
+      const unsaved = await getUnsavedTestNames();
+      if (unsaved.length > 0) {
+        const message =
+          unsaved.length === 1
+            ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+            : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+        setSaveError(message);
+        toast.error(message, { duration: 5000 });
+        setSaving(false);
+        return;
+      }
+
       const payload = {
         ...formData,
         machineType: "O-Arm",
@@ -300,6 +355,79 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       toast.error(errorMsg);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    if (!serviceId) {
+      toast.error("Service ID is missing");
+      return;
+    }
+    try {
+      toast.loading("Exporting data to Excel...", { id: "export-excel-oarm" });
+      setCsvUploading(true);
+      const exportData: Record<string, unknown> = {};
+      try {
+        const headerRes = await getReportHeaderForOArm(serviceId);
+        if (headerRes?.exists && headerRes?.data) exportData.reportHeader = headerRes;
+      } catch (err) {
+        console.log("O-Arm report header not found or error:", err);
+      }
+      try {
+        const res = await getTotalFilterationByServiceIdForOArm(serviceId);
+        if (res) exportData.totalFiltration = res;
+      } catch (err) {
+        console.log("Total Filtration not found or error:", err);
+      }
+      try {
+        const res = await getOutputConsistencyByServiceIdForOArm(serviceId);
+        if (res) exportData.outputConsistency = res;
+      } catch (err) {
+        console.log("Output Consistency not found or error:", err);
+      }
+      try {
+        const res = await getHighContrastResolutionByServiceIdForOArm(serviceId);
+        if (res) exportData.highContrastResolution = res;
+      } catch (err) {
+        console.log("High Contrast Resolution not found or error:", err);
+      }
+      try {
+        const res = await getLowContrastResolutionByServiceIdForOArm(serviceId);
+        if (res) exportData.lowContrastResolution = res;
+      } catch (err) {
+        console.log("Low Contrast Resolution not found or error:", err);
+      }
+      try {
+        const res = await getExposureRateByServiceIdForOArm(serviceId);
+        if (res) exportData.exposureRateAtTableTop = res;
+      } catch (err) {
+        console.log("Exposure Rate not found or error:", err);
+      }
+      try {
+        const res = await getTubeHousingLeakageByServiceIdForOArm(serviceId);
+        if (res) exportData.tubeHousingLeakage = res;
+      } catch (err) {
+        console.log("Tube Housing Leakage not found or error:", err);
+      }
+      try {
+        const res = await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId);
+        if (res) exportData.linearityOfMasLoading = res;
+      } catch (err) {
+        console.log("Linearity of mAs Loading not found or error:", err);
+      }
+      if (Object.keys(exportData).length <= 1 && !exportData.reportHeader) {
+        toast.error("No data found to export. Please save test data first.", { id: "export-excel-oarm" });
+        return;
+      }
+      const wb = createOArmUploadableExcel(exportData as OArmExportData);
+      const timestamp = new Date().toISOString().split("T")[0];
+      XLSX.writeFile(wb, `O-Arm_Test_Data_${timestamp}.xlsx`);
+      toast.success("Data exported successfully!", { id: "export-excel-oarm" });
+    } catch (error: any) {
+      console.error("Error exporting to Excel:", error);
+      toast.error("Failed to export data: " + (error?.message || "Unknown error"), { id: "export-excel-oarm" });
+    } finally {
+      setCsvUploading(false);
     }
   };
 
@@ -759,8 +887,16 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       <Standards standards={tools} />
       <Notes />
 
-      {/* Save Header and View Report Buttons */}
-      <div className="mt-8 flex justify-end gap-4">
+      {/* Save Header, Export Excel, and View Report Buttons */}
+      <div className="mt-8 flex flex-wrap justify-end gap-4 items-center">
+        <button
+          type="button"
+          onClick={handleExportToExcel}
+          disabled={csvUploading}
+          className="flex items-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 text-sm font-medium disabled:opacity-50"
+        >
+          {csvUploading ? "Exporting..." : "Export Excel"}
+        </button>
         <button
           type="button"
           onClick={handleSaveHeader}
@@ -785,7 +921,18 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         <button
           type="button"
           className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700"
-          onClick={() => navigate(`/admin/orders/view-service-report-o-arm?serviceId=${serviceId}`)}
+          onClick={async () => {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+              const message =
+                unsaved.length === 1
+                  ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                  : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+              toast.error(message, { duration: 5000 });
+              return;
+            }
+            navigate(`/admin/orders/view-service-report-o-arm?serviceId=${serviceId}`);
+          }}
         >
           View Generated Report
         </button>

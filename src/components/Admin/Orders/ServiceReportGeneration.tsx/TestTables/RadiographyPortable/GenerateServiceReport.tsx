@@ -5,7 +5,21 @@ import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
-import { getDetails, getTools, saveReportHeader, getReportHeaderForRadiographyPortable, proxyFile } from "../../../../../../api";
+import {
+  getDetails,
+  getTools,
+  saveReportHeader,
+  getReportHeaderForRadiographyPortable,
+  proxyFile,
+  getCongruenceByServiceIdForRadiographyPortable,
+  getCentralBeamAlignmentByServiceIdForRadiographyPortable,
+  getEffectiveFocalSpotByServiceIdForRadiographyPortable,
+  getAccuracyOfIrradiationTimeByServiceIdForRadiographyPortable,
+  getAccuracyOfOperatingPotentialByServiceIdForRadiographyPortable,
+  getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable,
+  getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable,
+  getRadiationLeakageLevelByServiceIdForRadiographyPortable,
+} from "../../../../../../api";
 import { createRadiographyPortableUploadableExcel, RadiographyPortableExportData } from "./exportRadiographyPortableToExcel";
 
 import Standards from "../../Standards";
@@ -242,12 +256,57 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Check which test tables are not saved; returns list of display names (mirrors RadiographyFixed).
+  const getUnsavedTestNames = async (): Promise<string[]> => {
+    const isSaved = (raw: any): boolean => {
+      if (raw == null) return false;
+      if (typeof raw !== "object") return false;
+      if (raw.success && raw.data != null) return true;
+      if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+      const data = raw.data !== undefined ? raw.data : raw;
+      if (data == null || typeof data !== "object") return false;
+      if ((data as any)._id) return true;
+      if ((data as any).data && (data as any).data._id) return true;
+      if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+      if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+      return false;
+    };
+    const checks: { name: string; check: () => Promise<boolean> }[] = [
+      { name: "Congruence of radiation & Optical Field", check: async () => { try { return isSaved(await getCongruenceByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
+      { name: "Central Beam Alignment", check: async () => { try { return isSaved(await getCentralBeamAlignmentByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
+      { name: "Effective Focal Spot Measurement", check: async () => { try { return isSaved(await getEffectiveFocalSpotByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
+      { name: "Accuracy Of Operating Potential", check: async () => { try { return isSaved(await getAccuracyOfOperatingPotentialByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
+      { name: "Linearity Of mAs Loading Stations", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
+      { name: "Output Consistency", check: async () => { try { return isSaved(await getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
+      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
+    ];
+    if (hasTimer === true) {
+      checks.push({
+        name: "Accuracy Of Irradiation Time",
+        check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } },
+      });
+    }
+    const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+    return results.filter((r) => !r.saved).map((r) => r.name);
+  };
+
   const handleSaveHeader = async () => {
     setSaving(true);
     setSaveSuccess(false);
     setSaveError(null);
 
     try {
+      const unsaved = await getUnsavedTestNames();
+      if (unsaved.length > 0) {
+        const message =
+          unsaved.length === 1
+            ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+            : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+        setSaveError(message);
+        toast.error(message, { duration: 5000 });
+        setSaving(false);
+        return;
+      }
       const payload = {
         ...formData,
         toolsUsed: tools.map((t) => ({
@@ -590,36 +649,80 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
     fetchAndProcessFile();
   }, [csvFileUrl]);
 
-  // Export saved data to Excel with proper table structures
+  // Export saved data to Excel (fetch all test tables from API, same as RadiographyFixed).
   const handleExportToExcel = async () => {
     if (!serviceId) {
-      toast.error('Service ID is missing');
+      toast.error("Service ID is missing");
       return;
     }
-
     try {
-      toast.loading('Exporting data to Excel...', { id: 'export-excel' });
+      toast.loading("Exporting data to Excel...", { id: "export-excel" });
       setCsvUploading(true);
 
-      // Collect all test data in proper structure
       const exportData: RadiographyPortableExportData = {};
 
-      // Add API calls to fetch actual data here similar to CT Scan
-      // For now, we'll create a template
+      try {
+        const res = await getCongruenceByServiceIdForRadiographyPortable(serviceId);
+        if (res) exportData.congruenceOfRadiation = res?.data ?? res;
+      } catch (err) {
+        console.log("Congruence not found or error:", err);
+      }
+      try {
+        const res = await getCentralBeamAlignmentByServiceIdForRadiographyPortable(serviceId);
+        if (res) exportData.centralBeamAlignment = res?.data ?? res;
+      } catch (err) {
+        console.log("Central Beam Alignment not found or error:", err);
+      }
+      try {
+        const res = await getEffectiveFocalSpotByServiceIdForRadiographyPortable(serviceId);
+        if (res) exportData.effectiveFocalSpot = res?.data ?? res;
+      } catch (err) {
+        console.log("Effective Focal Spot not found or error:", err);
+      }
+      try {
+        const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyPortable(serviceId);
+        if (res) exportData.accuracyOfIrradiationTime = res?.data ?? res;
+      } catch (err) {
+        console.log("Accuracy of Irradiation Time not found or error:", err);
+      }
+      try {
+        const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyPortable(serviceId);
+        if (res) exportData.accuracyOfOperatingPotential = res?.data ?? res;
+      } catch (err) {
+        console.log("Accuracy of Operating Potential not found or error:", err);
+      }
+      try {
+        const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId);
+        if (res) exportData.linearityOfMasLoadingStations = res?.data ?? res;
+      } catch (err) {
+        console.log("Linearity of mAs Loading not found or error:", err);
+      }
+      try {
+        const res = await getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable(serviceId);
+        if (res) exportData.consistencyOfRadiationOutput = res?.data ?? res;
+      } catch (err) {
+        console.log("Output Consistency not found or error:", err);
+      }
+      try {
+        const res = await getRadiationLeakageLevelByServiceIdForRadiographyPortable(serviceId);
+        if (res) exportData.radiationLeakageLevel = res?.data ?? res;
+      } catch (err) {
+        console.log("Radiation Leakage Level not found or error:", err);
+      }
 
-      // Create Excel with proper table structures
+      if (Object.keys(exportData).length === 0) {
+        toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+        return;
+      }
+
       const wb = createRadiographyPortableUploadableExcel(exportData, hasTimer || false);
-
-      // Generate filename
-      const timestamp = new Date().toISOString().split('T')[0];
+      const timestamp = new Date().toISOString().split("T")[0];
       const filename = `Radiography_Portable_Test_Data_${timestamp}.xlsx`;
-
-      // Download
       XLSX.writeFile(wb, filename);
-      toast.success('Data exported successfully!', { id: 'export-excel' });
+      toast.success("Data exported successfully!", { id: "export-excel" });
     } catch (error: any) {
-      console.error('Error exporting to Excel:', error);
-      toast.error('Failed to export data: ' + (error.message || 'Unknown error'), { id: 'export-excel' });
+      console.error("Error exporting to Excel:", error);
+      toast.error("Failed to export data: " + (error.message || "Unknown error"), { id: "export-excel" });
     } finally {
       setCsvUploading(false);
     }
@@ -814,18 +917,18 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
                 }`}
             >
               <CloudArrowUpIcon className="w-5 h-5" />
-              {csvUploading ? "Processing..." : "Upload Excel"}
+              {csvUploading ? "Processing..." : "Import Excel"}
             </button>
-            {/* <button
+            <button
               onClick={handleExportToExcel}
               disabled={csvUploading}
-              className={`px-6 py-3 rounded-lg font-medium text-white transition ${csvUploading
+              className={`px-6 py-3 rounded-lg font-medium text-white transition flex items-center gap-2 ${csvUploading
                 ? "bg-gray-500 cursor-not-allowed"
-                : "bg-purple-600 hover:bg-purple-700"
+                : "bg-green-600 hover:bg-green-700 "
                 }`}
             >
-              {csvUploading ? "Exporting..." : "Export Template"}
-            </button> */}
+              {csvUploading ? "Exporting..." : "Export Excel"}
+            </button>
           </div>
         </div>
 
@@ -850,7 +953,18 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
             {saving ? "Saving..." : "Save Report Header"}
           </button>
           <button
-            onClick={() => navigate(`/admin/orders/view-service-report-radiography-portable?serviceId=${serviceId}`)}
+            onClick={async () => {
+              const unsaved = await getUnsavedTestNames();
+              if (unsaved.length > 0) {
+                const message =
+                  unsaved.length === 1
+                    ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                    : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+                toast.error(message, { duration: 5000 });
+                return;
+              }
+              navigate(`/admin/orders/view-service-report-radiography-portable?serviceId=${serviceId}`);
+            }}
             className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
           >
             View Generated Report

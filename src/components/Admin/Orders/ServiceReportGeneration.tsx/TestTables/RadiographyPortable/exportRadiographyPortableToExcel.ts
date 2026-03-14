@@ -117,7 +117,7 @@ export const createRadiographyPortableUploadableExcel = (data: RadiographyPortab
         addSection('ACCURACY OF IRRADIATION TIME', ['FCD (cm)', 'kV', 'mA', 'Set Time (ms)', 'Measured Time (ms)', '% Error', 'Tolerance (%)', 'Remarks'], rows);
     }
 
-    // 5. ACCURACY OF OPERATING POTENTIAL
+    // 5. ACCURACY OF OPERATING POTENTIAL (same as RadiographyFixed)
     if (data.accuracyOfOperatingPotential) {
         const settings = data.accuracyOfOperatingPotential.table1?.[0] || data.accuracyOfOperatingPotential.settings || {};
         const rows = (data.accuracyOfOperatingPotential.table2 || data.accuracyOfOperatingPotential.measurements || []).map((row: any) => [
@@ -132,7 +132,7 @@ export const createRadiographyPortableUploadableExcel = (data: RadiographyPortab
             row.remarks || ''
         ]);
         if (rows.length === 0 && (settings.time || settings.sliceThickness)) {
-            rows.push([settings.time || '', settings.sliceThickness || '', '', '', '', '', '', data.accuracyOfOperatingPotential.toleranceValue || '5', '']);
+            rows.push([settings.time || '', settings.sliceThickness || '', '', '', '', '', '', data.accuracyOfOperatingPotential.toleranceValue || data.accuracyOfOperatingPotential.tolerance?.value || '5', '']);
         }
         addSection('ACCURACY OF OPERATING POTENTIAL', ['Time (ms)', 'Slice Thickness (mm)', 'Set kVp', '@ mA 10', '@ mA 100', '@ mA 200', 'Measured kVp', 'Tolerance (%)', 'Remarks'], rows);
     }

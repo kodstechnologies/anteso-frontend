@@ -13,15 +13,21 @@ import {
     getTools,
     saveReportHeader,
     getReportHeaderForMammography,
-    addAccuracyOfOperatingPotentialForMammography,
-    addLinearityOfMasLLoadingForMammography,
-    addTotalFilterationForMammography,
-    addReproducibilityOfOutputForMammography,
-    addRadiationLeakageLevelForMammography,
-    addImagingPhantomForMammography,
-    addRadiationProtectionSurveyForMammography,
+    getAccuracyOfOperatingPotentialByServiceIdForMammography,
+    getAccuracyOfIrradiationTimeByServiceIdForMammography,
+    getTotalFilterationByServiceIdForMammography,
+    getLinearityOfMasLoadingStationsByServiceIdForMammography,
+    getLinearityOfMasLLoadingByServiceIdForMammography,
+    getReproducibilityOfOutputByServiceIdForMammography,
+    getRadiationLeakageLevelByServiceIdForMammography,
+    getImagingPhantomByServiceIdForMammography,
+    getRadiationProtectionSurveyByServiceIdForMammography,
+    getEquipmentSettingByServiceIdForMammography,
+    getMaximumRadiationLevelByServiceIdForMammography,
     proxyFile,
 } from "../../../../../../api";
+import * as XLSX from "xlsx";
+import { createMammographySavedExcel, MammographySavedExportData } from "./exportMammographySavedToExcel";
 
 // Mammography Test Components
 import AccuracyOfOperatingPotential from "../Mammography/AccuracyOfOperatingPotential";
@@ -107,6 +113,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
     ];
     const [notes, setNotes] = useState<string[]>(defaultNotes);
     const [csvUploading, setCsvUploading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [refreshKey, setRefreshKey] = useState(0);
 
@@ -1068,12 +1075,65 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const isSaved = (raw: any): boolean => {
+        if (raw == null) return false;
+        if (typeof raw !== "object") return false;
+        if (raw.success && raw.data != null) return true;
+        if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+        const data = raw.data !== undefined ? raw.data : raw;
+        if (data == null || typeof data !== "object") return false;
+        if ((data as any)._id) return true;
+        if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+        if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+        if (Array.isArray((data as any).irradiationTimes) && (data as any).irradiationTimes.length > 0) return true;
+        if (Array.isArray((data as any).outputRows) && (data as any).outputRows.length > 0) return true;
+        if (Array.isArray((data as any).leakageMeasurements) && (data as any).leakageMeasurements.length > 0) return true;
+        if ((data as any).totalFiltration != null && typeof (data as any).totalFiltration === "object") return true;
+        if (Array.isArray((data as any).readings) && (data as any).readings.length > 0) return true;
+        if (Array.isArray((data as any).locations) && (data as any).locations.length > 0) return true;
+        return false;
+    };
+
+    const getUnsavedTestNames = async (): Promise<string[]> => {
+        const run = (name: string, fn: () => Promise<any>) => ({ name, check: async () => { try { return isSaved(await fn()); } catch { return false; } } });
+        const checks: { name: string; check: () => Promise<boolean> }[] = [
+            run("Accuracy of Operating Potential (kVp)", () => getAccuracyOfOperatingPotentialByServiceIdForMammography(serviceId)),
+            run("Total Filtration & Aluminium Equivalence", () => getTotalFilterationByServiceIdForMammography(serviceId)),
+            run("Reproducibility of Radiation Output", () => getReproducibilityOfOutputByServiceIdForMammography(serviceId)),
+            run("Radiation Leakage Level (5 cm from Tube Housing)", () => getRadiationLeakageLevelByServiceIdForMammography(serviceId)),
+            run("Imaging Performance Evaluation (Phantom)", () => getImagingPhantomByServiceIdForMammography(serviceId)),
+            run("Radiation Protection Survey", () => getRadiationProtectionSurveyByServiceIdForMammography(serviceId)),
+            run("Equipment Settings Verification", () => getEquipmentSettingByServiceIdForMammography(serviceId)),
+            run("Maximum Radiation Levels at Different Locations", () => getMaximumRadiationLevelByServiceIdForMammography(serviceId)),
+        ];
+        if (hasTimer === true) {
+            checks.push(run("Accuracy Of Irradiation Time", () => getAccuracyOfIrradiationTimeByServiceIdForMammography(serviceId)));
+            checks.push(run("Linearity Of mA Loading", () => getLinearityOfMasLoadingStationsByServiceIdForMammography(serviceId)));
+        } else if (hasTimer === false) {
+            checks.push(run("Linearity Of mAs Loading", () => getLinearityOfMasLLoadingByServiceIdForMammography(serviceId)));
+        }
+        const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+        return results.filter((r) => !r.saved).map((r) => r.name);
+    };
+
     const handleSaveHeader = async () => {
         setSaving(true);
         setSaveSuccess(false);
         setSaveError(null);
 
         try {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+                const message =
+                    unsaved.length === 1
+                        ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+                        : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+                setSaveError(message);
+                toast.error(message, { duration: 5000 });
+                setSaving(false);
+                return;
+            }
+
             const payload = {
                 ...formData,
                 toolsUsed: tools.map(t => ({
@@ -1105,6 +1165,61 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             setSaveError(err?.response?.data?.message || "Failed to save report header");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleExportSavedData = async () => {
+        if (!serviceId) {
+            toast.error("Service ID is missing");
+            return;
+        }
+        try {
+            toast.loading("Exporting data to Excel...", { id: "export-excel" });
+            setIsExporting(true);
+            const exportData: MammographySavedExportData & { reportHeader?: any } = {};
+
+            try {
+                const headerRes = await getReportHeaderForMammography(serviceId);
+                if (headerRes?.data || headerRes?.exists) exportData.reportHeader = headerRes;
+            } catch (err) {
+                console.log("Report header not found or error:", err);
+            }
+
+            const fetchTest = async (fn: () => Promise<any>) => {
+                try {
+                    const res = await fn();
+                    return res ?? null;
+                } catch {
+                    return null;
+                }
+            };
+
+            exportData.accuracyOfOperatingPotential = await fetchTest(() => getAccuracyOfOperatingPotentialByServiceIdForMammography(serviceId));
+            exportData.accuracyOfIrradiationTime = await fetchTest(() => getAccuracyOfIrradiationTimeByServiceIdForMammography(serviceId));
+            exportData.totalFiltration = await fetchTest(() => getTotalFilterationByServiceIdForMammography(serviceId));
+            exportData.linearityOfMaLoading = await fetchTest(() => getLinearityOfMasLoadingStationsByServiceIdForMammography(serviceId));
+            exportData.linearityOfMasLoading = await fetchTest(() => getLinearityOfMasLLoadingByServiceIdForMammography(serviceId));
+            exportData.reproducibilityOfOutput = await fetchTest(() => getReproducibilityOfOutputByServiceIdForMammography(serviceId));
+            exportData.radiationLeakageLevel = await fetchTest(() => getRadiationLeakageLevelByServiceIdForMammography(serviceId));
+            exportData.imagingPhantom = await fetchTest(() => getImagingPhantomByServiceIdForMammography(serviceId));
+            exportData.radiationProtectionSurvey = await fetchTest(() => getRadiationProtectionSurveyByServiceIdForMammography(serviceId));
+            exportData.equipmentSetting = await fetchTest(() => getEquipmentSettingByServiceIdForMammography(serviceId));
+            exportData.maximumRadiationLevel = await fetchTest(() => getMaximumRadiationLevelByServiceIdForMammography(serviceId));
+
+            const hasData = Object.keys(exportData).filter((k) => k !== "reportHeader").some((k) => exportData[k] != null);
+            if (!hasData) {
+                toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+                return;
+            }
+            const wb = createMammographySavedExcel(exportData as MammographySavedExportData);
+            const timestamp = new Date().toISOString().split("T")[0];
+            XLSX.writeFile(wb, `Mammography_Test_Data_${timestamp}.xlsx`);
+            toast.success("Data exported successfully!", { id: "export-excel" });
+        } catch (error: any) {
+            console.error("Error exporting to Excel:", error);
+            toast.error("Failed to export data: " + (error?.message || "Unknown error"), { id: "export-excel" });
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -1283,7 +1398,27 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 </button>
 
                 <button
-                    onClick={() => navigate(`/admin/orders/view-service-report-mammography?serviceId=${serviceId}`)}
+                    type="button"
+                    onClick={handleExportSavedData}
+                    disabled={isExporting}
+                    className={`px-8 py-3 rounded-lg font-bold text-white transition ${isExporting ? "bg-gray-500 cursor-not-allowed" : "bg-teal-600 hover:bg-teal-700"}`}
+                >
+                    {isExporting ? "Exporting..." : "Export Excel"}
+                </button>
+
+                <button
+                    onClick={async () => {
+                        const unsaved = await getUnsavedTestNames();
+                        if (unsaved.length > 0) {
+                            const message =
+                                unsaved.length === 1
+                                    ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                                    : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+                            toast.error(message, { duration: 5000 });
+                            return;
+                        }
+                        navigate(`/admin/orders/view-service-report-mammography?serviceId=${serviceId}`);
+                    }}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report

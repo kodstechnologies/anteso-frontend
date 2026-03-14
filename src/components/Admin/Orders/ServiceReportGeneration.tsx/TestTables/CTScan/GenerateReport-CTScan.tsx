@@ -209,12 +209,97 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const isSaved = (raw: any): boolean => {
+        if (raw == null) return false;
+        if (typeof raw !== "object") return false;
+        if (raw.success && raw.data != null) return true;
+        if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+        const data = raw.data !== undefined ? raw.data : raw;
+        if (data == null || typeof data !== "object") return false;
+        if ((data as any)._id) return true;
+        if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+        if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+        if (Array.isArray((data as any).rows) && (data as any).rows.length > 0) return true;
+        if (Array.isArray((data as any).outputRows) && (data as any).outputRows.length > 0) return true;
+        if (Array.isArray((data as any).leakageMeasurements) && (data as any).leakageMeasurements.length > 0) return true;
+        if (Array.isArray((data as any).readings) && (data as any).readings.length > 0) return true;
+        if (Array.isArray((data as any).testRows) && (data as any).testRows.length > 0) return true;
+        if ((data as any).totalFiltration != null && typeof (data as any).totalFiltration === "object") return true;
+        if (Array.isArray((data as any).locations) && (data as any).locations.length > 0) return true;
+        if (Array.isArray((data as any).tablePositionRows) && (data as any).tablePositionRows.length > 0) return true;
+        if ((data as any).tiltAngle != null || (data as any).gantryTiltAngle != null) return true;
+        return false;
+    };
+
+    const getUnsavedTestNames = async (): Promise<string[]> => {
+        if (!tubeType) return [];
+        const checks: { name: string; check: () => Promise<boolean> }[] = [];
+        const run = (name: string, fn: () => Promise<any>) => ({ name, check: async () => { try { return isSaved(await fn()); } catch { return false; } } });
+
+        if (tubeType === "single") {
+            const tid = null;
+            checks.push(run("Radiation Profile Width for CT Scan", () => getRadiationProfileWidthByServiceIdForCTScan(serviceId, tid)));
+            checks.push(run("Measurement of Operating Potential", () => getMeasurementOfOperatingPotentialByServiceId(serviceId, tid)));
+            checks.push(run("Measurement of mA Linearity", () => getMeasurementOfMaLinearityByServiceId(serviceId, tid)));
+            checks.push(run("Timer Accuracy", () => getTimerAccuracyByServiceId(serviceId, tid)));
+            checks.push(run("Measurement of CTDI", () => getMeasurementOfCTDIByServiceId(serviceId, tid)));
+            checks.push(run("Total Filtration", () => getTotalFilterationByServiceId(serviceId, tid)));
+            checks.push(run("Radiation Leakage Level", () => getRadiationLeakageByServiceId(serviceId, tid)));
+            checks.push(run("Output Consistency", () => getOutputConsistencyByServiceId(serviceId, tid)));
+            checks.push(run("Low Contrast Resolution", () => getLowContrastResolutionByServiceIdForCTScan(serviceId, tid)));
+            checks.push(run("High Contrast Resolution", () => getHighContrastResolutionByServiceIdForCTScan(serviceId, tid)));
+            checks.push(run("Table Position", () => getTablePositionByServiceIdForCTScan(serviceId)));
+            if (hasGantryTilt === true) checks.push(run("Gantry Tilt", () => getGantryTiltByServiceIdForCTScan(serviceId)));
+            checks.push(run("Maximum Radiation Level", () => getRadiationProtectionSurveyByServiceIdForCTScan(serviceId, null)));
+        } else {
+            // Double tube: Tube A
+            checks.push(run("Radiation Profile Width for CT Scan - Tube A", () => getRadiationProfileWidthByServiceIdForCTScan(serviceId, "A")));
+            checks.push(run("Measurement of Operating Potential - Tube A", () => getMeasurementOfOperatingPotentialByServiceId(serviceId, "A")));
+            checks.push(run("Measurement of mA Linearity - Tube A", () => getMeasurementOfMaLinearityByServiceId(serviceId, "A")));
+            checks.push(run("Timer Accuracy - Tube A", () => getTimerAccuracyByServiceId(serviceId, "A")));
+            checks.push(run("Measurement of CTDI - Tube A", () => getMeasurementOfCTDIByServiceId(serviceId, "A")));
+            checks.push(run("Total Filtration - Tube A", () => getTotalFilterationByServiceId(serviceId, "A")));
+            checks.push(run("Radiation Leakage Level - Tube A", () => getRadiationLeakageByServiceId(serviceId, "A")));
+            checks.push(run("Output Consistency - Tube A", () => getOutputConsistencyByServiceId(serviceId, "A")));
+            checks.push(run("Low Contrast Resolution - Tube A", () => getLowContrastResolutionByServiceIdForCTScan(serviceId, "A")));
+            checks.push(run("High Contrast Resolution - Tube A", () => getHighContrastResolutionByServiceIdForCTScan(serviceId, "A")));
+            // Tube B
+            checks.push(run("Radiation Profile Width for CT Scan - Tube B", () => getRadiationProfileWidthByServiceIdForCTScan(serviceId, "B")));
+            checks.push(run("Measurement of Operating Potential - Tube B", () => getMeasurementOfOperatingPotentialByServiceId(serviceId, "B")));
+            checks.push(run("Measurement of mA Linearity - Tube B", () => getMeasurementOfMaLinearityByServiceId(serviceId, "B")));
+            checks.push(run("Timer Accuracy - Tube B", () => getTimerAccuracyByServiceId(serviceId, "B")));
+            checks.push(run("Measurement of CTDI - Tube B", () => getMeasurementOfCTDIByServiceId(serviceId, "B")));
+            checks.push(run("Total Filtration - Tube B", () => getTotalFilterationByServiceId(serviceId, "B")));
+            checks.push(run("Radiation Leakage Level - Tube B", () => getRadiationLeakageByServiceId(serviceId, "B")));
+            checks.push(run("Output Consistency - Tube B", () => getOutputConsistencyByServiceId(serviceId, "B")));
+            checks.push(run("Low Contrast Resolution - Tube B", () => getLowContrastResolutionByServiceIdForCTScan(serviceId, "B")));
+            checks.push(run("High Contrast Resolution - Tube B", () => getHighContrastResolutionByServiceIdForCTScan(serviceId, "B")));
+            checks.push(run("Radiation Protection Survey Report", () => getRadiationProtectionSurveyByServiceIdForCTScan(serviceId, null)));
+            checks.push(run("Table Position", () => getTablePositionByServiceIdForCTScan(serviceId)));
+            if (hasGantryTilt === true) checks.push(run("Gantry Tilt", () => getGantryTiltByServiceIdForCTScan(serviceId)));
+        }
+        const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+        return results.filter((r) => !r.saved).map((r) => r.name);
+    };
+
     const handleSaveHeader = async () => {
         setSaving(true);
         setSaveSuccess(false);
         setSaveError(null);
 
         try {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+                const message =
+                    unsaved.length === 1
+                        ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+                        : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+                setSaveError(message);
+                toast.error(message, { duration: 5000 });
+                setSaving(false);
+                return;
+            }
+
             const payload = {
                 ...formData,
                 toolsUsed: tools.map(t => ({
@@ -566,7 +651,15 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             const tubeId = tubeType === 'single' ? null : 'A'; // For single tube, use null
 
             // Collect all test data in proper structure
-            const exportData: CTScanExportData = {};
+            const exportData: CTScanExportData & { reportHeader?: any } = {};
+
+            // 0. Report Header
+            try {
+                const headerRes = await getReportHeaderForCTScan(serviceId);
+                if (headerRes?.data || headerRes?.exists) exportData.reportHeader = headerRes;
+            } catch (err) {
+                console.log('Report header not found or error:', err);
+            }
 
             // 1. Radiation Profile Width
             try {
@@ -1067,7 +1160,18 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     {saving ? "Saving..." : "Save Report Header"}
                 </button>
                 <button
-                    onClick={() => navigate(`/admin/orders/view-service-report-ct-scan?serviceId=${serviceId}`)}
+                    onClick={async () => {
+                        const unsaved = await getUnsavedTestNames();
+                        if (unsaved.length > 0) {
+                            const message =
+                                unsaved.length === 1
+                                    ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                                    : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+                            toast.error(message, { duration: 5000 });
+                            return;
+                        }
+                        navigate(`/admin/orders/view-service-report-ct-scan?serviceId=${serviceId}`);
+                    }}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report

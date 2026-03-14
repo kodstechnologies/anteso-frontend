@@ -5,8 +5,26 @@ import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
-import { getRadiationProfileWidthByServiceId, saveReportHeader, getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro, getReportHeader, proxyFile } from "../../../../../../api";
+import {
+    getRadiationProfileWidthByServiceId,
+    saveReportHeader,
+    getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro,
+    getReportHeader,
+    proxyFile,
+    getCongruenceByServiceIdForFixedRadioFluro,
+    getCentralBeamAlignmentByServiceIdForFixedRadioFluro,
+    getEffectiveFocalSpotByServiceIdForFixedRadioFluro,
+    getTotalFiltrationByServiceIdForFixedRadioFluro,
+    getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro,
+    getLinearityOfMasLoadingByServiceIdForFixedRadioFluro,
+    getOutputConsistencyByServiceIdForFixedRadioFluro,
+    getLowContrastResolutionByServiceIdForFixedRadioFluro,
+    getHighContrastResolutionByServiceIdForFixedRadioFluro,
+    getTubeHousingLeakageByServiceIdForFixedRadioFluro,
+    getRadiationProtectionSurveyByServiceIdForFixedRadioFluro,
+} from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
+import { createFixedRadioFluroUploadableExcel, FixedRadioFluroExportData } from "./exportFixedRadioFluroToExcel";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -67,6 +85,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [csvUploading, setCsvUploading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -251,6 +270,48 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const isSaved = (raw: any): boolean => {
+        if (raw == null) return false;
+        if (typeof raw !== "object") return false;
+        if (raw.success && raw.data != null) return true;
+        if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+        const data = raw.data !== undefined ? raw.data : raw;
+        if (data == null || typeof data !== "object") return false;
+        if ((data as any)._id) return true;
+        if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+        if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+        if (Array.isArray((data as any).irradiationTimes) && (data as any).irradiationTimes.length > 0) return true;
+        if (Array.isArray((data as any).readings) && (data as any).readings.length > 0) return true;
+        if (Array.isArray((data as any).outputRows) && (data as any).outputRows.length > 0) return true;
+        if (Array.isArray((data as any).leakageMeasurements) && (data as any).leakageMeasurements.length > 0) return true;
+        if ((data as any).totalFiltration != null && typeof (data as any).totalFiltration === "object") return true;
+        if (Array.isArray((data as any).testRows) && (data as any).testRows.length > 0) return true;
+        if (Array.isArray((data as any).exposureRateRows) && (data as any).exposureRateRows.length > 0) return true;
+        return false;
+    };
+
+    const getUnsavedTestNames = async (): Promise<string[]> => {
+        const checks: { name: string; check: () => Promise<boolean> }[] = [
+            { name: "Congruence of radiation & Optical Field", check: async () => { try { return isSaved(await getCongruenceByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "Central Beam Alignment", check: async () => { try { return isSaved(await getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "Effective Focal Spot Measurement", check: async () => { try { return isSaved(await getEffectiveFocalSpotByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "Total Filteration", check: async () => { try { return isSaved(await getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "Output Consistency", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "Details Of Radiation Protection Survey of the Installation", check: async () => { try { return isSaved(await getRadiationProtectionSurveyByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+        ];
+        if (hasTimer === true) {
+            checks.push({ name: "Accuracy Of Irradiation Time", check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } });
+            checks.push({ name: "Linearity Of mA Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } });
+        } else if (hasTimer === false) {
+            checks.push({ name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } });
+        }
+        const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+        return results.filter((r) => !r.saved).map((r) => r.name);
     };
 
     // Parse CSV text into structured data
@@ -1303,6 +1364,18 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
         setSaveError(null);
 
         try {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+                const message =
+                    unsaved.length === 1
+                        ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+                        : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+                setSaveError(message);
+                toast.error(message, { duration: 5000 });
+                setSaving(false);
+                return;
+            }
+
             const payload = {
                 ...formData,
                 toolsUsed: tools.map((t) => ({
@@ -1344,6 +1417,64 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             setSaveError(err?.response?.data?.message || "Failed to save report header");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleExportToExcel = async () => {
+        if (!serviceId) {
+            toast.error("Service ID is missing");
+            return;
+        }
+        try {
+            toast.loading("Exporting data to Excel...", { id: "export-excel" });
+            setIsExporting(true);
+
+            const exportData: Record<string, unknown> = {};
+
+            try {
+                const headerRes = await getReportHeader(serviceId);
+                if (headerRes) exportData.reportHeader = headerRes;
+            } catch (err) {
+                console.log("Report header not found or error:", err);
+            }
+
+            const fetchTest = async (name: string, fn: () => Promise<any>) => {
+                try {
+                    const res = await fn();
+                    if (res) return res;
+                } catch (err) {
+                    console.log(`${name} not found or error:`, err);
+                }
+                return null;
+            };
+
+            exportData.congruence = await fetchTest("Congruence", () => getCongruenceByServiceIdForFixedRadioFluro(serviceId));
+            exportData.centralBeamAlignment = await fetchTest("Central Beam Alignment", () => getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId));
+            exportData.effectiveFocalSpot = await fetchTest("Effective Focal Spot", () => getEffectiveFocalSpotByServiceIdForFixedRadioFluro(serviceId));
+            exportData.accuracyOfIrradiationTime = await fetchTest("Accuracy Of Irradiation Time", () => getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro(serviceId));
+            exportData.totalFiltration = await fetchTest("Total Filtration", () => getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId));
+            exportData.linearityOfMaLoading = await fetchTest("Linearity mA", () => getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro(serviceId));
+            exportData.linearityOfMasLoading = await fetchTest("Linearity mAs", () => getLinearityOfMasLoadingByServiceIdForFixedRadioFluro(serviceId));
+            exportData.outputConsistency = await fetchTest("Output Consistency", () => getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId));
+            exportData.lowContrastResolution = await fetchTest("Low Contrast Resolution", () => getLowContrastResolutionByServiceIdForFixedRadioFluro(serviceId));
+            exportData.highContrastResolution = await fetchTest("High Contrast Resolution", () => getHighContrastResolutionByServiceIdForFixedRadioFluro(serviceId));
+            exportData.radiationLeakageLevel = await fetchTest("Tube Housing Leakage", () => getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId));
+            exportData.radiationProtectionSurvey = await fetchTest("Radiation Protection Survey", () => getRadiationProtectionSurveyByServiceIdForFixedRadioFluro(serviceId));
+
+            if (Object.keys(exportData).length <= 1 && !exportData.congruence && !exportData.centralBeamAlignment) {
+                toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+                return;
+            }
+            const wb = createFixedRadioFluroUploadableExcel(exportData as FixedRadioFluroExportData);
+            const timestamp = new Date().toISOString().split("T")[0];
+            const filename = `Fixed_Radio_Fluro_Test_Data_${timestamp}.xlsx`;
+            XLSX.writeFile(wb, filename);
+            toast.success("Data exported successfully!", { id: "export-excel" });
+        } catch (error: any) {
+            console.error("Error exporting to Excel:", error);
+            toast.error("Failed to export data: " + (error?.message || "Unknown error"), { id: "export-excel" });
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -1538,7 +1669,18 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     {saving ? "Saving..." : "Save Report Header"}
                 </button>
                 <button
-                    onClick={() => navigate(`/admin/orders/view-service-report-fixed-radio-flouro?serviceId=${serviceId}`)}
+                    onClick={async () => {
+                        const unsaved = await getUnsavedTestNames();
+                        if (unsaved.length > 0) {
+                            const message =
+                                unsaved.length === 1
+                                    ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                                    : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+                            toast.error(message, { duration: 5000 });
+                            return;
+                        }
+                        navigate(`/admin/orders/view-service-report-fixed-radio-flouro?serviceId=${serviceId}`);
+                    }}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report
@@ -1555,6 +1697,15 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         </p>
                     </div>
                     <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={handleExportToExcel}
+                            disabled={isExporting}
+                            className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${isExporting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"} text-white`}
+                        >
+                            <CloudArrowUpIcon className="w-5 h-5" />
+                            {isExporting ? "Exporting..." : "Export Excel"}
+                        </button>
                         {/* <div className="flex gap-2">
                             <a
                                 href="/templates/FixedRadioFluro_Test_Data_Template_WithTimer.csv"

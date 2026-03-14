@@ -292,12 +292,57 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // ── Save header ───────────────────────────────────────────────────────────
+  // Check which test tables are not saved; returns list of display names (mirrors RadiographyFixed).
+  const getUnsavedTestNames = async (): Promise<string[]> => {
+    const isSaved = (raw: any): boolean => {
+      if (raw == null) return false;
+      if (typeof raw !== "object") return false;
+      if (raw.success && raw.data != null) return true;
+      if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+      const data = raw.data !== undefined ? raw.data : raw;
+      if (data == null || typeof data !== "object") return false;
+      if ((data as any)._id) return true;
+      if ((data as any).data && (data as any).data._id) return true;
+      if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+      if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+      return false;
+    };
+    const checks: { name: string; check: () => Promise<boolean> }[] = [
+      { name: "Congruence of Radiation & Optical Field", check: async () => { try { return isSaved(await getCongruenceByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
+      { name: "Central Beam Alignment", check: async () => { try { return isSaved(await getCentralBeamAlignmentByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
+      { name: "Effective Focal Spot Measurement", check: async () => { try { return isSaved(await getEffectiveFocalSpotByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
+      { name: "Accuracy Of Operating Potential", check: async () => { try { return isSaved(await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
+      { name: "Linearity Of mAs Loading Stations", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
+      { name: "Output Consistency", check: async () => { try { return isSaved(await getConsistencyOfRadiationOutputByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
+      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
+    ];
+    if (hasTimer === true) {
+      checks.push({
+        name: "Accuracy Of Irradiation Time",
+        check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } },
+      });
+    }
+    const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+    return results.filter((r) => !r.saved).map((r) => r.name);
+  };
+
+  // ── Save header (only after all test tables are saved) ─────────────────────
   const handleSaveHeader = async () => {
     setSaving(true);
     setSaveSuccess(false);
     setSaveError(null);
     try {
+      const unsaved = await getUnsavedTestNames();
+      if (unsaved.length > 0) {
+        const message =
+          unsaved.length === 1
+            ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+            : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+        setSaveError(message);
+        toast.error(message, { duration: 5000 });
+        setSaving(false);
+        return;
+      }
       const payload = {
         ...formData,
         toolsUsed: tools.map(t => ({
@@ -789,6 +834,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       return;
     }
 
+
     try {
       toast.loading("Exporting data to Excel...", { id: "export-excel" });
       setExcelUploading(true);
@@ -1075,7 +1121,18 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           {saving ? "Saving..." : "Save Report Header"}
         </button>
         <button
-          onClick={() => navigate(`/admin/orders/view-service-report-radiography-mobile?serviceId=${serviceId}`)}
+          onClick={async () => {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+              const message =
+                unsaved.length === 1
+                  ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                  : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+              toast.error(message, { duration: 5000 });
+              return;
+            }
+            navigate(`/admin/orders/view-service-report-radiography-mobile?serviceId=${serviceId}`);
+          }}
           className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
         >
           View Generated Report

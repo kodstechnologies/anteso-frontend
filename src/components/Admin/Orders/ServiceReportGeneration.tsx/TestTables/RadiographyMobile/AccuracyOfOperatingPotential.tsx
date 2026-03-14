@@ -1,587 +1,379 @@
-// src/components/TestTables/RadiographyMobile/AccuracyOfOperatingPotential.tsx
-import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
-import toast from "react-hot-toast";
+// Accuracy of Operating Potential - same structure as RadiographyFixed
+import React, { useState, useEffect, useMemo } from 'react';
+import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
   addAccuracyOfOperatingPotentialForRadiographyMobile,
   getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile,
   updateAccuracyOfOperatingPotentialForRadiographyMobile,
-} from "../../../../../../api";
+} from '../../../../../../api';
+import toast from 'react-hot-toast';
 
-interface RowData {
+interface Table1Row {
+  time: string;
+  sliceThickness: string;
+}
+
+interface Table2Row {
   id: string;
-  appliedKvp: string;
-  measuredValues: string[];
-  measuredValuesStatus: boolean[];
-  averageKvp: string;
-  averageKvpStatus?: boolean;
-  remarks: "PASS" | "FAIL" | "-";
+  setKV: string;
+  ma10: string;
+  ma100: string;
+  ma200: string;
+  avgKvp: string;
+  remarks: 'Pass' | 'Fail' | '';
 }
 
 interface Props {
   serviceId: string;
   testId?: string | null;
-  onTestSaved?: (testId: string) => void;
   onRefresh?: () => void;
   refreshKey?: number;
-  initialData?: {
-    mAStations?: string[];
-    measurements?: { appliedKvp: string; measuredValues: string[]; averageKvp: string; remarks: string }[];
-    tolerance?: { sign: string; value: string };
-    totalFiltration?: { measured: string; required: string; atKvp?: string };
-  } | null;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
 const AccuracyOfOperatingPotential: React.FC<Props> = ({
   serviceId,
-  testId: initialTestId = null,
-  onTestSaved,
+  testId: propTestId,
   onRefresh,
   refreshKey,
   initialData,
+  csvDataVersion,
 }) => {
-  const [testId, setTestId] = useState<string | null>(initialTestId);
-  const [isSaved, setIsSaved] = useState(!!initialTestId);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const [mAStations, setMAStations] = useState<string[]>(["50 mA", "100 mA"]);
-  const [rows, setRows] = useState<RowData[]>([
-    { id: "1", appliedKvp: "60", measuredValues: ["", ""], measuredValuesStatus: [], averageKvp: "", remarks: "-" },
-    { id: "2", appliedKvp: "80", measuredValues: ["", ""], measuredValuesStatus: [], averageKvp: "", remarks: "-" },
-    { id: "3", appliedKvp: "100", measuredValues: ["", ""], measuredValuesStatus: [], averageKvp: "", remarks: "-" },
-    { id: "4", appliedKvp: "120", measuredValues: ["", ""], measuredValuesStatus: [], averageKvp: "", remarks: "-" },
+  const [testId, setTestId] = useState<string | null>(propTestId || null);
+  const [table1Row, setTable1Row] = useState<Table1Row>({ time: '', sliceThickness: '' });
+  const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
+    { id: '1', setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' },
   ]);
 
-  const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
-  const [toleranceValue, setToleranceValue] = useState("2.0");
-  const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "", atKvp: "" });
-  const [filtrationTolerance, setFiltrationTolerance] = useState({
-    forKvGreaterThan70: "1.5",
-    forKvBetween70And100: "2.0",
-    forKvGreaterThan100: "2.5",
-    kvThreshold1: "70",
-    kvThreshold2: "100",
-  });
+  const [toleranceValue, setToleranceValue] = useState<string>('5');
+  const [toleranceType, setToleranceType] = useState<'percent' | 'absolute'>('percent');
+  const [toleranceSign, setToleranceSign] = useState<'plus' | 'minus' | 'both'>('both');
 
-  const checkTolerance = (measured: number, applied: number, tolerance: number, sign: "+" | "-" | "±"): boolean => {
-    if (isNaN(measured) || isNaN(applied) || isNaN(tolerance) || tolerance <= 0 || applied === 0) return true;
-    const diff = Math.abs(measured - applied);
-    if (sign === "+") return measured <= applied + tolerance;
-    if (sign === "-") return measured >= applied - tolerance;
-    return diff <= tolerance;
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
+
+  const addTable2Row = () => {
+    setTable2Rows((prev) => [
+      ...prev,
+      { id: Date.now().toString(), setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' },
+    ]);
   };
 
-  const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-    const kvp = parseFloat(totalFiltration.atKvp);
-    const measured = parseFloat(totalFiltration.required);
-    const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
-    const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
-    if (isNaN(kvp) || isNaN(measured)) return "-";
-    let req: number;
-    if (kvp < threshold1) req = parseFloat(filtrationTolerance.forKvGreaterThan70);
-    else if (kvp >= threshold1 && kvp <= threshold2) req = parseFloat(filtrationTolerance.forKvBetween70And100);
-    else req = parseFloat(filtrationTolerance.forKvGreaterThan100);
-    if (isNaN(req)) return "-";
-    return measured >= req ? "PASS" : "FAIL";
+  const removeTable2Row = (id: string) => {
+    if (table2Rows.length <= 1) return;
+    setTable2Rows((prev) => prev.filter((r) => r.id !== id));
   };
 
-  // Load existing test data
+  const updateTable2 = (id: string, field: 'setKV' | 'ma10' | 'ma100' | 'ma200', value: string) => {
+    setTable2Rows((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    );
+  };
+
   useEffect(() => {
-    const loadTest = async () => {
-      if (!serviceId) { setIsLoading(false); return; }
-      // If we have uploaded Excel data, don't overwrite it by reloading from API
-      if (initialData) { setIsLoading(false); return; }
-      setIsLoading(true);
-      try {
-        const result = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile(serviceId);
-        const data = result?.data;
-        if (data) {
-          setTestId(data._id || null);
-          if (data.mAStations?.length > 0) setMAStations(data.mAStations);
-          const loadedSign = data.tolerance?.sign || "±";
-          const loadedValue = data.tolerance?.value || "2.0";
-          setToleranceSign(loadedSign);
-          setToleranceValue(loadedValue);
-          if (data.measurements?.length > 0) {
-            setRows(data.measurements.map((m: any) => {
-              const rowApplied = parseFloat(m.appliedKvp || "0");
-              const tol = parseFloat(loadedValue);
-              const sign = loadedSign as "+" | "-" | "±";
-              const measuredStatus = (m.measuredValues || []).map((val: string) =>
-                checkTolerance(parseFloat(val || "0"), rowApplied, tol, sign)
-              );
-              const avgNum = parseFloat(m.averageKvp || "0");
-              const avgStatus = checkTolerance(avgNum, rowApplied, tol, sign);
-              const hasAnyFailure = measuredStatus.some((s: boolean) => !s) || !avgStatus;
-              const hasData = !isNaN(rowApplied) && rowApplied > 0 && (m.measuredValues || []).some((v: string) => v !== "");
-              return {
-                id: Date.now().toString() + Math.random(),
-                appliedKvp: m.appliedKvp || "",
-                measuredValues: m.measuredValues || [],
-                measuredValuesStatus: measuredStatus,
-                averageKvp: m.averageKvp || "",
-                averageKvpStatus: avgStatus,
-                remarks: hasData ? (hasAnyFailure ? "FAIL" : "PASS") : "-",
-              };
-            }));
-          }
-          if (data.totalFiltration) {
-            setTotalFiltration({
-              measured: data.totalFiltration.measured || "",
-              required: data.totalFiltration.required || "",
-              atKvp: data.totalFiltration.atKvp || "",
-            });
-          }
-          if (data.filtrationTolerance) {
-            setFiltrationTolerance({
-              forKvGreaterThan70: data.filtrationTolerance.forKvGreaterThan70 || "1.5",
-              forKvBetween70And100: data.filtrationTolerance.forKvBetween70And100 || "2.0",
-              forKvGreaterThan100: data.filtrationTolerance.forKvGreaterThan100 || "2.5",
-              kvThreshold1: data.filtrationTolerance.kvThreshold1 || "70",
-              kvThreshold2: data.filtrationTolerance.kvThreshold2 || "100",
-            });
-          }
-          setIsSaved(true);
+    setTable2Rows((prev) =>
+      prev.map((row) => {
+        const values = [row.ma10, row.ma100, row.ma200]
+          .map((v) => parseFloat(v))
+          .filter((v) => !isNaN(v));
+        const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
+        const setKV = parseFloat(row.setKV);
+        if (isNaN(setKV) || avg === '') return { ...row, avgKvp: avg, remarks: '' as const };
+        const measured = parseFloat(avg);
+        let withinTolerance = false;
+        if (toleranceType === 'percent') {
+          const tolerance = parseFloat(toleranceValue) || 0;
+          const allowedDiff = (setKV * tolerance) / 100;
+          if (toleranceSign === 'plus') withinTolerance = measured <= setKV + allowedDiff;
+          else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - allowedDiff;
+          else withinTolerance = Math.abs(measured - setKV) <= allowedDiff;
         } else {
-          setIsSaved(false);
+          const tolerance = parseFloat(toleranceValue) || 0;
+          if (toleranceSign === 'plus') withinTolerance = measured <= setKV + tolerance;
+          else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - tolerance;
+          else withinTolerance = Math.abs(measured - setKV) <= tolerance;
         }
-      } catch (err: any) {
-        if (err.response?.status !== 404) toast.error("Failed to load test data");
-        setIsSaved(false);
+        return { ...row, avgKvp: avg, remarks: withinTolerance ? 'Pass' : 'Fail' };
+      })
+    );
+  }, [table2Rows, toleranceValue, toleranceType, toleranceSign]);
+
+  const isFormValid = useMemo(() => {
+    return (
+      !!serviceId &&
+      table1Row.time.trim() &&
+      table1Row.sliceThickness.trim() &&
+      table2Rows.every((r) => r.setKV.trim() && (r.ma10.trim() || r.ma100.trim() || r.ma200.trim()))
+    );
+  }, [serviceId, table1Row, table2Rows]);
+
+  useEffect(() => {
+    if (!serviceId) {
+      setIsLoading(false);
+      return;
+    }
+    if (initialData && !csvDataVersion) {
+      setIsLoading(false);
+      return;
+    }
+    const load = async () => {
+      try {
+        const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile(serviceId);
+        if (!res?.data) {
+          setIsLoading(false);
+          return;
+        }
+        const rec = res.data;
+        if (rec._id) setTestId(rec._id);
+        if (rec.table1?.[0]) {
+          setTable1Row({ time: rec.table1[0].time ?? '', sliceThickness: rec.table1[0].sliceThickness ?? '' });
+        }
+        if (Array.isArray(rec.table2) && rec.table2.length > 0) {
+          setTable2Rows(
+            rec.table2.map((r: any) => ({
+              id: Date.now().toString() + Math.random(),
+              setKV: String(r.setKV ?? ''),
+              ma10: String(r.ma10 ?? ''),
+              ma100: String(r.ma100 ?? ''),
+              ma200: String(r.ma200 ?? ''),
+              avgKvp: '',
+              remarks: r.remarks ?? '',
+            }))
+          );
+        }
+        if (rec.tolerance) {
+          setToleranceValue(rec.tolerance.value ?? '5');
+          setToleranceType(rec.tolerance.type === 'kvp' ? 'absolute' : (rec.tolerance.type || 'percent'));
+          setToleranceSign(rec.tolerance.sign || 'both');
+        }
+        setHasSaved(true);
+        setIsEditing(false);
+      } catch (e: any) {
+        if (e.response?.status !== 404) toast.error('Failed to load data');
       } finally {
         setIsLoading(false);
       }
     };
-    loadTest();
-  }, [serviceId, refreshKey, initialData]);
+    load();
+  }, [serviceId, refreshKey]);
 
-  // Pre-fill from Excel initialData when it changes
   useEffect(() => {
-    if (!initialData) return;
-    if (initialData.mAStations?.length) setMAStations(initialData.mAStations);
-    if (initialData.tolerance) {
-      setToleranceSign((initialData.tolerance.sign as any) || '±');
-      setToleranceValue(initialData.tolerance.value || '2.0');
+    if (!initialData || isLoading) return;
+    if (csvDataVersion !== undefined && csvDataVersion === 0) return;
+    if (initialData.table2?.length > 0) {
+      setTable2Rows(
+        initialData.table2.map((r: any, i: number) => ({
+          id: String(i + 1),
+          setKV: String(r.setKV ?? ''),
+          ma10: String(r.ma10 ?? ''),
+          ma100: String(r.ma100 ?? ''),
+          ma200: String(r.ma200 ?? ''),
+          avgKvp: '',
+          remarks: '' as const,
+        }))
+      );
     }
-    if (initialData.measurements?.length) {
-      const tol = parseFloat(initialData.tolerance?.value || '2.0');
-      const sign = (initialData.tolerance?.sign as any) || '±';
-      setRows(initialData.measurements.map((m, _i) => {
-        const applied = parseFloat(m.appliedKvp || '0');
-        const measuredStatus = (m.measuredValues || []).map((val) =>
-          checkTolerance(parseFloat(val || '0'), applied, tol, sign)
-        );
-        const nums = (m.measuredValues || []).filter(v => v !== '' && !isNaN(Number(v))).map(Number);
-        const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : (m.averageKvp || '');
-        const avgNum = parseFloat(avg || '0');
-        const avgStatus = checkTolerance(avgNum, applied, tol, sign);
-        const hasAnyFailure = measuredStatus.some((s) => !s) || !avgStatus;
-        const hasData = !isNaN(applied) && applied > 0 && (m.measuredValues || []).some(v => v !== '');
-        return {
-          id: Date.now().toString() + Math.random(),
-          appliedKvp: m.appliedKvp || '',
-          measuredValues: m.measuredValues || [],
-          measuredValuesStatus: measuredStatus,
-          averageKvp: avg,
-          averageKvpStatus: avgStatus,
-          remarks: hasData ? (hasAnyFailure ? 'FAIL' : 'PASS') : '-',
-        };
-      }));
+    if (initialData.table1?.[0]) {
+      setTable1Row({ time: String(initialData.table1[0].time ?? ''), sliceThickness: String(initialData.table1[0].sliceThickness ?? '') });
     }
-    if (initialData.totalFiltration) {
-      setTotalFiltration({
-        measured: initialData.totalFiltration.measured || '',
-        required: initialData.totalFiltration.required || '',
-        atKvp: initialData.totalFiltration.atKvp || '',
-      });
-    }
-    setIsSaved(false);
-  }, [initialData]);
+    if (initialData.toleranceValue) setToleranceValue(String(initialData.toleranceValue));
+    if (initialData.tolerance?.value) setToleranceValue(String(initialData.tolerance.value));
+  }, [initialData, csvDataVersion, isLoading]);
 
-  const saveTest = async () => {
-    if (!serviceId) { toast.error("Service ID is missing"); return; }
-    const payload = {
-      mAStations,
-      measurements: rows.map(r => ({
-        appliedKvp: r.appliedKvp,
-        measuredValues: r.measuredValues,
-        averageKvp: r.averageKvp,
-        remarks: r.remarks,
-      })),
-      tolerance: { sign: toleranceSign, value: toleranceValue },
-      totalFiltration,
-      filtrationTolerance,
-    };
+  const handleSave = async () => {
+    if (!isFormValid) return;
     setIsSaving(true);
+    const payload = {
+      table1: [table1Row],
+      table2: table2Rows.map((r) => {
+        const values = [r.ma10, r.ma100, r.ma200].map((v) => parseFloat(v)).filter((v) => !isNaN(v));
+        const avgKvp = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : null;
+        const setKV = parseFloat(r.setKV);
+        let deviation = null;
+        if (avgKvp && !isNaN(setKV)) deviation = ((parseFloat(avgKvp) - setKV) / setKV * 100).toFixed(2);
+        return {
+          setKV: setKV,
+          ma10: parseFloat(r.ma10) || null,
+          ma100: parseFloat(r.ma100) || null,
+          ma200: parseFloat(r.ma200) || null,
+          avgKvp: avgKvp ? parseFloat(avgKvp) : null,
+          deviation: deviation ? parseFloat(deviation) : null,
+          remarks: r.remarks,
+        };
+      }),
+      tolerance: { value: toleranceValue, type: toleranceType === 'absolute' ? 'kvp' : 'percent', sign: toleranceSign },
+    };
     try {
-      let result;
-      let currentTestId = testId;
-      if (!currentTestId) {
-        try {
-          const existing = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile(serviceId);
-          if (existing?.data?._id) { currentTestId = existing.data._id; setTestId(currentTestId); }
-        } catch (_) { }
-      }
-      if (currentTestId) {
-        result = await updateAccuracyOfOperatingPotentialForRadiographyMobile(currentTestId, payload);
-        toast.success("Updated successfully");
+      if (testId) {
+        await updateAccuracyOfOperatingPotentialForRadiographyMobile(testId, payload);
+        toast.success('Updated successfully!');
       } else {
-        result = await addAccuracyOfOperatingPotentialForRadiographyMobile(serviceId, payload);
-        const newId = result?.data?._id || result?.data?.data?._id || result?._id;
-        if (newId) { setTestId(newId); onTestSaved?.(newId); }
-        toast.success("Saved successfully");
+        const res = await addAccuracyOfOperatingPotentialForRadiographyMobile(serviceId, payload);
+        if (res?.data?._id) setTestId(res.data._id);
+        toast.success('Saved successfully!');
       }
-      setIsSaved(true);
+      setHasSaved(true);
+      setIsEditing(false);
       onRefresh?.();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Save failed");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e?.message || 'Save failed');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const addMAColumn = () => {
-    setMAStations(prev => [...prev, "200 mA"]);
-    setRows(prev => prev.map(row => ({
-      ...row,
-      measuredValues: [...row.measuredValues, ""],
-      measuredValuesStatus: [...(row.measuredValuesStatus || []), true],
-    })));
-    setIsSaved(false);
+  const toggleEdit = () => {
+    if (!hasSaved) return;
+    setIsEditing(true);
   };
 
-  const removeMAColumn = (index: number) => {
-    if (mAStations.length <= 1) return;
-    setMAStations(prev => prev.filter((_, i) => i !== index));
-    setRows(prev => prev.map(row => ({
-      ...row,
-      measuredValues: row.measuredValues.filter((_, i) => i !== index),
-      measuredValuesStatus: (row.measuredValuesStatus || []).filter((_, i) => i !== index),
-    })));
-    setIsSaved(false);
-  };
-
-  const updateMAHeader = (index: number, value: string) => {
-    setMAStations(prev => { const u = [...prev]; u[index] = value || `mA ${index + 1}`; return u; });
-    setIsSaved(false);
-  };
-
-  const addRow = () => {
-    setRows(prev => [...prev, {
-      id: Date.now().toString(),
-      appliedKvp: "",
-      measuredValues: Array(mAStations.length).fill(""),
-      measuredValuesStatus: Array(mAStations.length).fill(true),
-      averageKvp: "",
-      averageKvpStatus: undefined,
-      remarks: "-",
-    }]);
-    setIsSaved(false);
-  };
-
-  const removeRow = (id: string) => {
-    if (rows.length <= 1) return;
-    setRows(prev => prev.filter(r => r.id !== id));
-    setIsSaved(false);
-  };
-
-  const recalcRow = (row: RowData, newApplied: number, newMeasured: string[], newTol: number, newSign: "+" | "-" | "±"): RowData => {
-    const measuredStatus = newMeasured.map(val => checkTolerance(parseFloat(val || "0"), newApplied, newTol, newSign));
-    const nums = newMeasured.filter(v => v !== "" && !isNaN(Number(v))).map(Number);
-    const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
-    const avgNum = parseFloat(avg || "0");
-    const avgStatus = checkTolerance(avgNum, newApplied, newTol, newSign);
-    const hasAnyFailure = measuredStatus.some(s => !s) || !avgStatus;
-    const hasData = !isNaN(newApplied) && newApplied > 0 && (newMeasured.some(v => v !== "" && !isNaN(parseFloat(v))) || avgNum > 0);
-    return {
-      ...row,
-      measuredValues: newMeasured,
-      measuredValuesStatus: measuredStatus,
-      averageKvp: avg,
-      averageKvpStatus: avgStatus,
-      remarks: hasData ? (hasAnyFailure ? "FAIL" : "PASS") : "-",
-    };
-  };
-
-  const updateCell = (rowId: string, field: "appliedKvp" | number, value: string) => {
-    setRows(prev => prev.map(row => {
-      if (row.id !== rowId) return row;
-      const tol = parseFloat(toleranceValue || "0");
-      if (field === "appliedKvp") {
-        return { ...recalcRow({ ...row, appliedKvp: value }, parseFloat(value || "0"), row.measuredValues, tol, toleranceSign), appliedKvp: value };
-      }
-      const newMeasured = [...row.measuredValues];
-      newMeasured[field as number] = value;
-      return recalcRow({ ...row }, parseFloat(row.appliedKvp || "0"), newMeasured, tol, toleranceSign);
-    }));
-    setIsSaved(false);
-  };
-
-  const recalcAllRows = (newTol: number, newSign: "+" | "-" | "±") => {
-    setRows(prev => prev.map(row => {
-      const applied = parseFloat(row.appliedKvp || "0");
-      return recalcRow(row, applied, row.measuredValues, newTol, newSign);
-    }));
-  };
+  const isViewMode = hasSaved && !isEditing;
+  const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
+  const ButtonIcon = isViewMode ? Edit3 : Save;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading...</span>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-full overflow-x-auto space-y-10">
-      {/* Save/Edit Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={isSaved ? () => setIsSaved(false) : saveTest}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
-            ? "bg-orange-600 text-white hover:bg-orange-700"
-            : "bg-teal-600 text-white hover:bg-teal-700"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          {isSaving ? (
-            <><Loader2 className="w-5 h-5 animate-spin" />Saving...</>
-          ) : isSaved ? (
-            <><Edit3 className="w-5 h-5" />Edit</>
-          ) : (
-            <><Save className="w-5 h-5" />{testId ? "Update Test" : "Save Test"}</>
-          )}
-        </button>
-      </div>
+    <div className="p-6 max-w-7xl mx-auto space-y-10">
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Measurement of Operating Potential</h2>
 
-      {/* Measurements Table */}
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
-        <div className="px-6 py-4 bg-blue-50 border-b border-gray-300">
-          <h3 className="text-xl font-bold text-blue-900">Accuracy of kVp at Different mA Stations</h3>
-        </div>
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">Exposure Time vs Slice Thickness</h3>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600 tracking-wider border-r">Applied kVp</th>
-              <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600 tracking-wider border-r">
-                <div className="flex items-center justify-between">
-                  <span>Measured Values (kVp)</span>
-                  {!isSaved && (
-                    <button onClick={addMAColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              </th>
-              <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 tracking-wider border-r">Average kVp</th>
-              <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 tracking-wider">Remarks</th>
-              <th rowSpan={2} className="w-12" />
-            </tr>
-            <tr>
-              {mAStations.map((header, idx) => (
-                <th key={idx} className="px-3 py-3 text-center text-xs font-medium text-gray-600 tracking-wider border-r">
-                  <div className="flex items-center justify-center gap-1">
-                    <input
-                      type="text"
-                      value={header}
-                      onChange={(e) => updateMAHeader(idx, e.target.value)}
-                      disabled={isSaved}
-                      className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                    {!isSaved && mAStations.length > 1 && (
-                      <button onClick={() => removeMAColumn(idx)} className="p-1 text-red-600 hover:bg-red-100 rounded">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </th>
-              ))}
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Time (ms)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Slice Thickness (mm)</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {rows.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
-                <td className="px-6 py-3 border-r">
-                  <input
-                    type="number"
-                    value={row.appliedKvp}
-                    onChange={(e) => updateCell(row.id, "appliedKvp", e.target.value)}
-                    disabled={isSaved}
-                    className="w-full px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                    placeholder="80"
-                  />
-                </td>
-                {row.measuredValues.map((val, idx) => {
-                  const hasValue = val !== "" && !isNaN(parseFloat(val));
-                  const isValid = row.measuredValuesStatus?.length > idx ? row.measuredValuesStatus[idx] : true;
-                  return (
-                    <td key={idx} className={`px-3 py-3 text-center border-r ${hasValue && !isValid ? "bg-red-100" : ""}`}>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={val}
-                        onChange={(e) => updateCell(row.id, idx, e.target.value)}
-                        disabled={isSaved}
-                        className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${hasValue && !isValid ? "border-red-500 bg-red-50" : "border-gray-300"}`}
-                        placeholder="0.0"
-                      />
-                    </td>
-                  );
-                })}
-                <td className={`px-6 py-3 text-center font-bold border-r ${row.averageKvp && row.averageKvpStatus === false ? "bg-red-100 text-red-800" : "text-gray-800"}`}>
-                  {row.averageKvp || "—"}
-                </td>
-                <td className="px-6 py-3 text-center">
-                  <span className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === "PASS" ? "bg-green-100 text-green-800" : row.remarks === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"}`}>
-                    {row.remarks}
-                  </span>
-                </td>
-                <td className="px-3 py-3 text-center">
-                  {rows.length > 1 && !isSaved && (
-                    <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            <tr className="hover:bg-gray-50">
+              <td className="px-6 py-2 border-r">
+                <input
+                  type="text"
+                  value={table1Row.time}
+                  onChange={(e) => setTable1Row((p) => ({ ...p, time: e.target.value }))}
+                  disabled={isViewMode}
+                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                  placeholder="100"
+                />
+              </td>
+              <td className="px-6 py-2">
+                <input
+                  type="text"
+                  value={table1Row.sliceThickness}
+                  onChange={(e) => setTable1Row((p) => ({ ...p, sliceThickness: e.target.value }))}
+                  disabled={isViewMode}
+                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                  placeholder="5.0"
+                />
+              </td>
+            </tr>
           </tbody>
         </table>
-        {!isSaved && (
-          <div className="px-6 py-4 bg-gray-50 border-t">
-            <button onClick={addRow} className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-5 h-5" /> Add Row
+      </div>
+
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">kV Measurement at Different mA</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Set kV</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">@ mA 10</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">@ mA 100</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">@ mA 200</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Avg kVp</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Pass/Fail</th>
+                <th className="w-12" />
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {table2Rows.map((row) => (
+                <tr key={row.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 border-r">
+                    <input type="text" value={row.setKV} onChange={(e) => updateTable2(row.id, 'setKV', e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`} placeholder="80" />
+                  </td>
+                  <td className="px-4 py-2 border-r">
+                    <input type="text" value={row.ma10} onChange={(e) => updateTable2(row.id, 'ma10', e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`} />
+                  </td>
+                  <td className="px-4 py-2 border-r">
+                    <input type="text" value={row.ma100} onChange={(e) => updateTable2(row.id, 'ma100', e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`} />
+                  </td>
+                  <td className="px-4 py-2 border-r">
+                    <input type="text" value={row.ma200} onChange={(e) => updateTable2(row.id, 'ma200', e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`} />
+                  </td>
+                  <td className="px-4 py-2 border-r font-medium bg-gray-50 text-center">{row.avgKvp || '-'}</td>
+                  <td className="px-4 py-2 text-center">
+                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass' ? 'bg-green-100 text-green-800' : row.remarks === 'Fail' ? 'bg-red-100 text-red-800' : 'text-gray-400'}`}>{row.remarks || '—'}</span>
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {table2Rows.length > 1 && !isViewMode && (
+                      <button onClick={() => removeTable2Row(row.id)} className="text-red-600 hover:bg-red-100 p-1 rounded">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!isViewMode && (
+          <div className="px-6 py-3 bg-gray-50 border-t">
+            <button onClick={addTable2Row} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">
+              <Plus className="w-4 h-4" /> Add Row
             </button>
           </div>
         )}
       </div>
 
-      {/* Tolerance */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-lg border border-indigo-300 shadow-md">
-        <h4 className="text-lg font-bold text-indigo-900 mb-4">Tolerance for kVp Accuracy</h4>
-        <div className="flex items-center gap-4">
-          <span className="font-medium text-indigo-800">Tolerance:</span>
-          <select
-            value={toleranceSign}
-            onChange={(e) => {
-              const s = e.target.value as "+" | "-" | "±";
-              setToleranceSign(s);
-              setIsSaved(false);
-              recalcAllRows(parseFloat(toleranceValue || "0"), s);
-            }}
-            disabled={isSaved}
-            className="px-4 py-2 border border-indigo-400 rounded bg-white font-medium"
-          >
-            <option value="±">±</option>
-            <option value="+">Positive only (+)</option>
-            <option value="-">Negative only (-)</option>
-          </select>
-          <input
-            type="number"
-            step="0.1"
-            value={toleranceValue}
-            onChange={(e) => {
-              const v = e.target.value;
-              setToleranceValue(v);
-              setIsSaved(false);
-              recalcAllRows(parseFloat(v || "0"), toleranceSign);
-            }}
-            disabled={isSaved}
-            className="w-28 px-4 py-2 text-center border border-indigo-400 rounded font-medium focus:ring-2 focus:ring-indigo-500"
-          />
-          <span className="font-medium text-indigo-800">kV</span>
-        </div>
-      </div>
-
-      {/* Total Filtration */}
-      <div className={`bg-white shadow-lg rounded-lg border p-8 ${getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" ? "border-red-300 bg-red-50" : "border-gray-300"}`}>
-        <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
-        <div className="flex flex-col items-center justify-center gap-6">
-          <div className="flex items-center justify-center gap-4 flex-wrap">
-            <span className="text-xl font-medium text-gray-700">Total Filtration is (at</span>
-            <input
-              type="number"
-              step="1"
-              value={totalFiltration.atKvp}
-              onChange={(e) => { setTotalFiltration({ ...totalFiltration, atKvp: e.target.value }); setIsSaved(false); }}
-              disabled={isSaved}
-              className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200"}`}
-              placeholder="80"
-            />
-            <span className="text-xl font-medium text-gray-700">kVp)</span>
-            <input
-              type="number"
-              step="0.01"
-              value={totalFiltration.required}
-              onChange={(e) => { setTotalFiltration({ ...totalFiltration, required: e.target.value }); setIsSaved(false); }}
-              disabled={isSaved}
-              className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" ? "border-red-500 bg-red-50 focus:border-red-600 focus:ring-4 focus:ring-red-200" : "border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200"}`}
-              placeholder="2.50"
-            />
-            <span className="text-3xl font-bold text-gray-800">mm of Al</span>
+      <div className="bg-white p-6 shadow-md rounded-lg">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Tolerance Setting</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tolerance Value</label>
+            <input type="number" value={toleranceValue} onChange={(e) => setToleranceValue(e.target.value)} disabled={isViewMode} className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`} min="0" step="0.1" />
           </div>
-          <div className="flex items-center justify-center">
-            <span className={`text-5xl font-bold ${getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"}`}>
-              {getFiltrationRemark()}
-            </span>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <select value={toleranceType} onChange={(e) => setToleranceType(e.target.value as 'percent' | 'absolute')} disabled={isViewMode} className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}>
+              <option value="percent">%</option>
+              <option value="absolute">kVp</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Direction</label>
+            <select value={toleranceSign} onChange={(e) => setToleranceSign(e.target.value as 'plus' | 'minus' | 'both')} disabled={isViewMode} className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}>
+              <option value="both">± (Both)</option>
+              <option value="plus">+ Only</option>
+              <option value="minus">- Only</option>
+            </select>
           </div>
         </div>
+        <p className="mt-3 text-sm text-gray-600">
+          Current: <strong>{toleranceSign === 'both' ? '±' : toleranceSign === 'plus' ? '+' : '-'}{toleranceValue}{toleranceType === 'percent' ? '%' : ' kVp'}</strong>
+        </p>
       </div>
 
-      {/* Filtration Tolerance Table */}
-      <div className="bg-amber-50 border-2 border-amber-400 rounded-lg p-6">
-        <p className="text-lg font-bold text-amber-900 mb-3">Tolerance for Total Filtration:</p>
-        <ul className="space-y-3 text-amber-800">
-          <li className="flex items-center gap-3 flex-wrap">
-            <span>•</span>
-            <input type="number" step="0.1" value={filtrationTolerance.forKvGreaterThan70}
-              onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, forKvGreaterThan70: e.target.value }); setIsSaved(false); }}
-              disabled={isSaved}
-              className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-amber-600 text-amber-900 bg-white"}`}
-            />
-            <span>mm Al for kV {"<"}</span>
-            <input type="number" step="1" value={filtrationTolerance.kvThreshold1}
-              onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold1: e.target.value }); setIsSaved(false); }}
-              disabled={isSaved}
-              className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-amber-600 text-amber-900 bg-white"}`}
-            />
-          </li>
-          <li className="flex items-center gap-3 flex-wrap">
-            <span>•</span>
-            <input type="number" step="0.1" value={filtrationTolerance.forKvBetween70And100}
-              onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, forKvBetween70And100: e.target.value }); setIsSaved(false); }}
-              disabled={isSaved}
-              className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-amber-600 text-amber-900 bg-white"}`}
-            />
-            <span>mm Al for</span>
-            <input type="number" step="1" value={filtrationTolerance.kvThreshold1}
-              onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold1: e.target.value }); setIsSaved(false); }}
-              disabled={isSaved}
-              className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-amber-600 text-amber-900 bg-white"}`}
-            />
-            <span>{"<="} kV {"<="}</span>
-            <input type="number" step="1" value={filtrationTolerance.kvThreshold2}
-              onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold2: e.target.value }); setIsSaved(false); }}
-              disabled={isSaved}
-              className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-amber-600 text-amber-900 bg-white"}`}
-            />
-          </li>
-          <li className="flex items-center gap-3 flex-wrap">
-            <span>•</span>
-            <input type="number" step="0.1" value={filtrationTolerance.forKvGreaterThan100}
-              onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, forKvGreaterThan100: e.target.value }); setIsSaved(false); }}
-              disabled={isSaved}
-              className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-amber-600 text-amber-900 bg-white"}`}
-            />
-            <span>mm Al for kV {">"}</span>
-            <input type="number" step="1" value={filtrationTolerance.kvThreshold2}
-              onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold2: e.target.value }); setIsSaved(false); }}
-              disabled={isSaved}
-              className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-amber-600 text-amber-900 bg-white"}`}
-            />
-          </li>
-        </ul>
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving || (!isViewMode && !isFormValid)}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid) ? 'bg-gray-400 cursor-not-allowed' : isViewMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'}`}
+        >
+          {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><ButtonIcon className="w-4 h-4" /> {buttonText} Measurement</>}
+        </button>
       </div>
     </div>
   );

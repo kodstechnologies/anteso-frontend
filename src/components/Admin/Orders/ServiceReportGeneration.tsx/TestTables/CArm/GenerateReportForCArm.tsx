@@ -10,7 +10,23 @@ import { CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader, getReportHeaderForCArm, getAccuracyOfIrradiationTimeByServiceIdForCArm, proxyFile } from "../../../../../../api";
+import {
+  getDetails,
+  getTools,
+  saveReportHeader,
+  getReportHeaderForCArm,
+  getAccuracyOfIrradiationTimeByServiceIdForCArm,
+  getTotalFilterationByServiceIdForCArm,
+  getOutputConsistencyByServiceIdForCArm,
+  getLowContrastResolutionByServiceIdForCArm,
+  getHighContrastResolutionByServiceIdForCArm,
+  getExposureRateByServiceIdForCArm,
+  getTubeHousingLeakageByServiceIdCArm,
+  getLinearityOfMaLoadingStationsByServiceIdForCArm,
+  getLinearityOfMasLoadingStationsByServiceIdForCArm,
+  proxyFile,
+} from "../../../../../../api";
+import { createCArmUploadableExcel, CArmExportData } from "./exportCArmToExcel";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -284,12 +300,58 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const isSaved = (raw: any): boolean => {
+    if (raw == null) return false;
+    if (typeof raw !== "object") return false;
+    if (raw.success && raw.data != null) return true;
+    if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+    const data = raw.data !== undefined ? raw.data : raw;
+    if (data == null || typeof data !== "object") return false;
+    if ((data as any)._id) return true;
+    if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+    if (Array.isArray((data as any).readings) && (data as any).readings.length > 0) return true;
+    if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+    if ((data as any).totalFiltration != null && typeof (data as any).totalFiltration === "object") return true;
+    return false;
+  };
+
+  const getUnsavedTestNames = async (): Promise<string[]> => {
+    const checks: { name: string; check: () => Promise<boolean> }[] = [
+      { name: "Accuracy Of Irradiation Time", check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "Total Filtration", check: async () => { try { return isSaved(await getTotalFilterationByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "Exposure Rate At Table Top", check: async () => { try { return isSaved(await getExposureRateByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdCArm(serviceId)); } catch { return false; } } },
+    ];
+    if (hasTimer === true) {
+      checks.push({ name: "Linearity Of mA Loading", check: async () => { try { return isSaved(await getLinearityOfMaLoadingStationsByServiceIdForCArm(serviceId)); } catch { return false; } } });
+    } else if (hasTimer === false) {
+      checks.push({ name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForCArm(serviceId)); } catch { return false; } } });
+    }
+    const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+    return results.filter((r) => !r.saved).map((r) => r.name);
+  };
+
   const handleSaveHeader = async () => {
     setSaving(true);
     setSaveSuccess(false);
     setSaveError(null);
 
     try {
+      const unsaved = await getUnsavedTestNames();
+      if (unsaved.length > 0) {
+        const message =
+          unsaved.length === 1
+            ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+            : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+        setSaveError(message);
+        toast.error(message, { duration: 5000 });
+        setSaving(false);
+        return;
+      }
+
       const payload = {
         ...formData,
         toolsUsed: tools.map((t) => ({
@@ -331,6 +393,94 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       toast.error(errorMsg);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExportToExcel = async () => {
+    if (!serviceId) {
+      toast.error("Service ID is missing");
+      return;
+    }
+    try {
+      toast.loading("Exporting data to Excel...", { id: "export-excel-carm" });
+      setCsvUploading(true);
+      const exportData: Record<string, unknown> = {};
+      try {
+        const headerRes = await getReportHeaderForCArm(serviceId);
+        if (headerRes?.exists && headerRes?.data) exportData.reportHeader = headerRes;
+      } catch (err) {
+        console.log("C-Arm report header not found or error:", err);
+      }
+      try {
+        const res = await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId);
+        if (res) exportData.accuracyOfIrradiationTime = res;
+      } catch (err) {
+        console.log("Accuracy of Irradiation Time not found or error:", err);
+      }
+      try {
+        const res = await getTotalFilterationByServiceIdForCArm(serviceId);
+        if (res) exportData.totalFiltration = res;
+      } catch (err) {
+        console.log("Total Filtration not found or error:", err);
+      }
+      try {
+        const res = await getOutputConsistencyByServiceIdForCArm(serviceId);
+        if (res) exportData.outputConsistency = res;
+      } catch (err) {
+        console.log("Output Consistency not found or error:", err);
+      }
+      try {
+        const res = await getLowContrastResolutionByServiceIdForCArm(serviceId);
+        if (res) exportData.lowContrastResolution = res;
+      } catch (err) {
+        console.log("Low Contrast Resolution not found or error:", err);
+      }
+      try {
+        const res = await getHighContrastResolutionByServiceIdForCArm(serviceId);
+        if (res) exportData.highContrastResolution = res;
+      } catch (err) {
+        console.log("High Contrast Resolution not found or error:", err);
+      }
+      try {
+        const res = await getExposureRateByServiceIdForCArm(serviceId);
+        if (res) exportData.exposureRateAtTableTop = res;
+      } catch (err) {
+        console.log("Exposure Rate not found or error:", err);
+      }
+      try {
+        const res = await getTubeHousingLeakageByServiceIdCArm(serviceId);
+        if (res) exportData.tubeHousingLeakage = res;
+      } catch (err) {
+        console.log("Tube Housing Leakage not found or error:", err);
+      }
+      if (hasTimer === true) {
+        try {
+          const res = await getLinearityOfMaLoadingStationsByServiceIdForCArm(serviceId);
+          if (res) exportData.linearityOfMaLoading = res;
+        } catch (err) {
+          console.log("Linearity of mA Loading not found or error:", err);
+        }
+      } else if (hasTimer === false) {
+        try {
+          const res = await getLinearityOfMasLoadingStationsByServiceIdForCArm(serviceId);
+          if (res) exportData.linearityOfMasLoading = res;
+        } catch (err) {
+          console.log("Linearity of mAs Loading not found or error:", err);
+        }
+      }
+      if (Object.keys(exportData).length <= 1 && !exportData.reportHeader) {
+        toast.error("No data found to export. Please save test data first.", { id: "export-excel-carm" });
+        return;
+      }
+      const wb = createCArmUploadableExcel(exportData as CArmExportData);
+      const timestamp = new Date().toISOString().split("T")[0];
+      XLSX.writeFile(wb, `C-Arm_Test_Data_${timestamp}.xlsx`);
+      toast.success("Data exported successfully!", { id: "export-excel-carm" });
+    } catch (error: any) {
+      console.error("Error exporting to Excel:", error);
+      toast.error("Failed to export data: " + (error?.message || "Unknown error"), { id: "export-excel-carm" });
+    } finally {
+      setCsvUploading(false);
     }
   };
 
@@ -724,8 +874,16 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       <Standards standards={tools} />
       <Notes />
 
-      {/* Save Header and View Report Buttons */}
-      <div className="mt-8 flex justify-end gap-4">
+      {/* Save Header, Export Excel, and View Report Buttons */}
+      <div className="mt-8 flex flex-wrap justify-end gap-4 items-center">
+        <button
+          type="button"
+          onClick={handleExportToExcel}
+          disabled={csvUploading}
+          className="flex items-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 text-sm font-medium disabled:opacity-50"
+        >
+          {csvUploading ? "Exporting..." : "Export Excel"}
+        </button>
         <button
           type="button"
           onClick={handleSaveHeader}
@@ -750,7 +908,18 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         <button
           type="button"
           className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700"
-          onClick={() => navigate(`/admin/orders/view-service-report-c-arm?serviceId=${serviceId}`)}
+          onClick={async () => {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+              const message =
+                unsaved.length === 1
+                  ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                  : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+              toast.error(message, { duration: 5000 });
+              return;
+            }
+            navigate(`/admin/orders/view-service-report-c-arm?serviceId=${serviceId}`);
+          }}
         >
           View Generated Report
         </button>

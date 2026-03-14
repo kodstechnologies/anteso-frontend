@@ -5,8 +5,26 @@ import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
-import { saveReportHeader, getReportHeaderForOBI, proxyFile } from "../../../../../../api";
+import {
+    saveReportHeader,
+    getReportHeaderForOBI,
+    getAlignmentTestByServiceIdForOBI,
+    getAccuracyOfOperatingPotentialByServiceIdForOBI,
+    getTimerTestByServiceIdForOBI,
+    getOutputConsistencyByServiceIdForOBI,
+    getCentralBeamAlignmentByServiceIdForOBI,
+    getCongruenceOfRadiationByServiceIdForOBI,
+    getEffectiveFocalSpotByServiceIdForOBI,
+    getLinearityOfMasLoadingStationsByServiceIdForOBI,
+    getLinearityOfTimeByServiceIdForOBI,
+    getTubeHousingLeakageByServiceIdForOBI,
+    getRadiationProtectionSurveyByServiceIdForOBI,
+    getHighContrastSensitivityByServiceIdForOBI,
+    getLowContrastSensitivityByServiceIdForOBI,
+    proxyFile,
+} from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
+import { createOBISavedExcel, OBISavedExportData } from "./exportOBISavedToExcel";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -112,6 +130,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
     const [notes, setNotes] = useState<string[]>(defaultNotes);
 
     const [csvUploading, setCsvUploading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [refreshKey, setRefreshKey] = useState(0);
 
@@ -1423,12 +1442,66 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         fetchAndProcessFile();
     }, [csvFileUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const isSaved = (raw: any): boolean => {
+        if (raw == null) return false;
+        if (typeof raw !== "object") return false;
+        if (raw.success && raw.data != null) return true;
+        if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+        const data = raw.data !== undefined ? raw.data : raw;
+        if (data == null || typeof data !== "object") return false;
+        if ((data as any)._id) return true;
+        if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+        if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+        if (Array.isArray((data as any).irradiationTimes) && (data as any).irradiationTimes.length > 0) return true;
+        if (Array.isArray((data as any).outputRows) && (data as any).outputRows.length > 0) return true;
+        if (Array.isArray((data as any).leakageMeasurements) && (data as any).leakageMeasurements.length > 0) return true;
+        if (Array.isArray((data as any).locations) && (data as any).locations.length > 0) return true;
+        if (Array.isArray((data as any).readings) && (data as any).readings.length > 0) return true;
+        return false;
+    };
+
+    const getUnsavedTestNames = async (): Promise<string[]> => {
+        const run = (name: string, fn: () => Promise<any>) => ({ name, check: async () => { try { return isSaved(await fn()); } catch { return false; } } });
+        const checks: { name: string; check: () => Promise<boolean> }[] = [
+            run("Congruence Of Radiation", () => getCongruenceOfRadiationByServiceIdForOBI(serviceId)),
+            run("Central Beam Alignment", () => getCentralBeamAlignmentByServiceIdForOBI(serviceId)),
+            run("Effective Focal Spot", () => getEffectiveFocalSpotByServiceIdForOBI(serviceId)),
+            run("Accuracy Of Operating Potential", () => getAccuracyOfOperatingPotentialByServiceIdForOBI(serviceId)),
+            run("Output Consistency", () => getOutputConsistencyByServiceIdForOBI(serviceId)),
+            run("High Contrast Sensitivity", () => getHighContrastSensitivityByServiceIdForOBI(serviceId)),
+            run("Low Contrast Sensitivity", () => getLowContrastSensitivityByServiceIdForOBI(serviceId)),
+            run("Tube Housing Leakage", () => getTubeHousingLeakageByServiceIdForOBI(serviceId)),
+            run("Radiation Protection Survey", () => getRadiationProtectionSurveyByServiceIdForOBI(serviceId)),
+            run("Alignment Test", () => getAlignmentTestByServiceIdForOBI(serviceId)),
+        ];
+        if (hasTimer === true) {
+            checks.push(run("Timer Test", () => getTimerTestByServiceIdForOBI(serviceId)));
+            checks.push(run("Linearity Of Time", () => getLinearityOfTimeByServiceIdForOBI(serviceId)));
+        } else if (hasTimer === false) {
+            checks.push(run("Linearity Of mAs Loading Stations", () => getLinearityOfMasLoadingStationsByServiceIdForOBI(serviceId)));
+        }
+        const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+        return results.filter((r) => !r.saved).map((r) => r.name);
+    };
+
     const handleSaveHeader = async () => {
         setSaving(true);
         setSaveSuccess(false);
         setSaveError(null);
 
         try {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+                const message =
+                    unsaved.length === 1
+                        ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+                        : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+                setSaveError(message);
+                toast.error(message, { duration: 5000 });
+                setSaving(false);
+                return;
+            }
+
             const payload = {
                 ...formData,
                 toolsUsed: originalTools.map((t: any) => ({
@@ -1473,6 +1546,63 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
             toast.error(errorMsg);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleExportSavedData = async () => {
+        if (!serviceId) {
+            toast.error("Service ID is missing");
+            return;
+        }
+        try {
+            toast.loading("Exporting data to Excel...", { id: "export-excel" });
+            setIsExporting(true);
+            const exportData: OBISavedExportData & { reportHeader?: any } = {};
+
+            try {
+                const headerRes = await getReportHeaderForOBI(serviceId);
+                if (headerRes?.data || headerRes?.exists) exportData.reportHeader = headerRes;
+            } catch (err) {
+                console.log("Report header not found or error:", err);
+            }
+
+            const fetchTest = async (fn: () => Promise<any>) => {
+                try {
+                    const res = await fn();
+                    return res ?? null;
+                } catch {
+                    return null;
+                }
+            };
+
+            exportData.congruenceOfRadiation = await fetchTest(() => getCongruenceOfRadiationByServiceIdForOBI(serviceId));
+            exportData.centralBeamAlignment = await fetchTest(() => getCentralBeamAlignmentByServiceIdForOBI(serviceId));
+            exportData.effectiveFocalSpot = await fetchTest(() => getEffectiveFocalSpotByServiceIdForOBI(serviceId));
+            exportData.timerTest = await fetchTest(() => getTimerTestByServiceIdForOBI(serviceId));
+            exportData.accuracyOfOperatingPotential = await fetchTest(() => getAccuracyOfOperatingPotentialByServiceIdForOBI(serviceId));
+            exportData.outputConsistency = await fetchTest(() => getOutputConsistencyByServiceIdForOBI(serviceId));
+            exportData.highContrastSensitivity = await fetchTest(() => getHighContrastSensitivityByServiceIdForOBI(serviceId));
+            exportData.lowContrastSensitivity = await fetchTest(() => getLowContrastSensitivityByServiceIdForOBI(serviceId));
+            exportData.linearityOfTime = await fetchTest(() => getLinearityOfTimeByServiceIdForOBI(serviceId));
+            exportData.linearityOfMasLoadingStations = await fetchTest(() => getLinearityOfMasLoadingStationsByServiceIdForOBI(serviceId));
+            exportData.tubeHousingLeakage = await fetchTest(() => getTubeHousingLeakageByServiceIdForOBI(serviceId));
+            exportData.radiationProtectionSurvey = await fetchTest(() => getRadiationProtectionSurveyByServiceIdForOBI(serviceId));
+            exportData.alignmentTest = await fetchTest(() => getAlignmentTestByServiceIdForOBI(serviceId));
+
+            const hasData = Object.keys(exportData).filter((k) => k !== "reportHeader").some((k) => exportData[k] != null);
+            if (!hasData) {
+                toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+                return;
+            }
+            const wb = createOBISavedExcel(exportData as OBISavedExportData);
+            const timestamp = new Date().toISOString().split("T")[0];
+            XLSX.writeFile(wb, `OBI_Test_Data_${timestamp}.xlsx`);
+            toast.success("Data exported successfully!", { id: "export-excel" });
+        } catch (error: any) {
+            console.error("Error exporting to Excel:", error);
+            toast.error("Failed to export data: " + (error?.message || "Unknown error"), { id: "export-excel" });
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -1694,7 +1824,26 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     {saving ? "Saving..." : "Save Report Header"}
                 </button>
                 <button
-                    onClick={() => navigate(`/admin/orders/view-service-report-obi?serviceId=${serviceId}`)}
+                    type="button"
+                    onClick={handleExportSavedData}
+                    disabled={isExporting}
+                    className={`px-8 py-3 rounded-lg font-bold text-white transition ${isExporting ? "bg-gray-500 cursor-not-allowed" : "bg-teal-600 hover:bg-teal-700"}`}
+                >
+                    {isExporting ? "Exporting..." : "Export Excel"}
+                </button>
+                <button
+                    onClick={async () => {
+                        const unsaved = await getUnsavedTestNames();
+                        if (unsaved.length > 0) {
+                            const message =
+                                unsaved.length === 1
+                                    ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                                    : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+                            toast.error(message, { duration: 5000 });
+                            return;
+                        }
+                        navigate(`/admin/orders/view-service-report-obi?serviceId=${serviceId}`);
+                    }}
                     className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
                 >
                     View Generated Report

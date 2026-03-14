@@ -311,12 +311,55 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const isSaved = (raw: any): boolean => {
+        if (raw == null) return false;
+        if (typeof raw !== "object") return false;
+        if (raw.success && raw.data != null) return true;
+        if (raw.data && typeof raw.data === "object" && (raw.data as any)._id) return true;
+        const data = raw.data !== undefined ? raw.data : raw;
+        if (data == null || typeof data !== "object") return false;
+        if ((data as any)._id) return true;
+        if (Array.isArray((data as any).readings) && (data as any).readings.length > 0) return true;
+        if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
+        if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+        return false;
+    };
+
+    const getUnsavedTestNames = async (): Promise<string[]> => {
+        const checks: { name: string; check: () => Promise<boolean> }[] = [
+            { name: "Accuracy Of Operating Potential", check: async () => { try { return isSaved(await getAccuracyOfOperatingPotentialByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
+            { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getConsistencyOfRadiationOutputByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
+            { name: "Radiation Leakage Level", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
+            { name: "Details Of Radiation Protection", check: async () => { try { return isSaved(await getRadiationProtectionSurveyByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
+        ];
+        if (hasTimer === true) {
+            checks.push({ name: "Accuracy Of Irradiation Time", check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForDentalIntra(serviceId)); } catch { return false; } } });
+            checks.push({ name: "Linearity Of mA Loading", check: async () => { try { return isSaved(await getLinearityOfMaLoadingByServiceIdForDentalIntra(serviceId)); } catch { return false; } } });
+        } else if (hasTimer === false) {
+            checks.push({ name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingByServiceIdForDentalIntra(serviceId)); } catch { return false; } } });
+        }
+        const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
+        return results.filter((r) => !r.saved).map((r) => r.name);
+    };
+
     const handleSaveHeader = async () => {
         setSaving(true);
         setSaveSuccess(false);
         setSaveError(null);
 
         try {
+            const unsaved = await getUnsavedTestNames();
+            if (unsaved.length > 0) {
+                const message =
+                    unsaved.length === 1
+                        ? `${unsaved[0]} table is not saved. Please fill and save this test table before saving the report header.`
+                        : `You must fill and save all test tables before saving the report header. Missing: ${unsaved.join(", ")}.`;
+                setSaveError(message);
+                toast.error(message, { duration: 5000 });
+                setSaving(false);
+                return;
+            }
+
             const payload = {
                 ...formData,
                 toolsUsed: tools.map(t => ({
@@ -1039,7 +1082,18 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 <button
                     type="button"
                     className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => navigate(`/admin/orders/view-service-report-dental-intra?serviceId=${serviceId}`)}
+                    onClick={async () => {
+                        const unsaved = await getUnsavedTestNames();
+                        if (unsaved.length > 0) {
+                            const message =
+                                unsaved.length === 1
+                                    ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
+                                    : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
+                            toast.error(message, { duration: 5000 });
+                            return;
+                        }
+                        navigate(`/admin/orders/view-service-report-dental-intra?serviceId=${serviceId}`);
+                    }}
                 >
                     View Generated Report
                 </button>
