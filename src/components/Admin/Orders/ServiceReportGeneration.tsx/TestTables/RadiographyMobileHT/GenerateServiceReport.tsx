@@ -79,6 +79,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
   const [csvUploading, setCsvUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [csvDataVersion, setCsvDataVersion] = useState(0);
 
   const [csvDataForComponents, setCsvDataForComponents] = useState<{
     congruenceOfRadiation?: any;
@@ -682,6 +683,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
 
       const count = Object.keys(grouped).length;
       if (count > 0) {
+        setCsvDataVersion((v) => v + 1);
         toast.success(`CSV/Excel data loaded. ${count} section(s) filled. Please review and save.`);
         setTimeout(() => setRefreshKey(Date.now()), 50);
       } else {
@@ -1242,7 +1244,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             ? [
               {
                 title: "Accuracy Of Irradiation Time",
-                component: <AccuracyOfIrradiationTime key={`timer-${refreshKey}`} serviceId={serviceId} initialData={csvDataForComponents.accuracyOfIrradiationTime} />,
+                component: <AccuracyOfIrradiationTime key={`timer-${refreshKey}`} serviceId={serviceId} initialData={csvDataForComponents.accuracyOfIrradiationTime} csvDataVersion={csvDataVersion} />,
               },
             ]
             : []),

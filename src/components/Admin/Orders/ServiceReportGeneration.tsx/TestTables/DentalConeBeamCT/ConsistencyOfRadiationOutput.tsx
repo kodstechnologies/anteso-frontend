@@ -426,7 +426,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   Mean (X̄)
                 </th>
                 <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                  cov
+                  CoV
                 </th>
                 <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
                   Remarks

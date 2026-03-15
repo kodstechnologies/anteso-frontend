@@ -158,7 +158,16 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       csvData.forEach((row, idx) => {
         const firstCell = row[0]?.toString()?.trim();
 
-        // 1. Parameter Row: FCD, 100, kV, 70, mA, 10
+        // Tolerance from CSV (same as RadiographyFixed: operator and value)
+        if (firstCell && (firstCell === "Tolerance" || firstCell === "Tolerance Value" || firstCell === "Tolerance_Value" || firstCell === "% Error")) {
+          const val = row[1]?.toString()?.trim();
+          if (val) setToleranceValue(val);
+        }
+        if (firstCell && (firstCell === "Tolerance Operator" || firstCell === "Tolerance_Operator" || firstCell === "Error Operator")) {
+          const op = row[1]?.toString()?.trim();
+          if (op) setToleranceOperator(op === ">" || op === "<" || op === ">=" || op === "<=" || op === "=" ? op : "<=");
+        }
+
         // 1. Parameter Row: FCD, 100, kV, 70, mA, 10
         if (row.some((c: any) => ['FCD', 'fcd'].includes(c?.toString()?.trim())) && row.some((c: any) => ['kV', 'kv', 'kVp', 'kvp'].includes(c?.toString()?.trim()))) {
           const fIndex = row.findIndex((c: any) => ['FCD', 'fcd'].includes(c?.toString()?.trim()));

@@ -140,6 +140,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'Set Time (mSec)': 'Set_Time', 'set time (msec)': 'Set_Time',
                 'Measured Time (mSec)': 'Measured_Time', 'measured time (msec)': 'Measured_Time',
                 '% Error': 'Error', '% error': 'Error',
+                'Tolerance': 'Tolerance_Value', 'Tolerance Value': 'Tolerance_Value', 'Tolerance_Value': 'Tolerance_Value',
+                'Tolerance Operator': 'Tolerance_Operator', 'Tolerance_Operator': 'Tolerance_Operator',
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',

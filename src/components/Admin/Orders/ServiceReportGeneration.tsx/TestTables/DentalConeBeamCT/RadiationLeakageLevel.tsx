@@ -137,6 +137,32 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     );
   };
 
+  const addCollimatorRow = () => {
+    const hasCollimator = leakageRows.some(row => row.location === 'Collimator');
+    if (hasCollimator) {
+      toast.error('Collimator can only be added once');
+      return;
+    }
+    setLeakageRows(prev => [...prev, {
+      location: 'Collimator',
+      front: '',
+      back: '',
+      left: '',
+      right: '',
+      max: '',
+      unit: 'mGy/h',
+      remark: '',
+    }]);
+  };
+
+  const removeLeakageRow = (index: number) => {
+    if (index === 0 || leakageRows[index].location === 'Tube') {
+      toast.error('Tube row cannot be removed');
+      return;
+    }
+    setLeakageRows(prev => prev.filter((_, i) => i !== index));
+  };
+
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
@@ -437,9 +463,21 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
       {/* ==================== Table 2: Leakage Results (Fixed 1 row) ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
-          Leakage Measurement Results
-        </h3>
+        <div className="px-6 py-3 flex justify-between items-center bg-gray-50 border-b">
+          <h3 className="text-lg font-semibold">
+            Leakage Measurement Results
+          </h3>
+          {!isViewMode && (
+            <button
+              type="button"
+              onClick={addCollimatorRow}
+              disabled={leakageRows.some(row => row.location === 'Collimator')}
+              className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium ${leakageRows.some(row => row.location === 'Collimator') ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              Add Collimator
+            </button>
+          )}
+        </div>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
@@ -455,9 +493,14 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                 Unit
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                 Remark
               </th>
+              {!isViewMode && (
+                <th rowSpan={2} className="px-2 py-3 text-center text-xs font-medium text-gray-700 tracking-wider">
+                  Action
+                </th>
+              )}
             </tr>
             <tr>
               {['Front', 'Back', 'Left', 'Right'].map((dir) => (
@@ -528,6 +571,19 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                     {finalRemark || '—'}
                   </span>
                 </td>
+                {!isViewMode && (
+                  <td className="px-2 py-2 text-center">
+                    {leakageRows.length > 1 && row.location !== 'Tube' && (
+                      <button
+                        type="button"
+                        onClick={() => removeLeakageRow(idx)}
+                        className="text-red-600 hover:bg-red-50 p-1 rounded"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

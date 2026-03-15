@@ -337,6 +337,13 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, csvData }) => {
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
+      {hasValidCalibration === "No" && (
+        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-4 mb-4">
+          <p className="text-amber-800 font-semibold">
+            ⚠️ Calibration certificate is expired. You can still edit and save; ensure valid calibration certificates are provided for all tools when possible.
+          </p>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <h1 className="text-4xl font-bold text-center text-gray-800">
           Radiation Protection Survey Report

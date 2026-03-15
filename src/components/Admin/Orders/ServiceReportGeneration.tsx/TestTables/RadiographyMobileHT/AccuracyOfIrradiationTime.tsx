@@ -12,6 +12,7 @@ import {
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
   initialData?: { testConditions?: { fcd?: string; kv?: string; ma?: string }; irradiationTimes?: { setTime?: string; measuredTime?: string }[]; tolerance?: { operator?: string; value?: string } };
+  csvDataVersion?: number;
 }
 
 interface Table1Row {
@@ -30,6 +31,7 @@ interface Table2Row {
 const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
   initialData,
+  csvDataVersion,
 }) => {
   const [testId, setTestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -52,13 +54,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   const [toleranceValue, setToleranceValue] = useState("10");
 
   useEffect(() => {
-    if (!initialData) return;
+    if (!initialData || !csvDataVersion) return;
     const tc = initialData.testConditions;
     if (tc) setTable1Row(prev => ({ ...prev, fcd: tc.fcd ?? prev.fcd, kv: tc.kv ?? prev.kv, ma: tc.ma ?? prev.ma }));
     if (initialData.irradiationTimes?.length) setTable2Rows(initialData.irradiationTimes.map((t, i) => ({ id: String(i + 1), setTime: t.setTime ?? "", measuredTime: t.measuredTime ?? "" })));
     if (initialData.tolerance?.value) setToleranceValue(initialData.tolerance.value);
     if (initialData.tolerance?.operator) setToleranceOperator(initialData.tolerance.operator === ">=" ? ">=" : "<=");
-  }, [initialData]);
+  }, [initialData, csvDataVersion]);
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
     setTable1Row((prev) => ({ ...prev, [field]: value }));
@@ -204,9 +206,9 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">FCD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">kV</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">mA</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FCD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">mA</th>
             </tr>
           </thead>
           <tbody className="bg-white">
@@ -235,10 +237,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Set Time (mSec)</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Measured Time (mSec)</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">% Error</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Remarks</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Set Time (mSec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Measured Time (mSec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">% Error</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Remarks</th>
               <th className="px-4 py-3 w-12"></th>
             </tr>
           </thead>

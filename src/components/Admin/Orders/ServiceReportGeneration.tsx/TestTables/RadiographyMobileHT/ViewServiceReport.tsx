@@ -48,6 +48,7 @@ interface ReportData {
   toolsUsed?: Tool[];
   notes?: Note[];
   category: string;
+  qaTestSubmittedAt?: string;
   // Test documents
   AccuracyOfIrradiationTimeRadiographyMobileHT?: any;
   accuracyOfOperatingPotentialRadiographyMobileHT?: any;
@@ -117,6 +118,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
             toolsUsed: data.toolsUsed || [],
             notes: data.notes || defaultNotes,
             category: data.category || "",
+            qaTestSubmittedAt: data.qaTestSubmittedAt || "",
           });
 
           // Extract test data from populated response
@@ -570,10 +572,43 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 </div>
               </div>
             )}
-            {/* 4. Congruence */}
+            {/* 4. Congruence of Radiation & Light Field */}
             {testData.congruence && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Congruence of Radiation & Optical Field</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Congruence of Radiation & Light Field</h3>
+                {(testData.congruence.techniqueFactors && (Array.isArray(testData.congruence.techniqueFactors) ? testData.congruence.techniqueFactors.length > 0 : true)) && (
+                  <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
+                    <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '10px' }}>Technique Factors:</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FFD (cm)</th>
+                            <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
+                            <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>mAs</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.isArray(testData.congruence.techniqueFactors)
+                            ? testData.congruence.techniqueFactors.map((tf: any, idx: number) => (
+                                <tr key={idx}>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{tf.fcd ?? tf.ffd ?? "-"}</td>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{tf.kv ?? "-"}</td>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{tf.mas ?? "-"}</td>
+                                </tr>
+                              ))
+                            : (
+                                <tr>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{(testData.congruence.techniqueFactors as any)?.fcd ?? (testData.congruence.techniqueFactors as any)?.ffd ?? "-"}</td>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{(testData.congruence.techniqueFactors as any)?.kv ?? "-"}</td>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{(testData.congruence.techniqueFactors as any)?.mas ?? "-"}</td>
+                                </tr>
+                            )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
                 {testData.congruence.congruenceMeasurements?.length > 0 && (
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
@@ -669,12 +704,27 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: '14px', marginBottom: '4px' }}>6. Linearity of mAs Loading</h3>
                 {/* Test Conditions */}
                 {testData.linearityOfMasLoading.table1 && testData.linearityOfMasLoading.table1.length > 0 && (
-                  <div className="mb-6 bg-gray-50 p-4 rounded border print:p-1">
+                  <div className="mb-6 print:mb-1 bg-gray-50 p-4 rounded border print:p-1" style={{ marginBottom: '4px' }}>
                     <p className="font-semibold mb-2 text-sm print:text-xs" style={{ fontSize: '11px', marginBottom: '4px' }}>Test Conditions:</p>
-                    <div className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                      FCD: {testData.linearityOfMasLoading.table1[0]?.fcd || "-"} cm |
-                      kV: {testData.linearityOfMasLoading.table1[0]?.kv || "-"} |
-                      Time: {testData.linearityOfMasLoading.table1[0]?.time || "-"} sec
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>FCD (cm)</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>kV</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Time (sec)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {testData.linearityOfMasLoading.table1.map((row: any, idx: number) => (
+                            <tr key={idx} className="text-center">
+                              <td className="border border-black p-2 print:p-1" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.fcd ?? "-"}</td>
+                              <td className="border border-black p-2 print:p-1" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.kv ?? "-"}</td>
+                              <td className="border border-black p-2 print:p-1" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.time ?? "-"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
@@ -723,7 +773,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                               <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>{row.mAsApplied || "-"}</td>
                               {testData.linearityOfMasLoading.measHeaders?.map((_: string, idx: number) => (
                                 <td key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
-                                  {formatValue(row.measuredOutputs?.[idx])}
+                                  {formatValue((row.measuredOutputs ?? row.readings)?.[idx])}
                                 </td>
                               ))}
                               <td className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: '10px', padding: '5px' }}>{row.average || "-"}</td>
@@ -782,22 +832,26 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kV</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mAs</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Avg (X̄)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>CV / Remark</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>CoV / Remark</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {testData.outputConsistency.outputRows.map((row: any, i: number) => (
-                          <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kv || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mas || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avg || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                              <span className={row.remark?.includes("Pass") ? "text-green-600" : row.remark?.includes("Fail") ? "text-red-600" : ""}>
-                                {row.remark || "-"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {testData.outputConsistency.outputRows.map((row: any, i: number) => {
+                          const cvVal = row.cv ?? row.cov;
+                          const cvDisplay = cvVal !== undefined && cvVal !== null && cvVal !== "" ? (typeof cvVal === "number" ? cvVal.toFixed(4) : String(cvVal)) : "-";
+                          return (
+                            <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kv || "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mas || "-"}</td>
+                              <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avg ?? "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                                <span className={row.remark?.includes("Pass") ? "text-green-600" : row.remark?.includes("Fail") ? "text-red-600" : ""}>
+                                  {cvDisplay !== "-" ? `${cvDisplay} — ` : ""}{row.remark || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -805,7 +859,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 {testData.outputConsistency.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Acceptance Criteria:</strong> CV {testData.outputConsistency.tolerance.operator || "<="} {testData.outputConsistency.tolerance.value || "5.0"}%
+                      <strong>Acceptance Criteria:</strong> CoV {testData.outputConsistency.tolerance.operator || "<="} {testData.outputConsistency.tolerance.value ?? "0.05"}
                     </p>
                   </div>
                 )}
@@ -847,6 +901,9 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
             {testData.radiationProtectionSurvey && testData.radiationProtectionSurvey.locations?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>9. Details of Radiation Protection Survey</h3>
+                <p className="text-sm print:text-[9px] mb-2" style={{ fontSize: '11px', marginBottom: '4px' }}>
+                  <strong>Date of Survey:</strong> {formatDate(report?.qaTestSubmittedAt || testData.radiationProtectionSurvey?.surveyDate || "") || "-"}
+                </p>
                 <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">

@@ -313,9 +313,9 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
           <table className="min-w-full">
             <thead className="bg-purple-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Focus</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Stated Value (mm × mm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Measured Value (mm × mm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Focus</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Stated Value (mm × mm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Measured Value (mm × mm)</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 leading-tight">
                   <div className="space-y-3 text-sm normal-case">
                     <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">

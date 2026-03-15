@@ -166,12 +166,14 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
   // 3. Central Beam Alignment
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
+    const tolOp = testData.centralBeamAlignment.tolerance?.operator || "≤";
+    const tolVal = testData.centralBeamAlignment.tolerance?.value ?? "5";
     const isPass = testData.centralBeamAlignment.observedTilt.remark === "Pass" || 
                    (tiltValue !== "-" && parseFloat(tiltValue) <= 5);
     addRowsForTest("Central Beam Alignment", [{
-      specified: "≤ 5 degrees",
-      measured: tiltValue !== "-" ? `${tiltValue} degrees` : "-",
-      tolerance: "≤ 5 degrees",
+      specified: "≤ 5°",
+      measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
+      tolerance: `${tolOp} ${tolVal}°`,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -291,55 +293,41 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // 7. Consistency of Radiation Output (COV)
+  // 7. Consistency of Radiation Output (COV) — decimal CoV, rowspan for specified/measured
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
-    const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kv || row.cv || row.remark);
+    const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kv || row.cv != null || row.cov != null || row.remark);
     if (validRows.length > 0) {
       const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
-      const toleranceValue = testData.outputConsistency.tolerance?.value || "5.0";
+      const toleranceValue = testData.outputConsistency.tolerance?.value ?? "0.05";
       const testRows = validRows.map((row: any) => {
-        // Use CV value directly from row.cv
-        let cvValue = row.cv || "-";
+        const cvValue = row.cv ?? row.cov ?? "-";
         let isPass = false;
-        
-        // Check if remark indicates pass/fail
         if (row.remark === "Pass" || row.remark === "PASS") {
           isPass = true;
         } else if (row.remark === "Fail" || row.remark === "FAIL") {
           isPass = false;
         } else if (cvValue !== "-") {
-          // Calculate pass/fail based on CV vs tolerance
           const cv = parseFloat(String(cvValue));
           const tol = parseFloat(toleranceValue);
-          
           if (!isNaN(cv) && !isNaN(tol)) {
-            if (toleranceOperator === "<") {
-              isPass = cv < tol;
-            } else if (toleranceOperator === ">") {
-              isPass = cv > tol;
-            } else if (toleranceOperator === "<=") {
-              isPass = cv <= tol;
-            } else if (toleranceOperator === ">=") {
-              isPass = cv >= tol;
-            } else if (toleranceOperator === "=") {
-              isPass = Math.abs(cv - tol) < 0.01;
-            }
+            if (toleranceOperator === "<") isPass = cv < tol;
+            else if (toleranceOperator === ">") isPass = cv > tol;
+            else if (toleranceOperator === "<=") isPass = cv <= tol;
+            else if (toleranceOperator === ">=") isPass = cv >= tol;
+            else if (toleranceOperator === "=") isPass = Math.abs(cv - tol) < 0.01;
           }
         }
-        
-        // Format CV value for display
         const formattedCv = cvValue !== "-" && cvValue !== undefined && cvValue !== null && cvValue !== ""
-          ? (typeof cvValue === 'number' ? cvValue.toFixed(2) : parseFloat(String(cvValue)).toFixed(2)) + "%"
+          ? (typeof cvValue === "number" ? cvValue.toFixed(4) : parseFloat(String(cvValue)).toFixed(4))
           : "-";
-        
         return {
           specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "Varies",
           measured: formattedCv,
-          tolerance: `${toleranceOperator} ${toleranceValue}%`,
+          tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Consistency of Radiation Output (CV)", testRows, true);
+      addRowsForTest("Consistency of Radiation Output (CV)", testRows, true, true);
     }
   }
 

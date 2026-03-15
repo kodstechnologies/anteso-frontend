@@ -119,20 +119,24 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
 
   // 3. Consistency of Radiation Output (COV)
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
-    const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kvp || row.cov);
+    const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kvp || row.kv || row.cov || row.cv);
     if (validRows.length > 0) {
-      const tolerance = testData.outputConsistency.tolerance || "0.05";
+      const tolObj = testData.outputConsistency.tolerance;
+      const tolerance = (typeof tolObj === 'object' && tolObj != null && tolObj.value != null) ? String(tolObj.value) : String(testData.outputConsistency.tolerance ?? "0.05");
       const testRows = validRows.map((row: any) => {
-        const cov = row.cov ? parseFloat(row.cov).toFixed(3) : "-";
-        const isPass = row.remarks === "Pass" || (row.cov ? parseFloat(row.cov) <= parseFloat(tolerance) : false);
+        const covVal = row.cov ?? row.cv;
+        const cov = covVal !== undefined && covVal !== null && covVal !== "" ? (typeof covVal === 'number' ? covVal.toFixed(3) : parseFloat(String(covVal)).toFixed(3)) : "-";
+        const cvNum = covVal != null && covVal !== "" ? parseFloat(String(covVal)) : NaN;
+        const tolNum = parseFloat(tolerance);
+        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (!isNaN(cvNum) && !isNaN(tolNum) && cvNum <= tolNum);
         return {
-          specified: row.kvp ? `${row.kvp} kVp` : "Varies with kVp",
+          specified: (row.kv ?? row.kvp) ? `${row.kv ?? row.kvp} kV` : "Varies with kV",
           measured: cov,
           tolerance: `≤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Consistency of Radiation Output (COV)", testRows, true); // Enable tolerance rowSpan
+      addRowsForTest("Consistency of Radiation Output (COV)", testRows, true);
     }
   }
 

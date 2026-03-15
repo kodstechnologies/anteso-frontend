@@ -185,6 +185,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         setTable2Rows(newTable2Rows);
       }
 
+      // Tolerance from CSV (Tolerance_Operator, Tolerance_Value or % Error)
+      const tolOp = csvData.find((r: any) => r['Field Name'] === 'Tolerance_Operator')?.['Value'];
+      const tolVal = csvData.find((r: any) => r['Field Name'] === 'Tolerance_Value')?.['Value']
+        ?? csvData.find((r: any) => r['Field Name'] === 'Error')?.['Value'];
+      if (tolOp) setToleranceOperator(String(tolOp).trim() || '<=');
+      if (tolVal !== undefined && tolVal !== '') setToleranceValue(String(tolVal).trim());
+
       if (!testId && (rowIndices.length > 0 || fcd || kv || ma)) setIsEditing(true);
     }
   }, [csvData]);
