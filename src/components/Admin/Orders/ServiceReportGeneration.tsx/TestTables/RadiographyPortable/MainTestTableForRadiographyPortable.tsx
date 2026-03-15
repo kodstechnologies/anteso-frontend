@@ -17,19 +17,21 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
       tolerance: string;
       remarks: "Pass" | "Fail";
     }>,
-    toleranceRowSpan: boolean = false
+    toleranceRowSpan: boolean = false,
+    measuredRowSpan: boolean = false
   ) => {
     if (testRows.length === 0) return;
-    
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
-    
+    const sharedMeasured = measuredRowSpan ? testRows[0]?.measured : null;
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null,
         parameter: idx === 0 ? parameter : null,
         rowSpan: idx === 0 ? testRows.length : 0,
         specified: testRow.specified,
-        measured: testRow.measured,
+        measured: measuredRowSpan ? (idx === 0 ? sharedMeasured : null) : testRow.measured,
+        measuredRowSpan: measuredRowSpan ? (idx === 0 ? testRows.length : 0) : 0,
+        hasMeasuredRowSpan: measuredRowSpan,
         tolerance: toleranceRowSpan ? (idx === 0 ? sharedTolerance : null) : testRow.tolerance,
         toleranceRowSpan: toleranceRowSpan ? (idx === 0 ? testRows.length : 0) : 0,
         hasToleranceRowSpan: toleranceRowSpan,
@@ -76,36 +78,63 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // 2. Accuracy of Operating Potential (kVp Accuracy)
-  if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
-    const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
+  // 2. Accuracy of Operating Potential (kVp Accuracy) - support measurements or table2
+  const aop = testData.accuracyOfOperatingPotential;
+  const aopRows = Array.isArray(aop?.measurements) && aop.measurements.length > 0
+    ? aop.measurements
+    : (Array.isArray(aop?.table2) ? aop.table2 : []);
+  if (aopRows.length > 0) {
+    const validRows = aopRows.filter((row: any) => row.appliedKvp || row.setKV || row.averageKvp || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.accuracyOfOperatingPotential.toleranceSign || "±";
-      const toleranceValue = testData.accuracyOfOperatingPotential.toleranceValue || "2.0";
+      const toleranceSign = aop.tolerance?.sign === 'plus' ? '+' : aop.tolerance?.sign === 'minus' ? '-' : '±';
+      const toleranceValue = aop.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
+        const applied = row.appliedKvp ?? row.setKV;
+        const measured = row.averageKvp ?? row.avgKvp;
         let isPass = false;
-        if (row.remarks === "PASS" || row.remarks === "Pass") {
-          isPass = true;
-        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
-          isPass = false;
-        } else {
-          const appliedKvp = parseFloat(row.setKV);
-          const avgKvp = parseFloat(row.avgKvp);
-          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-            const tol = parseFloat(toleranceValue);
+        if (row.remarks === "PASS" || row.remarks === "Pass") isPass = true;
+        else if (row.remarks === "FAIL" || row.remarks === "Fail") isPass = false;
+        else if (applied && measured) {
+          const a = parseFloat(String(applied));
+          const m = parseFloat(String(measured));
+          const tol = parseFloat(toleranceValue);
+          if (!isNaN(a) && !isNaN(m) && a > 0 && !isNaN(tol)) {
+            const deviation = Math.abs(((m - a) / a) * 100);
             isPass = deviation <= tol;
           }
         }
         return {
-          specified: row.setKV || "-",
-          measured: row.avgKvp || "-",
+          specified: applied || "-",
+          measured: measured || "-",
           tolerance: `${toleranceSign}${toleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
       addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
     }
+  }
+
+  // 2b. Total Filtration (when stored in AOP document)
+  const tf = testData.accuracyOfOperatingPotential?.totalFiltration;
+  if (tf && (tf.required !== '' || tf.atKvp !== '')) {
+    const kvp = parseFloat(tf.atKvp);
+    const measured = parseFloat(tf.required);
+    const ft = testData.accuracyOfOperatingPotential?.filtrationTolerance;
+    let requiredMin = '';
+    if (ft && !isNaN(kvp)) {
+      const t1 = parseFloat(ft.kvThreshold1 ?? '70');
+      const t2 = parseFloat(ft.kvThreshold2 ?? '100');
+      if (kvp < t1) requiredMin = `${ft.forKvGreaterThan70 ?? '1.5'} mm Al`;
+      else if (kvp >= t1 && kvp <= t2) requiredMin = `${ft.forKvBetween70And100 ?? '2.0'} mm Al`;
+      else requiredMin = `${ft.forKvGreaterThan100 ?? '2.5'} mm Al`;
+    }
+    const isPass = !isNaN(measured) && requiredMin !== '' ? measured >= parseFloat(requiredMin) : undefined;
+    addRowsForTest("Total Filtration", [{
+      specified: `At ${tf.atKvp || '-'} kVp, min ${requiredMin || '-'}`,
+      measured: measured ? `${tf.required} mm Al` : '-',
+      tolerance: requiredMin ? `≥ ${requiredMin}` : '-',
+      remarks: (isPass === true ? "Pass" : isPass === false ? "Fail" : "Pass") as "Pass" | "Fail",
+    }]);
   }
 
   // 3. Central Beam Alignment
@@ -138,14 +167,12 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
       }
     }
     
-    // Format specified value (use tolerance value as specified)
-    const specifiedValue = `${toleranceOperator} ${toleranceValue} degrees`;
-    // Format tolerance display
-    const toleranceDisplay = `${toleranceOperator} ${toleranceValue} degrees`;
-    
+    // Format specified value and display with degree symbol (°)
+    const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
+    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
     addRowsForTest("Central Beam Alignment", [{
       specified: specifiedValue,
-      measured: tiltValue !== "-" ? `${tiltValue} degrees` : "-",
+      measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
       tolerance: toleranceDisplay,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
@@ -213,74 +240,66 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // 6. Linearity of mAs Loading
+  // 6. Linearity of mAs Loading (measured = CoL, same for all rows - use rowspan like Fixed)
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
-    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.col);
+    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
-      const testRows = validRows.map((row: any) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
-        return {
-          specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
-          measured: col,
-          tolerance: `≤ ${tolerance}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Linearity of mAs Loading (Coefficient of Linearity)", testRows);
+      const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "≤";
+      const colValue = testData.linearityOfMasLoading.col;
+      const col = colValue !== undefined && colValue !== null && colValue !== "" && colValue !== "—"
+        ? parseFloat(String(colValue)).toFixed(3) : "-";
+      let isPass = false;
+      if (testData.linearityOfMasLoading.remarks === "Pass" || testData.linearityOfMasLoading.remarks === "PASS") isPass = true;
+      else if (testData.linearityOfMasLoading.remarks === "Fail" || testData.linearityOfMasLoading.remarks === "FAIL") isPass = false;
+      else if (col !== "-") {
+        const colVal = parseFloat(col);
+        const tol = parseFloat(tolerance);
+        if (!isNaN(colVal) && !isNaN(tol)) isPass = toleranceOperator === "≤" ? colVal <= tol : colVal < tol;
+      }
+      const testRows = validRows.map((row: any) => ({
+        specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
+        measured: col,
+        tolerance: `${toleranceOperator} ${tolerance}`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }));
+      addRowsForTest("Linearity of mA/mAs Loading (Coefficient of Linearity)", testRows, true, true);
     }
   }
 
-  // 7. Consistency of Radiation Output (COV)
+  // 7. Consistency of Radiation Output (CoV) - specified and measured in rowspan like Fixed
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kv || row.cv || row.remark);
     if (validRows.length > 0) {
       const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
-      const toleranceValue = testData.outputConsistency.tolerance?.value || "5.0";
+      const toleranceValue = testData.outputConsistency.tolerance?.value || "0.05";
       const testRows = validRows.map((row: any) => {
-        // Use CV value directly from row.cv
         let cvValue = row.cv || "-";
         let isPass = false;
-        
-        // Check if remark indicates pass/fail
-        if (row.remark === "Pass" || row.remark === "PASS") {
-          isPass = true;
-        } else if (row.remark === "Fail" || row.remark === "FAIL") {
-          isPass = false;
-        } else if (cvValue !== "-") {
-          // Calculate pass/fail based on CV vs tolerance
+        if (row.remark === "Pass" || row.remark === "PASS") isPass = true;
+        else if (row.remark === "Fail" || row.remark === "FAIL") isPass = false;
+        else if (cvValue !== "-") {
           const cv = parseFloat(String(cvValue));
           const tol = parseFloat(toleranceValue);
-          
           if (!isNaN(cv) && !isNaN(tol)) {
-            if (toleranceOperator === "<") {
-              isPass = cv < tol;
-            } else if (toleranceOperator === ">") {
-              isPass = cv > tol;
-            } else if (toleranceOperator === "<=") {
-              isPass = cv <= tol;
-            } else if (toleranceOperator === ">=") {
-              isPass = cv >= tol;
-            } else if (toleranceOperator === "=") {
-              isPass = Math.abs(cv - tol) < 0.01;
-            }
+            if (toleranceOperator === "<") isPass = cv < tol;
+            else if (toleranceOperator === ">") isPass = cv > tol;
+            else if (toleranceOperator === "<=") isPass = cv <= tol;
+            else if (toleranceOperator === ">=") isPass = cv >= tol;
+            else if (toleranceOperator === "=") isPass = Math.abs(cv - tol) < 0.01;
           }
         }
-        
-        // Format CV value for display
         const formattedCv = cvValue !== "-" && cvValue !== undefined && cvValue !== null && cvValue !== ""
-          ? (typeof cvValue === 'number' ? cvValue.toFixed(2) : parseFloat(String(cvValue)).toFixed(2)) + "%"
+          ? (typeof cvValue === 'number' ? cvValue.toFixed(4) : parseFloat(String(cvValue)).toFixed(4))
           : "-";
-        
         return {
           specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "Varies",
           measured: formattedCv,
-          tolerance: `${toleranceOperator} ${toleranceValue}%`,
+          tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Consistency of Radiation Output (CV)", testRows, true);
+      addRowsForTest("Consistency of Radiation Output (CoV)", testRows, true, true);
     }
   }
 
@@ -347,7 +366,14 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
                     </td>
                   )}
                   <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.specified}</td>
-                  <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.measured}</td>
+                  {((!row.hasMeasuredRowSpan && row.measuredRowSpan === 0) || (row.hasMeasuredRowSpan && row.isFirstRow)) ? (
+                    <td
+                      {...(row.measuredRowSpan > 0 ? { rowSpan: row.measuredRowSpan } : {})}
+                      className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight"
+                    >
+                      {row.measured}
+                    </td>
+                  ) : null}
                   {shouldRenderTolerance && (
                     <td 
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}

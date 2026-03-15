@@ -288,7 +288,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
       {/* FCD */}
       <div className="bg-white shadow-md rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Focal Spot Distance (FCD)</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">FFD (cm)</h3>
         <div className="flex items-center justify-center gap-4">
           <input
             type="number"
@@ -310,10 +310,10 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
           <table className="min-w-full">
             <thead className="bg-purple-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Focus</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Stated Value (mm × mm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Measured Value (mm × mm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase leading-tight">
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Focus</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Stated Value (mm × mm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Measured Value (mm × mm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900  leading-tight">
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center gap-1 flex-wrap">
                       <span>+</span>

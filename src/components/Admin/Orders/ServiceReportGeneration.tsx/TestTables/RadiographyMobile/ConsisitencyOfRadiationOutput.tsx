@@ -422,10 +422,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                   kV
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 uppercase border-r">
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                   mAs
                 </th>
                 {Array.from({ length: measurementCount }, (_, i) => (
@@ -458,10 +458,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     </div>
                   </th>
                 ))}
-                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase border-r">
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600  border-r">
                   Average
                 </th>
-                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 uppercase">
+                <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 ">
                   CoV / Result
                 </th>
                 <th className="w-12" />
@@ -514,7 +514,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                           : 'bg-gray-100 text-gray-600'
                         }`}
                     >
-                      {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
+                      {row.cv != null && row.cv !== '' ? `${row.cv} → ${row.remark}` : '—'}
                     </span>
                   </td>
                   <td className="px-3 text-center">

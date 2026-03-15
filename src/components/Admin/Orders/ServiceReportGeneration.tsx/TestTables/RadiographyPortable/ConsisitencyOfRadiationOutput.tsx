@@ -56,7 +56,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
   const [tolerance, setTolerance] = useState<Tolerance>({
     operator: '<=',
-    value: '0.05',
+    value: '0.05', // decimal, e.g. 0.05 for 5%
   });
 
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
@@ -71,10 +71,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     },
   ]);
 
-  // Calculate avg, CoV and remark – pure calculation, no state mutation needed
+  // Calculate avg, CoV and remark – same formula as Radiography Fixed (CoV as decimal, no %)
   const rowsWithCalc = useMemo(() => {
-    // Tolerance value is already in percentage (e.g., 5.0 for 5%)
-    const tolValuePercent = parseFloat(tolerance.value) || 5.0;
+    const tolValueDecimal = parseFloat(tolerance.value) || 0.05;
 
     return outputRows.map((row): OutputRow => {
       const values = row.outputs
@@ -89,21 +88,19 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const variance =
         values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
       const stdDev = Math.sqrt(variance);
-      const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal
-      const covPercent = covDecimal * 100; // CoV as percentage
+      const covDecimal = avg > 0 ? (stdDev / avg) : 0;
 
-      // Compare CoV (percentage) with tolerance (percentage)
       const passes =
         tolerance.operator === '<=' || tolerance.operator === '<'
-          ? covPercent <= tolValuePercent
-          : covPercent >= tolValuePercent;
+          ? covDecimal <= tolValueDecimal
+          : covDecimal >= tolValueDecimal;
 
       const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
 
       return {
         ...row,
         avg: avg.toFixed(4),
-        cv: covPercent.toFixed(4), // Display CoV as percentage
+        cv: covDecimal.toFixed(4), // CoV as decimal (no %)
         remark,
       };
     });
@@ -321,9 +318,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             })));
           }
           if (testData.tolerance) {
+            const v = testData.tolerance.value;
             setTolerance({
               operator: testData.tolerance.operator || '<=',
-              value: testData.tolerance.value || '5.0',
+              value: v != null && v !== '' ? String(v) : '0.05',
             });
           }
           setIsSaved(true);
@@ -500,7 +498,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   Average
                 </th>
                 <th className="px-5 py-3 text-center text-xs font-medium text-gray-600 ">
-                  CoV / Result
+                  CoV / Remark
                 </th>
                 <th className="w-12" />
               </tr>
@@ -552,7 +550,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                           : 'bg-gray-100 text-gray-600'
                         }`}
                     >
-                      {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
+                      {row.cv ? `${row.cv} → ${row.remark}` : (row.remark || '—')}
                     </span>
                   </td>
                   <td className="px-3 text-center">
@@ -617,7 +615,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             disabled={isViewMode}
             className={`w-24 px-4 py-2 text-center border-2 border-blue-500 rounded font-bold text-lg focus:outline-none focus:ring-2 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
           />
-          <span className="text-gray-700">%</span>
+          <span className="text-gray-700">(decimal e.g. 0.05)</span>
         </div>
         <p className="text-sm text-gray-500 mt-3">
           Reference: IEC 61223-3-1 & AERB Safety Code

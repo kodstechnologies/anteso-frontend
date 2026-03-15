@@ -13,6 +13,8 @@ interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
   csvData?: any;
   refreshKey?: number;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
 interface Table1Row {
@@ -32,6 +34,8 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   serviceId,
   csvData,
   refreshKey,
+  initialData,
+  csvDataVersion,
 }) => {
   const [testId, setTestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -106,9 +110,35 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     }
   };
 
-  // === Load CSV Data ===
+  // Apply initialData (from CSV/Excel parse, same as Fixed)
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
+    if (!initialData || loading) return;
+    const cond = initialData.testConditions;
+    if (cond) {
+      setTable1Row((prev) => ({
+        ...prev,
+        fcd: String(cond.fcd ?? prev.fcd),
+        kv: String(cond.kv ?? prev.kv),
+        ma: String(cond.ma ?? prev.ma),
+      }));
+    }
+    if (initialData.irradiationTimes?.length > 0) {
+      setTable2Rows(
+        initialData.irradiationTimes.map((t: any, i: number) => ({
+          id: String(i + 1),
+          setTime: String(t.setTime ?? ''),
+          measuredTime: String(t.measuredTime ?? t.measuredTime1 ?? ''),
+        }))
+      );
+    }
+    const tol = initialData.tolerance;
+    if (tol?.operator) setToleranceOperator(String(tol.operator));
+    if (tol?.value !== undefined) setToleranceValue(String(tol.value));
+  }, [csvDataVersion, initialData, loading]);
+
+  // === Load CSV Data (legacy row-based format) ===
+  useEffect(() => {
+    if (csvData && csvData.length > 0 && !initialData) {
       // Table 1: Test Conditions
       const table1Data: any = {};
       csvData.filter((row: any) => row['Field Name'].startsWith('Table1_')).forEach((row: any) => {
@@ -252,9 +282,9 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">FCD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">kV</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">mA</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FFD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">mA</th>
             </tr>
           </thead>
           <tbody className="bg-white">
@@ -283,10 +313,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Set Time (mSec)</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Measured Time (mSec)</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">% Error</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Remarks</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Set Time (mSec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Measured Time (mSec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">% Error</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Remarks</th>
               <th className="px-4 py-3 w-12"></th>
             </tr>
           </thead>

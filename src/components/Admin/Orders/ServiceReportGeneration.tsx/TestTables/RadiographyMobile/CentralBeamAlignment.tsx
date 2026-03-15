@@ -243,7 +243,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <div className="p-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">FCD (cm)</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">FFD (cm)</label>
               <input
                 type="number"
                 value={techniqueRow.fcd}

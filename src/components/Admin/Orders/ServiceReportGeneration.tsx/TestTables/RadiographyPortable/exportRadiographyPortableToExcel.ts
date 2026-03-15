@@ -117,24 +117,35 @@ export const createRadiographyPortableUploadableExcel = (data: RadiographyPortab
         addSection('ACCURACY OF IRRADIATION TIME', ['FCD (cm)', 'kV', 'mA', 'Set Time (ms)', 'Measured Time (ms)', '% Error', 'Tolerance (%)', 'Remarks'], rows);
     }
 
-    // 5. ACCURACY OF OPERATING POTENTIAL (same as RadiographyFixed)
+    // 5. ACCURACY OF OPERATING POTENTIAL (supports measurements + mAStations or table2)
     if (data.accuracyOfOperatingPotential) {
-        const settings = data.accuracyOfOperatingPotential.table1?.[0] || data.accuracyOfOperatingPotential.settings || {};
-        const rows = (data.accuracyOfOperatingPotential.table2 || data.accuracyOfOperatingPotential.measurements || []).map((row: any) => [
-            settings.time || '',
-            settings.sliceThickness || '',
-            row.setKV || '',
-            row.ma10 || '',
-            row.ma100 || '',
-            row.ma200 || '',
-            row.avgKvp || '',
-            data.accuracyOfOperatingPotential.toleranceValue || data.accuracyOfOperatingPotential.tolerance?.value || '5',
-            row.remarks || ''
-        ]);
-        if (rows.length === 0 && (settings.time || settings.sliceThickness)) {
-            rows.push([settings.time || '', settings.sliceThickness || '', '', '', '', '', '', data.accuracyOfOperatingPotential.toleranceValue || data.accuracyOfOperatingPotential.tolerance?.value || '5', '']);
+        const aop = data.accuracyOfOperatingPotential;
+        const settings = aop.table1?.[0] || aop.settings || {};
+        const useMeasurements = Array.isArray(aop.measurements) && aop.measurements.length > 0;
+        const stations = (useMeasurements && aop.mAStations?.length) ? aop.mAStations : ['@ mA 10', '@ mA 100', '@ mA 200'];
+        const sectionRows = (useMeasurements ? aop.measurements : (aop.table2 || [])).map((row: any) => {
+            const applied = useMeasurements ? row.appliedKvp : row.setKV;
+            const cells = useMeasurements ? (row.measuredValues || []) : [row.ma10, row.ma100, row.ma200];
+            const avg = useMeasurements ? row.averageKvp : row.avgKvp;
+            return [
+                settings.time || '',
+                settings.sliceThickness || '',
+                applied || '',
+                ...stations.map((_: string, j: number) => cells[j] ?? ''),
+                avg || '',
+                aop.tolerance?.value || aop.toleranceValue || '5',
+                row.remarks || ''
+            ];
+        });
+        if (sectionRows.length === 0 && (settings.time || settings.sliceThickness)) {
+            sectionRows.push([settings.time || '', settings.sliceThickness || '', '', ...stations.map(() => ''), '', aop.tolerance?.value || aop.toleranceValue || '5', '']);
         }
-        addSection('ACCURACY OF OPERATING POTENTIAL', ['Time (ms)', 'Slice Thickness (mm)', 'Set kVp', '@ mA 10', '@ mA 100', '@ mA 200', 'Measured kVp', 'Tolerance (%)', 'Remarks'], rows);
+        addSection('ACCURACY OF OPERATING POTENTIAL', ['Time (ms)', 'Slice Thickness (mm)', 'Set kVp', ...stations, 'Measured kVp', 'Tolerance (%)', 'Remarks'], sectionRows);
+        // Total Filtration (same document as AOP)
+        if (aop.totalFiltration && (aop.totalFiltration.required !== '' || aop.totalFiltration.atKvp !== '')) {
+            const tf = aop.totalFiltration;
+            addSection('TOTAL FILTRATION', ['At kVp', 'Required (mm Al)', 'Measured (mm Al)'], [[tf.atKvp || '', tf.required || '', tf.measured || '']]);
+        }
     }
 
     // 6. LINEARITY OF mAs LOADING STATIONS

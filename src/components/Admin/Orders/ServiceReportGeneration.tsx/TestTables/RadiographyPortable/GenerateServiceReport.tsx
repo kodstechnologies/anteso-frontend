@@ -30,7 +30,7 @@ import CongruenceOfRadiation from "./CongruenceOfRadiation";
 import CentralBeamAlignment from "./CentralBeamAlignment";
 import EffectiveFocalSpot from "./EffectiveFocalSpot";
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
-import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
+import TotalFilteration from "./TotalFilteration";
 import LinearityOfMasLoadingStations from "./LinearityOfMasLoadingStations";
 import ConsistencyOfRadiationOutput from "./ConsisitencyOfRadiationOutput";
 import RadiationLeakageLevel from "./RadiationLeakageLevel";
@@ -275,7 +275,7 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       { name: "Congruence of radiation & Optical Field", check: async () => { try { return isSaved(await getCongruenceByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
       { name: "Central Beam Alignment", check: async () => { try { return isSaved(await getCentralBeamAlignmentByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
       { name: "Effective Focal Spot Measurement", check: async () => { try { return isSaved(await getEffectiveFocalSpotByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
-      { name: "Accuracy Of Operating Potential", check: async () => { try { return isSaved(await getAccuracyOfOperatingPotentialByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
+      { name: "Accuracy Of Operating Potential & Total Filtration", check: async () => { try { return isSaved(await getAccuracyOfOperatingPotentialByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
       { name: "Linearity Of mAs Loading Stations", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
       { name: "Output Consistency", check: async () => { try { return isSaved(await getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
       { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
@@ -395,7 +395,7 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       'Accuracy of Irradiation Time': {
         'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'mA': 'Table1_ma',
         'Set Time (ms)': 'Table2_setTime', 'Measured Time (ms)': 'Table2_measuredTime', '% Error': 'Table2_percentError',
-        'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+        'Tolerance (%)': 'Tolerance_Value', 'Tolerance Operator': 'Tolerance_operator', 'Remarks': 'Table2_remarks'
       },
       'Accuracy of Operating Potential': {
         'Time (ms)': 'Table1_time', 'Slice Thickness (mm)': 'Table1_sliceThickness',
@@ -537,6 +537,85 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         if (serviceId) {
           localStorage.setItem(`radiography-portable-timer-${serviceId}`, String(hasTimerSection));
         }
+      }
+
+      // Build totalFiltration for TotalFilteration component (same as Radiography Fixed)
+      const aop = groupedData['Accuracy of Operating Potential'];
+      if (aop && Array.isArray(aop) && aop.length > 0) {
+        const byRow: Record<number, { appliedKvp?: string; measuredValues?: string[] }> = {};
+        let toleranceValue = '2.0';
+        aop.forEach((r: any) => {
+          const idx = r['Row Index'] ?? 0;
+          if (!byRow[idx]) byRow[idx] = {};
+          const field = r['Field Name'];
+          const val = String(r['Value'] ?? '').trim();
+          if (field === 'Table2_setKV') byRow[idx].appliedKvp = val;
+          if (field === 'Table2_ma10') {
+            if (!byRow[idx].measuredValues) byRow[idx].measuredValues = [];
+            byRow[idx].measuredValues![0] = val;
+          }
+          if (field === 'Table2_ma100') {
+            if (!byRow[idx].measuredValues) byRow[idx].measuredValues = [];
+            byRow[idx].measuredValues![1] = val;
+          }
+          if (field === 'Table2_ma200') {
+            if (!byRow[idx].measuredValues) byRow[idx].measuredValues = [];
+            byRow[idx].measuredValues![2] = val;
+          }
+          if (field === 'Tolerance_Value') toleranceValue = val || '2.0';
+        });
+        const measurements = Object.keys(byRow)
+          .sort((a, b) => Number(a) - Number(b))
+          .map((k) => {
+            const r = byRow[Number(k)];
+            return {
+              appliedKvp: r?.appliedKvp ?? '',
+              measuredValues: r?.measuredValues ?? ['', '', ''],
+            };
+          });
+        (groupedData as any).totalFiltration = {
+          mAStations: ['10 mA', '100 mA', '200 mA'],
+          measurements,
+          tolerance: { sign: '±', value: toleranceValue },
+        };
+      }
+
+      // Build accuracyOfIrradiationTime for component (same shape as Fixed)
+      const aoiRows = groupedData['Accuracy of Irradiation Time'];
+      if (aoiRows && Array.isArray(aoiRows) && aoiRows.length > 0) {
+        const cond: any = {};
+        const timesByRow: Record<number, { setTime?: string; measuredTime?: string }> = {};
+        let tolValue = '10';
+        let tolOperator = '<=';
+        aoiRows.forEach((r: any) => {
+          const field = r['Field Name'];
+          const val = String(r['Value'] ?? '').trim();
+          const rowIdx = r['Row Index'] ?? 0;
+          if (field === 'Table1_fcd') cond.fcd = val;
+          if (field === 'Table1_kv') cond.kv = val;
+          if (field === 'Table1_ma') cond.ma = val;
+          if (field === 'Table2_setTime') {
+            if (!timesByRow[rowIdx]) timesByRow[rowIdx] = {};
+            timesByRow[rowIdx].setTime = val;
+          }
+          if (field === 'Table2_measuredTime') {
+            if (!timesByRow[rowIdx]) timesByRow[rowIdx] = {};
+            timesByRow[rowIdx].measuredTime = val;
+          }
+          if (field === 'Tolerance_Value') tolValue = val || '10';
+          if (field === 'Tolerance_operator') tolOperator = val || '<=';
+        });
+        const irradiationTimes = Object.keys(timesByRow)
+          .sort((a, b) => Number(a) - Number(b))
+          .map((k) => {
+            const t = timesByRow[Number(k)];
+            return { setTime: t?.setTime ?? '', measuredTime: t?.measuredTime ?? '' };
+          });
+        (groupedData as any).accuracyOfIrradiationTime = {
+          testConditions: cond,
+          irradiationTimes,
+          tolerance: { operator: tolOperator, value: tolValue },
+        };
       }
 
       setCsvDataForComponents(groupedData);
@@ -988,15 +1067,15 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
             ? [
               {
                 title: "Accuracy Of Irradiation Time",
-                component: <AccuracyOfIrradiationTime serviceId={serviceId} csvData={csvDataForComponents['Accuracy of Irradiation Time']} refreshKey={refreshKey} />,
+                component: <AccuracyOfIrradiationTime serviceId={serviceId} initialData={csvDataForComponents.accuracyOfIrradiationTime} csvDataVersion={csvDataVersion} />,
               },
             ]
             : []),
 
-          { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} csvData={csvDataForComponents['Accuracy of Operating Potential']} refreshKey={refreshKey} /> },
+          { title: "Accuracy Of Operating Potential & Total Filtration", component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration} csvDataVersion={csvDataVersion} /> },
           { title: "Linearity Of mAs Loading Stations", component: <LinearityOfMasLoadingStations serviceId={serviceId} csvData={csvDataForComponents['Linearity of mAs Loading Stations']} refreshKey={refreshKey} /> },
           { title: "Consistency of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} csvData={csvDataForComponents['Consistency of Radiation Output']} refreshKey={refreshKey} /> },
-          { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} csvData={csvDataForComponents['Radiation Leakage Level']} refreshKey={refreshKey} /> },
+          { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} initialData={csvDataForComponents.radiationLeakageLevel} csvDataVersion={csvDataVersion} csvData={csvDataForComponents['Radiation Leakage Level']} refreshKey={refreshKey} /> },
         ].map((item, i) => (
           <Disclosure key={i} defaultOpen={i === 0}>
             {({ open }) => (
