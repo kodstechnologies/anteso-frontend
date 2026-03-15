@@ -1156,6 +1156,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                             testId={savedTestIds.RadiationProtectionSurveyDentalHandHeld || null}
                             onTestSaved={(id: string) => setSavedTestIds(prev => ({ ...prev, RadiationProtectionSurveyDentalHandHeld: id }))}
                             csvData={csvDataForComponents['radiationProtectionSurvey']}
+                            initialSurveyDate={qaTestDate ?? undefined}
                         />
                     },
                 ].map((item, idx) => (

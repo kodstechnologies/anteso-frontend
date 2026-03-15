@@ -16,7 +16,7 @@ import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
 // import AccuracyOfOperatingPotentialAndTime from "./AccuracyOfOperatingPotentialAndTime";
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
 // import LinearityOfTime from "./LinearityOfTime";
-import LinearityOfmALoading from "./LinearityOfmALoading";
+import LinearityOfmALoading from "./LinearityOfmALoading"
 import LinearityOfMasLoading from "./LinearityOfMasLoading";
 // import ReproducibilityOfRadiationOutput from "./ReproducibilityOfRadiationOutput";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";

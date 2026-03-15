@@ -26,9 +26,11 @@ interface Props {
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
   csvData?: any[];
+  /** Survey date from ServiceDetails2 (e.g. qaTestSubmittedAt); used when no saved data */
+  initialSurveyDate?: string | null;
 }
 
-const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, csvData }) => {
+const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, csvData, initialSurveyDate }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(!propTestId);
@@ -123,6 +125,11 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
   const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
 
   useEffect(() => {
+    const formatted = initialSurveyDate ? (typeof initialSurveyDate === 'string' ? initialSurveyDate.split('T')[0] : '') : '';
+    if (formatted) setSurveyDate(prev => prev || formatted);
+  }, [initialSurveyDate]);
+
+  useEffect(() => {
     const load = async () => {
       if (!serviceId) {
         setIsLoading(false);
@@ -133,7 +140,8 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+          const savedDate = data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : '';
+          setSurveyDate(savedDate || (initialSurveyDate ? (typeof initialSurveyDate === 'string' ? initialSurveyDate.split('T')[0] : '') : ''));
           setHasValidCalibration(data.hasValidCalibration || "");
           setAppliedCurrent(data.appliedCurrent || "100");
           setAppliedVoltage(data.appliedVoltage || "80");
@@ -329,6 +337,13 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
+      {hasValidCalibration === "No" && (
+        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-4 mb-4">
+          <p className="text-amber-800 font-semibold">
+            ⚠️ Calibration certificate is expired. You can still edit and save; ensure valid calibration certificates are provided for all tools when possible.
+          </p>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <h1 className="text-4xl font-bold text-center text-gray-800">
           Radiation Protection Survey Report

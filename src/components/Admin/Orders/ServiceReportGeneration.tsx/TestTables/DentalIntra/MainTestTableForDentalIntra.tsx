@@ -43,7 +43,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     });
   };
 
-  // 1. Accuracy of Operating Potential (kVp) and Irradiation Time
+  // 1. Accuracy of Operating Potential (kVp)
   if (testData.accuracyOfOperatingPotentialAndTime?.rows && Array.isArray(testData.accuracyOfOperatingPotentialAndTime.rows)) {
     const validRows = testData.accuracyOfOperatingPotentialAndTime.rows.filter((row: any) => row.appliedKvp || row.avgKvp || row.setTime || row.avgTime);
     if (validRows.length > 0) {
@@ -52,22 +52,16 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
       const timeToleranceSign = testData.accuracyOfOperatingPotentialAndTime.timeToleranceSign || "±";
       const timeToleranceValue = testData.accuracyOfOperatingPotentialAndTime.timeToleranceValue || "10";
 
-      // Add kVp rows
       const kvpRows = validRows.map((row: any) => {
         const appliedKvp = parseFloat(row.appliedKvp);
         const avgKvp = parseFloat(row.avgKvp);
         let isPass = false;
-
-        if (row.remark === "PASS" || row.remark === "Pass") {
-          isPass = true;
-        } else if (row.remark === "FAIL" || row.remark === "Fail") {
-          isPass = false;
-        } else if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
+        if (row.remark === "PASS" || row.remark === "Pass") isPass = true;
+        else if (row.remark === "FAIL" || row.remark === "Fail") isPass = false;
+        else if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
           const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-          const tol = parseFloat(kvpToleranceValue);
-          isPass = deviation <= tol;
+          isPass = deviation <= parseFloat(kvpToleranceValue);
         }
-
         return {
           specified: row.appliedKvp || "-",
           measured: row.avgKvp || "-",
@@ -75,28 +69,21 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      console.log("🚀 ~ MainTestTableForDentalIntra ~ kvpRows:", kvpRows)
       addRowsForTest("Accuracy of Operating Potential (kVp)", kvpRows);
 
-      // Add Time rows
       const timeRows = validRows.map((row: any) => {
         const setTime = parseFloat(row.setTime);
         const avgTime = parseFloat(row.avgTime);
         let isPass = false;
-
-        if (row.remark === "PASS" || row.remark === "Pass") {
-          isPass = true;
-        } else if (row.remark === "FAIL" || row.remark === "Fail") {
-          isPass = false;
-        } else if (!isNaN(setTime) && !isNaN(avgTime) && setTime > 0) {
+        if (row.remark === "PASS" || row.remark === "Pass") isPass = true;
+        else if (row.remark === "FAIL" || row.remark === "Fail") isPass = false;
+        else if (!isNaN(setTime) && !isNaN(avgTime) && setTime > 0) {
           const deviation = Math.abs(((avgTime - setTime) / setTime) * 100);
-          const tol = parseFloat(timeToleranceValue);
-          isPass = deviation <= tol;
+          isPass = deviation <= parseFloat(timeToleranceValue);
         }
-
         return {
-          specified: row.setTime || "-",
-          measured: row.avgTime || "-",
+          specified: row.setTime ?? "-",
+          measured: row.avgTime ?? "-",
           tolerance: `${timeToleranceSign}${timeToleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -105,19 +92,32 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
+  // 1c. Total Filtration (from same combined test)
+  if (testData.accuracyOfOperatingPotentialAndTime?.totalFiltration && (testData.accuracyOfOperatingPotentialAndTime.totalFiltration.measured1 != null || testData.accuracyOfOperatingPotentialAndTime.totalFiltration.measured != null)) {
+    const tf = testData.accuracyOfOperatingPotentialAndTime.totalFiltration;
+    const measured = tf.measured1 ?? tf.measured ?? "-";
+    const required = tf.measured2 ?? tf.required ?? "-";
+    const atKvp = tf.atKvp ?? "-";
+    const pass = (measured !== "-" && required !== "-") ? parseFloat(measured) >= parseFloat(required) : false;
+    addRowsForTest("Total Filtration", [{
+      specified: atKvp !== "-" ? `At ${atKvp} kVp` : "-",
+      measured: measured !== "-" ? `${measured} mm Al` : "-",
+      tolerance: required !== "-" ? `≥ ${required} mm Al` : "-",
+      remarks: (pass ? "Pass" : "Fail") as "Pass" | "Fail",
+    }]);
+  }
+
   // 2. Linearity of Time
   if (testData.linearityOfTime?.table2 && Array.isArray(testData.linearityOfTime.table2)) {
     const validRows = testData.linearityOfTime.table2.filter((row: any) => row.time);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfTime.tolerance || "0.1";
-      // Get col and remarks from top level (not from rows)
-      const col = testData.linearityOfTime.col ? parseFloat(testData.linearityOfTime.col).toFixed(3) : "-";
+      const col = testData.linearityOfTime.col != null && testData.linearityOfTime.col !== "" ? String(parseFloat(String(testData.linearityOfTime.col)).toFixed(3)) : "-";
       const remarks = testData.linearityOfTime.remarks || "";
       const isPass = remarks === "Pass" || remarks === "PASS" || (col !== "-" ? parseFloat(col) <= parseFloat(tolerance) : false);
-
-      // Create a single row for Coefficient of Linearity (it's calculated from all rows, not per row)
+      const specifiedTimes = validRows.map((r: any) => r.time).filter(Boolean).join(", ");
       const testRows = [{
-        specified: "-",
+        specified: specifiedTimes || `≤ ${tolerance}`,
         measured: col,
         tolerance: `≤ ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -145,43 +145,35 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 3. Reproducibility of Radiation Output
+  // 3. Output Consistency / Reproducibility of Radiation Output (CoV)
   if (testData.reproducibilityOfRadiationOutput?.outputRows && Array.isArray(testData.reproducibilityOfRadiationOutput.outputRows)) {
-    const validRows = testData.reproducibilityOfRadiationOutput.outputRows.filter((row: any) => row.kv || row.avg || row.remark);
+    const validRows = testData.reproducibilityOfRadiationOutput.outputRows.filter((row: any) => row.kv || row.mas || row.cov || row.remark);
     if (validRows.length > 0) {
       const toleranceOperator = testData.reproducibilityOfRadiationOutput.tolerance?.operator || "<=";
-      const toleranceValue = testData.reproducibilityOfRadiationOutput.tolerance?.value || "5.0";
+      const toleranceValue = testData.reproducibilityOfRadiationOutput.tolerance?.value || "0.05";
+      const tolNum = parseFloat(toleranceValue);
+      const tolDecimal = tolNum >= 1 ? tolNum / 100 : tolNum;
       const testRows = validRows.map((row: any) => {
-        let cvValue = "-";
+        const cvValue = row.cv != null && row.cv !== "" ? String(row.cv) : "-";
+        const cvNum = cvValue !== "-" ? parseFloat(cvValue) : NaN;
         let isPass = false;
-
-        if (row.remark) {
-          const cvMatch = row.remark.match(/^([\d.]+)\s*→/);
-          if (cvMatch) {
-            const cvDecimal = parseFloat(cvMatch[1]);
-            cvValue = cvDecimal.toFixed(4);
-            const tol = parseFloat(toleranceValue);
-            const toleranceDecimal = tol >= 1 ? tol / 100 : tol;
-
-            if (toleranceOperator === "<") isPass = cvDecimal < toleranceDecimal;
-            else if (toleranceOperator === ">") isPass = cvDecimal > toleranceDecimal;
-            else if (toleranceOperator === "<=") isPass = cvDecimal <= toleranceDecimal;
-            else if (toleranceOperator === ">=") isPass = cvDecimal >= toleranceDecimal;
-            else if (toleranceOperator === "=") isPass = Math.abs(cvDecimal - toleranceDecimal) < 0.0001;
-          }
-
-          if (row.remark.includes("Pass") || row.remark.includes("PASS")) isPass = true;
-          else if (row.remark.includes("Fail") || row.remark.includes("FAIL")) isPass = false;
+        if (row.remark === "Pass" || row.remark === "PASS") isPass = true;
+        else if (row.remark === "Fail" || row.remark === "FAIL") isPass = false;
+        else if (!isNaN(cvNum) && !isNaN(tolNum)) {
+          if (toleranceOperator === "<=") isPass = cvNum <= tolDecimal;
+          else if (toleranceOperator === "<") isPass = cvNum < tolDecimal;
+          else if (toleranceOperator === ">=") isPass = cvNum >= tolDecimal;
+          else if (toleranceOperator === ">") isPass = cvNum > tolDecimal;
         }
-
+        const formattedCv = cvValue !== "-" && !isNaN(cvNum) ? cvNum.toFixed(3) : "-";
         return {
           specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "-",
-          measured: cvValue !== "-" ? cvValue : "-",
+          measured: formattedCv,
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Reproducibility of Radiation Output (CV)", testRows);
+      addRowsForTest("Output Consistency (CoV)", testRows, true);
     }
   }
 
@@ -205,35 +197,78 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 4b. Radiation Leakage level (New Model)
+  // 4. Radiation Leakage Level - measured values like RadiographyFixed (row.max or row.result, with unit)
   if (testData.radiationLeakageLevel?.leakageMeasurements && Array.isArray(testData.radiationLeakageLevel.leakageMeasurements)) {
-    const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter((row: any) => row.location || row.max);
+    const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter((row: any) => row.location && (row.max || row.result || row.front || row.back || row.left || row.right || row.top));
     if (validRows.length > 0) {
-      const toleranceValue = testData.radiationLeakageLevel.toleranceValue || "1.0";
+      const toleranceValue = testData.radiationLeakageLevel.toleranceValue || "1";
+      const toleranceUnit = testData.radiationLeakageLevel.leakageMeasurements[0]?.unit || "mGy/h";
       const testRows = validRows.map((row: any) => {
-        const max = row.max || "-";
-        const isPass = (max !== "-" && parseFloat(max) <= parseFloat(toleranceValue));
+        let measuredValue = "-";
+        let isPass = false;
+        if (row.result != null && row.result !== "") {
+          const resultVal = parseFloat(row.result);
+          if (!isNaN(resultVal)) {
+            if (toleranceUnit === "mGy/h") {
+              measuredValue = `${(resultVal / 114).toFixed(4)} mGy/h`;
+              isPass = (resultVal / 114) < parseFloat(toleranceValue);
+            } else {
+              measuredValue = `${resultVal.toFixed(4)} ${toleranceUnit}`;
+              isPass = resultVal < parseFloat(toleranceValue);
+            }
+          }
+        } else if (row.max != null && row.max !== "") {
+          const maxVal = parseFloat(row.max);
+          if (!isNaN(maxVal) && maxVal > 0) {
+            if (toleranceUnit === "mGy/h") {
+              measuredValue = `${(maxVal / 114).toFixed(4)} mGy/h`;
+              isPass = (maxVal / 114) < parseFloat(toleranceValue);
+            } else {
+              measuredValue = `${maxVal.toFixed(2)} ${toleranceUnit}`;
+              isPass = maxVal < parseFloat(toleranceValue);
+            }
+          }
+        } else {
+          const values = [row.front, row.back, row.left, row.right, row.top].map((v: any) => parseFloat(v) || 0).filter((v: number) => v > 0);
+          if (values.length > 0) {
+            const max = Math.max(...values);
+            if (toleranceUnit === "mGy/h") {
+              measuredValue = `${(max / 114).toFixed(4)} mGy/h`;
+              isPass = (max / 114) < parseFloat(toleranceValue);
+            } else {
+              measuredValue = `${max.toFixed(2)} ${toleranceUnit}`;
+              isPass = max < parseFloat(toleranceValue);
+            }
+          }
+        }
+        if (row.remark === "PASS" || row.remark === "Pass") isPass = true;
+        else if (row.remark === "FAIL" || row.remark === "Fail") isPass = false;
         return {
           specified: row.location || "-",
-          measured: max !== "-" ? `${max} mGy/h` : "-",
-          tolerance: `≤ ${toleranceValue} mGy/h`,
+          measured: measuredValue,
+          tolerance: `≤ ${toleranceValue} ${toleranceUnit}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation Leakage level", testRows);
+      addRowsForTest("Radiation Leakage Level", testRows);
     }
   }
 
-  // 5. Radiation Protection Survey
+  // 5. Radiation Protection Survey - like RadiographyFixed: location, mR/week, tolerance by category
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
-    const validRows = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.location || loc.mRPerHr);
+    const validRows = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
     if (validRows.length > 0) {
-      const testRows = validRows.map((loc: any) => ({
-        specified: "≤ 1 mR/hr",
-        measured: loc.mRPerHr !== undefined ? `${loc.mRPerHr} mR/hr` : "-",
-        tolerance: "≤ 1 mR/hr",
-        remarks: (loc.result?.includes("PASS") ? "Pass" : "Fail") as "Pass" | "Fail",
-      }));
+      const testRows = validRows.map((loc: any) => {
+        const mRPerWeek = loc.mRPerWeek ?? "-";
+        const limit = loc.category === "worker" ? 40 : 2;
+        const isPass = loc.result === "PASS" || loc.result === "Pass" || (mRPerWeek !== "-" && !isNaN(parseFloat(mRPerWeek)) && parseFloat(mRPerWeek) <= limit);
+        return {
+          specified: loc.location || "-",
+          measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
+          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
       addRowsForTest("Radiation Protection Survey", testRows);
     }
   }

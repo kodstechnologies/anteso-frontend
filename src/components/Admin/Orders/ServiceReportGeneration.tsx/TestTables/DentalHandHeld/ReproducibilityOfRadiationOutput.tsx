@@ -84,14 +84,24 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
               setOutputHeaders(headers);
             }
             
-            setOutputRows(testData.outputRows.map((r: any) => ({
-              id: r.id || Date.now().toString() + Math.random(),
-              kv: r.kv || '',
-              mas: r.mas || '',
-              outputs: r.outputs || [],
-              avg: r.avg || '',
-              remark: r.remark || '',
-            })));
+            setOutputRows(testData.outputRows.map((r: any) => {
+              const rawOutputs = r.outputs || [];
+              const outputs = Array.isArray(rawOutputs)
+                ? rawOutputs.map((o: any) =>
+                    typeof o === 'object' && o != null && 'value' in o
+                      ? { value: String(o.value ?? '') }
+                      : { value: String(o ?? '') }
+                  )
+                : [];
+              return {
+                id: r.id || Date.now().toString() + Math.random(),
+                kv: r.kv || '',
+                mas: r.mas || '',
+                outputs,
+                avg: r.avg || '',
+                remark: r.remark || '',
+              };
+            }));
           }
           if (testData.ffd) {
             setFfd(testData.ffd);
@@ -242,7 +252,13 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
         outputRows: outputRows.map(r => ({
           kv: r.kv,
           mas: r.mas,
-          outputs: r.outputs,
+          outputs: Array.isArray(r.outputs)
+            ? r.outputs.map((o: any) =>
+                typeof o === 'object' && o != null && 'value' in o
+                  ? { value: String((o as { value: string }).value ?? '') }
+                  : { value: String(o ?? '') }
+              )
+            : [],
           avg: r.avg,
           remark: r.remark,
         })),

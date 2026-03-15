@@ -71,23 +71,30 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 const data = res?.data;
                 if (data) {
                     setTestId(data._id || null);
-                    setMAStations(data.mAStations || ["50 mA", "100 mA"]);
+                    const maxCols = data.rows?.length ? Math.max(...data.rows.map((m: any) => (m.maStations?.length || m.measuredValues?.length || 0)), 2) : 2;
+                    const defaultHeaders = Array.from({ length: maxCols }, (_, i) => data.mAStations?.[i] || `mA Station ${i + 1}`);
+                    setMAStations(data.mAStations?.length >= maxCols ? data.mAStations : defaultHeaders);
                     setFfd(data.ffd || "");
                     setRows(
-                        data.rows?.map((m: any, i: number) => ({
-                            id: String(i + 1),
-                            appliedKvp: m.appliedKvp || "",
-                            measuredValues: m.measuredValues || [],
-                            averageKvp: m.averageKvp || "",
-                            remarks: m.remarks || "-",
-                        })) || rows
+                        data.rows?.map((m: any, i: number) => {
+                            const measuredValues = (m.maStations && Array.isArray(m.maStations))
+                                ? m.maStations.map((s: any) => s?.kvp ?? "")
+                                : (m.measuredValues || []);
+                            return {
+                                id: String(i + 1),
+                                appliedKvp: m.appliedKvp || "",
+                                measuredValues,
+                                averageKvp: m.avgKvp || m.averageKvp || "",
+                                remarks: (m.remark || m.remarks || "-") as "PASS" | "FAIL" | "-",
+                            };
+                        }) || rows
                     );
                     setToleranceSign(data.kvpToleranceSign || "±");
                     setToleranceValue(data.kvpToleranceValue || "2.0");
                     setTotalFiltration({
-                        measured: data.totalFiltration?.measured || "",
-                        required: data.totalFiltration?.required || "",
-                        atKvp: data.totalFiltration?.atKvp || "",
+                        measured: data.totalFiltration?.measured1 ?? data.totalFiltration?.measured ?? "",
+                        required: data.totalFiltration?.measured2 ?? data.totalFiltration?.required ?? "",
+                        atKvp: data.totalFiltration?.atKvp ?? "",
                     });
                     if (data.filtrationTolerance) {
                         setFiltrationTolerance({
@@ -192,7 +199,6 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
         const payload = {
             mAStations,
             ffd,
-            // Merge with existing rows to preserve Time data
             rows: rows.map((r, i) => {
                 const existingRow = existingRows[i] || {};
                 return {
@@ -208,7 +214,11 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             }),
             kvpToleranceSign: toleranceSign,
             kvpToleranceValue: toleranceValue,
-            totalFiltration,
+            totalFiltration: {
+                atKvp: totalFiltration.atKvp,
+                measured1: totalFiltration.measured,
+                measured2: totalFiltration.required,
+            },
             filtrationTolerance,
         };
 

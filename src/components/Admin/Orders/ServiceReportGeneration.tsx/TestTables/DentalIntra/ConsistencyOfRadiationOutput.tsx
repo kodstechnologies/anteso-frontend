@@ -69,14 +69,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       }
 
       const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-
-      let cov = 0;
-      if (nums.length > 1) {
-        const variance =
-          nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-          (nums.length - 1);
-        cov = Math.sqrt(variance) / mean;
-      }
+      // Same as RadiographyFixed: population variance (divide by N), then CoV = stdDev / mean
+      const variance =
+        nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / nums.length;
+      const stdDev = Math.sqrt(variance);
+      const cov = mean > 0 ? stdDev / mean : 0;
 
       let remarks: 'Pass' | 'Fail' | '' = '';
       if (tolerance) {
@@ -133,11 +130,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
               if (!isNaN(covVal) && !isNaN(tolVal)) {
                 remarks = covVal <= tolVal ? 'Pass' : 'Fail';
               }
+              const rawOutputs = row.outputs || [];
+              const outputs = rawOutputs.map((o: any) => (o && typeof o === 'object' && 'value' in o ? o.value : String(o ?? '')));
               return {
                 id: String(i + 1),
                 kvp: row.kv || '',
                 mas: row.mas || '',
-                outputs: row.outputs?.map((o: any) => o.value) || Array(headers.length).fill(''),
+                outputs: outputs.length > 0 ? outputs : Array(headers.length).fill(''),
                 mean: row.avg || '',
                 cov: row.cov || '',
                 remarks,
