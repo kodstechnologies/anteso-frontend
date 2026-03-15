@@ -75,10 +75,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     },
   ]);
 
+  // CoV formula aligned with Radiography Fixed: CoV = stdDev/avg (decimal), tolerance as decimal (e.g. 0.05)
   const rowsWithCalc = useMemo(() => {
-    // Tolerance value is stored as decimal (e.g., 0.05 for 5%), convert to percentage
     const tolValueDecimal = parseFloat(tolerance.value) || 0.05;
-    const tolValuePercent = tolValueDecimal * 100; // Convert to percentage
 
     return outputRows.map((row): OutputRow => {
       const values = row.outputs
@@ -93,21 +92,19 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const variance =
         values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
       const stdDev = Math.sqrt(variance);
-      const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal
-      const covPercent = covDecimal * 100; // CoV as percentage
+      const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal (same as Fixed)
 
-      // Compare CoV (percentage) with tolerance (percentage)
       const passes =
         tolerance.operator === '<=' || tolerance.operator === '<'
-          ? covPercent <= tolValuePercent
-          : covPercent >= tolValuePercent;
+          ? covDecimal <= tolValueDecimal
+          : covDecimal >= tolValueDecimal;
 
       const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
 
       return {
         ...row,
         avg: avg.toFixed(4),
-        cv: covPercent.toFixed(4), // Display CoV as percentage
+        cv: covDecimal.toFixed(3), // Store CoV as decimal (e.g. 0.004), same as Fixed
         remark,
       };
     });
@@ -248,14 +245,17 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
               mas: r.mas || '',
               outputs: r.outputs?.map((o: any) => ({ value: o.value || '' })) || Array(numMeas).fill({ value: '' }),
               avg: r.avg || '',
-              cv: '',
+              cv: r.cv || '',
               remark: r.remark || '',
             })));
           }
           if (testData.tolerance) {
+            let val = testData.tolerance.value ?? '0.05';
+            const num = parseFloat(String(val));
+            if (!isNaN(num) && num > 1) val = (num / 100).toFixed(2); // backend may send percentage (e.g. 5)
             setTolerance({
               operator: testData.tolerance.operator || '<=',
-              value: testData.tolerance.value || '5.0',
+              value: String(val),
             });
           }
           setIsSaved(true);
@@ -291,9 +291,12 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       })));
     }
     if (initialData.tolerance) {
+      let val = initialData.tolerance.value ?? '0.05';
+      const num = parseFloat(String(val));
+      if (!isNaN(num) && num > 1) val = (num / 100).toFixed(2); // CSV may send percentage (e.g. 5)
       setTolerance({
         operator: (initialData.tolerance.operator as any) || '<=',
-        value: String(initialData.tolerance.value ?? '0.05'),
+        value: String(val),
       });
     }
     setIsSaved(false);
@@ -315,6 +318,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           mas: r.mas,
           outputs: r.outputs,
           avg: r.avg,
+          cv: r.cv,
           remark: r.remark,
         })),
         tolerance,

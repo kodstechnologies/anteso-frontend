@@ -132,6 +132,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
         engineerNameRPId: "",
     });
 
+    const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
     const addYearsToDate = (dateStr: string, years: number): string => {
         if (!dateStr) return "";
         const base = dateStr.split("T")[0];
@@ -161,6 +162,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 const baseTestDate = rawTestDate ? (typeof rawTestDate === "string" ? rawTestDate.split("T")[0] : "") : "";
                 const dueDate = baseTestDate ? addYearsToDate(baseTestDate, 5) : "";
 
+                setMinIssueDate(baseTestDate || "");
                 setFormData({
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
@@ -347,6 +349,11 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
         setSaveError(null);
 
         try {
+            if (minIssueDate && formData.issueDate && formData.issueDate < minIssueDate) {
+                toast.error("Issue date must be equal to or greater than the QA test submitted date.");
+                setSaving(false);
+                return;
+            }
             const unsaved = await getUnsavedTestNames();
             if (unsaved.length > 0) {
                 const message =
@@ -968,8 +975,10 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                             type="date"
                             name="issueDate"
                             value={formData.issueDate}
+                            min={minIssueDate || undefined}
                             onChange={handleInputChange}
                             className="border p-2 rounded-md w-full"
+                            title={minIssueDate ? `Must be on or after QA test date (${minIssueDate})` : undefined}
                         />
                     </div>
                 </div>

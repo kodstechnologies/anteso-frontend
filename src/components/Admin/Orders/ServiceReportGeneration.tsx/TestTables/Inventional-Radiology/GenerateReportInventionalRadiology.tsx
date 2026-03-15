@@ -151,6 +151,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     reportULRNumber: "",
   });
 
+  const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
   // --- CSV/Excel Parsing Logic ---
   const parseHorizontalData = (rows: any[][]): any[] => {
     const data: any[] = [];
@@ -672,6 +673,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
               humidity: reportData.humidity || prev.humidity,
               engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
             }));
+            if (reportData.testDate) setMinIssueDate(reportData.testDate);
 
             // Load existing notes, or use default if none exist
             if (reportData.notes && Array.isArray(reportData.notes) && reportData.notes.length > 0) {
@@ -808,6 +810,11 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
   const handleSaveHeader = async () => {
     setSaving(true);
     setSaveSuccess(false);
+    if (minIssueDate && formData.issueDate && formData.issueDate < minIssueDate) {
+      toast.error("Issue date must be equal to or greater than the QA test submitted date.");
+      setSaving(false);
+      return;
+    }
     setSaveError(null);
 
     try {
@@ -1021,8 +1028,10 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
               type="date"
               name="issueDate"
               value={formData.issueDate}
+              min={minIssueDate || undefined}
               onChange={handleInputChange}
               className="border p-2 rounded-md w-full"
+              title={minIssueDate ? `Must be on or after QA test date (${minIssueDate})` : undefined}
             />
           </div>
         </div>

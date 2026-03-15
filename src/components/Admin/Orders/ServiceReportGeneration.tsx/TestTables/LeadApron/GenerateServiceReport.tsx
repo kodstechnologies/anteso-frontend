@@ -83,6 +83,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
         ulrNumber: "",
     });
 
+    const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
     // Only fetch initial service details and tools — NOT saved report
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -113,6 +114,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                     testDueDateValue = testDate.toISOString().split("T")[0];
                 }
 
+                setMinIssueDate(testDateValue || "");
                 // Pre-fill form from service details
                 setFormData(prev => ({
                     ...prev,
@@ -174,6 +176,11 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
     };
 
     const handleSaveHeader = async () => {
+        if (minIssueDate && formData.issueDate && formData.issueDate < minIssueDate) {
+            toast.error("Issue date must be equal to or greater than the QA test submitted date.");
+            setSaving(false);
+            return;
+        }
         setSaving(true);
         setSaveSuccess(false);
         setSaveError(null);
@@ -520,6 +527,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
                         ulrNumber: res.data.ulrNumber || prev.ulrNumber || "N/A",
                     }));
+                    if (res.data.testDate) setMinIssueDate(res.data.testDate);
 
                     // Save test IDs
                     setSavedTestIds({
@@ -588,7 +596,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                     </div>
                     <div>
                         <label className="block font-medium mb-1">Issue Date</label>
-                        <input type="date" name="issueDate" value={formData.issueDate} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" />
+                        <input type="date" name="issueDate" value={formData.issueDate} min={minIssueDate || undefined} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" title={minIssueDate ? `Must be on or after QA test date (${minIssueDate})` : undefined} />
                     </div>
                 </div>
             </section>

@@ -112,6 +112,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     category: "",
   });
 
+  
+  const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date (YYYY-MM-DD); issue date must be >= this
   const defaultNotes = [
     "The Test Report relates only to the above item only.",
     "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
@@ -202,6 +204,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           testDueDate = due.toISOString().split("T")[0];
         }
 
+        setMinIssueDate(testDate || "");
         setFormData({
           customerName: data.hospitalName,
           address: data.hospitalAddress,
@@ -278,7 +281,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
           }));
-
+          if (res.data.testDate) setMinIssueDate(res.data.testDate);
           if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
             setNotes(res.data.notes.map((n: any) => n.text || n));
           } else {
@@ -337,6 +340,13 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     setSaveSuccess(false);
     setSaveError(null);
     try {
+      if (minIssueDate && formData.issueDate && formData.issueDate < minIssueDate) {
+        const msg = "Issue date must be equal to or greater than the QA test submitted date.";
+        setSaveError(msg);
+        toast.error(msg);
+        setSaving(false);
+        return;
+      }
       const unsaved = await getUnsavedTestNames();
       if (unsaved.length > 0) {
         const message =
@@ -507,40 +517,39 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
 
       const nextState: Record<string, any> = {};
 
-      // --- Accuracy of Operating Potential ---
+      // --- Accuracy of Operating Potential (same format as Radiography Fixed) ---
       if (grouped["Accuracy of Operating Potential"]?.length) {
         try {
           const data = grouped["Accuracy of Operating Potential"];
-          const measurements: any[] = [];
-          const mAStations: string[] = [];
-          let tolerance = { sign: "±", value: "2.0" };
-          const totalFiltration = { measured: "", required: "2.5", atKvp: "" };
-          data.forEach(row => {
-            const field = (row["Field Name"] || "").trim();
-            const value = (row["Value"] || "").trim();
-            const idx = parseInt(row["Row Index"] || "0");
-            if (field === "Tolerance_Sign") tolerance.sign = value;
-            if (field === "Tolerance_Value") tolerance.value = value;
-            if (field === "TotalFiltration_Measured") totalFiltration.measured = value;
-            if (field === "TotalFiltration_Required") totalFiltration.required = value;
-            if (field === "MeasHeader" && !mAStations.includes(value)) mAStations.push(value);
-            if (field.startsWith("Measurement_")) {
-              while (measurements.length <= idx) measurements.push({ appliedKvp: "", measuredValues: [], averageKvp: "", remarks: "" });
-              const fieldName = field.replace("Measurement_", "");
-              if (fieldName === "AppliedKvp") measurements[idx].appliedKvp = value;
-              else if (fieldName === "AverageKvp") measurements[idx].averageKvp = value;
-              else if (fieldName.startsWith("Meas")) {
-                const colIdx = parseInt(fieldName.replace("Meas", "")) - 1;
-                while (measurements[idx].measuredValues.length <= colIdx) measurements[idx].measuredValues.push("");
-                measurements[idx].measuredValues[colIdx] = value;
-              }
+          const measHeaders: string[] = [];
+          const kVpMeasurements: any[] = [];
+          const tol: any = {};
+          let currentBlock: any = null;
+          data.forEach((row: any) => {
+            const key = (row["Key"] || row["Field Name"] || "").trim();
+            const val = (row["Value"] || "").trim();
+            if (key === "MeasHeader") {
+              measHeaders.push(val);
+            } else if (key === "Measurement_AppliedKvp") {
+              currentBlock = { setKV: val, measurements: [] };
+              kVpMeasurements.push(currentBlock);
+            } else if (key.startsWith("Measurement_Meas") && currentBlock) {
+              currentBlock.measurements.push(val);
+            } else if (key.startsWith("Tolerance_")) {
+              tol[key.split("_")[1]] = val;
             }
           });
+          const table2 = kVpMeasurements.map((block: any) => ({
+            setKV: block.setKV,
+            measuredValues: block.measurements || [],
+          }));
           nextState.accuracyOfOperatingPotential = {
-            mAStations: mAStations.length > 0 ? mAStations : ["50 mA", "100 mA"],
-            measurements,
-            tolerance,
-            totalFiltration,
+            mAStations: measHeaders.length > 0 ? measHeaders : ["@ mA 10", "@ mA 100", "@ mA 200"],
+            table2,
+            tolerance: {
+              sign: tol.Sign || tol.sign || "±",
+              value: tol.Value || tol.value || "2.0",
+            },
           };
         } catch (e: any) { toast.error(`Accuracy of Operating Potential: ${e?.message}`); }
       }
@@ -1067,7 +1076,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           </div>
           <div>
             <label className="block font-medium mb-1">Issue Date</label>
-            <input type="date" name="issueDate" value={formData.issueDate} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" />
+            <input type="date" name="issueDate" value={formData.issueDate} min={minIssueDate || undefined} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" title={minIssueDate ? `Must be on or after QA test date (${minIssueDate})` : undefined} />
           </div>
         </div>
       </section>

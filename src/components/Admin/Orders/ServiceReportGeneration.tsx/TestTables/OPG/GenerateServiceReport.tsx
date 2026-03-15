@@ -91,6 +91,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
         engineerNameRPId: "",
         category: "",
     });
+    const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
     const defaultNotes = [
         "The Test Report relates only to the above item only.",
         "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
@@ -219,6 +220,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
                 const baseTestDate = rawTestDate ? (typeof rawTestDate === "string" ? rawTestDate.split("T")[0] : "") : "";
                 const dueDate = baseTestDate ? addYearsToDate(baseTestDate, 5) : "";
 
+                setMinIssueDate(baseTestDate || "");
                 // Pre-fill form from service details
                 setFormData({
                     customerName: data.hospitalName,
@@ -327,6 +329,11 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
         setSaveError(null);
 
         try {
+            if (minIssueDate && formData.issueDate && formData.issueDate < minIssueDate) {
+                toast.error("Issue date must be equal to or greater than the QA test submitted date.");
+                setSaving(false);
+                return;
+            }
             const unsaved = await getUnsavedTestNames();
             if (unsaved.length > 0) {
                 const message =
@@ -696,7 +703,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
                     </div>
                     <div>
                         <label className="block font-medium mb-1">Issue Date</label>
-                        <input type="date" name="issueDate" value={formData.issueDate} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" />
+                        <input type="date" name="issueDate" value={formData.issueDate} min={minIssueDate || undefined} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" title={minIssueDate ? `Must be on or after QA test date (${minIssueDate})` : undefined} />
                     </div>
                 </div>
             </section>

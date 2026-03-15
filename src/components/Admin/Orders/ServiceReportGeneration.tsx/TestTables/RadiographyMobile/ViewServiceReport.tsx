@@ -403,31 +403,60 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed' }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set kV</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>10 mA</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>100 mA</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>200 mA</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied kVp</th>
+                          {(testData.accuracyOfOperatingPotential.mAStations || ['10 mA', '100 mA', '200 mA']).map((label: string, j: number) => (
+                            <th key={j} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</th>
+                          ))}
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Avg kVp</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {testData.accuracyOfOperatingPotential.table2.map((row: any, i: number) => (
-                          <tr key={i} className="text-center">
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setKV || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma10 || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma100 || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma200 || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                              <span className={row.remarks === "Pass" ? "text-green-600" : row.remarks === "Fail" ? "text-red-600" : ""}>
-                                {row.remarks || "-"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {testData.accuracyOfOperatingPotential.table2.map((row: any, i: number) => {
+                          const cells = Array.isArray(row.measuredValues) ? row.measuredValues : [row.ma10, row.ma100, row.ma200];
+                          const stations = testData.accuracyOfOperatingPotential.mAStations || ['10 mA', '100 mA', '200 mA'];
+                          return (
+                            <tr key={i} className="text-center">
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setKV ?? row.appliedKvp ?? "-"}</td>
+                              {stations.map((_: string, j: number) => (
+                                <td key={j} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{cells[j] != null && cells[j] !== '' ? cells[j] : "-"}</td>
+                              ))}
+                              <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp ?? "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                                <span className={(row.remarks === "PASS" || row.remarks === "Pass") ? "text-green-600" : (row.remarks === "FAIL" || row.remarks === "Fail") ? "text-red-600" : ""}>
+                                  {row.remarks ?? "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
+                  </div>
+                )}
+                {testData.accuracyOfOperatingPotential.tolerance && (
+                  <p className="text-sm mb-2">
+                    <strong>Tolerance for kVp Accuracy:</strong> {testData.accuracyOfOperatingPotential.tolerance.sign ?? "±"} {testData.accuracyOfOperatingPotential.tolerance.value ?? "-"} kV
+                  </p>
+                )}
+                {testData.accuracyOfOperatingPotential.totalFiltration && (testData.accuracyOfOperatingPotential.totalFiltration.atKvp || testData.accuracyOfOperatingPotential.totalFiltration.required) && (
+                  <div className="mt-4 p-3 border border-gray-300 rounded">
+                    <p className="text-sm font-semibold">Total Filtration</p>
+                    <p className="text-sm">
+                      Total Filtration is (at {testData.accuracyOfOperatingPotential.totalFiltration.atKvp ?? "-"} kVp) {testData.accuracyOfOperatingPotential.totalFiltration.required ?? "-"} mm of Al.
+                      {testData.accuracyOfOperatingPotential.totalFiltration.required != null && testData.accuracyOfOperatingPotential.totalFiltration.atKvp != null && (
+                        <span className="ml-2 font-bold">
+                          {(() => {
+                            const kvp = Number(testData.accuracyOfOperatingPotential.totalFiltration.atKvp);
+                            const measured = Number(testData.accuracyOfOperatingPotential.totalFiltration.required);
+                            if (isNaN(kvp) || isNaN(measured)) return null;
+                            const req = kvp < 70 ? 1.5 : kvp <= 100 ? 2.0 : 2.5;
+                            return measured >= req ? <span className="text-green-600">PASS</span> : <span className="text-red-600">FAIL</span>;
+                          })()}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">Tolerance: 1.5 mm Al for kV &lt; 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV &gt; 100.</p>
                   </div>
                 )}
               </div>
@@ -736,7 +765,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                 {testData.outputConsistency.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Acceptance Criteria:</strong> CV {testData.outputConsistency.tolerance.operator || "<="} {testData.outputConsistency.tolerance.value || "5.0"}%
+                      <strong>Acceptance Criteria:</strong> CoV {testData.outputConsistency.tolerance.operator || "<="} {testData.outputConsistency.tolerance.value ?? "0.05"}
                     </p>
                   </div>
                 )}

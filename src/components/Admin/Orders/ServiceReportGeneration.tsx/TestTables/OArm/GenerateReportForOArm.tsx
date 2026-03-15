@@ -131,6 +131,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     humidity: "",
     engineerNameRPId: "",
   });
+  const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
   useEffect(() => {
     if (!serviceId) return;
 
@@ -155,6 +156,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
           testDueDateStr = d.toISOString().split("T")[0];
         }
 
+        setMinIssueDate(testDateStr || "");
         setFormData({
           customerName: data.hospitalName,
           address: data.hospitalAddress,
@@ -255,6 +257,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
           }));
+          if (res.data.testDate) setMinIssueDate(res.data.testDate);
         }
       } catch (err) {
         console.log("No report header found or failed to load:", err);
@@ -314,6 +317,11 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     setSaveError(null);
 
     try {
+      if (minIssueDate && formData.issueDate && formData.issueDate < minIssueDate) {
+        toast.error("Issue date must be equal to or greater than the QA test submitted date.");
+        setSaving(false);
+        return;
+      }
       const unsaved = await getUnsavedTestNames();
       if (unsaved.length > 0) {
         const message =
@@ -818,7 +826,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Issue Date
             </label>
-            <input type="date" className="border p-2 rounded-md w-full" />
+            <input type="date" name="issueDate" value={formData.issueDate} min={minIssueDate || undefined} onChange={handleInputChange} className="border p-2 rounded-md w-full" title={minIssueDate ? `Must be on or after QA test date (${minIssueDate})` : undefined} />
           </div>
         </div>
       </section>

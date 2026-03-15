@@ -117,6 +117,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
         csvFileUrl: "",
     });
 
+    const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
     const addYearsToDate = (dateStr: string, years: number): string => {
         if (!dateStr) return "";
         const base = dateStr.split("T")[0];
@@ -146,6 +147,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 const baseTestDate = rawTestDate ? (typeof rawTestDate === "string" ? rawTestDate.split("T")[0] : "") : "";
                 const dueDate = baseTestDate ? addYearsToDate(baseTestDate, 5) : "";
 
+                setMinIssueDate(baseTestDate || "");
                 setFormData({
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
@@ -239,6 +241,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
                         csvFileUrl: res.data.csvFileUrl || prev.csvFileUrl,
                     }));
+                    if (res.data.testDate) setMinIssueDate(res.data.testDate);
 
                     // Save test IDs
                     setSavedTestIds({
@@ -334,6 +337,11 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
         setSaveError(null);
 
         try {
+            if (minIssueDate && formData.issueDate && formData.issueDate < minIssueDate) {
+                toast.error("Issue date must be equal to or greater than the QA test submitted date.");
+                setSaving(false);
+                return;
+            }
             const unsaved = await getUnsavedTestNames();
             if (unsaved.length > 0) {
                 const message =
@@ -945,8 +953,10 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                             type="date"
                             name="issueDate"
                             value={formData.issueDate}
+                            min={minIssueDate || undefined}
                             onChange={handleInputChange}
                             className="border p-2 rounded-md w-full"
+                            title={minIssueDate ? `Must be on or after QA test date (${minIssueDate})` : undefined}
                         />
                     </div>
                 </div>

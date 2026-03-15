@@ -132,6 +132,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     engineerNameRPId: "",
   });
 
+  const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -160,6 +161,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           testDueDateStr = d.toISOString().split("T")[0];
         }
 
+        setMinIssueDate(testDateStr || "");
         setFormData({
           customerName: data.hospitalName,
           address: data.hospitalAddress,
@@ -254,6 +256,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
           }));
+          if (res.data.testDate) setMinIssueDate(res.data.testDate);
 
           // Check if AccuracyOfIrradiationTimeCArm exists
           const hasIrradiationTimeTest = res.data.AccuracyOfIrradiationTimeCArm?._id || res.data.AccuracyOfIrradiationTimeCArm;
@@ -353,6 +356,11 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     setSaveError(null);
 
     try {
+      if (minIssueDate && formData.issueDate && formData.issueDate < minIssueDate) {
+        toast.error("Issue date must be equal to or greater than the QA test submitted date.");
+        setSaving(false);
+        return;
+      }
       const unsaved = await getUnsavedTestNames();
       if (unsaved.length > 0) {
         const message =
@@ -841,7 +849,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Issue Date
             </label>
-            <input type="date" className="border p-2 rounded-md w-full" />
+            <input type="date" name="issueDate" value={formData.issueDate} min={minIssueDate || undefined} onChange={handleInputChange} className="border p-2 rounded-md w-full" title={minIssueDate ? `Must be on or after QA test date (${minIssueDate})` : undefined} />
           </div>
         </div>
       </section>

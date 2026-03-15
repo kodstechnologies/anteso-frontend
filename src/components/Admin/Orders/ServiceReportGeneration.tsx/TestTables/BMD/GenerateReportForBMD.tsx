@@ -137,6 +137,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     category: "",
   });
 
+  const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
   const defaultNotes = [
     "The Test Report relates only to the above item only.",
     "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
@@ -1010,6 +1011,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           testDueDateStr = dueDate.toISOString().split("T")[0];
         }
 
+        setMinIssueDate(testDateStr || "");
         // Pre-fill form from service details
         setFormData({
           customerName: data.hospitalName,
@@ -1103,6 +1105,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
           }));
+          if (res.data.testDate) setMinIssueDate(res.data.testDate);
 
           // Load existing notes, or use default if none exist
           if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
@@ -1201,6 +1204,11 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
   const handleSaveHeader = async () => {
     setSaving(true);
     setSaveSuccess(false);
+    if (minIssueDate && formData.issueDate && formData.issueDate < minIssueDate) {
+      toast.error("Issue date must be equal to or greater than the QA test submitted date.");
+      setSaving(false);
+      return;
+    }
     setSaveError(null);
 
     try {
@@ -1480,8 +1488,10 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               type="date"
               name="issueDate"
               value={formData.issueDate}
+              min={minIssueDate || undefined}
               onChange={handleInputChange}
               className="border p-2 rounded-md w-full"
+              title={minIssueDate ? `Must be on or after QA test date (${minIssueDate})` : undefined}
             />
           </div>
         </div>
