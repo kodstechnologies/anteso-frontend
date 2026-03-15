@@ -59,8 +59,11 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
 
     const processedRows = useMemo(() => {
         return outputRows.map((row) => {
-            const nums = row.outputs
-                .filter((v) => v.trim() !== '')
+            const outputValues = Array.isArray(row.outputs)
+                ? row.outputs.map((v) => (v != null && typeof v === 'object' && 'value' in v ? String((v as { value: unknown }).value ?? '') : String(v ?? '')))
+                : [];
+            const nums = outputValues
+                .filter((v) => typeof v === 'string' && v.trim() !== '')
                 .map((v) => parseFloat(v))
                 .filter((n) => !isNaN(n));
 
@@ -127,6 +130,12 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
                     setFfd(data.ffd || '');
                     setOutputRows(
                         data.outputRows?.map((row: any, i: number) => {
+                            const rawOutputs = row.outputs || [];
+                            const outputs = Array.isArray(rawOutputs)
+                                ? rawOutputs.map((o: any) =>
+                                    o != null && typeof o === 'object' && 'value' in o ? String(o.value ?? '') : String(o ?? '')
+                                  )
+                                : Array(headers.length).fill('');
                             const covVal = row.cov ? parseFloat(row.cov) : 0;
                             const tolVal = data.tolerance ? parseFloat(data.tolerance) : 0.05;
                             let remarks: 'Pass' | 'Fail' | '' = '';
@@ -135,17 +144,22 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
                             }
                             return {
                                 id: String(i + 1),
-                                kvp: row.kvp || '',
+                                kvp: row.kvp || row.kv || '',
                                 mas: row.mas || '',
-                                outputs: row.outputs || Array(headers.length).fill(''),
-                                mean: row.mean || '',
+                                outputs,
+                                mean: row.mean || row.avg || '',
                                 cov: row.cov || '',
                                 remarks,
                             };
                         }) || outputRows
                     );
                     setHeaders(data.measurementHeaders || headers);
-                    setTolerance(data.tolerance || '0.05');
+                    const tol = data.tolerance;
+                    setTolerance(
+                        typeof tol === 'object' && tol && 'value' in tol
+                            ? String(tol.value ?? '0.05')
+                            : String(tol ?? '0.05')
+                    );
                     setIsSaved(true);
                 } else {
                     setIsSaved(false);
@@ -221,16 +235,24 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
 
         const payload = {
             ffd: ffd.trim(),
-            outputRows: processedRows.map((row) => ({
-                kvp: row.kvp.trim(),
-                mas: row.mas.trim(),
-                outputs: row.outputs.map(v => v.trim()),
-                mean: row.mean || "",
-                cov: row.cov || "",
-                remarks: row.remarks || "",
-            })),
+            outputRows: processedRows.map((row) => {
+                const outVals = Array.isArray(row.outputs)
+                    ? row.outputs.map((v) => (v != null && typeof v === 'object' && 'value' in v ? String((v as { value: unknown }).value ?? '') : String(v ?? '')).trim())
+                    : [];
+                return {
+                    kv: (row.kvp ?? '').toString().trim(),
+                    mas: (row.mas ?? '').toString().trim(),
+                    outputs: outVals.map((val) => ({ value: val })),
+                    avg: (row.mean ?? '').toString().trim(),
+                    cov: (row.cov ?? '').toString().trim(),
+                    remark: (row.remarks ?? '').toString().trim(),
+                };
+            }),
             measurementHeaders: headers,
-            tolerance: tolerance.trim(),
+            tolerance:
+                typeof tolerance === 'object' && tolerance && 'value' in tolerance
+                    ? { operator: (tolerance as { operator?: string }).operator ?? '<=', value: String((tolerance as { value?: string }).value ?? '') }
+                    : { operator: '<=', value: typeof tolerance === 'string' ? tolerance.trim() : String(tolerance ?? '') },
         };
 
         try {

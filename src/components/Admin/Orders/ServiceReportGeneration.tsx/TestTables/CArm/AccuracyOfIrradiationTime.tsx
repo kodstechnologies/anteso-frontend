@@ -139,9 +139,9 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">": return err > tol ? "FAIL" : "PASS";
+      case ">": return err > tol ? "PASS" : "FAIL";
       case "<": return err < tol ? "PASS" : "FAIL";
-      case ">=": return err >= tol ? "FAIL" : "PASS";
+      case ">=": return err >= tol ? "PASS" : "FAIL";
       case "<=": return err <= tol ? "PASS" : "FAIL";
       default: return "-";
     }
@@ -305,7 +305,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3"><input type="number" step="0.1" value={row.setTime} onChange={(e) => updateTable2(row.id, "setTime", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border border-gray-300 rounded text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} /></td>
                   <td className={`px-4 py-3 ${isFail ? 'bg-red-100' : ''}`}><input type="number" step="0.1" value={row.measuredTime} onChange={(e) => updateTable2(row.id, "measuredTime", e.target.value)} disabled={isViewMode} className={`w-full px-2 py-1 text-center border ${isFail ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded text-sm ${isViewMode ? (isFail ? 'bg-red-50 text-gray-500 cursor-not-allowed' : 'bg-gray-50 text-gray-500 cursor-not-allowed') : ''}`} /></td>
-                  <td className="px-4 py-3 text-center font-medium">{error}%</td>
+                  <td className={`px-4 py-3 text-center font-medium ${isFail ? 'bg-red-100 text-red-800 border border-red-500 rounded' : ''}`}>{error}%</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${remark === "PASS" ? "bg-green-100 text-green-800" : remark === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"}`}>
                       {remark || "—"}

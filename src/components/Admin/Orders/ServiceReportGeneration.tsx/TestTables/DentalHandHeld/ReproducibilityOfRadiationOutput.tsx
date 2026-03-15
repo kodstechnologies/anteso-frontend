@@ -270,9 +270,10 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
         result = await updateReproducibilityOfRadiationOutputForDentalHandHeld(testId, payload);
       } else {
         result = await addReproducibilityOfRadiationOutputForDentalHandHeld(serviceId, payload);
-        if (result?.data?._id) {
-          setTestId(result.data._id);
-          onTestSaved?.(result.data._id);
+        const newId = result?.data?.testId ?? result?.data?._id;
+        if (newId) {
+          setTestId(newId);
+          onTestSaved?.(newId);
         }
       }
 
