@@ -120,6 +120,19 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
     const maxWorkerWeekly = Math.max(...workerLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
     const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
 
+    // For formula display (same as RadiographyFixed): location that has the max mR/week
+    const maxWorkerLocation = workerLocations.reduce((max, loc) => {
+        const maxVal = parseFloat(max.mRPerWeek) || 0;
+        const locVal = parseFloat(loc.mRPerWeek) || 0;
+        return locVal > maxVal ? loc : max;
+    }, workerLocations[0] || { mRPerHr: '', location: '', mRPerWeek: '', result: '', calculatedResult: '', category: 'worker' as const });
+
+    const maxPublicLocation = publicLocations.reduce((max, loc) => {
+        const maxVal = parseFloat(max.mRPerWeek) || 0;
+        const locVal = parseFloat(loc.mRPerWeek) || 0;
+        return locVal > maxVal ? loc : max;
+    }, publicLocations[0] || { mRPerHr: '', location: '', mRPerWeek: '', result: '', calculatedResult: '', category: 'public' as const });
+
     // Check calibration validity from tools
     useEffect(() => {
         const checkCalibration = async () => {
@@ -431,7 +444,6 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                     <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">LOCATION</th>
                                     <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MAX. RADIATION LEVEL (MR/HR)</th>
                                     <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MR/WEEK</th>
-                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">STATUS</th>
                                     <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">RESULT</th>
                                     <th className="w-32"></th>
                                 </tr>
@@ -468,9 +480,6 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                                 }`}>
                                                 {row.result || "—"}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center font-medium text-gray-800">
-                                            {row.calculatedResult || "—"}
                                         </td>
                                         {index === 0 && (
                                             <td rowSpan={workerLocations.length} className="text-center align-middle bg-blue-100 border-l-4 border-blue-600 relative">
@@ -521,9 +530,6 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                                 {row.result || "—"}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-center font-medium text-gray-800">
-                                            {row.calculatedResult || "—"}
-                                        </td>
                                         {index === 0 && (
                                             <td rowSpan={publicLocations.length} className="text-center align-middle bg-purple-100 border-l-4 border-purple-600 relative">
                                                 <div className="text-sm font-bold text-purple-900 tracking-wider">
@@ -555,6 +561,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                         </div>
                     )}
 
+                    {/* Summary Cards with Formula display (same as RadiographyFixed) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
                         <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-4 border-blue-300 rounded-2xl p-8 text-center shadow-lg">
                             <h3 className="text-xl font-bold text-blue-900">Maximum Radiation Level/week</h3>
@@ -562,7 +569,21 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                             <p className="text-5xl font-extrabold text-blue-800 mt-4">
                                 {maxWorkerWeekly} <span className="text-2xl font-normal">mR/week</span>
                             </p>
-                            <p className="text-lg text-blue-700 mt-4 font-semibold">Limit: &#8804; 20 mR/week</p>
+                            <p className="text-lg text-blue-700 mt-4 font-semibold">Limit: &#8804; 40 mR/week</p>
+                            {maxWorkerLocation.mRPerHr && parseFloat(maxWorkerLocation.mRPerHr) > 0 && (
+                                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-blue-400 text-left">
+                                    <p className="text-sm font-semibold text-blue-900 mb-2">Calculation:</p>
+                                    <p className="text-xs text-blue-800 mb-1">
+                                        <strong>Location:</strong> {maxWorkerLocation.location}
+                                    </p>
+                                    <p className="text-xs text-blue-800">
+                                        <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                                    </p>
+                                    <p className="text-xs text-blue-800 mt-1">
+                                        <strong>Result:</strong> {maxWorkerWeekly} mR/week
+                                    </p>
+                                </div>
+                            )}
                         </div>
                         <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-4 border-purple-300 rounded-2xl p-8 text-center shadow-lg">
                             <h3 className="text-xl font-bold text-purple-900">Maximum Radiation Level/week</h3>
@@ -571,6 +592,20 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                                 {maxPublicWeekly} <span className="text-2xl font-normal">mR/week</span>
                             </p>
                             <p className="text-lg text-purple-700 mt-4 font-semibold">Limit: &#8804; 2 mR/week</p>
+                            {maxPublicLocation.mRPerHr && parseFloat(maxPublicLocation.mRPerHr) > 0 && (
+                                <div className="mt-6 p-4 bg-white rounded-lg border-2 border-purple-400 text-left">
+                                    <p className="text-sm font-semibold text-purple-900 mb-2">Calculation:</p>
+                                    <p className="text-xs text-purple-800 mb-1">
+                                        <strong>Location:</strong> {maxPublicLocation.location}
+                                    </p>
+                                    <p className="text-xs text-purple-800">
+                                        <strong>Formula:</strong> ({workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {appliedCurrent || '—'} mA)
+                                    </p>
+                                    <p className="text-xs text-purple-800 mt-1">
+                                        <strong>Result:</strong> {maxPublicWeekly} mR/week
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

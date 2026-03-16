@@ -1,12 +1,12 @@
 // src/components/reports/ViewServiceReportBMD.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForBMD, getReportNumbers, getAccuracyOfIrradiationTimeByServiceIdForBMD, getDetails, getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD } from "../../../../../../api";
+import { getReportHeaderForBMD, saveReportHeaderForBMD, getReportNumbers, getAccuracyOfIrradiationTimeByServiceIdForBMD, getDetails, getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/logo-sm.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
-import { generatePDF } from "../../../../../../utils/generatePDF";
+import { generatePDF, estimateReportPages } from "../../../../../../utils/generatePDF";
 import MainTestTableForBMD from "./MainTestTableForBMD";
 // Removed individual test API imports as we are now using aggregated header
 
@@ -50,6 +50,7 @@ interface ReportData {
   humidity?: string;
   toolsUsed?: Tool[];
   notes?: Note[];
+  pages?: string;
 }
 
 const defaultNotes: Note[] = [
@@ -112,6 +113,7 @@ const ViewServiceReportBMD: React.FC = () => {
             humidity: data.humidity || "",
             toolsUsed: data.toolsUsed || [],
             notes: data.notes || defaultNotes,
+            pages: data.pages ?? "",
           });
 
           // Set test data directly from the aggregated response
@@ -371,33 +373,6 @@ const ViewServiceReportBMD: React.FC = () => {
           }
         }
 
-          // If still no accuracyOfOperatingPotential, try fetching combined AccuracyOfOperatingPotentialAndTime test
-          if (!transformedAccuracyOfOperatingPotential) {
-            try {
-              const aopTimeRes = await getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD(serviceId);
-              if (aopTimeRes?.data) {
-                const aopTime = aopTimeRes.data;
-                transformedAccuracyOfOperatingPotential = {
-                  rows: (aopTime.rows || []).map((row: any) => ({
-                    appliedKvp: row.appliedKvp || row.appliedkVp || "",
-                    setTime: row.setTime || "",
-                    avgKvp: row.avgKvp || "",
-                    avgTime: row.avgTime || "",
-                    remark: row.remark || "-",
-                    measuredValues: row.measuredValues || [],
-                  })),
-                  mAStations: aopTime.mAStations || ["mA Station 1", "mA Station 2"],
-                  kvpToleranceSign: aopTime.kvpToleranceSign || "±",
-                  kvpToleranceValue: aopTime.kvpToleranceValue || "5",
-                  timeToleranceSign: aopTime.timeToleranceSign || "±",
-                  timeToleranceValue: aopTime.timeToleranceValue || "10",
-                };
-              }
-            } catch (err) {
-              console.log("No AccuracyOfOperatingPotentialAndTime data found:", err);
-            }
-          }
-
         // If still not found, set default
         setUlrNumber("N/A");
       } catch (err) {
@@ -441,20 +416,23 @@ const ViewServiceReportBMD: React.FC = () => {
 
   const downloadPDF = async () => {
     try {
-      // Recalculate page count before generating PDF
-      const reportContent = document.getElementById('report-content');
-      if (reportContent) {
-        const pageHeight = 1123 - 37.8; // A4 height minus margins
-        const contentHeight = reportContent.scrollHeight;
-        const estimatedPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
-        setPageCount(String(estimatedPages));
-      }
-
       await generatePDF({
         elementId: "report-content",
         filename: `BMD-Report-${report?.testReportNumber || "report"}.pdf`,
         buttonSelector: ".download-pdf-btn",
       });
+      const pageCountNum = estimateReportPages("report-content");
+      setPageCount(String(pageCountNum));
+      const response = await getReportHeaderForBMD(serviceId!);
+      if (response?.exists && response?.data && report) {
+        const d = response.data as any;
+        const payload = {
+          ...d,
+          pages: String(pageCountNum),
+        };
+        await saveReportHeaderForBMD(serviceId!, payload);
+        setReport((prev) => (prev ? { ...prev, pages: String(pageCountNum) } : null));
+      }
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
@@ -578,7 +556,7 @@ const ViewServiceReportBMD: React.FC = () => {
                   ["Category", report.category || "-"],
                   ["Location", report.location],
                   ["Test Date", formatDate(report.testDate)],
-                  ["Total Pages", pageCount],
+                  ["No. of Pages", report.pages ?? pageCount ?? "-"],
                 ].map(([label, value]) => (
                   <tr key={label} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                     <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</td>

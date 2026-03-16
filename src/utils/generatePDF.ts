@@ -625,3 +625,17 @@ export const generateAndOpenPDF = async (
   });
 };
 
+/**
+ * Estimate number of pages in the report content (for saving to report header after PDF download).
+ * Counts elements with page-break-after plus the first page.
+ */
+export const estimateReportPages = (elementId: string): number => {
+  const element = document.getElementById(elementId);
+  if (!element) return 1;
+  const withBreak = element.querySelectorAll(
+    '[style*="page-break-after"], [style*="pageBreakAfter"], [style*="page-break-before"], [style*="pageBreakBefore"]'
+  ).length;
+  // Each such element typically starts a new page after it, so total pages = count + 1 (first page)
+  return Math.max(1, withBreak + 1);
+};
+

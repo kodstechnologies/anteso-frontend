@@ -131,6 +131,17 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         engineerNameRPId: "",
     });
 
+    const defaultNotesList = [
+        { slNo: "5.1", text: "The Test Report relates only to the above item only." },
+        { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
+        { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
+        { slNo: "5.4", text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats." },
+        { slNo: "5.5", text: "Any error in this Report should be brought to our knowledge within 30 days from the date of this report." },
+        { slNo: "5.6", text: "Results reported are valid at the time of and under the stated conditions of measurements." },
+        { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
+    ];
+    const [notes, setNotes] = useState<{ slNo: string; text: string }[]>(defaultNotesList);
+
     const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
     // Only fetch initial service details and tools — NOT saved report
     useEffect(() => {
@@ -321,15 +332,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     certificate: t.certificate,
                     // uncertainity: t.uncertainity,
                 })),
-                notes: [
-                    { slNo: "5.1", text: "The Test Report relates only to the above item only." },
-                    { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
-                    { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
-                    { slNo: "5.4", text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats." },
-                    { slNo: "5.5", text: "Any error in this Report should be brought to our knowledge within 30 days from the date of this report." },
-                    { slNo: "5.6", text: "Results reported are valid at the time of and under the stated conditions of measurements." },
-                    { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
-                ],
+                notes: notes.map((n, i) => ({ slNo: n.slNo || "5." + (i + 1), text: n.text })),
             };
 
             await saveReportHeader(serviceId, payload);
@@ -1145,7 +1148,11 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             </section>
 
             <Standards standards={tools} />
-            <Notes allowDelete={false} />
+            <Notes
+                allowDelete={false}
+                initialNotes={notes.map((n) => n.text)}
+                onChange={(texts) => setNotes(texts.map((text, i) => ({ slNo: "5." + (i + 1), text })))}
+            />
 
             {/* Save & View */}
             <div className="my-10 flex justify-end gap-6">
@@ -1174,10 +1181,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                         if (unsaved.length > 0) {
                             const message =
                                 unsaved.length === 1
-                                    ? `${unsaved[0]} table is not saved. Please fill and save this test table before viewing the report.`
-                                    : `You must fill and save all test tables before viewing the report. Missing: ${unsaved.join(", ")}.`;
-                            toast.error(message, { duration: 5000 });
-                            return;
+                                    ? `${unsaved[0]} is not saved yet. Report may show empty for that section.`
+                                    : `Some test tables are not saved (${unsaved.length} missing). Report may be incomplete.`;
+                            toast(message, { duration: 4000, icon: "⚠️" });
                         }
                         navigate(`/admin/orders/view-service-report-ct-scan?serviceId=${serviceId}`);
                     }}
@@ -1312,7 +1318,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     ] : []),
                 ] as any)
                     .map((item: any, i: number) => (
-                        <Disclosure key={i} defaultOpen={i === 0}>
+                        <Disclosure key={item.title ?? i} defaultOpen={i === 0}>
                             {({ open }) => (
                                 <>
                                     <Disclosure.Button className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition">
@@ -1320,7 +1326,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                                         <ChevronDownIcon className={`w-6 h-6 transition-transform ${open ? "rotate-180" : ""}`} />
                                     </Disclosure.Button>
                                     <Disclosure.Panel className="border border-gray-300 rounded-b-lg p-6 bg-gray-50 mb-6">
-                                        {item.component}
+                                        {React.isValidElement(item.component)
+                                            ? React.cloneElement(item.component as React.ReactElement<{ key?: string }>, { key: item.title })
+                                            : item.component}
                                     </Disclosure.Panel>
                                 </>
                             )}

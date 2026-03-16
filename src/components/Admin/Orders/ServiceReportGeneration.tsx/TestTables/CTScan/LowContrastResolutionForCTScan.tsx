@@ -89,7 +89,7 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
         if (propTestId) {
           data = await getLowContrastResolutionForCTScan(propTestId);
         } else {
-          data = await getLowContrastResolutionByServiceIdForCTScan(serviceId);
+          data = await getLowContrastResolutionByServiceIdForCTScan(serviceId, tubeId ?? null);
         }
 
         if (data) {
@@ -120,7 +120,7 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [propTestId, serviceId]);
+  }, [propTestId, serviceId, tubeId]);
 
   // Save / Update
   const handleSave = async () => {
@@ -141,6 +141,7 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
         observedSize: observedSize.trim(),
         contrastLevel: contrastLevel.trim(),
       },
+      tubeId: tubeId ?? null,
     };
 
     try {

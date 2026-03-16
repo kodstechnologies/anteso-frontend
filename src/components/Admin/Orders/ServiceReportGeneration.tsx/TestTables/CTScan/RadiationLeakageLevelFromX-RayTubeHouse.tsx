@@ -11,6 +11,7 @@ import {
 import toast from 'react-hot-toast';
 
 interface SettingsRow {
+  fcd: string;
   kv: string;
   ma: string;
   time: string;
@@ -18,12 +19,15 @@ interface SettingsRow {
 
 interface LeakageRow {
   location: string;
-  front: string;
-  back: string;
   left: string;
   right: string;
+  front: string;
+  back: string;
+  top: string;
   max: string;
+  result: string;
   unit: string;
+  mgy: string;
   remark: string;
 }
 
@@ -38,17 +42,19 @@ interface Props {
 export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
-  // Fixed rows
-  const [settings, setSettings] = useState<SettingsRow>({ kv: '', ma: '', time: '' });
+  const [settings, setSettings] = useState<SettingsRow>({ fcd: '100', kv: '', ma: '', time: '' });
   const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
     {
       location: 'Tube',
-      front: '',
-      back: '',
       left: '',
       right: '',
+      front: '',
+      back: '',
+      top: '',
       max: '',
-      unit: 'mGy/h',
+      result: '',
+      unit: 'mR/h',
+      mgy: '',
       remark: '',
     },
   ]);
@@ -64,122 +70,92 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // === Auto Max per row ===
+  const maValue = parseFloat(settings.ma) || 0;
+  const workloadValue = parseFloat(workload) || 0;
+
+  // Process each row: max from left, right, front, back, top; result (mR/h), mGy, per-row remark (RadiographyFixed structure)
   const processedLeakage = useMemo(() => {
     return leakageRows.map((row) => {
-      const values = [row.front, row.back, row.left, row.right]
+      const values = [row.left, row.right, row.front, row.back, row.top]
         .map((v) => parseFloat(v) || 0)
         .filter((v) => v > 0);
-      const max = values.length > 0 ? Math.max(...values).toFixed(3) : '';
-      return { ...row, max };
-    });
-  }, [leakageRows]);
+      const max = values.length > 0 ? Math.max(...values).toFixed(2) : '';
+      const maxNum = parseFloat(max) || 0;
 
-  // === Calculate leakage result for each row (in mR in one hour) ===
-  const rowLeakageResults = useMemo(() => {
-    const workloadVal = parseFloat(workload) || 0;
-    const maVal = parseFloat(settings.ma) || 1;
+      let result = '';
+      let mgy = '';
+      let remark = '';
 
-    return processedLeakage.map(row => {
-      const rowMax = parseFloat(row.max) || 0;
-      if (workloadVal > 0 && rowMax > 0 && maVal > 0) {
-        // Formula: (workload × max Exposure Level (mR/hr)) / (60 × mA used for measurement) = mR in one hour
-        return ((workloadVal * rowMax) / (60 * maVal)).toFixed(3);
-      }
-      return '';
-    });
-  }, [workload, processedLeakage, settings.ma]);
-
-  // === Calculate mGy in one hour for each row (result / 114) ===
-  // Following Radiography Fixed formula structure
-  const calculatedResults = useMemo(() => {
-    return processedLeakage.map((row, idx) => {
-      const rowMax = parseFloat(row.max) || 0;
-      const maVal = parseFloat(settings.ma) || 1;
-      const workloadVal = parseFloat(workload) || 0;
-
-      let calculatedMR = '';
-      let calculatedMGy = '—';
-
-      if (rowMax > 0 && maVal > 0 && workloadVal > 0) {
-        // Treat exposure level as mR/hr for calculation (convert mGy/h to mR/hr if needed)
-        // If unit is mGy/h, convert to mR/hr: mGy/h × 114 = mR/hr
-        const exposureLevelMR = row.unit === 'mGy/h' ? rowMax * 114 : rowMax;
-
-        // Formula: (workload × max Exposure Level (mR/hr)) / (60 × mA used for measurement) = mR in one hour
-        const resultMR = (workloadVal * exposureLevelMR) / (60 * maVal);
-        calculatedMR = resultMR.toFixed(3);
-        // Convert to mGy: result / 114 = mGy in one hour
-        calculatedMGy = (resultMR / 114).toFixed(4);
+      if (maxNum > 0 && maValue > 0 && workloadValue > 0) {
+        const calculatedResult = (workloadValue * maxNum) / (60 * maValue);
+        result = calculatedResult.toFixed(3);
+        mgy = (calculatedResult / 114).toFixed(4);
+        const tol = parseFloat(toleranceValue) || 0;
+        if (tol > 0) {
+          const mgyVal = calculatedResult / 114;
+          let pass = false;
+          if (toleranceOperator === 'less than or equal to') pass = mgyVal <= tol;
+          if (toleranceOperator === 'greater than or equal to') pass = mgyVal >= tol;
+          if (toleranceOperator === '=') pass = Math.abs(mgyVal - tol) < 0.01;
+          remark = pass ? 'Pass' : 'Fail';
+        }
       }
 
-      return {
-        location: row.location,
-        max: row.max,
-        calculatedMR,
-        calculatedMGy,
-      };
+      return { ...row, max, result, mgy, remark };
     });
-  }, [processedLeakage, settings.ma, workload]);
+  }, [leakageRows, workload, settings.ma, toleranceValue, toleranceOperator]);
 
-  // === Global highest leakage (for final Pass/Fail) ===
-  const allCalculatedMGy = calculatedResults.map(r => parseFloat(r.calculatedMGy || '0') || 0);
-  const globalMaxResultMGy = allCalculatedMGy.length > 0 && Math.max(...allCalculatedMGy) > 0
-    ? Math.max(...allCalculatedMGy).toFixed(4)
-    : '—';
-
-  // === Auto Remark ===
+  const globalMaxResultMGy = processedLeakage.reduce((acc, row) => {
+    const mgy = parseFloat(row.mgy || '0') || 0;
+    return mgy > acc ? mgy : acc;
+  }, 0);
   const finalRemark = useMemo(() => {
-    const result = parseFloat(globalMaxResultMGy || '0') || 0;
+    const result = globalMaxResultMGy;
     const tol = parseFloat(toleranceValue) || 0;
-
-    if (!toleranceValue || globalMaxResultMGy === '—') return '';
-
+    if (!toleranceValue || result === 0) return '';
     let pass = false;
     if (toleranceOperator === 'less than or equal to') pass = result <= tol;
     if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
     if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
-
     return pass ? 'Pass' : 'Fail';
   }, [globalMaxResultMGy, toleranceValue, toleranceOperator]);
 
   // === CSV Data Injection ===
   useEffect(() => {
     if (csvData && csvData.length > 0) {
-      // Settings
+      const fcd = csvData.find(r => r['Field Name'] === 'Table1_FCD' || r['Field Name'] === 'Table1_fcd')?.['Value'];
       const kv = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
       const ma = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
       const time = csvData.find(r => r['Field Name'] === 'Table1_Time')?.['Value'];
-
-      // Note: Workload is not in the standard template provided, so we leave it as is if not found.
-
-      if (kv || ma || time) {
+      if (fcd || kv || ma || time) {
         setSettings(prev => ({
           ...prev,
+          fcd: fcd || prev.fcd,
           kv: kv || prev.kv,
           ma: ma || prev.ma,
           time: time || prev.time
         }));
       }
 
-      // Leakage Rows
       const rowIndices = [...new Set(csvData
-        .filter(r => r['Field Name'].startsWith('Table2_'))
+        .filter(r => r['Field Name']?.startsWith('Table2_'))
         .map(r => parseInt(r['Row Index']))
         .filter(i => !isNaN(i) && i > 0)
       )];
-
       if (rowIndices.length > 0) {
         const newRows = rowIndices.map(idx => {
           const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
           return {
-            location: rowData.find(r => r['Field Name'] === 'Table2_Area')?.['Value'] || '',
-            front: rowData.find(r => r['Field Name'] === 'Table2_Front')?.['Value'] || '',
-            back: rowData.find(r => r['Field Name'] === 'Table2_Back')?.['Value'] || '',
+            location: rowData.find(r => r['Field Name'] === 'Table2_Area' || r['Field Name'] === 'Table2_Location')?.['Value'] || 'Tube',
             left: rowData.find(r => r['Field Name'] === 'Table2_Left')?.['Value'] || '',
             right: rowData.find(r => r['Field Name'] === 'Table2_Right')?.['Value'] || '',
+            front: rowData.find(r => r['Field Name'] === 'Table2_Front')?.['Value'] || '',
+            back: rowData.find(r => r['Field Name'] === 'Table2_Back')?.['Value'] || '',
+            top: rowData.find(r => r['Field Name'] === 'Table2_Top')?.['Value'] || '',
             max: '',
-            unit: 'mGy/h',
+            result: '',
+            unit: 'mR/h',
+            mgy: '',
             remark: '',
           };
         });
@@ -205,8 +181,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     }
   }, [csvData]);
 
-  // === Update Handlers ===
-  const updateSettings = (field: 'kv' | 'ma' | 'time', value: string) => {
+  const updateSettings = (field: keyof SettingsRow, value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
@@ -217,38 +192,39 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   };
 
   const addLeakageRow = () => {
-    setLeakageRows(prev => [
-      ...prev,
-      {
-        location: 'Tube',
-        front: '',
-        back: '',
-        left: '',
-        right: '',
-        max: '',
-        unit: 'mGy/h',
-        remark: '',
-      },
-    ]);
+    if (leakageRows.some(r => r.location === 'Collimator')) return;
+    setLeakageRows(prev => [...prev, {
+      location: 'Collimator',
+      left: '',
+      right: '',
+      front: '',
+      back: '',
+      top: '',
+      max: '',
+      result: '',
+      unit: 'mR/h',
+      mgy: '',
+      remark: '',
+    }]);
   };
 
   const removeLeakageRow = (index: number) => {
-    if (leakageRows.length <= 1) return;
+    if (index === 0 || leakageRows[index].location === 'Tube') return;
     setLeakageRows(prev => prev.filter((_, i) => i !== index));
   };
 
-  // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
+      settings.fcd.trim() &&
       settings.kv.trim() &&
       settings.ma.trim() &&
       settings.time.trim() &&
-      leakageRows.every(r =>
-        r.front.trim() && r.back.trim() && r.left.trim() && r.right.trim()
-      ) &&
       workload.trim() &&
-      toleranceValue.trim()
+      toleranceValue.trim() &&
+      leakageRows.every(r =>
+        r.left.trim() && r.right.trim() && r.front.trim() && r.back.trim() && r.top.trim()
+      )
     );
   }, [serviceId, settings, leakageRows, workload, toleranceValue]);
 
@@ -268,38 +244,42 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           const response = await getRadiationLeakageByTestId(propTestId);
           rec = response.data || response;
         } else {
-          rec = await getRadiationLeakageByServiceId(serviceId);
+          rec = await getRadiationLeakageByServiceId(serviceId, tubeId ?? null);
         }
 
         if (rec) {
           setTestId(rec._id || propTestId);
 
-          if (rec.measurementSettings?.[0]) {
+          if (rec.fcd !== undefined || rec.kv !== undefined || rec.ma !== undefined || rec.time !== undefined) {
             setSettings({
-              kv: String(rec.measurementSettings[0].kv),
-              ma: String(rec.measurementSettings[0].ma),
-              time: String(rec.measurementSettings[0].time),
+              fcd: String(rec.fcd ?? '100'),
+              kv: String(rec.kv ?? rec.measurementSettings?.[0]?.kv ?? ''),
+              ma: String(rec.ma ?? rec.measurementSettings?.[0]?.ma ?? ''),
+              time: String(rec.time ?? rec.measurementSettings?.[0]?.time ?? ''),
             });
           }
 
-          if (Array.isArray(rec.leakageMeasurements)) {
+          if (Array.isArray(rec.leakageMeasurements) && rec.leakageMeasurements.length > 0) {
             setLeakageRows(
               rec.leakageMeasurements.map((r: any) => ({
-                location: r.location || '',
-                front: String(r.front),
-                back: String(r.back),
-                left: String(r.left),
-                right: String(r.right),
-                max: '',
-                unit: r.unit || 'mGy/h',
-                remark: '',
+                location: r.location || 'Tube',
+                left: String(r.left ?? ''),
+                right: String(r.right ?? ''),
+                front: String(r.front ?? ''),
+                back: String(r.back ?? ''),
+                top: String(r.top ?? ''),
+                max: String(r.max ?? ''),
+                result: String(r.result ?? ''),
+                unit: r.unit || 'mR/h',
+                mgy: String(r.mgy ?? ''),
+                remark: r.remark || '',
               }))
             );
           }
 
           setWorkload(rec.workload || '');
           setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
-          setToleranceValue(rec.tolerance || '');
+          setToleranceValue(rec.toleranceValue ?? rec.tolerance ?? '');
           setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
           setToleranceTime(rec.toleranceTime || '1');
 
@@ -319,7 +299,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     };
 
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, propTestId, tubeId]);
 
   // === Save / Update ===
   const handleSave = async () => {
@@ -327,26 +307,28 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     setIsSaving(true);
 
     const payload = {
-      measurementSettings: [
-        {
-          kv: parseFloat(settings.kv) || 0,
-          ma: parseFloat(settings.ma) || 0,
-          time: parseFloat(settings.time) || 0,
-        },
-      ],
-      leakageMeasurements: leakageRows.map(r => ({
-        location: r.location,
-        front: parseFloat(r.front) || 0,
-        back: parseFloat(r.back) || 0,
-        left: parseFloat(r.left) || 0,
-        right: parseFloat(r.right) || 0,
-        unit: r.unit,
+      fcd: settings.fcd,
+      kv: settings.kv,
+      ma: settings.ma,
+      time: settings.time,
+      workload,
+      leakageMeasurements: processedLeakage.map(row => ({
+        location: row.location,
+        left: parseFloat(row.left) || 0,
+        right: parseFloat(row.right) || 0,
+        front: parseFloat(row.front) || 0,
+        back: parseFloat(row.back) || 0,
+        top: parseFloat(row.top) || 0,
+        max: row.max,
+        result: row.result,
+        unit: row.unit,
+        mgy: row.mgy,
       })),
-      workload: parseFloat(workload) || 0,
-      workloadUnit,
-      tolerance: toleranceValue.trim(),
+      toleranceValue,
       toleranceOperator,
-      toleranceTime: toleranceTime.trim(),
+      toleranceTime,
+      remark: finalRemark,
+      tubeId: tubeId === null ? 'null' : tubeId,
     };
 
     try {
@@ -394,60 +376,32 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     <div className="p-6 max-w-full overflow-x-auto space-y-8">
       <h2 className="text-2xl font-bold mb-6">Radiation Leakage Level from X-Ray</h2>
 
-      {/* ==================== Table 1: kV, mA, Time (Fixed) ==================== */}
+      {/* Test Conditions (RadiographyFixed structure) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
-          Measurement Settings
-        </h3>
+        <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">Test Conditions</h3>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
-                kV
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
-                mA
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">
-                Time (sec)
-              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase border-r">FDD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase border-r">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase border-r">mA</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time (Sec)</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white">
             <tr className="hover:bg-gray-50">
-              <td className="px-4 py-2 border-r">
-                <input
-                  type="text"
-                  value={settings.kv}
-                  onChange={(e) => updateSettings('kv', e.target.value)}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                    }`}
-                  placeholder="120"
-                />
-              </td>
-              <td className="px-4 py-2 border-r">
-                <input
-                  type="text"
-                  value={settings.ma}
-                  onChange={(e) => updateSettings('ma', e.target.value)}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                    }`}
-                  placeholder="100"
-                />
-              </td>
-              <td className="px-4 py-2">
-                <input
-                  type="text"
-                  value={settings.time}
-                  onChange={(e) => updateSettings('time', e.target.value)}
-                  disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                    }`}
-                  placeholder="1.0"
-                />
-              </td>
+              {(['fcd', 'kv', 'ma', 'time'] as const).map((field) => (
+                <td key={field} className="px-4 py-2 border-r">
+                  <input
+                    type="text"
+                    value={settings[field]}
+                    onChange={(e) => updateSettings(field, e.target.value)}
+                    disabled={isViewMode}
+                    className={`w-full px-3 py-2 border rounded text-sm text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    placeholder={field === 'fcd' ? '100' : field === 'kv' ? '120' : field === 'ma' ? '21' : '2.0'}
+                  />
+                </td>
+              ))}
             </tr>
           </tbody>
         </table>
@@ -478,97 +432,52 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         </div>
       </div>
 
-      {/* ==================== Table 2: Leakage Results (Fixed 1 row) ==================== */}
+      {/* Exposure Level Table (RadiographyFixed structure) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
-          Leakage Measurement Results
-        </h3>
-        <table className="min-w-full divide-y divide-gray-200">
+        <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">Exposure Level (mR/hr) at 1.0 m from the Focus</h3>
+        <table className="min-w-full divide-y divide-gray-200 text-xs">
           <thead className="bg-blue-50">
             <tr>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
-                Location
-              </th>
-              <th colSpan={4} className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r">
-                Exposure Level (mGy)
-              </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
-                Max
-              </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
-                Unit
-              </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
-                Remark
-              </th>
+              <th rowSpan={2} className="px-4 py-3 border-r font-medium">Location</th>
+              <th colSpan={5} className="px-4 py-3 text-center border-r font-medium">Exposure Level (mR/hr)</th>
+              <th rowSpan={2} className="px-4 py-3 border-r font-medium">Result (mR in one hour)</th>
+              <th rowSpan={2} className="px-4 py-3 font-medium">Remarks</th>
             </tr>
             <tr>
-              {['Front', 'Back', 'Left', 'Right'].map((dir) => (
-                <th
-                  key={dir}
-                  className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
-                >
-                  {dir}
-                </th>
+              {['Left', 'Right', 'Front', 'Back', 'Top'].map(dir => (
+                <th key={dir} className="px-2 py-2 border-r font-medium">{dir}</th>
               ))}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {processedLeakage.map((row, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-r">
-                  <select
-                    value={row.location}
-                    onChange={(e) => updateLeakage(idx, 'location', e.target.value)}
-                    disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                      }`}
-                  >
-                    <option value="Tube">Tube</option>
-                    <option value="Collimator">Collimator</option>
-                  </select>
+                <td className="px-4 py-3 border-r">
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-2 border rounded text-sm font-medium bg-gray-50">{row.location}</span>
+                    {!isViewMode && row.location !== 'Tube' && (
+                      <button type="button" onClick={() => removeLeakageRow(idx)} className="text-red-600 hover:bg-red-50 p-1 rounded" title="Remove row">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </td>
-                {(['front', 'back', 'left', 'right'] as const).map((field) => (
-                  <td key={field} className="px-2 py-2 border-r">
+                {(['left', 'right', 'front', 'back', 'top'] as const).map(field => (
+                  <td key={field} className={`px-2 py-2 border-r ${row.remark === 'Fail' ? 'bg-red-50' : ''}`}>
                     <input
                       type="text"
                       value={leakageRows[idx][field]}
                       onChange={(e) => updateLeakage(idx, field, e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                        }`}
+                      className={`w-full text-center border rounded text-xs ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       placeholder="0.00"
                     />
                   </td>
                 ))}
-                <td className="px-2 py-2 border-r bg-gray-50">
-                  <input
-                    type="text"
-                    value={row.max}
-                    readOnly
-                    className="w-full px-2 py-1 bg-gray-100 text-sm text-center font-medium"
-                  />
-                </td>
-                <td className="px-2 py-2 border-r">
-                  <input
-                    type="text"
-                    value={row.unit}
-                    onChange={(e) => updateLeakage(idx, 'unit', e.target.value)}
-                    disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                      }`}
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <span
-                    className={`inline-block w-full px-2 py-1 text-sm text-center font-medium rounded ${finalRemark === 'Pass'
-                      ? 'bg-green-100 text-green-800'
-                      : finalRemark === 'Fail'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-gray-100'
-                      }`}
-                  >
-                    {finalRemark || '—'}
+                <td className="px-4 py-3 text-center font-medium border-r bg-gray-50">{row.result || '—'}</td>
+                <td className="px-4 py-3 text-center">
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${row.remark === 'Pass' ? 'bg-green-100 text-green-800' : row.remark === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100'}`}>
+                    {row.remark || '—'}
                   </span>
                 </td>
               </tr>
@@ -576,103 +485,40 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           </tbody>
         </table>
         {!isViewMode && (
-          <div className="px-6 py-3 bg-gray-50 border-t">
+          <div className="px-6 py-4 bg-gray-50 border-t">
             <button
               onClick={addLeakageRow}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+              disabled={leakageRows.some(row => row.location === 'Collimator')}
+              className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ${leakageRows.some(row => row.location === 'Collimator') ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <Plus className="w-4 h-4" /> Add Row
+              <Plus className="w-4 h-4" /> Add Collimator
             </button>
           </div>
         )}
       </div>
 
-      {/* Work Load and Max Leakage Calculation */}
+      {/* Workload and Tolerance */}
       <div className="bg-white shadow-md rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Work Load and Max Leakage Calculation</h3>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 w-48">Work Load:</label>
-            <input
-              type="text"
-              value={workload}
-              onChange={(e) => setWorkload(e.target.value)}
-              disabled={isViewMode}
-              className={`w-48 px-4 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-              placeholder="500"
-            />
-            <input
-              type="text"
-              value={workloadUnit}
-              onChange={(e) => setWorkloadUnit(e.target.value)}
-              disabled={isViewMode}
-              className={`w-48 px-4 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-              placeholder="mA·min/week"
-            />
-          </div>
-          {processedLeakage.map((row, idx) => {
-            const rowMax = parseFloat(row.max) || 0;
-            const maVal = parseFloat(settings.ma) || 0;
-            const workloadVal = parseFloat(workload) || 0;
-            const calculatedMR = calculatedResults[idx]?.calculatedMR || '—';
-            const exposureLevelMR = row.unit === 'mGy/h' ? rowMax * 114 : rowMax;
-            const maxExposureLevel = rowMax > 0 ? (row.unit === 'mGy/h' ? `${rowMax.toFixed(2)} mGy/h (= ${exposureLevelMR.toFixed(2)} mR/hr)` : `${rowMax.toFixed(2)} mR/hr`) : '—';
-
-            return (
-              <div key={idx} className="flex items-start gap-3">
-                <label className="text-sm font-medium text-gray-700 w-48">Max Leakage =</label>
-                <div className="flex-1">
-                  <div className="text-sm text-gray-700 mb-2">
-                    ({workload || '—'} {workloadUnit || 'mA·min/week'} × {maxExposureLevel} max Exposure Level) / (60 × {maVal || '—'} mA used for measurement)
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-sm font-medium text-gray-700">Calculated Max Leakage:</span>
-                    <span className={`ml-3 px-4 py-2 border-2 rounded-md font-bold text-lg ${calculatedMR !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300'
-                      }`}>
-                      {calculatedMR} mR in one hour
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <label className="block text-sm font-medium text-gray-700 mb-2">Workload</label>
+        <div className="flex items-center gap-2 max-w-md mb-4">
+          <input
+            type="text"
+            value={workload}
+            onChange={(e) => setWorkload(e.target.value)}
+            disabled={isViewMode}
+            className={`w-32 px-3 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+            placeholder="500"
+          />
+          <input
+            type="text"
+            value={workloadUnit}
+            onChange={(e) => setWorkloadUnit(e.target.value)}
+            disabled={isViewMode}
+            className={`w-40 px-3 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+            placeholder="mA·min/week"
+          />
         </div>
-      </div>
-
-      {/* ==================== Summary of Maximum Radiation Leakage ==================== */}
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Summary of Maximum Radiation Leakage</h3>
-        <div className="space-y-3">
-          {calculatedResults.map((result, idx) => {
-            const row = processedLeakage[idx];
-            const maxValue = row.max || '—';
-            const maVal = parseFloat(settings.ma) || 0;
-
-            return (
-              <div key={idx} className="flex items-start gap-3">
-                <span className="text-sm font-medium text-gray-700 w-64">
-                  Maximum Radiation Leakage from {result.location}:
-                </span>
-                <div className="flex-1">
-                  <div className="text-sm text-gray-600 mb-2">
-                    Formula: ({workload || '—'} {workloadUnit || 'mA·min/week'} × {maxValue} max Exposure Level ({row.unit === 'mGy/h' ? `${maxValue} mGy/h (= ${(parseFloat(maxValue || '0') * 114).toFixed(2)} mR/hr)` : `${maxValue} mR/hr`})) / (60 × {maVal || '—'} mA used for measurement) ÷ 114
-                  </div>
-                  <span className={`px-4 py-2 border-2 rounded-md font-semibold ${result.calculatedMGy !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-gray-50'
-                    }`}>
-                    {result.calculatedMGy !== '—' ? `${result.calculatedMGy} mGy` : '—'} in one hour
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ==================== Tolerance ==================== */}
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tolerance (mGy/h)
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Tolerance (mGy/h)</label>
         <div className="flex items-center gap-2 max-w-md">
           <input
             type="text"

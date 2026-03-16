@@ -306,7 +306,7 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
                     const response = await getMeasurementOfCTDIByTestId(propTestId);
                     rec = response.data || response;
                 } else {
-                    rec = await getMeasurementOfCTDIByServiceId(serviceId);
+                    rec = await getMeasurementOfCTDIByServiceId(serviceId, tubeId || null);
                 }
 
                 if (rec) {
@@ -315,29 +315,49 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
                         setTable1Row(rec.table1[0]);
                     }
 
-                    if (Array.isArray(rec.table2)) {
-                        const peripheralRow = rec.table2.find((r: any) => r.id === 'peripheral');
-                        if (peripheralRow?.readings) {
-                            setPeripheralLabels(peripheralRow.readings.map((r: any) => r.label));
+                    // Backend table2 has result, head, body, readings (no id) — map by index/result
+                    const ROW_IDS = ['ctdic', 'peripheral', 'ctdip', 'ctdiw', 'ctdiwRated'] as const;
+                    const resultToId: Record<string, string> = {
+                        'Axial Dose CTDIc': 'ctdic',
+                        'Peripheral Dose': 'peripheral',
+                        'Peripheral Dose CTDIp(mean)': 'ctdip',
+                        'CTDIw': 'ctdiw',
+                        'CTDIw (Rated)': 'ctdiwRated',
+                    };
+
+                    if (Array.isArray(rec.table2) && rec.table2.length > 0) {
+                        const idFromRow = (r: any, idx: number) =>
+                            (r && resultToId[r.result]) || ROW_IDS[idx] || `row-${idx}`;
+
+                        const peripheralRow = rec.table2.find((r: any) =>
+                            (r && (r.result === 'Peripheral Dose' || r.readings?.length > 0))
+                        );
+                        if (peripheralRow?.readings?.length) {
+                            setPeripheralLabels(peripheralRow.readings.map((r: any) => r.label || 'A'));
                         }
 
                         setTable2Rows(
-                            rec.table2.map((r: any) => {
-                                if (r.id === 'peripheral') {
+                            rec.table2.map((r: any, idx: number) => {
+                                const id = idFromRow(r, idx);
+                                if (id === 'peripheral' && r.readings?.length) {
                                     return {
-                                        ...r,
-                                        readings: r.readings?.map((rd: any) => ({
-                                            id: Date.now().toString() + rd.label,
-                                            label: rd.label,
-                                            head: String(rd.head || ''),
-                                            body: String(rd.body || ''),
-                                        })) || [],
+                                        id: 'peripheral',
+                                        result: r.result || 'Peripheral Dose',
+                                        head: '',
+                                        body: '',
+                                        readings: r.readings.map((rd: any, i: number) => ({
+                                            id: Date.now().toString() + (rd.label || i),
+                                            label: rd.label || String.fromCharCode(65 + i),
+                                            head: String(rd.head ?? ''),
+                                            body: String(rd.body ?? ''),
+                                        })),
                                     };
                                 }
                                 return {
-                                    ...r,
-                                    head: String(r.head || ''),
-                                    body: String(r.body || ''),
+                                    id,
+                                    result: r.result || '',
+                                    head: String(r.head ?? ''),
+                                    body: String(r.body ?? ''),
                                 };
                             })
                         );
@@ -366,7 +386,7 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
         };
 
         load();
-    }, [serviceId, propTestId]);
+    }, [serviceId, propTestId, tubeId]);
 
     // === Save / Update ===
     const handleSave = async () => {
@@ -378,23 +398,22 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
             table2: table2Rows.map(r => {
                 if (r.id === 'peripheral') {
                     return {
-                        id: r.id,
                         result: r.result,
                         readings: r.readings?.map(rd => ({
                             label: rd.label,
-                            head: parseFloat(rd.head) || null,
-                            body: parseFloat(rd.body) || null,
+                            head: String(parseFloat(rd.head) || rd.head || ''),
+                            body: String(parseFloat(rd.body) || rd.body || ''),
                         })),
                     };
                 }
                 return {
-                    id: r.id,
                     result: r.result,
-                    head: parseFloat(r.head) || null,
-                    body: parseFloat(r.body) || null,
+                    head: String(parseFloat(r.head) || r.head || ''),
+                    body: String(parseFloat(r.body) || r.body || ''),
                 };
             }),
             tolerance,
+            tubeId: tubeId || null,
         };
 
         try {

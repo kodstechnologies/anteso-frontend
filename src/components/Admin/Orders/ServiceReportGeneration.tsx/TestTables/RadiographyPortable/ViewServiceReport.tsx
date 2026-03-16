@@ -1,12 +1,12 @@
 // src/components/reports/ViewServiceReportRadiographyPortable.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForRadiographyPortable } from "../../../../../../api";
+import { getReportHeaderForRadiographyPortable, saveReportHeader } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/logo-sm.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
-import { generatePDF } from "../../../../../../utils/generatePDF";
+import { generatePDF, estimateReportPages } from "../../../../../../utils/generatePDF";
 import MainTestTableForRadiographyPortable from "./MainTestTableForRadiographyPortable";
 
 interface Tool {
@@ -46,6 +46,7 @@ interface ReportData {
   humidity: string;
   toolsUsed?: Tool[];
   notes?: Note[];
+  pages?: string;
   category: string;
   // Test documents
   AccuracyOfIrradiationTimeRadiographyPortable?: any;
@@ -112,6 +113,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             humidity: data.humidity || "",
             toolsUsed: data.toolsUsed || [],
             notes: data.notes || defaultNotes,
+            pages: data.pages ?? "",
             category: data.category || "",
           });
 
@@ -149,6 +151,36 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
         filename: `RadiographyPortable-Report-${report?.testReportNumber || "report"}.pdf`,
         buttonSelector: ".download-pdf-btn",
       });
+      const pageCount = estimateReportPages("report-content");
+      const response = await getReportHeaderForRadiographyPortable(serviceId!);
+      if (response?.exists && response?.data && report) {
+        const d = response.data as any;
+        const payload = {
+          customerName: d.customerName,
+          address: d.address,
+          srfNumber: d.srfNumber,
+          srfDate: d.srfDate,
+          testReportNumber: d.testReportNumber,
+          issueDate: d.issueDate,
+          nomenclature: d.nomenclature,
+          make: d.make,
+          model: d.model,
+          slNumber: d.slNumber,
+          condition: d.condition,
+          testingProcedureNumber: d.testingProcedureNumber,
+          engineerNameRPId: d.engineerNameRPId,
+          testDate: d.testDate,
+          testDueDate: d.testDueDate,
+          location: d.location,
+          temperature: d.temperature,
+          humidity: d.humidity,
+          toolsUsed: d.toolsUsed,
+          notes: d.notes,
+          pages: String(pageCount),
+        };
+        await saveReportHeader(serviceId!, payload);
+        setReport((prev) => (prev ? { ...prev, pages: String(pageCount) } : null));
+      }
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
@@ -278,6 +310,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   ["Location", report.location],
                   ["Temperature (°C)", report.temperature || "-"],
                   ["Humidity (%)", report.humidity || "-"],
+                  ["No. of Pages", report.pages ?? "-"],
                 ].map(([label, value]) => (
                   <tr key={label} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                     <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</td>

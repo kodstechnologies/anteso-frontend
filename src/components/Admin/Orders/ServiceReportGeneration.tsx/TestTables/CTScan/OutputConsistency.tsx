@@ -210,7 +210,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
           const response = await getOutputConsistencyByTestId(propTestId);
           data = response;
         } else {
-          data = await getOutputConsistencyByServiceId(serviceId);
+          data = await getOutputConsistencyByServiceId(serviceId, tubeId ?? null);
         }
 
         if (data) {
@@ -263,7 +263,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
     };
 
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, propTestId, tubeId]);
 
   // Save / Update
   const handleSave = async () => {
@@ -288,6 +288,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
         remark: row.remark || "",
       })),
       tolerance,
+      tubeId: tubeId ?? null,
     };
 
     try {

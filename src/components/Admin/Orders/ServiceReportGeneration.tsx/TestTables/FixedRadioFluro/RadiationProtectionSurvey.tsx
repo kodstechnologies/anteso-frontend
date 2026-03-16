@@ -23,6 +23,7 @@ interface Props {
   serviceId: string;
   refreshKey?: number;
   initialData?: any;
+  qaSubmittedDate?: string | null;
 }
 
 const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, initialData, qaSubmittedDate }) => {

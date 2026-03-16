@@ -365,32 +365,32 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
                 const isFail = row.remarks === 'Fail';
                 return (
                   <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 border-r">
+                    <td className={`px-4 py-2 border-r ${isFail ? 'bg-red-50' : ''}`}>
                       <input
                         type="text"
                         value={row.setTime}
                         onChange={e => updateTable2(row.id, 'setTime', e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                        className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : isFail ? 'border-red-500 bg-red-100' : 'border-gray-300'
                           }`}
                         placeholder="100"
                       />
                     </td>
-                    <td className="px-4 py-2 border-r">
+                    <td className={`px-4 py-2 border-r ${isFail ? 'bg-red-50' : ''}`}>
                       <input
                         type="text"
                         value={row.observedTime}
                         onChange={e => updateTable2(row.id, 'observedTime', e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                        className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : isFail ? 'border-red-500 bg-red-100' : 'border-gray-300'
                           }`}
                         placeholder="98.5"
                       />
                     </td>
-                    <td className="px-4 py-2 border-r font-medium bg-gray-50 text-center">
+                    <td className={`px-4 py-2 border-r font-medium text-center ${isFail ? 'bg-red-50 text-red-700' : 'bg-gray-50'}`}>
                       {row.percentError || '-'}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className={`px-4 py-2 ${isFail ? 'bg-red-50' : ''}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {isPass && <CheckCircle className="w-5 h-5 text-green-600" />}

@@ -287,8 +287,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId, csvData
       }
       try {
         const res = await getRadiationProtectionSurveyByServiceIdForCTScan(serviceId, tubeId || null);
-        const data = res?.data;
-        if (data) {
+        const data = res?.data?.data ?? res?.data;
+        if (data && (data._id || data.locations?.length > 0 || data.surveyDate)) {
           setTestId(data._id || null);
           setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
           // Calibration status is set by the tools check useEffect, don't override it here
@@ -404,8 +404,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId, csvData
         </h1>
         <button
           onClick={isViewMode ? () => setIsEditing(true) : handleSave}
-          disabled={isSaving || isDisabled}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving || isDisabled ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
         >
           {isSaving ? (
             <>

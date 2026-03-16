@@ -8,7 +8,7 @@ import logo from "../../../../../../assets/logo/logo-sm.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
-import { generatePDF } from "../../../../../../utils/generatePDF";
+import { generatePDF, estimateReportPages } from "../../../../../../utils/generatePDF";
 
 interface Tool {
   slNumber: string;
@@ -48,6 +48,7 @@ interface ReportData {
   humidity: string;
   toolsUsed?: Tool[];
   notes?: Note[];
+  pages?: string;
 
   // Test documents from populated response
   RadiationProfileWidthForCTScan?: any;
@@ -61,6 +62,7 @@ interface ReportData {
   OutputConsistency?: any;
   lowContrastResolutionForCTScan?: any;
   HighContrastResolutionForCTScan?: any;
+  RadiationProtectionSurveyCTScan?: any;
 }
 
 const defaultNotes: Note[] = [
@@ -127,6 +129,7 @@ const ViewServiceReportCTScan: React.FC = () => {
             humidity: data.humidity || "",
             toolsUsed: data.toolsUsed || [],
             notes: data.notes || defaultNotes,
+            pages: data.pages ?? "",
           });
 
           if (isDoubleTube) {
@@ -151,6 +154,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                 outputConsistency: dataA.OutputConsistency || null,
                 lowContrastResolution: dataA.lowContrastResolutionForCTScan || null,
                 highContrastResolution: dataA.HighContrastResolutionForCTScan || null,
+                radiationProtectionSurvey: dataA.RadiationProtectionSurveyCTScan || null,
               });
             }
 
@@ -169,15 +173,17 @@ const ViewServiceReportCTScan: React.FC = () => {
                 outputConsistency: dataB.OutputConsistency || null,
                 lowContrastResolution: dataB.lowContrastResolutionForCTScan || null,
                 highContrastResolution: dataB.HighContrastResolutionForCTScan || null,
+                radiationProtectionSurvey: dataB.RadiationProtectionSurveyCTScan || null,
               });
             }
 
-            // Set combined test data for summary (common tests only)
+            // Set combined test data for summary (common tests only) + high contrast & radiation survey from initial fetch (often tubeId null)
             setTestData({
-              // Common tests that don't have tubeId
               alignmentOfTableGantry: data.AlignmentOfTableGantryCTScan || null,
               tablePosition: data.TablePositionCTScan || null,
               gantryTilt: data.GantryTiltCTScan || null,
+              highContrastResolution: data.HighContrastResolutionForCTScan || null,
+              radiationProtectionSurvey: data.RadiationProtectionSurveyCTScan || null,
             });
           } else {
             // Single tube - use the response data
@@ -193,6 +199,7 @@ const ViewServiceReportCTScan: React.FC = () => {
               outputConsistency: data.OutputConsistency || null,
               lowContrastResolution: data.lowContrastResolutionForCTScan || null,
               highContrastResolution: data.HighContrastResolutionForCTScan || null,
+              radiationProtectionSurvey: data.RadiationProtectionSurveyCTScan || null,
               alignmentOfTableGantry: data.AlignmentOfTableGantryCTScan || null,
               tablePosition: data.TablePositionCTScan || null,
               gantryTilt: data.GantryTiltCTScan || null,
@@ -268,6 +275,51 @@ const ViewServiceReportCTScan: React.FC = () => {
     return `±${tolerance}%`;
   };
 
+  // Helper to render High Contrast Resolution content (table2 or result/operatingParams)
+  const renderHighContrastContent = (hcr: any) => {
+    if (!hcr) return null;
+    if (hcr.table2?.length > 0) {
+      return (
+        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Size (mm)</th>
+                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Value</th>
+                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hcr.table2.map((row: any, i: number) => (
+                <tr key={i} className="text-center">
+                  <td className="border border-black p-2 print:p-1">{row.size || "-"}</td>
+                  <td className="border border-black p-2 print:p-1">{row.value || "-"}</td>
+                  <td className="border border-black p-2 print:p-1">{row.unit || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+    const res = hcr.result || {};
+    const op = hcr.operatingParams || {};
+    return (
+      <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+        <table className="w-full border-2 border-black text-sm print:text-[9px]" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', maxWidth: '500px' }}>
+          <tbody>
+            <tr className="bg-gray-50"><td className="border border-black p-2 print:p-1 font-medium" style={{ width: '40%' }}>Observed Size (mm)</td><td className="border border-black p-2 print:p-1">{res.observedSize ?? "-"}</td></tr>
+            <tr><td className="border border-black p-2 print:p-1 font-medium">Contrast Difference</td><td className="border border-black p-2 print:p-1">{res.contrastDifference ?? "-"}</td></tr>
+            <tr className="bg-gray-50"><td className="border border-black p-2 print:p-1 font-medium">kVp</td><td className="border border-black p-2 print:p-1">{op.kvp ?? "-"}</td></tr>
+            <tr><td className="border border-black p-2 print:p-1 font-medium">mAs</td><td className="border border-black p-2 print:p-1">{op.mas ?? "-"}</td></tr>
+            <tr className="bg-gray-50"><td className="border border-black p-2 print:p-1 font-medium">Slice Thickness (mm)</td><td className="border border-black p-2 print:p-1">{op.sliceThickness ?? "-"}</td></tr>
+            <tr><td className="border border-black p-2 print:p-1 font-medium">Window Width</td><td className="border border-black p-2 print:p-1">{op.ww ?? "-"}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   // Helper function to render test table for both tubes
   const renderTestTable = (
     testDataA: any,
@@ -304,6 +356,38 @@ const ViewServiceReportCTScan: React.FC = () => {
         filename: `CTScan-Report-${report?.testReportNumber || "report"}.pdf`,
         buttonSelector: ".download-pdf-btn",
       });
+      const pageCount = estimateReportPages("report-content");
+      const response = await getReportHeaderForCTScan(serviceId!, null);
+      if (response?.exists && response?.data && report) {
+        const d = response.data as any;
+        const payload = {
+          customerName: d.customerName,
+          address: d.address,
+          srfNumber: d.srfNumber,
+          srfDate: d.srfDate,
+          reportULRNumber: d.reportULRNumber,
+          testReportNumber: d.testReportNumber,
+          issueDate: d.issueDate,
+          nomenclature: d.nomenclature,
+          make: d.make,
+          model: d.model,
+          slNumber: d.slNumber,
+          condition: d.condition,
+          testingProcedureNumber: d.testingProcedureNumber,
+          engineerNameRPId: d.engineerNameRPId,
+          testDate: d.testDate,
+          testDueDate: d.testDueDate,
+          location: d.location,
+          temperature: d.temperature,
+          humidity: d.humidity,
+          toolsUsed: d.toolsUsed,
+          notes: d.notes,
+          pages: String(pageCount),
+        };
+        const { saveReportHeader } = await import("../../../../../../api");
+        await saveReportHeader(serviceId!, payload);
+        setReport((prev) => (prev ? { ...prev, pages: String(pageCount) } : null));
+      }
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
@@ -337,9 +421,9 @@ const ViewServiceReportCTScan: React.FC = () => {
     <>
       {/* Floating Buttons */}
       <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
-        <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
+        {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
-        </button>
+        </button> */}
         <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Download PDF
         </button>
@@ -430,6 +514,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                   ["Location", report.location],
                   ["Temperature (°C)", report.temperature || "-"],
                   ["Humidity (%)", report.humidity || "-"],
+                  ["No. of Pages", report.pages ?? "-"],
                 ].map(([label, value]) => (
                   <tr key={label} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                     <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</td>
@@ -503,18 +588,18 @@ const ViewServiceReportCTScan: React.FC = () => {
               <>
                 {/* Summary for Tube A */}
                 <div className="mb-8 print:mb-4 w-full flex flex-col items-center">
-                  <h3 className="text-xl font-bold text-center mb-4 print:mb-2 print:text-base" style={{ fontSize: '14px' }}>
+                  <h2 className="text-2xl font-bold text-center underline mb-4 print:mb-2 print:text-xl">
                     SUMMARY OF QA TEST RESULTS - TUBE A
-                  </h3>
+                  </h2>
                   <div className="w-full flex justify-center">
                     <MainTestTableForCTScan testData={testDataTubeA} />
                   </div>
                 </div>
                 {/* Summary for Tube B */}
                 <div className="mb-8 print:mb-4 w-full flex flex-col items-center">
-                  <h3 className="text-xl font-bold text-center mb-4 print:mb-2 print:text-base" style={{ fontSize: '14px' }}>
+                  <h2 className="text-2xl font-bold text-center underline mb-4 print:mb-2 print:text-xl">
                     SUMMARY OF QA TEST RESULTS - TUBE B
-                  </h3>
+                  </h2>
                   <div className="w-full flex justify-center">
                     <MainTestTableForCTScan testData={testDataTubeB} />
                   </div>
@@ -961,10 +1046,10 @@ const ViewServiceReportCTScan: React.FC = () => {
                         {testData.maLinearity.table2.map((row: any, i: number) => (
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mAsApplied || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgOutput || row.average || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.x || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.xMax || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.xMin || "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgOutput != null && row.avgOutput !== '' ? String(row.avgOutput) : (row.average != null && row.average !== '' ? String(row.average) : (row.measuredOutputs?.length ? (row.measuredOutputs.filter((v: any) => v != null && v !== '').join(', ') || "-") : "-"))}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.x != null && row.x !== '' ? String(row.x) : "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.xMax != null && row.xMax !== '' ? String(row.xMax) : "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.xMin != null && row.xMin !== '' ? String(row.xMin) : "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.col || "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                               <span className={row.remarks === "Pass" ? "text-green-600 font-bold" : row.remarks === "Fail" ? "text-red-600 font-bold" : ""}>
@@ -1077,8 +1162,8 @@ const ViewServiceReportCTScan: React.FC = () => {
                         {testData.ctdi.table2.map((row: any, i: number) => (
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.result || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.head || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.body || "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.head != null && row.head !== '' ? String(row.head) : "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.body != null && row.body !== '' ? String(row.body) : "-"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1349,57 +1434,63 @@ const ViewServiceReportCTScan: React.FC = () => {
             {testData.lowContrastResolution && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>9. Low Contrast Resolution</h3>
-                <div className="bg-gray-50 p-4 print:p-1 rounded border mb-4" style={{ padding: '2px 4px' }}>
-                  <p className="text-sm mb-2 print:text-[9px]" style={{ fontSize: '11px', marginBottom: '4px' }}>
-                    <strong>Observed Size:</strong> {testData.lowContrastResolution.result?.observedSize || testData.lowContrastResolution.observedSize || "-"} mm
-                  </p>
-                  <p className="text-sm mb-2 print:text-[9px]" style={{ fontSize: '11px', marginBottom: '4px' }}>
-                    <strong>Contrast Level:</strong> {testData.lowContrastResolution.result?.contrastLevel || testData.lowContrastResolution.contrastLevel || "-"}%
-                  </p>
-                  {testData.lowContrastResolution.acquisitionParams && (
-                    <>
-                      <p className="text-sm mb-2 print:text-[9px]" style={{ fontSize: '11px', marginBottom: '4px' }}>
-                        <strong>kVp:</strong> {testData.lowContrastResolution.acquisitionParams.kvp || "-"}
-                      </p>
-                      <p className="text-sm mb-2 print:text-[9px]" style={{ fontSize: '11px', marginBottom: '4px' }}>
-                        <strong>mA:</strong> {testData.lowContrastResolution.acquisitionParams.ma || "-"}
-                      </p>
-                      <p className="text-sm mb-2 print:text-[9px]" style={{ fontSize: '11px', marginBottom: '4px' }}>
-                        <strong>Slice Thickness:</strong> {testData.lowContrastResolution.acquisitionParams.sliceThickness || "-"} mm
-                      </p>
-                      <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                        <strong>Window Width:</strong> {testData.lowContrastResolution.acquisitionParams.ww || "-"}
-                      </p>
-                    </>
-                  )}
+                <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '500px' }}>
+                    <tbody>
+                      <tr className="bg-gray-50">
+                        <td className="border border-black p-2 print:p-1 font-medium" style={{ width: '40%' }}>Observed Size (mm)</td>
+                        <td className="border border-black p-2 print:p-1">{testData.lowContrastResolution.result?.observedSize || testData.lowContrastResolution.observedSize || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black p-2 print:p-1 font-medium">Contrast Level (%)</td>
+                        <td className="border border-black p-2 print:p-1">{testData.lowContrastResolution.result?.contrastLevel || testData.lowContrastResolution.contrastLevel || "-"}</td>
+                      </tr>
+                      {testData.lowContrastResolution.acquisitionParams && (
+                        <>
+                          <tr className="bg-gray-50">
+                            <td className="border border-black p-2 print:p-1 font-medium">kVp</td>
+                            <td className="border border-black p-2 print:p-1">{testData.lowContrastResolution.acquisitionParams.kvp || "-"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-black p-2 print:p-1 font-medium">mA</td>
+                            <td className="border border-black p-2 print:p-1">{testData.lowContrastResolution.acquisitionParams.ma || "-"}</td>
+                          </tr>
+                          <tr className="bg-gray-50">
+                            <td className="border border-black p-2 print:p-1 font-medium">Slice Thickness (mm)</td>
+                            <td className="border border-black p-2 print:p-1">{testData.lowContrastResolution.acquisitionParams.sliceThickness || "-"}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-black p-2 print:p-1 font-medium">Window Width</td>
+                            <td className="border border-black p-2 print:p-1">{testData.lowContrastResolution.acquisitionParams.ww || "-"}</td>
+                          </tr>
+                        </>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
             {/* 10. High Contrast Resolution */}
-            {testData.highContrastResolution && (
+            {(testData.highContrastResolution || (isDoubleTube && (testDataTubeA.highContrastResolution || testDataTubeB.highContrastResolution))) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. High Contrast Resolution</h3>
-                {testData.highContrastResolution.table2?.length > 0 && (
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Size (mm)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Value</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Unit</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testData.highContrastResolution.table2.map((row: any, i: number) => (
-                          <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.size || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.value || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.unit || "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                {isDoubleTube ? (
+                  <>
+                    {testDataTubeA.highContrastResolution && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-sm font-semibold mb-2 print:mb-1" style={{ fontSize: '11px' }}>Tube A</h4>
+                        {renderHighContrastContent(testDataTubeA.highContrastResolution)}
+                      </div>
+                    )}
+                    {testDataTubeB.highContrastResolution && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-sm font-semibold mb-2 print:mb-1" style={{ fontSize: '11px' }}>Tube B</h4>
+                        {renderHighContrastContent(testDataTubeB.highContrastResolution)}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  testData.highContrastResolution && renderHighContrastContent(testData.highContrastResolution)
                 )}
               </div>
             )}
@@ -1439,6 +1530,55 @@ const ViewServiceReportCTScan: React.FC = () => {
                 )}
               </div>
             )}
+            {/* Radiation Protection Survey Report */}
+            {(testData.radiationProtectionSurvey || testDataTubeA.radiationProtectionSurvey || testDataTubeB.radiationProtectionSurvey) && (() => {
+              const survey = testData.radiationProtectionSurvey || testDataTubeA.radiationProtectionSurvey || testDataTubeB.radiationProtectionSurvey;
+              return (
+              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>Radiation Protection Survey Report</h3>
+                {survey.locations?.length > 0 && (
+                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Location</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Radiation Level (mR/hr)</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Radiation Level (mR/week)</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Result</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Category</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {survey.locations.map((row: any, i: number) => (
+                          <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.location || "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mRPerHr ?? "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mRPerWeek ?? "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                              <span className={row.result === "Pass" || row.result === "PASS" ? "text-green-600 font-bold" : row.result === "Fail" || row.result === "FAIL" ? "text-red-600 font-bold" : ""}>
+                                {row.result ?? row.calculatedResult ?? "-"}
+                              </span>
+                            </td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.category ?? "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {(survey.surveyDate || survey.hasValidCalibration) && (
+                  <div className="mt-2 text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
+                    {survey.surveyDate && (
+                      <p><strong>Survey Date:</strong> {formatDate(survey.surveyDate)}</p>
+                    )}
+                    {survey.hasValidCalibration && (
+                      <p><strong>Valid Calibration:</strong> {survey.hasValidCalibration}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              );
+            })()}
             {/* 12. Alignment of Table/Gantry */}
             {testData.alignmentOfTableGantry && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>

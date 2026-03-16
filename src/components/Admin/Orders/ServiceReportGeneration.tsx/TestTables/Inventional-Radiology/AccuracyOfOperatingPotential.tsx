@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
   addAccuracyOfOperatingPotentialForInventionalRadiology,
@@ -7,14 +7,14 @@ import {
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
 
+// mA columns are dynamic: maColumnLabels e.g. ["10", "100", "200"], row.ma keyed by label
 interface Table2Row {
   id: string;
   setKV: string;
-  ma10: string;
-  ma100: string;
-  ma200: string;
+  ma: Record<string, string>;
   avgKvp: string;
   remarks: 'Pass' | 'Fail' | '';
+  failedCells?: Record<string, boolean>;
 }
 
 interface Props {
@@ -25,12 +25,15 @@ interface Props {
   csvData?: any[];
 }
 
+const emptyMa = (labels: string[]) => labels.reduce((acc, l) => ({ ...acc, [l]: '' }), {} as Record<string, string>);
+const emptyFailed = (labels: string[]) => ({ ...Object.fromEntries(labels.map(l => [l, false])), avgKvp: false });
+
 const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
-  // Table 2: Dynamic rows
+  const [maColumnLabels, setMaColumnLabels] = useState<string[]>(['10', '100', '200']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-    { id: '1', setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' },
+    { id: '1', setKV: '', ma: { '10': '', '100': '', '200': '' }, avgKvp: '', remarks: '', failedCells: { '10': false, '100': false, '200': false, avgKvp: false } },
   ]);
 
   const [toleranceValue, setToleranceValue] = useState<string>('5');
@@ -42,18 +45,16 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // === Table 2: Add/Remove ===
   const addTable2Row = () => {
     setTable2Rows((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
         setKV: '',
-        ma10: '',
-        ma100: '',
-        ma200: '',
+        ma: emptyMa(maColumnLabels),
         avgKvp: '',
         remarks: '',
+        failedCells: emptyFailed(maColumnLabels),
       },
     ]);
   };
@@ -63,64 +64,99 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
     setTable2Rows((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const updateTable2 = (
-    id: string,
-    field: 'setKV' | 'ma10' | 'ma100' | 'ma200',
-    value: string
-  ) => {
+  const addMaColumn = () => {
+    const last = maColumnLabels[maColumnLabels.length - 1];
+    const num = Number(last);
+    const newLabel = !isNaN(num) ? String(num + (num >= 100 ? 100 : 10)) : `mA${maColumnLabels.length + 1}`;
+    setMaColumnLabels((prev) => [...prev, newLabel]);
     setTable2Rows((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+      prev.map((r) => ({
+        ...r,
+        ma: { ...r.ma, [newLabel]: '' },
+        failedCells: { ...(r.failedCells || {}), [newLabel]: false },
+      }))
     );
   };
 
-  // === Auto-calculate Avg & Pass/Fail ===
-  useEffect(() => {
+  const removeMaColumn = (index: number) => {
+    if (maColumnLabels.length <= 1) return;
+    const label = maColumnLabels[index];
+    setMaColumnLabels((prev) => prev.filter((_, i) => i !== index));
     setTable2Rows((prev) =>
-      prev.map((row) => {
-        const values = [row.ma10, row.ma100, row.ma200]
-          .map((v) => parseFloat(v))
-          .filter((v) => !isNaN(v));
-        const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
-
-        const setKV = parseFloat(row.setKV);
-        if (isNaN(setKV) || avg === '') {
-          return { ...row, avgKvp: avg, remarks: '' };
-        }
-
-        const measured = parseFloat(avg);
-        let withinTolerance = false;
-
-        if (toleranceType === 'percent') {
-          const tolerance = parseFloat(toleranceValue) || 0;
-          const allowedDiff = (setKV * tolerance) / 100;
-          if (toleranceSign === 'plus') withinTolerance = measured <= setKV + allowedDiff;
-          else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - allowedDiff;
-          else withinTolerance = Math.abs(measured - setKV) <= allowedDiff;
-        } else {
-          const tolerance = parseFloat(toleranceValue) || 0;
-          if (toleranceSign === 'plus') withinTolerance = measured <= setKV + tolerance;
-          else if (toleranceSign === 'minus') withinTolerance = measured >= setKV - tolerance;
-          else withinTolerance = Math.abs(measured - setKV) <= tolerance;
-        }
-
-        return {
-          ...row,
-          avgKvp: avg,
-          remarks: withinTolerance ? 'Pass' : 'Fail',
-        };
+      prev.map((r) => {
+        const { [label]: _, ...restMa } = r.ma;
+        const failed = { ...(r.failedCells || {}) };
+        delete failed[label];
+        return { ...r, ma: restMa, failedCells: failed };
       })
     );
-  }, [table2Rows, toleranceValue, toleranceType, toleranceSign]);
+  };
 
-  // === Form Valid ===
+  const checkTolerance = useCallback((measured: number, setKV: number): boolean => {
+    if (isNaN(measured) || isNaN(setKV) || setKV <= 0) return false;
+    if (toleranceType === 'percent') {
+      const tolerance = parseFloat(toleranceValue) || 0;
+      const allowedDiff = (setKV * tolerance) / 100;
+      if (toleranceSign === 'plus') return measured <= setKV + allowedDiff;
+      if (toleranceSign === 'minus') return measured >= setKV - allowedDiff;
+      return Math.abs(measured - setKV) <= allowedDiff;
+    }
+    const tolerance = parseFloat(toleranceValue) || 0;
+    if (toleranceSign === 'plus') return measured <= setKV + tolerance;
+    if (toleranceSign === 'minus') return measured >= setKV - tolerance;
+    return Math.abs(measured - setKV) <= tolerance;
+  }, [toleranceValue, toleranceType, toleranceSign]);
+
+  const calculateRowValues = useCallback((row: Table2Row): Table2Row => {
+    const setKV = parseFloat(row.setKV);
+    const labels = maColumnLabels;
+    if (isNaN(setKV) || setKV <= 0) {
+      return { ...row, avgKvp: '', remarks: '', failedCells: emptyFailed(labels) };
+    }
+    const failedCells: Record<string, boolean> = {};
+    let allPass = true;
+    const values: number[] = [];
+    for (const label of labels) {
+      const val = parseFloat(row.ma[label] ?? '');
+      const pass = isNaN(val) || checkTolerance(val, setKV);
+      failedCells[label] = !isNaN(val) && !pass;
+      if (!pass) allPass = false;
+      if (!isNaN(val)) values.push(val);
+    }
+    const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) : '';
+    const avgPass = avg === '' || checkTolerance(parseFloat(avg), setKV);
+    failedCells.avgKvp = avg !== '' && !avgPass;
+    if (!avgPass) allPass = false;
+    return {
+      ...row,
+      avgKvp: avg,
+      remarks: allPass ? 'Pass' : 'Fail',
+      failedCells,
+    };
+  }, [checkTolerance, maColumnLabels]);
+
+  useEffect(() => {
+    setTable2Rows((prev) => prev.map((row) => calculateRowValues(row)));
+  }, [calculateRowValues]);
+
+  const updateTable2 = (id: string, field: 'setKV' | string, value: string) => {
+    setTable2Rows((prev) =>
+      prev.map((row) => {
+        if (row.id !== id) return row;
+        if (field === 'setKV') return calculateRowValues({ ...row, setKV: value });
+        if (maColumnLabels.includes(field)) return calculateRowValues({ ...row, ma: { ...row.ma, [field]: value } });
+        return row;
+      })
+    );
+  };
+
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
-      table2Rows.every((r) => r.setKV.trim() && (r.ma10.trim() || r.ma100.trim() || r.ma200.trim()))
+      table2Rows.every((r) => r.setKV.trim() && maColumnLabels.some((l) => (r.ma[l] || '').trim()))
     );
-  }, [serviceId, table2Rows]);
+  }, [serviceId, table2Rows, maColumnLabels]);
 
-  // === Load Existing Data ===
   useEffect(() => {
     if (!serviceId) {
       setIsLoading(false);
@@ -136,25 +172,36 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         const rec = res.data;
         if (rec._id) setTestId(rec._id);
 
-        // Table 2
         if (Array.isArray(rec.table2) && rec.table2.length > 0) {
+          const labels = Array.isArray(rec.maColumnLabels) && rec.maColumnLabels.length > 0
+            ? rec.maColumnLabels.map((l: any) => String(l))
+            : ['10', '100', '200'];
+          setMaColumnLabels(labels);
           setTable2Rows(
-            rec.table2.map((r: any) => ({
-              id: Date.now().toString() + Math.random(),
-              setKV: String(r.setKV || ''),
-              ma10: String(r.ma10 || ''),
-              ma100: String(r.ma100 || ''),
-              ma200: String(r.ma200 || ''),
-              avgKvp: '',
-              remarks: r.remarks || '',
-            }))
+            rec.table2.map((r: any) => {
+              const ma: Record<string, string> = {};
+              if (r.ma && typeof r.ma === 'object') {
+                labels.forEach((l: string) => { ma[l] = String(r.ma[l] ?? ''); });
+              } else {
+                ma['10'] = String(r.ma10 ?? '');
+                ma['100'] = String(r.ma100 ?? '');
+                ma['200'] = String(r.ma200 ?? '');
+              }
+              return {
+                id: Date.now().toString() + Math.random(),
+                setKV: String(r.setKV ?? ''),
+                ma,
+                avgKvp: '',
+                remarks: (r.remarks || '') as 'Pass' | 'Fail' | '',
+                failedCells: emptyFailed(labels),
+              };
+            })
           );
         }
 
-        // Tolerance
         if (rec.tolerance) {
-          setToleranceValue(rec.tolerance.value);
-          setToleranceType(rec.tolerance.type);
+          setToleranceValue(rec.tolerance.value || rec.tolerance);
+          setToleranceType(rec.tolerance.type || 'percent');
           setToleranceSign(rec.tolerance.sign || 'both');
         }
 
@@ -169,98 +216,68 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
     load();
   }, [serviceId, tubeId, propTestId]);
 
-  // CSV Data Injection
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
-      // Table 2 Results
-      const table2Results = csvData.filter(r => r['Field Name'] === 'Table2_SetKV' || r['Field Name'] === 'Table2_MeasuredKV');
-      if (table2Results.length > 0) {
-        const rowIndices = Array.from(new Set(table2Results.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
-        const newRows = rowIndices.map(idx => {
-          const setKV = csvData.find(r => r['Field Name'] === 'Table2_SetKV' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-          const measuredKV = csvData.find(r => r['Field Name'] === 'Table2_MeasuredKV' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-          
-          return {
-            id: Date.now().toString() + Math.random() + idx,
-            setKV,
-            ma10: measuredKV, // For IR, it might be measured at different mA. Simple mapping for now.
-            ma100: '',
-            ma200: '',
-            avgKvp: '',
-            remarks: '' as 'Pass' | 'Fail' | '',
-          };
-        });
-        if (newRows.length > 0) setTable2Rows(newRows as Table2Row[]);
-      }
-
-      // Tolerance
-      const tolOp = csvData.find(r => r['Field Name'] === 'ToleranceOperator')?.['Value'];
-      const tolVal = csvData.find(r => r['Field Name'] === 'ToleranceValue')?.['Value'];
-      if (tolVal) setToleranceValue(tolVal);
-
-      if (!testId) {
-        setIsEditing(true);
-      }
+    if (!csvData || csvData.length === 0) return;
+    const table2Results = csvData.filter(r => r['Field Name'] === 'Table2_SetKV' || r['Field Name'] === 'Table2_MeasuredKV');
+    if (table2Results.length > 0) {
+      const rowIndices = Array.from(new Set(table2Results.map(r => parseInt(r['Row Index'])))).filter(i => !isNaN(i)).sort((a, b) => a - b);
+      const newRows = rowIndices.map(idx => {
+        const setKV = csvData.find(r => r['Field Name'] === 'Table2_SetKV' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+        const measuredKV = csvData.find(r => r['Field Name'] === 'Table2_MeasuredKV' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
+        const ma = emptyMa(maColumnLabels);
+        if (maColumnLabels[0]) ma[maColumnLabels[0]] = measuredKV;
+        return {
+          id: Date.now().toString() + Math.random() + idx,
+          setKV,
+          ma,
+          avgKvp: '',
+          remarks: '' as 'Pass' | 'Fail' | '',
+          failedCells: emptyFailed(maColumnLabels),
+        };
+      });
+      if (newRows.length > 0) setTable2Rows(newRows.map(row => calculateRowValues(row)));
     }
-  }, [csvData, testId]);
+    const tolVal = csvData.find(r => r['Field Name'] === 'ToleranceValue')?.['Value'];
+    if (tolVal) setToleranceValue(tolVal);
+    if (!testId) setIsEditing(true);
+  }, [csvData, testId, maColumnLabels]);
 
-  // === Save / Update ===
   const handleSave = async () => {
     if (!isFormValid) return;
     setIsSaving(true);
 
     const payload = {
       tubeId: tubeId === null ? 'null' : tubeId,
-      table2: table2Rows.map((r) => {
-        const values = [r.ma10, r.ma100, r.ma200]
-          .map(v => parseFloat(v))
-          .filter(v => !isNaN(v));
-
-        const avgKvp = values.length > 0
-          ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
-          : null;
-
-        const setKV = parseFloat(r.setKV);
-        let deviation = null;
-        if (avgKvp && !isNaN(setKV)) {
-          deviation = ((parseFloat(avgKvp) - setKV) / setKV * 100).toFixed(2);
-        }
-
-        return {
-          setKV: setKV,
-          ma10: parseFloat(r.ma10) || null,
-          ma100: parseFloat(r.ma100) || null,
-          ma200: parseFloat(r.ma200) || null,
-          avgKvp: avgKvp ? parseFloat(avgKvp) : null,
-          deviation: deviation ? parseFloat(deviation) : null,
-          remarks: r.remarks,
-        };
-      }),
+      maColumnLabels,
+      table2: table2Rows.map((r) => ({
+        setKV: r.setKV,
+        ma: { ...r.ma },
+        avgKvp: r.avgKvp || '',
+        remarks: r.remarks,
+      })),
       toleranceValue,
       toleranceType,
       toleranceSign,
     };
 
     try {
-      let res;
       if (testId) {
-        res = await updateAccuracyOfOperatingPotentialForInventionalRadiology(testId, payload);
-        // Assuming testId is already set and valid here, so no newId needed for setTestId
-        if (testId) onTestSaved?.(testId as string); // Call onTestSaved with existing testId
+        await updateAccuracyOfOperatingPotentialForInventionalRadiology(testId, payload);
+        onTestSaved?.(testId);
         toast.success('Updated successfully!');
       } else {
-        res = await addAccuracyOfOperatingPotentialForInventionalRadiology(serviceId, payload);
-        const newId = res.data?._id || res.data?.testId;
+        const res = await addAccuracyOfOperatingPotentialForInventionalRadiology(serviceId, payload);
+        const newId = res?.data?._id || res?.data?.testId;
         if (newId) {
           setTestId(newId);
-          onTestSaved?.(newId as string);
+          onTestSaved?.(newId);
         }
-        toast.success("Saved successfully!");
+        toast.success('Saved successfully!');
       }
       setHasSaved(true);
       setIsEditing(false);
     } catch (e: any) {
-      toast.error(e.message || 'Save failed');
+      toast.error(e?.response?.data?.message || e?.message || 'Save failed');
     } finally {
       setIsSaving(false);
     }
@@ -290,7 +307,6 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         Accuracy of kVp at Different mA Stations {tubeId ? `- ${tubeId === 'frontal' ? 'Tube Frontal' : 'Tube Lateral'}` : ''}
       </h2>
 
-      {/* Table 2 */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
           kV Measurement at Different mA
@@ -302,15 +318,21 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
                   Set kV
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                  @ mA 10
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                  @ mA 100
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-                  @ mA 200
-                </th>
+                {maColumnLabels.map((label, idx) => (
+                  <th key={label} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                    <span>@ mA {label}</span>
+                    {!isViewMode && maColumnLabels.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeMaColumn(idx)}
+                        className="ml-1 text-red-600 hover:bg-red-50 p-0.5 rounded"
+                        title="Remove column"
+                      >
+                        <Trash2 className="w-3 h-3 inline" />
+                      </button>
+                    )}
+                  </th>
+                ))}
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
                   Avg kVp
                 </th>
@@ -329,60 +351,27 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                       value={row.setKV}
                       onChange={(e) => updateTable2(row.id, 'setKV', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                        : 'border-gray-300'
-                        }`}
+                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                       placeholder="80"
                     />
                   </td>
-                  <td className="px-4 py-2 border-r">
-                    <input
-                      type="text"
-                      value={row.ma10}
-                      onChange={(e) => updateTable2(row.id, 'ma10', e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                        : 'border-gray-300'
-                        }`}
-                    />
-                  </td>
-                  <td className="px-4 py-2 border-r">
-                    <input
-                      type="text"
-                      value={row.ma100}
-                      onChange={(e) => updateTable2(row.id, 'ma100', e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                        : 'border-gray-300'
-                        }`}
-                    />
-                  </td>
-                  <td className="px-4 py-2 border-r">
-                    <input
-                      type="text"
-                      value={row.ma200}
-                      onChange={(e) => updateTable2(row.id, 'ma200', e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                        ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                        : 'border-gray-300'
-                        }`}
-                    />
-                  </td>
-                  <td className="px-4 py-2 border-r font-medium bg-gray-50 text-center">
+                  {maColumnLabels.map((label) => (
+                    <td key={label} className={`px-4 py-2 border-r ${row.failedCells?.[label] ? 'bg-red-50' : ''}`}>
+                      <input
+                        type="text"
+                        value={row.ma[label] ?? ''}
+                        onChange={(e) => updateTable2(row.id, label, e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : row.failedCells?.[label] ? 'border-red-500' : 'border-gray-300'}`}
+                      />
+                    </td>
+                  ))}
+                  <td className={`px-4 py-2 border-r font-medium text-center ${row.failedCells?.avgKvp ? 'bg-red-50' : 'bg-gray-50'}`}>
                     {row.avgKvp || '-'}
                   </td>
                   <td className="px-4 py-2 text-center">
                     <span
-                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass'
-                        ? 'bg-green-100 text-green-800'
-                        : row.remarks === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'text-gray-400'
-                        }`}
+                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass' ? 'bg-green-100 text-green-800' : row.remarks === 'Fail' ? 'bg-red-100 text-red-800' : 'text-gray-400'}`}
                     >
                       {row.remarks || '—'}
                     </span>
@@ -403,18 +392,23 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
           </table>
         </div>
         {!isViewMode && (
-          <div className="px-6 py-3 bg-gray-50 border-t">
+          <div className="px-6 py-3 bg-gray-50 border-t flex flex-wrap gap-2">
             <button
               onClick={addTable2Row}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
             >
               <Plus className="w-4 h-4" /> Add Row
             </button>
+            <button
+              onClick={addMaColumn}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" /> Add mA Column
+            </button>
           </div>
         )}
       </div>
 
-      {/* Tolerance */}
       <div className="bg-white p-6 shadow-md rounded-lg">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Tolerance Setting</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -425,10 +419,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
               value={toleranceValue}
               onChange={(e) => setToleranceValue(e.target.value)}
               disabled={isViewMode}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                : 'border-gray-300'
-                }`}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
               min="0"
               step="0.1"
             />
@@ -439,10 +430,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
               value={toleranceType}
               onChange={(e) => setToleranceType(e.target.value as any)}
               disabled={isViewMode}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                : 'border-gray-300'
-                }`}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
             >
               <option value="percent">%</option>
               <option value="absolute">kVp</option>
@@ -454,10 +442,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
               value={toleranceSign}
               onChange={(e) => setToleranceSign(e.target.value as any)}
               disabled={isViewMode}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-                ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-                : 'border-gray-300'
-                }`}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
             >
               <option value="both">± (Both)</option>
               <option value="plus">+ Only</option>
@@ -466,24 +451,15 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
           </div>
         </div>
         <p className="mt-3 text-sm text-gray-600">
-          Current: <strong>
-            {toleranceSign === 'both' ? '±' : toleranceSign === 'plus' ? '+' : '-'}
-            {toleranceValue}{toleranceType === 'percent' ? '%' : ' kVp'}
-          </strong>
+          Current: <strong>{toleranceSign === 'both' ? '±' : toleranceSign === 'plus' ? '+' : '-'}{toleranceValue}{toleranceType === 'percent' ? '%' : ' kVp'}</strong>
         </p>
       </div>
 
-      {/* SAVE BUTTON */}
       <div className="flex justify-end mt-6">
         <button
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving || (!isViewMode && !isFormValid)}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-            }`}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid) ? 'bg-gray-400 cursor-not-allowed' : isViewMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'}`}
         >
           {isSaving ? (
             <>

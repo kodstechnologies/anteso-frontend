@@ -103,7 +103,7 @@ const HighContrastResolutionForCTScan: React.FC<Props> = ({
         if (propTestId) {
           data = await getHighContrastResolutionForCTScan(propTestId);
         } else {
-          data = await getHighContrastResolutionByServiceIdForCTScan(serviceId);
+          data = await getHighContrastResolutionByServiceIdForCTScan(serviceId, tubeId ?? null);
         }
 
         if (data) {
@@ -149,7 +149,7 @@ const HighContrastResolutionForCTScan: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [propTestId, serviceId]);
+  }, [propTestId, serviceId, tubeId]);
 
   // Save / Update
   const handleSave = async () => {
@@ -177,6 +177,7 @@ const HighContrastResolutionForCTScan: React.FC<Props> = ({
         expectedSize: expectedSize.trim(),
         expectedLpCm: expectedLpCm.trim(),
       },
+      tubeId: tubeId ?? null,
     };
 
     try {

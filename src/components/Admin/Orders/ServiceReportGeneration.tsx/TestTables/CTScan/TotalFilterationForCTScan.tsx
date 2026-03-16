@@ -127,7 +127,7 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
                     const response = await getTotalFilterationByTestId(propTestId);
                     rec = response.data || response;
                 } else {
-                    rec = await getTotalFilterationByServiceId(serviceId);
+                    rec = await getTotalFilterationByServiceId(serviceId, tubeId ?? null);
                 }
 
                 if (rec) {
@@ -160,7 +160,7 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
         };
 
         load();
-    }, [serviceId, propTestId]);
+    }, [serviceId, propTestId, tubeId]);
 
     // === Save / Update ===
     const handleSave = async () => {
@@ -174,6 +174,7 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
                     measuredTF: parseFloat(row.measuredTF),
                 },
             ],
+            tubeId: tubeId ?? null,
         };
 
         try {
