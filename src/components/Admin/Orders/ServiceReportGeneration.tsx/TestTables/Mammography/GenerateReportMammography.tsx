@@ -275,59 +275,64 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 }
             }
 
-            // Process Accuracy of Operating Potential
+            // Process Accuracy of Operating Potential (kVp) – use dynamic measurement columns similar to Radiography Fixed,
+            // but only populate the AccuracyOfOperatingPotential table (no Total Filtration here).
             if (groupedData['Accuracy of Operating Potential'] && groupedData['Accuracy of Operating Potential'].length > 0) {
                 try {
                     const data = groupedData['Accuracy of Operating Potential'];
                     console.log('Processing Accuracy of Operating Potential, rows:', data.length);
-                    const table1Row = { time: '', sliceThickness: '' };
-                    const table2Rows: any[] = [];
-                    let tolerance = { value: '1.5', type: 'absolute' as const, sign: 'both' as const };
 
-                    data.forEach((row, idx) => {
+                    const table1Row = { time: '', sliceThickness: '' };
+                    const measHeaders: string[] = [];
+                    const kVpMeasurements: any[] = [];
+                    const tol: any = {};
+                    let currentBlock: any = null;
+
+                    data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();
                         const value = (row['Value'] || '').trim();
-                        const rowIndexStr = (row['Row Index'] || '').trim();
-                        const rowIndex = rowIndexStr === '' ? 0 : parseInt(rowIndexStr) || 0;
-
-                        if (idx < 5) {
-                            console.log(`  Row ${idx}: field="${field}", value="${value}", rowIndex="${rowIndexStr}" -> ${rowIndex}`);
-                        }
 
                         if (field === 'Table1_Time') table1Row.time = value;
                         if (field === 'Table1_SliceThickness') table1Row.sliceThickness = value;
 
-                        if (field.startsWith('Table2_')) {
-                            while (table2Rows.length <= rowIndex) {
-                                table2Rows.push({ setKV: '', ma10: '', ma100: '', ma200: '', avgKvp: '', remarks: '' });
-                            }
-                            const fieldName = field.replace('Table2_', '');
-                            if (fieldName === 'SetKV') table2Rows[rowIndex].setKV = value;
-                            if (fieldName === 'ma10') table2Rows[rowIndex].ma10 = value;
-                            if (fieldName === 'ma100') table2Rows[rowIndex].ma100 = value;
-                            if (fieldName === 'ma200') table2Rows[rowIndex].ma200 = value;
+                        if (field === 'MeasHeader') {
+                            measHeaders.push(value);
+                        } else if (field === 'Measurement_AppliedKvp') {
+                            // Start a new measurement block (one row in the table)
+                            currentBlock = { setKV: value, measurements: [] as string[] };
+                            kVpMeasurements.push(currentBlock);
+                        } else if (field.startsWith('Measurement_Meas') && currentBlock) {
+                            currentBlock.measurements.push(value);
+                        } else if (field.startsWith('Tolerance_')) {
+                            tol[field.split('_')[1]] = value;
                         }
-
-                        if (field === 'Tolerance_Value') tolerance.value = value;
-                        if (field === 'Tolerance_Type') tolerance.type = value as any;
-                        if (field === 'Tolerance_Sign') tolerance.sign = value as any;
                     });
 
-                    console.log('Accuracy of Operating Potential - table1Row:', table1Row);
-                    console.log('Accuracy of Operating Potential - table2Rows:', table2Rows);
-                    console.log('Accuracy of Operating Potential - tolerance:', tolerance);
+                    // Convert measurement blocks into the table2 format expected by AccuracyOfOperatingPotential
+                    const table2 = kVpMeasurements.map(block => {
+                        const row: any = { setKV: block.setKV, ma10: '', ma100: '', ma200: '' };
+                        if (block.measurements[0] !== undefined) row.ma10 = block.measurements[0];
+                        if (block.measurements[1] !== undefined) row.ma100 = block.measurements[1];
+                        if (block.measurements[2] !== undefined) row.ma200 = block.measurements[2];
+                        return row;
+                    });
 
-                    if (table1Row.time || table1Row.sliceThickness || table2Rows.length > 0) {
-                        // Store data for component instead of saving
+                    if (table1Row.time || table1Row.sliceThickness || table2.length > 0) {
                         setCsvDataForComponents(prev => ({
                             ...prev,
                             accuracyOfOperatingPotential: {
                                 table1: [table1Row],
-                                table2: table2Rows,
-                                tolerance: tolerance,
-                            }
+                                table2,
+                                // Default tolerance same as component defaults if not provided
+                                tolerance: {
+                                    value: tol.Value || tol.value || '1.5',
+                                    type: (tol.Type || tol.type || 'absolute') as 'percent' | 'absolute',
+                                    sign: (tol.Sign || tol.sign || 'both') as 'plus' | 'minus' | 'both',
+                                },
+                                measHeaders,
+                            },
                         }));
-                        console.log('✓ Accuracy of Operating Potential data prepared for form');
+                        console.log('✓ Accuracy of Operating Potential data prepared for form (dynamic columns)');
                     } else {
                         console.log('⚠ Accuracy of Operating Potential: No data found');
                     }
@@ -345,7 +350,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     const testConditions = { fcd: '', kv: '', ma: '' };
                     const irradiationTimes: any[] = [];
                     let toleranceOperator = '<=';
-                    let toleranceValue = '10';
+                    let toleranceValue = '5';
 
                     data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();
@@ -1484,7 +1489,18 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     { title: "Reproducibility of Radiation Output", component: <ReproducibilityOfOutput key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.reproducibilityOfOutput} /> },
                     { title: "Radiation Leakage Level (5 cm from Tube Housing)", component: <RadiationLeakageLevel key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.radiationLeakageLevel} /> },
                     { title: "Imaging Performance Evaluation (Phantom)", component: <ImagingPhantom key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.imagingPhantom} /> },
-                    { title: "Radiation Protection Survey", component: <RadiationProtectionSurvey key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.radiationProtectionSurvey} /> },
+                    {
+                        title: "Radiation Protection Survey",
+                        component: (
+                            <RadiationProtectionSurvey
+                                key={refreshKey}
+                                serviceId={serviceId}
+                                refreshKey={refreshKey}
+                                initialSurveyDate={formData.testDate || qaTestDate || undefined}
+                                initialData={csvDataForComponents.radiationProtectionSurvey}
+                            />
+                        )
+                    },
                     { title: "Equipment Settings Verification", component: <EquipementSetting key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} /> },
                     { title: "Maximum Radiation Levels at Different Locations", component: <MaximumRadiationLevel key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} /> },
                 ].map((item, i) => (

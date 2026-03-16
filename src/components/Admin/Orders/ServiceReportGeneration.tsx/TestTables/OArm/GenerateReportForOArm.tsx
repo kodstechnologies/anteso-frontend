@@ -33,6 +33,7 @@ import LowContrastResolution from "./LowContrastResolution";
 import ExposureRateAtTableTop from "./ExposureRateAtTableTop";
 import TubeHousingLeakage from "./TubeHousingLeakage";
 import LinearityOfMasLoadingStations from "./LinearityOfMasLoadingStations";
+import AccuracyOfIrradiationTimeOArm from "./AccuracyOfIrradiationTimeOArm";
 
 export interface Standard {
   slNumber: string;
@@ -511,7 +512,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       'Accuracy of Irradiation Time': {
         'FCD': 'Table1_fcd', 'kV': 'Table1_kv', 'mA': 'Table1_ma',
         'Set Time (ms)': 'Table2_setTime', 'Measured Time (ms)': 'Table2_measuredTime',
-        'Tolerance': 'Tolerance_Value',
+        'Tolerance': 'Tolerance_Value', 'Tolerance Operator': 'Tolerance_Operator',
       },
     };
 
@@ -964,6 +965,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
+          ...(hasTimer ? [{ title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTimeOArm serviceId={serviceId} csvData={csvDataForComponents['Accuracy of Irradiation Time']} /> }] : []),
           { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} /> },
           { title: "Consistency Of Radiation Output", component: <OutputConsisitency serviceId={serviceId} csvData={csvDataForComponents['Output Consistency']} /> },
           { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} csvData={csvDataForComponents['High Contrast Resolution']} /> },

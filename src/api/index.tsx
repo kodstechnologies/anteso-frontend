@@ -4776,6 +4776,15 @@ export const getExposureRateTableTopByTestIdForFixedRadioFluro = async (testId: 
     return res.data;
 };
 
+export const getExposureRateByServiceIdForFixedRadioFluro = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/fixed-radio-fluro/exposure-rate-by-service/${serviceId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 export const updateExposureRateTableTopForFixedRadioFluro = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
@@ -6563,6 +6572,50 @@ export const updateLinearityOfMasLoadingStationForOArm = async (testId: string, 
     const res = await api.put(`/service-report/o-arm/linearity-of-mas-loading-station/${testId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
+    return res.data;
+};
+
+// Accuracy of Irradiation Time - O-Arm
+export const addAccuracyOfIrradiationTimeForOArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/o-arm/accuracy-of-irradiation-time/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getAccuracyOfIrradiationTimeByServiceIdForOArm = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/o-arm/accuracy-of-irradiation-time-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+
+export const getAccuracyOfIrradiationTimeForOArm = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/o-arm/accuracy-of-irradiation-time/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const updateAccuracyOfIrradiationTimeForOArm = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/o-arm/accuracy-of-irradiation-time/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
     return res.data;
 };
 

@@ -273,9 +273,9 @@ const ViewServiceReportCArm: React.FC = () => {
     <>
       {/* Floating Buttons */}
       <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
-        <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
+        {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
-        </button>
+        </button> */}
         <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Download PDF
         </button>
@@ -825,7 +825,7 @@ const ViewServiceReportCArm: React.FC = () => {
               </div>
             )}
 
-            {/* 8. Tube Housing Leakage — same table as RadiographyFixed "8. Radiation Leakage Level" */}
+            {/* 8. Tube Housing Leakage — same layout/structure as RadiographyFixed "8. Radiation Leakage Level", no row/column colors */}
             {(() => {
               const thl = testData.tubeHousingLeakage;
               const rows = Array.isArray(thl?.leakageMeasurements) && thl.leakageMeasurements.length > 0
@@ -846,34 +846,35 @@ const ViewServiceReportCArm: React.FC = () => {
                       return num.length > 0 ? Math.max(...num).toFixed(3) : '';
                     })();
               const showMeasuredBlock = (measuredMax !== '') || (thl.toleranceValue != null && thl.toleranceValue !== '');
+              const thTdStyle = { padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' as const };
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                   <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>8. Tube Housing Leakage</h3>
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                      <thead className="bg-gray-100">
+                      <thead>
                         <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Location</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Front</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Back</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Left</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Right</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Top</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>Location</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>Front</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>Back</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>Left</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>Right</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>Top</th>
                         </tr>
                       </thead>
                       <tbody>
                         {rows.length > 0 ? rows.map((row: any, i: number) => (
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.location || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.front ?? row.top ?? "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.back ?? row.up ?? "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.left || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.right || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.top ?? row.down ?? "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>{row.location || "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>{row.front ?? row.top ?? "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>{row.back ?? row.up ?? "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>{row.left || "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>{row.right || "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={thTdStyle}>{row.top ?? row.down ?? "-"}</td>
                           </tr>
                         )) : (
                           <tr>
-                            <td colSpan={6} className="border border-black p-2 print:p-1 text-center text-gray-500" style={{ fontSize: '11px' }}>No leakage measurements recorded.</td>
+                            <td colSpan={6} className="border border-black p-2 print:p-1 text-center" style={{ fontSize: '11px' }}>No leakage measurements recorded.</td>
                           </tr>
                         )}
                       </tbody>

@@ -12,7 +12,7 @@ interface Table1Row {
   time: string;
   sliceThickness: string;
 }
-
+  
 interface Table2Row {
   id: string;
   setKV: string;

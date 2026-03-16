@@ -21,9 +21,16 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
     return Object.keys(obj).length === 0;
   };
 
-  // Debug logging
-  console.log("MainTestTableForFixedRadioFluro - testData:", testData);
-  console.log("MainTestTableForFixedRadioFluro - testData keys:", Object.keys(testData));
+  // Compute CoV from outputs array (when backend doesn't return cv)
+  const computeCovFromOutputs = (outputs: any[]): number | null => {
+    if (!Array.isArray(outputs) || outputs.length === 0) return null;
+    const values = outputs.map((o: any) => parseFloat(o?.value ?? o)).filter((v: number) => !isNaN(v) && v > 0);
+    if (values.length === 0) return null;
+    const avg = values.reduce((a: number, b: number) => a + b, 0) / values.length;
+    const variance = values.reduce((sum: number, val: number) => sum + Math.pow(val - avg, 2), 0) / values.length;
+    const stdDev = Math.sqrt(variance);
+    return avg > 0 ? stdDev / avg : null;
+  };
 
   const addRowsForTest = (
     parameter: string,
@@ -55,9 +62,99 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
     });
   };
 
-  // 1. Accuracy of Irradiation Time (Timer Test)
+  // ——— Order matches GenerateServiceReport: Congruence, Central Beam, Effective Focal Spot, then rest ———
+
+  // 1. Congruence of Radiation & Light Field
+  if (testData.congruenceOfRadiation && !isEmpty(testData.congruenceOfRadiation)) {
+    const cm = testData.congruenceOfRadiation.congruenceMeasurements;
+    if (Array.isArray(cm) && cm.length > 0) {
+      const testRows = cm.map((m: any) => {
+        const percentFED = m.percentFED != null ? parseFloat(m.percentFED) : null;
+        const tolVal = m.tolerance != null ? parseFloat(m.tolerance) : 2;
+        const isPass = percentFED != null ? percentFED <= tolVal : (m.remark === "Pass" || m.remark === "PASS");
+        return {
+          specified: m.dimension || "—",
+          measured: percentFED != null ? `${percentFED}%` : (m.observedShift != null ? `${m.observedShift} cm` : "-"),
+          tolerance: m.tolerance != null ? `≤ ${m.tolerance}%` : "≤ 2%",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Congruence of Radiation & Light Field", testRows);
+    } else {
+      const maxMisalignment = testData.congruenceOfRadiation.maxMisalignment ?? testData.congruenceOfRadiation.misalignment ?? testData.congruenceOfRadiation.value;
+      if (maxMisalignment != null && maxMisalignment !== "") {
+        const misalignment = parseFloat(maxMisalignment);
+        if (!isNaN(misalignment)) {
+          const limit = 2;
+          addRowsForTest("Congruence of Radiation & Light Field", [{
+            specified: "Max Misalignment",
+            measured: `${misalignment} cm`,
+            tolerance: `≤ ${limit} cm`,
+            remarks: (misalignment <= limit ? "Pass" : "Fail") as "Pass" | "Fail",
+          }]);
+        }
+      }
+    }
+  }
+
+  // 2. Central Beam Alignment Test
+  if (testData.centralBeamAlignment && !isEmpty(testData.centralBeamAlignment)) {
+    const ot = testData.centralBeamAlignment.observedTilt;
+    if (ot && (ot.value != null || ot.remark)) {
+      const val = ot.value != null ? parseFloat(ot.value) : null;
+      const tol = testData.centralBeamAlignment.tolerance;
+      const tolVal = tol?.value != null ? parseFloat(tol.value) : 1;
+      const isPass = ot.remark === "Pass" || ot.remark === "PASS" || (val != null && val <= tolVal);
+      addRowsForTest("Central Beam Alignment Test", [{
+        specified: "Observed tilt",
+        measured: val != null ? `${val}°` : (ot.remark || "-"),
+        tolerance: tol?.value != null ? `${tol.operator || "≤"} ${tol.value}°` : "≤ 1°",
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }]);
+    } else {
+      const deviation = testData.centralBeamAlignment.deviation ?? testData.centralBeamAlignment.value;
+      const sid = testData.centralBeamAlignment.sid || 100;
+      if (deviation != null && deviation !== "") {
+        const dev = parseFloat(deviation);
+        if (!isNaN(dev)) {
+          const limit = 0.01 * sid;
+          addRowsForTest("Central Beam Alignment Test", [{
+            specified: "Deviation",
+            measured: `${dev} mm`,
+            tolerance: `≤ 1% of SID (${sid} mm)`,
+            remarks: (dev <= limit ? "Pass" : "Fail") as "Pass" | "Fail",
+          }]);
+        }
+      }
+    }
+  }
+
+  // 3. Effective Focal Spot Size
+  if (testData.effectiveFocalSpot && !isEmpty(testData.effectiveFocalSpot)) {
+    if (testData.effectiveFocalSpot.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
+      const testRows = testData.effectiveFocalSpot.focalSpots.map((spot: any) => ({
+        specified: `${spot.statedWidth || "-"} x ${spot.statedHeight || "-"} mm`,
+        measured: `${spot.measuredWidth || "-"} x ${spot.measuredHeight || "-"} mm`,
+        tolerance: "Per AERB limits",
+        remarks: "Pass" as "Pass" | "Fail",
+      }));
+      addRowsForTest("Effective Focal Spot Size", testRows);
+    } else {
+      const nominal = testData.effectiveFocalSpot.nominalFocalSpotSize || "-";
+      const measured = testData.effectiveFocalSpot.measuredFocalSpotSize || "-";
+      const tolerance = testData.effectiveFocalSpot.tolerance || "-";
+      const isPass = testData.effectiveFocalSpot.isPass;
+      addRowsForTest("Effective Focal Spot Size", [{
+        specified: nominal !== "-" ? `${nominal} mm` : "-",
+        measured: measured !== "-" ? `${measured} mm` : "-",
+        tolerance: tolerance,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }]);
+    }
+  }
+
+  // 4. Accuracy of Irradiation Time (Timer Test)
   if (testData.accuracyOfIrradiationTime && !isEmpty(testData.accuracyOfIrradiationTime)) {
-    console.log("Processing accuracyOfIrradiationTime:", testData.accuracyOfIrradiationTime);
     if (testData.accuracyOfIrradiationTime.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
       const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
       if (validRows.length > 0) {
@@ -137,37 +234,38 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
     }
   }
 
-  // 3. Output Consistency (COV)
+  // Output Consistency (COV) — use cv/avg (FixedRadioFluro API); compute cov from outputs if missing
   if (testData.outputConsistency) {
-    // Check for outputRows array first (like Dental Cone Beam CT)
+    const tolVal = testData.outputConsistency.tolerance?.value ?? testData.outputConsistency.tolerance;
+    const tolerance = typeof tolVal === "object" ? parseFloat(tolVal?.value ?? "0.05") : parseFloat(tolVal || "0.05");
+    const toleranceNum = tolerance > 1 ? tolerance / 100 : tolerance;
+    const ffdStr = testData.outputConsistency.ffd?.value ?? testData.outputConsistency.ffd;
     if (testData.outputConsistency.outputRows && Array.isArray(testData.outputConsistency.outputRows) && testData.outputConsistency.outputRows.length > 0) {
-      const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.cov || row.mean);
+      const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.cv != null || row.cov != null || row.avg != null || row.mean != null || (row.outputs && row.outputs.length > 0));
       if (validRows.length > 0) {
-        const tolerance = testData.outputConsistency.tolerance ? parseFloat(testData.outputConsistency.tolerance) : 0.05;
-        const toleranceNum = tolerance > 1 ? tolerance / 100 : tolerance;
         const testRows = validRows.map((row: any) => {
-          const covValue = row.cov ? parseFloat(row.cov) : null;
+          let covValue: number | null = row.cv != null ? parseFloat(row.cv) : (row.cov != null ? parseFloat(row.cov) : null);
+          if (covValue === null && Array.isArray(row.outputs)) covValue = computeCovFromOutputs(row.outputs);
           const cov = covValue != null ? covValue.toFixed(3) : "-";
-          const isPass = covValue != null ? covValue <= toleranceNum : false;
+          const isPass = row.remark === "Pass" || row.remark === "PASS" || (covValue != null && covValue <= toleranceNum);
+          const specified = row.kv ? `${row.kv} kV` : (row.ffd ? `${row.ffd} cm FFD` : (ffdStr ? `${ffdStr} cm FFD` : "Varies"));
           return {
-            specified: row.ffd ? `${row.ffd} cm FFD` : "Varies",
+            specified,
             measured: cov,
-            tolerance: `≤ ${tolerance > 1 ? tolerance : tolerance * 100}%`,
+            tolerance: `≤ ${tolerance > 1 ? tolerance / 100 : tolerance}`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
         addRowsForTest("Consistency of Radiation Output (COV)", testRows, true);
       }
     } else if (testData.outputConsistency.cov != null && testData.outputConsistency.cov !== "") {
-      // Fallback: if cov is directly on the object
       const cov = parseFloat(testData.outputConsistency.cov);
       if (!isNaN(cov)) {
-        const tolerance = 0.05;
-        const isPass = cov <= tolerance;
+        const isPass = cov <= toleranceNum;
         addRowsForTest("Consistency of Radiation Output (COV)", [{
-          specified: "Varies with kVp",
+          specified: ffdStr ? `${ffdStr} cm FFD` : "Varies with kVp",
           measured: cov.toFixed(3),
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `≤ ${toleranceNum}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         }]);
       }
@@ -175,10 +273,11 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
   }
 
 
-  // 6. Total Filtration (if available)
+  // 5. Total Filtration (support nested totalFiltration.totalFiltration)
   if (testData.totalFiltration && !isEmpty(testData.totalFiltration)) {
-    const measuredTF = testData.totalFiltration.measured || testData.totalFiltration.measuredTF || "-";
-    const appliedKV = testData.totalFiltration.atKvp || testData.totalFiltration.appliedKV || "-";
+    const nested = testData.totalFiltration.totalFiltration;
+    const measuredTF = nested?.measured ?? testData.totalFiltration.measured ?? testData.totalFiltration.measuredTF ?? "-";
+    const appliedKV = nested?.atKvp ?? testData.totalFiltration.atKvp ?? testData.totalFiltration.appliedKV ?? "-";
     const measured = parseFloat(measuredTF);
     const isPass = !isNaN(measured) ? measured >= 2.5 : true;
     addRowsForTest("Total Filtration", [{
@@ -325,70 +424,7 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
     }
   }
 
-  // 12. Congruence of Radiation Field
-  if (testData.congruenceOfRadiation && !isEmpty(testData.congruenceOfRadiation)) {
-    console.log("Processing congruenceOfRadiation:", testData.congruenceOfRadiation);
-    const maxMisalignment = testData.congruenceOfRadiation.maxMisalignment || testData.congruenceOfRadiation.misalignment || testData.congruenceOfRadiation.value;
-    if (maxMisalignment != null && maxMisalignment !== "") {
-      const misalignment = parseFloat(maxMisalignment);
-      if (!isNaN(misalignment)) {
-        const limit = 2; // cm
-        const isPass = misalignment <= limit;
-        addRowsForTest("Congruence of Radiation and Light Field", [{
-          specified: "Max Misalignment",
-          measured: `${misalignment} cm`,
-          tolerance: `≤ ${limit} cm`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        }]);
-      }
-    }
-  }
-
-  // 13. Central Beam Alignment
-  if (testData.centralBeamAlignment && !isEmpty(testData.centralBeamAlignment)) {
-    console.log("Processing centralBeamAlignment:", testData.centralBeamAlignment);
-    const deviation = testData.centralBeamAlignment.deviation || testData.centralBeamAlignment.value;
-    const sid = testData.centralBeamAlignment.sid || 100;
-    if (deviation != null && deviation !== "") {
-      const dev = parseFloat(deviation);
-      if (!isNaN(dev)) {
-        const limit = 0.01 * sid; // 1% of SID
-        const isPass = dev <= limit;
-        addRowsForTest("Central Beam Alignment", [{
-          specified: "Deviation",
-          measured: `${dev} mm`,
-          tolerance: `≤ 1% of SID (${sid} mm)`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        }]);
-      }
-    }
-  }
-
-  // 14. Effective Focal Spot
-  if (testData.effectiveFocalSpot && !isEmpty(testData.effectiveFocalSpot)) {
-    if (testData.effectiveFocalSpot.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
-      const testRows = testData.effectiveFocalSpot.focalSpots.map((spot: any) => ({
-        specified: `${spot.statedWidth || "-"} x ${spot.statedHeight || "-"} mm`,
-        measured: `${spot.measuredWidth || "-"} x ${spot.measuredHeight || "-"} mm`,
-        tolerance: "Per AERB limits",
-        remarks: "Pass" as "Pass" | "Fail",
-      }));
-      addRowsForTest("Effective Focal Spot Size", testRows);
-    } else {
-      const nominal = testData.effectiveFocalSpot.nominalFocalSpotSize || "-";
-      const measured = testData.effectiveFocalSpot.measuredFocalSpotSize || "-";
-      const tolerance = testData.effectiveFocalSpot.tolerance || "-";
-      const isPass = testData.effectiveFocalSpot.isPass;
-      addRowsForTest("Effective Focal Spot Size", [{
-        specified: nominal !== "-" ? `${nominal} mm` : "-",
-        measured: measured !== "-" ? `${measured} mm` : "-",
-        tolerance: tolerance,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      }]);
-    }
-  }
-
-  // 15. Radiation Protection Survey
+  // 13. Radiation Protection Survey
   if (testData.radiationProtectionSurvey && !isEmpty(testData.radiationProtectionSurvey)) {
     const surveyRows = testData.radiationProtectionSurvey.surveyRows || testData.radiationProtectionSurvey.locations;
     if (surveyRows && surveyRows.length > 0) {
@@ -408,10 +444,6 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
       }]);
     }
   }
-
-  // Debug: Log rows to see what we're generating
-  console.log("MainTestTableForFixedRadioFluro - rows generated:", rows.length);
-  console.log("MainTestTableForFixedRadioFluro - rows:", rows);
 
   if (rows.length === 0) {
     return (

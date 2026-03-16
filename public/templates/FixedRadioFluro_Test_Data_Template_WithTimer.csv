@@ -1,3 +1,80 @@
+TEST: CONGRUENCE OF RADIATION & OPTICAL FIELD
+FCD,100,kV,80,mAs,10
+Dimension,Observed Shift (cm),Edge Shift (cm),Tolerance (% of FFD)
+Ι X Ι + Ι X' Ι,1.0,0.5,2
+Ι Y Ι + Ι Y' Ι,1.2,0.3,2
+
+TEST: CENTRAL BEAM ALIGNMENT
+FCD,100,kV,80,mAs,10,Tolerance (cm),2
+Axis,Observed Tilt (cm)
+X,0.5
+Y,0.3
+
+TEST: EFFECTIVE FOCAL SPOT
+Focus Type,Stated Width (mm),Stated Height (mm),Measured Width (mm),Measured Height (mm)
+Large Focus,1.2,1.2,1.18,1.19
+Small Focus,0.6,0.6,0.58,0.59
+Tolerance,Small Focus Multiplier,0.5,Small Focus Limit,0.8,Medium Focus Multiplier,0.4,Medium Lower,0.8,Medium Upper,1.5,Large Focus Multiplier,0.3
+
+TEST: ACCURACY OF IRRADIATION TIME
+FCD,100,kV,80,mA,100
+Set Time (ms),Measured Time (ms)
+100,98
+200,202
+500,495
+Tolerance,<=,10%
+
+TEST: TOTAL FILTRATION AND ACCURACY OF OPERATING POTENTIAL
+Applied kVp,Meas 1 (50 mA),Meas 2 (100 mA),Meas 3,Average kVp,Remarks
+60,60.2,60.1,60.3,60.2,
+80,80.1,80.2,80.0,80.1,
+100,100.2,100.1,100.3,100.2,
+Total Filtration,Measured (mm Al),Required (mm Al),At kVp
+TotalFiltration,2.5,2.0,80
+Filtration Tolerance,>70 kVp,1.5,70–100 kVp,2.0,>100 kVp,2.5
+
+TEST: LINEARITY OF mA LOADING
+FCD,100,kV,80,Timer (s),2.0
+mA Station,Measured 1,Measured 2,Measured 3,Average,X,Xmax,Xmin,CoL
+50,1.25,1.26,1.24,1.25,0.025,1.26,1.24,0.02
+100,2.50,2.51,2.49,2.50,0.025,2.51,2.49,0.02
+200,5.00,5.01,4.99,5.00,0.025,5.01,4.99,0.02
+Tolerance,0.1
+
+TEST: OUTPUT CONSISTENCY
+kVp,mAs,Meas 1,Meas 2,Meas 3,Mean,CoV
+80,100,10.5,10.4,10.6,10.5,0.95
+100,200,21.0,20.9,21.1,21.0,0.48
+Tolerance (%),5
+
+TEST: LOW CONTRAST RESOLUTION
+Measured Lp/mm,Recommended Standard Lp/mm,Smallest Hole Size (mm)
+0.8,0.6,2.0
+
+TEST: HIGH CONTRAST RESOLUTION
+Measured Lp/mm,Recommended Standard Lp/mm,Smallest Hole Size (mm)
+2.5,2.0,0.2
+
+TEST: EXPOSURE RATE AT TABLE TOP
+Distance (cm),Applied kV,Applied mA,Exposure (mR/s),Remark
+100,80,100,5.2,AEC Mode
+100,100,200,4.8,Manual Mode
+Tolerance AEC (%),10
+Tolerance Non-AEC (%),5
+Minimum Focus Distance (cm),30
+
+TEST: TUBE HOUSING LEAKAGE
+Distance (cm),kV,mA,Time (s),Workload (mA.min/week),Tolerance (mGy/h),Operator,Time (min)
+100,80,100,1.0,5000,1.0,<=,1
+Location,Left,Right,Front,Back,Top,Max (mGy/h)
+Tube,0.05,0.04,0.06,0.05,0.07,0.07
+
+TEST: RADIATION PROTECTION SURVEY
+Survey Date,2024-01-15,Applied Current (mA),100,Applied Voltage (kV),80,Exposure Time (s),1.0,Workload (mA.min/week),5000
+Location,mR/hr,mR/week,Category
+Control Room,0.5,2.5,worker
+Corridor,0.2,1.0,public
+
 Field Name,Value
 ========== CONGRUENCE OF RADIATION & OPTICAL FIELD ==========,
 TechniqueFactors_FCD,100

@@ -340,7 +340,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-10">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        Accuracy of Operating Potential (kVp) – Mammography
+        Accuracy of Operating Potential (kVp) – Mammography11
       </h2>
 
       {/* Table 1: Single Row */}

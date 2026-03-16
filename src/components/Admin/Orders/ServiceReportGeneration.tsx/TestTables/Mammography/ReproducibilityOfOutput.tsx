@@ -78,9 +78,8 @@ const ReproducibilityOfOutput: React.FC<{
 
   // Auto-calculate Avg, CV, and Remark for each row
   const rowsWithCalc = useMemo(() => {
-    // Tolerance value is stored as percentage (e.g., "5.0" for 5%)
-    const tolValuePercent = parseFloat(tolerance) || 5.0;
-    const tolValueDecimal = tolValuePercent / 100; // Convert to decimal
+    // Tolerance value is a decimal (e.g., 0.05 for 5%) to match Radiography Fixed
+    const tolValueDecimal = parseFloat(tolerance) || 0.05;
 
     return outputRows.map((row): OutputRow & { remark: 'Pass' | 'Fail' | '' } => {
       const nums = row.outputs

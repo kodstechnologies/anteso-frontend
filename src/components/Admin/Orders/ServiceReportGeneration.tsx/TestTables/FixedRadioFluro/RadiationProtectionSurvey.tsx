@@ -25,7 +25,7 @@ interface Props {
   initialData?: any;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, initialData }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, initialData, qaSubmittedDate }) => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
@@ -185,7 +185,9 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+          const savedDate = data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "";
+          const defaultFromQa = qaSubmittedDate ? new Date(qaSubmittedDate).toISOString().split('T')[0] : getTodayDate();
+          setSurveyDate(savedDate || defaultFromQa);
           // Calibration status is set by the tools check useEffect, don't override it here
           // (The tools check will run and set it based on current calibration dates)
           setAppliedCurrent(data.appliedCurrent || "100");
@@ -207,6 +209,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
           setIsSaved(true);
           setIsEditing(false);
         } else {
+          const defaultDate = qaSubmittedDate ? new Date(qaSubmittedDate).toISOString().split('T')[0] : getTodayDate();
+          setSurveyDate(defaultDate);
           setIsEditing(true);
         }
       } catch (err: any) {
@@ -219,7 +223,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, qaSubmittedDate]);
 
   // Load CSV data when initialData is provided
   useEffect(() => {
@@ -302,7 +306,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
   };
 
   const isViewMode = isSaved && !isEditing;
-  const isDisabled = isViewMode || hasValidCalibration === "No";
+  const isDisabled = isViewMode;
 
   if (isLoading) {
     return (
@@ -315,9 +319,9 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
       {hasValidCalibration === "No" && (
-        <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 mb-4">
-          <p className="text-red-800 font-semibold">
-            ⚠️ Calibration certificate is expired. All fields are disabled until valid calibration certificates are provided for all tools.
+        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-4 mb-4">
+          <p className="text-amber-800 font-semibold">
+            ⚠️ Calibration certificate is expired or not valid. You may still fill and save the survey; ensure valid calibration is provided when available.
           </p>
         </div>
       )}

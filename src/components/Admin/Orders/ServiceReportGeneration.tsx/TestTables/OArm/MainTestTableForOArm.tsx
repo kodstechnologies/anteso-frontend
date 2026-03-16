@@ -187,14 +187,18 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
 
   // 7. Linearity of mAs Loading
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
-    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.col);
+    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied != null || row.col != null || testData.linearityOfMasLoading.col != null);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
+      const docCol = testData.linearityOfMasLoading.col;
+      const docRemarks = testData.linearityOfMasLoading.remarks;
       const testRows = validRows.map((row: any) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
+        const colVal = row.col != null && row.col !== "" ? row.col : docCol;
+        const colNum = colVal != null && colVal !== "" && !isNaN(parseFloat(String(colVal))) ? parseFloat(String(colVal)) : NaN;
+        const col = !isNaN(colNum) ? colNum.toFixed(3) : "-";
+        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || docRemarks === "Pass" || docRemarks === "PASS" || (!isNaN(colNum) && colNum <= parseFloat(tolerance));
         return {
-          specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
+          specified: row.mAsApplied != null && row.mAsApplied !== "" ? `${row.mAsApplied} mAs` : "-",
           measured: col,
           tolerance: `≤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -216,14 +220,14 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
 
       <div className="overflow-x-auto shadow-lg print:shadow-none print:overflow-visible">
         <table className="w-full border-2 border-black text-xs print:text-[9px] mx-auto">
-          <thead className="bg-gray-200">
+          <thead>
             <tr>
               <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center">Sr. No.</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-left w-72">Parameters Used</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32">Specified Values</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32">Measured Values</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-40">Tolerance</th>
-              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-green-100 w-24">Remarks</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-24">Remarks</th>
             </tr>
           </thead>
           <tbody>
@@ -254,8 +258,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
                       {row.tolerance}
                     </td>
                   )}
-                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-bold ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}>
+                  <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-bold">
                     {row.remarks}
                   </td>
                 </tr>

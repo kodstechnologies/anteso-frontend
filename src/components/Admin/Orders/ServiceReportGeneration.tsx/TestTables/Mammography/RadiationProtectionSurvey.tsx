@@ -24,6 +24,8 @@ interface Props {
   serviceId: string;
   onRefresh?: () => void;
   refreshKey?: number;
+  // Optional initial survey date (e.g. QA test submitted date from ServiceDetails2)
+  initialSurveyDate?: string | null;
   initialData?: {
     surveyDate?: string;
     hasValidCalibration?: string;
@@ -35,7 +37,7 @@ interface Props {
   };
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, initialData }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, initialSurveyDate, initialData }) => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
@@ -47,7 +49,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
   const [isEditing, setIsEditing] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [surveyDate, setSurveyDate] = useState<string>(getTodayDate());
+  // Default survey date to QA test submitted date (if provided), otherwise today
+  const [surveyDate, setSurveyDate] = useState<string>(
+    initialSurveyDate ? (typeof initialSurveyDate === 'string' ? initialSurveyDate.split('T')[0] : getTodayDate()) : getTodayDate()
+  );
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
@@ -360,7 +365,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
   };
 
   const isViewMode = isSaved && !isEditing;
-  const isDisabled = isViewMode || hasValidCalibration === "No";
+  const isDisabled = isViewMode;
 
   if (isLoading) {
     return (

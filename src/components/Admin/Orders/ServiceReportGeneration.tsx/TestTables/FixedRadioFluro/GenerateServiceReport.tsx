@@ -1916,6 +1916,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                                 serviceId={serviceId}
                                 refreshKey={refreshKey}
                                 initialData={csvDataForComponents.radiationProtectionSurvey}
+                                qaSubmittedDate={formData.testDate || null}
                             />
                         ),
                     },
