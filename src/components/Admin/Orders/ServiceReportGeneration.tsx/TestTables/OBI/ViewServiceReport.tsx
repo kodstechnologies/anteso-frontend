@@ -480,16 +480,16 @@ const ViewServiceReportOBI: React.FC = () => {
     <>
       {/* Floating Buttons */}
       <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
-        <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
+        {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
-        </button>
+        </button> */}
         <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Download PDF
         </button>
       </div>
 
       <div id="report-content">
-        {/* PAGE 1 - MAIN REPORT */}
+        {/* PAGE 1 - MAIN REPORT */}c cc
         <div className="bg-white print:py-0 px-8 py-2 print:px-8 print:py-2" style={{ pageBreakAfter: 'always' }}>
           {/* Header */}
           <div className="flex justify-between items-center mb-4 print:mb-2">

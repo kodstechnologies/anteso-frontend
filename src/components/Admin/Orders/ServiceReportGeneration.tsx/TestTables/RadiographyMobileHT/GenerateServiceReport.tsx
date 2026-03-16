@@ -363,6 +363,366 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
     return data;
   };
 
+  // Parse Dental-style table CSV (RadiographyMobileHT_Test_Data_Template_WithTimer.csv)
+  // into the same internal "Field Name"/"Value"/"Row Index"/"Test Name" rows used by processCSVData.
+  const parseTableCSVToRows = (text: string): any[] => {
+    const lines = text.split(/\r?\n/);
+    const rows: any[] = [];
+
+    const pushRow = (testName: string, fieldName: string, value: string, rowIndex: number) => {
+      rows.push({
+        "Field Name": fieldName,
+        Value: value,
+        "Row Index": String(Number.isFinite(rowIndex) ? rowIndex : 0),
+        "Test Name": testName,
+      });
+    };
+
+    let i = 0;
+    while (i < lines.length) {
+      const raw = lines[i].trim();
+      if (!raw) { i++; continue; }
+
+      if (raw.startsWith("TEST:")) {
+        const label = raw.slice(5).trim();
+
+        // 1) Congruence of Radiation
+        if (label === "CONGRUENCE OF RADIATION") {
+          const testName = "Congruence of Radiation";
+          const cond = (lines[i + 1] || "").split(",");
+          const fcd = cond[1] || "";
+          const kv = cond[3] || "";
+          const mas = cond[5] || "";
+          if (fcd) pushRow(testName, "TechniqueFactors_FCD", fcd, 0);
+          if (kv) pushRow(testName, "TechniqueFactors_kV", kv, 0);
+          if (mas) pushRow(testName, "TechniqueFactors_mAs", mas, 0);
+
+          let rowIdx = 0;
+          let j = i + 3; // skip header
+          while (j < lines.length) {
+            const l = lines[j].trim();
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const dim = (cells[0] || "").trim();
+            const obs = (cells[1] || "").trim();
+            const edge = (cells[2] || "").trim();
+            const fed = (cells[3] || "").trim();
+            const tol = (cells[4] || "").trim();
+            if (dim) {
+              pushRow(testName, "CongruenceMeasurement_Dimension", dim, rowIdx);
+              if (obs) pushRow(testName, "CongruenceMeasurement_ObservedShift", obs, rowIdx);
+              if (edge) pushRow(testName, "CongruenceMeasurement_EdgeShift", edge, rowIdx);
+              if (fed) pushRow(testName, "CongruenceMeasurement_PercentFED", fed, rowIdx);
+              if (tol) pushRow(testName, "CongruenceMeasurement_Tolerance", tol, rowIdx);
+              rowIdx++;
+            }
+            j++;
+          }
+          i = j;
+          continue;
+        }
+
+        // 2) CENTRAL BEAM ALIGNMENT
+        if (label === "CENTRAL BEAM ALIGNMENT") {
+          const testName = "Central Beam Alignment";
+          const cond = (lines[i + 1] || "").split(",");
+          const fcd = cond[1] || "";
+          const kv = cond[3] || "";
+          const mas = cond[5] || "";
+          if (fcd) pushRow(testName, "TechniqueFactors_FCD", fcd, 0);
+          if (kv) pushRow(testName, "TechniqueFactors_kV", kv, 0);
+          if (mas) pushRow(testName, "TechniqueFactors_mAs", mas, 0);
+
+          const obsLine = (lines[i + 2] || "").split(",");
+          const tiltVal = obsLine[1] || "";
+          if (tiltVal) pushRow(testName, "ObservedTilt_Value", tiltVal, 0);
+
+          const tolOpLine = (lines[i + 3] || "").split(",");
+          const tolOp = (tolOpLine[1] || "").trim();
+          if (tolOp) pushRow(testName, "ObservedTilt_Operator", tolOp, 0);
+
+          const tolValLine = (lines[i + 4] || "").split(",");
+          const tolVal = (tolValLine[1] || "").trim();
+          if (tolVal) pushRow(testName, "Tolerance_Value", tolVal, 0);
+          // tolerance operator remains same as ObservedTilt_Operator
+          i += 5;
+          continue;
+        }
+
+        // 3) EFFECTIVE FOCAL SPOT
+        if (label === "EFFECTIVE FOCAL SPOT") {
+          const testName = "Effective Focal Spot";
+          const cond = (lines[i + 1] || "").split(",");
+          const fcd = cond[1] || "";
+          if (fcd) pushRow(testName, "FCD", fcd, 0);
+
+          let rowIdx = 0;
+          let j = i + 3; // skip header
+          while (j < lines.length) {
+            const l = lines[j].trim();
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const focusType = (cells[0] || "").trim();
+            if (focusType) {
+              const sW = (cells[1] || "").trim();
+              const sH = (cells[2] || "").trim();
+              const mW = (cells[3] || "").trim();
+              const mH = (cells[4] || "").trim();
+              pushRow(testName, "FocalSpot_FocusType", focusType, rowIdx);
+              if (sW) pushRow(testName, "FocalSpot_StatedWidth", sW, rowIdx);
+              if (sH) pushRow(testName, "FocalSpot_StatedHeight", sH, rowIdx);
+              if (mW) pushRow(testName, "FocalSpot_MeasuredWidth", mW, rowIdx);
+              if (mH) pushRow(testName, "FocalSpot_MeasuredHeight", mH, rowIdx);
+              rowIdx++;
+            }
+            j++;
+          }
+          i = j;
+          continue;
+        }
+
+        // 4) ACCURACY OF IRRADIATION TIME
+        if (label === "ACCURACY OF IRRADIATION TIME") {
+          const testName = "Accuracy of Irradiation Time";
+          const cond = (lines[i + 1] || "").split(",");
+          const fcd = cond[1] || "";
+          const kv = cond[3] || "";
+          const ma = cond[5] || "";
+          if (fcd) pushRow(testName, "TestConditions_FCD", fcd, 0);
+          if (kv) pushRow(testName, "TestConditions_kV", kv, 0);
+          if (ma) pushRow(testName, "TestConditions_ma", ma, 0);
+
+          let rowIdx = 0;
+          let j = i + 3; // data rows
+          while (j < lines.length) {
+            const l = lines[j].trim();
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const setT = (cells[0] || "").trim();
+            const measT = (cells[1] || "").trim();
+            if (setT || measT) {
+              if (setT) pushRow(testName, "IrradiationTime_SetTime", setT, rowIdx);
+              if (measT) pushRow(testName, "IrradiationTime_MeasuredTime", measT, rowIdx);
+              rowIdx++;
+            } else {
+              const labelCell = (cells[0] || "").trim();
+              const valCell = (cells[1] || "").trim();
+              if (labelCell === "Tolerance Operator") pushRow(testName, "Tolerance_Operator", valCell, 0);
+              if (labelCell.startsWith("Tolerance Value")) pushRow(testName, "Tolerance_Value", valCell, 0);
+            }
+            j++;
+          }
+          i = j;
+          continue;
+        }
+
+        // 5) ACCURACY OF OPERATING POTENTIAL (kVp) & TOTAL FILTRATION
+        if (label === "ACCURACY OF OPERATING POTENTIAL (kVp) & TOTAL FILTRATION") {
+          const testName = "Total Filtration";
+          let j = i + 1;
+          // tolerance and total filtration summary
+          for (; j < lines.length; j++) {
+            const l = lines[j].trim();
+            if (!l) continue;
+            if (l.startsWith("Applied kVp")) break;
+            const cells = l.split(",");
+            const labelCell = (cells[0] || "").trim();
+            const valCell = (cells[1] || "").trim();
+            if (labelCell === "Tolerance Sign") pushRow(testName, "Tolerance_Sign", valCell, 0);
+            if (labelCell.startsWith("Tolerance Value")) pushRow(testName, "Tolerance_Value", valCell, 0);
+            if (labelCell.startsWith("Total Filtration Measured")) pushRow(testName, "TotalFiltration_Measured", valCell, 0);
+            if (labelCell.startsWith("Total Filtration Required")) pushRow(testName, "TotalFiltration_Required", valCell, 0);
+          }
+          // mA headers from "Applied kVp,50 mA,100 mA"
+          const header = (lines[j] || "").split(",");
+          for (let c = 1; c < header.length; c++) {
+            const h = (header[c] || "").trim();
+            if (h) pushRow(testName, "MeasHeader", h, 0);
+          }
+          // measurement rows
+          let rowIdx = 0;
+          j++;
+          for (; j < lines.length; j++) {
+            const l = lines[j].trim();
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const kvp = (cells[0] || "").trim();
+            if (kvp) {
+              pushRow(testName, "Measurement_AppliedKvp", kvp, rowIdx);
+              if (cells[1] !== undefined) pushRow(testName, "Measurement_Meas1", cells[1], rowIdx);
+              if (cells[2] !== undefined) pushRow(testName, "Measurement_Meas2", cells[2], rowIdx);
+              rowIdx++;
+            }
+          }
+          i = j;
+          continue;
+        }
+
+        // 6) LINEARITY OF mA LOADING
+        if (label === "LINEARITY OF mA LOADING") {
+          const testName = "Linearity of mA Loading";
+          const cond = (lines[i + 1] || "").split(",");
+          const fcd = cond[1] || "";
+          const kv = cond[3] || "";
+          if (fcd) pushRow(testName, "Table1_FCD", fcd, 0);
+          if (kv) pushRow(testName, "Table1_kV", kv, 0);
+
+          let rowIdx = 0;
+          let j = i + 3; // data rows
+          while (j < lines.length) {
+            const l = lines[j].trim();
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const mAs = (cells[0] || "").trim();
+            if (mAs && !isNaN(Number(mAs))) {
+              pushRow(testName, "Table2_mAsApplied", mAs, rowIdx);
+              if (cells[1] !== undefined) pushRow(testName, "Table2_Meas1", cells[1], rowIdx);
+              if (cells[2] !== undefined) pushRow(testName, "Table2_Meas2", cells[2], rowIdx);
+              if (cells[3] !== undefined) pushRow(testName, "Table2_Meas3", cells[3], rowIdx);
+              rowIdx++;
+            } else {
+              const labelCell = (cells[0] || "").trim();
+              const valCell = (cells[1] || "").trim();
+              if (labelCell === "Tolerance") pushRow(testName, "Tolerance", valCell, 0);
+              if (labelCell === "Tolerance Operator") pushRow(testName, "ToleranceOperator", valCell, 0);
+            }
+            j++;
+          }
+          i = j;
+          continue;
+        }
+
+        // 7) OUTPUT CONSISTENCY
+        if (label === "OUTPUT CONSISTENCY") {
+          const testName = "Output Consistency";
+          const ffdLine = (lines[i + 1] || "").split(",");
+          const ffd = ffdLine[1] || "";
+          if (ffd) pushRow(testName, "FFD", ffd, 0);
+
+          const dataLine = lines[i + 3] || "";
+          const cells = dataLine.split(",");
+          let rowIdx = 0;
+          const kv = (cells[0] || "").trim();
+          const mas = (cells[1] || "").trim();
+          if (kv) pushRow(testName, "OutputRow_kV", kv, rowIdx);
+          if (mas) pushRow(testName, "OutputRow_mAs", mas, rowIdx);
+          for (let c = 2; c < cells.length; c++) {
+            const v = (cells[c] || "").trim();
+            if (!v) continue;
+            const measIdx = c - 1;
+            pushRow(testName, `OutputRow_Meas${measIdx}`, v, rowIdx);
+          }
+
+          // tolerance lines
+          for (let j = i + 4; j < Math.min(lines.length, i + 8); j++) {
+            const l = lines[j].trim();
+            if (!l) break;
+            const parts = l.split(",");
+            const labelCell = (parts[0] || "").trim();
+            const valCell = (parts[1] || "").trim();
+            if (labelCell === "Tolerance Operator") pushRow(testName, "Tolerance_Operator", valCell, 0);
+            if (labelCell.startsWith("Tolerance")) pushRow(testName, "Tolerance_Value", valCell, 0);
+          }
+          i += 6;
+          continue;
+        }
+
+        // 8) RADIATION LEAKAGE LEVEL
+        if (label === "RADIATION LEAKAGE LEVEL") {
+          const testName = "Radiation Leakage Level";
+          const cond = (lines[i + 1] || "").split(",");
+          const fcd = cond[1] || "";
+          const kv = cond[3] || "";
+          const ma = cond[5] || "";
+          const time = cond[7] || "";
+          const workload = cond[9] || "";
+          if (fcd) pushRow(testName, "Settings_FCD", fcd, 0);
+          if (kv) pushRow(testName, "Settings_kV", kv, 0);
+          if (ma) pushRow(testName, "Settings_ma", ma, 0);
+          if (time) pushRow(testName, "Settings_Time", time, 0);
+          if (workload) pushRow(testName, "Workload", workload, 0);
+
+          const tolValLine = (lines[i + 2] || "").split(",");
+          const tolVal = tolValLine[1] || "";
+          if (tolVal) pushRow(testName, "ToleranceValue", tolVal, 0);
+          const tolOpLine = (lines[i + 3] || "").split(",");
+          const tolOp = tolOpLine[1] || "";
+          if (tolOp) pushRow(testName, "ToleranceOperator", tolOp, 0);
+
+          // location header at i+4, rows at i+5+
+          let rowIdx = 0;
+          let j = i + 5;
+          while (j < lines.length) {
+            const l = lines[j].trim();
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const loc = (cells[0] || "").trim();
+            if (loc) {
+              pushRow(testName, "LeakageMeasurement_Location", loc, rowIdx);
+              if (cells[1] !== undefined) pushRow(testName, "LeakageMeasurement_Left", cells[1], rowIdx);
+              if (cells[2] !== undefined) pushRow(testName, "LeakageMeasurement_Right", cells[2], rowIdx);
+              if (cells[3] !== undefined) pushRow(testName, "LeakageMeasurement_Front", cells[3], rowIdx);
+              if (cells[4] !== undefined) pushRow(testName, "LeakageMeasurement_Back", cells[4], rowIdx);
+              if (cells[5] !== undefined) pushRow(testName, "LeakageMeasurement_Top", cells[5], rowIdx);
+              rowIdx++;
+            }
+            j++;
+          }
+          i = j;
+          continue;
+        }
+
+        // 9) RADIATION PROTECTION SURVEY
+        if (label === "RADIATION PROTECTION SURVEY") {
+          const testName = "Radiation Protection Survey";
+          const header = (lines[i + 1] || "").split(",");
+          const vals = (lines[i + 2] || "").split(",");
+          const getVal = (labelStr: string): string => {
+            const idx = header.findIndex((h) => h.trim() === labelStr);
+            return idx >= 0 ? (vals[idx] || "").trim() : "";
+          };
+          const surveyDate = getVal("Survey Date");
+          const hasValid = getVal("Has Valid Calibration");
+          const appliedCurrent = getVal("Applied Current (mA)");
+          const appliedVoltage = getVal("Applied Voltage (kV)");
+          const exposureTime = getVal("Exposure Time (s)");
+          const workload = getVal("Workload (mA.min/week)");
+          if (surveyDate) pushRow(testName, "SurveyDate", surveyDate, 0);
+          if (hasValid) pushRow(testName, "HasValidCalibration", hasValid, 0);
+          if (appliedCurrent) pushRow(testName, "AppliedCurrent", appliedCurrent, 0);
+          if (appliedVoltage) pushRow(testName, "AppliedVoltage", appliedVoltage, 0);
+          if (exposureTime) pushRow(testName, "ExposureTime", exposureTime, 0);
+          if (workload) pushRow(testName, "Workload", workload, 0);
+
+          // LOCATION rows
+          let rowIdx = 0;
+          let j = i + 4;
+          while (j < lines.length) {
+            const l = lines[j].trim();
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const loc = (cells[0] || "").trim();
+            if (loc) {
+              const mR = (cells[1] || "").trim();
+              const cat = (cells[2] || "").trim();
+              pushRow(testName, "Location_Location", loc, rowIdx);
+              if (mR) pushRow(testName, "Location_mRPerHr", mR, rowIdx);
+              if (cat) pushRow(testName, "Location_Category", cat, rowIdx);
+              rowIdx++;
+            }
+            j++;
+          }
+          i = j;
+          continue;
+        }
+      }
+
+      i++;
+    }
+
+    return rows;
+  };
+
   const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
     const data: any[] = [];
     const sheetName = workbook.SheetNames[0];
@@ -724,8 +1084,8 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
       reader.onload = async (ev) => {
         try {
           const text = ev.target?.result as string;
-          const csvData = parseCSV(text);
-          await processCSVData(csvData);
+          const rows = parseTableCSVToRows(text);
+          await processCSVData(rows);
         } catch (err: any) {
           toast.error(err?.message ?? "Failed to read CSV file");
         }

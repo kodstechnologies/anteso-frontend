@@ -1,115 +1,71 @@
-Key,Value,Index
-,,
-,,
-,,
-,,
-,,
-,,
-,,
-,,
-========== CONGRUENCE OF RADIATION ==========,,
-TechniqueFactors_fcd,100,0
-TechniqueFactors_kv,80,0
-TechniqueFactors_mas,10,0
-Measurement_dimension,Ι X Ι + Ι X’ Ι,0
-Measurement_observedShift,0.5,0
-Measurement_edgeShift,0.2,0
-Measurement_tolerance,2,0
-Measurement_dimension,Ι Y Ι + Ι Y’ Ι,1
-Measurement_observedShift,0.4,1
-Measurement_edgeShift,0.3,1
-Measurement_tolerance,2,1
-========== CENTRAL BEAM ALIGNMENT ==========,,
-TechniqueFactors_fcd,100,0
-TechniqueFactors_kv,80,0
-TechniqueFactors_mas,10,0
-ObservedTilt_value,1.2,0
-Tolerance_operator,<,0
-Tolerance_value,1.5,0
-========== EFFECTIVE FOCAL SPOT ==========,,
-FCD,100,0
-ToleranceCriteria_tolSmallMul,0.5,0
-ToleranceCriteria_smallLimit,0.8,0
-ToleranceCriteria_tolMediumMul,0.4,0
-ToleranceCriteria_mediumLower,0.8,0
-ToleranceCriteria_mediumUpper,1.5,0
-ToleranceCriteria_tolLargeMul,0.3,0
-FocalSpot_focusType,Large Focus,0
-FocalSpot_statedWidth,1.2,0
-FocalSpot_statedHeight,1.2,0
-FocalSpot_measuredWidth,1.3,0
-FocalSpot_measuredHeight,1.3,0
-FocalSpot_focusType,Small Focus,1
-FocalSpot_statedWidth,0.6,1
-FocalSpot_statedHeight,0.6,1
-FocalSpot_measuredWidth,0.7,1
-FocalSpot_measuredHeight,0.7,1
-========== ACCURACY OF IRRADIATION TIME ==========,,
-TestConditions_fcd,100,0
-TestConditions_kv,80,0
-TestConditions_ma,100,0
-IrradiationTime_setTime,100,0
-IrradiationTime_measuredTime1,98.5,0
-IrradiationTime_measuredTime2,99,0
-IrradiationTime_setTime,200,1
-IrradiationTime_measuredTime1,198,1
-Tolerance_operator,<=,0
-Tolerance_value,10,0
-========== TOTAL FILTRATION ==========,,
-mAStations,50,0
-mAStations,100,1
-Measurement_appliedKvp,60,0
-Measurement_measuredValue1,60.2,0
-Measurement_measuredValue2,60.1,0
-Measurement_measuredValue3,60.3,0
-Tolerance_sign,±,0
-Tolerance_value,5,0
-TotalFiltration_measured,2.6,0
-TotalFiltration_required,2.5,0
-TotalFiltration_atKvp,70,0
-FiltrationTolerance,0.1,0
-========== LINEARITY OF MA LOADING ==========,,
-ExposureCondition_fcd,100,0
-ExposureCondition_kv,80,0
-ExposureCondition_time,0.1,0
-Table2_mAApplied,50,0
-Table2_measuredOutput1,0.5,0
-Table2_measuredOutput2,0.51,0
-Table2_mAApplied,100,1
-Table2_measuredOutput1,0.98,1
-Tolerance_operator,<=,0
-Tolerance_value,0.1,0
-========== CONSISTENCY OF RADIATION OUTPUT ==========,,
-FFD,100,0
-Measurement_kv,80,0
-Measurement_mas,10,0
-Measurement_output1,0.5,0
-Measurement_output2,0.51,0
-Tolerance,0.05,0
-========== RADIATION LEAKAGE LEVEL ==========,,
-Settings_fcd,100,0
-Settings_kv,120,0
-Settings_ma,21,0
-Settings_time,2,0
-Leakage_location,Tube,0
-Leakage_left,0.1,0
-Leakage_right,0.1,0
-Leakage_front,0.1,0
-Leakage_back,0.1,0
-Leakage_top,0.1,0
-Workload,180,0
-Tolerance_value,1,0
-Tolerance_operator,less than or equal to,0
-Tolerance_time,1,0
-========== RADIATION PROTECTION SURVEY ==========,,
-surveyDate,20-05-2024,0
-appliedCurrent,100,0
-appliedVoltage,80,0
-exposureTime,0.5,0
-workload,5000,0
-Location_location,Control Console (Operator Position),0
-Location_mRPerHr,0.1,0
-Location_category,worker,0
-Location_location,Outside Patient Entrance Door,1
-Location_mRPerHr,0.05,1
-Location_category,public,1
+TEST: CONGRUENCE OF RADIATION
+FCD (cm),100,kV,80,mAs,10
+Dimension,Observed Shift (cm),Edge Shift (cm),Tolerance (% of FFD)
+Ι X Ι + Ι X’ Ι,0.5,0.2,2
+Ι Y Ι + Ι Y’ Ι,0.4,0.3,2
+
+TEST: CENTRAL BEAM ALIGNMENT
+FCD (cm),100,kV,80,mAs,10
+Observed Tilt (cm),1.2
+Tolerance Operator,< 
+Tolerance Value (cm),1.5
+
+TEST: EFFECTIVE FOCAL SPOT
+FCD (cm),100
+Focus Type,Stated Width (mm),Stated Height (mm),Measured Width (mm),Measured Height (mm)
+Large Focus,1.2,1.2,1.3,1.3
+Small Focus,0.6,0.6,0.7,0.7
+Tolerance Small Multiplier,0.5
+Tolerance Small Limit,0.8
+Tolerance Medium Multiplier,0.4
+Tolerance Medium Lower,0.8
+Tolerance Medium Upper,1.5
+Tolerance Large Multiplier,0.3
+
+TEST: ACCURACY OF IRRADIATION TIME
+FCD (cm),100,kV,80,mA,100
+Set Time (ms),Measured Time 1 (ms),Measured Time 2 (ms)
+100,98.5,99
+200,198,
+Tolerance Operator,<=
+Tolerance Value (%),10
+
+TEST: TOTAL FILTRATION
+Tolerance Sign,±
+Tolerance Value (kVp),5
+Total Filtration Measured (mm Al),2.6
+Total Filtration Required (mm Al),2.5
+Total Filtration At kVp,70
+mA Station 1,50
+mA Station 2,100
+Applied kVp,Measured 1 (50 mA),Measured 2 (100 mA),Measured 3
+60,60.2,60.1,60.3
+
+TEST: LINEARITY OF mA LOADING
+FCD (cm),100,kV,80,Time (s),0.1
+mA Applied,Measured Output 1,Measured Output 2
+50,0.5,0.51
+100,0.98,
+Tolerance Operator,<=
+Tolerance Value (CoL),0.1
+
+TEST: CONSISTENCY OF RADIATION OUTPUT
+FFD (cm),100
+kVp,mAs,Output 1,Output 2
+80,10,0.5,0.51
+Tolerance (CoV),0.05
+
+TEST: RADIATION LEAKAGE LEVEL
+FCD (cm),100,kV,120,mA,21,Time (min),2,Workload,180
+Tolerance Value (mGy/h),1
+Tolerance Operator,less than or equal to
+Tolerance Time (h),1
+Location,Left,Right,Front,Back,Top
+Tube,0.1,0.1,0.1,0.1,0.1
+
+TEST: RADIATION PROTECTION SURVEY
+Survey Date,20-05-2024,Applied Current (mA),100,Applied Voltage (kV),80,Exposure Time (s),0.5,Workload (mA.min/week),5000
+LOCATION,mR/hr,Category
+Control Console (Operator Position),0.1,worker
+Outside Patient Entrance Door,0.05,public
+

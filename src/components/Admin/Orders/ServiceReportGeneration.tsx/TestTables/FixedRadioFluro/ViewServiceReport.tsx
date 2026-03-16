@@ -795,8 +795,8 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
                       <strong>Acceptance Criteria:</strong> CoV {testData.outputConsistency.tolerance.operator || "<="} {testData.outputConsistency.tolerance.value ?? toleranceNum}
                     </p>
-                  </div>
-                )}
+              </div>
+            )}
               </div>
               );
             })()}
@@ -1089,8 +1089,8 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                 {linearityData.tolerance != null && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border">
                     <p className="text-sm print:text-[10px]" style={{ fontSize: '10px' }}><strong>Tolerance (CoL):</strong> {linearityData.toleranceOperator || "≤"} {linearityData.tolerance ?? "0.1"}</p>
-                  </div>
-                )}
+              </div>
+            )}
               </div>
               );
             })()}
@@ -1319,15 +1319,15 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                     <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                        <thead className="bg-gray-100">
-                          <tr>
+                      <thead className="bg-gray-100">
+                        <tr>
                             <th className="border border-black p-3 print:p-1 text-left" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Location</th>
                             <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Max. Radiation Level</th>
                             <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mR/week</th>
                             <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Result</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                        </tr>
+                      </thead>
+                      <tbody>
                           {(testData.radiationProtectionSurvey.locations || testData.radiationProtectionSurvey.surveyRows || []).map((loc: any, i: number) => (
                             <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                               <td className="border border-black p-3 print:p-1 text-left" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{loc.location || "-"}</td>
@@ -1340,9 +1340,9 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                               </td>
                             </tr>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                      </tbody>
+                    </table>
+                  </div>
                   </div>
                 )}
                 {/* 4. Calculation Formula */}
