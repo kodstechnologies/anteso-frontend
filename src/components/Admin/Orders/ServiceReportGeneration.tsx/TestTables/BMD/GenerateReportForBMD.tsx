@@ -1343,7 +1343,16 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
       },
       {
         title: "Radiation Protection Survey",
-        component: <RadiationProtectionSurvey key={`protection-${csvDataVersion}`} serviceId={serviceId} testId={savedTestIds['protection']} onTestSaved={(testId) => handleTestSaved('protection', testId)} initialData={csvDataForComponents.radiationProtectionSurvey} />
+        component: (
+          <RadiationProtectionSurvey
+            key={`protection-${csvDataVersion}`}
+            serviceId={serviceId}
+            testId={savedTestIds['protection']}
+            onTestSaved={(testId) => handleTestSaved('protection', testId)}
+            initialData={csvDataForComponents.radiationProtectionSurvey}
+            initialSurveyDate={formData.testDate || minIssueDate || ""}
+          />
+        )
       },
       // { title: "Equipment Setting", component: <EquipmentSetting serviceId={serviceId} /> },
       // { title: "Maximum Radiation level", component: <MaxRadiationLevel serviceId={serviceId} /> },

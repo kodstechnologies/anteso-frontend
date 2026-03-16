@@ -2012,6 +2012,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             serviceId={serviceId}
                             refreshKey={refreshKey}
                             initialData={csvDataForComponents.radiationProtection}
+                            initialSurveyDate={formData.testDate || minIssueDate || ""}
                         />
                     },
                     {

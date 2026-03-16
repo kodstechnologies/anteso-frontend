@@ -25,20 +25,22 @@ interface Props {
   testId?: string;
   onTestSaved?: (testId: string) => void;
   initialData?: any;
+  initialSurveyDate?: string | null;
 }
 
 const RadiationProtectionSurvey: React.FC<Props> = ({
   serviceId,
   testId: propTestId,
   onTestSaved,
-  initialData
+  initialData,
+  initialSurveyDate,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [surveyDate, setSurveyDate] = useState<string>("");
+  const [surveyDate, setSurveyDate] = useState<string>(initialSurveyDate || "");
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
@@ -188,11 +190,6 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
       toast.error("Please select calibration status");
       return;
     }
-    // Prevent submission if calibration is "No"
-    if (hasValidCalibration === "No") {
-      toast.error("Cannot submit test: Calibration certificate is expired. Please ensure all tools have valid calibration certificates.");
-      return;
-    }
 
     const payload = {
       surveyDate,
@@ -294,7 +291,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
   };
 
   const isViewMode = isSaved && !isEditing;
-  const isDisabled = isViewMode || hasValidCalibration === "No";
+  const isDisabled = isViewMode;
 
   // Group locations
   const workerLocations = locations.filter(l => l.category === "worker");
@@ -329,7 +326,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
       {hasValidCalibration === "No" && (
         <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 mb-4">
           <p className="text-red-800 font-semibold">
-            ⚠️ Calibration certificate is expired. All fields are disabled until valid calibration certificates are provided for all tools.
+            ⚠️ Calibration certificate is expired. Please verify tools calibration, then review and save this survey.
           </p>
         </div>
       )}

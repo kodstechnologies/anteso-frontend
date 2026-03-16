@@ -46,7 +46,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     return Object.keys(obj).length === 0;
   };
 
-  // 1. Accuracy of Operating Potential
+  // 1. Accuracy of Operating Potential (kVp Accuracy)
   if (testData.accuracyOfOperatingPotential && !isEmpty(testData.accuracyOfOperatingPotential)) {
     const test = testData.accuracyOfOperatingPotential;
     if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {

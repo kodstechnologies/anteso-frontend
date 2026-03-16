@@ -130,7 +130,8 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
     // Calculate avg, CV and remark
     const rowsWithCalc = useMemo(() => {
-        const tolValue = parseFloat(tolerance.value) || 0.05;
+        // Tolerance value is a decimal (e.g., 0.05 for 5%)
+        const tolValueDecimal = parseFloat(tolerance.value) || 0.05;
 
         return outputRows.map((row): OutputRow => {
             const values = row.outputs
@@ -148,25 +149,20 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / (values.length > 1 ? values.length - 1 : 1);
 
             const stdDev = Math.sqrt(variance);
-            const cvDecimal = avg > 0 ? (stdDev / avg) : 0;
+            const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal
 
-            // OBI typically displays basic decimal or %. 
-            // C-Arm implementation calculates cov as decimal.
-            // Let's formatting it to 4 decimals for display.
-            const cvDisplay = cvDecimal.toFixed(4);
-
+            // Compare CoV (decimal) with tolerance (decimal, e.g. 0.05)
             const passes =
-                tolerance.operator === '<=' ? cvDecimal <= tolValue :
-                    tolerance.operator === '<' ? cvDecimal < tolValue :
-                        tolerance.operator === '>=' ? cvDecimal >= tolValue :
-                            cvDecimal > tolValue;
+                tolerance.operator === '<=' || tolerance.operator === '<'
+                    ? covDecimal <= tolValueDecimal
+                    : covDecimal >= tolValueDecimal;
 
-            const remark = passes ? 'Pass' : 'Fail';
+            const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
 
             return {
                 ...row,
-                avg: avg.toFixed(3),
-                cv: cvDisplay,
+                avg: avg.toFixed(4),
+                cv: covDecimal.toFixed(3), // Store CoV as decimal (e.g., 0.004)
                 remark,
             };
         });
@@ -549,7 +545,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                                                         : 'bg-gray-100 text-gray-600'
                                                 }`}
                                             >
-                                                {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
+                                                {row.cv ? `${row.cv} → ${row.remark}` : '—'}
                                             </span>
                                         </td>
                                         <td className="px-3 text-center">

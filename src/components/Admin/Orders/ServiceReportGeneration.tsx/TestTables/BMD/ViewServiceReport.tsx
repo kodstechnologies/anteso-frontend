@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportBMD.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForBMD, getReportNumbers, getAccuracyOfIrradiationTimeByServiceIdForBMD, getDetails } from "../../../../../../api";
+import { getReportHeaderForBMD, getReportNumbers, getAccuracyOfIrradiationTimeByServiceIdForBMD, getDetails, getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/logo-sm.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
@@ -277,7 +277,7 @@ const ViewServiceReportBMD: React.FC = () => {
               ...data.accuracyOfOperatingPotential,
               rows: data.accuracyOfOperatingPotential.rows?.map((row: any) => ({
                 ...row,
-                appliedKvp: row.appliedKvp || row.appliedkVp || "", // Normalize field name
+                appliedKvp: row.appliedKvp || row.appliedkVp || "",
                 setTime: row.setTime || "",
                 avgKvp: row.avgKvp || "",
                 avgTime: row.avgTime || "",
@@ -370,6 +370,33 @@ const ViewServiceReportBMD: React.FC = () => {
             }
           }
         }
+
+          // If still no accuracyOfOperatingPotential, try fetching combined AccuracyOfOperatingPotentialAndTime test
+          if (!transformedAccuracyOfOperatingPotential) {
+            try {
+              const aopTimeRes = await getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD(serviceId);
+              if (aopTimeRes?.data) {
+                const aopTime = aopTimeRes.data;
+                transformedAccuracyOfOperatingPotential = {
+                  rows: (aopTime.rows || []).map((row: any) => ({
+                    appliedKvp: row.appliedKvp || row.appliedkVp || "",
+                    setTime: row.setTime || "",
+                    avgKvp: row.avgKvp || "",
+                    avgTime: row.avgTime || "",
+                    remark: row.remark || "-",
+                    measuredValues: row.measuredValues || [],
+                  })),
+                  mAStations: aopTime.mAStations || ["mA Station 1", "mA Station 2"],
+                  kvpToleranceSign: aopTime.kvpToleranceSign || "±",
+                  kvpToleranceValue: aopTime.kvpToleranceValue || "5",
+                  timeToleranceSign: aopTime.timeToleranceSign || "±",
+                  timeToleranceValue: aopTime.timeToleranceValue || "10",
+                };
+              }
+            } catch (err) {
+              console.log("No AccuracyOfOperatingPotentialAndTime data found:", err);
+            }
+          }
 
         // If still not found, set default
         setUlrNumber("N/A");
@@ -709,10 +736,10 @@ const ViewServiceReportBMD: React.FC = () => {
               </div>
             )}
 
-            {/* Total Filtration Section */}
+            {/* 2. Total Filtration Section */}
             {testData.totalFiltration && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold uppercase mb-4 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1.TOTAL FILTRATION</h3>
+                <h3 className="text-xl font-bold uppercase mb-4 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. TOTAL FILTRATION</h3>
 
                 {/* kV Measurement at Different mA */}
                 {testData.totalFiltration.measurements && testData.totalFiltration.measurements.length > 0 && (
@@ -734,8 +761,10 @@ const ViewServiceReportBMD: React.FC = () => {
                           {testData.totalFiltration.measurements.map((row: any, i: number) => (
                             <tr key={i} className="text-center">
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKvp || "-"}</td>
-                              {(row.measuredValues || []).map((val: string, idx: number) => (
-                                <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val || "-"}</td>
+                              {(testData.totalFiltration.mAStations || []).map((_: string, idx: number) => (
+                                <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                                  {(row.measuredValues && row.measuredValues[idx]) || "-"}
+                                </td>
                               ))}
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.averageKvp || "-"}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
