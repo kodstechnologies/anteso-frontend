@@ -1258,7 +1258,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     ...(hasGantryTilt === true ? [
                         { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} csvData={csvDataForComponents['Gantry Tilt']} /> },
                     ] : []),
-                    { title: "Maximum Radiation Level", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Maximum Radiation Level']} /> },
+                    { title: "Maximum Radiation Level", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Maximum Radiation Level']} initialSurveyDate={formData.testDate || minIssueDate || ""} /> },
                 ] : [
                     // ===== TUBE A TESTS =====
                     {
@@ -1305,7 +1305,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     { title: "High Contrast Resolution - Tube B", component: <HighContrastResolutionForCTScan serviceId={serviceId} tubeId="B" csvData={csvDataForComponents['High Contrast Resolution - Tube B']} /> },
 
                     // ===== COMMON TESTS (No Tube ID) =====
-                    { title: "Radiation Protection Survey Report", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Maximum Radiation Level']} /> },
+                    { title: "Radiation Protection Survey Report", component: <DetailsOfRadiationProtection serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Maximum Radiation Level']} initialSurveyDate={formData.testDate || minIssueDate || ""} /> },
                     { title: "Table Position", component: <TablePosition serviceId={serviceId} csvData={csvDataForComponents['Table Position']} /> },
                     ...(hasGantryTilt === true ? [
                         { title: "Gantry Tilt", component: <GantryTilt serviceId={serviceId} csvData={csvDataForComponents['Gantry Tilt']} /> },

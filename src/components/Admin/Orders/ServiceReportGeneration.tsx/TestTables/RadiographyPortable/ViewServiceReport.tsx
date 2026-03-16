@@ -178,9 +178,9 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
     <>
       {/* Floating Buttons */}
       <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
-        <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
+        {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
-        </button>
+        </button> */}
         <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Download PDF
         </button>
@@ -193,11 +193,20 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
           <div className="flex justify-between items-center mb-4 print:mb-2">
             <img src={logoA} alt="NABL" className="h-28 print:h-20" />
             <div className="text-right">
-              <table className="text-xs border border-gray-600 print:text-[8px]">
+              <table className="text-xs print:text-[7px] border border-black compact-table" style={{ fontSize: '9px', borderCollapse: 'collapse', borderSpacing: '0', tableLayout: 'auto', width: 'auto', maxWidth: '200px' }}>
                 <tbody>
-                  <tr><td className="border px-3 py-1 print:px-1 print:py-0 font-bold">SRF No.</td><td className="border px-3 py-1 print:px-1 print:py-0">{report.srfNumber}</td></tr>
-                  <tr><td className="border px-3 py-1 print:px-1 print:py-0 font-bold">SRF Date</td><td className="border px-3 py-1 print:px-1 print:py-0">{formatDate(report.srfDate)}</td></tr>
-                  <tr><td className="border px-3 py-1 print:px-1 print:py-0 font-bold">ULR No.</td><td className="border px-3 py-1 print:px-1 print:py-0">TC9A43250001485F</td></tr>
+                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '0.9', padding: '0', margin: '0', verticalAlign: 'middle' }}>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5 font-bold" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>SRF No.</td>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{report.srfNumber}</td>
+                  </tr>
+                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '0.9', padding: '0', margin: '0', verticalAlign: 'middle' }}>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5 font-bold" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>SRF Date</td>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{formatDate(report.srfDate)}</td>
+                  </tr>
+                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '0.9', padding: '0', margin: '0', verticalAlign: 'middle' }}>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5 font-bold" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>ULR No.</td>
+                    <td className="border px-3 py-1 print:px-1 print:py-0.5" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', minHeight: '0', height: 'auto', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{/* ULR number if available, else N/A */}N/A</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -205,33 +214,47 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
           </div>
 
           <div className="text-center mb-4 print:mb-2">
-            <p className="text-sm print:text-[10px] font-bold">Government of India, Atomic Energy Regulatory Board</p>
-            <p className="text-sm print:text-[10px] font-bold">Radiological Safety Division, Mumbai-400094</p>
+            <p className="text-sm print:text-[9px]">Government of India, Atomic Energy Regulatory Board</p>
+            <p className="text-sm print:text-[9px]">Radiological Safety Division, Mumbai-400094</p>
           </div>
 
-          <h1 className="text-center text-2xl print:text-xl font-bold underline mb-4 print:mb-2">
+          <h1 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-base" style={{ fontSize: '15px' }}>
             QA TEST REPORT FOR RADIOGRAPHY (PORTABLE) X-RAY EQUIPMENT
           </h1>
-          <p className="text-center italic text-sm print:text-[9px] mb-6 print:mb-2">
+          <p className="text-center italic text-sm mb-6 print:mb-2 print:text-[9px]">
             (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
           </p>
 
           {/* Customer Details */}
           <section className="mb-4 print:mb-2">
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">1. Customer Details</h2>
-            <div className="border-2 border-gray-600 p-5 print:p-2 text-lg print:text-xs">
-              <p className="mb-1"><strong>Customer:</strong> {report.customerName}</p>
-              <p><strong>Address:</strong> {report.address}</p>
-            </div>
+            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+              <tbody>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Customer</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
+                </tr>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.address}</td>
+                </tr>
+              </tbody>
+            </table>
           </section>
 
           {/* Reference */}
           <section className="mb-4 print:mb-2">
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">2. Reference</h2>
-            <table className="w-full border-2 border-gray-600 text-sm print:text-[9px]">
+            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
-                <tr><td className="border p-3 print:p-1 font-medium w-1/2">SRF No. & Date</td><td className="border p-3 print:p-1">{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
-                <tr><td className="border p-3 print:p-1 font-medium">Test Report No. & Issue Date</td><td className="border p-3 print:p-1">{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>SRF No. & Date</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.srfNumber} / {formatDate(report.srfDate)}</td>
+                </tr>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Test Report No. & Issue Date</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.testReportNumber} / {formatDate(report.issueDate)}</td>
+                </tr>
               </tbody>
             </table>
           </section>
@@ -239,7 +262,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
           {/* Equipment Details */}
           <section className="mb-4 print:mb-2">
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">3. Details of Equipment Under Test</h2>
-            <table className="w-full border-2 border-gray-600 text-sm print:text-[9px]">
+            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
                 {[
                   ["Nomenclature", report.nomenclature],
@@ -256,9 +279,9 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   ["Temperature (°C)", report.temperature || "-"],
                   ["Humidity (%)", report.humidity || "-"],
                 ].map(([label, value]) => (
-                  <tr key={label}>
-                    <td className="border p-3 print:p-1 font-medium w-1/2">{label}</td>
-                    <td className="border p-3 print:p-1">{value}</td>
+                  <tr key={label} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                    <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</td>
+                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{value}</td>
                   </tr>
                 ))}
               </tbody>

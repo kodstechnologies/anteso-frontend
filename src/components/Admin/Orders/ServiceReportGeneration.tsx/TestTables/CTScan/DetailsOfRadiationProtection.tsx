@@ -24,9 +24,10 @@ interface Props {
   serviceId: string;
   tubeId?: string | null;
   csvData?: any[];
+  initialSurveyDate?: string | null;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId, csvData }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId, csvData, initialSurveyDate }) => {
   // Get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     const today = new Date();
@@ -38,7 +39,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId, csvData
   const [isEditing, setIsEditing] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [surveyDate, setSurveyDate] = useState<string>(getTodayDate());
+  const [surveyDate, setSurveyDate] = useState<string>(initialSurveyDate || getTodayDate());
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
@@ -338,11 +339,6 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId, csvData
       toast.error("Please select calibration status");
       return;
     }
-    // Prevent submission if calibration is "No"
-    if (hasValidCalibration === "No") {
-      toast.error("Cannot submit test: Calibration certificate is expired. Please ensure all tools have valid calibration certificates.");
-      return;
-    }
 
     const payload = {
       surveyDate,
@@ -383,7 +379,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId, csvData
   };
 
   const isViewMode = isSaved && !isEditing;
-  const isDisabled = isViewMode || hasValidCalibration === "No";
+  const isDisabled = isViewMode;
 
   if (isLoading) {
     return (
@@ -396,9 +392,9 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, tubeId, csvData
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
       {hasValidCalibration === "No" && (
-        <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 mb-4">
-          <p className="text-red-800 font-semibold">
-            ⚠️ Calibration certificate is expired. All fields are disabled until valid calibration certificates are provided for all tools.
+        <div className="bg-yellow-50 border-2 border-yellow-500 rounded-lg p-4 mb-4">
+          <p className="text-yellow-800 font-semibold">
+            Calibration certificate is marked as "No". Please verify calibration status and review all entered values carefully before saving.
           </p>
         </div>
       )}
