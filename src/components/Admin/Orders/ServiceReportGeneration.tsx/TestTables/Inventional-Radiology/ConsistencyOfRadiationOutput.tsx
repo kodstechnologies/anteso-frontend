@@ -75,13 +75,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 }
 
                 const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-
+                // CoV formula same as RadiographyFixed: population variance (divide by N), then stdDev/mean as decimal
                 let cov = 0;
-                if (nums.length > 1) {
+                if (nums.length > 0 && mean > 0) {
                     const variance =
-                        nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-                        (nums.length - 1);
-                    cov = Math.sqrt(variance) / mean;
+                        nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / nums.length;
+                    const stdDev = Math.sqrt(variance);
+                    cov = stdDev / mean;
                 }
 
                 let remarks: 'Pass' | 'Fail' | '' = '';
@@ -95,7 +95,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 return {
                     ...row,
                     mean: mean.toFixed(3),
-                    cov: cov.toFixed(4),
+                    cov: cov.toFixed(3),
                     remarks,
                 };
             })
@@ -504,7 +504,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                                                         : 'bg-gray-100 text-gray-600'
                                                 }`}
                                             >
-                                                {row.cov ? `${row.cov}% → ${row.remarks}` : '—'}
+                                                {row.cov ? `${row.cov} → ${row.remarks}` : '—'}
                                             </span>
                                         </td>
                                         <td className="px-3 text-center">

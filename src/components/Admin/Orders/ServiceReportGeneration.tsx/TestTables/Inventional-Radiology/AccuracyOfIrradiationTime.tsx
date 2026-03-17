@@ -98,11 +98,16 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">":  return err > tol ? "FAIL" : "PASS";
-      case "<":  return err < tol ? "PASS" : "FAIL";
-      case ">=": return err >= tol ? "FAIL" : "PASS";
-      case "<=": return err <= tol ? "PASS" : "FAIL";
-      default:   return "-";
+      case ">":
+        return err > tol ? "PASS" : "FAIL";
+      case "<":
+        return err < tol ? "PASS" : "FAIL";
+      case ">=":
+        return err >= tol ? "PASS" : "FAIL";
+      case "<=":
+        return err <= tol ? "PASS" : "FAIL";
+      default:
+        return "-";
     }
   };
 
@@ -330,7 +335,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         </div>
       </div>
 
-      {/* Tolerance */}
+      {/* Tolerance Setting — same as RadiographyFixed */}
       <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-4 rounded-lg border border-indigo-200">
         <h4 className="text-sm font-semibold text-indigo-900 mb-2">Tolerance Setting</h4>
         <div className="flex flex-wrap items-center gap-2 text-sm">
