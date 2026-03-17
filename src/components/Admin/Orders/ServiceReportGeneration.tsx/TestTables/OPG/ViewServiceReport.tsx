@@ -48,7 +48,7 @@ interface ReportData {
   humidity?: string;
   toolsUsed?: Tool[];
   notes?: Note[];
-
+  category?: string;
   // All OPG Tests
   AccuracyOfIrradiationTimeOPG?: any;
   AccuracyOfOperatingPotentialOPG?: any;

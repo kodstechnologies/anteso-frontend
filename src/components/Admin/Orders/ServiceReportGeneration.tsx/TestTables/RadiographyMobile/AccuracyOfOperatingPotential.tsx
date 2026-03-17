@@ -172,7 +172,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
                 checkTolerance(parseFloat(v || "0"), applied, tolVal, tolSign)
               );
               const nums = measuredValues.filter((v: string) => v !== "" && !isNaN(parseFloat(v))).map(Number);
-              const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+              const avg = nums.length > 0 ? (nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(2) : "";
               const avgStatus = checkTolerance(parseFloat(avg || "0"), applied, tolVal, tolSign);
               const hasFail = statuses.some((s: boolean) => !s) || !avgStatus;
               const hasData = !isNaN(applied) && applied > 0 && (nums.length > 0 || (avg && !isNaN(parseFloat(avg))));
@@ -316,7 +316,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
             checkTolerance(parseFloat(val || "0"), applied, tol, toleranceSign)
           );
           const nums = row.measuredValues.filter((v) => v !== "" && !isNaN(Number(v))).map(Number);
-          const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+          const avg = nums.length > 0 ? (nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(2) : "";
           const avgStatus = checkTolerance(parseFloat(avg || "0"), applied, tol, toleranceSign);
           const hasAnyFailure = newMeasuredStatus.some((s) => !s) || !avgStatus;
           const hasValidData =
@@ -338,7 +338,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
         const newMeasured = [...row.measuredValues];
         newMeasured[field as number] = value;
         const nums = newMeasured.filter((v) => v !== "" && !isNaN(Number(v))).map(Number);
-        const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+        const avg = nums.length > 0 ? (nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(2) : "";
         const applied = parseFloat(row.appliedKvp || "0");
         const tol = parseFloat(toleranceValue || "0");
         const newMeasuredStatus = newMeasured.map((val) =>
