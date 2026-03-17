@@ -206,11 +206,11 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       },
       'Low Contrast Resolution': {
         'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
-        'Observed Resolution': 'Table2_Result', 'Criteria': 'Criteria'
+        'Observed Resolution': 'Table1_smallestHoleSize', 'Criteria': 'Table1_recommendedStandard'
       },
       'High Contrast Resolution': {
         'kV/mAs': 'Table1_kvmAs',
-        'Measured Resolution': 'Table2_Result', 'Criteria': 'Criteria'
+        'Measured Resolution': 'Table1_measuredLpPerMm', 'Criteria': 'Table1_recommendedStandard'
       },
       'Exposure Rate At Table Top': {
         'kV': 'Table1_kv', 'mA': 'Table1_ma',
@@ -375,7 +375,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
   };
 
   const parseCSV = (text: string): any[] => {
-    const lines = text.split('\n').map(line => line.split(',').map(c => c.trim()));
+    const normalized = text.replace(/\uFEFF/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalized.split('\n').map(line => line.split(',').map(c => String(c || '').trim()));
     const asRows = lines as any[][];
     const vertical = parseVerticalData(asRows);
     if (vertical.length > 0) return vertical;
