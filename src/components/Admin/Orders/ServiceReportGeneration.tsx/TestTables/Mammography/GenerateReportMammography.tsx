@@ -219,6 +219,277 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         return data;
     };
 
+    // Parse CT Scan–style horizontal format: "TEST: Section Name" then header row then data rows (key-value per column).
+    const parseHorizontalData = (rows: any[][]): any[] => {
+        const data: any[] = [];
+        let currentTestName = '';
+        let headers: string[] = [];
+        let isReadingTest = false;
+        const sectionRowCounter: { [key: string]: number } = {};
+
+        const testMarkerToInternalName: Record<string, string> = {
+            'ACCURACY OF OPERATING POTENTIAL': 'Accuracy of Operating Potential',
+            'ACCURACY OF IRRADIATION TIME': 'Accuracy of Irradiation Time',
+            'LINEARITY OF MAS LOADING': 'Linearity of mAs Loading',
+            'LINEARITY OF MA LOADING STATIONS': 'Linearity of mA Loading Stations',
+            'TOTAL FILTRATION & ALUMINIUM': 'Total Filtration & Aluminium',
+            'TOTAL FILTRATION AND ALUMINIUM': 'Total Filtration & Aluminium',
+            'REPRODUCIBILITY OF OUTPUT': 'Reproducibility of Output',
+            'RADIATION LEAKAGE LEVEL': 'Radiation Leakage Level',
+            'IMAGING PHANTOM': 'Imaging Phantom',
+            'RADIATION PROTECTION SURVEY': 'Radiation Protection Survey',
+        };
+        const markerUpperToInternal: Record<string, string> = Object.fromEntries(
+            Object.entries(testMarkerToInternalName).map(([k, v]) => [String(k).trim().toUpperCase(), v])
+        );
+
+        const headerMap: { [test: string]: { [header: string]: string } } = {
+            'Accuracy of Operating Potential': {
+                'Time': 'Table1_Time', 'Time (ms)': 'Table1_Time', 'Slice Thickness': 'Table1_SliceThickness', 'Slice Thickness (mm)': 'Table1_SliceThickness',
+                'Set kV': 'Measurement_AppliedKvp', 'Applied kV': 'Measurement_AppliedKvp', 'Applied KV': 'Measurement_AppliedKvp',
+                '10 mA': 'Measurement_Meas1', '100 mA': 'Measurement_Meas2', '200 mA': 'Measurement_Meas3',
+                'Meas 1': 'Measurement_Meas1', 'Meas 2': 'Measurement_Meas2', 'Meas 3': 'Measurement_Meas3',
+                'Avg kV': 'Measurement_AvgKvp', 'Tol Value': 'Tolerance_Value', 'Tol Type': 'Tolerance_Type', 'Tol Sign': 'Tolerance_Sign',
+                'TF at kVp': 'TotalFiltration_atKvp', 'TF Required': 'TotalFiltration_Required', 'TF Measured': 'TotalFiltration_Measured',
+                'Filt Tol >70': 'FiltrationTolerance_forKvGreaterThan70', 'Filt Tol 70-100': 'FiltrationTolerance_forKvBetween70And100', 'Filt Tol >100': 'FiltrationTolerance_forKvGreaterThan100',
+                'kV Threshold 1': 'FiltrationTolerance_kvThreshold1', 'kV Threshold 2': 'FiltrationTolerance_kvThreshold2',
+            },
+            'Accuracy of Irradiation Time': {
+                'FCD': 'TestConditions_FCD', 'kV': 'TestConditions_kV', 'ma': 'TestConditions_ma',
+                'Set Time (ms)': 'IrradiationTime_SetTime', 'Measured Time (ms)': 'IrradiationTime_MeasuredTime',
+                'Tol Operator': 'Tolerance_Operator', 'Tol Value': 'Tolerance_Value',
+            },
+            'Linearity of mAs Loading': {
+                'FCD': 'ExposureCondition_FCD', 'kV': 'ExposureCondition_kV', 'mAs Range': 'Measurement_mAsRange',
+                'Meas 1': 'Measurement_Meas1', 'Meas 2': 'Measurement_Meas2', 'Meas 3': 'Measurement_Meas3', 'Result': 'Measurement_Meas1',
+                'Tolerance': 'Tolerance',
+            },
+            'Linearity of mA Loading Stations': {
+                'FCD': 'Table1_FCD', 'kV': 'Table1_kV', 'Time': 'Table1_Time',
+                'ma': 'Table2_ma', 'mA': 'Table2_ma', 'Meas 1': 'Table2_Meas1', 'Meas 2': 'Table2_Meas2', 'Meas 3': 'Table2_Meas3',
+                'Tolerance': 'Tolerance', 'Tol Operator': 'ToleranceOperator',
+            },
+            'Total Filtration & Aluminium': {
+                'Target Window': 'TargetWindow', 'Added Filter (mm)': 'AddedFilterThickness', 'HVT at 28 kVp': 'ResultHVT28kVp',
+                'kVp': 'Table_kVp', 'mAs': 'Table_mAs', 'Al Equiv (mm)': 'Table_AlEquivalence', 'HVT': 'Table_HVT',
+                'Rec Min': 'Table_RecommendedValue_Min', 'Rec Max': 'Table_RecommendedValue_Max', 'Rec kVp': 'Table_RecommendedValue_kVp',
+            },
+            'Reproducibility of Output': {
+                'kV': 'OutputRow_kV', 'mAs': 'OutputRow_mAs', 'Meas 1': 'OutputRow_Meas1', 'Meas 2': 'OutputRow_Meas2', 'Meas 3': 'OutputRow_Meas3',
+                'Tolerance': 'Tolerance',
+            },
+            'Radiation Leakage Level': {
+                'FCD': 'Settings_FCD', 'kV': 'Settings_kV', 'ma': 'Settings_ma', 'Time': 'Settings_time',
+                'Workload': 'Workload', 'Tol Value': 'ToleranceValue', 'Tol Operator': 'ToleranceOperator', 'Tol Time': 'ToleranceTime',
+                'Location': 'LeakageMeasurement_Location', 'Left': 'LeakageMeasurement_Left', 'Right': 'LeakageMeasurement_Right',
+                'Front': 'LeakageMeasurement_Front', 'Back': 'LeakageMeasurement_Back', 'Top': 'LeakageMeasurement_Top',
+            },
+            'Imaging Phantom': {
+                'Name': 'PhantomRow_Name', 'Visible Count': 'PhantomRow_VisibleCount', 'Tol Operator': 'PhantomRow_ToleranceOperator', 'Tol Value': 'PhantomRow_ToleranceValue',
+            },
+            'Radiation Protection Survey': {
+                'Date': 'SurveyDate', 'Calibrated': 'HasValidCalibration', 'mA': 'AppliedCurrent', 'kV': 'AppliedVoltage', 'Time': 'ExposureTime', 'Workload': 'Workload',
+                'Location': 'Location_Location', 'mR/hr': 'Location_mRPerHr', 'Category': 'Location_Category',
+            },
+        };
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i].map((c: any) => String(c != null ? c : '').trim());
+            const firstCell = (row[0] || '').trim();
+
+            if (firstCell.startsWith('TEST: ')) {
+                const rawTitle = firstCell.replace(/^TEST:\s*/i, '').trim();
+                const baseTitle = rawTitle.replace(/\s*-\s*TUBE\s*[AB]\s*$/i, '').trim();
+                const key = baseTitle.toUpperCase();
+                currentTestName = markerUpperToInternal[key] || '';
+                isReadingTest = true;
+                headers = [];
+                if (currentTestName) sectionRowCounter[currentTestName] = 0;
+                continue;
+            }
+
+            if (isReadingTest && headers.length === 0 && row.some(c => c !== '')) {
+                headers = row;
+                continue;
+            }
+
+            if (isReadingTest && row.every(c => c === '')) {
+                isReadingTest = false;
+                continue;
+            }
+
+            if (isReadingTest && currentTestName && headers.length > 0) {
+                const map = headerMap[currentTestName];
+                if (!map) continue;
+                sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] ?? 0);
+                const rowIdx = sectionRowCounter[currentTestName];
+                sectionRowCounter[currentTestName] = rowIdx + 1;
+                row.forEach((value, cellIdx) => {
+                    const header = (headers[cellIdx] || '').trim();
+                    const internalField = map[header];
+                    if (internalField && value !== '') {
+                        data.push({
+                            'Field Name': internalField,
+                            'Value': value,
+                            'Row Index': String(rowIdx),
+                            'Test Name': currentTestName,
+                        });
+                    }
+                });
+            }
+        }
+        return data;
+    };
+
+    const csvTextToRows = (text: string): any[][] => {
+        const parseLine = (line: string): string[] => {
+            const result: string[] = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') inQuotes = !inQuotes;
+                else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else current += char;
+            }
+            result.push(current.trim());
+            return result;
+        };
+        return text.split(/\r?\n/).map(l => parseLine(l));
+    };
+
+    const parseCSVOrHorizontal = (text: string): any[] => {
+        const rows = csvTextToRows(text);
+        if (rows.length > 0 && (rows[0][0] || '').toString().trim().toUpperCase().startsWith('TEST:')) {
+            return parseHorizontalData(rows);
+        }
+        const vertical = parseCSV(text);
+        if (vertical.length > 0) return vertical;
+        return parseMammographyGridCSV(text);
+    };
+
+    const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+        return parseHorizontalData(jsonData);
+    };
+
+    // Parse mammography_template_with_timer_tests.csv style (grid: no "Field Name" column, section titles in cells)
+    const parseMammographyGridCSV = (text: string): any[] => {
+        const parseLine = (line: string): string[] => {
+            const result: string[] = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') inQuotes = !inQuotes;
+                else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else current += char;
+            }
+            result.push(current.trim());
+            return result;
+        };
+
+        const lines = text.split(/\r?\n/).filter(l => l.length > 0);
+        const rows: string[][] = lines.map(l => parseLine(l));
+        const out: any[] = [];
+
+        const norm = (s: string) => (s || '').trim().toUpperCase();
+        const cellContains = (row: string[], ...keys: string[]) => row.some(c => keys.some(k => norm(c).includes(norm(k))));
+        const findCol = (row: string[], ...keys: string[]) => row.findIndex(c => keys.some(k => norm(c).includes(norm(k))));
+
+        for (let r = 0; r < rows.length; r++) {
+            const row = rows[r];
+            const rowStr = row.join(' ');
+
+            // Accuracy of Operating Potential
+            if (cellContains(row, 'ACCURACY OF OPERATING POTENTIAL') && !cellContains(row, 'IRRADIATION TIME')) {
+                const titleCol = row.findIndex(c => norm(c).includes('ACCURACY OF OPERATING POTENTIAL'));
+                if (titleCol < 0) continue;
+                // Next row often has "Applied KV " header
+                let headerRow = rows[r + 1];
+                if (!headerRow) continue;
+                const appliedCol = findCol(headerRow, 'Applied KV', 'Applied kV');
+                if (appliedCol < 0) {
+                    out.push({ 'Field Name': 'Measurement_AppliedKvp', Value: '', 'Row Index': '0', 'Test Name': 'Accuracy of Operating Potential' });
+                    continue;
+                }
+                const avgCol = findCol(headerRow, 'AVG KV', 'AVG kV', 'Avg KV');
+                const numMeasCols = Math.min(3, headerRow.length - appliedCol - 1);
+                for (let d = r + 2; d < rows.length; d++) {
+                    const dataRow = rows[d];
+                    const appliedVal = (dataRow[appliedCol] ?? '').trim();
+                    if (!appliedVal || norm(appliedVal).includes('TOLERANCE') || norm(appliedVal).includes('LINEARITY') || norm(appliedVal).includes('OUTPUT')) break;
+                    const appliedNum = parseFloat(appliedVal);
+                    if (isNaN(appliedNum) && appliedVal !== '') continue;
+                    if (appliedVal === '') continue;
+                    const rowIndex = d - (r + 2);
+                    out.push({ 'Field Name': 'Measurement_AppliedKvp', Value: appliedVal, 'Row Index': String(rowIndex), 'Test Name': 'Accuracy of Operating Potential' });
+                    for (let c = 1; c <= numMeasCols; c++) {
+                        const val = (dataRow[appliedCol + c] ?? '').trim();
+                        if (val !== '' && !norm(val).includes('TOLERANCE')) {
+                            out.push({ 'Field Name': `Measurement_Meas${c}`, Value: val, 'Row Index': String(rowIndex), 'Test Name': 'Accuracy of Operating Potential' });
+                        }
+                    }
+                    if (avgCol >= 0 && dataRow[avgCol] !== undefined && (dataRow[avgCol] ?? '').trim() !== '') {
+                        out.push({ 'Field Name': 'Measurement_AvgKvp', Value: String(dataRow[avgCol]).trim(), 'Row Index': String(rowIndex), 'Test Name': 'Accuracy of Operating Potential' });
+                    }
+                }
+                // Tolerance: ± 1 kV
+                for (let d = r + 2; d < Math.min(r + 25, rows.length); d++) {
+                    const line = rows[d].join(' ');
+                    if (norm(line).includes('TOLERANCE') && (norm(line).includes('±') || norm(line).includes('+/-'))) {
+                        const match = line.match(/([±+]|-\s*)\s*(\d+(?:\.\d+)?)\s*kV/i) || line.match(/Tolerance:\s*([±+])\s*(\d+)/i);
+                        if (match) {
+                            out.push({ 'Field Name': 'Tolerance_Sign', Value: match[1].trim() === '±' ? 'both' : match[1].trim() === '+' ? 'plus' : 'minus', 'Row Index': '0', 'Test Name': 'Accuracy of Operating Potential' });
+                            out.push({ 'Field Name': 'Tolerance_Value', Value: match[2] || '1', 'Row Index': '0', 'Test Name': 'Accuracy of Operating Potential' });
+                        }
+                        break;
+                    }
+                }
+                continue;
+            }
+
+            // mA LINEARITY TEST -> Linearity of mA Loading Stations
+            if (cellContains(row, 'mA LINEARITY TEST', 'LINEARITY OF MA')) {
+                out.push({ 'Field Name': 'Table2_ma', Value: '', 'Row Index': '0', 'Test Name': 'Linearity of mA Loading Stations' });
+                continue;
+            }
+            // OUTPUT CONSISTANCY -> Reproducibility of Output
+            if (cellContains(row, 'OUTPUT CONSISTANCY', 'OUTPUT CONSISTENCY')) {
+                out.push({ 'Field Name': 'OutputRow_kv', Value: '', 'Row Index': '0', 'Test Name': 'Reproducibility of Output' });
+                continue;
+            }
+            // TUBE LEAKAGE -> Radiation Leakage Level
+            if (cellContains(row, 'TUBE LEAKAGE', 'RADIATION LEAKAGE LEVEL')) {
+                out.push({ 'Field Name': 'LeakageMeasurement_Location', Value: '', 'Row Index': '0', 'Test Name': 'Radiation Leakage Level' });
+                continue;
+            }
+            // TOTAL FILTRATION -> Total Filtration & Aluminium
+            if (cellContains(row, 'TOTAL FILTRATION') && !cellContains(row, 'ALUMINIUM')) {
+                out.push({ 'Field Name': 'TotalFiltration_Required', Value: '', 'Row Index': '0', 'Test Name': 'Total Filtration & Aluminium' });
+                continue;
+            }
+            // IMAGING TEST -> Imaging Phantom
+            if (cellContains(row, 'IMAGING TEST', 'IMAGING PERFORMANCE')) {
+                out.push({ 'Field Name': 'PhantomRow_Detail', Value: '', 'Row Index': '0', 'Test Name': 'Imaging Phantom' });
+                continue;
+            }
+            // RADIATION LEAKAGE SURVAY -> Radiation Protection Survey
+            if (cellContains(row, 'RADIATION LEAKAGE SURVAY', 'RADIATION PROTECTION')) {
+                out.push({ 'Field Name': 'Location_Value', Value: '', 'Row Index': '0', 'Test Name': 'Radiation Protection Survey' });
+                continue;
+            }
+        }
+
+        return out;
+    };
+
     // Process CSV data and fill test tables.
     // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
     const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
@@ -287,6 +558,10 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     const kVpMeasurements: any[] = [];
                     const tol: any = {};
                     let currentBlock: any = null;
+                    const totalFiltration: { atKvp: string; required: string; measured: string } = { atKvp: '', required: '', measured: '' };
+                    const filtrationTolerance: { forKvGreaterThan70: string; forKvBetween70And100: string; forKvGreaterThan100: string; kvThreshold1: string; kvThreshold2: string } = {
+                        forKvGreaterThan70: '1.5', forKvBetween70And100: '2.0', forKvGreaterThan100: '2.5', kvThreshold1: '70', kvThreshold2: '100',
+                    };
 
                     data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();
@@ -298,14 +573,20 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         if (field === 'MeasHeader') {
                             measHeaders.push(value);
                         } else if (field === 'Measurement_AppliedKvp') {
-                            // Start a new measurement block (one row in the table)
                             currentBlock = { setKV: value, measurements: [] as string[] };
                             kVpMeasurements.push(currentBlock);
                         } else if (field.startsWith('Measurement_Meas') && currentBlock) {
                             currentBlock.measurements.push(value);
                         } else if (field.startsWith('Tolerance_')) {
                             tol[field.split('_')[1]] = value;
-                        }
+                        } else if (field === 'TotalFiltration_atKvp') totalFiltration.atKvp = value;
+                        else if (field === 'TotalFiltration_Required') totalFiltration.required = value;
+                        else if (field === 'TotalFiltration_Measured') totalFiltration.measured = value;
+                        else if (field === 'FiltrationTolerance_forKvGreaterThan70') filtrationTolerance.forKvGreaterThan70 = value;
+                        else if (field === 'FiltrationTolerance_forKvBetween70And100') filtrationTolerance.forKvBetween70And100 = value;
+                        else if (field === 'FiltrationTolerance_forKvGreaterThan100') filtrationTolerance.forKvGreaterThan100 = value;
+                        else if (field === 'FiltrationTolerance_kvThreshold1') filtrationTolerance.kvThreshold1 = value;
+                        else if (field === 'FiltrationTolerance_kvThreshold2') filtrationTolerance.kvThreshold2 = value;
                     });
 
                     // Convert measurement blocks into the table2 format expected by AccuracyOfOperatingPotential
@@ -317,19 +598,29 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         return row;
                     });
 
-                    if (table1Row.time || table1Row.sliceThickness || table2.length > 0) {
+                    const hasAopData = table1Row.time || table1Row.sliceThickness || table2.length > 0 || totalFiltration.atKvp || totalFiltration.required || totalFiltration.measured;
+                    if (hasAopData) {
                         setCsvDataForComponents(prev => ({
                             ...prev,
                             accuracyOfOperatingPotential: {
                                 table1: [table1Row],
                                 table2,
-                                // Default tolerance same as component defaults if not provided
                                 tolerance: {
                                     value: tol.Value || tol.value || '1.5',
                                     type: (tol.Type || tol.type || 'absolute') as 'percent' | 'absolute',
                                     sign: (tol.Sign || tol.sign || 'both') as 'plus' | 'minus' | 'both',
                                 },
                                 measHeaders,
+                                ...(totalFiltration.atKvp || totalFiltration.required || totalFiltration.measured ? {
+                                    totalFiltration: {
+                                        atKvp: totalFiltration.atKvp,
+                                        required: totalFiltration.required,
+                                        measured: totalFiltration.measured,
+                                    },
+                                } : {}),
+                                ...(filtrationTolerance.forKvGreaterThan70 || filtrationTolerance.forKvBetween70And100 || filtrationTolerance.forKvGreaterThan100 ? {
+                                    filtrationTolerance,
+                                } : {}),
                             },
                         }));
                         console.log('✓ Accuracy of Operating Potential data prepared for form (dynamic columns)');
@@ -891,32 +1182,49 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (!file.name.endsWith('.csv')) {
-            toast.error('Please upload a CSV file');
+        const name = (file.name || '').toLowerCase();
+        const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+        if (!isExcel && !name.endsWith('.csv')) {
+            toast.error('Please upload a CSV or Excel (.xlsx) file');
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const text = e.target?.result as string;
-                console.log('CSV file content (first 500 chars):', text.substring(0, 500));
-                const csvData = parseCSV(text);
-                console.log('Parsed CSV data:', csvData);
-                console.log('Number of rows parsed:', csvData.length);
-                if (csvData.length > 0) {
-                    console.log('First row sample:', csvData[0]);
+        if (isExcel) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const arrayBuffer = e.target?.result as ArrayBuffer;
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    const csvData = parseExcelToCSVFormat(workbook);
+                    console.log('Parsed Excel rows:', csvData.length);
+                    if (csvData.length > 0) await processCSVData(csvData);
+                    else toast.error('No data found in Excel file');
+                } catch (err: any) {
+                    console.error('Error reading Excel:', err);
+                    toast.error(`Failed to read Excel: ${err?.message || 'Unknown error'}`);
                 }
-                await processCSVData(csvData);
-            } catch (error: any) {
-                console.error('Error reading CSV file:', error);
-                toast.error(`Failed to read CSV file: ${error?.message || 'Unknown error'}`);
-            }
-        };
-        reader.onerror = () => {
-            toast.error('Failed to read CSV file');
-        };
-        reader.readAsText(file);
+            };
+            reader.onerror = () => toast.error('Failed to read file');
+            reader.readAsArrayBuffer(file);
+        } else {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const text = e.target?.result as string;
+                    const csvData = parseCSVOrHorizontal(text);
+                    console.log('Parsed CSV rows:', csvData.length);
+                    if (csvData.length > 0) {
+                        console.log('First row sample:', csvData[0]);
+                        await processCSVData(csvData);
+                    } else toast.error('No data found in CSV file');
+                } catch (error: any) {
+                    console.error('Error reading CSV file:', error);
+                    toast.error(`Failed to read CSV file: ${error?.message || 'Unknown error'}`);
+                }
+            };
+            reader.onerror = () => toast.error('Failed to read CSV file');
+            reader.readAsText(file);
+        }
 
         // Reset file input
         if (fileInputRef.current) {
@@ -941,18 +1249,16 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 const urlLower = csvFileUrl.toLowerCase();
                 const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
 
-                let text: string;
+                let csvData: any[];
                 if (isExcel) {
                     const XLSX = await import('xlsx');
                     const arrayBuffer = await blob.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                    const ws = workbook.Sheets[workbook.SheetNames[0]];
-                    text = XLSX.utils.sheet_to_csv(ws);
+                    csvData = parseExcelToCSVFormat(workbook);
                 } else {
-                    text = await blob.text();
+                    const text = await blob.text();
+                    csvData = parseCSVOrHorizontal(text);
                 }
-
-                const csvData = parseCSV(text);
                 if (csvData.length > 0) {
                     await processCSVData(csvData, true);
                     toast.success('File loaded successfully!', { id: 'mammo-csv-load' });
@@ -1310,13 +1616,20 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     Generate Mammography QA Test Report
                 </h1>
                 <div className="flex items-center gap-4">
+                    {/* <a
+                        href="/templates/Mammography_Test_Data_Template.csv"
+                        download="Mammography_Test_Data_Template.csv"
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition border border-gray-300"
+                    >
+                        Download template (CSV)
+                    </a> */}
                     <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
                         <CloudArrowUpIcon className="w-5 h-5" />
-                        {csvUploading ? 'Uploading...' : 'Upload CSV'}
+                        {csvUploading ? 'Uploading...' : 'Upload CSV / Excel'}
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".csv"
+                            accept=".csv,.xlsx,.xls"
                             onChange={handleCSVUpload}
                             className="hidden"
                             disabled={csvUploading}
