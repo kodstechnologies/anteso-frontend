@@ -505,7 +505,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                           : 'bg-gray-100 text-gray-600'
                         }`}
                     >
-                      {row.cv ? `${row.cv}% → ${row.remark}` : '—'}
+                      {row.cv ? `${row.cv} → ${row.remark}` : '—'}
                     </span>
                   </td>
                   <td className="px-3 text-center">
