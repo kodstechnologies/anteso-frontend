@@ -346,7 +346,7 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
             <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
                     <h3 className="text-lg font-semibold text-gray-800">Parameters</h3>
-                    {!isViewMode && (
+                    {/* {!isViewMode && (
                         <button
                             onClick={addParameterRow}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
@@ -354,7 +354,7 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                             <Plus className="w-4 h-4" />
                             Add Column
                         </button>
-                    )}
+                    )} */}
                 </div>
 
                 <div className="overflow-x-auto">

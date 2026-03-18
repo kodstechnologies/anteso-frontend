@@ -518,17 +518,204 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
-
     if (jsonData.length === 0) return data;
 
+    const norm = (v: any) => String(v ?? '').trim();
+    const normUpper = (v: any) => norm(v).toUpperCase();
+    const findFirstNonEmptyRowIdx = () => {
+      for (let i = 0; i < jsonData.length; i++) {
+        if (jsonData[i].some(c => norm(c) !== '')) return i;
+      }
+      return -1;
+    };
+
+    // 1) If file already contains a structured table with Test Name / Field Name / Value (and optional Row Index), just pass it through.
+    for (let i = 0; i < Math.min(25, jsonData.length); i++) {
+      const row = jsonData[i].map(norm);
+      const idxTest = row.findIndex(c => c.toLowerCase() === 'test name');
+      const idxField = row.findIndex(c => c.toLowerCase() === 'field name' || c.toLowerCase() === 'fieldname');
+      const idxValue = row.findIndex(c => c.toLowerCase() === 'value');
+      if (idxTest !== -1 && idxField !== -1 && idxValue !== -1) {
+        const idxRowIndex = row.findIndex(c => c.toLowerCase() === 'row index' || c.toLowerCase() === 'rowindex');
+        for (let r = i + 1; r < jsonData.length; r++) {
+          const rr = jsonData[r];
+          const testName = norm(rr[idxTest]);
+          const fieldName = norm(rr[idxField]);
+          const value = norm(rr[idxValue]);
+          const rowIndex = idxRowIndex !== -1 ? norm(rr[idxRowIndex]) : '0';
+          if (!testName && !fieldName && !value) continue;
+          if (!testName || !fieldName) continue;
+          data.push({ 'Test Name': testName, 'Field Name': fieldName, 'Value': value, 'Row Index': rowIndex });
+        }
+        return data;
+      }
+    }
+
+    // 2) CT/Mammography-style horizontal format: TEST: <section> then header row then data rows.
+    const firstDataRowIdx = findFirstNonEmptyRowIdx();
+    const hasTestMarkers = jsonData.some(r => normUpper(r?.[0]).startsWith('TEST:'));
+    if (firstDataRowIdx !== -1 && hasTestMarkers) {
+      const testMarkerToInternalName: Record<string, string> = {
+        'ACCURACY OF IRRADIATION TIME': 'Accuracy of Irradiation Time',
+        'TOTAL FILTRATION': 'Total Filtration',
+        'CONSISTENCY OF RADIATION OUTPUT': 'Consistency of Radiation Output',
+        'LOW CONTRAST RESOLUTION': 'Low Contrast Resolution',
+        'HIGH CONTRAST RESOLUTION': 'High Contrast Resolution',
+        'EXPOSURE RATE AT TABLE TOP': 'Exposure Rate At Table Top',
+        'TUBE HOUSING LEAKAGE': 'Tube Housing Leakage',
+        'LINEARITY OF MA LOADING': 'Linearity of mA Loading',
+        'LINEARITY OF MAS LOADING': 'Linearity of mAs Loading',
+      };
+      const markerUpperToInternal: Record<string, string> = Object.fromEntries(
+        Object.entries(testMarkerToInternalName).map(([k, v]) => [k.trim().toUpperCase(), v])
+      );
+
+      const headerMap: Record<string, Record<string, string>> = {
+        'Accuracy of Irradiation Time': {
+          'FCD': 'TestConditions_FCD',
+          'kV': 'TestConditions_kV',
+          'mA': 'TestConditions_ma',
+          'Set Time (ms)': 'IrradiationTime_SetTime',
+          'Measured Time (ms)': 'IrradiationTime_MeasuredTime',
+          'Tol Operator': 'Tolerance_Operator',
+          'Tol Value': 'Tolerance_Value',
+        },
+        'Total Filtration': {
+          'mA Station': 'mAStations',
+          'mA Stations': 'mAStations',
+          'Applied kV': 'Measurement_AppliedKvp',
+          'Applied KV': 'Measurement_AppliedKvp',
+          'Meas 1': 'Measurement_Meas1',
+          'Meas 2': 'Measurement_Meas2',
+          'Meas 3': 'Measurement_Meas3',
+          'Avg kV': 'Measurement_AverageKvp',
+          'Tolerance Sign': 'Tolerance_Sign',
+          'Tolerance Value': 'Tolerance_Value',
+          'TF Measured': 'TotalFiltration_Measured',
+          'TF Required': 'TotalFiltration_Required',
+        },
+        'Consistency of Radiation Output': {
+          'FFD': 'Parameters_FFD',
+          'Time': 'Parameters_Time',
+          'Tolerance': 'Output_Tolerance',
+          'kV': 'Output_kV',
+          'mA': 'Output_mA',
+          'Meas 1': 'Output_Meas1',
+          'Meas 2': 'Output_Meas2',
+          'Meas 3': 'Output_Meas3',
+        },
+        'Low Contrast Resolution': {
+          'Hole Size': 'LowContrast_HoleSize',
+          'Standard': 'LowContrast_Standard',
+        },
+        'High Contrast Resolution': {
+          'lp/mm': 'HighContrast_LpMm',
+          'Standard': 'HighContrast_Standard',
+        },
+        'Exposure Rate At Table Top': {
+          'AEC Tolerance': 'ExposureRate_AecTolerance',
+          'Non-AEC Tolerance': 'ExposureRate_NonAecTolerance',
+          'Min Focus Distance': 'ExposureRate_MinFocusDistance',
+          'Distance': 'ExposureRate_Distance',
+          'kVp': 'ExposureRate_kVp',
+          'mA': 'ExposureRate_mA',
+          'Exposure': 'ExposureRate_Exposure',
+          'Mode': 'ExposureRate_Mode',
+        },
+        'Tube Housing Leakage': {
+          'FCD': 'Leakage_FCD',
+          'kV': 'Leakage_kV',
+          'mA': 'Leakage_mA',
+          'Time': 'Leakage_Time',
+          'Workload': 'Leakage_Workload',
+          'Tol Value': 'Leakage_ToleranceValue',
+          'Tol Operator': 'Leakage_ToleranceOperator',
+          'Location': 'Leakage_Location',
+          'Front': 'Leakage_Front',
+          'Back': 'Leakage_Back',
+          'Left': 'Leakage_Left',
+          'Right': 'Leakage_Right',
+          'Top': 'Leakage_Top',
+        },
+        'Linearity of mA Loading': {
+          'FCD': 'Linearity_FCD',
+          'kV': 'Linearity_kV',
+          'Time': 'Linearity_Time',
+          'Tolerance': 'Linearity_Tolerance',
+          'mA': 'Linearity_mA',
+          'Meas 1': 'Linearity_Meas1',
+          'Meas 2': 'Linearity_Meas2',
+          'Meas 3': 'Linearity_Meas3',
+        },
+        'Linearity of mAs Loading': {
+          'FCD': 'Linearity_FCD',
+          'kV': 'Linearity_kV',
+          'Tol Value': 'Linearity_ToleranceValue',
+          'Tol Operator': 'Linearity_ToleranceOperator',
+          'mAs': 'Linearity_mAs',
+          'Meas 1': 'Linearity_Meas1',
+          'Meas 2': 'Linearity_Meas2',
+          'Meas 3': 'Linearity_Meas3',
+        },
+      };
+
+      let currentTestName = '';
+      let headers: string[] = [];
+      let isReadingTest = false;
+      const sectionRowCounter: Record<string, number> = {};
+
+      for (let i = 0; i < jsonData.length; i++) {
+        const row = (jsonData[i] || []).map(norm);
+        const firstCell = row[0] || '';
+
+        if (normUpper(firstCell).startsWith('TEST:')) {
+          const rawTitle = firstCell.replace(/^TEST:\s*/i, '').trim();
+          currentTestName = markerUpperToInternal[rawTitle.toUpperCase()] || '';
+          isReadingTest = true;
+          headers = [];
+          if (currentTestName) sectionRowCounter[currentTestName] = 0;
+          continue;
+        }
+
+        if (isReadingTest && headers.length === 0 && row.some(c => c !== '')) {
+          headers = row;
+          continue;
+        }
+
+        if (isReadingTest && row.every(c => c === '')) {
+          isReadingTest = false;
+          continue;
+        }
+
+        if (isReadingTest && currentTestName && headers.length > 0) {
+          const map = headerMap[currentTestName];
+          if (!map) continue;
+          const rowIdx = sectionRowCounter[currentTestName] ?? 0;
+          sectionRowCounter[currentTestName] = rowIdx + 1;
+          row.forEach((value, cellIdx) => {
+            const header = (headers[cellIdx] || '').trim();
+            if (!header) return;
+            // Allow "Header 1/2/3" to map to Header_1/2/3 (used by some dynamic-column components)
+            const headerMatch = header.match(/^Header\s*(\d+)$/i);
+            const internalField = headerMatch ? `Header_${headerMatch[1]}` : map[header];
+            if (internalField && value !== '') {
+              data.push({ 'Field Name': internalField, 'Value': value, 'Row Index': String(rowIdx), 'Test Name': currentTestName });
+            }
+          });
+        }
+      }
+      if (data.length > 0) return data;
+      // fall through to legacy format if nothing matched
+    }
+
+    // 3) Legacy vertical template: sections as ========= and two columns Field Name / Value.
     let fieldNameCol = -1;
     let valueCol = -1;
     let headerRowIndex = -1;
-
     for (let i = 0; i < Math.min(10, jsonData.length); i++) {
       const row = jsonData[i];
       for (let j = 0; j < row.length; j++) {
-        const cell = String(row[j] || '').trim().toLowerCase();
+        const cell = norm(row[j]).toLowerCase();
         if (cell === 'field name' || cell === 'fieldname') {
           headerRowIndex = i;
           fieldNameCol = j;
@@ -538,7 +725,6 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       }
       if (fieldNameCol !== -1 && valueCol !== -1) break;
     }
-
     if (headerRowIndex === -1) {
       headerRowIndex = 0;
       fieldNameCol = 0;
@@ -559,48 +745,39 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
 
     let currentTestName = '';
     const rowIndexCounter: { [key: string]: number } = {};
-    const lastRowStartField: { [key: string]: string } = {};
-
     for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
       const row = jsonData[i];
-      const fieldName = String(row[fieldNameCol] || '').trim();
-      const value = String(row[valueCol] || '').trim();
+      const fieldName = norm(row[fieldNameCol]);
+      const value = norm(row[valueCol]);
 
       if (fieldName.startsWith('==========') && fieldName.endsWith('==========')) {
         currentTestName = sectionToTestName[fieldName] || '';
         rowIndexCounter[currentTestName] = 0;
-        lastRowStartField[currentTestName] = '';
         continue;
       }
-
       if (!fieldName || fieldName.startsWith('---')) continue;
+      if (!currentTestName) continue;
 
-      if (currentTestName) {
-        const rowStartFields = [
-          'IrradiationTime_SetTime',
-          'Measurement_AppliedKvp',
-          'Linearity_mA',
-          'Linearity_mAs',
-          'Output_kV',
-          'LowContrast_HoleSize',
-          'HighContrast_LpMm',
-          'ExposureRate_Distance',
-          'Leakage_Location'
-        ];
+      const rowStartFields = [
+        'IrradiationTime_SetTime',
+        'Measurement_AppliedKvp',
+        'Linearity_mA',
+        'Linearity_mAs',
+        'Output_kV',
+        'LowContrast_HoleSize',
+        'HighContrast_LpMm',
+        'ExposureRate_Distance',
+        'Leakage_Location'
+      ];
+      const isRowStart = rowStartFields.some(startField => fieldName.startsWith(startField));
+      if (isRowStart) rowIndexCounter[currentTestName] = (rowIndexCounter[currentTestName] || 0) + 1;
 
-        const isRowStart = rowStartFields.some(startField => fieldName.startsWith(startField));
-
-        if (isRowStart) {
-          rowIndexCounter[currentTestName] = (rowIndexCounter[currentTestName] || 0) + 1;
-        }
-
-        data.push({
-          'Field Name': fieldName,
-          'Value': value,
-          'Row Index': (rowIndexCounter[currentTestName] || 0) - 1,
-          'Test Name': currentTestName,
-        });
-      }
+      data.push({
+        'Field Name': fieldName,
+        'Value': value,
+        'Row Index': String((rowIndexCounter[currentTestName] || 0) - 1),
+        'Test Name': currentTestName,
+      });
     }
     return data;
   };
@@ -979,7 +1156,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
               >
                 <CloudArrowUpIcon className="w-5 h-5" />
-                ⬇ Excel Template (.xlsx)
+                Excel Template (.xlsx)
               </a> */}
             </div>
             <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2 text-sm">
