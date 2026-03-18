@@ -106,7 +106,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
     }]);
   };
 
-  const removeTechniqueRow = (id: string) => {
+  const removeTechniqueRow: (id: string) => void = (id) => {
     if (techniqueRows.length <= 1) return;
     setTechniqueRows(prev => prev.filter(r => r.id !== id));
   };
@@ -316,13 +316,13 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
         </div>
         {!isViewOnly && (
           <div className="px-6 py-4 bg-gray-50 border-t">
-            <button
+            {/* <button
               onClick={addTechniqueRow}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
               Add Row
-            </button>
+            </button> */}
           </div>
         )}
       </div>

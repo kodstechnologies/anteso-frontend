@@ -372,10 +372,10 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase border-r">FCD (cm)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase border-r">kV</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase border-r">mA</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time (sec)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500  border-r">FFD (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500  border-r">kV</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500  border-r">mA</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 ">Time (sec)</th>
             </tr>
           </thead>
           <tbody>

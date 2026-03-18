@@ -4217,6 +4217,96 @@ export const getMeasurementOfMaLinearityByServiceId = async (serviceId: string, 
     }
 };
 
+// ============================
+// Interventional Radiology: Timer Accuracy (CTScan-style table)
+// ============================
+export const addTimerAccuracyForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(
+        `/service-report/inventional-radiology/timer-accuracy/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getTimerAccuracyByTestIdForInventionalRadiology = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/timer-accuracy/${testId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data?.data ?? res.data;
+};
+
+export const updateTimerAccuracyForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(
+        `/service-report/inventional-radiology/timer-accuracy/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getTimerAccuracyByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/inventional-radiology/timer-accuracy/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: tubeId !== undefined ? { tubeId } : undefined,
+        });
+        return res.data?.data ?? null;
+    } catch (error: any) {
+        if (error.response?.status === 404 || !error.response) return null;
+        throw error;
+    }
+};
+
+// ============================
+// Interventional Radiology: Measurement of mA Linearity (CTScan-style table)
+// ============================
+export const addMeasurementOfMaLinearityForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.post(
+        `/service-report/inventional-radiology/measurement-of-ma-linearity/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getMeasurementOfMaLinearityByTestIdForInventionalRadiology = async (testId: string) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.get(`/service-report/inventional-radiology/measurement-of-ma-linearity/${testId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data?.data ?? res.data;
+};
+
+export const updateMeasurementOfMaLinearityForInventionalRadiology = async (testId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(
+        `/service-report/inventional-radiology/measurement-of-ma-linearity/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
+export const getMeasurementOfMaLinearityByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
+    const token = Cookies.get('accessToken');
+    try {
+        const res = await api.get(`/service-report/inventional-radiology/measurement-of-ma-linearity/service/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: tubeId !== undefined ? { tubeId } : undefined,
+        });
+        return res.data?.data ?? null;
+    } catch (error: any) {
+        if (error.response?.status === 404 || !error.response) return null;
+        throw error;
+    }
+};
+
 // GET BY SERVICE ID - Radiation Leakage
 export const getRadiationLeakageByServiceId = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get('accessToken');

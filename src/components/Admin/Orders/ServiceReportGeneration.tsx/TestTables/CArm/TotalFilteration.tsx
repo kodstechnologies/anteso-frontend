@@ -332,10 +332,10 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600 ercase tracking-wider border-r">
                                     Applied kVp
                                 </th>
-                                <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                                <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600  tracking-wider border-r">
                                     <div className="flex items-center justify-between">
                                         <span>Measured Values (kVp)</span>
                                         {!isSaved && (
@@ -345,17 +345,17 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                         )}
                                     </div>
                                 </th>
-                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600  tracking-wider border-r">
                                     Average kVp
                                 </th>
-                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600  tracking-wider">
                                     Remarks
                                 </th>
                                 <th rowSpan={2} className="w-12" />
                             </tr>
                             <tr>
                                 {mAStations.map((header, idx) => (
-                                    <th key={idx} className="px-3 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                                    <th key={idx} className="px-3 py-3 text-center text-xs font-medium text-gray-600  tracking-wider border-r">
                                         <div className="flex items-center justify-center gap-1">
                                             <input
                                                 type="text"

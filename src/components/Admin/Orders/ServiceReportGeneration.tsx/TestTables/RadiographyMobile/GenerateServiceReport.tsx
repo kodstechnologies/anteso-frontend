@@ -408,6 +408,160 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     "LeakageMeasurement_Location",
   ];
 
+  // Parse CTScan-style horizontal format: "TEST: Section" then header row then data rows.
+  // Outputs same row shape used by processExcelData: Field Name / Value / Row Index / Test Name.
+  const parseHorizontalData = (rows: any[][]): any[] => {
+    const out: any[] = [];
+    let currentTestName = "";
+    let headers: string[] = [];
+    let isReading = false;
+    const sectionRowCounter: Record<string, number> = {};
+
+    const markerUpperToInternal: Record<string, string> = {
+      "ACCURACY OF OPERATING POTENTIAL": "Accuracy of Operating Potential",
+      "ACCURACY OF IRRADIATION TIME": "Accuracy of Irradiation Time",
+      "OUTPUT CONSISTENCY": "Output Consistency",
+      "CENTRAL BEAM ALIGNMENT": "Central Beam Alignment",
+      "CONGRUENCE OF RADIATION": "Congruence of Radiation",
+      "EFFECTIVE FOCAL SPOT": "Effective Focal Spot",
+      "LINEARITY OF MAS LOADING STATIONS": "Linearity of mAs Loading Stations",
+      "RADIATION LEAKAGE LEVEL": "Radiation Leakage Level",
+      "TUBE HOUSING LEAKAGE": "Radiation Leakage Level",
+    };
+
+    const headerMap: Record<string, Record<string, string>> = {
+      "Accuracy of Operating Potential": {
+        "mA Station": "MeasHeader",
+        "Applied kV": "Measurement_AppliedKvp",
+        "Meas 1": "Measurement_Meas1",
+        "Meas 2": "Measurement_Meas2",
+        "Meas 3": "Measurement_Meas3",
+        "Tolerance Sign": "Tolerance_Sign",
+        "Tolerance Value": "Tolerance_Value",
+        "TF Measured": "TotalFiltration_Measured",
+        "TF Required": "TotalFiltration_Required",
+      },
+      "Accuracy of Irradiation Time": {
+        "FCD": "TestConditions_FCD",
+        "kV": "TestConditions_kV",
+        "mA": "TestConditions_ma",
+        "Set Time (ms)": "IrradiationTime_SetTime",
+        "Measured Time (ms)": "IrradiationTime_MeasuredTime",
+        "Tolerance Operator": "Tolerance_Operator",
+        "Tolerance Value": "Tolerance_Value",
+      },
+      "Output Consistency": {
+        "FFD": "FFD",
+        "Tol Operator": "Tolerance_Operator",
+        "Tol Value": "Tolerance_Value",
+        "kV": "OutputRow_kV",
+        "mAs": "OutputRow_mAs",
+        "Meas 1": "OutputRow_Meas1",
+        "Meas 2": "OutputRow_Meas2",
+        "Meas 3": "OutputRow_Meas3",
+        "Meas 4": "OutputRow_Meas4",
+        "Meas 5": "OutputRow_Meas5",
+      },
+      "Central Beam Alignment": {
+        "FCD": "TechniqueFactors_FCD",
+        "kV": "TechniqueFactors_kV",
+        "mAs": "TechniqueFactors_mAs",
+        "Observed Tilt": "ObservedTilt_Value",
+        "Tolerance": "Tolerance_Value",
+      },
+      "Congruence of Radiation": {
+        "FCD": "TechniqueFactors_FCD",
+        "kV": "TechniqueFactors_kV",
+        "mAs": "TechniqueFactors_mAs",
+        "Dimension": "CongruenceMeasurement_Dimension",
+        "Observed Shift": "CongruenceMeasurement_ObservedShift",
+        "Edge Shift": "CongruenceMeasurement_EdgeShift",
+        "% FED": "CongruenceMeasurement_PercentFED",
+        "Tolerance": "CongruenceMeasurement_Tolerance",
+      },
+      "Effective Focal Spot": {
+        "FCD": "FCD",
+        "Focus Type": "FocalSpot_FocusType",
+        "Stated Width": "FocalSpot_StatedWidth",
+        "Stated Height": "FocalSpot_StatedHeight",
+        "Measured Width": "FocalSpot_MeasuredWidth",
+        "Measured Height": "FocalSpot_MeasuredHeight",
+      },
+      "Linearity of mAs Loading Stations": {
+        "FCD": "Table1_FCD",
+        "kV": "Table1_kV",
+        "mAs Applied": "Table2_mAsApplied",
+        "Meas 1": "Table2_Meas1",
+        "Meas 2": "Table2_Meas2",
+        "Meas 3": "Table2_Meas3",
+        "Tolerance Operator": "ToleranceOperator",
+        "Tolerance": "Tolerance",
+      },
+      "Radiation Leakage Level": {
+        "FCD": "Settings_FCD",
+        "kV": "Settings_kV",
+        "mA": "Settings_ma",
+        "Time": "Settings_Time",
+        "Workload": "Workload",
+        "Tol Value": "ToleranceValue",
+        "Tol Operator": "ToleranceOperator",
+        "Location": "LeakageMeasurement_Location",
+        "Left": "LeakageMeasurement_Left",
+        "Right": "LeakageMeasurement_Right",
+        "Front": "LeakageMeasurement_Front",
+        "Back": "LeakageMeasurement_Back",
+        "Top": "LeakageMeasurement_Top",
+      },
+    };
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = (rows[i] || []).map((c: any) => String(c ?? "").trim());
+      const first = row[0] || "";
+
+      if (/^TEST:\s*/i.test(first)) {
+        const rawTitle = first.replace(/^TEST:\s*/i, "").trim();
+        const internal = markerUpperToInternal[rawTitle.toUpperCase()] || "";
+        currentTestName = internal;
+        isReading = !!internal;
+        headers = [];
+        if (currentTestName) sectionRowCounter[currentTestName] = 0;
+        continue;
+      }
+
+      if (isReading && headers.length === 0 && row.some((c) => c !== "")) {
+        headers = row;
+        continue;
+      }
+
+      if (isReading && row.every((c) => c === "")) {
+        isReading = false;
+        continue;
+      }
+
+      if (isReading && currentTestName && headers.length > 0) {
+        const map = headerMap[currentTestName];
+        if (!map) continue;
+        const rowIdx = sectionRowCounter[currentTestName] ?? 0;
+        sectionRowCounter[currentTestName] = rowIdx + 1;
+
+        row.forEach((value, cellIdx) => {
+          const header = (headers[cellIdx] || "").trim();
+          const internalField = map[header];
+          if (internalField && value !== "") {
+            out.push({
+              "Field Name": internalField,
+              "Value": value,
+              "Row Index": String(rowIdx),
+              "Test Name": currentTestName,
+            });
+          }
+        });
+      }
+    }
+
+    return out;
+  };
+
   // Convert parsed Excel workbook to the Field Name / Value / Row Index / Test Name format
   const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
     const data: any[] = [];
@@ -415,6 +569,12 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     const worksheet = workbook.Sheets[firstSheetName];
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" }) as any[][];
     if (jsonData.length === 0) return data;
+
+    // If file looks like CTScan-style horizontal template, parse that.
+    const firstNonEmpty = jsonData.find((r) => Array.isArray(r) && String(r[0] ?? "").trim() !== "");
+    if (firstNonEmpty && /^TEST:\s*/i.test(String(firstNonEmpty[0] ?? "").trim())) {
+      return parseHorizontalData(jsonData);
+    }
 
     // Find "Field Name" / "Value" header columns (strip BOM and allow extra columns e.g. "Description")
     let headerRowIndex = -1, fieldNameCol = -1, valueCol = -1;

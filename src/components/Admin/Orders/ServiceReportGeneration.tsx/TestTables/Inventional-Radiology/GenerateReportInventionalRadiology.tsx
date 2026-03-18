@@ -27,6 +27,8 @@ import {
     getExposureRateTableTopByServiceIdForInventionalRadiology,
     getTubeHousingLeakageByServiceIdForInventionalRadiology,
     getRadiationProtectionSurveyByServiceIdForInventionalRadiology,
+    getTimerAccuracyByServiceIdForInventionalRadiology,
+    getMeasurementOfMaLinearityByServiceIdForInventionalRadiology,
 } from "../../../../../../api";
 
 // Test-table imports
@@ -41,6 +43,8 @@ import ExposureRateAtTableTop from "./ExposureRateAtTableTop";
 import TubeHousingLeakage from "./TubeHousingLeakageForInventionalRadiology";
 import RadiationProtectionInterventionalRadiology from "./RadiationProtectionInventionalRadiology";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
+import TimerAccuracy from "./TimerAccuracy";
+import MeasurementOfMaLinearity from "./measurementOfMaLinearity";
 
 import { handleExportToExcel as exportToExcel } from "../../../../../../utils/exportInventionalRadiologyToExcel";
 import { createInventionalRadiologySavedExcel, InventionalRadiologySavedExportData } from "./exportInventionalRadiologySavedToExcel";
@@ -167,6 +171,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       'ACCURACY OF OPERATING POTENTIAL': 'Accuracy Of Operating Potential',
       'TOTAL FILTRATION': 'Total Filtration',
       'CONSISTENCY OF RADIATION OUTPUT': 'Consistency Of Radiation Output',
+      'MEASUREMENT OF MA LINEARITY': 'Measurement of mA Linearity',
+      'TIMER ACCURACY': 'Timer Accuracy',
       'LOW CONTRAST RESOLUTION': 'Low Contrast Resolution',
       'HIGH CONTRAST RESOLUTION': 'High Contrast Resolution',
       'EXPOSURE RATE AT TABLE TOP': 'Exposure Rate At Table Top',
@@ -203,6 +209,28 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         'Exposure 1': 'Table2_Exp1', 'Exposure 2': 'Table2_Exp2', 'Exposure 3': 'Table2_Exp3',
         'Exposure 4': 'Table2_Exp4', 'Exposure 5': 'Table2_Exp5',
         'Average': 'Table2_Average', 'COV': 'Table2_COV', 'Tolerance': 'Tolerance'
+      },
+      // Match CTScan Timer Accuracy component field names
+      'Timer Accuracy': {
+        'kVp': 'Table1_kvp',
+        'Slice Thickness (mm)': 'Table1_SliceThickness',
+        'mA': 'Table1_ma',
+        'Set Time (ms)': 'Table2_SetTime',
+        'Observed Time (ms)': 'Table2_Result',
+        'Tolerance (%)': 'Tolerance',
+      },
+      // Match CTScan Measurement of mA Linearity component field names
+      'Measurement of mA Linearity': {
+        'kVp': 'Table1_kvp',
+        'Slice Thickness (mm)': 'Table1_SliceThickness',
+        'Time (ms)': 'Table1_Time',
+        'mA Applied': 'Table2_mAsApplied',
+        'Meas 1': 'Table2_Result_0',
+        'Meas 2': 'Table2_Result_1',
+        'Meas 3': 'Table2_Result_2',
+        'Meas 4': 'Table2_Result_3',
+        'Meas 5': 'Table2_Result_4',
+        'Tolerance': 'Tolerance',
       },
       'Low Contrast Resolution': {
         'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
@@ -304,6 +332,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     'TotalFilteration': 'Total Filtration',
     'ConsistencyOfRadiationOutput': 'Consistency Of Radiation Output',
     'LinearityOfmAsLoading': 'Linearity Of mAs Loading',
+    'MeasurementOfMaLinearity': 'Measurement of mA Linearity',
+    'TimerAccuracy': 'Timer Accuracy',
     'ExposureRateAtTableTop': 'Exposure Rate At Table Top',
     'TubeHousingLeakage': 'Tube Housing Leakage',
     'RadiationProtectionInterventionalRadiology': 'Radiation Protection Survey Report',
@@ -776,6 +806,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       checks.push(run("Accuracy of Operating Potential", () => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Total Filtration", () => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Consistency of Radiation Output", () => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tid)));
+      checks.push(run("Measurement of mA Linearity", () => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, tid)));
+      checks.push(run("Timer Accuracy", () => getTimerAccuracyByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Low Contrast Resolution", () => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("High Contrast Resolution", () => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Exposure Rate at Table Top", () => getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, tid)));
@@ -788,6 +820,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       checks.push(run("Accuracy of Operating Potential - Frontal", () => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Total Filtration - Frontal", () => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Consistency of Radiation Output - Frontal", () => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, "frontal")));
+      checks.push(run("Measurement of mA Linearity - Frontal", () => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, "frontal")));
+      checks.push(run("Timer Accuracy - Frontal", () => getTimerAccuracyByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Low Contrast Resolution - Frontal", () => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("High Contrast Resolution - Frontal", () => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Exposure Rate at Table Top - Frontal", () => getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, "frontal")));
@@ -798,6 +832,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       checks.push(run("Accuracy of Operating Potential - Lateral", () => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Total Filtration - Lateral", () => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Consistency of Radiation Output - Lateral", () => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, "lateral")));
+      checks.push(run("Measurement of mA Linearity - Lateral", () => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, "lateral")));
+      checks.push(run("Timer Accuracy - Lateral", () => getTimerAccuracyByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Low Contrast Resolution - Lateral", () => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("High Contrast Resolution - Lateral", () => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Exposure Rate at Table Top - Lateral", () => getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, "lateral")));
@@ -1223,6 +1259,26 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
               ),
             },
             {
+              title: "Measurement of mA Linearity",
+              component: (
+                <MeasurementOfMaLinearity
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Measurement of mA Linearity']}
+                />
+              ),
+            },
+            {
+              title: "Timer Accuracy",
+              component: (
+                <TimerAccuracy
+                  serviceId={serviceId}
+                  tubeId={null}
+                  csvData={csvDataForComponents['Timer Accuracy']}
+                />
+              ),
+            },
+            {
               title: "Low Contrast Resolution",
               component: (
                 <LowContrastResolution
@@ -1299,6 +1355,14 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
               component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Consistency Of Radiation Output - Frontal']} />,
             },
             {
+              title: "Measurement of mA Linearity - Frontal",
+              component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Measurement of mA Linearity - Frontal']} />,
+            },
+            {
+              title: "Timer Accuracy - Frontal",
+              component: <TimerAccuracy serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Timer Accuracy - Frontal']} />,
+            },
+            {
               title: "Low Contrast Resolution - Frontal",
               component: <LowContrastResolution serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Low Contrast Resolution - Frontal']} />,
             },
@@ -1339,6 +1403,14 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
             {
               title: "Consistency of Radiation Output - Lateral",
               component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Consistency Of Radiation Output - Lateral']} />,
+            },
+            {
+              title: "Measurement of mA Linearity - Lateral",
+              component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Measurement of mA Linearity - Lateral']} />,
+            },
+            {
+              title: "Timer Accuracy - Lateral",
+              component: <TimerAccuracy serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Timer Accuracy - Lateral']} />,
             },
             {
               title: "Low Contrast Resolution - Lateral",

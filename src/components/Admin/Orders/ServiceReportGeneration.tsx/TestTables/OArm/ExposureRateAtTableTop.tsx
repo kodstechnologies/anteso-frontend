@@ -257,12 +257,12 @@ const ExposureRateTableTopForOArm: React.FC<Props> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gradient-to-r from-blue-50 to-blue-100">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase tracking-wider border-r">Distance (cm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase tracking-wider border-r">Applied kV</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase tracking-wider border-r">Applied mA</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase tracking-wider border-r">Exposure (cGy/Min)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase tracking-wider border-r">Mode</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase tracking-wider">Result</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900  tracking-wider border-r">Distance (cm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900  tracking-wider border-r">Applied kV</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900  tracking-wider border-r">Applied mA</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900  tracking-wider border-r">Exposure (cGy/Min)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900  tracking-wider border-r">Mode</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900  tracking-wider">Result</th>
                 <th className="w-12" />
               </tr>
             </thead>

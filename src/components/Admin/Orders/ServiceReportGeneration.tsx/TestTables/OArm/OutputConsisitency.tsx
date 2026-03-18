@@ -335,8 +335,8 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">FFD (cm)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Time (s)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">FFD (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">Time (s)</th>
             </tr>
           </thead>
           <tbody className="bg-white">
@@ -375,9 +375,9 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">kVp</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mA</th>
-                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r relative">
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">kVp</th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">mA</th>
+                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700  border-r relative">
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
@@ -387,14 +387,14 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">Mean (X̄)</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">COV</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">Remark</th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">Mean (X̄)</th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">COV</th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">Remark</th>
                 <th rowSpan={2} className="w-10" />
               </tr>
               <tr>
                 {headers.map((h, i) => (
-                  <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border-r">
+                  <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700  border-r">
                     <div className="flex items-center justify-center gap-1">
                       <input
                         type="text"

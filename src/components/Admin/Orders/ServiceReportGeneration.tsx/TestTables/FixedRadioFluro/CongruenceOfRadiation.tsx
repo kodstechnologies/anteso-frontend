@@ -264,9 +264,9 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
           <table className="min-w-full">
             <thead className="bg-blue-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase">FCD (cm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase">kV</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 uppercase">mAs</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 ">FFD (cm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 ">kV</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-blue-900 ">mAs</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
@@ -338,12 +338,12 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
           <table className="min-w-full">
             <thead className="bg-purple-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Dimension (cm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Observed Shift (cm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Shift in Edges (cm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">% of FED</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Tolerance (%)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase">Remarks</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Dimension (cm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Observed Shift (cm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Shift in Edges (cm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">% of FED</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Tolerance (%)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Remarks</th>
               </tr>
             </thead>
             <tbody>

@@ -379,8 +379,8 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">FCD (cm)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">kV</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">FFD (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">kV</th>
             </tr>
           </thead>
           <tbody>
