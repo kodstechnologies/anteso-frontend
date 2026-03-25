@@ -390,7 +390,10 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       'Effective Focal Spot': {
         'FCD (cm)': 'Table1_fcd', 'Focus Type': 'Table2_focusType',
         'Stated Width': 'Table2_statedWidth', 'Stated Height': 'Table2_statedHeight',
-        'Measured Width': 'Table2_measuredWidth', 'Measured Height': 'Table2_measuredHeight', 'Remarks': 'Table2_remark'
+        'Stated Nominal': 'Table2_statedNominal', 'Stated Focal Spot of Tube (f)': 'Table2_statedNominal',
+        'Measured Width': 'Table2_measuredWidth', 'Measured Height': 'Table2_measuredHeight',
+        'Measured Nominal': 'Table2_measuredNominal', 'Measured Focal Spot (Nominal)': 'Table2_measuredNominal',
+        'Remarks': 'Table2_remark'
       },
       'Accuracy of Irradiation Time': {
         'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'mA': 'Table1_ma',

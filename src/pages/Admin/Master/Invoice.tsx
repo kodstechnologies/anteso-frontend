@@ -1,18 +1,19 @@
 import { Link, NavLink } from 'react-router-dom';
 import { DataTable, DataTableSortStatus } from 'mantine-datatable';
-import { useState, useEffect } from 'react';
-import sortBy from 'lodash/sortBy';
+import { useState, useEffect, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../../store/themeConfigSlice';
 import IconTrashLines from '../../../components/Icon/IconTrashLines';
 import IconPlus from '../../../components/Icon/IconPlus';
 import IconFile from '../../../components/Icon/IconFile';
+import IconRefresh from '../../../components/Icon/IconRefresh';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconCreditCard from '../../../components/Icon/IconCreditCard';
 import { getAllInvoices, deleteInvoice } from '../../../api';
 import ConfirmModal from '../../../components/common/ConfirmModal';
 import { showMessage } from '../../../components/common/ShowMessage';
+import { formatCreatedAtDisplay, isInDateRange } from '../../../utils/tableDateFilter';
 
 interface Payment {
   paymentType: 'advance' | 'balance' | 'complete';
@@ -32,17 +33,18 @@ interface Invoice {
   grandtotal: number;
   payment?: Payment;
   status?: 'Paid' | 'Pending';
+  createdAt?: string;
 }
 
 const Invoices: React.FC = () => {
   const dispatch = useDispatch();
   const [items, setItems] = useState<Invoice[]>([]);
   const [search, setSearch] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState<number>(1);
   const PAGE_SIZES = [10, 20, 30, 50];
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
-  const [initialRecords, setInitialRecords] = useState<Invoice[]>([]);
-  const [records, setRecords] = useState<Invoice[]>([]);
   const [selectedRecords, setSelectedRecords] = useState<Invoice[]>([]);
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
     columnAccessor: 'invoiceId',
@@ -67,7 +69,6 @@ const Invoices: React.FC = () => {
           status: item.payment?.paymentStatus === 'paid' ? 'Paid' : 'Pending',
         }));
         setItems(data);
-        setInitialRecords(sortBy(data, 'invoiceId'));
       } catch (err) {
         console.error('Failed to fetch invoices:', err);
       }
@@ -75,30 +76,54 @@ const Invoices: React.FC = () => {
     fetchInvoices();
   }, []);
 
-  // Pagination
-  useEffect(() => {
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize;
-    setRecords([...initialRecords.slice(from, to)]);
-  }, [page, pageSize, initialRecords]);
+  const filteredRecords = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((item) => {
+      const srfOk = !q || String(item.srfNumber || '').toLowerCase().includes(q);
+      return srfOk && isInDateRange(item.createdAt, dateFrom, dateTo);
+    });
+  }, [items, search, dateFrom, dateTo]);
 
-  // Search
-  useEffect(() => {
-    setInitialRecords(() =>
-      items.filter((item) =>
-        Object.values(item).some((val) =>
-          String(val).toLowerCase().includes(search.toLowerCase())
-        )
-      )
-    );
-  }, [search, items]);
+  const sortedRecords = useMemo(() => {
+    const data = [...filteredRecords];
+    const accessor = sortStatus.columnAccessor as keyof Invoice | string;
+    if (!accessor) return data;
+    data.sort((a, b) => {
+      const aVal = a[accessor as keyof Invoice];
+      const bVal = b[accessor as keyof Invoice];
+      if (accessor === 'createdAt') {
+        const at = aVal ? new Date(aVal as string).getTime() : 0;
+        const bt = bVal ? new Date(bVal as string).getTime() : 0;
+        return sortStatus.direction === 'asc' ? at - bt : bt - at;
+      }
+      if (accessor === 'grandtotal') {
+        const an = Number(aVal) || 0;
+        const bn = Number(bVal) || 0;
+        return sortStatus.direction === 'asc' ? an - bn : bn - an;
+      }
+      const aStr = String(aVal ?? '').toLowerCase();
+      const bStr = String(bVal ?? '').toLowerCase();
+      const cmp = aStr.localeCompare(bStr);
+      return sortStatus.direction === 'asc' ? cmp : -cmp;
+    });
+    return data;
+  }, [filteredRecords, sortStatus]);
 
-  // Sorting
+  const paginatedRecords = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return sortedRecords.slice(start, start + pageSize);
+  }, [sortedRecords, page, pageSize]);
+
   useEffect(() => {
-    const sorted = sortBy(initialRecords, sortStatus.columnAccessor);
-    setRecords(sortStatus.direction === 'desc' ? sorted.reverse() : sorted);
     setPage(1);
-  }, [sortStatus]);
+  }, [search, pageSize, dateFrom, dateTo]);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearch('');
+    setDateFrom('');
+    setDateTo('');
+  };
 
   // 👇 Handle delete
   const handleDeleteClick = (id: string) => {
@@ -112,8 +137,6 @@ const Invoices: React.FC = () => {
       await deleteInvoice(selectedInvoiceId);
       const updated = items.filter((inv) => inv._id !== selectedInvoiceId);
       setItems(updated);
-      setInitialRecords(updated);
-      setRecords(updated);
       showMessage('Invoice deleted successfully', 'success'); // ✅ Success message
     } catch (err: any) {
       console.error('Failed to delete invoice:', err);
@@ -145,24 +168,58 @@ const Invoices: React.FC = () => {
                 Add New
               </Link>
             </div>
-            <div className="ltr:ml-auto rtl:mr-auto">
+            <div className="ltr:ml-auto rtl:mr-auto flex flex-wrap items-center gap-3 justify-end">
+              <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                <span className="text-gray-600 dark:text-gray-400">From</span>
+                <input
+                  type="date"
+                  className="form-input w-auto"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                <span className="text-gray-600 dark:text-gray-400">To</span>
+                <input
+                  type="date"
+                  className="form-input w-auto"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </label>
               <input
                 type="text"
-                className="form-input w-auto"
-                placeholder="Search..."
+                className="form-input w-auto min-w-[200px]"
+                placeholder="Search by SRF number..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              {(search || dateFrom || dateTo) && (
+                <button
+                  onClick={clearFilters}
+                  className="btn btn-outline-danger gap-2"
+                  title="Clear all filters"
+                >
+                  <IconRefresh />
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
           <div className="datatables pagination-padding">
             <DataTable
               className="whitespace-nowrap table-hover"
-              records={records}
+              records={paginatedRecords}
               columns={[
                 { accessor: 'invoiceId', title: 'Invoice ID', sortable: true },
                 { accessor: 'srfNumber', title: 'SRF No', sortable: true },
+                {
+                  accessor: 'createdAt',
+                  title: 'Created At',
+                  sortable: true,
+                  render: (row: Invoice) => formatCreatedAtDisplay(row.createdAt),
+                },
                 { accessor: 'buyerName', title: 'Customer Name', sortable: true },
                 { accessor: 'address', title: 'Address', sortable: true },
                 { accessor: 'state', title: 'State', sortable: true },
@@ -190,7 +247,7 @@ const Invoices: React.FC = () => {
                 },
               ]}
               highlightOnHover
-              totalRecords={initialRecords.length}
+              totalRecords={filteredRecords.length}
               recordsPerPage={pageSize}
               page={page}
               onPageChange={setPage}

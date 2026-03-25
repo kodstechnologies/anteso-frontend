@@ -4620,8 +4620,9 @@ export const getTotalFilterationByServiceIdForInventionalRadiology = async (serv
     const token = Cookies.get("accessToken");
     try {
         const params: any = {};
-        if (tubeId !== undefined) {
-            params.tubeId = tubeId === null ? 'null' : tubeId;
+        // For single tube, backend expects no tubeId query param.
+        if (tubeId !== undefined && tubeId !== null && tubeId !== "") {
+            params.tubeId = tubeId;
         }
         const res = await api.get(`/service-report/inventional-radiology/total-filteration-by-service/${serviceId}`, {
             params,

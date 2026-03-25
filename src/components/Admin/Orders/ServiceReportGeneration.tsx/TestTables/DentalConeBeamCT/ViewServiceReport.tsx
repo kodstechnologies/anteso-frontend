@@ -677,7 +677,30 @@ const ViewServiceReportCBCT: React.FC = () => {
                             <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val}</td>
                           ))}
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mean ?? row.avg ?? "-"}</td>
-                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.cov ?? row.cv ?? "-"}</td>
+                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                            {(() => {
+                              const covVal = row.cov ?? row.cv;
+                              if (covVal != null && covVal !== "") return covVal;
+
+                              const values: number[] = outputVals
+                                .map((v: any) => {
+                                  if (v == null) return NaN;
+                                  if (typeof v === "number") return v;
+                                  if (typeof v === "string") return parseFloat(v);
+                                  if (typeof v === "object" && "value" in v) return parseFloat((v as any).value);
+                                  return NaN;
+                                })
+                                .filter((n: number) => !Number.isNaN(n));
+
+                              if (values.length === 0) return "-";
+                              const mean = values.reduce((a: number, b: number) => a + b, 0) / values.length;
+                              if (!mean) return "-";
+                              const variance = values.reduce((sum: number, n: number) => sum + Math.pow(n - mean, 2), 0) / values.length;
+                              const stdDev = Math.sqrt(variance);
+                              const computedCov = stdDev / mean;
+                              return Number.isFinite(computedCov) ? computedCov.toFixed(4) : "-";
+                            })()}
+                          </td>
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                             <span className={row.remarks === "Pass" ? "text-green-600" : row.remarks === "Fail" ? "text-red-600" : ""}>
                               {row.remarks || "-"}

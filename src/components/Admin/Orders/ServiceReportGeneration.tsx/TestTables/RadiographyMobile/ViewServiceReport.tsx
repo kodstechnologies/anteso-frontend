@@ -179,9 +179,9 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
     <>
       {/* Floating Buttons */}
       <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
-        <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
+        {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
-        </button>
+        </button> */}
         <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Download PDF
         </button>
@@ -668,25 +668,59 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed' }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Focus Type</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Stated (mm × mm)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured (mm × mm)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '12%', padding: '0px 1px', fontSize: '11px' }}></th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Stated Focal Spot of Tube</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
+                          <th className="border border-black p-2 print:p-1 text-left" style={{ width: '30%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.1' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <strong>Tolerance:</strong>
+                              <span><strong>FFD (cm)</strong> {testData.effectiveFocalSpot.fcd || "-"}</span>
+                            </div>
+                            <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
+                            <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
+                            <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
+                          </th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '10%', padding: '0px 1px', fontSize: '11px' }}>Result</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {testData.effectiveFocalSpot.focalSpots.map((spot: any, i: number) => (
-                          <tr key={i} className="text-center">
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{spot.focusType || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{spot.statedWidth || "-"} × {spot.statedHeight || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{spot.measuredWidth || "-"} × {spot.measuredHeight || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                              <span className={spot.remark === "Pass" ? "text-green-600" : spot.remark === "Fail" ? "text-red-600" : ""}>
-                                {spot.remark || "-"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {testData.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
+                          const formatValue = (val: any) => {
+                            if (val === undefined || val === null || val === "") return "-";
+                            const numVal = typeof val === 'number' ? val : parseFloat(val);
+                            if (Number.isNaN(numVal)) return "-";
+                            return numVal.toFixed(1);
+                          };
+
+                          const statedNominal = formatValue(
+                            spot.statedNominal ??
+                            (spot.statedWidth != null && spot.statedHeight != null
+                              ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                              : spot.statedWidth ?? spot.statedHeight)
+                          );
+                          const measuredNominal = formatValue(
+                            spot.measuredNominal ??
+                            (spot.measuredWidth != null && spot.measuredHeight != null
+                              ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                              : spot.measuredWidth ?? spot.measuredHeight)
+                          );
+
+                          return (
+                            <tr key={i} className="text-center">
+                              <td className="border border-black p-2 print:p-1 text-left" style={{ padding: '0px 4px', fontSize: '11px', fontWeight: 600 }}>
+                                {spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}
+                              </td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px' }}>{statedNominal}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px' }}>{measuredNominal}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px' }}></td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px' }}>
+                                <span className={spot.remark === "Pass" ? "text-green-600" : spot.remark === "Fail" ? "text-red-600" : ""}>
+                                  {spot.remark || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -835,7 +869,37 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                       </thead>
                       <tbody>
                         {testData.outputConsistency.outputRows.map((row: any, i: number) => {
-                          const covDisplay = row.cv != null && row.cv !== "" ? (typeof row.cv === "number" ? row.cv.toFixed(3) : parseFloat(String(row.cv)).toFixed(3)) : "-";
+                          const computeCovFromOutputs = (outputs: any[]): number | null => {
+                            if (!Array.isArray(outputs) || outputs.length === 0) return null;
+                            const values = outputs
+                              .map((v) => {
+                                if (v == null) return NaN;
+                                if (typeof v === "number") return v;
+                                if (typeof v === "string") return parseFloat(v);
+                                // Sometimes outputs are objects like { value: "23" }
+                                if (typeof v === "object" && "value" in v) return parseFloat((v as any).value);
+                                return NaN;
+                              })
+                              .filter((n) => !Number.isNaN(n));
+
+                            if (values.length === 0) return null;
+
+                            const mean = values.reduce((a, b) => a + b, 0) / values.length;
+                            if (!mean || mean === 0) return null;
+                            const variance =
+                              values.reduce((sum, n) => sum + Math.pow(n - mean, 2), 0) / values.length;
+                            const stdDev = Math.sqrt(variance);
+                            const cov = stdDev / mean;
+                            return Number.isFinite(cov) ? cov : null;
+                          };
+
+                          const covVal = row.cov ?? row.cv ?? (row.outputs ? computeCovFromOutputs(row.outputs) : null);
+                          const covDisplay =
+                            covVal != null && covVal !== ""
+                              ? (typeof covVal === "number"
+                                  ? covVal.toFixed(3)
+                                  : parseFloat(String(covVal)).toFixed(3))
+                              : "-";
                           return (
                             <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kv || "-"}</td>

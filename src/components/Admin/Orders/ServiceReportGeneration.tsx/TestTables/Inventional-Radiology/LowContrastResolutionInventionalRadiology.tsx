@@ -76,7 +76,10 @@ const LowContrastResolutionInventionalRadiology: React.FC<Props> = ({
       if (smallestVal) setSmallestHoleSize(String(smallestVal));
       const standardVal = csvData.find((r: any) => r['Field Name'] === 'Table1_recommendedStandard')?.['Value'];
       if (standardVal) setRecommendedStandard(String(standardVal));
-      if (!testId) setIsEditing(true);
+      // When values are loaded from CSV/Excel, don't treat the test as "saved" yet.
+      // Only mark as saved after the user explicitly clicks Save/Update.
+      setIsSaved(false);
+      setIsEditing(true);
     }
   }, [csvData]);
 

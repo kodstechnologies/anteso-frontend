@@ -697,19 +697,29 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
 
                         if (field.startsWith('FocalSpot_')) {
                             while (focalSpots.length <= rowIndex) {
-                                focalSpots.push({ focusType: '', statedWidth: '', statedHeight: '', measuredWidth: '', measuredHeight: '' });
+                                focalSpots.push({
+                                    focusType: '',
+                                    statedWidth: '',
+                                    statedHeight: '',
+                                    measuredWidth: '',
+                                    measuredHeight: '',
+                                });
                             }
                             const fieldName = field.replace('FocalSpot_', '');
                             if (fieldName === 'FocusType') focalSpots[rowIndex].focusType = value;
                             if (fieldName === 'StatedWidth') focalSpots[rowIndex].statedWidth = value;
                             if (fieldName === 'StatedHeight') focalSpots[rowIndex].statedHeight = value;
+                            if (fieldName === 'StatedNominal') focalSpots[rowIndex].statedNominal = value;
                             if (fieldName === 'MeasuredWidth') focalSpots[rowIndex].measuredWidth = value;
                             if (fieldName === 'MeasuredHeight') focalSpots[rowIndex].measuredHeight = value;
+                            if (fieldName === 'MeasuredNominal') focalSpots[rowIndex].measuredNominal = value;
                         }
                     });
 
                     // Filter out empty rows
-                    const filteredFocalSpots = focalSpots.filter(s => s.focusType || s.statedWidth || s.statedHeight || s.measuredWidth || s.measuredHeight);
+                    const filteredFocalSpots = focalSpots.filter(
+                        s => s.focusType || s.statedWidth || s.statedHeight || s.measuredWidth || s.measuredHeight || s.statedNominal || s.measuredNominal
+                    );
 
                     setCsvDataForComponents((prev: any) => ({
                         ...prev,

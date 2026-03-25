@@ -236,6 +236,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 // Update existing
                 result = await updateTotalFiltrationForRadiographyMobileHT(currentTestId, payload);
                 toast.success("Updated successfully");
+                onTestSaved?.(currentTestId);
             } else {
                 // Create new
                 result = await addTotalFiltrationForRadiographyMobileHT(serviceId, payload);
@@ -248,6 +249,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             }
 
             setIsSaved(true);
+            setIsEditing(false);
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Save failed");
         } finally {
@@ -473,7 +475,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600  tracking-wider border-r">
                                 <div className="flex items-center justify-between">
                                     <span>Measured Values (kVp)</span>
-                                    {!isSaved && (
+                                    {isEditing && (
                                         <button onClick={addMAColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
                                             <Plus className="w-5 h-5" />
                                         </button>
@@ -496,10 +498,10 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                             type="text"
                                             value={header}
                                             onChange={(e) => updateMAHeader(idx, e.target.value)}
-                                            disabled={isSaved}
-                                            className={`w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 ${isSaved ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                                            disabled={!isEditing}
+                                            className={`w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 ${!isEditing ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                                         />
-                                        {mAStations.length > 1 && !isSaved && (
+                                        {mAStations.length > 1 && isEditing && (
                                             <button onClick={() => removeMAColumn(idx)} className="p-1 text-red-600 hover:bg-red-100 rounded">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -517,8 +519,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                         type="number"
                                         value={row.appliedKvp}
                                         onChange={(e) => updateCell(row.id, "appliedKvp", e.target.value)}
-                                        disabled={isSaved}
-                                        className={`w-full px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 ${isSaved ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                                        disabled={!isEditing}
+                                        className={`w-full px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 ${!isEditing ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                                         placeholder="80"
                                     />
                                 </td>
@@ -536,8 +538,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                                 step="0.1"
                                                 value={val}
                                                 onChange={(e) => updateCell(row.id, idx, e.target.value)}
-                                                disabled={isSaved}
-                                                className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${hasValue && !isValid ? 'border-red-500 bg-red-50' : 'border-gray-300'} ${isSaved ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                                                disabled={!isEditing}
+                                                className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${hasValue && !isValid ? 'border-red-500 bg-red-50' : 'border-gray-300'} ${!isEditing ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                                                 placeholder="0.0"
                                             />
                                         </td>
@@ -555,7 +557,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                     </span>
                                 </td>
                                 <td className="px-3 py-3 text-center">
-                                    {rows.length > 1 && !isSaved && (
+                                    {rows.length > 1 && isEditing && (
                                         <button onClick={() => removeRow(row.id)} className="text-red-600 hover:bg-red-100 p-2 rounded">
                                             <Trash2 className="w-5 h-5" />
                                         </button>
@@ -567,7 +569,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 </table>
 
                 <div className="px-6 py-4 bg-gray-50 border-t">
-                    {!isSaved && (
+                    {isEditing && (
                         <button onClick={addRow} className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                             <Plus className="w-5 h-5" /> Add Row
                         </button>
@@ -611,8 +613,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                 };
                             }));
                         }}
-                        disabled={isSaved}
-                        className={`px-4 py-2 border border-indigo-400 rounded bg-white font-medium ${isSaved ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                        disabled={!isEditing}
+                        className={`px-4 py-2 border border-indigo-400 rounded bg-white font-medium ${!isEditing ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                     >
                         <option value="±">±</option>
                         <option value="+">Positive only (+)</option>
@@ -650,8 +652,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                 };
                             }));
                         }}
-                        disabled={isSaved}
-                        className={`w-28 px-4 py-2 text-center border border-indigo-400 rounded font-medium focus:ring-2 focus:ring-indigo-500 ${isSaved ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                        disabled={!isEditing}
+                        className={`w-28 px-4 py-2 text-center border border-indigo-400 rounded font-medium focus:ring-2 focus:ring-indigo-500 ${!isEditing ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                     />
                     <span className="font-medium text-indigo-800">kV</span>
                 </div>
@@ -668,8 +670,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             step="1"
                             value={totalFiltration.atKvp}
                             onChange={(e) => { setTotalFiltration({ ...totalFiltration, atKvp: e.target.value }); setIsSaved(false); }}
-                            disabled={isSaved}
-                            className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'}`}
+                            disabled={!isEditing}
+                            className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${!isEditing ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'}`}
                             placeholder="80"
                         />
                         <span className="text-xl font-medium text-gray-700">kVp)</span>
@@ -678,10 +680,10 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             step="0.01"
                             value={totalFiltration.required}
                             onChange={(e) => { setTotalFiltration({ ...totalFiltration, required: e.target.value }); setIsSaved(false); }}
-                            disabled={isSaved}
+                            disabled={!isEditing}
                             className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg ${
-                                isSaved 
-                                    ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' 
+                                !isEditing
+                                    ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed'
                                     : getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
                                         ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-4 focus:ring-red-200'
                                         : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'
@@ -708,8 +710,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             step="0.1"
                             value={filtrationTolerance.forKvGreaterThan70}
                             onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, forKvGreaterThan70: e.target.value }); setIsSaved(false); }}
-                            disabled={isSaved}
-                            className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                            disabled={!isEditing}
+                            className={`w-20 px-2 py-1 text-center border rounded font-bold ${!isEditing ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
                         />
                         <span>mm Al for kV {"<"}</span>
                         <input
@@ -717,8 +719,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             step="1"
                             value={filtrationTolerance.kvThreshold1}
                             onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold1: e.target.value }); setIsSaved(false); }}
-                            disabled={isSaved}
-                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                            disabled={!isEditing}
+                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${!isEditing ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
                         />
                     </li>
                     <li className="flex items-center gap-3 flex-wrap">
@@ -728,8 +730,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             step="0.1"
                             value={filtrationTolerance.forKvBetween70And100}
                             onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, forKvBetween70And100: e.target.value }); setIsSaved(false); }}
-                            disabled={isSaved}
-                            className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                            disabled={!isEditing}
+                            className={`w-20 px-2 py-1 text-center border rounded font-bold ${!isEditing ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
                         />
                         <span>mm Al for</span>
                         <input
@@ -737,8 +739,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             step="1"
                             value={filtrationTolerance.kvThreshold1}
                             onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold1: e.target.value }); setIsSaved(false); }}
-                            disabled={isSaved}
-                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                            disabled={!isEditing}
+                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${!isEditing ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
                         />
                         <span>≤ kV ≤</span>
                         <input
@@ -746,8 +748,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             step="1"
                             value={filtrationTolerance.kvThreshold2}
                             onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold2: e.target.value }); setIsSaved(false); }}
-                            disabled={isSaved}
-                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                            disabled={!isEditing}
+                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${!isEditing ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
                         />
                     </li>
                     <li className="flex items-center gap-3 flex-wrap">
@@ -757,8 +759,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             step="0.1"
                             value={filtrationTolerance.forKvGreaterThan100}
                             onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, forKvGreaterThan100: e.target.value }); setIsSaved(false); }}
-                            disabled={isSaved}
-                            className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                            disabled={!isEditing}
+                            className={`w-20 px-2 py-1 text-center border rounded font-bold ${!isEditing ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
                         />
                         <span>mm Al for kV {">"}</span>
                         <input
@@ -766,8 +768,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             step="1"
                             value={filtrationTolerance.kvThreshold2}
                             onChange={(e) => { setFiltrationTolerance({ ...filtrationTolerance, kvThreshold2: e.target.value }); setIsSaved(false); }}
-                            disabled={isSaved}
-                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
+                            disabled={!isEditing}
+                            className={`w-16 px-2 py-1 text-center border rounded font-bold ${!isEditing ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
                         />
                     </li>
                 </ul>

@@ -89,14 +89,10 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                 
                 if (initialTestId) {
                     const result = await getTotalFilteration(initialTestId);
-                    if (result?.data) {
-                        data = result.data;
-                    }
+                    data = result?.data ?? result ?? null;
                 } else {
                     const result = await getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tubeId);
-                    if (result?.data) {
-                        data = result.data;
-                    }
+                    data = result?.data ?? result ?? null;
                 }
 
                 if (data) {
@@ -240,8 +236,9 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
             if (!currentTestId) {
                 try {
                     const existing = await getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tubeId);
-                    if (existing?.data?._id) {
-                        currentTestId = existing.data._id;
+                    const existingId = existing?._id || existing?.data?._id;
+                    if (existingId) {
+                        currentTestId = existingId;
                         setTestId(currentTestId);
                     }
                 } catch (err) {
@@ -254,7 +251,12 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                 toast.success("Updated successfully");
             } else {
                 result = await createTotalFilteration(serviceId, payload);
-                const newId = result?.data?._id || result?.data?.data?._id || result?._id;
+                const newId =
+                    result?.data?.testId ||
+                    result?.data?._id ||
+                    result?.data?.data?._id ||
+                    result?.testId ||
+                    result?._id;
                 if (newId) {
                     setTestId(newId);
                     onTestSaved?.(newId);
@@ -463,7 +465,7 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
             <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
                 <div className="px-6 py-4 bg-blue-50 border-b border-gray-300">
                     <h3 className="text-xl font-bold text-blue-900">
-                        Accuracy of kVp at Different mA Stations
+                        Accuracy of kVp at Different mA Stations    
                     </h3>
                 </div>
 

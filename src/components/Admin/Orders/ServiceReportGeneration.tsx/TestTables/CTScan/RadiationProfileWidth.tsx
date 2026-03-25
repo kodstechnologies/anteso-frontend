@@ -231,8 +231,8 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">kVp</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">mA</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">kVp</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">mA</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -276,11 +276,11 @@ const RadiationProfileWidth: React.FC<Props> = ({ serviceId, testId: propTestId,
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Applied (mm)</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Measured (mm)</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Criteria</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Tolerance</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Applied (mm)</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Measured (mm)</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r">Criteria</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r">Tolerance</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">

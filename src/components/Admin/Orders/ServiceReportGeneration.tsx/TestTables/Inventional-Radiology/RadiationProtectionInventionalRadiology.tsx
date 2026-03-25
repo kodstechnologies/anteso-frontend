@@ -26,12 +26,13 @@ interface Props {
 }
 
 const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData }) => {
+    const todayDate = new Date().toISOString().split("T")[0];
     const [testId, setTestId] = useState<string | null>(null);
     const [isSaved, setIsSaved] = useState(false);
     const [isEditing, setIsEditing] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [surveyDate, setSurveyDate] = useState<string>("");
+    const [surveyDate, setSurveyDate] = useState<string>(todayDate);
     const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
     const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
@@ -199,7 +200,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                 const data = res?.data;
                 if (data) {
                     setTestId(data._id || null);
-                    setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+                    setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : todayDate);
                     setHasValidCalibration(data.hasValidCalibration || "");
                     setAppliedCurrent(data.appliedCurrent || "100");
                     setAppliedVoltage(data.appliedVoltage || "80");
@@ -221,12 +222,14 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                     setIsSaved(true);
                     setIsEditing(false);
                 } else {
+                    setSurveyDate(todayDate);
                     setIsEditing(true);
                 }
             } catch (err: any) {
                 if (err.response?.status !== 404) {
                     toast.error("Failed to load radiation protection survey");
                 }
+                setSurveyDate(todayDate);
                 setIsEditing(true);
             } finally {
                 setIsLoading(false);
@@ -239,7 +242,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
     useEffect(() => {
         if (csvData && csvData.length > 0) {
             const surveyDateVal = csvData.find(r => r['Field Name'] === 'Table1_surveyDate')?.['Value'];
-            if (surveyDateVal) setSurveyDate(surveyDateVal);
+            setSurveyDate(surveyDateVal || todayDate);
 
             const calibVal = csvData.find(r => r['Field Name'] === 'Table1_hasValidCalibration')?.['Value'];
             if (calibVal) setHasValidCalibration(calibVal);

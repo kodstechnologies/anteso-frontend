@@ -4,6 +4,7 @@ import * as Yup from "yup";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { showMessage } from "../../../common/ShowMessage";
 import { getPaymentById, editPayment } from "../../../../api";
+import IconX from "../../../../components/Icon/IconX";
 
 // Interfaces
 interface PaymentData {
@@ -12,21 +13,25 @@ interface PaymentData {
   totalAmount: number;
   paymentAmount: number;
   paymentType: string;
+  paymentMode: string;
+  paymentStatus?: string;
   utrNumber?: string;
   screenshot?: string;
 }
 
 interface EditPaymentValues {
   srfClient: string;
-  totalAmount: number ;
+  totalAmount: number;
   paymentAmount: number | string;
   paymentType: string;
+  paymentMode: string;
   utrNumber: string;
   screenshot: File | null;
 }
 
 // Payment type options
 const paymentTypes = ["advance", "balance", "complete"];
+const paymentModes = ["Cash", "Bank transfer", "Cheque", "UPI", "Other"];
 
 // Validation Schema
 const validationSchema = Yup.object().shape({
@@ -39,6 +44,7 @@ const validationSchema = Yup.object().shape({
     .positive("Must be positive")
     .max(Yup.ref('totalAmount'), 'Payment cannot exceed total amount'),
   paymentType: Yup.string().required("Please select payment type"),
+  paymentMode: Yup.string().required("Please select payment mode"),
   utrNumber: Yup.string(),
   screenshot: Yup.mixed().nullable(),
 });
@@ -49,6 +55,7 @@ const Edit: React.FC = () => {
   const [initialValues, setInitialValues] = useState<EditPaymentValues | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [srfOptions, setSrfOptions] = useState<{ value: string; label: string }[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch payment data
   useEffect(() => {
@@ -60,14 +67,12 @@ const Edit: React.FC = () => {
         // Set SRF dropdown dynamically from the API response
         setSrfOptions([{ value: payment.srfNumber, label: `${payment.srfNumber} - ${payment.hospitalName}` }]);
 
-        // Map API value "advance" to "advanced" if needed
-        const mappedPaymentType = payment.paymentType;
-
         setInitialValues({
           srfClient: payment.srfNumber || "",
           totalAmount: payment.totalAmount || 0,
           paymentAmount: payment.paymentAmount || 0,
-          paymentType: mappedPaymentType || "",
+          paymentType: payment.paymentType || "",
+          paymentMode: payment.paymentMode || "",
           utrNumber: payment.utrNumber || "",
           screenshot: null,
         });
@@ -83,6 +88,29 @@ const Edit: React.FC = () => {
     fetchPayment();
   }, [id]);
 
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen]);
+
   const handleSubmit = async (
     values: EditPaymentValues,
     { setSubmitting }: FormikHelpers<EditPaymentValues>
@@ -93,6 +121,7 @@ const Edit: React.FC = () => {
       formData.append("totalAmount", values.totalAmount.toString());
       formData.append("paymentAmount", values.paymentAmount.toString());
       formData.append("paymentType", values.paymentType);
+      formData.append("paymentMode", values.paymentMode);
       formData.append("utrNumber", values.utrNumber || "");
       if (values.screenshot) {
         formData.append("screenshot", values.screenshot);
@@ -154,7 +183,7 @@ const Edit: React.FC = () => {
                       as="select"
                       name="srfClient"
                       className="form-select w-full"
-                      disabled={true} // ✅ Disable SRF No field after fetching
+                      disabled={true}
                     >
                       <option value="" disabled>Select SRF No.</option>
                       {srfOptions.map((option) => (
@@ -184,7 +213,7 @@ const Edit: React.FC = () => {
                       onChange={(e: any) => {
                         const value = Number(e.target.value);
                         if (value > values.totalAmount) {
-                          setFieldValue("paymentAmount", values.totalAmount); // prevent typing more
+                          setFieldValue("paymentAmount", values.totalAmount);
                           showMessage("Payment cannot exceed total amount", "warning");
                         } else {
                           setFieldValue("paymentAmount", value);
@@ -208,6 +237,20 @@ const Edit: React.FC = () => {
                     <ErrorMessage name="paymentType" component="div" className="text-red-500 text-sm mt-1" />
                   </div>
 
+                  {/* Payment Mode */}
+                  <div className={submitCount && errors.paymentMode ? "has-error" : submitCount ? "has-success" : ""}>
+                    <label htmlFor="paymentMode">Payment Mode</label>
+                    <Field as="select" name="paymentMode" className="form-select w-full">
+                      <option value="">Select payment mode</option>
+                      {paymentModes.map((mode) => (
+                        <option key={mode} value={mode}>
+                          {mode}
+                        </option>
+                      ))}
+                    </Field>
+                    <ErrorMessage name="paymentMode" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+
                   {/* UTR Number */}
                   <div>
                     <label htmlFor="utrNumber">UTR Number (Optional)</label>
@@ -223,7 +266,7 @@ const Edit: React.FC = () => {
                     <ErrorMessage name="utrNumber" component="div" className="text-red-500 text-sm mt-1" />
                   </div>
 
-                  {/* Screenshot */}
+                  {/* Screenshot - Updated with clickable preview */}
                   <div className="md:col-span-2">
                     <label htmlFor="screenshot">Attach Screenshot</label>
                     <input
@@ -233,15 +276,34 @@ const Edit: React.FC = () => {
                       onChange={(event) => {
                         const file = event.currentTarget.files?.[0];
                         setFieldValue("screenshot", file);
-                        if (file) setImagePreview(URL.createObjectURL(file));
+                        if (file) {
+                          const previewUrl = URL.createObjectURL(file);
+                          setImagePreview(previewUrl);
+                        } else {
+                          setImagePreview(null);
+                        }
                       }}
                       className="form-input w-full"
                     />
                     <ErrorMessage name="screenshot" component="div" className="text-red-500 text-sm mt-1" />
+
+                    {/* Clickable Preview */}
                     {imagePreview && (
                       <div className="mt-4">
-                        <p className="text-sm text-gray-600 mb-1">Preview:</p>
-                        <img src={imagePreview} alt="Preview" className="w-32 h-32 object-cover border rounded shadow" />
+                        <p className="text-sm text-gray-600 mb-1">Current Screenshot:</p>
+                        <div
+                          className="cursor-pointer hover:opacity-90 transition-opacity inline-block"
+                          onClick={() => setIsModalOpen(true)}
+                        >
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-32 h-32 object-cover border rounded shadow hover:shadow-lg transition-shadow"
+                          />
+                          <p className="text-xs text-blue-600 mt-1 hover:underline">
+                            Click to view full size
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -257,6 +319,40 @@ const Edit: React.FC = () => {
           );
         }}
       </Formik>
+
+      {/* Full Screen Modal for Screenshot */}
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div className="relative max-w-full max-h-full">
+            {/* Close Button */}
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 transition-all"
+              aria-label="Close"
+            >
+              <IconX className="w-6 h-6" />
+            </button>
+
+            {/* Image Container */}
+            <div className="flex items-center justify-center min-h-screen">
+              <img
+                src={imagePreview || undefined} // ✅ Fixed: Convert null to undefined
+                alt="Payment Screenshot Full Size"
+                className="max-w-full max-h-screen object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
+            {/* Optional: Zoom indicator */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm bg-black bg-opacity-50 px-3 py-1 rounded-full">
+              Click anywhere to close
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

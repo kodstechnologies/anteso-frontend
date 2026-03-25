@@ -35,7 +35,6 @@ import {
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
 import CentralBeamAlignment from "./CentralBeamAlignment";
 import EffectiveFocalspotMeasurement from "./EffectiveFocalspotMeasurement";
-import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
 import TotalFilteration from "./TotalFilterationForInventionalRadiology";
 import LowContrastResolution from "./LowContrastResolutionInventionalRadiology";
 import HighContrastResolution from "./HighContrastResolutionForInventionalRadiology";
@@ -193,6 +192,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       'Effective Focal Spot Size': {
          'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Focal Spot Size': 'Table1_focalSpotSize',
          'Measured Dimension (W)': 'Table2_MeasuredWidth', 'Measured Dimension (L)': 'Table2_MeasuredLength',
+         'Measured Nominal': 'Table2_MeasuredNominal', 'Measured Focal Spot (Nominal)': 'Table2_MeasuredNominal',
          'Tolerance Width': 'ToleranceWidth', 'Tolerance Length': 'ToleranceLength'
       },
       'Accuracy Of Operating Potential': {
@@ -347,6 +347,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     if (component === 'EffectiveFocalSpot') {
       if (fieldName === 'MeasuredDimension1') return 'Table2_MeasuredWidth';
       if (fieldName === 'MeasuredDimension2') return 'Table2_MeasuredLength';
+      if (fieldName === 'MeasuredNominal') return 'Table2_MeasuredNominal';
     }
     if (component === 'ConsistencyOfRadiationOutput') {
       if (fieldName === 'Table1_fdd') return 'Table1_fcd';
@@ -803,7 +804,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       checks.push(run("Accuracy of Irradiation Time", () => getAccuracyOfIrradiationTimeByServiceId(serviceId, tid)));
       checks.push(run("Central Beam Alignment", () => getCentralBeamAlignmentByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Effective Focal Spot Size", () => getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId, tid)));
-      checks.push(run("Accuracy of Operating Potential", () => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Total Filtration", () => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Consistency of Radiation Output", () => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Measurement of mA Linearity", () => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, tid)));
@@ -817,7 +817,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       checks.push(run("Accuracy of Irradiation Time - Frontal", () => getAccuracyOfIrradiationTimeByServiceId(serviceId, "frontal")));
       checks.push(run("Central Beam Alignment - Frontal", () => getCentralBeamAlignmentByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Effective Focal Spot Size - Frontal", () => getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId, "frontal")));
-      checks.push(run("Accuracy of Operating Potential - Frontal", () => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Total Filtration - Frontal", () => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Consistency of Radiation Output - Frontal", () => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Measurement of mA Linearity - Frontal", () => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, "frontal")));
@@ -829,7 +828,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       checks.push(run("Accuracy of Irradiation Time - Lateral", () => getAccuracyOfIrradiationTimeByServiceId(serviceId, "lateral")));
       checks.push(run("Central Beam Alignment - Lateral", () => getCentralBeamAlignmentByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Effective Focal Spot Size - Lateral", () => getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId, "lateral")));
-      checks.push(run("Accuracy of Operating Potential - Lateral", () => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Total Filtration - Lateral", () => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Consistency of Radiation Output - Lateral", () => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Measurement of mA Linearity - Lateral", () => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, "lateral")));
@@ -1229,16 +1227,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
               ),
             },
             {
-              title: "Accuracy of Operating Potential",
-              component: (
-                <AccuracyOfOperatingPotential
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Accuracy Of Operating Potential']}
-                />
-              ),
-            },
-            {
               title: "Total Filtration",
               component: (
                 <TotalFilteration
@@ -1343,10 +1331,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
               component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Effective Focal Spot Size - Frontal']} />,
             },
             {
-              title: "Accuracy of Operating Potential - Frontal",
-              component: <AccuracyOfOperatingPotential serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Accuracy Of Operating Potential - Frontal']} />,
-            },
-            {
               title: "Total Filtration - Frontal",
               component: <TotalFilteration serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Total Filtration - Frontal']} />,
             },
@@ -1391,10 +1375,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
             {
               title: "Effective Focal Spot Size - Lateral",
               component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Effective Focal Spot Size - Lateral']} />,
-            },
-            {
-              title: "Accuracy of Operating Potential - Lateral",
-              component: <AccuracyOfOperatingPotential serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Accuracy Of Operating Potential - Lateral']} />,
             },
             {
               title: "Total Filtration - Lateral",

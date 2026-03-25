@@ -1,13 +1,13 @@
 import { Link, NavLink } from 'react-router-dom';
 import { DataTable, DataTableSortStatus } from 'mantine-datatable';
-import { useState, useEffect } from 'react';
-import sortBy from 'lodash/sortBy';
+import { useState, useEffect, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../../store/themeConfigSlice';
 import IconTrashLines from '../../../components/Icon/IconTrashLines';
 import IconPlus from '../../../components/Icon/IconPlus';
 import IconEdit from '../../../components/Icon/IconEdit';
 import IconEye from '../../../components/Icon/IconEye';
+import IconRefresh from '../../../components/Icon/IconRefresh';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconCreditCard from '../../../components/Icon/IconCreditCard';
@@ -15,8 +15,9 @@ import FadeInModal from '../../../components/common/FadeInModal';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { showMessage } from '../../../components/common/ShowMessage'; // optional toast
 
-import { deletePaymentById, getAllPayments, searchBySRFNumber } from '../../../api';
+import { deletePaymentById, getAllPayments } from '../../../api';
 import ConfirmModal from '../../../components/common/ConfirmModal';
+import { formatCreatedAtDisplay, isInDateRange } from '../../../utils/tableDateFilter';
 
 const Payments = () => {
   const dispatch = useDispatch();
@@ -26,15 +27,15 @@ const Payments = () => {
 
   const [items, setItems] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZES = [10, 20, 30, 50];
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-  const [initialRecords, setInitialRecords] = useState<any[]>([]);
-  const [records, setRecords] = useState<any[]>([]);
   const [selectedRecords, setSelectedRecords] = useState<any>([]);
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-    columnAccessor: 'paymentId',
-    direction: 'asc',
+    columnAccessor: 'createdAt',
+    direction: 'desc',
   });
   const [openModal, setOpenModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState<any>(null);
@@ -46,18 +47,20 @@ const Payments = () => {
     const fetchPayments = async () => {
       try {
         const res = await getAllPayments();
+        console.log("🚀 ~ res:", res)
         const backendPayments = res.data.payments.map((p: any) => ({
           id: p._id,
           paymentId: p.paymentId || p._id.slice(-6).toUpperCase(),
-          srfClient: p.orderId?.srfNumber || 'N/A',
+          srfClient: p.srfNumber || 'N/A',
+          createdAt: p.createdAt,
           totalAmount: p.totalAmount || 0,
           paymentAmount: p.paymentAmount || 0,
           paymentType: p.paymentType,
           utrNumber: p.utrNumber || 'N/A',
           screenshotUrl: p.screenshot || null,
+          paymentMode: p.paymentMode || 'N/A',
         }));
         setItems(backendPayments);
-        setInitialRecords(sortBy(backendPayments, 'paymentId'));
       } catch (err) {
         console.error('❌ Failed to fetch payments:', err);
       }
@@ -65,82 +68,54 @@ const Payments = () => {
     fetchPayments();
   }, []);
 
-  // ✅ Update records based on page & pageSize
+  const filteredRecords = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((p) => {
+      const srfOk = !q || String(p.srfClient || '').toLowerCase().includes(q);
+      return srfOk && isInDateRange(p.createdAt, dateFrom, dateTo);
+    });
+  }, [items, search, dateFrom, dateTo]);
+
+  const sortedRecords = useMemo(() => {
+    const data = [...filteredRecords];
+    const accessor = sortStatus.columnAccessor as string;
+    if (!accessor) return data;
+    data.sort((a, b) => {
+      const aVal = a[accessor];
+      const bVal = b[accessor];
+      if (accessor === 'createdAt') {
+        const at = aVal ? new Date(aVal as string).getTime() : 0;
+        const bt = bVal ? new Date(bVal as string).getTime() : 0;
+        return sortStatus.direction === 'asc' ? at - bt : bt - at;
+      }
+      const aStr = String(aVal ?? '').toLowerCase();
+      const bStr = String(bVal ?? '').toLowerCase();
+      const cmp = aStr.localeCompare(bStr);
+      return sortStatus.direction === 'asc' ? cmp : -cmp;
+    });
+    return data;
+  }, [filteredRecords, sortStatus]);
+
+  const paginatedRecords = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return sortedRecords.slice(start, start + pageSize);
+  }, [sortedRecords, page, pageSize]);
+
   useEffect(() => {
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize;
-    setRecords([...initialRecords.slice(from, to)]);
-  }, [page, pageSize, initialRecords]);
-
-  // ✅ Search by SRF dynamically
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const fetchBySRF = async () => {
-        if (!search) {
-          setInitialRecords(sortBy(items, 'paymentId'));
-          return;
-        }
-
-        try {
-          const res = await searchBySRFNumber(search.trim());
-          const paymentsArray = res?.data?.payments || [];
-
-          const srPayments = paymentsArray.map((p: any) => ({
-            id: p.orderId + '-' + p.paymentId,
-            paymentId: p.paymentId,
-            srfClient: res.data.srfNumber,
-            totalAmount: p.totalAmount,
-            paymentAmount: p.paymentAmount,
-            paymentType: p.paymentType,
-            utrNumber: p.utrNumber,
-            screenshotUrl: p.screenshot,
-          }));
-
-          setInitialRecords(sortBy(srPayments, 'paymentId'));
-        } catch (err) {
-          console.error('❌ Error searching by SRF:', err);
-          setInitialRecords([]);
-        }
-      };
-
-      fetchBySRF();
-    }, 500); // wait 500ms after last keystroke
-
-    return () => clearTimeout(timer);
-  }, [search, items]);
-
-  // ✅ Sort records
-  useEffect(() => {
-    const sorted = sortBy(initialRecords, sortStatus.columnAccessor);
-    setRecords(sortStatus.direction === 'desc' ? sorted.reverse() : sorted);
     setPage(1);
-  }, [sortStatus, initialRecords]);
+  }, [search, pageSize, dateFrom, dateTo]);
 
-
-
-  // const deleteRow = async (id: string) => {
-  //   if (window.confirm('Are you sure you want to delete this payment?')) {
-  //     try {
-  //       await deletePaymentById(id); // ✅ call backend to delete
-  //       const updated = items.filter((p) => p.id !== id); // update state
-  //       setItems(updated);
-  //       setInitialRecords(updated);
-  //       setRecords(updated);
-  //       setSelectedRecords([]);
-  //       setSearch('');
-  //       showMessage('Payment deleted successfully', 'success'); // optional
-  //     } catch (error: any) {
-  //       console.error('Failed to delete payment:', error);
-  //       showMessage(error.message || 'Failed to delete payment', 'error');
-  //     }
-  //   }
-  // };
+  // Clear all filters
+  const clearFilters = () => {
+    setSearch('');
+    setDateFrom('');
+    setDateTo('');
+  };
 
   const handleDeleteClick = (id: string) => {
     setRowToDelete(id);
     setConfirmOpen(true);
   };
-
 
   const handleConfirmDelete = async () => {
     if (!rowToDelete) return;
@@ -149,10 +124,7 @@ const Payments = () => {
       await deletePaymentById(rowToDelete);
       const updated = items.filter((p) => p.id !== rowToDelete);
       setItems(updated);
-      setInitialRecords(updated);
-      setRecords(updated);
       setSelectedRecords([]);
-      setSearch('');
       showMessage('Payment deleted successfully', 'success');
     } catch (error: any) {
       console.error('Failed to delete payment:', error);
@@ -181,28 +153,64 @@ const Payments = () => {
                 Add New
               </Link>
             </div>
-            <div className="ltr:ml-auto rtl:mr-auto">
+            <div className="ltr:ml-auto rtl:mr-auto flex flex-wrap items-center gap-3 justify-end">
+              <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                <span className="text-gray-600 dark:text-gray-400">From</span>
+                <input
+                  type="date"
+                  className="form-input w-auto"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                <span className="text-gray-600 dark:text-gray-400">To</span>
+                <input
+                  type="date"
+                  className="form-input w-auto"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </label>
               <input
                 type="text"
-                className="form-input w-auto"
+                className="form-input w-auto min-w-[200px]"
                 placeholder="Search by SRF..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              {(search || dateFrom || dateTo) && (
+                <button
+                  onClick={clearFilters}
+                  className="btn btn-outline-danger gap-2"
+                  title="Clear all filters"
+                >
+                  <IconRefresh />
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
           <div className="datatables pagination-padding">
             <DataTable
               className="whitespace-nowrap table-hover"
-              records={records}
+              records={paginatedRecords}
               columns={[
                 { accessor: 'paymentId', title: 'Payment ID', sortable: true },
-                { accessor: 'srfClient', title: 'SRF + Client', sortable: true },
+                { accessor: 'srfClient', title: 'SRF No.', sortable: true },
+
                 { accessor: 'totalAmount', title: 'Total Amount', sortable: true },
                 { accessor: 'paymentAmount', title: 'Payment Amount', sortable: true },
                 { accessor: 'paymentType', title: 'Payment Type', sortable: true },
                 { accessor: 'utrNumber', title: 'UTR Number', sortable: false },
+                { accessor: 'paymentMode', title: 'Payment Mode', sortable: true },
+                {
+                  accessor: 'createdAt',
+                  title: 'Created At',
+                  sortable: true,
+                  render: (row: any) => formatCreatedAtDisplay(row.createdAt),
+                },
                 {
                   accessor: 'Payment Screenshot',
                   title: 'Payment Screenshot',
@@ -236,13 +244,12 @@ const Payments = () => {
                       >
                         <IconTrashLines />
                       </button>
-
                     </div>
                   ),
                 },
               ]}
               highlightOnHover
-              totalRecords={initialRecords.length}
+              totalRecords={filteredRecords.length}
               recordsPerPage={pageSize}
               page={page}
               onPageChange={setPage}
@@ -280,7 +287,6 @@ const Payments = () => {
         title="Confirm Delete"
         message="Are you sure you want to delete this payment?"
       />
-
     </>
   );
 };

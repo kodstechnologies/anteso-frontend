@@ -471,8 +471,23 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
               pushRow(testName, "FocalSpot_FocusType", focusType, rowIdx);
               if (sW) pushRow(testName, "FocalSpot_StatedWidth", sW, rowIdx);
               if (sH) pushRow(testName, "FocalSpot_StatedHeight", sH, rowIdx);
+              // Also populate nominal values for the new template fields.
+              const toNum = (v: string) => {
+                const n = parseFloat(v);
+                return isNaN(n) ? null : n;
+              };
+              const statedNom1 = toNum(sW);
+              const statedNom2 = toNum(sH);
+              const statedNominal =
+                statedNom1 != null && statedNom2 != null ? (statedNom1 + statedNom2) / 2 : (statedNom1 ?? statedNom2);
+              if (statedNominal != null) pushRow(testName, "FocalSpot_StatedNominal", String(statedNominal), rowIdx);
               if (mW) pushRow(testName, "FocalSpot_MeasuredWidth", mW, rowIdx);
               if (mH) pushRow(testName, "FocalSpot_MeasuredHeight", mH, rowIdx);
+              const measuredNom1 = toNum(mW);
+              const measuredNom2 = toNum(mH);
+              const measuredNominal =
+                measuredNom1 != null && measuredNom2 != null ? (measuredNom1 + measuredNom2) / 2 : (measuredNom1 ?? measuredNom2);
+              if (measuredNominal != null) pushRow(testName, "FocalSpot_MeasuredNominal", String(measuredNominal), rowIdx);
               rowIdx++;
             }
             j++;
@@ -875,8 +890,10 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             if (key === "FocusType") focalSpots[ri].focusType = v;
             else if (key === "StatedWidth") focalSpots[ri].statedWidth = v;
             else if (key === "StatedHeight") focalSpots[ri].statedHeight = v;
+                else if (key === "StatedNominal") focalSpots[ri].statedNominal = v;
             else if (key === "MeasuredWidth") focalSpots[ri].measuredWidth = v;
             else if (key === "MeasuredHeight") focalSpots[ri].measuredHeight = v;
+                else if (key === "MeasuredNominal") focalSpots[ri].measuredNominal = v;
           }
         });
         setCsvDataForComponents((prev) => ({ ...prev, effectiveFocalSpot: { fcd, focalSpots: focalSpots.length ? focalSpots : [] } }));

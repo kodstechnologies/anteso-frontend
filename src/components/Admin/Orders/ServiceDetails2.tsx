@@ -1075,7 +1075,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                 assignmentStatus: status,
                                 backendFields: {
                                     ...wt.backendFields,
-                                    serialNo: updatedService.machineModel || wt.backendFields?.serialNo || "N/A",
+                                    serialNo:
+                                        updatedService.serialNumber ||
+                                        (service.equipmentId !== "N/A" ? service.equipmentId : "") ||
+                                        wt.backendFields?.serialNo ||
+                                        "N/A",
                                     modelName: updatedService.machineModel || wt.backendFields?.modelName || "N/A",
                                     remark: updatedService.remark || wt.backendFields?.remark || "N/A",
                                     fileUrl: updatedService.rawFile || wt.backendFields?.fileUrl || "",

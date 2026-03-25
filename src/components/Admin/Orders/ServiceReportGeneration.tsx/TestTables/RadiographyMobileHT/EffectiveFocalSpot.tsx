@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Edit3, Save, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addEffectiveFocalSpotForRadiographyMobileHT,
@@ -13,10 +13,8 @@ import {
 interface FocalSpotRow {
   id: string;
   focusType: string;
-  statedWidth: string;
-  statedHeight: string;
-  measuredWidth: string;
-  measuredHeight: string;
+  statedNominal: string;
+  measuredNominal: string;
   remark: 'Pass' | 'Fail' | '';
 }
 
@@ -50,19 +48,15 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
     {
       id: 'large',
       focusType: 'Large Focus',
-      statedWidth: '1.2',
-      statedHeight: '1.2',
-      measuredWidth: '',
-      measuredHeight: '',
+      statedNominal: '2',
+      measuredNominal: '',
       remark: '',
     },
     {
       id: 'small',
       focusType: 'Small Focus',
-      statedWidth: '0.6',
-      statedHeight: '0.6',
-      measuredWidth: '',
-      measuredHeight: '',
+      statedNominal: '0.6',
+      measuredNominal: '',
       remark: '',
     },
   ]);
@@ -74,16 +68,22 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
     ));
   };
 
+  const ensureTwoRows = (inputRows: FocalSpotRow[]): FocalSpotRow[] => {
+    const defaults: FocalSpotRow[] = [
+      { id: 'large', focusType: 'Large Focus', statedNominal: '2', measuredNominal: '', remark: '' },
+      { id: 'small', focusType: 'Small Focus', statedNominal: '0.6', measuredNominal: '', remark: '' },
+    ];
+    return [0, 1].map((idx) => ({ ...defaults[idx], ...(inputRows[idx] || {}) }));
+  };
+
   const addRow = () => {
     setRows(prev => [
       ...prev,
       {
         id: Date.now().toString(),
         focusType: 'Large Focus',
-        statedWidth: '',
-        statedHeight: '',
-        measuredWidth: '',
-        measuredHeight: '',
+        statedNominal: '',
+        measuredNominal: '',
         remark: '',
       }
     ]);
@@ -93,15 +93,27 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
     if (!initialData) return;
     if (initialData.fcd) setFcd(initialData.fcd);
     if (initialData.focalSpots?.length) {
-      setRows(initialData.focalSpots.map((s: any, i: number) => ({
-        id: String(i),
-        focusType: s.focusType || (i === 0 ? 'Small Focus' : 'Large Focus'),
-        statedWidth: s.statedWidth ?? '',
-        statedHeight: s.statedHeight ?? '',
-        measuredWidth: s.measuredWidth ?? '',
-        measuredHeight: s.measuredHeight ?? '',
-        remark: (s.remark as 'Pass' | 'Fail' | '') ?? '',
-      })));
+      setRows(
+        ensureTwoRows(
+          initialData.focalSpots.slice(0, 2).map((s: any, i: number) => {
+            const statedFromLegacy =
+              s.statedWidth != null && s.statedHeight != null
+                ? (Number(s.statedWidth) + Number(s.statedHeight)) / 2
+                : s.statedWidth ?? s.statedHeight;
+            const measuredFromLegacy =
+              s.measuredWidth != null && s.measuredHeight != null
+                ? (Number(s.measuredWidth) + Number(s.measuredHeight)) / 2
+                : s.measuredWidth ?? s.measuredHeight;
+            return {
+              id: i === 0 ? 'large' : 'small',
+              focusType: s.focusType || (i === 0 ? 'Large Focus' : 'Small Focus'),
+              statedNominal: String(s.statedNominal ?? statedFromLegacy ?? ''),
+              measuredNominal: String(s.measuredNominal ?? measuredFromLegacy ?? ''),
+              remark: (s.remark as 'Pass' | 'Fail' | '') ?? '',
+            };
+          })
+        )
+      );
     }
   }, [initialData]);
 
@@ -124,23 +136,20 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
     const tLarge = parseFloat(tolLargeMul) || 0.3;
 
     return rows.map(row => {
-      const sw = parseFloat(row.statedWidth) || 0;
-      const sh = parseFloat(row.statedHeight) || 0;
-      const mw = parseFloat(row.measuredWidth) || 0;
-      const mh = parseFloat(row.measuredHeight) || 0;
-
-      const avgStated = (sw + sh) / 2;
-      const avgMeasured = (mw + mh) / 2;
+      const stated = parseFloat(row.statedNominal) || 0;
+      const measured = parseFloat(row.measuredNominal) || 0;
 
       let multiplier = tMedium;
-      if (avgStated < sLimit) multiplier = tSmall;
-      else if (avgStated > mUpper) multiplier = tLarge;
+      if (stated < sLimit) multiplier = tSmall;
+      else if (stated > mUpper) multiplier = tLarge;
 
-      const allowed = avgStated + avgStated * multiplier;
-      const isPass = avgMeasured <= allowed; // Removed > 0 check for pass/fail calculation itself, but remark requires values
+      const allowed = stated + stated * multiplier;
+      const roundedAllowed = Number.isFinite(allowed) ? Number(allowed.toFixed(4)) : allowed;
+      const roundedMeasured = Number.isFinite(measured) ? Number(measured.toFixed(4)) : measured;
+      const isPass = roundedMeasured <= roundedAllowed + 1e-9;
 
       // Remark logic: only show if measured values are entered
-      const hasMeasured = mw > 0 && mh > 0;
+      const hasMeasured = measured > 0;
 
       return {
         ...row,
@@ -174,15 +183,27 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
             setTolLargeMul(String(data.toleranceCriteria.large?.multiplier || '0.3'));
           }
           if (data.focalSpots && data.focalSpots.length > 0) {
-            setRows(data.focalSpots.map((spot: any) => ({
-              id: spot._id || Date.now().toString() + Math.random(),
-              focusType: spot.focusType || 'Large Focus',
-              statedWidth: String(spot.statedWidth || ''),
-              statedHeight: String(spot.statedHeight || ''),
-              measuredWidth: String(spot.measuredWidth || ''),
-              measuredHeight: String(spot.measuredHeight || ''),
-              remark: spot.remark || '',
-            })));
+            setRows(
+              ensureTwoRows(
+                data.focalSpots.slice(0, 2).map((spot: any, i: number) => {
+                  const statedFromLegacy =
+                    spot.statedWidth != null && spot.statedHeight != null
+                      ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                      : spot.statedWidth ?? spot.statedHeight;
+                  const measuredFromLegacy =
+                    spot.measuredWidth != null && spot.measuredHeight != null
+                      ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                      : spot.measuredWidth ?? spot.measuredHeight;
+                  return {
+                    id: spot._id || (i === 0 ? 'large' : 'small'),
+                    focusType: spot.focusType || (i === 0 ? 'Large Focus' : 'Small Focus'),
+                    statedNominal: String(spot.statedNominal ?? statedFromLegacy ?? ''),
+                    measuredNominal: String(spot.measuredNominal ?? measuredFromLegacy ?? ''),
+                    remark: spot.remark || '',
+                  };
+                })
+              )
+            );
           }
           setIsSaved(true);
           setIsEditing(false);
@@ -219,10 +240,13 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
         },
         focalSpots: processedRows.map(row => ({
           focusType: row.focusType,
-          statedWidth: parseFloat(row.statedWidth) || 0,
-          statedHeight: parseFloat(row.statedHeight) || 0,
-          measuredWidth: parseFloat(row.measuredWidth) || 0,
-          measuredHeight: parseFloat(row.measuredHeight) || 0,
+          statedNominal: parseFloat(row.statedNominal) || 0,
+          measuredNominal: parseFloat(row.measuredNominal) || 0,
+          // Legacy compatibility
+          statedWidth: parseFloat(row.statedNominal) || 0,
+          statedHeight: parseFloat(row.statedNominal) || 0,
+          measuredWidth: parseFloat(row.measuredNominal) || 0,
+          measuredHeight: parseFloat(row.measuredNominal) || 0,
           remark: row.remark,
         })),
         finalResult: finalResult,
@@ -299,26 +323,19 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
           <h3 className="text-lg font-bold">
             Effective Focal Spot Size Measurement
           </h3>
-          {!isViewOnly && (
-            <button
-              onClick={addRow}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Row
-            </button>
-          )}
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead className="bg-purple-50">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Focus</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Stated Value (mm × mm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Measured Value (mm × mm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Stated Focal Spot of Tube (f)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Measured Focal Spot (Nominal)</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 leading-tight">
                   <div className="space-y-3 text-sm normal-case">
+                    <div className="font-bold">Tolerance</div>
                     <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">
+                      <span className="font-semibold">1.</span>
                       <span className="font-bold">+</span>
                       <input type="number" step="0.1" value={tolSmallMul} onChange={(e) => setTolSmallMul(e.target.value)} disabled={isViewOnly}
                         className="w-14 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
@@ -328,6 +345,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                       <span className="text-gray-600">mm</span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">
+                      <span className="font-semibold">2.</span>
                       <span className="font-bold">+</span>
                       <input type="number" step="0.1" value={tolMediumMul} onChange={(e) => setTolMediumMul(e.target.value)} disabled={isViewOnly}
                         className="w-14 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
@@ -340,6 +358,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                       <span className="text-gray-600">mm</span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap bg-white/50 px-2 py-1 rounded">
+                      <span className="font-semibold">3.</span>
                       <span className="font-bold">+</span>
                       <input type="number" step="0.1" value={tolLargeMul} onChange={(e) => setTolLargeMul(e.target.value)} disabled={isViewOnly}
                         className="w-14 px-1 py-0.5 text-center border border-purple-300 rounded text-purple-900 font-bold bg-white" />
@@ -349,7 +368,6 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                     </div>
                   </div>
                 </th>
-                <th className="px-4 py-4 w-10"></th>
               </tr>
             </thead>
             <tbody>
@@ -370,38 +388,26 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <input type="number" step="0.1" value={row.statedWidth} onChange={(e) => updateRow(row.id, 'statedWidth', e.target.value)} disabled={isViewOnly}
-                        className="w-24 px-4 py-2 text-center border rounded-lg font-bold focus:ring-2 focus:ring-purple-500" />
-                      <span className="text-xl font-bold">×</span>
-                      <input type="number" step="0.1" value={row.statedHeight} onChange={(e) => updateRow(row.id, 'statedHeight', e.target.value)} disabled={isViewOnly}
-                        className="w-24 px-4 py-2 text-center border rounded-lg font-bold focus:ring-2 focus:ring-purple-500" />
-                      <span className="text-sm font-medium text-gray-600">mm</span>
-                    </div>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={row.statedNominal}
+                      onChange={(e) => updateRow(row.id, 'statedNominal', e.target.value)}
+                      disabled={isViewOnly}
+                      className="w-32 px-4 py-2 text-center border rounded-lg font-bold focus:ring-2 focus:ring-purple-500"
+                      placeholder="f"
+                    />
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={row.measuredWidth}
-                        onChange={(e) => updateRow(row.id, 'measuredWidth', e.target.value)}
-                        disabled={isViewOnly}
-                        className="w-28 px-4 py-2 text-center border-2 border-purple-400 rounded-lg font-bold focus:ring-4 focus:ring-purple-300"
-                        placeholder="0.00"
-                      />
-                      <span className="text-xl font-bold">×</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={row.measuredHeight}
-                        onChange={(e) => updateRow(row.id, 'measuredHeight', e.target.value)}
-                        disabled={isViewOnly}
-                        className="w-28 px-4 py-2 text-center border-2 border-purple-400 rounded-lg font-bold focus:ring-4 focus:ring-purple-300"
-                        placeholder="0.00"
-                      />
-                      <span className="text-sm font-medium text-gray-600">mm</span>
-                    </div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={row.measuredNominal}
+                      onChange={(e) => updateRow(row.id, 'measuredNominal', e.target.value)}
+                      disabled={isViewOnly}
+                      className="w-32 px-4 py-2 text-center border-2 border-purple-400 rounded-lg font-bold focus:ring-4 focus:ring-purple-300"
+                      placeholder="Nominal"
+                    />
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span className={`inline-block px-8 py-3 rounded-full text-lg font-bold min-w-28 ${row.remark === 'Pass'
@@ -412,17 +418,6 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                       }`}>
                       {row.remark || '—'}
                     </span>
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    {!isViewOnly && rows.length > 1 && (
-                      <button
-                        onClick={() => removeRow(row.id)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-full transition-colors"
-                        title="Remove row"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    )}
                   </td>
                 </tr>
               ))}

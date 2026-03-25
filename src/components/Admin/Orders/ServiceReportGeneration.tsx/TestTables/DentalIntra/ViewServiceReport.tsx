@@ -725,7 +725,33 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                           <td className="border border-black p-2 print:p-1 font-bold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(191, 219, 254, 0.3)' }}>{row.avg || "-"}</td>
                           <td className="border border-black p-2 print:p-1 font-bold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
                             <span className={row.remark?.includes("Pass") ? "text-green-600" : row.remark?.includes("Fail") ? "text-red-600" : "text-gray-600"}>
-                              {row.remark || "-"}
+                              {(() => {
+                                const covVal = row.cov ?? row.cv;
+                                if (covVal != null && covVal !== "" && row.remark) return `${covVal} / ${row.remark}`;
+                                if (covVal != null && covVal !== "") return covVal;
+
+                                const outputs = Array.isArray(row.outputs) ? row.outputs : [];
+                                const values: number[] = outputs
+                                  .map((v: any) => {
+                                    if (v == null) return NaN;
+                                    if (typeof v === "number") return v;
+                                    if (typeof v === "string") return parseFloat(v);
+                                    if (typeof v === "object" && "value" in v) return parseFloat((v as any).value);
+                                    return NaN;
+                                  })
+                                  .filter((n: number) => !Number.isNaN(n));
+
+                                if (values.length === 0) return row.remark || "-";
+                                const mean = values.reduce((a: number, b: number) => a + b, 0) / values.length;
+                                if (!mean) return row.remark || "-";
+                                const variance = values.reduce((sum: number, n: number) => sum + Math.pow(n - mean, 2), 0) / values.length;
+                                const stdDev = Math.sqrt(variance);
+                                const computedCov = stdDev / mean;
+
+                                if (!Number.isFinite(computedCov)) return row.remark || "-";
+                                const covDisplay = computedCov.toFixed(3);
+                                return row.remark ? `${covDisplay} / ${row.remark}` : covDisplay;
+                              })()}
                             </span>
                           </td>
                         </tr>

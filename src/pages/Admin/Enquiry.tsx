@@ -9,6 +9,7 @@ import IconPlus from '../../components/Icon/IconPlus';
 import IconEdit from '../../components/Icon/IconEdit';
 import IconEye from '../../components/Icon/IconEye';
 import IconCopy from '../../components/Icon/IconCopy';
+import IconRefresh from '../../components/Icon/IconRefresh';
 import { enquiriesData } from '../../data';
 import IconFile from '../../components/Icon/IconFile';
 import Breadcrumb, { BreadcrumbItem } from '../../components/common/Breadcrumb';
@@ -16,6 +17,7 @@ import IconHome from '../../components/Icon/IconHome';
 import IconBox from '../../components/Icon/IconBox';
 import { deleteEnquiryById, getAllEnquiry } from '../../api';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import { formatCreatedAtDisplay, isInDateRange } from '../../utils/tableDateFilter';
 
 const Enquiry = () => {
     const navigate = useNavigate();
@@ -35,6 +37,8 @@ const Enquiry = () => {
     const [records, setRecords] = useState(initialRecords);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
     const [search, setSearch] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [rowToDelete, setRowToDelete] = useState<number | null>(null);
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
@@ -53,6 +57,7 @@ const Enquiry = () => {
                     ...item,
                     id: item._id,
                     enquiryID: item.enquiryId,
+                    createdAt: item.createdAt,
                     hName: item.hospitalName,
                     fullAddress: item.fullAddress,
                     city: item.city,
@@ -63,7 +68,7 @@ const Enquiry = () => {
                     email: item.emailAddress,
                     phone: item.contactNumber,
                     designation: item.designation,
-
+                    
                     quotation: item.quotationStatus?.toLowerCase(), // keep status here
                     remark: item.quotation?.[0]?.rejectionRemark || null, // 👈 pick rejectionRemark if exists                    id: item._id,
                 }));
@@ -93,6 +98,14 @@ const Enquiry = () => {
             console.error('Failed to copy link:', err);
         }
     };
+    
+    // Clear all filters
+    const clearFilters = () => {
+        setSearch('');
+        setDateFrom('');
+        setDateTo('');
+    };
+    
     const deleteRow = (id: number | null = null) => {
         setRowToDelete(id); // Store row or null (for bulk)
         setShowConfirmModal(true); // Open confirm modal
@@ -149,22 +162,25 @@ const Enquiry = () => {
     useEffect(() => {
         setInitialRecords(() => {
             return items.filter((item) => {
-                return (
-                    item.enquiryID.toLowerCase().includes(search.toLowerCase()) ||
-                    item.hName.toLowerCase().includes(search.toLowerCase()) ||
-                    item.fullAddress.toLowerCase().includes(search.toLowerCase()) ||
-                    item.city.toLowerCase().includes(search.toLowerCase()) ||
-                    item.state.toLowerCase().includes(search.toLowerCase()) ||
-                    item.pincode.toLowerCase().includes(search.toLowerCase()) ||
-                    item.contactperson.toLowerCase().includes(search.toLowerCase()) ||
-                    item.email.toLowerCase().includes(search.toLowerCase()) ||
-                    item.phone.toLowerCase().includes(search.toLowerCase()) ||
-                    item.designation.toLowerCase().includes(search.toLowerCase()) ||
-                    item.quotation.toLowerCase().includes(search.toLowerCase())
-                );
+                const q = search.toLowerCase();
+                const matchesSearch =
+                    !search.trim() ||
+                    (item.enquiryID && String(item.enquiryID).toLowerCase().includes(q)) ||
+                    (item.hName && String(item.hName).toLowerCase().includes(q)) ||
+                    (item.fullAddress && String(item.fullAddress).toLowerCase().includes(q)) ||
+                    (item.city && String(item.city).toLowerCase().includes(q)) ||
+                    (item.state && String(item.state).toLowerCase().includes(q)) ||
+                    (item.pincode && String(item.pincode).toLowerCase().includes(q)) ||
+                    (item.contactperson && String(item.contactperson).toLowerCase().includes(q)) ||
+                    (item.email && String(item.email).toLowerCase().includes(q)) ||
+                    (item.phone && String(item.phone).toLowerCase().includes(q)) ||
+                    (item.designation && String(item.designation).toLowerCase().includes(q)) ||
+                    (item.quotation && String(item.quotation).toLowerCase().includes(q));
+                const matchesDate = isInDateRange(item.createdAt, dateFrom, dateTo);
+                return matchesSearch && matchesDate;
             });
         });
-    }, [search]);
+    }, [search, items, dateFrom, dateTo]);
 
     useEffect(() => {
         const data = sortBy(initialRecords, sortStatus.columnAccessor);
@@ -195,8 +211,42 @@ const Enquiry = () => {
                                 {copied ? ' Copied! ' : 'Copy Link'}
                             </button>
                         </div>
-                        <div className="ltr:ml-auto rtl:mr-auto">
-                            <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                        <div className="ltr:ml-auto rtl:mr-auto flex flex-wrap items-center gap-3 justify-end">
+                            <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                                <span className="text-gray-600 dark:text-gray-400">From</span>
+                                <input
+                                    type="date"
+                                    className="form-input w-auto"
+                                    value={dateFrom}
+                                    onChange={(e) => setDateFrom(e.target.value)}
+                                />
+                            </label>
+                            <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                                <span className="text-gray-600 dark:text-gray-400">To</span>
+                                <input
+                                    type="date"
+                                    className="form-input w-auto"
+                                    value={dateTo}
+                                    onChange={(e) => setDateTo(e.target.value)}
+                                />
+                            </label>
+                            <input 
+                                type="text" 
+                                className="form-input w-auto min-w-[200px]" 
+                                placeholder="Search..." 
+                                value={search} 
+                                onChange={(e) => setSearch(e.target.value)} 
+                            />
+                            {(search || dateFrom || dateTo) && (
+                                <button
+                                    onClick={clearFilters}
+                                    className="btn btn-outline-danger gap-2"
+                                    title="Clear all filters"
+                                >
+                                    <IconRefresh />
+                                    Clear
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -209,6 +259,12 @@ const Enquiry = () => {
                                     accessor: 'enquiryID',
                                     title: 'ENQ ID',
                                     sortable: true,
+                                },
+                                {
+                                    accessor: 'createdAt',
+                                    title: 'Created At',
+                                    sortable: true,
+                                    render: ({ createdAt }) => formatCreatedAtDisplay(createdAt),
                                 },
                                 {
                                     accessor: 'hName',

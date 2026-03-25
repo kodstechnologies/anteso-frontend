@@ -6,12 +6,14 @@ import IconTrashLines from '../../components/Icon/IconTrashLines';
 import IconEye from '../../components/Icon/IconEye';
 import IconHome from '../../components/Icon/IconHome';
 import IconBox from '../../components/Icon/IconBox';
+import IconRefresh from '../../components/Icon/IconRefresh';
 import Breadcrumb, { BreadcrumbItem } from '../../components/common/Breadcrumb';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../store/themeConfigSlice';
 import { getAllOrders, deleteOrder } from '../../api';
 import { showMessage } from '../../components/common/ShowMessage';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import { formatCreatedAtDisplay, isInDateRange } from '../../utils/tableDateFilter';
 
 type Order = {
     _id: string;
@@ -37,6 +39,8 @@ type Order = {
 
 const Orders = () => {
     const [search, setSearch] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [records, setRecords] = useState<Order[]>([]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -66,6 +70,13 @@ const Orders = () => {
         };
         fetchOrders();
     }, [dispatch]);
+
+    // ✅ Clear all filters
+    const clearFilters = () => {
+        setSearch('');
+        setDateFrom('');
+        setDateTo('');
+    };
 
     // ✅ Open Confirm Modal
     const handleDeleteClick = (id: string) => {
@@ -102,15 +113,18 @@ const Orders = () => {
 
     // ✅ Filter records based on search
     const filteredRecords = useMemo(() => {
-        if (!search.trim()) return records;
-
+        const q = search.toLowerCase().trim();
         return records.filter((item) => {
-            return Object.values(item).some((val) => {
-                if (val === null || val === undefined) return false;
-                return String(val).toLowerCase().includes(search.toLowerCase());
-            });
+            const matchesSearch =
+                !q ||
+                Object.values(item).some((val) => {
+                    if (val === null || val === undefined) return false;
+                    return String(val).toLowerCase().includes(q);
+                });
+            const matchesDate = isInDateRange(item.createdAt, dateFrom, dateTo);
+            return matchesSearch && matchesDate;
         });
-    }, [records, search]);
+    }, [records, search, dateFrom, dateTo]);
 
     // ✅ Sort filtered records
     const sortedRecords = useMemo(() => {
@@ -155,7 +169,7 @@ const Orders = () => {
     // ✅ Reset to first page when search changes or pageSize changes
     useEffect(() => {
         setPage(1);
-    }, [search, pageSize]);
+    }, [search, pageSize, dateFrom, dateTo]);
 
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
@@ -177,14 +191,42 @@ const Orders = () => {
                                 <IconPlus /> Create Order
                             </Link>
                         </div>
-                        <div className="ltr:ml-auto rtl:mr-auto">
+                        <div className="ltr:ml-auto rtl:mr-auto flex flex-wrap items-center gap-3 justify-end">
+                            <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                                <span className="text-gray-600 dark:text-gray-400">From</span>
+                                <input
+                                    type="date"
+                                    className="form-input w-auto"
+                                    value={dateFrom}
+                                    onChange={(e) => setDateFrom(e.target.value)}
+                                />
+                            </label>
+                            <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                                <span className="text-gray-600 dark:text-gray-400">To</span>
+                                <input
+                                    type="date"
+                                    className="form-input w-auto"
+                                    value={dateTo}
+                                    onChange={(e) => setDateTo(e.target.value)}
+                                />
+                            </label>
                             <input
                                 type="text"
-                                className="form-input w-auto"
+                                className="form-input w-auto min-w-[200px]"
                                 placeholder="Search..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
+                            {(search || dateFrom || dateTo) && (
+                                <button
+                                    onClick={clearFilters}
+                                    className="btn btn-outline-danger gap-2"
+                                    title="Clear all filters"
+                                >
+                                    <IconRefresh />
+                                    Clear
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -231,14 +273,7 @@ const Orders = () => {
                                     accessor: 'createdAt',
                                     title: 'Created At',
                                     sortable: true,
-                                    render: (r) =>
-                                        r.createdAt
-                                            ? new Date(r.createdAt).toLocaleDateString('en-GB', {
-                                                day: '2-digit',
-                                                month: '2-digit',
-                                                year: 'numeric',
-                                            })
-                                            : '-',
+                                    render: (r) => formatCreatedAtDisplay(r.createdAt),
                                 },
                                 {
                                     accessor: 'action',

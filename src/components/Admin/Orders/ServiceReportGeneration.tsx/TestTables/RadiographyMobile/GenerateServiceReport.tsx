@@ -484,8 +484,12 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         "Focus Type": "FocalSpot_FocusType",
         "Stated Width": "FocalSpot_StatedWidth",
         "Stated Height": "FocalSpot_StatedHeight",
+        "Stated Nominal": "FocalSpot_StatedNominal",
+        "Stated Focal Spot of Tube (f)": "FocalSpot_StatedNominal",
         "Measured Width": "FocalSpot_MeasuredWidth",
         "Measured Height": "FocalSpot_MeasuredHeight",
+        "Measured Nominal": "FocalSpot_MeasuredNominal",
+        "Measured Focal Spot (Nominal)": "FocalSpot_MeasuredNominal",
       },
       "Linearity of mAs Loading Stations": {
         "FCD": "Table1_FCD",
@@ -1167,8 +1171,10 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
               if (fn === "FocusType") focalSpots[idx].focusType = value;
               if (fn === "StatedWidth") focalSpots[idx].statedWidth = value;
               if (fn === "StatedHeight") focalSpots[idx].statedHeight = value;
+              if (fn === "StatedNominal") focalSpots[idx].statedNominal = value;
               if (fn === "MeasuredWidth") focalSpots[idx].measuredWidth = value;
               if (fn === "MeasuredHeight") focalSpots[idx].measuredHeight = value;
+              if (fn === "MeasuredNominal") focalSpots[idx].measuredNominal = value;
             }
           });
           nextState.effectiveFocalSpot = { fcd, focalSpots };

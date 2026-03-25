@@ -485,6 +485,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               if (sH) pushRow(testName, "FocalSpot_statedHeight", sH, idx);
               if (mW) pushRow(testName, "FocalSpot_measuredWidth", mW, idx);
               if (mH) pushRow(testName, "FocalSpot_measuredHeight", mH, idx);
+              if (sW) pushRow(testName, "FocalSpot_statedNominal", sW, idx);
+              if (mW) pushRow(testName, "FocalSpot_measuredNominal", mW, idx);
               idx++;
             }
             j++;

@@ -746,7 +746,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                         {testData.outputConsistency.outputRows.map((row: any, i: number) => {
                           let covVal: number | null = row.cv != null ? parseFloat(row.cv) : (row.cov != null ? parseFloat(row.cov) : null);
                           if (covVal === null && Array.isArray(row.outputs)) covVal = computeCov(row.outputs);
-                          const displayCov = covVal != null ? covVal.toFixed(3) : (row.remark || "-");
+                          const displayCov = covVal != null ? covVal.toFixed(3) : "-";
                           const isPass = row.remark === "Pass" || row.remark === "PASS" || (covVal != null && covVal <= toleranceNum);
                           return (
                             <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
@@ -755,7 +755,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                               <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avg || row.mean || "-"}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                                 <span className={isPass ? "text-green-600" : (row.remark?.includes("Fail") ? "text-red-600" : "")}>
-                                  {row.remark || displayCov}
+                                  {displayCov !== "-" ? `${displayCov}${row.remark ? ` / ${row.remark}` : ""}` : (row.remark || "-")}
                                 </span>
                               </td>
                             </tr>
@@ -1227,27 +1227,66 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                   <table className="w-full border-2 border-black text-sm print:text-xs" style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="border border-black p-3 print:p-2">Nominal Focal Spot Size (f)</th>
-                        <th className="border border-black p-3 print:p-2">Measured Focal Spot Size</th>
-                        <th className="border border-black p-3 print:p-2 bg-blue-100">Tolerance</th>
-                        <th className="border border-black p-3 print:p-2 bg-green-100">Remarks</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ width: '12%' }}></th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%' }}>Stated Focal Spot of Tube</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%' }}>Measured Focal Spot (Nominal)</th>
+                        <th className="border border-black p-2 print:p-1 text-left" style={{ width: '30%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.1' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <strong>Tolerance:</strong>
+                            <span><strong>FFD (cm)</strong> {testData.effectiveFocalSpot.fcd || "-"}</span>
+                          </div>
+                          <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
+                          <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
+                          <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
+                        </th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ width: '10%' }}>Result</th>
                       </tr>
                     </thead>
                     <tbody>
                       {testData.effectiveFocalSpot.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots) ? (
-                        testData.effectiveFocalSpot.focalSpots.map((spot: any, i: number) => (
-                          <tr key={i} className="text-center">
-                            <td className="border border-black p-3 print:p-2 font-semibold">{spot.statedWidth || "-"} x {spot.statedHeight || "-"} mm</td>
-                            <td className="border border-black p-3 print:p-2">{spot.measuredWidth || "-"} x {spot.measuredHeight || "-"} mm</td>
-                            <td className="border border-black p-3 print:p-2">{spot.remark || "Complies"}</td>
-                            <td className="border border-black p-3 print:p-2 font-bold text-green-600">PASS</td>
-                          </tr>
-                        ))
+                        testData.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
+                          const formatValue = (val: any) => {
+                            if (val === undefined || val === null || val === "") return "-";
+                            const numVal = typeof val === "number" ? val : parseFloat(val);
+                            if (isNaN(numVal)) return "-";
+                            return numVal.toFixed(1);
+                          };
+
+                          const statedNominal = formatValue(
+                            spot.statedNominal ??
+                              (spot.statedWidth != null && spot.statedHeight != null
+                                ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                                : spot.statedWidth ?? spot.statedHeight)
+                          );
+                          const measuredNominal = formatValue(
+                            spot.measuredNominal ??
+                              (spot.measuredWidth != null && spot.measuredHeight != null
+                                ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                                : spot.measuredWidth ?? spot.measuredHeight)
+                          );
+
+                          return (
+                            <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                              <td className="border border-black p-2 print:p-1 text-left font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>
+                                {spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}
+                              </td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{statedNominal}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{measuredNominal}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}> </td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>
+                                <span className={spot.remark === "Pass" || spot.remark === "PASS" ? "text-green-600 font-semibold" : spot.remark === "Fail" || spot.remark === "FAIL" ? "text-red-600 font-semibold" : ""}>
+                                  {spot.remark === "Pass" || spot.remark === "PASS" ? "PASS" : spot.remark === "Fail" || spot.remark === "FAIL" ? "FAIL" : spot.remark || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr className="text-center">
-                          <td className="border border-black p-3 print:p-2 font-semibold">{testData.effectiveFocalSpot.nominalFocalSpotSize || "-"} mm</td>
+                          <td className="border border-black p-3 print:p-2 font-semibold">{testData.effectiveFocalSpot.focusType || "Large Focus"}</td>
+                          <td className="border border-black p-3 print:p-2">{testData.effectiveFocalSpot.nominalFocalSpotSize || "-"} mm</td>
                           <td className="border border-black p-3 print:p-2">{testData.effectiveFocalSpot.measuredFocalSpotSize || "-"} mm</td>
-                          <td className="border border-black p-3 print:p-2">{testData.effectiveFocalSpot.tolerance || "-"}</td>
+                          <td className="border border-black p-3 print:p-2"></td>
                           <td className="border border-black p-3 print:p-2 font-bold">
                             <span className={testData.effectiveFocalSpot.isPass ? "text-green-600" : "text-red-600"}>
                               {testData.effectiveFocalSpot.isPass ? "PASS" : "FAIL"}

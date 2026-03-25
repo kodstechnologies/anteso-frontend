@@ -620,7 +620,33 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                           ))}
                           <td className="border border-black p-2 print:p-1 font-bold bg-blue-50">{row.mean || "-"}</td>
                           <td className={`border border-black p-2 print:p-1 font-bold ${row.remarks?.toUpperCase() === "PASS" ? "text-green-800 bg-green-100" : row.remarks?.toUpperCase() === "FAIL" ? "text-red-800 bg-red-100" : ""}`}>
-                            {row.cov && row.remarks ? `${row.cov} / ${row.remarks}` : row.cov || row.remarks || "-"}
+                            {(() => {
+                              const covVal = row.cov ?? row.cv;
+                              if (covVal != null && covVal !== "" && row.remarks) return `${covVal} / ${row.remarks}`;
+                              if (covVal != null && covVal !== "") return covVal;
+
+                              const values: number[] = (Array.isArray(row.outputs) ? row.outputs : [])
+                                .map((v: any) => {
+                                  if (v == null) return NaN;
+                                  if (typeof v === "number") return v;
+                                  if (typeof v === "string") return parseFloat(v);
+                                  if (typeof v === "object" && "value" in v) return parseFloat((v as any).value);
+                                  return NaN;
+                                })
+                                .filter((n: number) => !Number.isNaN(n));
+
+                              if (values.length === 0) return row.remarks || "-";
+
+                              const mean = values.reduce((a: number, b: number) => a + b, 0) / values.length;
+                              if (!mean) return row.remarks || "-";
+                              const variance = values.reduce((sum: number, n: number) => sum + Math.pow(n - mean, 2), 0) / values.length;
+                              const stdDev = Math.sqrt(variance);
+                              const computedCov = stdDev / mean;
+
+                              if (!Number.isFinite(computedCov)) return row.remarks || "-";
+                              const covDisplay = computedCov.toFixed(3);
+                              return row.remarks ? `${covDisplay} / ${row.remarks}` : covDisplay;
+                            })()}
                           </td>
                         </tr>
                       ))}

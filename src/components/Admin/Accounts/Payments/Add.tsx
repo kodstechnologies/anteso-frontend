@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { allOrdersWithClient, getTotalAmount, createPayment, getPaymentsBySrf } from '../../../../api';
 
 const paymentTypes = ['advance', 'balance', 'complete'];
+const paymentModes = ['Cash', 'Bank transfer', 'Cheque', 'UPI', 'Other']; // ✅ Added payment modes
 
 const Add = () => {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ const Add = () => {
       .positive('Must be positive')
       .max(Yup.ref('totalAmount'), 'Payment cannot exceed total amount'),
     paymentType: Yup.string().required('Please select payment type'),
+    paymentMode: Yup.string().required('Please select payment mode'), // ✅ Added validation
     screenshot: Yup.mixed().required('Please attach a screenshot'),
     utrNumber: Yup.string().nullable(),
   });
@@ -82,6 +84,7 @@ const Add = () => {
           totalAmount: 0,
           paymentAmount: '',
           paymentType: '',
+          paymentMode: '', // ✅ Added paymentMode
           screenshot: null,
           utrNumber: '',
           orderId: '',
@@ -95,6 +98,7 @@ const Add = () => {
             formData.append("totalAmount", values.totalAmount.toString());
             formData.append("paymentAmount", values.paymentAmount.toString());
             formData.append("paymentType", values.paymentType);
+            formData.append("paymentMode", values.paymentMode); // ✅ Added paymentMode
             formData.append("utrNumber", values.utrNumber || "");
 
             if (values.screenshot) formData.append("screenshot", values.screenshot);
@@ -173,6 +177,7 @@ const Add = () => {
                         setFieldValue("totalAmount", suggestedTotal || 0);
                         setFieldValue("paymentAmount", "");
                         setFieldValue("paymentType", ""); // Reset payment type
+                        setFieldValue("paymentMode", ""); // Reset payment mode
                       }}
                     >
                       <option value="" disabled>Select SRF No.</option>
@@ -223,7 +228,7 @@ const Add = () => {
                     <ErrorMessage name="paymentAmount" component="div" className="text-red-500 text-sm mt-1" />
                   </div>
 
-                  {/* Payment Type - Exactly Like Your Original */}
+                  {/* Payment Type */}
                   <div className={submitCount ? (errors.paymentType ? 'has-error' : 'has-success') : ''}>
                     <label className="text-sm font-semibold text-gray-700">Payment Type</label>
                     <Field as="select" name="paymentType" className="form-select w-full">
@@ -235,6 +240,20 @@ const Add = () => {
                       ))}
                     </Field>
                     <ErrorMessage name="paymentType" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+
+                  {/* ✅ Payment Mode */}
+                  <div className={submitCount ? (errors.paymentMode ? 'has-error' : 'has-success') : ''}>
+                    <label className="text-sm font-semibold text-gray-700">Payment Mode</label>
+                    <Field as="select" name="paymentMode" className="form-select w-full">
+                      <option value="" disabled>Select payment mode</option>
+                      {paymentModes.map((mode) => (
+                        <option key={mode} value={mode}>
+                          {mode}
+                        </option>
+                      ))}
+                    </Field>
+                    <ErrorMessage name="paymentMode" component="div" className="text-red-500 text-sm mt-1" />
                   </div>
 
                   {/* UTR */}
@@ -326,4 +345,4 @@ const Add = () => {
   );
 };
 
-export default Add; 
+export default Add;
