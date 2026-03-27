@@ -34,7 +34,7 @@ interface Props {
   refreshKey?: number;
   initialData?: {
     table1?: Array<{ time: string; sliceThickness: string }>;
-    table2?: Array<{ setKV: string; [key: string]: any }>;
+    table2?: Array<{ setKV: string;[key: string]: any }>;
     tolerance?: { value: string; type: 'percent' | 'absolute'; sign: 'plus' | 'minus' | 'both' };
     totalFiltration?: { measured: string; required: string; atKvp: string };
     filtrationTolerance?: { forKvGreaterThan70: string; forKvBetween70And100: string; forKvGreaterThan100: string; kvThreshold1: string; kvThreshold2: string };
@@ -56,12 +56,12 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
 
   // Table 2: Dynamic rows with dynamic mA columns
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-    { 
-      id: '1', 
-      setKV: '', 
+    {
+      id: '1',
+      setKV: '',
       maColumns: [...defaultMAColumns],
-      avgKvp: '', 
-      remarks: '' 
+      avgKvp: '',
+      remarks: ''
     },
   ]);
 
@@ -174,7 +174,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         if (row.id !== rowId) return row;
         return {
           ...row,
-          maColumns: row.maColumns.map(col => 
+          maColumns: row.maColumns.map(col =>
             col.id === columnId ? { ...col, value } : col
           )
         };
@@ -189,9 +189,9 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
       const values = row.maColumns
         .map(col => parseFloat(col.value))
         .filter(v => !isNaN(v));
-      
-      const avg = values.length > 0 
-        ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) 
+
+      const avg = values.length > 0
+        ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
         : '';
 
       const setKV = parseFloat(row.setKV);
@@ -229,8 +229,8 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
       !!serviceId &&
       table1Row.time.trim() &&
       table1Row.sliceThickness.trim() &&
-      table2Rows.every((r) => 
-        r.setKV.trim() && 
+      table2Rows.every((r) =>
+        r.setKV.trim() &&
         r.maColumns.some(col => col.value.trim()) // At least one mA value filled
       )
     );
@@ -246,21 +246,21 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
           sliceThickness: String(initialData.table1[0].sliceThickness || ''),
         });
       }
-      
+
       if (initialData.table2 && initialData.table2.length > 0) {
         // Extract all possible mA keys from the first row
         const sampleRow = initialData.table2[0];
-        const maKeys = Object.keys(sampleRow).filter(key => 
+        const maKeys = Object.keys(sampleRow).filter(key =>
           key.startsWith('ma') || key.match(/^mA\s*\d+$/i)
         );
-        
+
         // Create global mA columns from the data
         const loadedMAColumns: MAColumn[] = maKeys.map((key, idx) => ({
           id: `ma-col-${Date.now()}-${idx}`,
           label: key.replace(/([A-Z])/g, ' $1').trim(), // Convert camelCase to spaces
           value: '',
         }));
-        
+
         if (loadedMAColumns.length > 0) {
           setGlobalMAColumns(loadedMAColumns);
         }
@@ -270,11 +270,11 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
           initialData.table2.map((r, idx) => ({
             id: `csv-row-${Date.now()}-${idx}`,
             setKV: String(r.setKV || ''),
-            maColumns: loadedMAColumns.length > 0 
+            maColumns: loadedMAColumns.length > 0
               ? loadedMAColumns.map(col => ({
-                  ...col,
-                  value: String(r[col.label.replace(/\s+/g, '')] || r[col.label] || '')
-                }))
+                ...col,
+                value: String(r[col.label.replace(/\s+/g, '')] || r[col.label] || '')
+              }))
               : defaultMAColumns.map(col => ({ ...col, value: '' })),
             avgKvp: '',
             remarks: (r.remarks as '' | 'Pass' | 'Fail') || '',
@@ -317,7 +317,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         setIsLoading(true);
         const res = await getAccuracyOfOperatingPotentialByServiceIdForMammography(serviceId);
         const rec = res;
-        
+
         if (!rec) {
           setIsLoading(false);
           return;
@@ -337,10 +337,10 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         if (Array.isArray(rec.table2) && rec.table2.length > 0) {
           // Extract all mA keys from the data
           const sampleRow = rec.table2[0];
-          const maKeys = Object.keys(sampleRow).filter(key => 
+          const maKeys = Object.keys(sampleRow).filter(key =>
             key.startsWith('ma') || key.match(/^mA\s*\d+$/i) || key === 'ma10' || key === 'ma100' || key === 'ma200'
           );
-          
+
           const loadedMAColumns: MAColumn[] = maKeys.map((key, idx) => ({
             id: `ma-col-${Date.now()}-${idx}`,
             label: key.replace(/([A-Z])/g, ' $1').trim(),
@@ -357,9 +357,9 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
               setKV: String(r.setKV ?? ''),
               maColumns: loadedMAColumns.length > 0
                 ? loadedMAColumns.map(col => ({
-                    ...col,
-                    value: String(r[col.label.replace(/\s+/g, '')] || r[col.label] || r[col.label.toLowerCase().replace(/\s+/g, '')] || '')
-                  }))
+                  ...col,
+                  value: String(r[col.label.replace(/\s+/g, '')] || r[col.label] || r[col.label.toLowerCase().replace(/\s+/g, '')] || '')
+                }))
                 : defaultMAColumns.map(col => ({ ...col, value: '' })),
               avgKvp: '',
               remarks: r.remarks || '',
@@ -502,10 +502,10 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                 Time (ms)
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
                 Slice Thickness (mm)
               </th>
             </tr>
@@ -518,11 +518,10 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                   value={table1Row.time}
                   onChange={(e) => setTable1Row((p) => ({ ...p, time: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    isViewMode
+                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
                       ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
                       : 'border-gray-300'
-                  }`}
+                    }`}
                   placeholder="100"
                 />
               </td>
@@ -532,11 +531,10 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                   value={table1Row.sliceThickness}
                   onChange={(e) => setTable1Row((p) => ({ ...p, sliceThickness: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    isViewMode
+                  className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
                       ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
                       : 'border-gray-300'
-                  }`}
+                    }`}
                   placeholder="5.0"
                 />
               </td>
@@ -621,9 +619,8 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                         value={baseRow.setKV}
                         onChange={(e) => updateTable2SetKV(row.id, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${
-                          isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                        }`}
+                        className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                          }`}
                         placeholder="28"
                       />
                     </td>
@@ -638,9 +635,8 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                             value={maCol?.value || ''}
                             onChange={(e) => updateTable2MAColumn(row.id, col.id, e.target.value)}
                             disabled={isViewMode}
-                            className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${
-                              isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : hasValue && isFail ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                            }`}
+                            className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : hasValue && isFail ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                              }`}
                             placeholder="0.0"
                           />
                         </td>
@@ -651,9 +647,8 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                     </td>
                     <td className="px-6 py-3 text-center">
                       <span
-                        className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
-                          row.remarks === 'Pass' ? 'bg-green-100 text-green-800' : row.remarks === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
-                        }`}
+                        className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === 'Pass' ? 'bg-green-100 text-green-800' : row.remarks === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
+                          }`}
                       >
                         {row.remarks || '—'}
                       </span>
@@ -717,11 +712,10 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
 
       {/* Total Filtration (same as RadiographyFixed TotalFilteration) */}
       <div
-        className={`bg-white shadow-lg rounded-lg border p-8 ${
-          getFiltrationRemark() === 'FAIL' && totalFiltration.required !== '' && !isNaN(parseFloat(totalFiltration.required))
+        className={`bg-white shadow-lg rounded-lg border p-8 ${getFiltrationRemark() === 'FAIL' && totalFiltration.required !== '' && !isNaN(parseFloat(totalFiltration.required))
             ? 'border-red-300 bg-red-50'
             : 'border-gray-300'
-        }`}
+          }`}
       >
         <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
         <div className="flex flex-col items-center justify-center gap-6">
@@ -733,9 +727,8 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
               value={totalFiltration.atKvp}
               onChange={(e) => setTotalFiltration({ ...totalFiltration, atKvp: e.target.value })}
               disabled={isViewMode}
-              className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${
-                isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'
-              }`}
+              className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'
+                }`}
               placeholder="80"
             />
             <span className="text-xl font-medium text-gray-700">kVp)</span>
@@ -745,22 +738,20 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
               value={totalFiltration.required}
               onChange={(e) => setTotalFiltration({ ...totalFiltration, required: e.target.value })}
               disabled={isViewMode}
-              className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg ${
-                isViewMode
+              className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg ${isViewMode
                   ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed'
                   : getFiltrationRemark() === 'FAIL' && totalFiltration.required !== '' && !isNaN(parseFloat(totalFiltration.required))
                     ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-4 focus:ring-red-200'
                     : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'
-              }`}
+                }`}
               placeholder="2.50"
             />
             <span className="text-3xl font-bold text-gray-800">mm of Al</span>
           </div>
           <div className="flex items-center justify-center">
             <span
-              className={`text-5xl font-bold ${
-                getFiltrationRemark() === 'PASS' ? 'text-green-600' : getFiltrationRemark() === 'FAIL' ? 'text-red-600' : 'text-gray-400'
-              }`}
+              className={`text-5xl font-bold ${getFiltrationRemark() === 'PASS' ? 'text-green-600' : getFiltrationRemark() === 'FAIL' ? 'text-red-600' : 'text-gray-400'
+                }`}
             >
               {getFiltrationRemark()}
             </span>
@@ -849,13 +840,12 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         <button
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving || (!isViewMode && !isFormValid)}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
-            isSaving || (!isViewMode && !isFormValid)
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
               ? 'bg-gray-400 cursor-not-allowed'
               : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-          }`}
+                ? 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            }`}
         >
           {isSaving ? (
             <>

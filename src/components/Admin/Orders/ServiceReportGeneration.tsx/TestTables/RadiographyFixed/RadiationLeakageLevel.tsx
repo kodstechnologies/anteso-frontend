@@ -54,7 +54,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const locationOptions = ['Tube', 'Collimator'];
 
   const [workload, setWorkload] = useState<string>('');
-  const [toleranceValue, setToleranceValue] = useState<string>('');
+  const [toleranceValue, setToleranceValue] = useState<string>('1');
   const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
@@ -485,10 +485,10 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
                         onChange={(e) => updateLeakage(idx, field, e.target.value)}
                         disabled={isViewMode}
                         className={`w-full text-center border rounded text-xs ${isViewMode
-                            ? 'bg-gray-50 cursor-not-allowed'
-                            : isFailed && hasValue
-                              ? 'border-red-500 bg-red-50'
-                              : ''
+                          ? 'bg-gray-50 cursor-not-allowed'
+                          : isFailed && hasValue
+                            ? 'border-red-500 bg-red-50'
+                            : ''
                           }`}
                         placeholder="0.00"
                       />
@@ -498,7 +498,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
                 <td className="px-4 py-3 text-center font-medium border-r bg-gray-50">{row.result || '—'}</td>
                 <td className="px-4 py-3 text-center">
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
-                      row.remark === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100'
+                    row.remark === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100'
                     }`}>
                     {row.remark || '—'}
                   </span>

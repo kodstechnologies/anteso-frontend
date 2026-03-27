@@ -5,6 +5,7 @@ const initialState = {
     auth: false,
     name: '',   
     email: '',
+    department: '',
 };
 
 export const userConfigSlice = createSlice({
@@ -12,10 +13,12 @@ export const userConfigSlice = createSlice({
     initialState,
     reducers: {
         setUser: (state, action) => {
-            const { userType, auth } = action.payload;
+            const { userType, auth, name, email, department } = action.payload;
             state.userType = userType;
             state.auth = auth;
-
+            state.name = name || '';
+            state.email = email || '';
+            state.department = department || '';
         },
         resetUser: () => initialState,
     },

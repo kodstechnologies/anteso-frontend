@@ -107,14 +107,14 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   // Load initialData from CSV if provided (priority over API)
   useEffect(() => {
     if (!initialData) return;
-    
+
     // Use a more robust check - check if initialData exists and has any meaningful data
     const hasData = (
       (initialData.testConditions && (initialData.testConditions.fcd || initialData.testConditions.kv || initialData.testConditions.ma)) ||
       (initialData.irradiationTimes && initialData.irradiationTimes.length > 0 && initialData.irradiationTimes.some((t: any) => t.setTime || t.measuredTime)) ||
       (initialData.tolerance && (initialData.tolerance.operator || initialData.tolerance.value))
     );
-    
+
     if (hasData) {
       try {
         console.log('Loading AccuracyOfIrradiationTime from initialData:', initialData);
@@ -152,7 +152,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   // Load saved data from API (only if no initialData)
   useEffect(() => {
     if (initialData) return; // Skip API load if CSV data is available
-    
+
     const fetchData = async () => {
       if (!serviceId) return;
       setLoading(true);
@@ -253,9 +253,9 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">FCD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">kV</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">mA</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FFD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">mA</th>
             </tr>
           </thead>
           <tbody className="bg-white">
@@ -284,10 +284,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Set Time (mSec)</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Measured Time (mSec)</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">% Error</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Remarks</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Set Time (mSec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Measured Time (mSec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">% Error</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Remarks</th>
               <th className="px-4 py-3 w-12"></th>
             </tr>
           </thead>

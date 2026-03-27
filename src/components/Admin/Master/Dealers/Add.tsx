@@ -116,14 +116,14 @@ const AddDealer = () => {
             console.log("🚀 ~ submitForm response:", res.data);
         } catch (err: any) {
             console.error("❌ createDealer error:", err);
-            
+
             // Check if error response exists from axios (when backend returns error response)
             const errorResponse = err?.response?.data;
-            
+
             // Handle error response from backend (statusCode-based responses)
             if (errorResponse && errorResponse.statusCode) {
                 const { statusCode, message } = errorResponse;
-                
+
                 if (statusCode === 400) {
                     // Duplicate key errors or validation errors (backend now returns proper messages)
                     showMessage(message || "Validation error: Please check your input", "error");
@@ -155,7 +155,26 @@ const AddDealer = () => {
     //     showMessage('Form submitted successfully', 'success');
     //     navigate('/admin/dealer');
     // };
-
+    const machineOptions = [
+        "Radiography (Fixed)",
+        "Radiography (Mobile)",
+        "Radiography (Portable)",
+        "Radiography and Fluoroscopy",
+        "Interventional Radiology",
+        "C-Arm",
+        "O-Arm",
+        "Computed Tomography",
+        "Mammography",
+        "Dental Cone Beam CT",
+        "Ortho Pantomography (OPG)",
+        "Dental (Intra Oral)",
+        "Dental (Hand-held)",
+        "Bone Densitometer (BMD)",
+        "KV Imaging (OBI)",
+        "Radiography (Mobile) with HT",
+        "Lead Apron/Thyroid Shield/Gonad Shield",
+        "Others"
+    ];
     return (
         <>
             <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
@@ -382,13 +401,18 @@ const AddDealer = () => {
 
                                 {/* Add New QA Test */}
                                 <div className="flex items-center gap-3 pt-4">
-                                    <input
-                                        type="text"
-                                        placeholder="New QA Test Name"
+                                    <select
                                         value={newQaTestName}
                                         onChange={(e) => setNewQaTestName(e.target.value)}
                                         className="form-input w-1/2"
-                                    />
+                                    >
+                                        <option value="">Select Machine</option>
+                                        {machineOptions.map((machine, index) => (
+                                            <option key={index} value={machine}>
+                                                {machine}
+                                            </option>
+                                        ))}
+                                    </select>
                                     <input
                                         type="number"
                                         placeholder="Price ₹"

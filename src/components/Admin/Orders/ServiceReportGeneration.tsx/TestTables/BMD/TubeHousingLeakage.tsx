@@ -53,7 +53,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const locationOptions = ['Tube', 'Collimator'];
 
   const [workload, setWorkload] = useState<string>('');
-  const [toleranceValue, setToleranceValue] = useState<string>('');
+  const [toleranceValue, setToleranceValue] = useState<string>('1');
   const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
@@ -84,7 +84,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         result = calculatedResult.toFixed(3);
         const mgyValue = calculatedResult / 114;
         mgy = mgyValue.toFixed(4);
-        
+
         // Calculate Pass/Fail for this row
         const tol = parseFloat(toleranceValue) || 0;
         if (tol > 0) {
@@ -106,14 +106,14 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       const maxValue = parseFloat(row.max) || 0;
       let calculatedMR = '';
       let calculatedMGy = '—';
-      
+
       if (maxValue > 0 && maValue > 0 && workloadValue > 0) {
         // Apply the formula: (workload * max) / (60 * mA)
         const resultMR = (workloadValue * maxValue) / (60 * maValue);
         calculatedMR = resultMR.toFixed(3);
         calculatedMGy = (resultMR / 114).toFixed(4);
       }
-      
+
       return {
         location: row.location,
         max: row.max,
@@ -166,12 +166,12 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const addLeakageRow = () => {
     // Check if Collimator already exists
     const hasCollimator = leakageRows.some(row => row.location === 'Collimator');
-    
+
     if (hasCollimator) {
       toast.error('Collimator can only be added once');
       return;
     }
-    
+
     // Add Collimator row
     setLeakageRows(prev => [...prev, {
       location: 'Collimator',
@@ -193,7 +193,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       toast.error('Tube row cannot be removed');
       return;
     }
-    
+
     // Only allow removing Collimator
     setLeakageRows(prev => prev.filter((_, i) => i !== index));
   };
@@ -227,7 +227,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         if (response?.data) {
           const testData = response.data;
           setTestId(testData._id || null);
-          
+
           // Load measurementSettings (nested structure)
           if (testData.measurementSettings) {
             setSettings({
@@ -237,19 +237,19 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               time: testData.measurementSettings.time || '',
             });
           }
-          
+
           // Load workload (nested structure)
           if (testData.workload?.value) {
             setWorkload(testData.workload.value);
           }
-          
+
           // Load tolerance (nested structure)
           if (testData.tolerance) {
             if (testData.tolerance.value) setToleranceValue(testData.tolerance.value);
             if (testData.tolerance.operator) setToleranceOperator(testData.tolerance.operator);
             if (testData.tolerance.time) setToleranceTime(testData.tolerance.time);
           }
-          
+
           // Load leakageMeasurements
           if (Array.isArray(testData.leakageMeasurements) && testData.leakageMeasurements.length > 0) {
             // Ensure Tube is always first, then Collimator if it exists
@@ -258,7 +258,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               if (b.location === 'Tube') return 1;
               return 0;
             });
-            
+
             setLeakageRows(sortedMeasurements.map((m: any) => ({
               location: m.location || '',
               left: String(m.left ?? ''),
@@ -434,10 +434,10 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase border-r">FDD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase border-r">kV</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase border-r">mA</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time (Sec)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  border-r">FDD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  border-r">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  border-r">mA</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 ">Time (Sec)</th>
             </tr>
           </thead>
           <tbody className="bg-white">
@@ -497,7 +497,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
                 {(['left', 'right', 'front', 'back', 'top'] as const).map(field => {
                   const isFailed = row.remark === 'Fail';
                   const hasValue = leakageRows[idx][field] !== '' && !isNaN(parseFloat(leakageRows[idx][field]));
-                  
+
                   return (
                     <td key={field} className={`px-2 py-2 border-r ${isFailed && hasValue ? 'bg-red-100' : ''}`}>
                       <input
@@ -505,13 +505,12 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
                         value={leakageRows[idx][field]}
                         onChange={(e) => updateLeakage(idx, field, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full text-center border rounded text-xs ${
-                          isViewMode 
-                            ? 'bg-gray-50 cursor-not-allowed' 
-                            : isFailed && hasValue
-                              ? 'border-red-500 bg-red-50'
-                              : ''
-                        }`}
+                        className={`w-full text-center border rounded text-xs ${isViewMode
+                          ? 'bg-gray-50 cursor-not-allowed'
+                          : isFailed && hasValue
+                            ? 'border-red-500 bg-red-50'
+                            : ''
+                          }`}
                         placeholder="0.00"
                       />
                     </td>
@@ -519,10 +518,9 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
                 })}
                 <td className="px-4 py-3 text-center font-medium border-r bg-gray-50">{row.result || '—'}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                    row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
                     row.remark === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100'
-                  }`}>
+                    }`}>
                     {row.remark || '—'}
                   </span>
                 </td>
@@ -535,9 +533,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
             <button
               onClick={addLeakageRow}
               disabled={leakageRows.some(row => row.location === 'Collimator')}
-              className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ${
-                leakageRows.some(row => row.location === 'Collimator') ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ${leakageRows.some(row => row.location === 'Collimator') ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
             >
               <Plus className="w-4 h-4" />
               Add Collimator
@@ -570,9 +567,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               </div>
               <div className="mt-2">
                 <span className="text-sm font-medium text-gray-700">Calculated Max Leakage:</span>
-                <span className={`ml-3 px-4 py-2 border-2 rounded-md font-bold text-lg ${
-                  calculatedMaxLeakage !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300'
-                }`}>
+                <span className={`ml-3 px-4 py-2 border-2 rounded-md font-bold text-lg ${calculatedMaxLeakage !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300'
+                  }`}>
                   {calculatedMaxLeakage} mR in one hour
                 </span>
               </div>
@@ -588,7 +584,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           {calculatedResults.map((result, idx) => {
             const row = processedLeakage[idx];
             const maxValue = row.max || '—';
-            
+
             return (
               <div key={idx} className="flex items-start gap-3">
                 <span className="text-sm font-medium text-gray-700 w-64">
@@ -598,9 +594,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
                   <div className="text-sm text-gray-600 mb-2">
                     Formula: ({workload || '—'} mAmin in 1 hr × {maxValue} max Exposure Level (mR/hr)) / (60 × {maValue || '—'} mA used for measurement)
                   </div>
-                  <span className={`px-4 py-2 border-2 rounded-md font-semibold ${
-                    result.calculatedMGy !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-gray-50'
-                  }`}>
+                  <span className={`px-4 py-2 border-2 rounded-md font-semibold ${result.calculatedMGy !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-gray-50'
+                    }`}>
                     {result.calculatedMGy !== '—' ? `${result.calculatedMGy} mGy` : '—'} in one hour
                   </span>
                 </div>
@@ -646,10 +641,10 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving || (!isViewMode && !isFormValid)}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid)
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (

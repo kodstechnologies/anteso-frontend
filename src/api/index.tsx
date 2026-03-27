@@ -1515,13 +1515,16 @@ export const getActiveStaffs = async () => {
 
 
 export const updateEmployeeWithStatus = async (orderId: string, serviceId: string, employeeId: string, status: string,) => {
+    // Trim composite ID suffix (e.g., -0)
+    const cleanServiceId = serviceId.split("-")[0];
     console.log("🚀 ~ updateEmployeeWithStatus ~ status:", status)
     console.log("🚀 ~ updateEmployeeWithStatus ~ employeeId:", employeeId)
-    console.log("🚀 ~ updateEmployeeWithStatus ~ serviceId:", serviceId)
+    console.log("🚀 ~ updateEmployeeWithStatus ~ serviceId (raw):", serviceId)
+    console.log("🚀 ~ updateEmployeeWithStatus ~ cleanServiceId:", cleanServiceId)
     console.log("🚀 ~ updateEmployeeWithStatus ~ orderId:", orderId)
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.patch(`/orders/update-employee/${orderId}/${serviceId}/${employeeId}/${status}`, {
+        const res = await api.patch(`/orders/update-employee/${orderId}/${cleanServiceId}/${employeeId}/${status}`, {
             orderId,
             serviceId,
             employeeId,
@@ -1585,13 +1588,16 @@ export const getQARaw = async (orderId: any) => {
 
 
 export const getReportNumbers = async (orderId: string, serviceId: string, technicianId: string, workType: string) => {
+    // Trim composite ID suffix (e.g., -0)
+    const cleanServiceId = serviceId.split("-")[0];
     console.log("🚀 ~ getReportNumbers ~ workType:", workType)
     console.log("🚀 ~ getReportNumbers ~ technicianId:", technicianId)
-    console.log("🚀 ~ getReportNumbers ~ serviceId:", serviceId)
+    console.log("🚀 ~ getReportNumbers ~ serviceId (raw):", serviceId)
+    console.log("🚀 ~ getReportNumbers ~ cleanServiceId:", cleanServiceId)
     console.log("🚀 ~ getReportNumbers ~ orderId:", orderId)
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.get(`/orders/get-report-numbers/${orderId}/${serviceId}/${technicianId}/${workType}`, {
+        const res = await api.get(`/orders/get-report-numbers/${orderId}/${cleanServiceId}/${technicianId}/${workType}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -1694,12 +1700,15 @@ export const addAdvance = async (id: string, payload: { advancedAmount: number }
 }
 
 export const getAssignedTechnicianName = async (orderId: any, serviceId: any, worktype: any) => {
+    // Trim composite ID suffix (e.g., -0)
+    const cleanServiceId = serviceId.split("-")[0];
     console.log("🚀 ~ getAssignedTechnicianName ~ worktype:", worktype)
-    console.log("🚀 ~ getAssignedTechnicianName ~ serviceId:", serviceId)
+    console.log("🚀 ~ getAssignedTechnicianName ~ serviceId (raw):", serviceId)
+    console.log("🚀 ~ getAssignedTechnicianName ~ cleanServiceId:", cleanServiceId)
     console.log("🚀 ~ getAssignedTechnicianName ~ orderId:", orderId)
     try {
         const token = Cookies.get('accessToken')
-        const res = await api.get(`/orders/get-assigned-technician/${orderId}/${serviceId}/${worktype}`, {
+        const res = await api.get(`/orders/get-assigned-technician/${orderId}/${cleanServiceId}/${worktype}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -1714,8 +1723,10 @@ export const getAssignedTechnicianName = async (orderId: any, serviceId: any, wo
 }
 export const getAssignedStaffName = async (orderId: any, serviceId: any, worktype: any) => {
     try {
+        // Trim composite ID suffix (e.g., -0)
+        const cleanServiceId = serviceId.split("-")[0];
         const token = Cookies.get('accessToken')
-        const res = await api.get(`/orders/get-assigned-staff/${orderId}/${serviceId}/${worktype}`, {
+        const res = await api.get(`/orders/get-assigned-staff/${orderId}/${cleanServiceId}/${worktype}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -1795,9 +1806,11 @@ export const getEngineerByTool = async (orderId: any, serviceId: any, worktype: 
 
 export const getMachineUpdates = async (technicianId: any, orderId: any, serviceId: any, worktype: any) => {
     try {
+        // Trim composite ID suffix (e.g., -0)
+        const cleanServiceId = serviceId.split("-")[0];
         const token = Cookies.get('accessToken')
 
-        const res = await api.get(`/orders/get/${technicianId}/${orderId}/${serviceId}/${encodeURIComponent(worktype)}`, {
+        const res = await api.get(`/orders/get/${technicianId}/${orderId}/${cleanServiceId}/${encodeURIComponent(worktype)}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -1911,10 +1924,13 @@ export const completeStatusAndReport = async (
     file?: File,
     reportType?: "qatest" | "elora" | string
 ) => {
+    // Trim composite ID suffix (e.g., -0)
+    const cleanServiceId = serviceId.split("-")[0];
     console.log("🚀 completeStatusAndReport called");
     console.log("file:", file);
     console.log("status:", status);
-    console.log("serviceId:", serviceId);
+    console.log("serviceId (raw):", serviceId);
+    console.log("cleanServiceId:", cleanServiceId);
     console.log("orderId:", orderId);
     console.log("technicianId:", technicianId);
     console.log("workType:", workType);
@@ -1939,7 +1955,7 @@ export const completeStatusAndReport = async (
 
         // skipAuthRedirect: on 401 let caller handle (show message + navigate) instead of hard redirect
         const res = await api.post(
-            `/orders/completed-status-report/${technicianId}/${orderId}/${serviceId}/${workType}/${status}/${reportType ?? 'qatest'}`,
+            `/orders/completed-status-report/${technicianId}/${orderId}/${cleanServiceId}/${workType}/${status}/${reportType ?? 'qatest'}`,
             dataToSend,
             { headers, skipAuthRedirect: true } as any
         );
@@ -2506,6 +2522,8 @@ export const editDocuments = async (
     targetIndex?: number // Optional, for 'replace' or 'delete'
 ) => {
     try {
+        // Trim composite ID suffix (e.g., -0)
+        const cleanServiceId = serviceId.split("-")[0];
         const token = Cookies.get("accessToken");
 
         const formData = new FormData();
@@ -2532,7 +2550,7 @@ export const editDocuments = async (
         // For 'delete', no files appended
 
         const response = await api.patch(
-            `/orders/edit-documents/${orderId}/${serviceId}/${technicianId}/${workType}`,
+            `/orders/edit-documents/${orderId}/${cleanServiceId}/${technicianId}/${workType}`,
             formData,
             {
                 headers: {
@@ -3382,6 +3400,26 @@ export const deleteOrder = async (id: any) => {
         throw error;
     }
 }
+
+export const updateServicePrice = async (orderId: string, serviceId: string, price: number) => {
+    try {
+        // Trim composite ID suffix (e.g., -0)
+        const cleanServiceId = serviceId.split("-")[0];
+        console.log("🚀 ~ updateServicePrice ~ orderId:", orderId)
+        console.log("🚀 ~ updateServicePrice ~ serviceId (raw):", serviceId)
+        console.log("🚀 ~ updateServicePrice ~ cleanServiceId:", cleanServiceId)
+        console.log("🚀 ~ updateServicePrice ~ price:", price)
+        const token = Cookies.get("accessToken");
+        const res = await api.patch(`/orders/update-price/${orderId}/${cleanServiceId}`, { price }, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ updateServicePrice ~ error:", error);
+        throw new Error(error?.response?.data?.message || "Failed to update price");
+    }
+};
+
 export const getWorkOrderCopy = async (orderId: any) => {
     try {
         const token = Cookies.get("accessToken");
@@ -3403,21 +3441,21 @@ export const addMachineToOrder = async (orderId: string, formData: FormData) => 
         const res = await api.post(`/orders/add-machine-in-order/${orderId}`, formData, {
             headers: {
                 Authorization: `Bearer ${token}`,
+                "Content-Type": "multipart/form-data",
             },
         });
         return res.data;
     } catch (error: any) {
         console.error("🚀 ~ addMachineToOrder ~ error:", error);
-        throw new Error(
-            error?.response?.data?.message || "Failed to add machine to order"
-        );
+        throw new Error(error?.response?.data?.message || "Failed to add machine");
     }
 };
 
 export const deleteMachineFromOrder = async (orderId: string, serviceId: string) => {
     try {
+        const cleanServiceId = serviceId.split("-")[0];
         const token = Cookies.get("accessToken");
-        const res = await api.delete(`/orders/delete-machine-in-order/${orderId}/${serviceId}`, {
+        const res = await api.delete(`/orders/delete-machine-in-order/${orderId}/${cleanServiceId}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -11415,28 +11453,32 @@ export const getLinearityOfmAsLoadingByTestIdForInventionalRadiology = async (te
 };
 
 export const addRadiationProtectionSurveyForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const cleanServiceId = serviceId.split("-")[0];
     const token = Cookies.get('accessToken');
-    const res = await api.post(`/service-report/inventional-radiology/radiation-protection-survey/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await api.post(`/service-report/inventional-radiology/radiation-protection-survey/${cleanServiceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
 export const getRadiationProtectionSurveyByServiceIdForInventionalRadiology = async (serviceId: string) => {
+    const cleanServiceId = serviceId.split("-")[0];
     const token = Cookies.get('accessToken');
-    const res = await api.get(`/service-report/inventional-radiology/radiation-protection-survey-by-service/${serviceId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await api.get(`/service-report/inventional-radiology/radiation-protection-survey-by-service/${cleanServiceId}`, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
 
 export const addLowContrastResolutionForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const cleanServiceId = serviceId.split("-")[0];
     const token = Cookies.get('accessToken');
-    const res = await api.post(`/service-report/inventional-radiology/low-contrast-resolution/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await api.post(`/service-report/inventional-radiology/low-contrast-resolution/${cleanServiceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
 export const getLowContrastResolutionByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
+    const cleanServiceId = serviceId.split("-")[0];
     const token = Cookies.get('accessToken');
     const params: any = {};
     if (tubeId !== undefined) {
         params.tubeId = tubeId === null ? 'null' : tubeId;
     }
-    const res = await api.get(`/service-report/inventional-radiology/low-contrast-resolution/${serviceId}`, {
+    const res = await api.get(`/service-report/inventional-radiology/low-contrast-resolution/${cleanServiceId}`, {
         params,
         headers: { Authorization: `Bearer ${token}` }
     });
@@ -11449,17 +11491,19 @@ export const updateLowContrastResolutionForInventionalRadiology = async (testId:
 };
 
 export const addHighContrastResolutionForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const cleanServiceId = serviceId.split("-")[0];
     const token = Cookies.get('accessToken');
-    const res = await api.post(`/service-report/inventional-radiology/high-contrast-resolution/${serviceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await api.post(`/service-report/inventional-radiology/high-contrast-resolution/${cleanServiceId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
     return res.data;
 };
 export const getHighContrastResolutionByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
+    const cleanServiceId = serviceId.split("-")[0];
     const token = Cookies.get('accessToken');
     const params: any = {};
     if (tubeId !== undefined) {
         params.tubeId = tubeId === null ? 'null' : tubeId;
     }
-    const res = await api.get(`/service-report/inventional-radiology/high-contrast-resolution/${serviceId}`, {
+    const res = await api.get(`/service-report/inventional-radiology/high-contrast-resolution/${cleanServiceId}`, {
         params,
         headers: { Authorization: `Bearer ${token}` }
     });
@@ -11560,21 +11604,23 @@ export const deleteMachine = async (id: string) => {
 
 
 export const addTubeHousingLeakageForInventionalRadiology = async (serviceId: string, payload: any) => {
+    const cleanServiceId = serviceId.split("-")[0];
     const token = Cookies.get("accessToken");
-    const res = await api.post(`/service-report/inventional-radiology/tube-housing-leakage/${serviceId}`, payload, {
+    const res = await api.post(`/service-report/inventional-radiology/tube-housing-leakage/${cleanServiceId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
 };
 
 export const getTubeHousingLeakageByServiceIdForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
+    const cleanServiceId = serviceId.split("-")[0];
     const token = Cookies.get("accessToken");
     try {
         const params: any = {};
         if (tubeId !== undefined) {
             params.tubeId = tubeId === null ? "null" : tubeId;
         }
-        const res = await api.get(`/service-report/inventional-radiology/tube-housing-leakage-by-service/${serviceId}`, {
+        const res = await api.get(`/service-report/inventional-radiology/tube-housing-leakage-by-service/${cleanServiceId}`, {
             params,
             headers: { Authorization: `Bearer ${token}` },
         });

@@ -27,11 +27,11 @@ interface TableRow {
 interface SavedData {
   targetWindow: string;
   addedFilterThickness: string | null;
-  table: { 
-    kvp: number | null; 
-    mAs: number | null; 
-    alEquivalence: number | null; 
-    hvt: number | null; 
+  table: {
+    kvp: number | null;
+    mAs: number | null;
+    alEquivalence: number | null;
+    hvt: number | null;
     remarks?: 'Pass' | 'Fail' | '';
     recommendedValue?: { minValue: number | null; maxValue: number | null; kvp: number | null };
   }[];
@@ -39,8 +39,8 @@ interface SavedData {
   _id?: string;
 }
 
-const TotalFiltrationAndAluminium: React.FC<{ 
-  serviceId: string; 
+const TotalFiltrationAndAluminium: React.FC<{
+  serviceId: string;
   refreshKey?: number;
   initialData?: {
     targetWindow?: string;
@@ -61,12 +61,12 @@ const TotalFiltrationAndAluminium: React.FC<{
   const [targetWindow, setTargetWindow] = useState('Molybdenum target, Beryllium window or Rh/Rh or W/Al');
   const [addedFilterThickness, setAddedFilterThickness] = useState('');
   const [rows, setRows] = useState<TableRow[]>([
-    { 
-      id: '1', 
-      kvp: '28', 
-      mAs: '', 
-      alEquivalence: '', 
-      hvt: '', 
+    {
+      id: '1',
+      kvp: '28',
+      mAs: '',
+      alEquivalence: '',
+      hvt: '',
       remarks: '',
       recommendedValue: { minValue: '0.30', maxValue: '0.37', kvp: '28' }
     },
@@ -154,18 +154,18 @@ const TotalFiltrationAndAluminium: React.FC<{
     if (initialData) {
       return;
     }
-    
+
     // Reset state when refreshKey changes to ensure clean reload
     if (refreshKey !== undefined) {
       setIsLoading(true);
       setTargetWindow('Molybdenum target, Beryllium window or Rh/Rh or W/Al');
       setAddedFilterThickness('');
-      setRows([{ 
-        id: '1', 
-        kvp: '28', 
-        mAs: '', 
-        alEquivalence: '', 
-        hvt: '', 
+      setRows([{
+        id: '1',
+        kvp: '28',
+        mAs: '',
+        alEquivalence: '',
+        hvt: '',
         remarks: '',
         recommendedValue: { minValue: '0.30', maxValue: '0.37', kvp: '28' }
       }]);
@@ -174,7 +174,7 @@ const TotalFiltrationAndAluminium: React.FC<{
       setHasSaved(false);
       setIsEditing(false);
     }
-    
+
     const load = async () => {
       if (!serviceId) return;
       try {
@@ -321,7 +321,7 @@ const TotalFiltrationAndAluminium: React.FC<{
   useEffect(() => {
     const targetWindowLower = targetWindow.toLowerCase();
     const defaultValues = { minValue: '0.30', maxValue: '0.37', kvp: '28' };
-    
+
     setRows(prev => prev.map(row => ({
       ...row,
       recommendedValue: row.recommendedValue || defaultValues,
@@ -413,12 +413,12 @@ const TotalFiltrationAndAluminium: React.FC<{
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">kVp</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">Al Equivalence (mm Al)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">HVT (mm Al)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r bg-indigo-50">Recommended Value</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase bg-green-100">Remarks</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">kVp</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">mAs</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">Al Equivalence (mm Al)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">HVT (mm Al)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r bg-indigo-50">Recommended Value</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  bg-green-100">Remarks</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
@@ -504,13 +504,12 @@ const TotalFiltrationAndAluminium: React.FC<{
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span
-                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                        row.remarks === 'Pass'
+                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass'
                           ? 'bg-green-100 text-green-800'
                           : row.remarks === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'text-gray-400'
-                      }`}
+                            ? 'bg-red-100 text-red-800'
+                            : 'text-gray-400'
+                        }`}
                     >
                       {row.remarks || '—'}
                     </span>

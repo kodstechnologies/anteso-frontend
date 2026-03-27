@@ -152,7 +152,7 @@ const Dealers = () => {
                                 className="whitespace-nowrap table-hover invoice-table"
                                 records={records}
                                 columns={[
-                                    { accessor: 'dealersID', title: 'DEL ID', sortable: true },
+                                    { accessor: 'dealerId', title: 'DEL ID', sortable: true },
                                     { accessor: 'name', title: 'Dealer Name', sortable: true },
                                     { accessor: 'address', sortable: true },
                                     { accessor: 'pincode', sortable: true },

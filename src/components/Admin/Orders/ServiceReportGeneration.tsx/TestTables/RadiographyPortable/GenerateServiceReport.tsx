@@ -59,6 +59,7 @@ interface DetailsResponse {
   qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
+
 const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
   const navigate = useNavigate();
 

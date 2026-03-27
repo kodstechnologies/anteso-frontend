@@ -15,7 +15,26 @@ const systemQaTests = [
     { label: "CT SCAN", value: "CT_SCAN", price: 6000, system: true },
     { label: "TATKAL QA", value: "TATKAL_QA", price: 5000, system: true },
 ];
-
+const machineOptions = [
+    "Radiography (Fixed)",
+    "Radiography (Mobile)",
+    "Radiography (Portable)",
+    "Radiography and Fluoroscopy",
+    "Interventional Radiology",
+    "C-Arm",
+    "O-Arm",
+    "Computed Tomography",
+    "Mammography",
+    "Dental Cone Beam CT",
+    "Ortho Pantomography (OPG)",
+    "Dental (Intra Oral)",
+    "Dental (Hand-held)",
+    "Bone Densitometer (BMD)",
+    "KV Imaging (OBI)",
+    "Radiography (Mobile) with HT",
+    "Lead Apron/Thyroid Shield/Gonad Shield",
+    "Others"
+];
 // ───── SYSTEM SERVICES ────────────────────────────────────────────────────
 const defaultServices = [
     { label: "Institute Registration", value: "INSTITUTE_REGISTRATION", amount: 0, system: true },
@@ -395,13 +414,24 @@ const EditManufacture = () => {
                                 ))}
 
                                 <div className="mt-4 flex flex-wrap items-center gap-3 max-w-[36rem]">
-                                    <input
-                                        type="text"
-                                        placeholder="New QA Test"
-                                        className="form-input w-1/2"
+                                    <select
                                         value={newQaName}
                                         onChange={(e) => setNewQaName(e.target.value)}
-                                    />
+                                        className="form-input w-1/2"
+                                    >
+                                        <option value="">Select Machine</option>
+                                        {machineOptions.map((machine, index) => (
+                                            <option
+                                                key={index}
+                                                value={machine}
+                                                disabled={qaOptions.some(
+                                                    (o) => o.label.toLowerCase() === machine.toLowerCase()
+                                                )}
+                                            >
+                                                {machine}
+                                            </option>
+                                        ))}
+                                    </select>
                                     <input
                                         type="number"
                                         placeholder="Price"
@@ -413,13 +443,32 @@ const EditManufacture = () => {
                                         type="button"
                                         className="btn btn-primary"
                                         onClick={() => {
-                                            const name = newQaName.trim();
-                                            if (!name) return showMessage("Enter name", "error");
-                                            const value = name.toUpperCase().replace(/\s+/g, "_");
-                                            if (qaOptions.some(o => o.value === value)) return showMessage("Already exists", "warning");
-                                            setQaOptions([...qaOptions, { label: name, value, price: Number(newQaPrice) || 0, system: false }]);
+                                            // ✅ empty check
+                                            if (!newQaName) {
+                                                return showMessage("Please select machine", "error");
+                                            }
+
+                                            // ✅ duplicate check
+                                            const exists = qaOptions.some(
+                                                (o) => o.label.toLowerCase() === newQaName.toLowerCase()
+                                            );
+
+                                            if (exists) {
+                                                return showMessage("This machine already exists", "warning");
+                                            }
+
+                                            // ✅ add new
+                                            const newTest = {
+                                                label: newQaName,
+                                                value: newQaName.toUpperCase().replace(/\s+/g, "_"),
+                                                price: Number(newQaPrice) || 0,
+                                                system: false,
+                                            };
+
+                                            setQaOptions([...qaOptions, newTest]);
                                             setNewQaName("");
                                             setNewQaPrice("");
+                                            showMessage("QA test added", "success");
                                         }}
                                     >
                                         + Add
@@ -535,7 +584,7 @@ const EditManufacture = () => {
                                     )}
                                 </div>
 
-                            
+
                             </div>
                         </div>
 

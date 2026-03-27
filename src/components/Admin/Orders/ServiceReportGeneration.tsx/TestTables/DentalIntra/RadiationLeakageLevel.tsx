@@ -57,7 +57,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
   const [workload, setWorkload] = useState<string>('');
   const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
-  const [toleranceValue, setToleranceValue] = useState<string>('');
+  const [toleranceValue, setToleranceValue] = useState<string>('1');
   const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
@@ -372,16 +372,16 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
                 FFD (cm)
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
                 kVp
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
                 mA
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">
                 Time (Sec)
               </th>
             </tr>

@@ -108,7 +108,7 @@ const View = () => {
             <h3 className="text-lg font-semibold text-gray-700 mb-2">
               Payment Screenshot
             </h3>
-            <div 
+            <div
               className="cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => setIsModalOpen(true)}
             >
@@ -127,7 +127,7 @@ const View = () => {
 
       {/* ✅ Full Screen Modal for Screenshot */}
       {isModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4"
           onClick={() => setIsModalOpen(false)}
         >
@@ -140,7 +140,7 @@ const View = () => {
             >
               <IconX className="w-6 h-6" />
             </button>
-            
+
             {/* Image Container */}
             <div className="flex items-center justify-center min-h-screen">
               <img
@@ -150,7 +150,7 @@ const View = () => {
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
-            
+
             {/* Optional: Zoom indicator */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm bg-black bg-opacity-50 px-3 py-1 rounded-full">
               Click anywhere to close

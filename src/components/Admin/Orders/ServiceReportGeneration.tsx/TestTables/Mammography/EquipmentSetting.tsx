@@ -92,13 +92,6 @@ const EquipmentSetting: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, i
     }, [serviceId, refreshKey, initialData]);
 
     const handleSave = async () => {
-        // Basic validation - at least one field should be filled
-        const hasValue = Object.values(settings).some(v => v.trim() !== '');
-        if (!hasValue) {
-            toast.error('Please fill at least one parameter');
-            return;
-        }
-
         setIsSaving(true);
 
         const payload = { ...settings };

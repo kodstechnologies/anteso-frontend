@@ -17,6 +17,7 @@ const Add = () => {
     const fetchOrders = async () => {
       try {
         const res = await allOrdersWithClient();
+        console.log("res", res)
         const options = res.data.orders.map((order: any) => ({
           value: order.srfNumber,
           label: order.srfNumberWithHospital,
@@ -24,6 +25,9 @@ const Add = () => {
           isPrivilegedOrder: order.isPrivilegedOrder || false,
           pricingType: order.pricingType || null,
           customPricing: order.customPricing || { qaTests: [], services: [] },
+          hasPricingBreakdown: order.hasPricingBreakdown || false,
+          breakdownSource: order.breakdownSource || null,
+          pricingBreakdown: order.pricingBreakdown || { services: [] },
         }));
         setSrfClientOptions(options);
       } catch (error) {
@@ -294,41 +298,79 @@ const Add = () => {
                 </div>
 
                 {/* Pricing Breakdown */}
-                {values.srfClient && srfClientOptions.find(o => o.value === values.srfClient)?.isPrivilegedOrder && (
-                  <div className="mt-8 p-6 border-2 border-blue-200 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50">
-                    <h3 className="text-xl font-bold text-blue-900 mb-4">
-                      {srfClientOptions.find(o => o.value === values.srfClient)?.pricingType} Pricing Applied
-                    </h3>
-                    <div className="grid md:grid-cols-2 gap-8">
-                      {srfClientOptions.find(o => o.value === values.srfClient)?.customPricing.qaTests?.length > 0 && (
-                        <div>
-                          <h4 className="font-semibold text-gray-800 mb-3">QA Tests</h4>
-                          {srfClientOptions.find(o => o.value === values.srfClient).customPricing.qaTests.map((test: any, i: number) => (
-                            <div key={i} className="flex justify-between bg-white p-3 rounded-lg shadow mb-2">
-                              <span>{test.testName}</span>
-                              <span className="font-bold text-green-600">₹{test.price}</span>
+                {values.srfClient && (
+                  (() => {
+                    const selectedOpt = srfClientOptions.find(o => o.value === values.srfClient);
+                    if (!selectedOpt) return null;
+
+                    if (selectedOpt.hasPricingBreakdown && selectedOpt.pricingBreakdown?.services?.length > 0) {
+                      return (
+                        <div className="mt-8 p-6 border-2 border-green-200 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50">
+                          <h3 className="text-xl font-bold text-green-900 mb-4">
+                            {selectedOpt.breakdownSource} Items Breakdown
+                          </h3>
+                          <div className="grid md:grid-cols-2 gap-8">
+                            <div>
+                              <h4 className="font-semibold text-gray-800 mb-3">Items</h4>
+                              {selectedOpt.pricingBreakdown.services.map((service: any, i: number) => (
+                                <div key={i} className="flex justify-between bg-white p-3 rounded-lg shadow mb-2">
+                                  <span>{service.serviceName}</span>
+                                  <span className="font-bold text-green-600">₹{service.amount}</span>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </div>
+                          {/* <div className="mt-6 text-right border-t-2 border-green-300 pt-4">
+                            <p className="text-2xl font-bold text-green-900">
+                              Base Items Total: ₹{selectedOpt.pricingBreakdown.services.reduce((acc: number, curr: any) => acc + (curr.amount || 0), 0)}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">Note: Final Total above may include GST/discounts depending on Quotation.</p>
+                          </div> */}
                         </div>
-                      )}
-                      {srfClientOptions.find(o => o.value === values.srfClient)?.customPricing.services?.length > 0 && (
-                        <div>
-                          <h4 className="font-semibold text-gray-800 mb-3">Services</h4>
-                          {srfClientOptions.find(o => o.value === values.srfClient).customPricing.services.map((service: any, i: number) => (
-                            <div key={i} className="flex justify-between bg-white p-3 rounded-lg shadow mb-2">
-                              <span>{service.serviceName}</span>
-                              <span className="font-bold text-green-600">₹{service.amount}</span>
-                            </div>
-                          ))}
+                      );
+                    }
+
+                    if (selectedOpt.isPrivilegedOrder) {
+                      return (
+                        <div className="mt-8 p-6 border-2 border-blue-200 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50">
+                          <h3 className="text-xl font-bold text-blue-900 mb-4">
+                            {selectedOpt.pricingType} Pricing Applied
+                          </h3>
+                          <div className="grid md:grid-cols-2 gap-8">
+                            {selectedOpt.customPricing.qaTests?.length > 0 && (
+                              <div>
+                                <h4 className="font-semibold text-gray-800 mb-3">QA Tests</h4>
+                                {selectedOpt.customPricing.qaTests.map((test: any, i: number) => (
+                                  <div key={i} className="flex justify-between bg-white p-3 rounded-lg shadow mb-2">
+                                    <span>{test.testName}</span>
+                                    <span className="font-bold text-green-600">₹{test.price}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {selectedOpt.customPricing.services?.length > 0 && (
+                              <div>
+                                <h4 className="font-semibold text-gray-800 mb-3">Services</h4>
+                                {selectedOpt.customPricing.services.map((service: any, i: number) => (
+                                  <div key={i} className="flex justify-between bg-white p-3 rounded-lg shadow mb-2">
+                                    <span>{service.serviceName}</span>
+                                    <span className="font-bold text-green-600">₹{service.amount}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-6 text-right border-t-2 border-blue-300 pt-4">
+                            <p className="text-2xl font-bold text-blue-900">
+                              Final Total: ₹{values.totalAmount}
+                            </p>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    <div className="mt-6 text-right border-t-2 border-blue-300 pt-4">
-                      <p className="text-2xl font-bold text-blue-900">
-                        Final Total: ₹{values.totalAmount}
-                      </p>
-                    </div>
-                  </div>
+                      );
+                    }
+
+                    return null;
+                  })()
                 )}
 
                 <div className="flex justify-end mt-8">

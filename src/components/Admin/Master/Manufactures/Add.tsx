@@ -148,7 +148,26 @@ const AddManufacture = () => {
             showMessage("Server error: Failed to create manufacturer", "error");
         }
     };
-
+    const machineOptions = [
+        "Radiography (Fixed)",
+        "Radiography (Mobile)",
+        "Radiography (Portable)",
+        "Radiography and Fluoroscopy",
+        "Interventional Radiology",
+        "C-Arm",
+        "O-Arm",
+        "Computed Tomography",
+        "Mammography",
+        "Dental Cone Beam CT",
+        "Ortho Pantomography (OPG)",
+        "Dental (Intra Oral)",
+        "Dental (Hand-held)",
+        "Bone Densitometer (BMD)",
+        "KV Imaging (OBI)",
+        "Radiography (Mobile) with HT",
+        "Lead Apron/Thyroid Shield/Gonad Shield",
+        "Others"
+    ];
     // ── RENDER ───────────────────────────────────────────────────────────────
     return (
         <>
@@ -204,7 +223,7 @@ const AddManufacture = () => {
                                     <label htmlFor="manufactureName">Manufacture Name</label>
                                     <Field name="manufactureName" type="text" id="manufactureName"
                                         placeholder="Enter Manufacture Name" className="form-input" />
-                                    { errors.manufactureName && touched.manufactureName && (
+                                    {errors.manufactureName && touched.manufactureName && (
                                         <div className="text-danger mt-1">{errors.manufactureName}</div>
                                     )}
                                 </div>
@@ -214,7 +233,7 @@ const AddManufacture = () => {
                                     <label htmlFor="address">Full Address</label>
                                     <Field name="address" type="text" id="address"
                                         placeholder="Enter Full Address" className="form-input" />
-                                    { errors.address && touched.address && (
+                                    {errors.address && touched.address && (
                                         <div className="text-danger mt-1">{errors.address}</div>
                                     )}
                                 </div>
@@ -224,7 +243,7 @@ const AddManufacture = () => {
                                     <label htmlFor="city">City</label>
                                     <Field name="city" type="text" id="city"
                                         placeholder="Enter City" className="form-input" />
-                                    { errors.city && touched.city && (
+                                    {errors.city && touched.city && (
                                         <div className="text-danger mt-1">{errors.city}</div>
                                     )}
                                 </div>
@@ -248,7 +267,7 @@ const AddManufacture = () => {
                                             <option key={s} value={s}>{s}</option>
                                         ))}
                                     </Field>
-                                    { errors.state && touched.state && (
+                                    {errors.state && touched.state && (
                                         <div className="text-danger mt-1">{errors.state}</div>
                                     )}
                                 </div>
@@ -267,7 +286,7 @@ const AddManufacture = () => {
                                             setFieldValue("pinCode", e.target.value);
                                         }}
                                     />
-                                    { errors.pinCode && touched.pinCode && (
+                                    {errors.pinCode && touched.pinCode && (
                                         <div className="text-danger mt-1">{errors.pinCode}</div>
                                     )}
                                 </div>
@@ -277,7 +296,7 @@ const AddManufacture = () => {
                                     <label htmlFor="branch">Branch</label>
                                     <Field name="branch" type="text" id="branch"
                                         placeholder="Enter Branch" className="form-input" />
-                                    { errors.branch && touched.branch && (
+                                    {errors.branch && touched.branch && (
                                         <div className="text-danger mt-1">{errors.branch}</div>
                                     )}
                                 </div>
@@ -287,7 +306,7 @@ const AddManufacture = () => {
                                     <label htmlFor="email">Email</label>
                                     <Field name="email" type="email" id="email"
                                         placeholder="Enter Email" className="form-input" />
-                                    { errors.email && touched.email && (
+                                    {errors.email && touched.email && (
                                         <div className="text-danger mt-1">{errors.email}</div>
                                     )}
                                 </div>
@@ -306,7 +325,7 @@ const AddManufacture = () => {
                                             setFieldValue("phone", e.target.value);
                                         }}
                                     />
-                                    { errors.phone && touched.phone && (
+                                    {errors.phone && touched.phone && (
                                         <div className="text-danger mt-1">{errors.phone}</div>
                                     )}
                                 </div>
@@ -401,13 +420,24 @@ const AddManufacture = () => {
 
                                 {/* Add new QA */}
                                 <div className="mt-4 flex flex-wrap items-center gap-3 max-w-[36rem]">
-                                    <input
-                                        type="text"
-                                        placeholder="New QA Test Name"
-                                        className="form-input w-1/2"
+                                    <select
                                         value={newQaName}
                                         onChange={(e) => setNewQaName(e.target.value)}
-                                    />
+                                        className="form-input w-1/2"
+                                    >
+                                        <option value="">Select Machine</option>
+                                        {machineOptions.map((machine, index) => (
+                                            <option
+                                                key={index}
+                                                value={machine}
+                                                disabled={qaOptions.some(
+                                                    (o) => o.label.toLowerCase() === machine.toLowerCase()
+                                                )}
+                                            >
+                                                {machine}
+                                            </option>
+                                        ))}
+                                    </select>
                                     <input
                                         type="number"
                                         placeholder="Price ₹"
@@ -419,16 +449,29 @@ const AddManufacture = () => {
                                         type="button"
                                         className="btn btn-primary"
                                         onClick={() => {
-                                            const name = newQaName.trim();
-                                            if (!name) return showMessage("Enter a name", "error");
-                                            const value = name.toUpperCase().replace(/\s+/g, "_");
-                                            if (qaOptions.some((o) => o.value === value))
-                                                return showMessage("Already exists", "warning");
+                                            // ✅ check empty
+                                            if (!newQaName) {
+                                                return showMessage("Please select machine", "error");
+                                            }
 
-                                            setQaOptions([
-                                                ...qaOptions,
-                                                { label: name, value, price: Number(newQaPrice) || 0, system: false },
-                                            ]);
+                                            // ✅ check duplicate (case-insensitive)
+                                            const exists = qaOptions.some(
+                                                (o) => o.label.toLowerCase() === newQaName.toLowerCase()
+                                            );
+
+                                            if (exists) {
+                                                return showMessage("This machine already exists", "warning");
+                                            }
+
+                                            // ✅ create new QA test
+                                            const newTest = {
+                                                label: newQaName,
+                                                value: newQaName.toUpperCase().replace(/\s+/g, "_"),
+                                                price: Number(newQaPrice) || 0,
+                                                system: false,
+                                            };
+
+                                            setQaOptions([...qaOptions, newTest]);
                                             setNewQaName("");
                                             setNewQaPrice("");
                                             showMessage("QA test added", "success");
@@ -590,7 +633,7 @@ const AddManufacture = () => {
                                         <option value="actual">Actual Cost</option>
                                         <option value="fixed">Fixed Cost</option>
                                     </Field>
-                                    { errors.travel && touched.travel && (
+                                    {errors.travel && touched.travel && (
                                         <div className="text-danger mt-1">{errors.travel}</div>
                                     )}
                                 </div>
@@ -605,7 +648,7 @@ const AddManufacture = () => {
                                             placeholder="Enter Fixed Cost"
                                             className="form-input"
                                         />
-                                        { errors.fixedCost && touched.fixedCost && (
+                                        {errors.fixedCost && touched.fixedCost && (
                                             <div className="text-danger mt-1">{errors.fixedCost}</div>
                                         )}
                                     </div>

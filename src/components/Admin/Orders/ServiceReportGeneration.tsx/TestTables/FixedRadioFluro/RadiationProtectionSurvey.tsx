@@ -109,7 +109,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     const locVal = parseFloat(loc.mRPerWeek) || 0;
     return locVal > maxVal ? loc : max;
   }, workerLocations[0] || { mRPerHr: '', location: '' });
-  
+
   const maxPublicLocation = publicLocations.reduce((max, loc) => {
     const maxVal = parseFloat(max.mRPerWeek) || 0;
     const locVal = parseFloat(loc.mRPerWeek) || 0;
@@ -126,29 +126,29 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
       try {
         const toolsRes = await getTools(serviceId);
         const tools = toolsRes?.data?.toolsAssigned || [];
-        
+
         if (tools.length > 0) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          
+
           let hasCalibrationDates = false;
           let allValid = true;
           let hasExpired = false;
-          
+
           // Check all tools for calibration dates
           for (const tool of tools) {
             if (tool.calibrationValidTill) {
               hasCalibrationDates = true;
               const validTill = new Date(tool.calibrationValidTill);
               validTill.setHours(0, 0, 0, 0);
-              
+
               if (validTill < today) {
                 hasExpired = true;
                 allValid = false;
               }
             }
           }
-          
+
           // Set calibration status based on check
           if (hasCalibrationDates) {
             if (hasExpired) {
@@ -170,7 +170,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
         // Don't set calibration status if check fails
       }
     };
-    
+
     checkCalibration();
   }, [serviceId]);
 
@@ -418,10 +418,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
             <table className="min-w-full divide-y divide-gray-300">
               <thead className="bg-purple-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-purple-900  tracking-wider">LOCATION</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900  tracking-wider">MAX. RADIATION LEVEL (MR/HR)</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900  tracking-wider">MR/WEEK</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900  tracking-wider">RESULT</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-purple-900  tracking-wider">location</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900   tracking-wider">max. Radiation level (mR/hr)</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900  tracking-wider">mR/week</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-purple-900  tracking-wider">results</th>
                   <th className="w-32"></th>
                 </tr>
               </thead>
@@ -430,7 +430,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
                 {workerLocations.map((row, index) => (
                   <tr key={row.id} className="hover:bg-blue-50">
                     <td className="px-6 py-4">
-                        <input
+                      <input
                         type="text"
                         value={row.location}
                         onChange={e => updateRow(row.id, "location", e.target.value)}
@@ -454,7 +454,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
@@ -506,7 +506,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-5 py-2 rounded-full text-xs font-bold ${row.result === "PASS" ? "bg-green-100 text-green-800" :
-                          row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                        row.result === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
                         }`}>
                         {row.result || "—"}
                       </span>
@@ -537,11 +537,11 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
           {!isDisabled && (
             <div className="flex justify-center gap-8 mt-8">
               <button onClick={() => addRow("worker")} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-5 h-5" /> Add Worker Location
-            </button>
-            <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-              <Plus className="w-5 h-5" /> Add Public Location
-            </button>
+                <Plus className="w-5 h-5" /> Add Worker Location
+              </button>
+              <button onClick={() => addRow("public")} className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <Plus className="w-5 h-5" /> Add Public Location
+              </button>
             </div>
           )}
 

@@ -387,7 +387,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
               <tr>
                 <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">kVp</th>
                 <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">mA</th>
-                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r relative">
+                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700  border-r relative">
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
@@ -398,7 +398,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                   </div>
                 </th>
                 <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">Mean (X̄)</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">COV</th>
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">CoV</th>
                 <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">Remark</th>
                 <th rowSpan={2} className="w-10" />
               </tr>

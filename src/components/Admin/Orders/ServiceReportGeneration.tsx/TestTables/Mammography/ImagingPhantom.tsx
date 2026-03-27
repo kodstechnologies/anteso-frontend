@@ -128,7 +128,7 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
     if (initialData) {
       return;
     }
-    
+
     // Reset state when refreshKey changes
     if (refreshKey !== undefined) {
       setIsLoading(true);
@@ -137,7 +137,7 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
       setHasSaved(false);
       setIsEditing(true);
     }
-    
+
     const load = async () => {
       if (!serviceId) {
         setIsLoading(false);
@@ -321,16 +321,16 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r w-16">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r w-16">
                   Sr No
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                   Name of the object
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                   Number of objects visible
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                   Tolerance (at AGD less than 3 mGy)
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-100">
@@ -417,13 +417,12 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
 
                   <td className="px-6 py-4 text-center border-r">
                     <span
-                      className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                        row.remark === 'Pass'
+                      className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${row.remark === 'Pass'
                           ? 'bg-green-100 text-green-800'
                           : row.remark === 'Fail'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-400'
-                      }`}
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-400'
+                        }`}
                     >
                       {row.remark || '—'}
                     </span>
@@ -459,13 +458,12 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-gray-700">Remarks:</span>
             <span
-              className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
-                (isViewMode ? remark : calculatedRemark) === 'Pass'
+              className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${(isViewMode ? remark : calculatedRemark) === 'Pass'
                   ? 'bg-green-100 text-green-800'
                   : (isViewMode ? remark : calculatedRemark) === 'Fail'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
             >
               {isViewMode ? (remark || '—') : (calculatedRemark || '—')}
             </span>

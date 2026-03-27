@@ -34,6 +34,7 @@ interface Service {
     partyCodeOrSysId: string
     procNoOrPoNo: string
     procExpiryDate: string
+    price?: number | string // ✅ added price
 }
 
 interface FormValues {
@@ -289,6 +290,31 @@ const CreateOrder: React.FC = () => {
                     partyCodeOrSysId: Yup.string().required("Party Code/Sys ID is required"),
                     procNoOrPoNo: Yup.string(),
                     procExpiryDate: Yup.date().typeError("Invalid date format"),
+                    price: Yup.number().typeError("Price must be a number").nullable()
+                        .test(
+                            "is-price-required",
+                            "Price is required for QA Test",
+                            function (value) {
+                                const { workType } = this.parent;
+                                let leadOwner = null;
+                                if (this.from) {
+                                    for (let i = this.from.length - 1; i >= 0; i--) {
+                                        if (this.from[i].value && this.from[i].value.leadOwner !== undefined) {
+                                            leadOwner = this.from[i].value.leadOwner;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                const isEmployeeLead = employees.some(emp => String(emp._id) === String(leadOwner));
+                                const isQATest = workType && Array.isArray(workType) && workType.includes("Quality Assurance Test");
+
+                                if (isEmployeeLead && isQATest) {
+                                    return value !== null && value !== undefined && String(value).trim() !== "";
+                                }
+                                return true;
+                            }
+                        ),
                 })
             )
             .min(1, "At least one service is required"),
@@ -449,6 +475,7 @@ const CreateOrder: React.FC = () => {
                 partyCodeOrSysId: service.partyCodeOrSysId,
                 procNoOrPoNo: service.procNoOrPoNo || "",
                 procExpiryDate: service.procExpiryDate || "",
+                price: (employees.some(emp => emp._id === values.leadOwner) && service.workType.includes("Quality Assurance Test")) ? (service.price || "") : "", // Only send price for employee + QA Test
                 // ← Do NOT include workOrderCopy here anymore (it's sent as file)
             }));
 
@@ -502,7 +529,7 @@ const CreateOrder: React.FC = () => {
 
             <h5 className="font-semibold text-lg mb-4">Create Order</h5>
 
-            <Formik
+            <Formik<FormValues>
                 initialValues={{
                     leadOwner: "",
                     hospitalName: "",
@@ -526,7 +553,8 @@ const CreateOrder: React.FC = () => {
                         workOrderCopy: null,
                         partyCodeOrSysId: "",
                         procNoOrPoNo: "",
-                        procExpiryDate: ""
+                        procExpiryDate: "",
+                        price: ""
                     }],
                     additionalServices: serviceOptions.reduce(
                         (acc, service) => {
@@ -745,6 +773,13 @@ const CreateOrder: React.FC = () => {
                                             const isOthersSelected = selectedMachineType === "Others" ||
                                                 (!machineOptions.map(o => o.value).includes(selectedMachineType) && selectedMachineType);
 
+                                            const selectedLeadOwner = values.leadOwner;
+                                            const selectedDealer = dealers.find(d => String(d._id) === String(selectedLeadOwner));
+                                            const selectedManufacturer = manufacturer.find(m => String(m._id) === String(selectedLeadOwner));
+
+                                            const allowedTests = (selectedDealer?.qaTests || selectedManufacturer?.qaTests || []).map((t: any) => t.testName);
+                                            const isRestricted = !!(selectedDealer || selectedManufacturer);
+
                                             return (
                                                 <div key={index} className="border border-gray-200 rounded-lg p-5 mb-6 relative">
                                                     {values.services.length > 1 && (
@@ -776,11 +811,18 @@ const CreateOrder: React.FC = () => {
                                                                 }}
                                                             >
                                                                 <option value="">Select Machine Type</option>
-                                                                {machineOptions.map((option) => (
-                                                                    <option key={option.value} value={option.value}>
-                                                                        {option.label}
-                                                                    </option>
-                                                                ))}
+                                                                {machineOptions.map((option) => {
+                                                                    const isDisabled = isRestricted &&
+                                                                        option.value !== "" &&
+                                                                        option.value !== "Others" &&
+                                                                        !allowedTests.includes(option.value);
+
+                                                                    return (
+                                                                        <option key={option.value} value={option.value} disabled={isDisabled}>
+                                                                            {option.label}
+                                                                        </option>
+                                                                    );
+                                                                })}
                                                             </Field>
                                                             <ErrorMessage
                                                                 name={`services.${index}.machineType`}
@@ -900,6 +942,22 @@ const CreateOrder: React.FC = () => {
                                                                 }}
                                                             />
                                                         </div>
+
+                                                        {/* Price - ONLY for employees AND Quality Assurance Test */}
+                                                        {employees.some(emp => emp._id === values.leadOwner) && service.workType.includes("Quality Assurance Test") && (
+                                                            <div className="md:col-span-3">
+                                                                <label className="text-sm font-semibold text-gray-700">
+                                                                    Price <span className="text-red-500">*</span>
+                                                                </label>
+                                                                <Field
+                                                                    type="number"
+                                                                    name={`services.${index}.price`}
+                                                                    placeholder="Enter Price"
+                                                                    className="form-input w-full"
+                                                                />
+                                                                <ErrorMessage name={`services.${index}.price`} component="div" className="text-red-500 text-sm" />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -918,7 +976,8 @@ const CreateOrder: React.FC = () => {
                                                     workOrderCopy: null,
                                                     partyCodeOrSysId: "",
                                                     procNoOrPoNo: "",
-                                                    procExpiryDate: ""
+                                                    procExpiryDate: "",
+                                                    price: "" // ✅ added price
                                                 })
                                             }
                                             className="btn btn-primary w-full sm:w-auto"

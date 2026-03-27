@@ -51,9 +51,16 @@ interface AddMachineModalProps {
     onClose: () => void;
     orderId: string;
     onSuccess: () => void;
+    isEmployeeLead?: boolean;
 }
 
-export default function AddMachineModal({ open, onClose, orderId, onSuccess }: AddMachineModalProps) {
+export default function AddMachineModal({
+    open,
+    onClose,
+    orderId,
+    onSuccess,
+    isEmployeeLead = false
+}: AddMachineModalProps) {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         machineType: "",
@@ -63,6 +70,7 @@ export default function AddMachineModal({ open, onClose, orderId, onSuccess }: A
         partyCodeOrSysId: "",
         procNoOrPoNo: "",
         procExpiryDate: "",
+        price: ""
     });
     const [workOrderCopy, setWorkOrderCopy] = useState<File | null>(null);
 
@@ -83,6 +91,11 @@ export default function AddMachineModal({ open, onClose, orderId, onSuccess }: A
             return;
         }
 
+        if (isEmployeeLead && formData.workType === "Quality Assurance Test" && !formData.price) {
+            showMessage("Price is required for Quality Assurance Test", "error");
+            return;
+        }
+
         setLoading(true);
         try {
             const data = new FormData();
@@ -93,6 +106,7 @@ export default function AddMachineModal({ open, onClose, orderId, onSuccess }: A
             if (formData.partyCodeOrSysId) data.append("partyCodeOrSysId", formData.partyCodeOrSysId);
             if (formData.procNoOrPoNo) data.append("procNoOrPoNo", formData.procNoOrPoNo);
             if (formData.procExpiryDate) data.append("procExpiryDate", formData.procExpiryDate);
+            if (formData.price) data.append("price", formData.price);
             if (workOrderCopy) data.append("workOrderCopy", workOrderCopy);
 
             await addMachineToOrder(orderId, data);
@@ -116,6 +130,7 @@ export default function AddMachineModal({ open, onClose, orderId, onSuccess }: A
             partyCodeOrSysId: "",
             procNoOrPoNo: "",
             procExpiryDate: "",
+            price: ""
         });
         setWorkOrderCopy(null);
     };
@@ -203,6 +218,20 @@ export default function AddMachineModal({ open, onClose, orderId, onSuccess }: A
                             Quality Assurance Test creates QA Raw and QA Test accordion sections
                         </p>
                     </div>
+
+                    {isEmployeeLead && formData.workType === "Quality Assurance Test" && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Price (Optional)</label>
+                            <input
+                                type="number"
+                                name="price"
+                                value={formData.price}
+                                onChange={handleChange}
+                                placeholder="Enter Price"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Party Code / Sys ID</label>

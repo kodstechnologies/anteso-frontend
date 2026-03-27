@@ -416,9 +416,9 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">kVp</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">mA</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Slice Thickness</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">kVp</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">mA</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Slice Thickness</th>
               {!isViewMode && exposureParameters.length > 1 && <th className="w-12"></th>}
             </tr>
           </thead>
@@ -487,12 +487,12 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-green-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                 Table position from reference position (cm)
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Expected (cm)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">Measured (cm)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Expected (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Measured (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
               {!isViewMode && tableIncrementationRows.length > 1 && <th className="w-12"></th>}
             </tr>
           </thead>

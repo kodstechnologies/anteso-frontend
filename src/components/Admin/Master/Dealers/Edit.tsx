@@ -76,7 +76,26 @@ const EditDealer = () => {
         };
         if (id) fetchDealer();
     }, [id]);
-
+    const machineOptions = [
+        "Radiography (Fixed)",
+        "Radiography (Mobile)",
+        "Radiography (Portable)",
+        "Radiography and Fluoroscopy",
+        "Interventional Radiology",
+        "C-Arm",
+        "O-Arm",
+        "Computed Tomography",
+        "Mammography",
+        "Dental Cone Beam CT",
+        "Ortho Pantomography (OPG)",
+        "Dental (Intra Oral)",
+        "Dental (Hand-held)",
+        "Bone Densitometer (BMD)",
+        "KV Imaging (OBI)",
+        "Radiography (Mobile) with HT",
+        "Lead Apron/Thyroid Shield/Gonad Shield",
+        "Others"
+    ];
     // ✅ handle form submit
     const handleSubmit = async (values: any) => {
         try {
@@ -154,7 +173,7 @@ const EditDealer = () => {
                                 {/* QA Test Rows */}
                                 {editableQaTests.map((option, index) => (
                                     <div key={index} className="flex items-center gap-2">
-                                        <input
+                                        {/* <input
                                             type="text"
                                             value={option.testName}
                                             onChange={(e) => {
@@ -163,7 +182,23 @@ const EditDealer = () => {
                                                 setEditableQaTests(updated);
                                             }}
                                             className="form-input w-1/2"
-                                        />
+                                        /> */}
+                                        <select
+                                            value={option.testName}
+                                            onChange={(e) => {
+                                                const updated = [...editableQaTests];
+                                                updated[index].testName = e.target.value;
+                                                setEditableQaTests(updated);
+                                            }}
+                                            className="form-input w-1/2"
+                                        >
+                                            <option value="">Select Machine</option>
+                                            {machineOptions.map((machine, i) => (
+                                                <option key={i} value={machine}>
+                                                    {machine}
+                                                </option>
+                                            ))}
+                                        </select>
 
                                         <input
                                             type="number"
@@ -195,13 +230,24 @@ const EditDealer = () => {
 
                                 {/* Add New QA Test */}
                                 <div className="flex items-center gap-3 pt-4">
-                                    <input
-                                        type="text"
-                                        placeholder="New QA Test Name"
+                                    <select
                                         value={newQaTestName}
                                         onChange={(e) => setNewQaTestName(e.target.value)}
                                         className="form-input w-1/2"
-                                    />
+                                    >
+                                        <option value="">Select Machine</option>
+                                        {machineOptions.map((machine, index) => (
+                                            <option
+                                                key={index}
+                                                value={machine}
+                                                disabled={editableQaTests.some(
+                                                    (t) => t.testName.toLowerCase() === machine.toLowerCase()
+                                                )}
+                                            >
+                                                {machine}
+                                            </option>
+                                        ))}
+                                    </select>
                                     <input
                                         type="number"
                                         placeholder="Price ₹"
@@ -213,12 +259,23 @@ const EditDealer = () => {
                                         type="button"
                                         className="btn btn-primary"
                                         onClick={() => {
-                                            if (!newQaTestName.trim()) {
-                                                return showMessage('Please enter QA test name.', 'error');
+                                            // ✅ check empty
+                                            if (!newQaTestName) {
+                                                return showMessage('Please select machine.', 'error');
                                             }
 
+                                            // ✅ check duplicate
+                                            const exists = editableQaTests.some(
+                                                (t) => t.testName === newQaTestName
+                                            );
+
+                                            if (exists) {
+                                                return showMessage('This machine already exists.', 'warning');
+                                            }
+
+                                            // ✅ add new
                                             const newTest = {
-                                                testName: newQaTestName.trim(),
+                                                testName: newQaTestName,
                                                 price: parseFloat(newQaTestPrice) || 0,
                                             };
 

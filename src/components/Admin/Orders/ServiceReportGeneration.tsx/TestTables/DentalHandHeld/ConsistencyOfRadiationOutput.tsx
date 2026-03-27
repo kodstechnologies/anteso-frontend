@@ -134,7 +134,7 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
                             const outputs = Array.isArray(rawOutputs)
                                 ? rawOutputs.map((o: any) =>
                                     o != null && typeof o === 'object' && 'value' in o ? String(o.value ?? '') : String(o ?? '')
-                                  )
+                                )
                                 : Array(headers.length).fill('');
                             const covVal = row.cov ? parseFloat(row.cov) : 0;
                             const tolVal = data.tolerance ? parseFloat(data.tolerance) : 0.05;
@@ -408,15 +408,15 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-blue-50">
                             <tr>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
+                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
                                     kVp
                                 </th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
+                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
                                     mAs
                                 </th>
                                 <th
                                     colSpan={headers.length}
-                                    className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r relative"
+                                    className="px-4 py-3 text-center text-xs font-medium text-gray-700  border-r relative"
                                 >
                                     <div className="flex items-center justify-between">
                                         <span>Radiation Output (mGy)</span>
@@ -427,19 +427,19 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
                                         )}
                                     </div>
                                 </th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
+                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
                                     Mean (X̄)
                                 </th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                                    cov
+                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
+                                    CoV
                                 </th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
+                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
                                     Remarks
                                 </th>
                             </tr>
                             <tr>
                                 {headers.map((h, i) => (
-                                    <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border-r">
+                                    <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700  border-r">
                                         <div className="flex items-center justify-center gap-1">
                                             <input
                                                 type="text"

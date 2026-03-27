@@ -141,29 +141,29 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
             try {
                 const toolsRes = await getTools(serviceId);
                 const tools = toolsRes?.data?.toolsAssigned || [];
-                
+
                 if (tools.length > 0) {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    
+
                     let hasCalibrationDates = false;
                     let allValid = true;
                     let hasExpired = false;
-                    
+
                     // Check all tools for calibration dates
                     for (const tool of tools) {
                         if (tool.calibrationValidTill) {
                             hasCalibrationDates = true;
                             const validTill = new Date(tool.calibrationValidTill);
                             validTill.setHours(0, 0, 0, 0);
-                            
+
                             if (validTill < today) {
                                 hasExpired = true;
                                 allValid = false;
                             }
                         }
                     }
-                    
+
                     // Set calibration status based on check
                     if (hasCalibrationDates) {
                         if (hasExpired) {
@@ -185,7 +185,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                 // Don't set calibration status if check fails
             }
         };
-        
+
         checkCalibration();
     }, [serviceId]);
 
@@ -444,10 +444,10 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                         <table className="min-w-full divide-y divide-gray-300">
                             <thead className="bg-purple-50">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 uppercase tracking-wider">LOCATION</th>
-                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MAX. RADIATION LEVEL (MR/HR)</th>
-                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">MR/WEEK</th>
-                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900 uppercase tracking-wider">RESULT</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-purple-900  tracking-wider">location</th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900   tracking-wider">max. Radiation level (mR/hr)</th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900  tracking-wider">mR/week</th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-purple-900  tracking-wider">results</th>
                                     <th className="w-32"></th>
                                 </tr>
                             </thead>

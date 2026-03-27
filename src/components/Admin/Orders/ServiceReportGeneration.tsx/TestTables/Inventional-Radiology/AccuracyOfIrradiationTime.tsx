@@ -125,10 +125,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           setTable2Rows(
             data.irradiationTimes && data.irradiationTimes.length > 0
               ? data.irradiationTimes.map((t: any, i: number) => ({
-                  id: String(i + 1),
-                  setTime: t.setTime || "",
-                  measuredTime: t.measuredTime || "",
-                }))
+                id: String(i + 1),
+                setTime: t.setTime || "",
+                measuredTime: t.measuredTime || "",
+              }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
           setToleranceOperator(data.tolerance?.operator || "<=");
@@ -261,7 +261,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FCD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FFD (cm)</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">kV</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">mA</th>
             </tr>

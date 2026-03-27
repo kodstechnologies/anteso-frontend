@@ -224,10 +224,10 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
           <table className="min-w-full">
             <thead className="bg-gray-50 border-b-2 border-gray-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">kVp</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">mA</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Slice Thickness (mm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Window Width (WW)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700  tracking-wider">kVp</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700  tracking-wider">mA</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700  tracking-wider">Slice Thickness (mm)</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-700  tracking-wider">Window Width (WW)</th>
               </tr>
             </thead>
             <tbody>

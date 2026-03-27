@@ -33,6 +33,8 @@ import {
     editDocuments,
     getReportNumbers,
     assignToOfficeStaffByElora,
+    updateServicePrice,
+    getAllActiveEmployees,
 } from "../../../api"
 import { useNavigate } from "react-router-dom";
 import AddMachineModal from "./AddMachineModal";
@@ -148,6 +150,7 @@ interface MachineData {
     procNoOrPoNo?: string | null
     procExpiryDate?: string | null
     formattedProcExpiryDate?: string | null
+    price?: any
 }
 
 interface ServicesCardProps {
@@ -246,6 +249,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [deletingMachineId, setDeletingMachineId] = useState<string | null>(null)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+    const [employees, setEmployees] = useState<any[]>([])
+    const [leadOwnerId, setLeadOwnerId] = useState<string | null>(null)
 
     type ReportData = {
         qaTestReportNumber: string;
@@ -291,10 +296,15 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const fetchDropdownData = async () => {
         try {
             setLoadingDropdowns(true)
-            const [techniciansData, staffData] = await Promise.all([getActiveTechnicians(), getActiveStaffs()])
+            const [techniciansData, staffData, employeesData] = await Promise.all([
+                getActiveTechnicians(),
+                getActiveStaffs(),
+                getAllActiveEmployees()
+            ])
 
             setTechnicians(techniciansData.data || [])
             setOfficeStaff(staffData.data || [])
+            setEmployees(employeesData.data || [])
         } catch (error) {
             console.error("Error fetching dropdown data:", error)
             setTechnicians([])
@@ -363,7 +373,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setError(null);
             const response = await getMachineDetails(orderId);
 
-            const machinesArray = Array.isArray(response) ? response : [response];
+            // Access leadOwner and services from the new response structure
+            const machinesArray = Array.isArray(response.services) ? response.services : [];
+            setLeadOwnerId(response.leadOwner || null);
+
             if (!machinesArray || machinesArray.length === 0) {
                 throw new Error("No machine data found");
             }
@@ -524,6 +537,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             status: workTypeDetail.status || "pending",
                             workTypes: createWorkTypes(),
                             rawPhoto: machineData.rawPhoto || [],
+                            price: machineData.price || null,
+                            partyCodeOrSysId: machineData.partyCodeOrSysId || null,
+                            procNoOrPoNo: machineData.procNoOrPoNo || null,
+                            procExpiryDate: machineData.procExpiryDate || null,
+                            formattedProcExpiryDate: machineData.formattedProcExpiryDate || null,
+                            workOrderCopy: machineData.workOrderCopy || null,
                         };
                     }
                 );
@@ -1231,6 +1250,200 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         return "elora";
     }
 
+    // const handleStatusSave = async (workTypeId: string) => {
+    //     const staffId = assignments[workTypeId]?.staffId
+    //     const newStatus = selectedStatuses[workTypeId]
+    //     const currentStatus = assignments[workTypeId]?.status || "pending"
+    //     if (!staffId || !orderId || !newStatus) return
+    //     const currentIndex = statusOptions.indexOf(currentStatus)
+    //     const newIndex = statusOptions.indexOf(newStatus)
+    //     const isReassigned = assignments[workTypeId]?.isReassigned
+    //     if (!isReassigned && newIndex < currentIndex) {
+    //         showModal('Warning', "Cannot go back to previous status!");
+    //         return
+    //     }
+    //     if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId]) {
+    //         showModal('Warning', "File upload is mandatory for complete status!");
+    //         return
+    //     }
+
+    //     try {
+    //         setAssigningStaff((prev) => ({ ...prev, [workTypeId]: true }))
+    //         const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
+    //         if (!workType) throw new Error("Work type not found")
+    //         const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
+    //         if (!parentService) throw new Error("Parent service not found")
+    //         const serviceId = workType.id.split("-")[0]
+    //         const workTypeName = parentService.workTypeName || "Unknown Work Type";
+    //         const isQATestService = parentService.workTypeName === "Quality Assurance Test"
+
+    //         let response;
+    //         if (newStatus === "complete" || newStatus === "generated" || newStatus === "paid") {
+    //             response = await completeStatusAndReport(
+    //                 staffId,
+    //                 orderId,
+    //                 serviceId,
+    //                 workTypeName,
+    //                 newStatus,
+    //                 {},
+    //                 uploadedFiles[workTypeId],
+    //                 workType.name,
+    //             )
+
+    //             if (response?.data?.linkedReport) {
+    //                 const identifier = response.data.reportFor as 'qatest' | 'elora';
+    //                 const reportData = response.data.linkedReport;
+
+    //                 setReportNumbers((prev) => {
+    //                     const current = prev[parentService.id] || {};
+    //                     const currentReport = current[identifier] || {
+    //                         qaTestReportNumber: 'N/A',
+    //                         reportULRNumber: 'N/A',
+    //                         reportStatus: 'pending',
+    //                         reportUrl: undefined,
+    //                         remark: '',
+    //                     };
+
+    //                     const updatedReport: ReportData = {
+    //                         qaTestReportNumber: reportData.qaTestReportNumber || currentReport.qaTestReportNumber,
+    //                         reportULRNumber: reportData.reportULRNumber || currentReport.reportULRNumber,
+    //                         reportStatus: reportData.reportStatus || currentReport.reportStatus,
+    //                         reportUrl: reportData.report || currentReport.reportUrl,
+    //                         remark: reportData.remark || currentReport.remark,
+    //                     };
+
+    //                     const newReportStatus = {
+    //                         ...prev,
+    //                         [parentService.id]: {
+    //                             ...current,
+    //                             [identifier]: updatedReport,
+    //                         },
+    //                     }
+    //                     saveToLocalStorage(STORAGE_KEYS.reportNumbers, newReportStatus)
+    //                     return newReportStatus
+    //                 })
+    //             }
+    //         } else {
+    //             if (!isQATestService) {
+    //                 await assignToOfficeStaffByElora(orderId, serviceId, staffId, workTypeName, newStatus)
+    //             } else {
+    //                 await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, newStatus)
+    //             }
+    //         }
+
+    //         // Refresh report numbers after status update to get latest remark
+    //         if (isQATestService && workType.name === "QA Test") {
+    //             await refreshReportNumbers(parentService.id, 'qatest', staffId);
+    //         }
+
+    //         const newAssignments = {
+    //             ...assignments,
+    //             [workTypeId]: {
+    //                 ...assignments[workTypeId],
+    //                 status: newStatus,
+    //                 isReassigned: false,
+    //             },
+    //         }
+    //         setAssignments(newAssignments)
+    //         setSelectedStatuses((prev) => ({ ...prev, [workTypeId]: newStatus }))
+    //         saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
+    //         saveToLocalStorage(STORAGE_KEYS.selectedStatuses, { ...selectedStatuses, [workTypeId]: newStatus })
+
+    //         // Auto-navigate to report for specific machines if status is complete
+    //         if (newStatus === "complete" && [
+    //             "C-Arm",
+    //             "Mammography",
+    //             "OBI",
+    //             "KV Imaging (OBI)",
+    //             "Bone Densitometer (BMD)",
+    //             "BMD",
+    //             "Radiography and Fluoroscopy",
+    //             "Computed Tomography",
+    //             "Dental Cone Beam CT",
+    //             "Dental Intra",
+    //             "Dental (Intra Oral)",
+    //             "Dental Hand-held",
+    //             "Dental (Hand-held)",
+    //             "Radiography (Mobile)",
+    //             "Radiography (Mobile) with HT",
+    //             "Radiography (Portable)",
+    //             "Radiography (Fixed)",
+    //             "Interventional Radiology",
+    //             "O-Arm",
+    //             "Ortho Pantomography (OPG)",
+    //             "Lead Apron/Thyroid Shield/Gonad Shield"
+    //         ].includes(parentService.machineType)) {
+
+    //             // Check if we have a valid token before navigating
+    //             const token = Cookies.get("accessToken");
+    //             if (!token) {
+    //                 console.error("No access token found, cannot navigate");
+    //                 showMessage("Session expired. Please login again.", 'error');
+    //                 navigate("/login");
+    //                 return;
+    //             }
+
+    //             try {
+    //                 // Verify token is still valid (optional - you can decode to check expiry)
+    //                 jwtDecode(token);
+    //             } catch (error) {
+    //                 console.error("Invalid token:", error);
+    //                 showMessage("Session expired. Please login again.", 'error');
+    //                 navigate("/login");
+    //                 return;
+    //             }
+
+    //             const cleanId = parentService.id.replace(/-0$/, "");
+    //             const firstQATest = parentService.workTypes.find((wt: any) => wt.name === "QA Raw");
+    //             const createdAt = workType.qaTestSubmittedAt || firstQATest?.backendFields?.createdAt || null;
+    //             const ulrNumber = reportNumbers[parentService.id]?.qatest?.reportULRNumber || firstQATest?.backendFields?.reportURLNumber || null;
+
+    //             // Prefer uploaded Excel/file URL from complete response so report can pre-fill (e.g. Dental Cone Beam CT)
+    //             const csvFileUrl = response?.data?.fileUrl ||
+    //                 response?.data?.uploadedFileUrl ||
+    //                 response?.data?.linkedReport?.fileUrl ||
+    //                 response?.data?.linkedReport?.report ||
+    //                 firstQATest?.backendFields?.uploadFile ||
+    //                 firstQATest?.backendFields?.fileUrl ||
+    //                 reportNumbers[parentService.id]?.qatest?.reportUrl ||
+    //                 null;
+
+    //             console.log('ServiceDetails2: Auto-navigating to report:', {
+    //                 machineType: parentService.machineType,
+    //                 serviceId: cleanId,
+    //                 csvFileUrl
+    //             });
+
+    //             // Use setTimeout to ensure state updates are complete before navigation
+    //             setTimeout(() => {
+    //                 navigate("/admin/orders/generic-service-table", {
+    //                     state: {
+    //                         serviceId: cleanId,
+    //                         machineType: parentService.machineType,
+    //                         qaTestDate: workType.qaTestSubmittedAt || null,
+    //                         createdAt: createdAt,
+    //                         ulrNumber: ulrNumber,
+    //                         csvFileUrl: csvFileUrl,
+    //                     },
+    //                 });
+    //             }, 100);
+    //         }
+    //         // console.log("[v0] Status update successful:", { newStatus, workTypeName })
+    //     } catch (error: any) {
+    //         console.error("[v0] Status update failed:", error);
+    //         if (error?.response?.status === 401) {
+    //             showMessage("Session expired. Please login again.", 'error');
+    //             navigate("/login");
+    //         } else {
+    //             showModal('Error', `Failed to update status: ${error?.message || 'Unknown error'}`);
+    //         }
+    //     } finally {
+    //         setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
+    //     }
+    // }
+
+    // Add this function to refresh report numbers
+
     const handleStatusSave = async (workTypeId: string) => {
         const staffId = assignments[workTypeId]?.staffId
         const newStatus = selectedStatuses[workTypeId]
@@ -1260,6 +1473,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
             let response;
             if (newStatus === "complete" || newStatus === "generated" || newStatus === "paid") {
+                // For non-QA work types, we need to pass the actual work type name from the parent service
+                // For QA work types, we should pass the specific work type (QA Test or QA Raw)
+                const workTypeNameForReport = isQATestService ? workType.name : workTypeName;
+
                 response = await completeStatusAndReport(
                     staffId,
                     orderId,
@@ -1268,7 +1485,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     newStatus,
                     {},
                     uploadedFiles[workTypeId],
-                    workType.name,
+                    getWorkTypeIdentifier(workTypeName), // Normalize to 'qatest' or 'elora'
                 )
 
                 if (response?.data?.linkedReport) {
@@ -1312,10 +1529,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 }
             }
 
-            // Refresh report numbers after status update to get latest remark
+            // Refresh report numbers after status update
             if (isQATestService && workType.name === "QA Test") {
                 await refreshReportNumbers(parentService.id, 'qatest', staffId);
             }
+
+            // Update machineData to sync the card status (header)
+            setMachineData((prev: any) =>
+                prev.map((s: any) =>
+                    s.id === workTypeId ? { ...s, status: newStatus } : s
+                )
+            )
 
             const newAssignments = {
                 ...assignments,
@@ -1326,12 +1550,15 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 },
             }
             setAssignments(newAssignments)
-            setSelectedStatuses((prev) => ({ ...prev, [workTypeId]: newStatus }))
+            setSelectedStatuses((prev) => {
+                const next = { ...prev, [workTypeId]: newStatus };
+                saveToLocalStorage(STORAGE_KEYS.selectedStatuses, next);
+                return next;
+            });
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
-            saveToLocalStorage(STORAGE_KEYS.selectedStatuses, { ...selectedStatuses, [workTypeId]: newStatus })
 
-            // Auto-navigate to report for specific machines if status is complete
-            if (newStatus === "complete" && [
+            // Auto-navigate logic for specific machine types (only for QA Test)
+            if (isQATestService && newStatus === "complete" && [
                 "C-Arm",
                 "Mammography",
                 "OBI",
@@ -1344,7 +1571,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 "Dental Intra",
                 "Dental (Intra Oral)",
                 "Dental Hand-held",
-                "Dental (Hand-held)",
                 "Radiography (Mobile)",
                 "Radiography (Mobile) with HT",
                 "Radiography (Portable)",
@@ -1355,7 +1581,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 "Lead Apron/Thyroid Shield/Gonad Shield"
             ].includes(parentService.machineType)) {
 
-                // Check if we have a valid token before navigating
                 const token = Cookies.get("accessToken");
                 if (!token) {
                     console.error("No access token found, cannot navigate");
@@ -1365,7 +1590,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 }
 
                 try {
-                    // Verify token is still valid (optional - you can decode to check expiry)
                     jwtDecode(token);
                 } catch (error) {
                     console.error("Invalid token:", error);
@@ -1379,7 +1603,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 const createdAt = workType.qaTestSubmittedAt || firstQATest?.backendFields?.createdAt || null;
                 const ulrNumber = reportNumbers[parentService.id]?.qatest?.reportULRNumber || firstQATest?.backendFields?.reportURLNumber || null;
 
-                // Prefer uploaded Excel/file URL from complete response so report can pre-fill (e.g. Dental Cone Beam CT)
                 const csvFileUrl = response?.data?.fileUrl ||
                     response?.data?.uploadedFileUrl ||
                     response?.data?.linkedReport?.fileUrl ||
@@ -1395,7 +1618,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     csvFileUrl
                 });
 
-                // Use setTimeout to ensure state updates are complete before navigation
                 setTimeout(() => {
                     navigate("/admin/orders/generic-service-table", {
                         state: {
@@ -1409,7 +1631,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     });
                 }, 100);
             }
-            // console.log("[v0] Status update successful:", { newStatus, workTypeName })
         } catch (error: any) {
             console.error("[v0] Status update failed:", error);
             if (error?.response?.status === 401) {
@@ -1423,7 +1644,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         }
     }
 
-    // Add this function to refresh report numbers
+
     const refreshReportNumbers = async (serviceId: string, identifier: 'qatest' | 'elora', assigneeId: string) => {
         try {
             const response = await getReportNumbers(
@@ -1468,6 +1689,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             console.error(`Error refreshing report numbers for ${serviceId}:`, error);
         }
     };
+
 
     // Also update the handleStaffAssign function to include remark when updating report numbers
     // const handleStaffAssign = async (workTypeId: string) => {
@@ -1592,6 +1814,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
             return newAssignments
         })
+        setMachineData((prev: any) =>
+            prev.map((s: any) =>
+                s.id === workTypeId ? { ...s, status: newStatus } : s
+            )
+        )
     }
 
     const handleFileUpload = (workTypeId: string, file: File) => {
@@ -1659,6 +1886,35 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 showMessage(error?.message || "Failed to delete machine", "error");
             } finally {
                 setDeletingMachineId(null);
+            }
+        }
+    };
+
+    const handleEditPrice = async (serviceId: string, currentPrice: number) => {
+        const { value: newPrice } = await Swal.fire({
+            title: 'Edit Price',
+            input: 'number',
+            inputLabel: 'Enter new price',
+            inputValue: currentPrice,
+            showCancelButton: true,
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'You need to write something!'
+                }
+                if (Number(value) < 0) {
+                    return 'Price cannot be negative'
+                }
+            }
+        });
+
+        if (newPrice !== undefined && newPrice !== null) {
+            try {
+                await updateServicePrice(orderId as string, serviceId, Number(newPrice));
+                showMessage('Price updated successfully');
+                // Refresh data
+                fetchMachineData();
+            } catch (error: any) {
+                showMessage(error.message || 'Failed to update price', 'error');
             }
         }
     };
@@ -1946,16 +2202,16 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                         <h2 className="text-xl font-semibold text-gray-900">{service.machineType}</h2>
                                     </div>
                                     <div className="flex items-center gap-4 text-sm text-gray-600">
-                                        <span className="font-medium">Equipment ID: {service.equipmentId}</span>
+                                        <span className="font-medium">Equipment ID/Serial No: {service.equipmentId}</span>
                                         {/* ✅ Add Serial Number here */}
-                                        {service.workTypes[0]?.backendFields?.serialNo && service.workTypes[0]?.backendFields?.serialNo !== "N/A" && (
+                                        {/* {service.workTypes[0]?.backendFields?.serialNo && service.workTypes[0]?.backendFields?.serialNo !== "N/A" && (
                                             <span className="font-medium">Serial No: {service.workTypes[0]?.backendFields?.serialNo}</span>
-                                        )}
+                                        )} */}
                                         <span className="font-medium">Work Type: {service.workTypeName}</span>
                                     </div>
                                     {/* ✅ Quick summary of important fields */}
                                     <div className="flex flex-wrap gap-2 mt-2">
-                                        {service.partyCodeOrSysId && (
+                                        {/* {service.partyCodeOrSysId && (
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                 Party: {service.partyCodeOrSysId}
                                             </span>
@@ -1964,11 +2220,25 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                 PROC: {service.procNoOrPoNo}
                                             </span>
-                                        )}
+                                        )} */}
                                         {service.formattedProcExpiryDate && (
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                                 Exp: {service.formattedProcExpiryDate}
                                             </span>
+                                        )}
+                                        {service.price != null && service.price > 0 && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                    Price: ₹{service.price.toLocaleString()}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleEditPrice(service.id, service.price)}
+                                                    className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition-colors"
+                                                    title="Edit Price"
+                                                >
+                                                    <Edit className="h-3 w-3" />
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -2456,9 +2726,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         <div className="flex gap-2">
                                                                             <button
                                                                                 onClick={() => handleEditToggle(workType.id)}
-                                                                                className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                                                                                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold 
+                                                                                text-white rounded-xl 
+                                                                                bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 
+                                                                                shadow-lg hover:shadow-xl 
+                                                                                hover:scale-105 active:scale-95 
+                                                                                transition-all duration-300"
                                                                             >
-                                                                                <Edit className="h-3 w-3" />
+                                                                                <Edit className="h-4 w-4" />
                                                                                 Edit
                                                                             </button>
                                                                             <button
@@ -2823,9 +3098,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     <div className="flex gap-2">
                                                                         <button
                                                                             onClick={() => handleEditToggle(workType.id)}
-                                                                            className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                                                                            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold 
+             text-white rounded-xl 
+             bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 
+             shadow-lg hover:shadow-xl 
+             hover:scale-105 active:scale-95 
+             transition-all duration-300"
                                                                         >
-                                                                            <Edit className="h-3 w-3" />
+                                                                            <Edit className="h-4 w-4" />
                                                                             Edit
                                                                         </button>
                                                                         <button
@@ -2959,6 +3239,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 onClose={() => setAddMachineModalOpen(false)}
                 orderId={orderId || ""}
                 onSuccess={fetchMachineData}
+                isEmployeeLead={employees.some(emp => emp._id === leadOwnerId)}
             />
         </div>
     )

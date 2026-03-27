@@ -288,7 +288,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                     onClick={isViewOnly ? startEditing : handleSave}
                     disabled={isSaving}
                     className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving ? "bg-gray-400 cursor-not-allowed" : isViewOnly ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"
-            }`}
+                        }`}
                 >
                     {isSaving ? (
                         <>
@@ -306,7 +306,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
             {/* FCD */}
             <div className="bg-white shadow-md rounded-xl border border-gray-200 p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Focal Spot Distance (FCD)</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">FFD</h3>
                 <div className="flex items-center justify-center gap-4">
                     <input
                         type="number"
@@ -390,26 +390,26 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        value={row.statedNominal}
-                                        onChange={(e) => updateRow(row.id, 'statedNominal', e.target.value)}
-                                        disabled={isViewOnly}
-                                        className="w-32 px-4 py-2 text-center border rounded-lg font-bold focus:ring-2 focus:ring-purple-500"
-                                        placeholder="f"
-                                    />
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={row.statedNominal}
+                                            onChange={(e) => updateRow(row.id, 'statedNominal', e.target.value)}
+                                            disabled={isViewOnly}
+                                            className="w-32 px-4 py-2 text-center border rounded-lg font-bold focus:ring-2 focus:ring-purple-500"
+                                            placeholder="f"
+                                        />
                                     </td>
                                     <td className="px-6 py-4">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={row.measuredNominal}
-                                        onChange={(e) => updateRow(row.id, 'measuredNominal', e.target.value)}
-                                        disabled={isViewOnly}
-                                        className="w-32 px-4 py-2 text-center border-2 border-purple-400 rounded-lg font-bold focus:ring-4 focus:ring-purple-300"
-                                        placeholder="Nominal"
-                                    />
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={row.measuredNominal}
+                                            onChange={(e) => updateRow(row.id, 'measuredNominal', e.target.value)}
+                                            disabled={isViewOnly}
+                                            className="w-32 px-4 py-2 text-center border-2 border-purple-400 rounded-lg font-bold focus:ring-4 focus:ring-purple-300"
+                                            placeholder="Nominal"
+                                        />
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <span className={`inline-block px-8 py-3 rounded-full text-lg font-bold min-w-28 ${row.remark === 'Pass'

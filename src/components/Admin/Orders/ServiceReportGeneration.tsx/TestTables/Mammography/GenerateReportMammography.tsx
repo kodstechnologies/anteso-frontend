@@ -1429,8 +1429,6 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             run("Radiation Leakage Level (5 cm from Tube Housing)", () => getRadiationLeakageLevelByServiceIdForMammography(serviceId)),
             run("Imaging Performance Evaluation (Phantom)", () => getImagingPhantomByServiceIdForMammography(serviceId)),
             run("Radiation Protection Survey", () => getRadiationProtectionSurveyByServiceIdForMammography(serviceId)),
-            run("Equipment Settings Verification", () => getEquipmentSettingByServiceIdForMammography(serviceId)),
-            run("Maximum Radiation Levels at Different Locations", () => getMaximumRadiationLevelByServiceIdForMammography(serviceId)),
         ];
         if (hasTimer === true) {
             checks.push(run("Accuracy Of Irradiation Time", () => getAccuracyOfIrradiationTimeByServiceIdForMammography(serviceId)));

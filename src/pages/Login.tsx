@@ -23,6 +23,7 @@ interface JwtPayload {
     id: string;
     email: string;
     role?: string;
+    department?: string;
     exp?: number;
 }
 
@@ -77,6 +78,7 @@ const Login = () => {
                             userType: decoded.role,
                             // name: decoded.name,   // make sure your token contains "name"
                             email: decoded.email, // your token already has email
+                            department: decoded.department,
                         })
                     );
 

@@ -424,7 +424,13 @@ const EditEngineer = () => {
                   {/* Department */}
                   <div className={submitCount > 0 ? (errors.department ? 'has-error' : 'has-success') : ''}>
                     <label htmlFor="department">Department</label>
-                    <Field name="department" type="text" className="form-input" placeholder="Enter Department" />
+                    <Field as="select" name="department" className="form-select">
+                      <option value="" disabled>Select Department</option>
+                      <option value="Accounts">Accounts</option>
+                      <option value="Technical/Service">Technical/Service</option>
+                      <option value="Administrative">Administrative</option>
+                      <option value="Management">Management</option>
+                    </Field>
                     {submitCount > 0 && errors.department && (
                       <div className="text-danger mt-1">{String(errors.department)}</div>
                     )}

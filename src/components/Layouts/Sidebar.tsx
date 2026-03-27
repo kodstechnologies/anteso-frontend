@@ -37,6 +37,7 @@ const Sidebar = () => {
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
     const semidark = useSelector((state: IRootState) => state.themeConfig.semidark);
     const userType = useSelector((state: IRootState) => state.userConfig.userType);
+    const userDepartment = useSelector((state: IRootState) => state.userConfig.department);
     const location = useLocation();
     const dispatch = useDispatch();
     const { t } = useTranslation();
@@ -229,8 +230,8 @@ const Sidebar = () => {
                                         </NavLink>
                                     </li> */}
 
-                                    {/* Admin only: Accounts */}
-                                    {userType === 'admin' && (
+                                    {/* Admin or Accounts Department: Accounts */}
+                                    {(userType === 'admin' || userDepartment === 'Accounts') && (
                                         <li className="menu nav-item">
                                             <button type="button" className={`${currentMenu === 'accounts' ? 'active' : ''} nav-link group w-full`} onClick={() => toggleMenu('accounts')}>
                                                 <div className="flex items-center gap-2">

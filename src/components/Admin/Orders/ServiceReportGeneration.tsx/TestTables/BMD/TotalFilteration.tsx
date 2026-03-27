@@ -7,7 +7,7 @@ import {
     getTotalFiltrationByTestIdForBMD,
     getTotalFiltrationByServiceIdForBMD,
     updateTotalFiltrationForBMD,
-} from "../../../../../../api"; 
+} from "../../../../../../api";
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -46,10 +46,10 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
     const [toleranceValue, setToleranceValue] = useState("2.0");
-    const [totalFiltration, setTotalFiltration] = useState({ 
-        measured: "", 
+    const [totalFiltration, setTotalFiltration] = useState({
+        measured: "",
         required: "",
-        atKvp: "" 
+        atKvp: ""
     });
     const [filtrationTolerance, setFiltrationTolerance] = useState({
         forKvGreaterThan70: "1.5",
@@ -64,7 +64,7 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
         // If any value is invalid or empty, don't mark as fail (return true)
         // Only skip validation if values are truly invalid (NaN, empty, or tolerance is invalid)
         if (isNaN(measured) || isNaN(applied) || isNaN(tolerance) || tolerance <= 0 || applied === 0) return true;
-        
+
         const diff = Math.abs(measured - applied);
         if (sign === "+") {
             return measured <= applied + tolerance;
@@ -77,16 +77,16 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
 
     // Load existing test data
     useEffect(() => {
-            const loadTest = async () => {
+        const loadTest = async () => {
             if (!serviceId) {
                 setIsLoading(false);
                 return;
             }
 
-                setIsLoading(true);
-                try {
+            setIsLoading(true);
+            try {
                 let data = null;
-                
+
                 // Try loading by testId first if available
                 if (initialTestId) {
                     const result = await getTotalFiltrationByTestIdForBMD(initialTestId);
@@ -101,14 +101,14 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                     }
                 }
 
-                    if (data) {
+                if (data) {
                     setTestId(data._id || null);
-                        setMAStations(data.mAStations || ["50 mA", "100 mA"]);
+                    setMAStations(data.mAStations || ["50 mA", "100 mA"]);
                     const loadedToleranceSign = data.tolerance?.sign || "±";
                     const loadedToleranceValue = data.tolerance?.value || "2.0";
                     setToleranceSign(loadedToleranceSign);
                     setToleranceValue(loadedToleranceValue);
-                    
+
                     if (data.measurements && data.measurements.length > 0) {
                         setRows(
                             data.measurements.map((m: any) => {
@@ -121,17 +121,17 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                                 });
                                 const avgNum = parseFloat(m.averageKvp || "0");
                                 const avgStatus = checkTolerance(avgNum, rowApplied, tol, sign);
-                                
+
                                 // Check if any measured value fails or average fails
                                 const hasAnyFailure = measuredStatus.some((status: boolean) => status === false) || avgStatus === false;
-                                const hasValidData = !isNaN(rowApplied) && rowApplied > 0 && !isNaN(tol) && tol > 0 && 
+                                const hasValidData = !isNaN(rowApplied) && rowApplied > 0 && !isNaN(tol) && tol > 0 &&
                                     ((m.measuredValues || []).some((v: string) => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
-                                
+
                                 let remark: "PASS" | "FAIL" | "-" = m.remarks || "-";
                                 if (hasValidData) {
                                     remark = hasAnyFailure ? "FAIL" : "PASS";
                                 }
-                                
+
                                 return {
                                     id: Date.now().toString() + Math.random(),
                                     appliedKvp: m.appliedKvp || "",
@@ -144,32 +144,32 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                             })
                         );
                     }
-                        setTotalFiltration({
-                            measured: data.totalFiltration?.measured || "",
-                            required: data.totalFiltration?.required || "",
-                            atKvp: data.totalFiltration?.atKvp || "",
-                        });
-                        setFiltrationTolerance({
-                            forKvGreaterThan70: data.filtrationTolerance?.forKvGreaterThan70 || "1.5",
-                            forKvBetween70And100: data.filtrationTolerance?.forKvBetween70And100 || "2.0",
-                            forKvGreaterThan100: data.filtrationTolerance?.forKvGreaterThan100 || "2.5",
-                            kvThreshold1: data.filtrationTolerance?.kvThreshold1 || "70",
-                            kvThreshold2: data.filtrationTolerance?.kvThreshold2 || "100",
-                        });
-                        setIsSaved(true);
+                    setTotalFiltration({
+                        measured: data.totalFiltration?.measured || "",
+                        required: data.totalFiltration?.required || "",
+                        atKvp: data.totalFiltration?.atKvp || "",
+                    });
+                    setFiltrationTolerance({
+                        forKvGreaterThan70: data.filtrationTolerance?.forKvGreaterThan70 || "1.5",
+                        forKvBetween70And100: data.filtrationTolerance?.forKvBetween70And100 || "2.0",
+                        forKvGreaterThan100: data.filtrationTolerance?.forKvGreaterThan100 || "2.5",
+                        kvThreshold1: data.filtrationTolerance?.kvThreshold1 || "70",
+                        kvThreshold2: data.filtrationTolerance?.kvThreshold2 || "100",
+                    });
+                    setIsSaved(true);
                 } else {
                     setIsSaved(false);
-                    }
+                }
             } catch (err: any) {
                 if (err.response?.status !== 404) {
                     toast.error("Failed to load test data");
                 }
                 setIsSaved(false);
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            loadTest();
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadTest();
     }, [serviceId, initialTestId, toleranceSign, toleranceValue]);
 
     // Load initialData from CSV if provided
@@ -195,16 +195,16 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                             });
                             const avgNum = parseFloat(m.averageKvp || "0");
                             const avgStatus = checkTolerance(avgNum, rowApplied, tol, sign);
-                            
+
                             const hasAnyFailure = measuredStatus.some((status: boolean) => status === false) || avgStatus === false;
-                            const hasValidData = !isNaN(rowApplied) && rowApplied > 0 && !isNaN(tol) && tol > 0 && 
+                            const hasValidData = !isNaN(rowApplied) && rowApplied > 0 && !isNaN(tol) && tol > 0 &&
                                 ((m.measuredValues || []).some((v: string) => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
-                            
+
                             let remark: "PASS" | "FAIL" | "-" = m.remarks || "-";
                             if (hasValidData) {
                                 remark = hasAnyFailure ? "FAIL" : "PASS";
                             }
-                            
+
                             return {
                                 id: Date.now().toString() + Math.random(),
                                 appliedKvp: m.appliedKvp || "",
@@ -303,8 +303,8 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
     // Your existing functions
     const addMAColumn = () => {
         setMAStations(prev => [...prev, "200 mA"]);
-        setRows(prev => prev.map(row => ({ 
-            ...row, 
+        setRows(prev => prev.map(row => ({
+            ...row,
             measuredValues: [...row.measuredValues, ""],
             measuredValuesStatus: [...(row.measuredValuesStatus || []), true]
         })));
@@ -367,19 +367,19 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                 const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
                 const avgNum = parseFloat(avg || "0");
                 const avgStatus = checkTolerance(avgNum, applied, tol, toleranceSign);
-                
+
                 // Check if any measured value fails or average fails
                 const hasAnyFailure = newMeasuredStatus.some(status => status === false) || avgStatus === false;
-                const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 && 
+                const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 &&
                     (row.measuredValues.some(v => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
-                
+
                 let remark: "PASS" | "FAIL" | "-" = "-";
                 if (hasValidData) {
                     remark = hasAnyFailure ? "FAIL" : "PASS";
                 }
-                
-                return { 
-                    ...row, 
+
+                return {
+                    ...row,
                     appliedKvp: value,
                     measuredValuesStatus: newMeasuredStatus,
                     averageKvpStatus: avgStatus,
@@ -395,35 +395,35 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
 
             const applied = parseFloat(row.appliedKvp || "0");
             const tol = parseFloat(toleranceValue || "0");
-            
+
             // Check each measured value against tolerance
             const newMeasuredStatus = newMeasured.map(val => {
                 const measured = parseFloat(val || "0");
                 return checkTolerance(measured, applied, tol, toleranceSign);
             });
-            
+
             // Check average kVp against tolerance
             const avgNum = parseFloat(avg || "0");
             const avgStatus = checkTolerance(avgNum, applied, tol, toleranceSign);
-            
+
             // Check if any measured value fails or average fails
             const hasAnyFailure = newMeasuredStatus.some(status => status === false) || avgStatus === false;
-            const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 && 
+            const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 &&
                 (newMeasured.some(v => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
-            
+
             let remark: "PASS" | "FAIL" | "-" = "-";
             if (hasValidData) {
                 remark = hasAnyFailure ? "FAIL" : "PASS";
             }
 
             setIsSaved(false);
-            return { 
-                ...row, 
-                measuredValues: newMeasured, 
+            return {
+                ...row,
+                measuredValues: newMeasured,
                 measuredValuesStatus: newMeasuredStatus,
-                averageKvp: avg, 
+                averageKvp: avg,
                 averageKvpStatus: avgStatus,
-                remarks: remark 
+                remarks: remark
             };
         }));
     };
@@ -444,7 +444,7 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
         // 1. If kV < threshold1 (e.g., < 70): measured must be >= forKvGreaterThan70 (e.g., >= 1.5) to PASS
         // 2. If threshold1 <= kV <= threshold2 (e.g., 70 <= kV <= 100): measured must be >= forKvBetween70And100 (e.g., >= 2.0) to PASS
         // 3. If kV > threshold2 (e.g., > 100): measured must be >= forKvGreaterThan100 (e.g., >= 2.5) to PASS
-        
+
         if (kvp < threshold1) {
             // kV < threshold1 (e.g., < 70) - measured must be >= forKvGreaterThan70 (e.g., >= 1.5)
             requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan70);
@@ -478,8 +478,8 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                     onClick={isSaved ? () => setIsSaved(false) : saveTest}
                     disabled={isSaving}
                     className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
-                            ? "bg-orange-600 text-white hover:bg-orange-700"
-                            : "bg-teal-600 text-white hover:bg-teal-700"
+                        ? "bg-orange-600 text-white hover:bg-orange-700"
+                        : "bg-teal-600 text-white hover:bg-teal-700"
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     {isSaving ? (
@@ -512,10 +512,10 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                            <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600  tracking-wider border-r">
                                 Applied kVp
                             </th>
-                            <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                            <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600  tracking-wider border-r">
                                 <div className="flex items-center justify-between">
                                     <span>Measured Values (kVp)</span>
                                     <button onClick={addMAColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
@@ -523,17 +523,17 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                                     </button>
                                 </div>
                             </th>
-                            <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                            <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600  tracking-wider border-r">
                                 Average kVp
                             </th>
-                            <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
+                            <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-600  tracking-wider">
                                 Remarks
                             </th>
                             <th rowSpan={2} className="w-12" />
                         </tr>
                         <tr>
                             {mAStations.map((header, idx) => (
-                                <th key={idx} className="px-3 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider border-r">
+                                <th key={idx} className="px-3 py-3 text-center text-xs font-medium text-gray-600  tracking-wider border-r">
                                     <div className="flex items-center justify-center gap-1">
                                         <input
                                             type="text"
@@ -566,10 +566,10 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                                 {row.measuredValues.map((val, idx) => {
                                     const hasValue = val !== "" && !isNaN(parseFloat(val));
                                     // Use stored status if available, otherwise calculate on the fly
-                                    const isValid = row.measuredValuesStatus && row.measuredValuesStatus.length > idx 
-                                        ? row.measuredValuesStatus[idx] 
+                                    const isValid = row.measuredValuesStatus && row.measuredValuesStatus.length > idx
+                                        ? row.measuredValuesStatus[idx]
                                         : (val === "" || checkTolerance(parseFloat(val || "0"), parseFloat(row.appliedKvp || "0"), parseFloat(toleranceValue || "0"), toleranceSign));
-                                    
+
                                     return (
                                         <td key={idx} className={`px-3 py-3 text-center border-r ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
                                             <input
@@ -588,8 +588,8 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                                 </td>
                                 <td className="px-6 py-3 text-center">
                                     <span className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === "PASS" ? "bg-green-100 text-green-800" :
-                                            row.remarks === "FAIL" ? "bg-red-100 text-red-800" :
-                                                "bg-gray-100 text-gray-600"
+                                        row.remarks === "FAIL" ? "bg-red-100 text-red-800" :
+                                            "bg-gray-100 text-gray-600"
                                         }`}>
                                         {row.remarks}
                                     </span>
@@ -620,8 +620,8 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                     <span className="font-medium text-indigo-800">Tolerance:</span>
                     <select
                         value={toleranceSign}
-                        onChange={(e) => { 
-                            setToleranceSign(e.target.value as any); 
+                        onChange={(e) => {
+                            setToleranceSign(e.target.value as any);
                             setIsSaved(false);
                             // Recalculate all validations when tolerance sign changes
                             setRows(prev => prev.map(row => {
@@ -633,17 +633,17 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                                 });
                                 const avgNum = parseFloat(row.averageKvp || "0");
                                 const avgStatus = checkTolerance(avgNum, applied, tol, e.target.value as "+" | "-" | "±");
-                                
+
                                 // Check if any measured value fails or average fails
                                 const hasAnyFailure = newMeasuredStatus.some((status: boolean) => status === false) || avgStatus === false;
-                                const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 && 
+                                const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 &&
                                     (row.measuredValues.some(v => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
-                                
+
                                 let remark: "PASS" | "FAIL" | "-" = "-";
                                 if (hasValidData) {
                                     remark = hasAnyFailure ? "FAIL" : "PASS";
                                 }
-                                
+
                                 return {
                                     ...row,
                                     measuredValuesStatus: newMeasuredStatus,
@@ -662,8 +662,8 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                         type="number"
                         step="0.1"
                         value={toleranceValue}
-                        onChange={(e) => { 
-                            setToleranceValue(e.target.value); 
+                        onChange={(e) => {
+                            setToleranceValue(e.target.value);
                             setIsSaved(false);
                             // Recalculate all validations when tolerance value changes
                             const newTol = parseFloat(e.target.value || "0");
@@ -675,17 +675,17 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                                 });
                                 const avgNum = parseFloat(row.averageKvp || "0");
                                 const avgStatus = checkTolerance(avgNum, applied, newTol, toleranceSign);
-                                
+
                                 // Check if any measured value fails or average fails
                                 const hasAnyFailure = newMeasuredStatus.some((status: boolean) => status === false) || avgStatus === false;
-                                const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(newTol) && newTol > 0 && 
+                                const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(newTol) && newTol > 0 &&
                                     (row.measuredValues.some(v => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
-                                
+
                                 let remark: "PASS" | "FAIL" | "-" = "-";
                                 if (hasValidData) {
                                     remark = hasAnyFailure ? "FAIL" : "PASS";
                                 }
-                                
+
                                 return {
                                     ...row,
                                     measuredValuesStatus: newMeasuredStatus,
@@ -701,11 +701,10 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
             </div>
 
             {/* Total Filtration */}
-            <div className={`bg-white shadow-lg rounded-lg border p-8 ${
-                getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
-                    ? 'border-red-300 bg-red-50'
-                    : 'border-gray-300'
-            }`}>
+            <div className={`bg-white shadow-lg rounded-lg border p-8 ${getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
+                ? 'border-red-300 bg-red-50'
+                : 'border-gray-300'
+                }`}>
                 <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
                 <div className="flex flex-col items-center justify-center gap-6">
                     <div className="flex items-center justify-center gap-4 flex-wrap">
@@ -726,13 +725,12 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                             value={totalFiltration.required}
                             onChange={(e) => { setTotalFiltration({ ...totalFiltration, required: e.target.value }); setIsSaved(false); }}
                             disabled={isSaved}
-                            className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg ${
-                                isSaved 
-                                    ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' 
-                                    : getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
-                                        ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-4 focus:ring-red-200'
-                                        : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'
-                            }`}
+                            className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg ${isSaved
+                                ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed'
+                                : getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
+                                    ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-4 focus:ring-red-200'
+                                    : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'
+                                }`}
                             placeholder="2.50"
                         />
                         <span className="text-3xl font-bold text-gray-800">mm of Al</span>

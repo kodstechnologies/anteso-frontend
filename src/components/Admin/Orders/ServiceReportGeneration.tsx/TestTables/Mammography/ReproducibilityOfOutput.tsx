@@ -34,8 +34,8 @@ interface SavedData {
   _id?: string;
 }
 
-const ReproducibilityOfOutput: React.FC<{ 
-  serviceId: string; 
+const ReproducibilityOfOutput: React.FC<{
+  serviceId: string;
   refreshKey?: number;
   initialData?: {
     outputRows?: Array<{ kv: string; mas: string; outputs: string[] }>;
@@ -43,7 +43,7 @@ const ReproducibilityOfOutput: React.FC<{
   };
 }> = ({ serviceId, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(null);
-  
+
   // ---- Radiation Output ------------------------------------
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
     {
@@ -92,7 +92,7 @@ const ReproducibilityOfOutput: React.FC<{
       }
 
       const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-      
+
       let cov = 0;
       if (nums.length > 1) {
         const variance =
@@ -182,7 +182,7 @@ const ReproducibilityOfOutput: React.FC<{
     if (initialData) {
       return;
     }
-    
+
     // Reset state when refreshKey changes
     if (refreshKey !== undefined) {
       setIsLoading(true);
@@ -200,7 +200,7 @@ const ReproducibilityOfOutput: React.FC<{
       setHasSaved(false);
       setIsEditing(true);
     }
-    
+
     const load = async () => {
       if (!serviceId) {
         setIsLoading(false);
@@ -214,13 +214,13 @@ const ReproducibilityOfOutput: React.FC<{
         console.log('ReproducibilityOfOutput: Loaded data:', data);
         if (data) {
           setTestId(data._id || null);
-          
+
           // Load output rows
           if (data.outputRows && Array.isArray(data.outputRows) && data.outputRows.length > 0) {
             const firstRow = data.outputRows[0];
             const numCols = firstRow.outputs?.length || 5;
             setOutputHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
-            
+
             setOutputRows(data.outputRows.map((r: any, i: number) => ({
               id: Date.now().toString() + i,
               kv: String(r.kv || ''),
@@ -231,9 +231,9 @@ const ReproducibilityOfOutput: React.FC<{
               remark: String(r.remark || ''),
             })));
           }
-          
+
           if (data.tolerance) setTolerance(String(data.tolerance));
-          
+
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -388,13 +388,13 @@ const ReproducibilityOfOutput: React.FC<{
               <tr>
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r"
                 >
                   Applied kV
                 </th>
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r"
                 >
                   mAs
                 </th>
@@ -402,7 +402,7 @@ const ReproducibilityOfOutput: React.FC<{
                 {/* Dynamic measured columns + plus button */}
                 <th
                   colSpan={outputColumnsCount}
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
                 >
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
@@ -420,19 +420,19 @@ const ReproducibilityOfOutput: React.FC<{
 
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r"
                 >
                   Avg (X̄)
                 </th>
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r"
                 >
-                  CV
+                  CoV
                 </th>
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-100"
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider bg-green-100"
                 >
                   Remarks
                 </th>
@@ -444,7 +444,7 @@ const ReproducibilityOfOutput: React.FC<{
                 {outputHeaders.map((header, idx) => (
                   <th
                     key={idx}
-                    className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
+                    className="px-2 py-2 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
                   >
                     <div className="flex items-center justify-center gap-1">
                       <input
@@ -529,13 +529,12 @@ const ReproducibilityOfOutput: React.FC<{
                   {/* Remarks */}
                   <td className="px-4 py-2 text-center">
                     <span
-                      className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                        row.remark === 'Pass'
-                          ? 'bg-green-100 text-green-800'
-                          : row.remark === 'Fail'
+                      className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${row.remark === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : row.remark === 'Fail'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-400'
-                      }`}
+                        }`}
                     >
                       {row.remark || '—'}
                     </span>
