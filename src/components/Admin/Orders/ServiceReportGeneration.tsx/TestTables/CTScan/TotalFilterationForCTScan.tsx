@@ -58,7 +58,8 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
     const handleMeasuredTFBlur = () => {
         const num = parseFloat(row.measuredTF);
         if (!isNaN(num)) {
-            setRow(prev => ({ ...prev, measuredTF: num.toFixed(2) }));
+            // Allow more decimal precision by not rounding to 2
+            setRow(prev => ({ ...prev, measuredTF: String(num) }));
         } else if (row.measuredTF.trim() === '') {
             setRow(prev => ({ ...prev, measuredTF: '' }));
         }
@@ -139,7 +140,7 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
                             appliedMA: String(r.appliedMA || ''),
                             time: String(r.time || ''),
                             sliceThickness: String(r.sliceThickness || ''),
-                            measuredTF: r.measuredTF ? parseFloat(r.measuredTF).toFixed(2) : '',
+                            measuredTF: r.measuredTF ? String(r.measuredTF) : '',
                         });
                     }
                     setHasSaved(true);
@@ -172,6 +173,7 @@ const TotalFilterationForCTScan: React.FC<Props> = ({ serviceId, testId: propTes
                 {
                     ...row,
                     measuredTF: parseFloat(row.measuredTF),
+                    remarks: remark,
                 },
             ],
             tubeId: tubeId ?? null,

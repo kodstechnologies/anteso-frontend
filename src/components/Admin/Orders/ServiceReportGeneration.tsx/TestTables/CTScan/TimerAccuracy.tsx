@@ -283,13 +283,13 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                   kVp
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                   Slice Thickness (mm)
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
                   mA
                 </th>
               </tr>
@@ -344,16 +344,16 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                   Set Time (ms)
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                   Observed Time (ms)
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                   % Error
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
                   Remarks
                 </th>
                 <th className="w-12" />

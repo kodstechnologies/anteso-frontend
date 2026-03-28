@@ -323,6 +323,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         result: row.result,
         unit: row.unit,
         mgy: row.mgy,
+        remark: row.remark,
       })),
       toleranceValue,
       toleranceOperator,

@@ -395,7 +395,7 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
 
         const payload = {
             table1: [table1Row],
-            table2: table2Rows.map(r => {
+            table2: processedTable2.map(r => {
                 if (r.id === 'peripheral') {
                     return {
                         result: r.result,

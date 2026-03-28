@@ -19,7 +19,7 @@ const MechanicalTestSummary: React.FC<MechanicalTestSummaryProps> = ({ testData 
     }>
   ) => {
     if (testRows.length === 0) return;
-    
+
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null,
@@ -42,7 +42,7 @@ const MechanicalTestSummary: React.FC<MechanicalTestSummaryProps> = ({ testData 
     const toleranceValue = data.toleranceValue || "2";
     const tolerance = `${toleranceSign}${toleranceValue}`;
     const remark = data.remark || "-";
-    
+
     addRowsForTest("Alignment of Table/Gantry", [{
       specified: "Gantry midline to table midline",
       measured: result,
@@ -58,7 +58,7 @@ const MechanicalTestSummary: React.FC<MechanicalTestSummaryProps> = ({ testData 
       const toleranceSign = testData.gantryTilt.toleranceSign || "±";
       const toleranceValue = testData.gantryTilt.toleranceValue || "2";
       const tolerance = `${toleranceSign}${toleranceValue}°`;
-      
+
       const testRows = validRows.map((m: any) => ({
         specified: m.actual || "-",
         measured: m.measured || "-",
@@ -76,7 +76,7 @@ const MechanicalTestSummary: React.FC<MechanicalTestSummaryProps> = ({ testData 
       const toleranceSign = testData.tablePosition.toleranceSign || "±";
       const toleranceValue = testData.tablePosition.toleranceValue || "2";
       const tolerance = `${toleranceSign}${toleranceValue} mm`;
-      
+
       const testRows = validRows.map((row: any) => ({
         specified: row.expected || "-",
         measured: row.measured || "-",
@@ -127,9 +127,8 @@ const MechanicalTestSummary: React.FC<MechanicalTestSummaryProps> = ({ testData 
                 <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent">
                   {row.tolerance}
                 </td>
-                <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px] print:leading-tight ${
-                  row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                }`}>
+                <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px] print:leading-tight ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                  }`}>
                   {row.remarks}
                 </td>
               </tr>
