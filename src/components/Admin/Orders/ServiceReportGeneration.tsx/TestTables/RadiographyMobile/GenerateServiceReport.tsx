@@ -112,7 +112,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     category: "",
   });
 
-  
+
   const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date (YYYY-MM-DD); issue date must be >= this
   const defaultNotes = [
     "The Test Report relates only to the above item only.",

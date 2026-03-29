@@ -591,18 +591,18 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                         <tbody>
                           {Array.isArray(testData.congruence.techniqueFactors)
                             ? testData.congruence.techniqueFactors.map((tf: any, idx: number) => (
-                                <tr key={idx}>
-                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{tf.fcd ?? tf.ffd ?? "-"}</td>
-                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{tf.kv ?? "-"}</td>
-                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{tf.mas ?? "-"}</td>
-                                </tr>
-                              ))
+                              <tr key={idx}>
+                                <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{tf.fcd ?? tf.ffd ?? "-"}</td>
+                                <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{tf.kv ?? "-"}</td>
+                                <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{tf.mas ?? "-"}</td>
+                              </tr>
+                            ))
                             : (
-                                <tr>
-                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{(testData.congruence.techniqueFactors as any)?.fcd ?? (testData.congruence.techniqueFactors as any)?.ffd ?? "-"}</td>
-                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{(testData.congruence.techniqueFactors as any)?.kv ?? "-"}</td>
-                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{(testData.congruence.techniqueFactors as any)?.mas ?? "-"}</td>
-                                </tr>
+                              <tr>
+                                <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{(testData.congruence.techniqueFactors as any)?.fcd ?? (testData.congruence.techniqueFactors as any)?.ffd ?? "-"}</td>
+                                <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{(testData.congruence.techniqueFactors as any)?.kv ?? "-"}</td>
+                                <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{(testData.congruence.techniqueFactors as any)?.mas ?? "-"}</td>
+                              </tr>
                             )}
                         </tbody>
                       </table>
@@ -678,15 +678,15 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
 
                           const statedNominal = formatValue(
                             spot.statedNominal ??
-                              (spot.statedWidth != null && spot.statedHeight != null
-                                ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                                : spot.statedWidth ?? spot.statedHeight)
+                            (spot.statedWidth != null && spot.statedHeight != null
+                              ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                              : spot.statedWidth ?? spot.statedHeight)
                           );
                           const measuredNominal = formatValue(
                             spot.measuredNominal ??
-                              (spot.measuredWidth != null && spot.measuredHeight != null
-                                ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                                : spot.measuredWidth ?? spot.measuredHeight)
+                            (spot.measuredWidth != null && spot.measuredHeight != null
+                              ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                              : spot.measuredWidth ?? spot.measuredHeight)
                           );
 
                           return (

@@ -225,6 +225,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
       criteria?: string;
       tolerance: string;
       remarks: "Pass" | "Fail";
+      measuredRowSpan?: number;
       toleranceRowSpan?: number;
       remarksRowSpan?: number;
     }>
@@ -241,9 +242,11 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         criteria: testRow.criteria,
         tolerance: testRow.tolerance,
         remarks: testRow.remarks,
+        measuredRowSpan: testRow.measuredRowSpan ?? (idx === 0 ? 1 : 0),
         toleranceRowSpan: testRow.toleranceRowSpan ?? (idx === 0 ? 1 : 0),
         remarksRowSpan: testRow.remarksRowSpan ?? (idx === 0 ? 1 : 0),
         isFirstRow: idx === 0,
+        isFirstMeasuredRow: testRow.measuredRowSpan !== undefined ? (testRow.measuredRowSpan > 0 && idx === 0) : true,
         isFirstToleranceRow: testRow.toleranceRowSpan !== undefined ? (testRow.toleranceRowSpan > 0 && idx === 0) : true,
         isFirstRemarksRow: testRow.remarksRowSpan !== undefined ? (testRow.remarksRowSpan > 0 && idx === 0) : true,
       });
@@ -322,14 +325,17 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const tol = testData.maLinearity.tolerance || "0.1";
     const validRows = testData.maLinearity.table2.filter((row: any) => row.mAsApplied || row.col);
     if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => {
+      const testRows = validRows.map((row: any, idx: number) => {
         const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
         const isPass = row.col ? parseFloat(row.col) <= parseFloat(tol) : false;
         return {
           specified: row.mAsApplied || "-",
-          measured: col,
+          measured: col !== "-" ? `CoL = ${col}` : "-",
           tolerance: `≤ ${tol}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          measuredRowSpan: idx === 0 ? validRows.length : 0,
+          toleranceRowSpan: idx === 0 ? validRows.length : 0,
+          remarksRowSpan: idx === 0 ? validRows.length : 0,
         };
       });
       addRowsForTest("mA/mAs Linearity (Coefficient of Linearity)", testRows);
@@ -477,7 +483,6 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
   // 8. OUTPUT CONSISTENCY - Separate rows for each value
   if (testData.outputConsistency) {
     const { outputRows, tolerance } = testData.outputConsistency;
-    // Handle tolerance as object (new format) or number (old format)
     const tolValue = tolerance && typeof tolerance === 'object' && tolerance.value
       ? parseFloat(tolerance.value)
       : (typeof tolerance === 'string' || typeof tolerance === 'number')
@@ -488,15 +493,40 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
       : '<=';
 
     if (outputRows && Array.isArray(outputRows) && outputRows.length > 0) {
-      const validRows = outputRows.filter((row: any) => row.kvp || row.mean);
+      const validRows = outputRows.filter((row: any) => 
+        row.kvp || row.mean || row.cov || (row.outputs && row.outputs.length > 0)
+      );
+
       if (validRows.length > 0) {
+        const getVal = (o: any): number => {
+          if (o == null) return NaN;
+          if (typeof o === 'number') return o;
+          if (typeof o === 'string') return parseFloat(o);
+          if (typeof o === 'object' && 'value' in o) return parseFloat(o.value);
+          return NaN;
+        };
+
         const testRows = validRows.map((row: any) => {
-          // CoV is stored as decimal, not percentage
-          const cov = row.cov ? parseFloat(row.cov).toFixed(4) : "-";
-          // Compare CoV (decimal) with tolerance (decimal)
+          // Calculate on-the-fly if cov is missing
+          const outputs: number[] = (row.outputs ?? []).map(getVal).filter((n: number) => !isNaN(n) && n > 0);
+          const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+          
+          let cvValue = row.cov || row.cv;
+          if (!cvValue && avg !== null && avg > 0) {
+            const variance = outputs.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / outputs.length;
+            const cov = Math.sqrt(variance) / avg;
+            if (isFinite(cov)) {
+              cvValue = cov;
+            }
+          }
+
+          const formattedCov = cvValue !== undefined && cvValue !== null && cvValue !== "" && cvValue !== "-"
+            ? (typeof cvValue === 'number' ? cvValue.toFixed(4) : parseFloat(String(cvValue)).toFixed(4))
+            : "-";
+
           let isPass = false;
-          if (cov !== "-") {
-            const covNum = parseFloat(row.cov);
+          if (formattedCov !== "-") {
+            const covNum = parseFloat(formattedCov);
             if (tolOperator === '<=' || tolOperator === '<') {
               isPass = covNum <= tolValue;
             } else {
@@ -506,8 +536,8 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
           const operatorSymbol = tolOperator === '<=' ? '≤' : tolOperator === '<' ? '<' : tolOperator === '>=' ? '≥' : '>';
           return {
             specified: row.kvp ? `${row.kvp} kVp` : "Varies with kVp",
-            measured: cov === "-" ? "-" : cov,
-            tolerance: `${operatorSymbol} ${tolValue}`, // Display as decimal, not percentage
+            measured: formattedCov !== "-" ? "CoV = " + formattedCov : "-",
+            tolerance: `${operatorSymbol} ${tolValue}`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
@@ -653,7 +683,11 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
                   </td>
                 ) : null}
                 <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.specified}</td>
-                <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.measured}</td>
+                {row.isFirstMeasuredRow ? (
+                  <td rowSpan={row.measuredRowSpan || 1} className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">
+                    {row.measured}
+                  </td>
+                ) : null}
                 <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent">
                   {row.criteria || "-"}
                 </td>

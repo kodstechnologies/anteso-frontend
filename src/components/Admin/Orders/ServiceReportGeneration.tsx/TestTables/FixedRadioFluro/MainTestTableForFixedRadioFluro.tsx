@@ -21,15 +21,11 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
     return Object.keys(obj).length === 0;
   };
 
-  // Compute CoV from outputs array (when backend doesn't return cv)
-  const computeCovFromOutputs = (outputs: any[]): number | null => {
-    if (!Array.isArray(outputs) || outputs.length === 0) return null;
-    const values = outputs.map((o: any) => parseFloat(o?.value ?? o)).filter((v: number) => !isNaN(v) && v > 0);
-    if (values.length === 0) return null;
-    const avg = values.reduce((a: number, b: number) => a + b, 0) / values.length;
-    const variance = values.reduce((sum: number, val: number) => sum + Math.pow(val - avg, 2), 0) / values.length;
-    const stdDev = Math.sqrt(variance);
-    return avg > 0 ? stdDev / avg : null;
+  // Helper to safely render Mongoose objects
+  const safeVal = (v: any): string => {
+    if (v == null) return "-";
+    if (typeof v === "object" && "value" in v) return v.value ?? "-";
+    return String(v);
   };
 
   const addRowsForTest = (
@@ -40,19 +36,23 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
       tolerance: string;
       remarks: "Pass" | "Fail";
     }>,
-    toleranceRowSpan: boolean = false
+    toleranceRowSpan: boolean = false,
+    measuredRowSpan: boolean = false
   ) => {
     if (testRows.length === 0) return;
-
+    
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
-
+    const sharedMeasured = measuredRowSpan ? testRows[0]?.measured : null;
+    
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null,
         parameter: idx === 0 ? parameter : null,
         rowSpan: idx === 0 ? testRows.length : 0,
         specified: testRow.specified,
-        measured: testRow.measured,
+        measured: measuredRowSpan ? (idx === 0 ? sharedMeasured : null) : testRow.measured,
+        measuredRowSpan: measuredRowSpan ? (idx === 0 ? testRows.length : 0) : 0,
+        hasMeasuredRowSpan: measuredRowSpan,
         tolerance: toleranceRowSpan ? (idx === 0 ? sharedTolerance : null) : testRow.tolerance,
         toleranceRowSpan: toleranceRowSpan ? (idx === 0 ? testRows.length : 0) : 0,
         hasToleranceRowSpan: toleranceRowSpan,
@@ -62,270 +62,378 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
     });
   };
 
-  // ——— Order matches GenerateServiceReport: Congruence, Central Beam, Effective Focal Spot, then rest ———
-
-  // 1. Congruence of Radiation & Light Field
-  if (testData.congruenceOfRadiation && !isEmpty(testData.congruenceOfRadiation)) {
-    const cm = testData.congruenceOfRadiation.congruenceMeasurements;
-    if (Array.isArray(cm) && cm.length > 0) {
-      const testRows = cm.map((m: any) => {
-        const percentFED = m.percentFED != null ? parseFloat(m.percentFED) : null;
-        const tolVal = m.tolerance != null ? parseFloat(m.tolerance) : 2;
-        const isPass = percentFED != null ? percentFED <= tolVal : (m.remark === "Pass" || m.remark === "PASS");
-        return {
-          specified: m.dimension || "—",
-          measured: percentFED != null ? `${percentFED}%` : (m.observedShift != null ? `${m.observedShift} cm` : "-"),
-          tolerance: m.tolerance != null ? `≤ ${m.tolerance}%` : "≤ 2%",
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Congruence of Radiation & Light Field", testRows);
-    } else {
-      const maxMisalignment = testData.congruenceOfRadiation.maxMisalignment ?? testData.congruenceOfRadiation.misalignment ?? testData.congruenceOfRadiation.value;
-      if (maxMisalignment != null && maxMisalignment !== "") {
-        const misalignment = parseFloat(maxMisalignment);
-        if (!isNaN(misalignment)) {
-          const limit = 2;
-          addRowsForTest("Congruence of Radiation & Light Field", [{
-            specified: "Max Misalignment",
-            measured: `${misalignment} cm`,
-            tolerance: `≤ ${limit} cm`,
-            remarks: (misalignment <= limit ? "Pass" : "Fail") as "Pass" | "Fail",
-          }]);
-        }
-      }
-    }
-  }
-
-  // 2. Central Beam Alignment Test
-  if (testData.centralBeamAlignment && !isEmpty(testData.centralBeamAlignment)) {
-    const ot = testData.centralBeamAlignment.observedTilt;
-    if (ot && (ot.value != null || ot.remark)) {
-      const val = ot.value != null ? parseFloat(ot.value) : null;
-      const tol = testData.centralBeamAlignment.tolerance;
-      const tolVal = tol?.value != null ? parseFloat(tol.value) : 1;
-      const isPass = ot.remark === "Pass" || ot.remark === "PASS" || (val != null && val <= tolVal);
-      addRowsForTest("Central Beam Alignment Test", [{
-        specified: "Observed tilt",
-        measured: val != null ? `${val}°` : (ot.remark || "-"),
-        tolerance: tol?.value != null ? `${tol.operator || "≤"} ${tol.value}°` : "≤ 1°",
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      }]);
-    } else {
-      const deviation = testData.centralBeamAlignment.deviation ?? testData.centralBeamAlignment.value;
-      const sid = testData.centralBeamAlignment.sid || 100;
-      if (deviation != null && deviation !== "") {
-        const dev = parseFloat(deviation);
-        if (!isNaN(dev)) {
-          const limit = 0.01 * sid;
-          addRowsForTest("Central Beam Alignment Test", [{
-            specified: "Deviation",
-            measured: `${dev} mm`,
-            tolerance: `≤ 1% of SID (${sid} mm)`,
-            remarks: (dev <= limit ? "Pass" : "Fail") as "Pass" | "Fail",
-          }]);
-        }
-      }
-    }
-  }
-
-  // 3. Effective Focal Spot Size
-  if (testData.effectiveFocalSpot && !isEmpty(testData.effectiveFocalSpot)) {
-    if (testData.effectiveFocalSpot.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
-      const testRows = testData.effectiveFocalSpot.focalSpots.map((spot: any) => ({
-        specified: `${spot.statedWidth || "-"} x ${spot.statedHeight || "-"} mm`,
-        measured: `${spot.measuredWidth || "-"} x ${spot.measuredHeight || "-"} mm`,
-        tolerance: "Per AERB limits",
-        remarks: "Pass" as "Pass" | "Fail",
-      }));
-      addRowsForTest("Effective Focal Spot Size", testRows);
-    } else {
-      const nominal = testData.effectiveFocalSpot.nominalFocalSpotSize || "-";
-      const measured = testData.effectiveFocalSpot.measuredFocalSpotSize || "-";
-      const tolerance = testData.effectiveFocalSpot.tolerance || "-";
-      const isPass = testData.effectiveFocalSpot.isPass;
-      addRowsForTest("Effective Focal Spot Size", [{
-        specified: nominal !== "-" ? `${nominal} mm` : "-",
-        measured: measured !== "-" ? `${measured} mm` : "-",
-        tolerance: tolerance,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      }]);
-    }
-  }
-
-  // 4. Accuracy of Irradiation Time (Timer Test)
-  if (testData.accuracyOfIrradiationTime && !isEmpty(testData.accuracyOfIrradiationTime)) {
-    if (testData.accuracyOfIrradiationTime.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
-      const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
-      if (validRows.length > 0) {
-        const toleranceOperator = testData.accuracyOfIrradiationTime.tolerance?.operator || "<=";
-        const toleranceValue = testData.accuracyOfIrradiationTime.tolerance?.value || "5";
-        const testRows = validRows.map((row: any) => {
-          const setTime = parseFloat(row.setTime);
-          const measuredTime = parseFloat(row.measuredTime);
-          let error = "-";
-          let isPass = false;
-
-          if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
-            error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
-            const errorVal = parseFloat(error);
-            const tol = parseFloat(toleranceValue);
-
-            if (toleranceOperator === "<=") {
-              isPass = errorVal <= tol;
-            } else if (toleranceOperator === ">=") {
-              isPass = errorVal >= tol;
-            } else if (toleranceOperator === "=") {
-              isPass = Math.abs(errorVal - tol) < 0.01;
-            }
-          }
-
-          return {
-            specified: row.setTime || "-",
-            measured: row.measuredTime || "-",
-            tolerance: `${toleranceOperator} ${toleranceValue}%`,
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          };
-        });
-        addRowsForTest("Accuracy of Irradiation Time", testRows);
-      }
-    } else if (testData.accuracyOfIrradiationTime.maxDeviation != null) {
-      // Fallback: if maxDeviation is available
-      const maxDeviation = parseFloat(testData.accuracyOfIrradiationTime.maxDeviation);
-      if (!isNaN(maxDeviation)) {
-        const toleranceOperator = testData.accuracyOfIrradiationTime.tolerance?.operator || "<=";
-        const toleranceValue = parseFloat(testData.accuracyOfIrradiationTime.tolerance?.value || "5");
+  // 1. Accuracy of Irradiation Time
+  if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
+    const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
+    if (validRows.length > 0) {
+      const toleranceOperator = testData.accuracyOfIrradiationTime.tolerance?.operator || "<=";
+      const toleranceValue = testData.accuracyOfIrradiationTime.tolerance?.value || "10";
+      const testRows = validRows.map((row: any) => {
+        const setTime = parseFloat(row.setTime);
+        const measuredTime = parseFloat(row.measuredTime);
+        let error = "-";
         let isPass = false;
-        if (toleranceOperator === "<=") {
-          isPass = Math.abs(maxDeviation) <= toleranceValue;
-        } else if (toleranceOperator === ">=") {
-          isPass = Math.abs(maxDeviation) >= toleranceValue;
-        } else if (toleranceOperator === "=") {
-          isPass = Math.abs(Math.abs(maxDeviation) - toleranceValue) < 0.01;
+        
+        if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
+          error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
+          const errorVal = parseFloat(error);
+          const tol = parseFloat(toleranceValue);
+          
+          if (toleranceOperator === "<=") {
+            isPass = errorVal <= tol;
+          } else if (toleranceOperator === ">=") {
+            isPass = errorVal >= tol;
+          } else if (toleranceOperator === "=") {
+            isPass = Math.abs(errorVal - tol) < 0.01;
+          }
         }
-        addRowsForTest("Accuracy of Irradiation Time", [{
-          specified: "Maximum Deviation",
-          measured: `${maxDeviation.toFixed(1)}%`,
+        
+        return {
+          specified: row.setTime || "-",
+          measured: row.measuredTime || "-",
           tolerance: `${toleranceOperator} ${toleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        }]);
-      }
+        };
+      });
+      addRowsForTest("Accuracy of Irradiation Time", testRows);
     }
   }
 
-  // 2. Accuracy of Operating Potential (kVp)
-  if (testData.accuracyOfOperatingPotential && !isEmpty(testData.accuracyOfOperatingPotential) && testData.accuracyOfOperatingPotential.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
-    const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKvp || row.setKVp || row.setKV || row.measuredKvp || row.measuredKVp || row.avgKvp);
+  // 2. Accuracy of Operating Potential (kVp Accuracy)
+  if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
+    const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceValue = "10"; // ±10% as per ViewServiceReport
+      const toleranceSign = "±";
+      const toleranceValue = "10";
       const testRows = validRows.map((row: any) => {
-        const setKvp = parseFloat(row.setKvp || row.setKVp || row.setKV || "0");
-        const measuredKvp = parseFloat(row.measuredKvp || row.measuredKVp || row.avgKvp || "0");
-        const deviation = row.deviation != null ? Math.abs(row.deviation) : (setKvp > 0 ? Math.abs(((measuredKvp - setKvp) / setKvp) * 100) : 0);
-        const isPass = deviation <= 10;
+        let isPass = false;
+        if (row.remarks === "PASS" || row.remarks === "Pass") {
+          isPass = true;
+        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
+          isPass = false;
+        } else {
+          const appliedKvp = parseFloat(row.setKV || row.setKvp || row.setKVp);
+          const avgKvp = parseFloat(row.avgKvp || row.measuredKvp || row.measuredKVp);
+          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
+            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
+            const tol = parseFloat(toleranceValue);
+            isPass = deviation <= tol;
+          }
+        }
         return {
-          specified: setKvp > 0 ? setKvp.toString() : "-",
-          measured: measuredKvp > 0 ? measuredKvp.toString() : "-",
-          tolerance: "±10%",
+          specified: row.setKV || row.setKvp || row.setKVp || "-",
+          measured: row.avgKvp || row.measuredKvp || row.measuredKVp || "-",
+          tolerance: `${toleranceSign}${toleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Accuracy of Operating Potential (kVp)", testRows);
+      addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
     }
   }
 
-  // Output Consistency (COV) — use cv/avg (FixedRadioFluro API); compute cov from outputs if missing
-  if (testData.outputConsistency) {
-    const tolVal = testData.outputConsistency.tolerance?.value ?? testData.outputConsistency.tolerance;
-    const tolerance = typeof tolVal === "object" ? parseFloat(tolVal?.value ?? "0.05") : parseFloat(tolVal || "0.05");
-    const toleranceNum = tolerance > 1 ? tolerance / 100 : tolerance;
-    const ffdStr = testData.outputConsistency.ffd?.value ?? testData.outputConsistency.ffd;
-    if (testData.outputConsistency.outputRows && Array.isArray(testData.outputConsistency.outputRows) && testData.outputConsistency.outputRows.length > 0) {
-      const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.cv != null || row.cov != null || row.avg != null || row.mean != null || (row.outputs && row.outputs.length > 0));
-      if (validRows.length > 0) {
-        const testRows = validRows.map((row: any) => {
-          let covValue: number | null = row.cv != null ? parseFloat(row.cv) : (row.cov != null ? parseFloat(row.cov) : null);
-          if (covValue === null && Array.isArray(row.outputs)) covValue = computeCovFromOutputs(row.outputs);
-          const cov = covValue != null ? covValue.toFixed(3) : "-";
-          const isPass = row.remark === "Pass" || row.remark === "PASS" || (covValue != null && covValue <= toleranceNum);
-          const specified = row.kv ? `${row.kv} kV` : (row.ffd ? `${row.ffd} cm FFD` : (ffdStr ? `${ffdStr} cm FFD` : "Varies"));
-          return {
-            specified,
-            measured: cov,
-            tolerance: `≤ ${tolerance > 1 ? tolerance / 100 : tolerance}`,
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          };
-        });
-        addRowsForTest("Consistency of Radiation Output (COV)", testRows, true);
-      }
-    } else if (testData.outputConsistency.cov != null && testData.outputConsistency.cov !== "") {
-      const cov = parseFloat(testData.outputConsistency.cov);
-      if (!isNaN(cov)) {
-        const isPass = cov <= toleranceNum;
-        addRowsForTest("Consistency of Radiation Output (COV)", [{
-          specified: ffdStr ? `${ffdStr} cm FFD` : "Varies with kVp",
-          measured: cov.toFixed(3),
-          tolerance: `≤ ${toleranceNum}`,
+  // 3. Accuracy of Operating Potential (Total Filtration Related)
+  if (testData.totalFiltration?.measurements && Array.isArray(testData.totalFiltration.measurements)) {
+    const validRows = testData.totalFiltration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
+    if (validRows.length > 0) {
+      const toleranceSign = "±";
+      const toleranceValue = "10";
+      const testRows = validRows.map((row: any) => {
+        let avgKvpNum: number | null = null;
+        if (row.averageKvp !== undefined && row.averageKvp !== null && row.averageKvp !== "") {
+          const val = parseFloat(row.averageKvp);
+          if (!isNaN(val) && val > 0) avgKvpNum = val;
+        }
+        if (avgKvpNum === null && Array.isArray(row.measuredValues) && row.measuredValues.length > 0) {
+          const vals = row.measuredValues
+            .map((v: any) => parseFloat(v))
+            .filter((v: number) => !isNaN(v));
+          if (vals.length > 0) {
+            avgKvpNum = vals.reduce((a: number, b: number) => a + b, 0) / vals.length;
+          }
+        }
+        let measuredDisplay: string;
+        if (avgKvpNum !== null) {
+          measuredDisplay = avgKvpNum.toFixed(2);
+        } else {
+          measuredDisplay = "-";
+        }
+
+        let isPass = false;
+        if (row.remarks === "PASS" || row.remarks === "Pass") {
+          isPass = true;
+        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
+          isPass = false;
+        } else if (avgKvpNum !== null) {
+          const appliedKvp = parseFloat(row.appliedKvp);
+          if (!isNaN(appliedKvp) && appliedKvp > 0) {
+            const deviation = Math.abs(((avgKvpNum - appliedKvp) / appliedKvp) * 100);
+            const tol = parseFloat(toleranceValue);
+            if (!isNaN(tol)) {
+              isPass = deviation <= tol;
+            }
+          }
+        }
+
+        return {
+          specified: row.appliedKvp || "-",
+          measured: measuredDisplay,
+          tolerance: `${toleranceSign}${toleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        }]);
-      }
+        };
+      });
+      addRowsForTest("Accuracy of Operating Potential (Total Filtration)", testRows);
     }
   }
 
+  // 4. Total Filtration Result
+  if (testData.totalFiltration?.totalFiltration) {
+    const tf = testData.totalFiltration.totalFiltration;
+    const measuredStr = tf.required || tf.measured || "-"; 
+    const atKvp = tf.atKvp || "-";
 
-  // 5. Total Filtration (support nested totalFiltration.totalFiltration)
-  if (testData.totalFiltration && !isEmpty(testData.totalFiltration)) {
-    const nested = testData.totalFiltration.totalFiltration;
-    const measuredTF = nested?.measured ?? testData.totalFiltration.measured ?? testData.totalFiltration.measuredTF ?? "-";
-    const appliedKV = nested?.atKvp ?? testData.totalFiltration.atKvp ?? testData.totalFiltration.appliedKV ?? "-";
-    const measured = parseFloat(measuredTF);
-    const isPass = !isNaN(measured) ? measured >= 2.5 : true;
+    const kvp = parseFloat(atKvp);
+    const measuredVal = parseFloat(measuredStr);
+
+    let isPass = false;
+    if (!isNaN(kvp) && !isNaN(measuredVal)) {
+        // Simple logic for FixedRadioFluro if not complex
+        isPass = measuredVal >= 2.5;
+    }
+    
+    // Build tolerance string - show all ranges as per standard
+    const toleranceStr = "≥ 2.5 mm Al (>70 kVp)";
+    
     addRowsForTest("Total Filtration", [{
-      specified: appliedKV !== "-" ? `${appliedKV} kV` : "-",
-      measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
-      tolerance: "≥ 2.5 mm Al (>70 kVp)",
+      specified: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
+      measured: atKvp !== "-" ? `${atKvp} kVp` : "-",
+      tolerance: toleranceStr,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
 
-  // 7. Low Contrast Resolution
-  if (testData.lowContrastResolution && !isEmpty(testData.lowContrastResolution) && testData.lowContrastResolution.smallestHoleSize != null && testData.lowContrastResolution.smallestHoleSize !== "") {
-    const smallestHoleSize = parseFloat(testData.lowContrastResolution.smallestHoleSize);
-    if (!isNaN(smallestHoleSize)) {
-      const recommendedStandard = parseFloat(testData.lowContrastResolution.recommendedStandard || "4");
-      const isPass = smallestHoleSize <= recommendedStandard;
-      addRowsForTest("Low Contrast Resolution", [{
-        specified: "Smallest Visible Hole",
-        measured: `${smallestHoleSize} mm`,
-        tolerance: `≤ ${recommendedStandard} mm`,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      }]);
+  // 5. Central Beam Alignment
+  if (testData.centralBeamAlignment && !isEmpty(testData.centralBeamAlignment)) {
+    const ot = testData.centralBeamAlignment.observedTilt;
+    const tiltValue = ot?.value || "-";
+    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "≤";
+    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "1";
+    
+    // Determine pass/fail based on tolerance
+    let isPass = false;
+    if (ot?.remark === "Pass" || ot?.remark === "PASS") {
+      isPass = true;
+    } else if (ot?.remark === "Fail" || ot?.remark === "FAIL") {
+      isPass = false;
+    } else if (tiltValue !== "-") {
+      const observed = parseFloat(tiltValue);
+      const tol = parseFloat(toleranceValue);
+      if (!isNaN(observed) && !isNaN(tol)) {
+        isPass = observed <= tol;
+      }
+    }
+    
+    addRowsForTest("Central Beam Alignment", [{
+      specified: `${toleranceOperator} ${toleranceValue}°`,
+      measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
+      tolerance: `${toleranceOperator} ${toleranceValue}°`,
+      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+    }]);
+  }
+
+  // 6. Congruence of Radiation & Optical Field
+  if (testData.congruenceOfRadiation?.congruenceMeasurements && Array.isArray(testData.congruenceOfRadiation.congruenceMeasurements)) {
+    const validRows = testData.congruenceOfRadiation.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
+        const percentFED = row.percentFED || "-";
+        const tolerance = row.tolerance || "2";
+        const isPass = row.remark === "Pass" || (percentFED !== "-" && parseFloat(percentFED) <= parseFloat(tolerance));
+        return {
+          specified: row.dimension || "-",
+          measured: percentFED !== "-" ? `${percentFED}%` : "-",
+          tolerance: `≤ ${tolerance}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Congruence of Radiation & Optical Field", testRows);
     }
   }
 
-  // 8. High Contrast Resolution
-  if (testData.highContrastResolution && !isEmpty(testData.highContrastResolution) && testData.highContrastResolution.measuredLpPerMm != null && testData.highContrastResolution.measuredLpPerMm !== "") {
-    const lpmm = parseFloat(testData.highContrastResolution.measuredLpPerMm);
-    if (!isNaN(lpmm)) {
-      const recommendedStandard = parseFloat(testData.highContrastResolution.recommendedStandard || "1.0");
-      const isPass = lpmm >= recommendedStandard;
-      addRowsForTest("High Contrast Resolution", [{
-        specified: "Line Pairs per mm",
-        measured: `${lpmm} lp/mm`,
-        tolerance: `≥ ${recommendedStandard} lp/mm`,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      }]);
+  // 7. Effective Focal Spot Size
+  if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
+    const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
+    if (validRows.length > 0) {
+      const formatValue = (val: any) => {
+        if (val === undefined || val === null || val === "") return null;
+        const numVal = typeof val === 'number' ? val : parseFloat(val);
+        if (isNaN(numVal)) return null;
+        return numVal.toFixed(1);
+      };
+      
+      const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
+      
+      const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
+      const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
+      const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
+      const mediumLower = parseFloat(toleranceCriteria.medium?.lowerLimit || "0.8");
+      const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
+      const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
+      
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} MM; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} MM; +${largeMultiplier} F FOR F > ${mediumUpper} MM`;
+      
+      const testRows = validRows.map((spot: any) => {
+        const isPass = spot.remark === "Pass" || spot.remark === "PASS" || spot.isPass === true;
+        const statedWidth = formatValue(spot.statedWidth);
+        const statedHeight = formatValue(spot.statedHeight);
+        const measuredWidth = formatValue(spot.measuredWidth);
+        const measuredHeight = formatValue(spot.measuredHeight);
+        
+        return {
+          specified: statedWidth !== null && statedHeight !== null ? `${statedWidth} × ${statedHeight} mm` : "-",
+          measured: measuredWidth !== null && measuredHeight !== null ? `${measuredWidth} × ${measuredHeight} mm` : "-",
+          tolerance: toleranceStr,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Effective Focal Spot Size", testRows, true);
     }
   }
 
-  // 9. Exposure Rate at Table Top
-  if (testData.exposureRate && !isEmpty(testData.exposureRate)) {
-    if (testData.exposureRate.rows && Array.isArray(testData.exposureRate.rows) && testData.exposureRate.rows.length > 0) {
-      const testRows = testData.exposureRate.rows.map((row: any) => {
-        const exposure = parseFloat(row.exposure || "0");
+  // 8. Linearity of mAs Loading
+  const linearityData = testData.linearityOfmAsLoading || testData.linearityOfMaLoading;
+  if (linearityData?.table2 && Array.isArray(linearityData.table2)) {
+    const validRows = linearityData.table2.filter((row: any) => row.mAs || row.mAsApplied || row.mA || row.mAsRange);
+    if (validRows.length > 0) {
+      const getVal = (o: any): number => {
+        if (o == null) return NaN;
+        if (typeof o === 'number') return o;
+        if (typeof o === 'string') return parseFloat(o);
+        if (typeof o === 'object' && 'value' in o) return parseFloat(o.value);
+        return NaN;
+      };
+
+      const tolerance = parseFloat(linearityData.tolerance ?? "0.1") || 0.1;
+      const toleranceOperator = linearityData.toleranceOperator ?? "<=";
+
+      // Calculate on-the-fly if col is missing or NaN
+      let colValue = linearityData.col || linearityData.coefficient || linearityData.colValue;
+      const parsedStoredCol = parseFloat(String(colValue));
+      if (!colValue || isNaN(parsedStoredCol)) {
+        const xValues: number[] = [];
+        validRows.forEach((row: any) => {
+          const outputs = (row.measuredOutputs ?? [])
+            .map(getVal)
+            .filter((v: number) => !isNaN(v) && v > 0);
+          const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+          
+          const mAsLabel = String(row.mAsApplied ?? row.mAs ?? row.mAsRange ?? "");
+          const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+          const midMas = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
+
+          if (avg !== null && midMas > 0) {
+            const xVal = avg / midMas;
+            if (isFinite(xVal)) xValues.push(xVal);
+          }
+        });
+
+        if (xValues.length > 0) {
+          const xMax = Math.max(...xValues);
+          const xMin = Math.min(...xValues);
+          if (xMax + xMin > 0) {
+            colValue = Math.abs(xMax - xMin) / (xMax + xMin);
+          }
+        }
+      }
+
+      const colRaw = parseFloat(String(colValue));
+      const col = (!isNaN(colRaw) && isFinite(colRaw)) ? colRaw.toFixed(3) : "-";
+      
+      let isPass = linearityData.remarks === "Pass" || linearityData.remarks === "PASS";
+      if (!isPass && col !== "-") {
+        const c = parseFloat(col);
+        if (toleranceOperator === "<=") isPass = c <= tolerance;
+        else if (toleranceOperator === "<") isPass = c < tolerance;
+        else if (toleranceOperator === ">=") isPass = c >= tolerance;
+        else if (toleranceOperator === ">") isPass = c > tolerance;
+      }
+      
+      const testRows = validRows.map((row: any) => {
+        return {
+          specified: (row.mAs || row.mAsApplied || row.mA || row.mAsRange) ? `${row.mAs || row.mAsApplied || row.mA || row.mAsRange} mA/mAs` : "-",
+          measured: col !== "-" ? `CoL = ${col}` : "-",
+          tolerance: `${toleranceOperator} ${tolerance}`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Linearity of mA/mAs Loading (Coefficient of Linearity)", testRows, true, true);
+    }
+  }
+
+  // 9. Consistency of Radiation Output (CoV)
+  if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
+    const validRows = testData.outputConsistency.outputRows.filter((row: any) => 
+      row.kv || row.cv || row.cov || (row.outputs && row.outputs.length > 0)
+    );
+    
+    if (validRows.length > 0) {
+      const toleranceValue = testData.outputConsistency.tolerance?.value || "0.05";
+      const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
+      
+      const getVal = (o: any): number => {
+        if (o == null) return NaN;
+        if (typeof o === 'number') return o;
+        if (typeof o === 'string') return parseFloat(o);
+        if (typeof o === 'object' && 'value' in o) return parseFloat(o.value);
+        return NaN;
+      };
+
+      const testRows = validRows.map((row: any) => {
+        // Calculate on-the-fly if cv is missing
+        const outputs: number[] = (row.outputs ?? []).map(getVal).filter((n: number) => !isNaN(n) && n > 0);
+        const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+        
+        let cvValue = row.cv || row.cov;
+        if (!cvValue && avg !== null && avg > 0) {
+          const variance = outputs.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / outputs.length;
+          const cov = Math.sqrt(variance) / avg;
+          if (isFinite(cov)) {
+            cvValue = cov;
+          }
+        }
+
+        const formattedCv = cvValue !== undefined && cvValue !== null && cvValue !== "" && cvValue !== "-"
+          ? (typeof cvValue === 'number' ? cvValue.toFixed(3) : parseFloat(String(cvValue)).toFixed(3))
+          : "-";
+        
+        let isPass = row.remark === "Pass" || row.remark === "PASS";
+        if (!isPass && formattedCv !== "-") {
+          const cv = parseFloat(formattedCv);
+          const tol = parseFloat(String(toleranceValue));
+          if (toleranceOperator === "<=") isPass = cv <= tol;
+          else if (toleranceOperator === "<") isPass = cv < tol;
+          else if (toleranceOperator === ">=") isPass = cv >= tol;
+          else if (toleranceOperator === ">") isPass = cv > tol;
+        }
+
+        return {
+          specified: row.kv ? `${row.kv} kV` : "Varies",
+          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          tolerance: `${toleranceOperator} ${toleranceValue}`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Consistency of Radiation Output (CoV)", testRows, true);
+    }
+  }
+
+  // 10. Exposure Rate at Table Top (Fluro specific)
+  if (testData.exposureRate?.rows && Array.isArray(testData.exposureRate.rows)) {
+    const validRows = testData.exposureRate.rows.filter((row: any) => row.exposure);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
         const isAec = row.remark?.toLowerCase().includes("aec") || false;
         const tolerance = isAec ? (testData.exposureRate.aecTolerance || "10") : (testData.exposureRate.nonAecTolerance || "5");
-        const isPass = exposure <= parseFloat(tolerance);
+        const isPass = parseFloat(row.exposure) <= parseFloat(tolerance);
         return {
           specified: `${row.appliedKv || "-"} kV / ${row.appliedMa || "-"} mA`,
           measured: `${row.exposure || "-"} cGy/min`,
@@ -334,133 +442,73 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
         };
       });
       addRowsForTest("Exposure Rate at Table Top", testRows);
-    } else {
-      const measuredValue = testData.exposureRate.measuredValue || testData.exposureRate.measured || testData.exposureRate.value;
-      if (measuredValue != null && measuredValue !== "") {
-        const value = parseFloat(measuredValue);
-        if (!isNaN(value)) {
-          const limit = 5; // mGy/min
-          const isPass = value <= limit;
-          addRowsForTest("Exposure Rate at Table Top", [{
-            specified: "Measured Value",
-            measured: `${value} mGy/min`,
-            tolerance: `≤ ${limit} mGy/min`,
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          }]);
-        }
-      }
     }
   }
 
-  // 10. Tube Housing Leakage
-  if (testData.tubeHousingLeakage && !isEmpty(testData.tubeHousingLeakage)) {
-    if (testData.tubeHousingLeakage.leakageMeasurements && Array.isArray(testData.tubeHousingLeakage.leakageMeasurements) && testData.tubeHousingLeakage.leakageMeasurements.length > 0) {
-      const testRows = testData.tubeHousingLeakage.leakageMeasurements.map((measure: any) => {
-        const rate = parseFloat(measure.max || measure.mgy || "0");
-        const isPass = rate <= 1;
+  // 11. Low Contrast Resolution (Fluro specific)
+  if (testData.lowContrastResolution && !isEmpty(testData.lowContrastResolution)) {
+      const hole = testData.lowContrastResolution.smallestHoleSize;
+      if (hole != null && hole !== "") {
+          const limit = testData.lowContrastResolution.recommendedStandard || "4";
+          const isPass = parseFloat(hole) <= parseFloat(limit);
+          addRowsForTest("Low Contrast Resolution", [{
+              specified: "Smallest Visible Hole",
+              measured: `${hole} mm`,
+              tolerance: `≤ ${limit} mm`,
+              remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          }]);
+      }
+  }
+
+  // 12. High Contrast Resolution (Fluro specific)
+  if (testData.highContrastResolution && !isEmpty(testData.highContrastResolution)) {
+      const lp = testData.highContrastResolution.measuredLpPerMm;
+      if (lp != null && lp !== "") {
+          const limit = testData.highContrastResolution.recommendedStandard || "1.0";
+          const isPass = parseFloat(lp) >= parseFloat(limit);
+          addRowsForTest("High Contrast Resolution", [{
+              specified: "Line Pairs per mm",
+              measured: `${lp} lp/mm`,
+              tolerance: `≥ ${limit} lp/mm`,
+              remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          }]);
+      }
+  }
+
+  // 13. Radiation Leakage Level (Tube Housing Leakage)
+  if (testData.tubeHousingLeakage?.leakageMeasurements && Array.isArray(testData.tubeHousingLeakage.leakageMeasurements)) {
+    const validRows = testData.tubeHousingLeakage.leakageMeasurements.filter((row: any) => row.location);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
+        const measured = row.max || row.mgy || "-";
+        const isPass = measured !== "-" && parseFloat(String(measured)) <= 1;
         return {
-          specified: measure.location || "Tube Housing",
-          measured: `${measure.max || measure.mgy || "-"} mGy/hr`,
-          tolerance: "≤ 1 mGy/hr",
+          specified: row.location || "-",
+          measured: measured !== "-" ? `${measured} mGy/hr` : "-",
+          tolerance: `≤ 1 mGy/hr`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation Leakage from Tube Housing", testRows);
-    } else {
-      const leakageRate = testData.tubeHousingLeakage.leakageRate || testData.tubeHousingLeakage.leakage || testData.tubeHousingLeakage.max || testData.tubeHousingLeakage.value;
-      if (leakageRate != null && leakageRate !== "") {
-        const rate = parseFloat(leakageRate);
-        if (!isNaN(rate)) {
-          const limit = 1; // mGy/hr at 1m
-          const isPass = rate <= limit;
-          addRowsForTest("Radiation Leakage from Tube Housing", [{
-            specified: "At 1m distance",
-            measured: `${rate} mGy/hr`,
-            tolerance: `≤ ${limit} mGy/hr`,
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          }]);
-        }
-      }
+      addRowsForTest("Tube Housing Leakage", testRows);
     }
   }
 
-  // 11. Linearity of mAs Loading
-  if (testData.linearityOfmAsLoading && !isEmpty(testData.linearityOfmAsLoading)) {
-    // Check for table2 array first
-    if (testData.linearityOfmAsLoading.table2 && Array.isArray(testData.linearityOfmAsLoading.table2) && testData.linearityOfmAsLoading.table2.length > 0) {
-      const validRows = testData.linearityOfmAsLoading.table2.filter((row: any) => row.col != null || row.x != null || row.mAs || row.mAsApplied);
-      if (validRows.length > 0) {
-        const tolerance = 0.1;
-        const testRows = validRows.map((row: any) => {
-          const col = row.col != null ? parseFloat(row.col) : (row.x != null ? parseFloat(row.x) : null);
-          const isPass = col != null ? col <= tolerance : false;
-          const mAs = row.mAs || row.mAsApplied || "-";
-          const measured = col != null ? col.toFixed(3) : (Array.isArray(row.measuredOutputs) ? row.measuredOutputs.join(", ") : "-");
-          return {
-            specified: mAs !== "-" ? `${mAs} mAs` : "Coefficient of Linearity",
-            measured: measured,
-            tolerance: `≤ ${tolerance}`,
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          };
-        });
-        addRowsForTest("Linearity of mAs Loading (Coefficient of Linearity)", testRows);
-      }
-    } else {
-      // Check for col property with various possible names
-      const col = testData.linearityOfmAsLoading.col || testData.linearityOfmAsLoading.coefficient || testData.linearityOfmAsLoading.value;
-      if (col != null && col !== "") {
-        const colValue = parseFloat(col);
-        if (!isNaN(colValue)) {
-          const tolerance = 0.1;
-          const isPass = colValue <= tolerance;
-          addRowsForTest("Linearity of mAs Loading (Coefficient of Linearity)", [{
-            specified: "Coefficient of Linearity",
-            measured: colValue.toFixed(3),
-            tolerance: `≤ ${tolerance}`,
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          }]);
-        }
-      }
-    }
-  }
-
-  // 13. Radiation Protection Survey
+  // 14. Radiation Protection Survey
   if (testData.radiationProtectionSurvey && !isEmpty(testData.radiationProtectionSurvey)) {
     const surveyRows = testData.radiationProtectionSurvey.surveyRows || testData.radiationProtectionSurvey.locations;
-    if (surveyRows && surveyRows.length > 0) {
+    if (Array.isArray(surveyRows) && surveyRows.length > 0) {
       const testRows = surveyRows.map((row: any) => ({
-        specified: `Limit: ${row.limit || "20"} µGy/hr`,
+        specified: row.location || "-",
         measured: `${row.exposureRate || row.mRPerHr || "-"} µGy/hr`,
         tolerance: "Complies with AERB limits",
-        remarks: ((row.remarks || row.result) === "Pass" || (row.remarks || row.result) === "PASS" ? "Pass" : "Fail") as "Pass" | "Fail",
+        remarks: (row.remarks === "Pass" || row.result === "PASS" ? "Pass" : "Fail") as "Pass" | "Fail",
       }));
       addRowsForTest("Radiation Protection Survey", testRows);
-    } else if (testData.radiationProtectionSurvey.result || testData.radiationProtectionSurvey.remarks) {
-      addRowsForTest("Radiation Protection Survey", [{
-        specified: "AERB Limits",
-        measured: testData.radiationProtectionSurvey.result || testData.radiationProtectionSurvey.remarks,
-        tolerance: "Complies",
-        remarks: "Pass" as "Pass" | "Fail",
-      }]);
     }
   }
 
   if (rows.length === 0) {
-    return (
-      <div className="text-center text-gray-500 py-10">
-        <p>No test results available.</p>
-        <p className="text-xs mt-2">Debug: testData keys: {Object.keys(testData).join(", ")}</p>
-        <p className="text-xs mt-2">
-          accuracyOfOperatingPotential: {testData.accuracyOfOperatingPotential ? "exists" : "null"}
-        </p>
-        <p className="text-xs mt-2">
-          outputConsistency: {testData.outputConsistency ? "exists" : "null"}
-        </p>
-        <p className="text-xs mt-2">
-          lowContrastResolution: {testData.lowContrastResolution ? "exists" : "null"}
-        </p>
-      </div>
-    );
+    return <div className="text-center text-gray-500 py-10">No test results available.</div>;
   }
 
   return (
@@ -469,8 +517,8 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
         SUMMARY OF QA TEST RESULTS
       </h2>
 
-      <div className="overflow-x-auto print:overflow-visible print:max-w-none">
-        <table className="w-full border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
+      <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
+        <table className="border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
           <thead className="bg-gray-200">
             <tr>
               <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center print:text-[9px]">Sr. No.</th>
@@ -483,10 +531,14 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
           </thead>
           <tbody>
             {rows.map((row, index) => {
-              const shouldRenderTolerance =
-                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) ||
+              const shouldRenderTolerance = 
+                (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) || 
                 (row.hasToleranceRowSpan && row.isFirstRow);
-
+              
+              const shouldRenderMeasured = 
+                (!row.hasMeasuredRowSpan && row.measuredRowSpan === 0) || 
+                (row.hasMeasuredRowSpan && row.isFirstRow);
+              
               return (
                 <tr key={index}>
                   {row.isFirstRow && (
@@ -499,18 +551,26 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
                       {row.parameter}
                     </td>
                   )}
-                  <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.specified}</td>
-                  <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center font-semibold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">{row.measured}</td>
+                  <td className="border border-black px-4 py-3 text-center print:text-[9px]">{row.specified}</td>
+                  {shouldRenderMeasured && (
+                    <td 
+                      {...(row.measuredRowSpan > 0 ? { rowSpan: row.measuredRowSpan } : {})}
+                      className="border border-black px-4 py-3 text-center font-semibold print:text-[9px]"
+                    >
+                      {row.measured}
+                    </td>
+                  )}
                   {shouldRenderTolerance && (
-                    <td
+                    <td 
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
                       className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent"
                     >
                       {row.tolerance}
                     </td>
                   )}
-                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px] print:leading-tight ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}>
+                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px] print:leading-tight ${
+                    row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                  }`}>
                     {row.remarks}
                   </td>
                 </tr>

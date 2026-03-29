@@ -780,7 +780,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                               <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px' }}>
                                 <span className={
                                   spot.remark === "Pass" || spot.remark === "PASS" ? "text-green-600" :
-                                  spot.remark === "Fail" || spot.remark === "FAIL" ? "text-red-600" : ""
+                                    spot.remark === "Fail" || spot.remark === "FAIL" ? "text-red-600" : ""
                                 }>
                                   {spot.remark || "-"}
                                 </span>
@@ -925,7 +925,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                                   <td rowSpan={rows.length} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>
                                     <span className={
                                       remarks === 'Pass' ? 'text-green-600 font-semibold' :
-                                      remarks === 'Fail' ? 'text-red-600 font-semibold' : ''
+                                        remarks === 'Fail' ? 'text-red-600 font-semibold' : ''
                                     } style={{ fontSize: '10px' }}>
                                       {remarks}
                                     </span>
@@ -1162,6 +1162,71 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Calculation and Summary Blocks */}
+                {(() => {
+                  const maValue = parseFloat(testData.radiationLeakageLevel.ma || testData.radiationLeakageLevel.settings?.ma || "0");
+                  const workloadValue = parseFloat(testData.radiationLeakageLevel.workload || "0");
+
+                  const getSummaryForLocation = (locName: string) => {
+                    const row = testData.radiationLeakageLevel.leakageMeasurements.find((m: any) => m.location === locName);
+                    if (!row) return null;
+                    const values = [row.left, row.right, row.front, row.back, row.top].map(v => parseFloat(v) || 0).filter(v => v > 0);
+                    const rowMax = values.length > 0 ? Math.max(...values) : 0;
+                    const resMR = (workloadValue * rowMax) / (60 * maValue);
+                    const resMGy = resMR / 114;
+                    return { rowMax, resMR, resMGy };
+                  };
+
+                  const tubeSummary = getSummaryForLocation("Tube Housing");
+                  const collimatorSummary = getSummaryForLocation("Collimator");
+
+                  return (
+                    <div className="space-y-4 print:space-y-1">
+                      {/* Formula Block */}
+                      <div className="bg-gray-50 p-4 print:p-1 rounded border border-gray-200">
+                        <p className="text-sm print:text-[10px] font-bold mb-2 print:mb-1">Calculation Formula:</p>
+                        <div className="bg-white p-3 print:p-1 border border-dashed border-gray-400 text-center font-mono text-sm print:text-[10px]">
+                          Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                        </div>
+                        <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
+                          Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                        </p>
+                      </div>
+
+                      {/* Summary Blocks */}
+                      <div className="grid grid-cols-2 gap-4 print:gap-1">
+                        {tubeSummary && (
+                          <div className="border border-blue-200 rounded p-3 print:p-1 bg-blue-50/30">
+                            <p className="font-bold text-xs print:text-[9px] text-blue-800 mb-2">Tube Housing Summary:</p>
+                            <div className="text-[11px] print:text-[8px] space-y-1">
+                              <p>Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong></p>
+                              <p>Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
+                              <p>In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-blue-700">{tubeSummary.resMGy.toFixed(4)} mGy</span></p>
+                            </div>
+                          </div>
+                        )}
+                        {collimatorSummary && (
+                          <div className="border border-indigo-200 rounded p-3 print:p-1 bg-indigo-50/30">
+                            <p className="font-bold text-xs print:text-[9px] text-indigo-800 mb-2">Collimator Summary:</p>
+                            <div className="text-[11px] print:text-[8px] space-y-1">
+                              <p>Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong></p>
+                              <p>Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
+                              <p>In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-indigo-700">{collimatorSummary.resMGy.toFixed(4)} mGy</span></p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Tolerance Narrative */}
+                      <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
+                        <p className="text-[11px] print:text-[8px] leading-relaxed">
+                          <strong>Note:</strong> The maximum leakage radiation from the X-ray tube housing and collimator, measured at a distance of 1 meter from the focus, averaged over an area of 100 cm², shall not exceed 1.0 mGy in one hour when the tube is operated at its maximum rated continuous filament current at the maximum rated tube potential.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
             {/* 9. Radiation Protection Survey */}

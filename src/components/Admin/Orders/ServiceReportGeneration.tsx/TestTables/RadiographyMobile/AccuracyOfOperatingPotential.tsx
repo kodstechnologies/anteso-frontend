@@ -382,9 +382,8 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
         <button
           onClick={isViewMode ? () => setIsEditing(true) : saveTest}
           disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${
-            isViewMode ? "bg-orange-600 text-white hover:bg-orange-700" : "bg-teal-600 text-white hover:bg-teal-700"
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isViewMode ? "bg-orange-600 text-white hover:bg-orange-700" : "bg-teal-600 text-white hover:bg-teal-700"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {isSaving ? (
             <>
@@ -475,11 +474,11 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
                     row.measuredValuesStatus && row.measuredValuesStatus.length > idx
                       ? row.measuredValuesStatus[idx]
                       : checkTolerance(
-                          parseFloat(val || "0"),
-                          parseFloat(row.appliedKvp || "0"),
-                          parseFloat(toleranceValue || "0"),
-                          toleranceSign
-                        );
+                        parseFloat(val || "0"),
+                        parseFloat(row.appliedKvp || "0"),
+                        parseFloat(toleranceValue || "0"),
+                        toleranceSign
+                      );
                   return (
                     <td key={idx} className={`px-3 py-3 text-center border-r ${hasValue && !isValid ? "bg-red-100" : ""}`}>
                       <input
@@ -489,26 +488,23 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
                         onChange={(e) => updateCell(row.id, idx, e.target.value)}
                         disabled={isViewMode}
                         readOnly={isViewMode}
-                        className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${
-                          hasValue && !isValid ? "border-red-500 bg-red-50" : isViewMode ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-gray-300"
-                        }`}
+                        className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${hasValue && !isValid ? "border-red-500 bg-red-50" : isViewMode ? "border-gray-200 bg-gray-50 cursor-not-allowed" : "border-gray-300"
+                          }`}
                         placeholder="0.0"
                       />
                     </td>
                   );
                 })}
                 <td
-                  className={`px-6 py-3 text-center font-bold border-r ${
-                    row.averageKvp && row.averageKvp !== "-" && row.averageKvpStatus === false ? "bg-red-100 text-red-800" : "text-gray-800"
-                  }`}
+                  className={`px-6 py-3 text-center font-bold border-r ${row.averageKvp && row.averageKvp !== "-" && row.averageKvpStatus === false ? "bg-red-100 text-red-800" : "text-gray-800"
+                    }`}
                 >
                   {row.averageKvp || "-"}
                 </td>
                 <td className="px-6 py-3 text-center">
                   <span
-                    className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
-                      row.remarks === "PASS" ? "bg-green-100 text-green-800" : row.remarks === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
-                    }`}
+                    className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === "PASS" ? "bg-green-100 text-green-800" : row.remarks === "FAIL" ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-600"
+                      }`}
                   >
                     {row.remarks}
                   </span>
@@ -566,11 +562,10 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
       </div>
 
       <div
-        className={`bg-white shadow-lg rounded-lg border p-8 ${
-          getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
+        className={`bg-white shadow-lg rounded-lg border p-8 ${getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
             ? "border-red-300 bg-red-50"
             : "border-gray-300"
-        }`}
+          }`}
       >
         <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
         <div className="flex flex-col items-center justify-center gap-6">
@@ -600,20 +595,18 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
               }}
               disabled={isViewMode}
               readOnly={isViewMode}
-              className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg focus:ring-4 ${
-                getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
+              className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg focus:ring-4 ${getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
                   ? "border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-200"
                   : isViewMode ? "border-gray-300 bg-gray-50 cursor-not-allowed" : "border-gray-400 focus:border-green-500 focus:ring-green-200"
-              }`}
+                }`}
               placeholder="2.50"
             />
             <span className="text-3xl font-bold text-gray-800">mm of Al</span>
           </div>
           <div className="flex items-center justify-center">
             <span
-              className={`text-5xl font-bold ${
-                getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"
-              }`}
+              className={`text-5xl font-bold ${getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"
+                }`}
             >
               {getFiltrationRemark()}
             </span>

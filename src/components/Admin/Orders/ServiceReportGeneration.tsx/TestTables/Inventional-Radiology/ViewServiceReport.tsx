@@ -669,15 +669,15 @@ const ViewServiceReport: React.FC = () => {
 
                                 const statedNominal = formatValue(
                                   spot.statedNominal ??
-                                    (spot.statedWidth != null && spot.statedHeight != null
-                                      ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                                      : spot.statedWidth ?? spot.statedHeight)
+                                  (spot.statedWidth != null && spot.statedHeight != null
+                                    ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                                    : spot.statedWidth ?? spot.statedHeight)
                                 );
                                 const measuredNominal = formatValue(
                                   spot.measuredNominal ??
-                                    (spot.measuredWidth != null && spot.measuredHeight != null
-                                      ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                                      : spot.measuredWidth ?? spot.measuredHeight)
+                                  (spot.measuredWidth != null && spot.measuredHeight != null
+                                    ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                                    : spot.measuredWidth ?? spot.measuredHeight)
                                 );
 
                                 return (
@@ -732,15 +732,15 @@ const ViewServiceReport: React.FC = () => {
 
                                 const statedNominal = formatValue(
                                   spot.statedNominal ??
-                                    (spot.statedWidth != null && spot.statedHeight != null
-                                      ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                                      : spot.statedWidth ?? spot.statedHeight)
+                                  (spot.statedWidth != null && spot.statedHeight != null
+                                    ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                                    : spot.statedWidth ?? spot.statedHeight)
                                 );
                                 const measuredNominal = formatValue(
                                   spot.measuredNominal ??
-                                    (spot.measuredWidth != null && spot.measuredHeight != null
-                                      ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                                      : spot.measuredWidth ?? spot.measuredHeight)
+                                  (spot.measuredWidth != null && spot.measuredHeight != null
+                                    ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                                    : spot.measuredWidth ?? spot.measuredHeight)
                                 );
 
                                 return (
@@ -794,15 +794,15 @@ const ViewServiceReport: React.FC = () => {
 
                           const statedNominal = formatValue(
                             spot.statedNominal ??
-                              (spot.statedWidth != null && spot.statedHeight != null
-                                ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                                : spot.statedWidth ?? spot.statedHeight)
+                            (spot.statedWidth != null && spot.statedHeight != null
+                              ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                              : spot.statedWidth ?? spot.statedHeight)
                           );
                           const measuredNominal = formatValue(
                             spot.measuredNominal ??
-                              (spot.measuredWidth != null && spot.measuredHeight != null
-                                ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                                : spot.measuredWidth ?? spot.measuredHeight)
+                            (spot.measuredWidth != null && spot.measuredHeight != null
+                              ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                              : spot.measuredWidth ?? spot.measuredHeight)
                           );
 
                           return (

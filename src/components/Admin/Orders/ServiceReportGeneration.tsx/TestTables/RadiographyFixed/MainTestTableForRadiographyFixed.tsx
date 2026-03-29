@@ -331,39 +331,62 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
       const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
       const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "<=";
       // COL is stored at the top level, not per row
-      const colValue = testData.linearityOfMasLoading.col;
-      const col = colValue !== undefined && colValue !== null && colValue !== "" && colValue !== "—" 
-        ? parseFloat(String(colValue)).toFixed(3) 
-        : "-";
-      
-      // Calculate pass/fail based on COL value vs tolerance
-      let isPass = false;
-      if (testData.linearityOfMasLoading.remarks === "Pass" || testData.linearityOfMasLoading.remarks === "PASS") {
-        isPass = true;
-      } else if (testData.linearityOfMasLoading.remarks === "Fail" || testData.linearityOfMasLoading.remarks === "FAIL") {
-        isPass = false;
-      } else if (col !== "-") {
-        const colVal = parseFloat(col);
-        const tol = parseFloat(tolerance);
-        if (!isNaN(colVal) && !isNaN(tol)) {
-          if (toleranceOperator === "<") {
-            isPass = colVal < tol;
-          } else if (toleranceOperator === ">") {
-            isPass = colVal > tol;
-          } else if (toleranceOperator === "<=") {
-            isPass = colVal <= tol;
-          } else if (toleranceOperator === ">=") {
-            isPass = colVal >= tol;
-          } else if (toleranceOperator === "=") {
-            isPass = Math.abs(colVal - tol) < 0.0001;
+
+      const getVal = (o: any): number => {
+        if (o == null) return NaN;
+        if (typeof o === 'number') return o;
+        if (typeof o === 'string') return parseFloat(o);
+        if (typeof o === 'object' && 'value' in o) return parseFloat(o.value);
+        return NaN;
+      };
+
+      // Calculate on-the-fly if col is missing or NaN
+      let colValue = testData.linearityOfMasLoading.col || testData.linearityOfMasLoading.coefficient || testData.linearityOfMasLoading.colValue;
+      const parsedStoredCol = parseFloat(String(colValue));
+      if (!colValue || isNaN(parsedStoredCol)) {
+        const xValues: number[] = [];
+        validRows.forEach((row: any) => {
+          const outputs = (row.measuredOutputs ?? [])
+            .map(getVal)
+            .filter((v: number) => !isNaN(v) && v > 0);
+          const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+          
+          const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
+          const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+          const midMas = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
+
+          if (avg !== null && midMas > 0) {
+            const xVal = avg / midMas;
+            if (isFinite(xVal)) xValues.push(xVal);
+          }
+        });
+
+        if (xValues.length > 0) {
+          const xMax = Math.max(...xValues);
+          const xMin = Math.min(...xValues);
+          if (xMax + xMin > 0) {
+            colValue = Math.abs(xMax - xMin) / (xMax + xMin);
           }
         }
+      }
+
+      const colRaw = parseFloat(String(colValue));
+      const col = (!isNaN(colRaw) && isFinite(colRaw)) ? colRaw.toFixed(3) : "-";
+      
+      let isPass = testData.linearityOfMasLoading.remarks === "Pass" || testData.linearityOfMasLoading.remarks === "PASS";
+      if (!isPass && col !== "-") {
+        const c = parseFloat(col);
+        const t = parseFloat(tolerance);
+        if (toleranceOperator === "<=") isPass = c <= t;
+        else if (toleranceOperator === "<") isPass = c < t;
+        else if (toleranceOperator === ">=") isPass = c >= t;
+        else if (toleranceOperator === ">") isPass = c > t;
       }
       
       const testRows = validRows.map((row: any) => {
         return {
           specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
-          measured: col,
+          measured: col !== "-" ? `CoL = ${col}` : "-",
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -375,49 +398,53 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
 
   // 7. Consistency of Radiation Output (CoV)
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
-    const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kv || row.cv || row.remark);
+    const validRows = testData.outputConsistency.outputRows.filter((row: any) => 
+      row.kv || row.cv || (row.outputs && row.outputs.length > 0) || row.remark
+    );
+
     if (validRows.length > 0) {
       const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
-      // Tolerance is stored as decimal (e.g., 0.05)
       const toleranceValue = testData.outputConsistency.tolerance?.value || "0.05";
+
+      const getVal = (o: any): number => {
+        if (o == null) return NaN;
+        if (typeof o === 'number') return o;
+        if (typeof o === 'string') return parseFloat(o);
+        if (typeof o === 'object' && 'value' in o) return parseFloat(o.value);
+        return NaN;
+      };
+
       const testRows = validRows.map((row: any) => {
-        // Use CoV value directly from row.cv
-        let cvValue = row.cv || "-";
-        let isPass = false;
+        // Calculate on-the-fly if cv is missing
+        const outputs: number[] = (row.outputs ?? []).map(getVal).filter((n: number) => !isNaN(n) && n > 0);
+        const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
         
-        // Check if remark indicates pass/fail
-        if (row.remark === "Pass" || row.remark === "PASS") {
-          isPass = true;
-        } else if (row.remark === "Fail" || row.remark === "FAIL") {
-          isPass = false;
-        } else if (cvValue !== "-") {
-          // Calculate pass/fail based on CoV vs tolerance
-          const cv = parseFloat(String(cvValue));
-          const tol = parseFloat(toleranceValue);
-          
-          if (!isNaN(cv) && !isNaN(tol)) {
-            if (toleranceOperator === "<") {
-              isPass = cv < tol;
-            } else if (toleranceOperator === ">") {
-              isPass = cv > tol;
-            } else if (toleranceOperator === "<=") {
-              isPass = cv <= tol;
-            } else if (toleranceOperator === ">=") {
-              isPass = cv >= tol;
-            } else if (toleranceOperator === "=") {
-              isPass = Math.abs(cv - tol) < 0.01;
-            }
+        let cvValue = row.cv || row.cov;
+        if (!cvValue && avg !== null && avg > 0) {
+          const variance = outputs.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / outputs.length;
+          const cov = Math.sqrt(variance) / avg;
+          if (isFinite(cov)) {
+            cvValue = cov;
           }
         }
-        
-        // Format CoV value for display (numeric CoV as decimal, e.g. 0.004)
-        const formattedCv = cvValue !== "-" && cvValue !== undefined && cvValue !== null && cvValue !== ""
+
+        const formattedCv = cvValue !== undefined && cvValue !== null && cvValue !== "" && cvValue !== "-"
           ? (typeof cvValue === 'number' ? cvValue.toFixed(3) : parseFloat(String(cvValue)).toFixed(3))
           : "-";
         
+        let isPass = row.remark === "Pass" || row.remark === "PASS";
+        if (!isPass && formattedCv !== "-") {
+          const cv = parseFloat(formattedCv);
+          const tol = parseFloat(String(toleranceValue));
+          if (toleranceOperator === "<=") isPass = cv <= tol;
+          else if (toleranceOperator === "<") isPass = cv < tol;
+          else if (toleranceOperator === ">=") isPass = cv >= tol;
+          else if (toleranceOperator === ">") isPass = cv > tol;
+        }
+
         return {
           specified: row.kv ? `${row.kv} kV` : "Varies",
-          measured: formattedCv,
+          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
