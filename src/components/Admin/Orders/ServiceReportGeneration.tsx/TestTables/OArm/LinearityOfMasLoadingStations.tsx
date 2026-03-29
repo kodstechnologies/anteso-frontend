@@ -44,6 +44,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
   // Exposure Conditions
   const [exposureCondition, setExposureCondition] = useState<ExposureCondition>({ fcd: '100', kv: '80' });
 
+  const [selection, setSelection] = useState<'mA' | 'mAs'>('mAs');
   const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
     { id: '1', mAsRange: '5', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
@@ -107,6 +108,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
         const data = res;
         if (data) {
           setTestId(data._id || null);
+          setSelection(data.selection === 'mA' ? 'mA' : 'mAs');
           if (data.table1 && data.table1.length > 0) {
             setExposureCondition({
               fcd: data.table1[0].fcd || '100',
@@ -133,7 +135,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
-          toast.error('Failed to load mAs linearity data');
+          toast.error('Failed to load Linearity data');
         }
         setIsEditing(true);
       } finally {
@@ -188,10 +190,10 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
         setTable2Rows(newRows);
         setHasSaved(false);
         setIsEditing(true);
-        toast.success('Linearity of mAs Loading: CSV data loaded');
+        toast.success('Linearity: CSV data loaded');
       }
     } catch (err) {
-      console.error('LinearityOfMasLoading CSV processing error:', err);
+      console.error('Linearity CSV processing error:', err);
     }
   }, [csvData]);
 
@@ -205,6 +207,8 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
     setIsSaving(true);
     try {
       const payload = {
+        selection,
+        testName: `Linearity of ${selection} Loading`,
         table1: [exposureCondition],
         table2: processedTable2.rows.map(r => ({
           mAsApplied: r.mAsRange,
@@ -281,11 +285,11 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
       const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
 
       const match = row.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-      const midMas = match
+      const midVal = match
         ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
         : parseFloat(row.mAsRange) || 0;
 
-      const x = avg !== '—' && midMas > 0 ? (parseFloat(avg) / midMas).toFixed(4) : '—';
+      const x = avg !== '—' && midVal > 0 ? (parseFloat(avg) / midVal).toFixed(4) : '—';
       if (x !== '—') xValues.push(parseFloat(x));
 
       return { ...row, average: avg, x };
@@ -346,29 +350,47 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Linearity of mAs Loading (Across mAs Ranges)</h2>
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <ButtonIcon className="w-4 h-4" />
-              {buttonText} mAs Linearity
-            </>
-          )}
-        </button>
+        <h2 className="text-2xl font-bold text-gray-800">Linearity of {selection} Loading</h2>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg border">
+            <button
+              onClick={() => setSelection('mA')}
+              disabled={isViewMode}
+              className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${selection === 'mA' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              mA
+            </button>
+            <button
+              onClick={() => setSelection('mAs')}
+              disabled={isViewMode}
+              className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${selection === 'mAs' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              mAs
+            </button>
+          </div>
+          <button
+            onClick={isViewMode ? toggleEdit : handleSave}
+            disabled={isSaving}
+            className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+              ? 'bg-gray-400 cursor-not-allowed'
+              : isViewMode
+                ? 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+              }`}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <ButtonIcon className="w-4 h-4" />
+                {buttonText} {selection} Linearity
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Exposure Conditions */}
@@ -413,14 +435,14 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
       {/* Main Table */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
         <div className="px-6 py-4 bg-blue-50 border-b">
-          <h3 className="text-lg font-semibold text-blue-900">Linearity of Radiation Output Across mAs Ranges</h3>
+          <h3 className="text-lg font-semibold text-blue-900">Linearity of Radiation Output Across {selection} Ranges</h3>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs Range</th>
+                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">{selection} Range</th>
                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">
                   <div className="flex items-center justify-between px-4">
                     <span>Radiation Output (mGy)</span>
@@ -432,7 +454,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
                   </div>
                 </th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">Avg Output</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X (mGy/mAs)</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X (mGy/{selection})</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X MAX</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X MIN</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">CoL</th>
@@ -533,7 +555,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
         <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
           {!isViewMode && (
             <button onClick={addTable2Row} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-              <Plus className="w-5 h-5" /> Add mAs Range
+              <Plus className="w-5 h-5" /> Add {selection} Range
             </button>
           )}
           <div className="flex items-center gap-3 ml-auto">
