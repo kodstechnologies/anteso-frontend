@@ -1812,8 +1812,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                             />
                         )
                     },
-                    { title: "Equipment Settings Verification", component: <EquipementSetting key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} /> },
-                    { title: "Maximum Radiation Levels at Different Locations", component: <MaximumRadiationLevel key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} /> },
+                    // { title: "Equipment Settings Verification", component: <EquipementSetting key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} /> },
+                    // { title: "Maximum Radiation Levels at Different Locations", component: <MaximumRadiationLevel key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} /> },
                 ].map((item, i) => (
                     <Disclosure key={i} defaultOpen={i === 0}>
                         {({ open }) => (
