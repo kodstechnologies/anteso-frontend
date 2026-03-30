@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportInventionalRadiology.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForInventionalRadiology, getCentralBeamAlignmentByServiceIdForInventionalRadiology, getEffectiveFocalSpotByServiceIdForInventionalRadiology, getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology, getRadiationProtectionSurveyByServiceIdForInventionalRadiology } from "../../../../../../api";
+import { getReportHeaderForInventionalRadiology, getCentralBeamAlignmentByServiceIdForInventionalRadiology, getEffectiveFocalSpotByServiceIdForInventionalRadiology, getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology, getRadiationProtectionSurveyByServiceIdForInventionalRadiology, getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology, getMeasurementOfMaLinearityByServiceIdForInventionalRadiology } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/logo-sm.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
@@ -137,7 +137,7 @@ const ViewServiceReport: React.FC = () => {
 
           if (isDoubleTube) {
             // Fetch both Tube Frontal and Tube Lateral data
-            const [responseFrontal, responseLateral, centralBeamFrontal, effectiveFocalFrontal, consistencyFrontal, centralBeamLateral, effectiveFocalLateral, consistencyLateral, radiationProtection] = await Promise.all([
+            const [responseFrontal, responseLateral, centralBeamFrontal, effectiveFocalFrontal, consistencyFrontal, centralBeamLateral, effectiveFocalLateral, consistencyLateral, radiationProtection, accOpFrontal, accOpLateral, measurementMaFrontal, measurementMaLateral] = await Promise.all([
               getReportHeaderForInventionalRadiology(serviceId, 'frontal'),
               getReportHeaderForInventionalRadiology(serviceId, 'lateral'),
               getCentralBeamAlignmentByServiceIdForInventionalRadiology(serviceId, 'frontal'),
@@ -147,6 +147,10 @@ const ViewServiceReport: React.FC = () => {
               getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId, 'lateral'),
               getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, 'lateral'),
               getRadiationProtectionSurveyByServiceIdForInventionalRadiology(serviceId),
+              getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, 'frontal'),
+              getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, 'lateral'),
+              getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, 'frontal'),
+              getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, 'lateral'),
             ]);
 
             // Extract test data for Tube Frontal
@@ -171,6 +175,8 @@ const ViewServiceReport: React.FC = () => {
               centralBeamAlignment: centralBeamFrontal?.data || null,
               effectiveFocalSpot: effectiveFocalFrontal?.data || null,
               consistencyOfRadiationOutput: consistencyFrontal?.data || null,
+              accuracyOfOperatingPotential: accOpFrontal?.data || null,
+              measurementOfMaLinearity: measurementMaFrontal || responseFrontal?.data?.MeasurementOfMaLinearityInventionalRadiology || prev?.measurementOfMaLinearity || null,
             }));
 
             // Extract test data for Tube Lateral
@@ -195,6 +201,8 @@ const ViewServiceReport: React.FC = () => {
               centralBeamAlignment: centralBeamLateral?.data || null,
               effectiveFocalSpot: effectiveFocalLateral?.data || null,
               consistencyOfRadiationOutput: consistencyLateral?.data || null,
+              accuracyOfOperatingPotential: accOpLateral?.data || null,
+              measurementOfMaLinearity: measurementMaLateral || responseLateral?.data?.MeasurementOfMaLinearityInventionalRadiology || prev?.measurementOfMaLinearity || null,
             }));
 
             // Set combined test data for summary (common tests only)
@@ -204,11 +212,13 @@ const ViewServiceReport: React.FC = () => {
             });
           } else {
             // Single tube - fetch individual test data
-            const [centralBeam, effectiveFocal, consistency, radiationProtection] = await Promise.all([
+            const [centralBeam, effectiveFocal, consistency, radiationProtection, accOpSingle, measurementMaSingle] = await Promise.all([
               getCentralBeamAlignmentByServiceIdForInventionalRadiology(serviceId, null),
               getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId, null),
               getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, null),
               getRadiationProtectionSurveyByServiceIdForInventionalRadiology(serviceId),
+              getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, null),
+              getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, null),
             ]);
 
             setTestData({
@@ -222,6 +232,8 @@ const ViewServiceReport: React.FC = () => {
               exposureRateTableTop: data.ExposureRateTableTopInventionalRadiology || null,
               tubeHousingLeakage: data.TubeHousingLeakageInventionalRadiology || null,
               radiationProtectionSurvey: resolveSurveyData(data.RadiationProtectionSurveyInventionalRadiology, radiationProtection),
+              accuracyOfOperatingPotential: accOpSingle?.data || null,
+              measurementOfMaLinearity: measurementMaSingle || data.MeasurementOfMaLinearityInventionalRadiology || null,
             });
           }
         } else {
@@ -246,6 +258,10 @@ const ViewServiceReport: React.FC = () => {
     if (result.includes("PASS")) return "text-green-600";
     if (result.includes("FAIL")) return "text-red-600";
     return "";
+  };
+  const hasMaLinearityRows = (data: any) => {
+    const rows = data?.table2 || data?.Table2;
+    return Array.isArray(rows) && rows.length > 0;
   };
 
   // Helper function to render test table for both tubes
@@ -362,6 +378,480 @@ const ViewServiceReport: React.FC = () => {
   // Check if it's a double tube setup
   const savedTubeType = localStorage.getItem(`inventional_radiology_tube_type_${serviceId}`);
   const isDoubleTube = savedTubeType === 'double';
+
+  /** Total Filtration result table (same logic/fields as RadiographyFixed ViewServiceReport). */
+  const renderTotalFiltration = (totalData: any) => {
+    if (!totalData?.totalFiltration) return null;
+    const tf = totalData.totalFiltration;
+    const ft = {
+      forKvGreaterThan70: "1.5",
+      forKvBetween70And100: "2.0",
+      forKvGreaterThan100: "2.5",
+      kvThreshold1: "70",
+      kvThreshold2: "100",
+      ...(totalData.filtrationTolerance || {}),
+    };
+
+    const atKvpRaw = tf.atKvp ?? tf.atKVp ?? "";
+    let kvp = parseFloat(String(atKvpRaw));
+    if (isNaN(kvp) && Array.isArray(totalData.measurements) && totalData.measurements.length > 0) {
+      const first = totalData.measurements.find((m: any) => m?.appliedKvp != null && String(m.appliedKvp).trim() !== "");
+      if (first) kvp = parseFloat(String(first.appliedKvp));
+    }
+
+    const measuredMmAl = tf.required ?? tf.measured;
+    const measured = parseFloat(String(measuredMmAl ?? ""));
+    const threshold1 = parseFloat(String(ft.kvThreshold1 ?? "70"));
+    const threshold2 = parseFloat(String(ft.kvThreshold2 ?? "100"));
+
+    let requiredTol = NaN;
+    if (!isNaN(kvp)) {
+      if (kvp < threshold1) requiredTol = parseFloat(String(ft.forKvGreaterThan70 ?? "1.5"));
+      else if (kvp <= threshold2) requiredTol = parseFloat(String(ft.forKvBetween70And100 ?? "2.0"));
+      else requiredTol = parseFloat(String(ft.forKvGreaterThan100 ?? "2.5"));
+    }
+
+    const filtrationRemark = (!isNaN(measured) && !isNaN(requiredTol))
+      ? (measured >= requiredTol ? "PASS" : "FAIL")
+      : "-";
+
+    const atKvpDisplay = !isNaN(kvp) ? String(kvp) : (atKvpRaw !== "" ? atKvpRaw : "-");
+
+    return (
+      <div className="border border-black rounded" style={{ padding: '4px 6px', marginTop: '4px' }}>
+        <h4 className="font-semibold mb-2" style={{ fontSize: '11px', marginBottom: '4px' }}>Total Filtration</h4>
+        <table className="w-full border border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+          <tbody>
+            <tr>
+              <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>At kVp</td>
+              <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{atKvpDisplay !== "-" ? `${atKvpDisplay} kVp` : "-"}</td>
+            </tr>
+            <tr>
+              <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Measured Total Filtration</td>
+              <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{measuredMmAl != null && measuredMmAl !== "" ? measuredMmAl : "-"} mm Al</td>
+            </tr>
+            <tr>
+              <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
+              <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
+                {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Result</td>
+              <td className="border border-black text-center font-bold" style={{ padding: '0px 4px', fontSize: '11px' }}>
+                <span className={filtrationRemark === "PASS" ? "text-green-600" : filtrationRemark === "FAIL" ? "text-red-600" : ""}>
+                  {filtrationRemark}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        {/* Filtration Tolerance Reference */}
+        <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
+          <span className="font-semibold">Tolerance criteria: </span>
+          {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
+          {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+          {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
+        </div>
+      </div>
+    );
+  };
+
+  /** Accuracy of Operating Potential from TotalFilteration document (Applied kVp × mA stations) — RadiographyFixed. */
+  const renderOperatingPotentialFromTotalFilteration = (totalData: any) => {
+    if (!totalData?.measurements?.length) return null;
+    return (
+      <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+        <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Accuracy of Operating Potential</h4>
+        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied kVp</th>
+                {totalData.mAStations?.map((ma: string, idx: number) => (
+                  <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{ma}</th>
+                ))}
+                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Average kVp</th>
+                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {totalData.measurements.map((row: any, i: number) => (
+                <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKvp || "-"}</td>
+                  {totalData.mAStations?.map((_: string, idx: number) => (
+                    <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredValues?.[idx] || "-"}</td>
+                  ))}
+                  <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.averageKvp || "-"}</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                    <span className={row.remarks === "PASS" || row.remarks === "Pass" ? "text-green-600 font-semibold" : row.remarks === "FAIL" || row.remarks === "Fail" ? "text-red-600 font-semibold" : ""}>
+                      {row.remarks || "-"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {totalData.tolerance && (
+          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
+            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+              <strong>Tolerance:</strong> {totalData.tolerance.sign || "±"} {totalData.tolerance.value || "-"}%
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderFullTotalFiltrationSection = (totalData: any) => (
+    <>
+      {renderOperatingPotentialFromTotalFilteration(totalData)}
+      {totalData?.totalFiltration ? renderTotalFiltration(totalData) : null}
+    </>
+  );
+
+  const renderConsistencyOfRadiationOutput = (consistencyData: any) => {
+    if (!consistencyData || !consistencyData.outputRows || consistencyData.outputRows.length === 0) return null;
+    const rows = consistencyData.outputRows;
+    const ffdValue = (() => {
+      const raw = consistencyData.fdd ?? consistencyData.ffd;
+      if (raw === undefined || raw === null || raw === "") return null;
+      if (typeof raw === "object") {
+        return raw.value ?? null;
+      }
+      return raw;
+    })();
+    // Determine max measurement count across all rows
+    const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
+    const tolVal = parseFloat(consistencyData.tolerance?.value ?? '0.05') || 0.05;
+    const tolOp = consistencyData.tolerance?.operator ?? '<=';
+
+    const getVal = (o: any): number => {
+      if (o == null) return NaN;
+      if (typeof o === 'number') return o;
+      if (typeof o === 'string') return parseFloat(o);
+      if (typeof o === 'object' && 'value' in o) return parseFloat(o.value);
+      return NaN;
+    };
+    const getDisplayValue = (...vals: any[]) => {
+      for (const v of vals) {
+        if (v === undefined || v === null || v === "") continue;
+        if (typeof v === "object") {
+          if ("value" in v && v.value !== undefined && v.value !== null && v.value !== "") {
+            return v.value;
+          }
+          continue;
+        }
+        return v;
+      }
+      return "-";
+    };
+
+    return (
+      <>
+        {/* FFD small table */}
+        {ffdValue !== null && (
+          <div className="mb-3 print:mb-1" style={{ marginBottom: '4px' }}>
+            <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FFD (cm)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{ffdValue}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '10px', tableLayout: 'auto', borderCollapse: 'collapse', borderSpacing: '0' }}>
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
+                <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
+                {Array.from({ length: measCount }, (_, i) => (
+                  <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
+                ))}
+                <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (X̄)</th>
+                <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>
+                <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Remark</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row: any, i: number) => {
+                const outputs: number[] = (row.outputs ?? []).map(getVal).filter((n: number) => !isNaN(n) && n > 0);
+                const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+                const avgDisplay = avg !== null ? avg.toFixed(4) : (row.avg || '-');
+                let covDisplay = '-';
+                let remark = row.remark || '-';
+                if (avg !== null && avg > 0) {
+                  const variance = outputs.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / outputs.length;
+                  const cov = Math.sqrt(variance) / avg;
+                  if (isFinite(cov)) {
+                    covDisplay = cov.toFixed(3);
+                    const passes = (tolOp === '<=' || tolOp === '<') ? cov <= tolVal : cov >= tolVal;
+                    remark = passes ? 'Pass' : 'Fail';
+                  }
+                } else if (row.cv) {
+                  covDisplay = row.cv;
+                }
+
+                return (
+                  <tr key={i} className="text-center">
+                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                      {getDisplayValue(row.kv, row.kvp, row.kV, row.kVp, row.appliedKv, row.appliedKvp)}
+                    </td>
+                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                      {getDisplayValue(row.mas, row.mAs, row.appliedMas, row.appliedMA)}
+                    </td>
+                    {Array.from({ length: measCount }, (_, j) => {
+                      const raw = (row.outputs ?? [])[j];
+                      const display = raw != null ? (typeof raw === 'object' && 'value' in raw ? raw.value : String(raw)) : '-';
+                      return (
+                        <td key={j} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{display || '-'}</td>
+                      );
+                    })}
+                    <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{avgDisplay}</td>
+                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{covDisplay}</td>
+                    <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                      <span className={remark === 'Pass' ? 'text-green-600' : remark === 'Fail' ? 'text-red-600' : ''}>
+                        {remark}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {consistencyData.tolerance && (
+          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
+            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+              <strong>Acceptance Criteria:</strong> CoV {consistencyData.tolerance.operator || "<="} {consistencyData.tolerance.value || "0.05"}
+            </p>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  /** Measurement of mA Linearity — same table structure as RadiographyFixed §6 Linearity of mAs Loading (two-row header, CoL rowSpan, recalculated X / Xmax / Xmin). */
+  const renderMeasurementOfMaLinearityLikeRadiographyFixed = (mol: any) => {
+    const table1 = mol?.table1 || mol?.Table1 || [];
+    const table2 = mol?.table2 || mol?.Table2 || [];
+    const measHeaderSource = mol?.measHeaders || mol?.measurementHeaders || mol?.MeasHeaders || [];
+    const tolerance = mol?.tolerance ?? mol?.Tolerance;
+    const toleranceOperator = mol?.toleranceOperator ?? mol?.ToleranceOperator;
+
+    if (!Array.isArray(table2) || table2.length === 0) return null;
+    const measHeaders = (() => {
+      if (Array.isArray(measHeaderSource) && measHeaderSource.length > 0) return measHeaderSource;
+      const n = Math.max(
+        1,
+        ...table2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+      );
+      return Array.from({ length: n }, (_, i) => `Meas ${i + 1}`);
+    })();
+    const tolVal = parseFloat(tolerance ?? "0.1") || 0.1;
+    const tolOp = toleranceOperator ?? "<=";
+
+    return (
+      <>
+        {Array.isArray(table1) && table1.length > 0 && (
+          <div className="mb-4 print:mb-1" style={{ marginBottom: "6px" }}>
+            <p className="font-semibold mb-1 text-sm print:text-xs" style={{ fontSize: "11px", marginBottom: "3px" }}>Test Conditions:</p>
+            <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>kVp</th>
+                  <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>Slice Thickness (mm)</th>
+                  <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>Time (ms)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: "0px 8px", fontSize: "11px" }}>{table1[0]?.kvp ?? table1[0]?.kVp ?? "-"}</td>
+                  <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: "0px 8px", fontSize: "11px" }}>{table1[0]?.sliceThickness ?? "-"}</td>
+                  <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: "0px 8px", fontSize: "11px" }}>{table1[0]?.time ?? "-"}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="overflow-x-auto mb-6 print:mb-1 print:overflow-visible" style={{ marginBottom: "4px" }}>
+          <table className="w-full border-2 border-black compact-table force-small-text" style={{ fontSize: "10px", tableLayout: "fixed", width: "100%" }}>
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>mA</th>
+                <th colSpan={measHeaders.length} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>
+                  Output (mGy)
+                </th>
+                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>Avg Output</th>
+                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>X (mGy/mA)</th>
+                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>X MAX</th>
+                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>X MIN</th>
+                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>CoL</th>
+                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>Remarks</th>
+              </tr>
+              <tr>
+                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
+                {measHeaders.map((header: string, idx: number) => (
+                  <th key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>
+                    {header || `Meas ${idx + 1}`}
+                  </th>
+                ))}
+                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
+                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
+                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
+                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
+                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
+                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const rows = table2;
+                const formatV = (val: any) => {
+                  if (val === undefined || val === null) return "-";
+                  const str = String(val).trim();
+                  return str === "" || str === "—" || str === "undefined" || str === "null" ? "-" : str;
+                };
+
+                const xValues: number[] = [];
+                const processedRows = rows.map((row: any) => {
+                  const outputs = (row.measuredOutputs ?? [])
+                    .map((v: any) => parseFloat(v))
+                    .filter((v: number) => !isNaN(v) && v > 0);
+                  const avg =
+                    outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+                  const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : "—";
+
+                  const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
+                  const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                  const midMas = match
+                    ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
+                    : parseFloat(mAsLabel) || 0;
+
+                  const x = avg !== null && midMas > 0 ? avg / midMas : null;
+                  const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : "—";
+                  if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
+
+                  return { ...row, _avgDisplay: avgDisplay, _xDisplay: xDisplay };
+                });
+
+                const hasData = xValues.length > 0;
+                const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : "—";
+                const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : "—";
+                const colNum =
+                  hasData && xMax !== "—" && xMin !== "—" && parseFloat(xMax) + parseFloat(xMin) > 0
+                    ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+                    : 0;
+                const col = hasData && colNum > 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : "—";
+
+                let pass = false;
+                if (hasData && col !== "—") {
+                  const colVal2 = parseFloat(col);
+                  switch (tolOp) {
+                    case "<":
+                      pass = colVal2 < tolVal;
+                      break;
+                    case ">":
+                      pass = colVal2 > tolVal;
+                      break;
+                    case "<=":
+                      pass = colVal2 <= tolVal;
+                      break;
+                    case ">=":
+                      pass = colVal2 >= tolVal;
+                      break;
+                    case "=":
+                      pass = Math.abs(colVal2 - tolVal) < 0.0001;
+                      break;
+                    default:
+                      pass = colVal2 <= tolVal;
+                  }
+                }
+                const remarks = hasData && col !== "—" ? (pass ? "Pass" : "Fail") : "—";
+
+                return processedRows.map((row: any, i: number) => (
+                  <tr key={i} className="text-center" style={{ fontSize: "10px" }}>
+                    <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>
+                      {formatV(row.mAsApplied ?? row.mAsRange)}
+                    </td>
+                    {measHeaders.map((_: string, idx: number) => (
+                      <td key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>
+                        {formatV(row.measuredOutputs?.[idx])}
+                      </td>
+                    ))}
+                    <td className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: "10px", padding: "5px" }}>
+                      {row._avgDisplay}
+                    </td>
+                    <td className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: "10px", padding: "5px" }}>
+                      {row._xDisplay}
+                    </td>
+                    {i === 0 ? (
+                      <>
+                        <td
+                          rowSpan={rows.length}
+                          className="border border-black p-1.5 print:p-[3px] font-medium text-center"
+                          style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}
+                        >
+                          {xMax}
+                        </td>
+                        <td
+                          rowSpan={rows.length}
+                          className="border border-black p-1.5 print:p-[3px] font-medium text-center"
+                          style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}
+                        >
+                          {xMin}
+                        </td>
+                        <td
+                          rowSpan={rows.length}
+                          className="border border-black p-1.5 print:p-[3px] font-medium text-center"
+                          style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}
+                        >
+                          {col}
+                        </td>
+                        <td
+                          rowSpan={rows.length}
+                          className="border border-black p-1.5 print:p-[3px] text-center"
+                          style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}
+                        >
+                          <span
+                            className={
+                              remarks === "Pass"
+                                ? "text-green-600 font-semibold"
+                                : remarks === "Fail"
+                                  ? "text-red-600 font-semibold"
+                                  : ""
+                            }
+                            style={{ fontSize: "10px" }}
+                          >
+                            {remarks}
+                          </span>
+                        </td>
+                      </>
+                    ) : null}
+                  </tr>
+                ));
+              })()}
+            </tbody>
+          </table>
+        </div>
+        {tolerance != null && tolerance !== "" && (
+          <div className="bg-gray-50 p-4 print:p-1 rounded border">
+            <p className="text-sm print:text-[10px]" style={{ fontSize: "10px" }}>
+              <strong>Tolerance (CoL):</strong> {tolOp} {tolerance ?? "0.1"}
+            </p>
+          </div>
+        )}
+      </>
+    );
+  };
 
   return (
     <>
@@ -581,51 +1071,167 @@ const ViewServiceReport: React.FC = () => {
                     {testDataFrontal.centralBeamAlignment && (
                       <div className="mb-4 print:mb-2">
                         <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
-                        <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                            <strong>Observed Tilt:</strong> {testDataFrontal.centralBeamAlignment.observedTilt?.value || "-"}° |
-                            <strong> Tolerance:</strong> {testDataFrontal.centralBeamAlignment.tolerance?.operator || "<="} {testDataFrontal.centralBeamAlignment.tolerance?.value || "-"}°
-                          </p>
-                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                            <strong>Remark:</strong>{" "}
-                            <span className={testDataFrontal.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600" : "text-red-600"}>
-                              {testDataFrontal.centralBeamAlignment.observedTilt?.remark || "-"}
-                            </span>
-                          </p>
+                        {testDataFrontal.centralBeamAlignment.techniqueFactors && (
+                          <div className="mb-4 print:mb-1">
+                            <p className="font-semibold mb-2 text-sm print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Operating parameters:</p>
+                            <div className="overflow-x-auto">
+                              <table className="border-2 border-black text-sm mb-4 compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
+                                <thead className="bg-gray-100">
+                                  <tr className="bg-blue-50">
+                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>SID (cm)</th>
+                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
+                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
+                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataFrontal.centralBeamAlignment.techniqueFactors.fcd || testDataFrontal.centralBeamAlignment.techniqueFactors.sid || "-"}</td>
+                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataFrontal.centralBeamAlignment.techniqueFactors.kv || "-"}</td>
+                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataFrontal.centralBeamAlignment.techniqueFactors.mas || "-"}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '10px', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '500px' }}>
+                            <tbody>
+                              {testDataFrontal.centralBeamAlignment.observedTilt && (testDataFrontal.centralBeamAlignment.observedTilt.value != null || testDataFrontal.centralBeamAlignment.observedTilt.remark) && (
+                                <>
+                                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
+                                    <td className="border border-black p-2 print:p-1 font-semibold w-1/2" style={{ padding: '2px 4px' }}>Observed tilt</td>
+                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
+                                      {testDataFrontal.centralBeamAlignment.observedTilt.value != null ? `${testDataFrontal.centralBeamAlignment.observedTilt.value}°` : "-"}
+                                      {testDataFrontal.centralBeamAlignment.observedTilt.remark && (
+                                        <span className={`ml-2 font-bold ${testDataFrontal.centralBeamAlignment.observedTilt.remark === "Pass" || testDataFrontal.centralBeamAlignment.observedTilt.remark === "PASS" ? "text-green-600" : "text-red-600"}`}>
+                                          {testDataFrontal.centralBeamAlignment.observedTilt.remark}
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
+                                    <td className="border border-black p-2 print:p-1 font-semibold" style={{ padding: '2px 4px' }}>Tolerance: Central Beam Alignment</td>
+                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
+                                      {testDataFrontal.centralBeamAlignment.tolerance?.value != null ? `${testDataFrontal.centralBeamAlignment.tolerance?.operator || "≤"} ${testDataFrontal.centralBeamAlignment.tolerance.value}°` : "≤ 1.5°"}
+                                    </td>
+                                  </tr>
+                                </>
+                              )}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     )}
                     {testDataLateral.centralBeamAlignment && (
                       <div className="mb-4 print:mb-2">
                         <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
-                        <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                            <strong>Observed Tilt:</strong> {testDataLateral.centralBeamAlignment.observedTilt?.value || "-"}° |
-                            <strong> Tolerance:</strong> {testDataLateral.centralBeamAlignment.tolerance?.operator || "<="} {testDataLateral.centralBeamAlignment.tolerance?.value || "-"}°
-                          </p>
-                          <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                            <strong>Remark:</strong>{" "}
-                            <span className={testDataLateral.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600" : "text-red-600"}>
-                              {testDataLateral.centralBeamAlignment.observedTilt?.remark || "-"}
-                            </span>
-                          </p>
+                        {testDataLateral.centralBeamAlignment.techniqueFactors && (
+                          <div className="mb-4 print:mb-1">
+                            <p className="font-semibold mb-2 text-sm print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Operating parameters:</p>
+                            <div className="overflow-x-auto">
+                              <table className="border-2 border-black text-sm mb-4 compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
+                                <thead className="bg-gray-100">
+                                  <tr className="bg-blue-50">
+                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>SID (cm)</th>
+                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
+                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
+                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataLateral.centralBeamAlignment.techniqueFactors.fcd || testDataLateral.centralBeamAlignment.techniqueFactors.sid || "-"}</td>
+                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataLateral.centralBeamAlignment.techniqueFactors.kv || "-"}</td>
+                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataLateral.centralBeamAlignment.techniqueFactors.mas || "-"}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '10px', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '500px' }}>
+                            <tbody>
+                              {testDataLateral.centralBeamAlignment.observedTilt && (testDataLateral.centralBeamAlignment.observedTilt.value != null || testDataLateral.centralBeamAlignment.observedTilt.remark) && (
+                                <>
+                                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
+                                    <td className="border border-black p-2 print:p-1 font-semibold w-1/2" style={{ padding: '2px 4px' }}>Observed tilt</td>
+                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
+                                      {testDataLateral.centralBeamAlignment.observedTilt.value != null ? `${testDataLateral.centralBeamAlignment.observedTilt.value}°` : "-"}
+                                      {testDataLateral.centralBeamAlignment.observedTilt.remark && (
+                                        <span className={`ml-2 font-bold ${testDataLateral.centralBeamAlignment.observedTilt.remark === "Pass" || testDataLateral.centralBeamAlignment.observedTilt.remark === "PASS" ? "text-green-600" : "text-red-600"}`}>
+                                          {testDataLateral.centralBeamAlignment.observedTilt.remark}
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
+                                    <td className="border border-black p-2 print:p-1 font-semibold" style={{ padding: '2px 4px' }}>Tolerance: Central Beam Alignment</td>
+                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
+                                      {testDataLateral.centralBeamAlignment.tolerance?.value != null ? `${testDataLateral.centralBeamAlignment.tolerance?.operator || "≤"} ${testDataLateral.centralBeamAlignment.tolerance.value}°` : "≤ 1.5°"}
+                                    </td>
+                                  </tr>
+                                </>
+                              )}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Observed Tilt:</strong> {testData.centralBeamAlignment.observedTilt?.value || "-"}° |
-                      <strong> Tolerance:</strong> {testData.centralBeamAlignment.tolerance?.operator || "<="} {testData.centralBeamAlignment.tolerance?.value || "-"}°
-                    </p>
-                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Remark:</strong>{" "}
-                      <span className={testData.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600" : "text-red-600"}>
-                        {testData.centralBeamAlignment.observedTilt?.remark || "-"}
-                      </span>
-                    </p>
-                  </div>
+                  <>
+                    {testData.centralBeamAlignment.techniqueFactors && (
+                      <div className="mb-4 print:mb-1">
+                        <p className="font-semibold mb-2 text-sm print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Operating parameters:</p>
+                        <div className="overflow-x-auto">
+                          <table className="border-2 border-black text-sm mb-4 compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
+                            <thead className="bg-gray-100">
+                              <tr className="bg-blue-50">
+                                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>SID (cm)</th>
+                                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
+                                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
+                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.centralBeamAlignment.techniqueFactors.fcd || testData.centralBeamAlignment.techniqueFactors.sid || "-"}</td>
+                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.centralBeamAlignment.techniqueFactors.kv || "-"}</td>
+                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.centralBeamAlignment.techniqueFactors.mas || "-"}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '10px', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '500px' }}>
+                        <tbody>
+                          {testData.centralBeamAlignment.observedTilt && (testData.centralBeamAlignment.observedTilt.value != null || testData.centralBeamAlignment.observedTilt.remark) && (
+                            <>
+                              <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
+                                <td className="border border-black p-2 print:p-1 font-semibold w-1/2" style={{ padding: '2px 4px' }}>Observed tilt</td>
+                                <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
+                                  {testData.centralBeamAlignment.observedTilt.value != null ? `${testData.centralBeamAlignment.observedTilt.value}°` : "-"}
+                                  {testData.centralBeamAlignment.observedTilt.remark && (
+                                    <span className={`ml-2 font-bold ${testData.centralBeamAlignment.observedTilt.remark === "Pass" || testData.centralBeamAlignment.observedTilt.remark === "PASS" ? "text-green-600" : "text-red-600"}`}>
+                                      {testData.centralBeamAlignment.observedTilt.remark}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                              <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
+                                <td className="border border-black p-2 print:p-1 font-semibold" style={{ padding: '2px 4px' }}>Tolerance: Central Beam Alignment</td>
+                                <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
+                                  {testData.centralBeamAlignment.tolerance?.value != null ? `${testData.centralBeamAlignment.tolerance?.operator || "≤"} ${testData.centralBeamAlignment.tolerance.value}°` : "≤ 1.5°"}
+                                </td>
+                              </tr>
+                            </>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -639,189 +1245,285 @@ const ViewServiceReport: React.FC = () => {
                     {testDataFrontal.effectiveFocalSpot && (
                       <div className="mb-4 print:mb-2">
                         <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
-                        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                        {/* FFD small table */}
+                        <div className="mb-3 print:mb-1" style={{ marginBottom: '4px' }}>
+                          <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                             <thead className="bg-gray-100">
                               <tr>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '12%', padding: '0px 1px', fontSize: '11px' }}></th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Stated Focal Spot of Tube</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
-                                <th className="border border-black p-2 print:p-1 text-left" style={{ width: '30%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.1' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <strong>Tolerance:</strong>
-                                    <span><strong>FFD (cm)</strong> {testDataFrontal.effectiveFocalSpot.fcd || "-"}</span>
-                                  </div>
-                                  <div>1. +{testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
-                                  <div>2. +{testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
-                                  <div>3. +{testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
-                                </th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '10%', padding: '0px 1px', fontSize: '11px' }}>Result</th>
+                                <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FFD (cm)</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {testDataFrontal.effectiveFocalSpot.focalSpots?.slice(0, 2).map((spot: any, i: number) => {
-                                const formatValue = (val: any) => {
-                                  if (val === undefined || val === null || val === "") return "-";
-                                  const numVal = typeof val === "number" ? val : parseFloat(val);
-                                  if (isNaN(numVal)) return "-";
-                                  return numVal.toFixed(1);
-                                };
-
-                                const statedNominal = formatValue(
-                                  spot.statedNominal ??
-                                  (spot.statedWidth != null && spot.statedHeight != null
-                                    ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                                    : spot.statedWidth ?? spot.statedHeight)
-                                );
-                                const measuredNominal = formatValue(
-                                  spot.measuredNominal ??
-                                  (spot.measuredWidth != null && spot.measuredHeight != null
-                                    ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                                    : spot.measuredWidth ?? spot.measuredHeight)
-                                );
-
-                                return (
-                                  <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                                    <td className="border border-black p-2 print:p-1 text-left font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                      {spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}
-                                    </td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{statedNominal}</td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{measuredNominal}</td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}> </td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>
-                                      <span className={spot.remark === "Pass" || spot.remark === "PASS" ? "text-green-600" : "text-red-600"}>{spot.remark || "-"}</span>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
+                              <tr>
+                                <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{testDataFrontal.effectiveFocalSpot.fcd || "-"}</td>
+                              </tr>
                             </tbody>
                           </table>
                         </div>
+
+                        {testDataFrontal.effectiveFocalSpot.focalSpots?.length > 0 && (
+                          <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px' }}></th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ width: '26%', padding: '0px 1px', fontSize: '11px' }}>Stated Focal Spot of Tube</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ width: '26%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
+                                  <th className="border border-black p-2 print:p-1 text-left" style={{ width: '34%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.3' }}>
+                                    <div><strong>Tolerance:</strong></div>
+                                    <div>1. +{testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
+                                    <div>2. +{testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
+                                    <div>3. +{testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testDataFrontal.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {testDataFrontal.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
+                                  const formatValue = (val: any) => {
+                                    if (val === undefined || val === null || val === "") return "-";
+                                    const numVal = typeof val === "number" ? val : parseFloat(val);
+                                    if (isNaN(numVal)) return "-";
+                                    return numVal.toFixed(1);
+                                  };
+
+                                  const statedNominal = formatValue(
+                                    spot.statedNominal ??
+                                    (spot.statedWidth != null && spot.statedHeight != null
+                                      ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                                      : spot.statedWidth ?? spot.statedHeight)
+                                  );
+                                  const measuredNominal = formatValue(
+                                    spot.measuredNominal ??
+                                    (spot.measuredWidth != null && spot.measuredHeight != null
+                                      ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                                      : spot.measuredWidth ?? spot.measuredHeight)
+                                  );
+
+                                  return (
+                                    <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                                      <td className="border border-black p-2 print:p-1 text-left font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>
+                                        {spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}
+                                      </td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{statedNominal}</td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{measuredNominal}</td>
+                                      <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px' }}>
+                                        <span
+                                          className={
+                                            spot.remark === "Pass" || spot.remark === "PASS"
+                                              ? "text-green-600"
+                                              : spot.remark === "Fail" || spot.remark === "FAIL"
+                                                ? "text-red-600"
+                                                : ""
+                                          }
+                                        >
+                                          {spot.remark || "-"}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     )}
                     {testDataLateral.effectiveFocalSpot && (
                       <div className="mb-4 print:mb-2">
                         <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
-                        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                        {/* FFD small table */}
+                        <div className="mb-3 print:mb-1" style={{ marginBottom: '4px' }}>
+                          <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                             <thead className="bg-gray-100">
                               <tr>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '12%', padding: '0px 1px', fontSize: '11px' }}></th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Stated Focal Spot of Tube</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
-                                <th className="border border-black p-2 print:p-1 text-left" style={{ width: '30%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.1' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <strong>Tolerance:</strong>
-                                    <span><strong>FFD (cm)</strong> {testDataLateral.effectiveFocalSpot.fcd || "-"}</span>
-                                  </div>
-                                  <div>1. +{testDataLateral.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testDataLateral.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
-                                  <div>2. +{testDataLateral.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testDataLateral.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testDataLateral.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
-                                  <div>3. +{testDataLateral.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testDataLateral.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
-                                </th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '10%', padding: '0px 1px', fontSize: '11px' }}>Result</th>
+                                <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FFD (cm)</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {testDataLateral.effectiveFocalSpot.focalSpots?.slice(0, 2).map((spot: any, i: number) => {
-                                const formatValue = (val: any) => {
-                                  if (val === undefined || val === null || val === "") return "-";
-                                  const numVal = typeof val === "number" ? val : parseFloat(val);
-                                  if (isNaN(numVal)) return "-";
-                                  return numVal.toFixed(1);
-                                };
-
-                                const statedNominal = formatValue(
-                                  spot.statedNominal ??
-                                  (spot.statedWidth != null && spot.statedHeight != null
-                                    ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                                    : spot.statedWidth ?? spot.statedHeight)
-                                );
-                                const measuredNominal = formatValue(
-                                  spot.measuredNominal ??
-                                  (spot.measuredWidth != null && spot.measuredHeight != null
-                                    ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                                    : spot.measuredWidth ?? spot.measuredHeight)
-                                );
-
-                                return (
-                                  <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                                    <td className="border border-black p-2 print:p-1 text-left font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                      {spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}
-                                    </td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{statedNominal}</td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{measuredNominal}</td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}> </td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>
-                                      <span className={spot.remark === "Pass" || spot.remark === "PASS" ? "text-green-600" : "text-red-600"}>{spot.remark || "-"}</span>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
+                              <tr>
+                                <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{testDataLateral.effectiveFocalSpot.fcd || "-"}</td>
+                              </tr>
                             </tbody>
                           </table>
                         </div>
+
+                        {testDataLateral.effectiveFocalSpot.focalSpots?.length > 0 && (
+                          <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px' }}></th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ width: '26%', padding: '0px 1px', fontSize: '11px' }}>Stated Focal Spot of Tube</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ width: '26%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
+                                  <th className="border border-black p-2 print:p-1 text-left" style={{ width: '34%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.3' }}>
+                                    <div><strong>Tolerance:</strong></div>
+                                    <div>1. +{testDataLateral.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testDataLateral.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
+                                    <div>2. +{testDataLateral.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testDataLateral.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testDataLateral.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
+                                    <div>3. +{testDataLateral.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testDataLateral.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {testDataLateral.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
+                                  const formatValue = (val: any) => {
+                                    if (val === undefined || val === null || val === "") return "-";
+                                    const numVal = typeof val === "number" ? val : parseFloat(val);
+                                    if (isNaN(numVal)) return "-";
+                                    return numVal.toFixed(1);
+                                  };
+
+                                  const statedNominal = formatValue(
+                                    spot.statedNominal ??
+                                    (spot.statedWidth != null && spot.statedHeight != null
+                                      ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                                      : spot.statedWidth ?? spot.statedHeight)
+                                  );
+                                  const measuredNominal = formatValue(
+                                    spot.measuredNominal ??
+                                    (spot.measuredWidth != null && spot.measuredHeight != null
+                                      ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                                      : spot.measuredWidth ?? spot.measuredHeight)
+                                  );
+
+                                  return (
+                                    <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                                      <td className="border border-black p-2 print:p-1 text-left font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>
+                                        {spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}
+                                      </td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{statedNominal}</td>
+                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{measuredNominal}</td>
+                                      <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px' }}>
+                                        <span
+                                          className={
+                                            spot.remark === "Pass" || spot.remark === "PASS"
+                                              ? "text-green-600"
+                                              : spot.remark === "Fail" || spot.remark === "FAIL"
+                                                ? "text-red-600"
+                                                : ""
+                                          }
+                                        >
+                                          {spot.remark || "-"}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '12%', padding: '0px 1px', fontSize: '11px' }}></th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Stated Focal Spot of Tube</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
-                          <th className="border border-black p-2 print:p-1 text-left" style={{ width: '30%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.1' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <strong>Tolerance:</strong>
-                              <span><strong>FFD (cm)</strong> {testData.effectiveFocalSpot.fcd || "-"}</span>
-                            </div>
-                            <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
-                            <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
-                            <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
-                          </th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '10%', padding: '0px 1px', fontSize: '11px' }}>Result</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testData.effectiveFocalSpot.focalSpots?.slice(0, 2).map((spot: any, i: number) => {
-                          const formatValue = (val: any) => {
-                            if (val === undefined || val === null || val === "") return "-";
-                            const numVal = typeof val === "number" ? val : parseFloat(val);
-                            if (isNaN(numVal)) return "-";
-                            return numVal.toFixed(1);
-                          };
+                  <>
+                    {/* FFD small table */}
+                    <div className="mb-3 print:mb-1" style={{ marginBottom: '4px' }}>
+                      <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FFD (cm)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{testData.effectiveFocalSpot.fcd || "-"}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
 
-                          const statedNominal = formatValue(
-                            spot.statedNominal ??
-                            (spot.statedWidth != null && spot.statedHeight != null
-                              ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                              : spot.statedWidth ?? spot.statedHeight)
-                          );
-                          const measuredNominal = formatValue(
-                            spot.measuredNominal ??
-                            (spot.measuredWidth != null && spot.measuredHeight != null
-                              ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                              : spot.measuredWidth ?? spot.measuredHeight)
-                          );
-
-                          return (
-                            <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                              <td className="border border-black p-2 print:p-1 text-left font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                {spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}
-                              </td>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{statedNominal}</td>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{measuredNominal}</td>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}> </td>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>
-                                <span className={spot.remark === "Pass" || spot.remark === "PASS" ? "text-green-600" : "text-red-600"}>{spot.remark || "-"}</span>
-                              </td>
+                    {testData.effectiveFocalSpot.focalSpots?.length > 0 && (
+                      <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                        <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="border border-black p-2 print:p-1 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px' }}></th>
+                              <th className="border border-black p-2 print:p-1 text-center" style={{ width: '26%', padding: '0px 1px', fontSize: '11px' }}>Stated Focal Spot of Tube</th>
+                              <th className="border border-black p-2 print:p-1 text-center" style={{ width: '26%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
+                              <th className="border border-black p-2 print:p-1 text-left" style={{ width: '34%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.3' }}>
+                                <div><strong>Tolerance:</strong></div>
+                                <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
+                                <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
+                                <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
+                              </th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                          </thead>
+                          <tbody>
+                            {testData.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
+                              const formatValue = (val: any) => {
+                                if (val === undefined || val === null || val === "") return "-";
+                                const numVal = typeof val === "number" ? val : parseFloat(val);
+                                if (isNaN(numVal)) return "-";
+                                return numVal.toFixed(1);
+                              };
+
+                              const statedNominal = formatValue(
+                                spot.statedNominal ??
+                                (spot.statedWidth != null && spot.statedHeight != null
+                                  ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+                                  : spot.statedWidth ?? spot.statedHeight)
+                              );
+                              const measuredNominal = formatValue(
+                                spot.measuredNominal ??
+                                (spot.measuredWidth != null && spot.measuredHeight != null
+                                  ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+                                  : spot.measuredWidth ?? spot.measuredHeight)
+                              );
+
+                              return (
+                                <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                                  <td className="border border-black p-2 print:p-1 text-left font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>
+                                    {spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}
+                                  </td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{statedNominal}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{measuredNominal}</td>
+                                  <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px' }}>
+                                    <span
+                                      className={
+                                        spot.remark === "Pass" || spot.remark === "PASS"
+                                          ? "text-green-600"
+                                          : spot.remark === "Fail" || spot.remark === "FAIL"
+                                            ? "text-red-600"
+                                            : ""
+                                      }
+                                    >
+                                      {spot.remark || "-"}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* 2.1 Measurement of mA Linearity (RadiographyFixed-style linearity table) */}
+            {((isDoubleTube && (hasMaLinearityRows(testDataFrontal.measurementOfMaLinearity) || hasMaLinearityRows(testDataLateral.measurementOfMaLinearity))) || (!isDoubleTube && hasMaLinearityRows(testData.measurementOfMaLinearity))) && (
+              <div className="mb-16 print:mb-12 test-section" style={{ marginBottom: "8px" }}>
+                <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: "14px", marginBottom: "4px" }}>3. Measurement of mA Linearity</h3>
+                {isDoubleTube ? (
+                  <>
+                    {hasMaLinearityRows(testDataFrontal.measurementOfMaLinearity) && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: "11px", marginBottom: "2px" }}>Tube Frontal</h4>
+                        {renderMeasurementOfMaLinearityLikeRadiographyFixed(testDataFrontal.measurementOfMaLinearity)}
+                      </div>
+                    )}
+                    {hasMaLinearityRows(testDataLateral.measurementOfMaLinearity) && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: "11px", marginBottom: "2px" }}>Tube Lateral</h4>
+                        {renderMeasurementOfMaLinearityLikeRadiographyFixed(testDataLateral.measurementOfMaLinearity)}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  renderMeasurementOfMaLinearityLikeRadiographyFixed(testData.measurementOfMaLinearity)
                 )}
               </div>
             )}
@@ -829,7 +1531,7 @@ const ViewServiceReport: React.FC = () => {
             {/* 3. Accuracy of kVp at Different mA Stations */}
             {((isDoubleTube && (testDataFrontal.accuracyOfOperatingPotential || testDataLateral.accuracyOfOperatingPotential)) || (!isDoubleTube && testData.accuracyOfOperatingPotential)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Accuracy of kVp at Different mA Stations</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Accuracy of Operating Potential</h3>
                 {isDoubleTube ? (
                   <>
                     {testDataFrontal.accuracyOfOperatingPotential && (
@@ -840,11 +1542,11 @@ const ViewServiceReport: React.FC = () => {
                             <thead className="bg-gray-100">
                               <tr>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set kV</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@mA 10</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@mA 100</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@mA 200</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>10 mA</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>100 mA</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>200 mA</th>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Avg kVp</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Result</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -854,9 +1556,9 @@ const ViewServiceReport: React.FC = () => {
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma10 || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma100 || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma200 || "-"}</td>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                                    <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>{row.remarks || "-"}</span>
+                                    <span className={row.remarks === "Pass" ? "text-green-600" : row.remarks === "Fail" ? "text-red-600" : ""}>{row.remarks || "-"}</span>
                                   </td>
                                 </tr>
                               ))}
@@ -873,11 +1575,11 @@ const ViewServiceReport: React.FC = () => {
                             <thead className="bg-gray-100">
                               <tr>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set kV</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@mA 10</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@mA 100</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@mA 200</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>10 mA</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>100 mA</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>200 mA</th>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Avg kVp</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Result</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -887,9 +1589,9 @@ const ViewServiceReport: React.FC = () => {
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma10 || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma100 || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma200 || "-"}</td>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp || "-"}</td>
+                                  <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                                    <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>{row.remarks || "-"}</span>
+                                    <span className={row.remarks === "Pass" ? "text-green-600" : row.remarks === "Fail" ? "text-red-600" : ""}>{row.remarks || "-"}</span>
                                   </td>
                                 </tr>
                               ))}
@@ -900,471 +1602,31 @@ const ViewServiceReport: React.FC = () => {
                     )}
                   </>
                 ) : (
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set kV</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@mA 10</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@mA 100</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@mA 200</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Avg kVp</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Result</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testData.accuracyOfOperatingPotential.table2?.map((row: any, i: number) => (
-                          <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setKV || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma10 || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma100 || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma200 || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                              <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>{row.remarks || "-"}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 4. Accuracy of Irradiation Time */}
-            {((isDoubleTube && (testDataFrontal.accuracyOfIrradiationTime || testDataLateral.accuracyOfIrradiationTime)) || (!isDoubleTube && testData.accuracyOfIrradiationTime)) && (
-              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Accuracy of Irradiation Time</h3>
-                {isDoubleTube ? (
-                  <>
-                    {/* Tube Frontal */}
-                    {testDataFrontal.accuracyOfIrradiationTime && (
-                      <div className="mb-4 print:mb-2">
-                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
-                        {testDataFrontal.accuracyOfIrradiationTime.testConditions && (
-                          <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
-                            <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
-                            <div className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                              FCD: {testDataFrontal.accuracyOfIrradiationTime.testConditions.fcd || "-"} cm |
-                              kV: {testDataFrontal.accuracyOfIrradiationTime.testConditions.kv || "-"} |
-                              mA: {testDataFrontal.accuracyOfIrradiationTime.testConditions.ma || "-"}
-                            </div>
-                          </div>
-                        )}
-                        {testDataFrontal.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (
-                          <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                              <thead className="bg-gray-100">
-                                <tr>
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remarks</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {testDataFrontal.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
-                                  const setTime = parseFloat(row.setTime);
-                                  const measuredTime = parseFloat(row.measuredTime);
-                                  let error = "-";
-                                  if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
-                                    error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
-                                  }
-                                  const toleranceOp = testDataFrontal.accuracyOfIrradiationTime.tolerance?.operator || "<=";
-                                  const toleranceVal = parseFloat(testDataFrontal.accuracyOfIrradiationTime.tolerance?.value || "5");
-                                  const errorVal = parseFloat(error);
-                                  let isPass = false;
-                                  if (!isNaN(errorVal) && !isNaN(toleranceVal)) {
-                                    if (toleranceOp === "<=") isPass = errorVal <= toleranceVal;
-                                    else if (toleranceOp === ">=") isPass = errorVal >= toleranceVal;
-                                    else if (toleranceOp === "<") isPass = errorVal < toleranceVal;
-                                    else if (toleranceOp === ">") isPass = errorVal > toleranceVal;
-                                  }
-                                  return (
-                                    <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime || "-"}</td>
-                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredTime || "-"}</td>
-                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{error}%</td>
-                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                        <span className={isPass ? "text-green-600" : "text-red-600"}>
-                                          {isPass ? "PASS" : "FAIL"}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                        {testDataFrontal.accuracyOfIrradiationTime.tolerance && (
-                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                              <strong>Tolerance:</strong> Error {testDataFrontal.accuracyOfIrradiationTime.tolerance.operator || "<="} {testDataFrontal.accuracyOfIrradiationTime.tolerance.value || "-"}%
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {/* Tube Lateral */}
-                    {testDataLateral.accuracyOfIrradiationTime && (
-                      <div className="mb-4 print:mb-2">
-                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
-                        {testDataLateral.accuracyOfIrradiationTime.testConditions && (
-                          <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
-                            <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
-                            <div className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                              FCD: {testDataLateral.accuracyOfIrradiationTime.testConditions.fcd || "-"} cm |
-                              kV: {testDataLateral.accuracyOfIrradiationTime.testConditions.kv || "-"} |
-                              mA: {testDataLateral.accuracyOfIrradiationTime.testConditions.ma || "-"}
-                            </div>
-                          </div>
-                        )}
-                        {testDataLateral.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (
-                          <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                              <thead className="bg-gray-100">
-                                <tr>
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remarks</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {testDataLateral.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
-                                  const setTime = parseFloat(row.setTime);
-                                  const measuredTime = parseFloat(row.measuredTime);
-                                  let error = "-";
-                                  if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
-                                    error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
-                                  }
-                                  const toleranceOp = testDataLateral.accuracyOfIrradiationTime.tolerance?.operator || "<=";
-                                  const toleranceVal = parseFloat(testDataLateral.accuracyOfIrradiationTime.tolerance?.value || "5");
-                                  const errorVal = parseFloat(error);
-                                  let isPass = false;
-                                  if (!isNaN(errorVal) && !isNaN(toleranceVal)) {
-                                    if (toleranceOp === "<=") isPass = errorVal <= toleranceVal;
-                                    else if (toleranceOp === ">=") isPass = errorVal >= toleranceVal;
-                                    else if (toleranceOp === "<") isPass = errorVal < toleranceVal;
-                                    else if (toleranceOp === ">") isPass = errorVal > toleranceVal;
-                                  }
-                                  return (
-                                    <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime || "-"}</td>
-                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredTime || "-"}</td>
-                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{error}%</td>
-                                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                        <span className={isPass ? "text-green-600" : "text-red-600"}>
-                                          {isPass ? "PASS" : "FAIL"}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                        {testDataLateral.accuracyOfIrradiationTime.tolerance && (
-                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                              <strong>Tolerance:</strong> Error {testDataLateral.accuracyOfIrradiationTime.tolerance.operator || "<="} {testDataLateral.accuracyOfIrradiationTime.tolerance.value || "-"}%
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {testData.accuracyOfIrradiationTime.testConditions && (
-                      <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
-                        <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
-                        <div className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                          FCD: {testData.accuracyOfIrradiationTime.testConditions.fcd || "-"} cm |
-                          kV: {testData.accuracyOfIrradiationTime.testConditions.kv || "-"} |
-                          mA: {testData.accuracyOfIrradiationTime.testConditions.ma || "-"}
-                        </div>
-                      </div>
-                    )}
-                    {testData.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (
-                      <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                        <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                          <thead className="bg-gray-100">
-                            <tr>
-                              <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
-                              <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
-                              <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
-                              <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remarks</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {testData.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
-                              const setTime = parseFloat(row.setTime);
-                              const measuredTime = parseFloat(row.measuredTime);
-                              let error = "-";
-                              if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
-                                error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
-                              }
-                              const toleranceOp = testData.accuracyOfIrradiationTime.tolerance?.operator || "<=";
-                              const toleranceVal = parseFloat(testData.accuracyOfIrradiationTime.tolerance?.value || "5");
-                              const errorVal = parseFloat(error);
-                              let isPass = false;
-                              if (!isNaN(errorVal) && !isNaN(toleranceVal)) {
-                                if (toleranceOp === "<=") isPass = errorVal <= toleranceVal;
-                                else if (toleranceOp === ">=") isPass = errorVal >= toleranceVal;
-                                else if (toleranceOp === "<") isPass = errorVal < toleranceVal;
-                                else if (toleranceOp === ">") isPass = errorVal > toleranceVal;
-                              }
-                              return (
-                                <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime || "-"}</td>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredTime || "-"}</td>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{error}%</td>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                    <span className={isPass ? "text-green-600" : "text-red-600"}>
-                                      {isPass ? "PASS" : "FAIL"}
-                                    </span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                    {testData.accuracyOfIrradiationTime.tolerance && (
-                      <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                        <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                          <strong>Tolerance:</strong> Error {testData.accuracyOfIrradiationTime.tolerance.operator || "<="} {testData.accuracyOfIrradiationTime.tolerance.value || "-"}%
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* 5. Total Filtration */}
-            {((isDoubleTube && (testDataFrontal.totalFilteration || testDataLateral.totalFilteration)) || (!isDoubleTube && testData.totalFilteration)) && (
-              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. Total Filtration</h3>
-                {isDoubleTube ? (
-                  <>
-                    {testDataFrontal.totalFilteration && (
-                      <div className="mb-4 print:mb-2">
-                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
-                        {testDataFrontal.totalFilteration.totalFiltration && (
-                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                              <strong>Total Filtration:</strong> Measured: {testDataFrontal.totalFilteration.totalFiltration.measured || "-"} mm Al |
-                              Required: {testDataFrontal.totalFilteration.totalFiltration.required || "-"} mm Al
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {testDataLateral.totalFilteration && (
-                      <div className="mb-4 print:mb-2">
-                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
-                        {testDataLateral.totalFilteration.totalFiltration && (
-                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                              <strong>Total Filtration:</strong> Measured: {testDataLateral.totalFilteration.totalFiltration.measured || "-"} mm Al |
-                              Required: {testDataLateral.totalFilteration.totalFiltration.required || "-"} mm Al
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  testData.totalFilteration?.totalFiltration && (
-                    <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                      <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        <strong>Total Filtration:</strong> Measured: {testData.totalFilteration.totalFiltration.measured || "-"} mm Al |
-                        Required: {testData.totalFilteration.totalFiltration.required || "-"} mm Al
-                      </p>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-
-            {/* 6. Consistency of Radiation Output */}
-            {((isDoubleTube && (testDataFrontal.consistencyOfRadiationOutput || testDataLateral.consistencyOfRadiationOutput)) || (!isDoubleTube && testData.consistencyOfRadiationOutput)) && (
-              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Consistency of Radiation Output</h3>
-                {isDoubleTube ? (
-                  <>
-                    {testDataFrontal.consistencyOfRadiationOutput && testDataFrontal.consistencyOfRadiationOutput.outputRows?.length > 0 && (
-                      <div className="mb-4 print:mb-2">
-                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
-                        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kVp</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mAs</th>
-                                {testDataFrontal.consistencyOfRadiationOutput.measurementHeaders?.map((h: string, idx: number) => (
-                                  <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{h}</th>
-                                ))}
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remark</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {testDataFrontal.consistencyOfRadiationOutput.outputRows.map((row: any, i: number) => (
-                                <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kvp || "-"}</td>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mas || "-"}</td>
-                                  {row.outputs?.map((val: string, idx: number) => (
-                                    <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val || "-"}</td>
-                                  ))}
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                                    {(() => {
-                                      const covVal = row.cov ?? row.cv;
-                                      if (covVal != null && covVal !== "") return covVal;
-
-                                      const values: number[] = (Array.isArray(row.outputs) ? row.outputs : [])
-                                        .map((v: any) => {
-                                          if (v == null) return NaN;
-                                          if (typeof v === "number") return v;
-                                          if (typeof v === "string") return parseFloat(v);
-                                          if (typeof v === "object" && "value" in v) return parseFloat((v as any).value);
-                                          return NaN;
-                                        })
-                                        .filter((n: number) => !Number.isNaN(n));
-
-                                      if (values.length === 0) return "-";
-                                      const mean = values.reduce((a: number, b: number) => a + b, 0) / values.length;
-                                      if (!mean) return "-";
-                                      const variance = values.reduce((sum: number, n: number) => sum + Math.pow(n - mean, 2), 0) / values.length;
-                                      const stdDev = Math.sqrt(variance);
-                                      const computedCov = stdDev / mean;
-                                      return Number.isFinite(computedCov) ? computedCov.toFixed(4) : "-";
-                                    })()}
-                                  </td>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                    <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>{row.remarks || "-"}</span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                    {testDataLateral.consistencyOfRadiationOutput && testDataLateral.consistencyOfRadiationOutput.outputRows?.length > 0 && (
-                      <div className="mb-4 print:mb-2">
-                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
-                        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kVp</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mAs</th>
-                                {testDataLateral.consistencyOfRadiationOutput.measurementHeaders?.map((h: string, idx: number) => (
-                                  <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{h}</th>
-                                ))}
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remark</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {testDataLateral.consistencyOfRadiationOutput.outputRows.map((row: any, i: number) => (
-                                <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kvp || "-"}</td>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mas || "-"}</td>
-                                  {row.outputs?.map((val: string, idx: number) => (
-                                    <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val || "-"}</td>
-                                  ))}
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                                    {(() => {
-                                      const covVal = row.cov ?? row.cv;
-                                      if (covVal != null && covVal !== "") return covVal;
-
-                                      const values: number[] = (Array.isArray(row.outputs) ? row.outputs : [])
-                                        .map((v: any) => {
-                                          if (v == null) return NaN;
-                                          if (typeof v === "number") return v;
-                                          if (typeof v === "string") return parseFloat(v);
-                                          if (typeof v === "object" && "value" in v) return parseFloat((v as any).value);
-                                          return NaN;
-                                        })
-                                        .filter((n: number) => !Number.isNaN(n));
-
-                                      if (values.length === 0) return "-";
-                                      const mean = values.reduce((a: number, b: number) => a + b, 0) / values.length;
-                                      if (!mean) return "-";
-                                      const variance = values.reduce((sum: number, n: number) => sum + Math.pow(n - mean, 2), 0) / values.length;
-                                      const stdDev = Math.sqrt(variance);
-                                      const computedCov = stdDev / mean;
-                                      return Number.isFinite(computedCov) ? computedCov.toFixed(4) : "-";
-                                    })()}
-                                  </td>
-                                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                    <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>{row.remarks || "-"}</span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  testData.consistencyOfRadiationOutput?.outputRows?.length > 0 && (
+                  testData.accuracyOfOperatingPotential.table2?.length > 0 && (
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                      <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed' }}>
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kVp</th>
-                            <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mAs</th>
-                            {testData.consistencyOfRadiationOutput.measurementHeaders?.map((h: string, idx: number) => (
-                              <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{h}</th>
-                            ))}
-                            <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
-                            <th className="border border-black p-2 print:p-1 text-center" style={{ width: '15%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remark</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set kV</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>10 mA</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>100 mA</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>200 mA</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Avg kVp</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {testData.consistencyOfRadiationOutput.outputRows.map((row: any, i: number) => (
-                            <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kvp || "-"}</td>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mas || "-"}</td>
-                              {row.outputs?.map((val: string, idx: number) => (
-                                <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val || "-"}</td>
-                              ))}
+                          {testData.accuracyOfOperatingPotential.table2.map((row: any, i: number) => (
+                            <tr key={i} className="text-center">
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setKV || "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma10 || "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma100 || "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma200 || "-"}</td>
+                              <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp || "-"}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                                {(() => {
-                                  const covVal = row.cov ?? row.cv;
-                                  if (covVal != null && covVal !== "") return covVal;
-
-                                  const values = (Array.isArray(row.outputs) ? row.outputs : [])
-                                    .map((v: any) => {
-                                      if (v == null) return NaN;
-                                      if (typeof v === "number") return v;
-                                      if (typeof v === "string") return parseFloat(v);
-                                      if (typeof v === "object" && "value" in v) return parseFloat((v as any).value);
-                                      return NaN;
-                                    })
-                                    .filter((n: number) => !Number.isNaN(n));
-
-                                  if (values.length === 0) return "-";
-                                  const mean = values.reduce((a: number, b: number) => a + b, 0) / values.length;
-                                  if (!mean) return "-";
-                                  const variance = values.reduce((sum: number, n: number) => sum + Math.pow(n - mean, 2), 0) / values.length;
-                                  const stdDev = Math.sqrt(variance);
-                                  const computedCov = stdDev / mean;
-                                  return Number.isFinite(computedCov) ? computedCov.toFixed(4) : "-";
-                                })()}
-                              </td>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                <span className={row.remarks === "Pass" ? "text-green-600" : "text-red-600"}>{row.remarks || "-"}</span>
+                                <span className={row.remarks === "Pass" ? "text-green-600" : row.remarks === "Fail" ? "text-red-600" : ""}>
+                                  {row.remarks || "-"}
+                                </span>
                               </td>
                             </tr>
                           ))}
@@ -1376,10 +1638,323 @@ const ViewServiceReport: React.FC = () => {
               </div>
             )}
 
+            {/* 5. Accuracy Of Operating Potential & Total Filtration (same structure as RadiographyFixed) */}
+            {((isDoubleTube && (testDataFrontal.totalFilteration || testDataLateral.totalFilteration)) || (!isDoubleTube && testData.totalFilteration)) && (
+              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. Accuracy Of Operating Potential & Total Filtration</h3>
+                {isDoubleTube ? (
+                  <>
+                    {testDataFrontal.totalFilteration && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
+                        {renderFullTotalFiltrationSection(testDataFrontal.totalFilteration)}
+                      </div>
+                    )}
+                    {testDataLateral.totalFilteration && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
+                        {renderFullTotalFiltrationSection(testDataLateral.totalFilteration)}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  renderFullTotalFiltrationSection(testData.totalFilteration)
+                )}
+              </div>
+            )}
+
+            {/* 4. Accuracy of Irradiation Time */}
+            {((isDoubleTube && (testDataFrontal.accuracyOfIrradiationTime || testDataLateral.accuracyOfIrradiationTime)) || (!isDoubleTube && testData.accuracyOfIrradiationTime)) && (
+              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Accuracy of Irradiation Time</h3>
+                {isDoubleTube ? (
+                  <>
+                    {/* Tube Frontal */}
+                    {testDataFrontal.accuracyOfIrradiationTime && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
+                        {testDataFrontal.accuracyOfIrradiationTime.testConditions && (
+                          <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
+                            <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
+                            <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FFD (cm)</th>
+                                  <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
+                                  <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>mA</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testDataFrontal.accuracyOfIrradiationTime.testConditions.fcd || testDataFrontal.accuracyOfIrradiationTime.testConditions.sid || "-"}</td>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testDataFrontal.accuracyOfIrradiationTime.testConditions.kv || "-"}</td>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testDataFrontal.accuracyOfIrradiationTime.testConditions.ma || testDataFrontal.accuracyOfIrradiationTime.testConditions.mA || "-"}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {testDataFrontal.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (() => {
+                          const tol = testDataFrontal.accuracyOfIrradiationTime.tolerance;
+                          const tolOp = tol?.operator || "<=";
+                          const tolVal = parseFloat(tol?.value ?? "10");
+                          const calcError = (set: string, meas: string): string => {
+                            const s = parseFloat(set); const m = parseFloat(meas);
+                            if (isNaN(s) || isNaN(m) || s === 0) return "-";
+                            return Math.abs((m - s) / s * 100).toFixed(2);
+                          };
+                          const getRemark = (errorPct: string): string => {
+                            if (errorPct === "-" || isNaN(tolVal)) return "-";
+                            const err = parseFloat(errorPct); if (isNaN(err)) return "-";
+                            switch (tolOp) {
+                              case ">": return err > tolVal ? "PASS" : "FAIL";
+                              case "<": return err < tolVal ? "PASS" : "FAIL";
+                              case ">=": return err >= tolVal ? "PASS" : "FAIL";
+                              case "<=": return err <= tolVal ? "PASS" : "FAIL";
+                              default: return "-";
+                            }
+                          };
+                          return (
+                            <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                              <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                                <thead className="bg-gray-100">
+                                  <tr>
+                                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Set Time (mSec)</th>
+                                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Measured Time (mSec)</th>
+                                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>% Error</th>
+                                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Remarks</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {testDataFrontal.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
+                                    const error = calcError(String(row.setTime ?? ''), String(row.measuredTime ?? ''));
+                                    const remark = getRemark(error);
+                                    return (
+                                      <tr key={i} className="text-center">
+                                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.setTime ?? "-"}</td>
+                                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.measuredTime ?? "-"}</td>
+                                        <td className="border border-black p-2 print:p-1 text-center font-medium" style={{ padding: '0px 1px', fontSize: '11px' }}>{error !== "-" ? `${error}%` : "-"}</td>
+                                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>
+                                          <span className={remark === "PASS" ? "text-green-600 font-semibold" : remark === "FAIL" ? "text-red-600 font-semibold" : ""}>{remark}</span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        })()}
+                        {testDataFrontal.accuracyOfIrradiationTime.tolerance && (
+                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                              <strong>Tolerance:</strong> Error {testDataFrontal.accuracyOfIrradiationTime.tolerance.operator || "<="} {testDataFrontal.accuracyOfIrradiationTime.tolerance.value || "10"}%
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Tube Lateral */}
+                    {testDataLateral.accuracyOfIrradiationTime && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
+                        {testDataLateral.accuracyOfIrradiationTime.testConditions && (
+                          <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
+                            <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
+                            <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FFD (cm)</th>
+                                  <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
+                                  <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>mA</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testDataLateral.accuracyOfIrradiationTime.testConditions.fcd || testDataLateral.accuracyOfIrradiationTime.testConditions.sid || "-"}</td>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testDataLateral.accuracyOfIrradiationTime.testConditions.kv || "-"}</td>
+                                  <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testDataLateral.accuracyOfIrradiationTime.testConditions.ma || testDataLateral.accuracyOfIrradiationTime.testConditions.mA || "-"}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {testDataLateral.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (() => {
+                          const tol = testDataLateral.accuracyOfIrradiationTime.tolerance;
+                          const tolOp = tol?.operator || "<=";
+                          const tolVal = parseFloat(tol?.value ?? "10");
+                          const calcError = (set: string, meas: string): string => {
+                            const s = parseFloat(set); const m = parseFloat(meas);
+                            if (isNaN(s) || isNaN(m) || s === 0) return "-";
+                            return Math.abs((m - s) / s * 100).toFixed(2);
+                          };
+                          const getRemark = (errorPct: string): string => {
+                            if (errorPct === "-" || isNaN(tolVal)) return "-";
+                            const err = parseFloat(errorPct); if (isNaN(err)) return "-";
+                            switch (tolOp) {
+                              case ">": return err > tolVal ? "PASS" : "FAIL";
+                              case "<": return err < tolVal ? "PASS" : "FAIL";
+                              case ">=": return err >= tolVal ? "PASS" : "FAIL";
+                              case "<=": return err <= tolVal ? "PASS" : "FAIL";
+                              default: return "-";
+                            }
+                          };
+                          return (
+                            <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                              <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                                <thead className="bg-gray-100">
+                                  <tr>
+                                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Set Time (mSec)</th>
+                                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Measured Time (mSec)</th>
+                                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>% Error</th>
+                                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Remarks</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {testDataLateral.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
+                                    const error = calcError(String(row.setTime ?? ''), String(row.measuredTime ?? ''));
+                                    const remark = getRemark(error);
+                                    return (
+                                      <tr key={i} className="text-center">
+                                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.setTime ?? "-"}</td>
+                                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.measuredTime ?? "-"}</td>
+                                        <td className="border border-black p-2 print:p-1 text-center font-medium" style={{ padding: '0px 1px', fontSize: '11px' }}>{error !== "-" ? `${error}%` : "-"}</td>
+                                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>
+                                          <span className={remark === "PASS" ? "text-green-600 font-semibold" : remark === "FAIL" ? "text-red-600 font-semibold" : ""}>{remark}</span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        })()}
+                        {testDataLateral.accuracyOfIrradiationTime.tolerance && (
+                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
+                            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                              <strong>Tolerance:</strong> Error {testDataLateral.accuracyOfIrradiationTime.tolerance.operator || "<="} {testDataLateral.accuracyOfIrradiationTime.tolerance.value || "10"}%
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {testData.accuracyOfIrradiationTime.testConditions && (
+                      <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
+                        <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
+                        <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FFD (cm)</th>
+                              <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
+                              <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>mA</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.accuracyOfIrradiationTime.testConditions.fcd || testData.accuracyOfIrradiationTime.testConditions.sid || "-"}</td>
+                              <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.accuracyOfIrradiationTime.testConditions.kv || "-"}</td>
+                              <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.accuracyOfIrradiationTime.testConditions.ma || testData.accuracyOfIrradiationTime.testConditions.mA || "-"}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {testData.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (() => {
+                      const tol = testData.accuracyOfIrradiationTime.tolerance;
+                      const tolOp = tol?.operator || "<=";
+                      const tolVal = parseFloat(tol?.value ?? "10");
+                      const calcError = (set: string, meas: string): string => {
+                        const s = parseFloat(set); const m = parseFloat(meas);
+                        if (isNaN(s) || isNaN(m) || s === 0) return "-";
+                        return Math.abs((m - s) / s * 100).toFixed(2);
+                      };
+                      const getRemark = (errorPct: string): string => {
+                        if (errorPct === "-" || isNaN(tolVal)) return "-";
+                        const err = parseFloat(errorPct); if (isNaN(err)) return "-";
+                        switch (tolOp) {
+                          case ">": return err > tolVal ? "PASS" : "FAIL";
+                          case "<": return err < tolVal ? "PASS" : "FAIL";
+                          case ">=": return err >= tolVal ? "PASS" : "FAIL";
+                          case "<=": return err <= tolVal ? "PASS" : "FAIL";
+                          default: return "-";
+                        }
+                      };
+                      return (
+                        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                          <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {testData.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
+                                const error = calcError(String(row.setTime ?? ''), String(row.measuredTime ?? ''));
+                                const remark = getRemark(error);
+                                return (
+                                  <tr key={i} className="text-center">
+                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime ?? "-"}</td>
+                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredTime ?? "-"}</td>
+                                    <td className="border border-black p-2 print:p-1 text-center font-medium" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{error !== "-" ? `${error}%` : "-"}</td>
+                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                                      <span className={remark === "PASS" ? "text-green-600 font-semibold" : remark === "FAIL" ? "text-red-600 font-semibold" : ""}>{remark}</span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                    {testData.accuracyOfIrradiationTime.tolerance && (
+                      <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
+                        <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                          <strong>Tolerance:</strong> Error {testData.accuracyOfIrradiationTime.tolerance.operator || "<="} {testData.accuracyOfIrradiationTime.tolerance.value || "10"}%
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* 6. Consistency of Radiation Output */}
+            {((isDoubleTube && (testDataFrontal.consistencyOfRadiationOutput || testDataLateral.consistencyOfRadiationOutput)) || (!isDoubleTube && testData.consistencyOfRadiationOutput)) && (
+              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>7. Consistency of Radiation Output</h3>
+                {isDoubleTube ? (
+                  <>
+                    {testDataFrontal.consistencyOfRadiationOutput && testDataFrontal.consistencyOfRadiationOutput.outputRows?.length > 0 && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
+                        {renderConsistencyOfRadiationOutput(testDataFrontal.consistencyOfRadiationOutput)}
+                      </div>
+                    )}
+                    {testDataLateral.consistencyOfRadiationOutput && testDataLateral.consistencyOfRadiationOutput.outputRows?.length > 0 && (
+                      <div className="mb-4 print:mb-2">
+                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
+                        {renderConsistencyOfRadiationOutput(testDataLateral.consistencyOfRadiationOutput)}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  renderConsistencyOfRadiationOutput(testData.consistencyOfRadiationOutput)
+                )}
+              </div>
+            )}
+
             {/* 3. Exposure Rate at Table Top */}
             {((isDoubleTube && (testDataFrontal.exposureRateTableTop || testDataLateral.exposureRateTableTop)) || (!isDoubleTube && testData.exposureRateTableTop)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>7. Exposure Rate at Table Top</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>8. Exposure Rate at Table Top</h3>
                 {isDoubleTube ? (
                   <>
                     {testDataFrontal.exposureRateTableTop && testDataFrontal.exposureRateTableTop.rows?.length > 0 && (
@@ -1493,7 +2068,7 @@ const ViewServiceReport: React.FC = () => {
             {/* 4. Low Contrast Resolution */}
             {((isDoubleTube && (testDataFrontal.lowContrastResolution || testDataLateral.lowContrastResolution)) || (!isDoubleTube && testData.lowContrastResolution)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>8. Low Contrast Resolution</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>9. Low Contrast Resolution</h3>
                 {renderTestTable(
                   testDataFrontal.lowContrastResolution,
                   testDataLateral.lowContrastResolution,
@@ -1506,7 +2081,7 @@ const ViewServiceReport: React.FC = () => {
             {/* 5. High Contrast Resolution */}
             {((isDoubleTube && (testDataFrontal.highContrastResolution || testDataLateral.highContrastResolution)) || (!isDoubleTube && testData.highContrastResolution)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>9. High Contrast Resolution</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. High Contrast Resolution</h3>
                 {renderTestTable(
                   testDataFrontal.highContrastResolution,
                   testDataLateral.highContrastResolution,
@@ -1516,76 +2091,237 @@ const ViewServiceReport: React.FC = () => {
               </div>
             )}
 
-            {/* 6. Tube Housing Leakage */}
-            {testData.tubeHousingLeakage && (
+            {/* 10. Tube Housing Leakage (RadiographyFixed Radiation Leakage Level style) */}
+            {testData.tubeHousingLeakage && (testData.tubeHousingLeakage.leakageMeasurements?.length > 0 || testData.tubeHousingLeakage.fcd) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. Tube Housing Leakage</h3>
-                {testData.tubeHousingLeakage.leakageMeasurements?.length > 0 && (
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>11. Tube Housing Leakage</h3>
+                {/* Test Conditions Table */}
+                <div className="mb-4 print:mb-1">
+                  <div className="overflow-x-auto mb-2 print:mb-1">
+                    <table className="border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
                       <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Location</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Front</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Back</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Left</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Right</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Top</th>
+                        <tr className="bg-blue-50">
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>FDD (cm)</th>
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mA</th>
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Time (Sec)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {testData.tubeHousingLeakage.leakageMeasurements.map((row: any, i: number) => (
-                          <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.location || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.front || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.back || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.left || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.right || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.top || "-"}</td>
-                          </tr>
-                        ))}
+                        <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                          <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.tubeHousingLeakage.fcd || "100"}</td>
+                          <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.tubeHousingLeakage.kv || "-"}</td>
+                          <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.tubeHousingLeakage.ma || "-"}</td>
+                          <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.tubeHousingLeakage.time || "-"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Workload and Tolerance Info */}
+                <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
+                  <div>
+                    <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
+                      <strong>Workload:</strong> {testData.tubeHousingLeakage.workload || "-"} mA·min/week
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
+                      <strong>Tolerance (mGy in 1 hr):</strong> {testData.tubeHousingLeakage.toleranceOperator === 'less than or equal to' ? '≤' : testData.tubeHousingLeakage.toleranceOperator === 'greater than or equal to' ? '≥' : '='} {testData.tubeHousingLeakage.toleranceValue || "1"} in {testData.tubeHousingLeakage.toleranceTime || "1"} hr
+                    </p>
+                  </div>
+                </div>
+
+                {/* Exposure Level Table */}
+                {testData.tubeHousingLeakage.leakageMeasurements?.length > 0 && (
+                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                      <thead className="bg-gray-100">
+                        <tr className="bg-blue-50">
+                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ width: '15%', padding: '0px 2px', fontSize: '10px' }}>Location</th>
+                          <th colSpan={5} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mR/hr)</th>
+                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mR in 1 hr)</th>
+                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mGy in 1 hr)</th>
+                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Remarks</th>
+                        </tr>
+                        <tr className="bg-gray-50">
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Left</th>
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Right</th>
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Front</th>
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Back</th>
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Top</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.tubeHousingLeakage.leakageMeasurements.map((row: any, i: number) => {
+                          const maValue = parseFloat(testData.tubeHousingLeakage.ma || "0");
+                          const workloadValue = parseFloat(testData.tubeHousingLeakage.workload || "0");
+                          const toleranceVal = parseFloat(testData.tubeHousingLeakage.toleranceValue || "1");
+                          const toleranceOperator = testData.tubeHousingLeakage.toleranceOperator || "less than or equal to";
+
+                          const values = [row.left, row.right, row.front, row.back, row.top]
+                            .map(v => parseFloat(v) || 0)
+                            .filter(v => v > 0);
+                          const rowMax = values.length > 0 ? Math.max(...values) : 0;
+
+                          let calculatedMR = "-";
+                          let calculatedMGy = "-";
+                          let remark = row.remark || "-";
+
+                          if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
+                            const resMR = (workloadValue * rowMax) / (60 * maValue);
+                            const resMGy = resMR / 114;
+                            calculatedMR = resMR.toFixed(3);
+                            calculatedMGy = resMGy.toFixed(4);
+
+                            if (!remark || remark === "-" || remark === "") {
+                              let pass = false;
+                              if (toleranceOperator === "less than or equal to") pass = resMGy <= toleranceVal;
+                              else if (toleranceOperator === "greater than or equal to") pass = resMGy >= toleranceVal;
+                              else pass = Math.abs(resMGy - toleranceVal) < 0.01;
+                              remark = pass ? "Pass" : "Fail";
+                            }
+                          }
+
+                          return (
+                            <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                              <td className="border border-black p-1 text-center font-medium" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.location || "-"}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.left || "-"}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.right || "-"}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.front || "-"}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.back || "-"}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.top || "-"}</td>
+                              <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMR}</td>
+                              <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMGy}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                                <span className={remark === "Pass" ? "text-green-600 font-bold" : remark === "Fail" ? "text-red-600 font-bold" : ""}>
+                                  {remark}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 )}
+
+                {/* Calculation Formula */}
+                <div className="bg-gray-50 p-4 print:p-1 rounded border border-gray-200">
+                  <p className="text-sm print:text-[10px] font-bold mb-2 print:mb-1">Calculation Formula:</p>
+                  <div className="bg-white p-3 print:p-1 border border-dashed border-gray-400 text-center font-mono text-sm print:text-[10px]">
+                    Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                  </div>
+                  <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
+                    Where: Workload = {testData.tubeHousingLeakage.workload || "-"} mA·min/week | mA = {testData.tubeHousingLeakage.ma || "-"} | 1 mGy = 114 mR
+                  </p>
+                </div>
               </div>
             )}
 
             {/* 11. Radiation Protection Survey Report */}
             {testData.radiationProtectionSurvey && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>11. Radiation Protection Survey Report</h3>
-                <div className="bg-gray-50 p-4 print:p-1 rounded border mb-4" style={{ padding: '2px 4px' }}>
-                  <p className="text-sm print:text-[10px]" style={{ fontSize: '11px' }}>
-                    <strong>Applied parameters:</strong> {testData.radiationProtectionSurvey.appliedVoltage || "80"} kV, {testData.radiationProtectionSurvey.appliedCurrent || "100"} mA, {testData.radiationProtectionSurvey.exposureTime || "0.5"} s, {testData.radiationProtectionSurvey.workload || "5000"} mA-min/wk
-                  </p>
-                </div>
-                {testData.radiationProtectionSurvey.locations?.length > 0 && (
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '40%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Location</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mR/hr</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mR/wk</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Result</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testData.radiationProtectionSurvey.locations.map((loc: any, i: number) => (
-                          <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-2 print:p-1 text-left" style={{ padding: '2px 4px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{loc.location || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{loc.mRPerHr || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{loc.mRPerWeek || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                              <span className={loc.result === "PASS" ? "text-green-600" : "text-red-600"}>{loc.result || "-"}</span>
-                            </td>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>12. Radiation Protection Survey Report</h3>
+                {/* 1. Survey details */}
+                {(testData.radiationProtectionSurvey.surveyDate || testData.radiationProtectionSurvey.hasValidCalibration) && (
+                  <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>1. Radiation Protection Survey</h4>
+                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                        <tbody>
+                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                            <td className="border border-black p-3 print:p-1 font-semibold w-1/2" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Date of Radiation Protection Survey</td>
+                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.surveyDate ? formatDate(testData.radiationProtectionSurvey.surveyDate) : "-"}</td>
                           </tr>
-                        ))}
+                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Whether Radiation Survey Meter used for the Survey has Valid Calibration Certificate</td>
+                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.hasValidCalibration || "-"}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Equipment Setting */}
+                {(testData.radiationProtectionSurvey.appliedCurrent || testData.radiationProtectionSurvey.appliedVoltage || testData.radiationProtectionSurvey.exposureTime || testData.radiationProtectionSurvey.workload) && (
+                  <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>2. Equipment Setting</h4>
+                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                        <tbody>
+                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                            <td className="border border-black p-3 print:p-1 font-semibold w-1/2" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Applied Current (mA)</td>
+                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.appliedCurrent || "-"}</td>
+                          </tr>
+                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Applied Voltage (kV)</td>
+                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.appliedVoltage || "-"}</td>
+                          </tr>
+                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Exposure Time(s)</td>
+                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.exposureTime || "-"}</td>
+                          </tr>
+                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Workload (mA min/week)</td>
+                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.workload || "-"}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Measured Maximum Radiation Levels */}
+                {testData.radiationProtectionSurvey.locations?.length > 0 && (
+                  <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
+                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black p-3 print:p-1 text-left" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Location</th>
+                            <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Max. Radiation Level</th>
+                            <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Result</th>
+                            <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {testData.radiationProtectionSurvey.locations.map((loc: any, i: number) => (
+                            <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                              <td className="border border-black p-3 print:p-1 text-left" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{loc.location || "-"}</td>
+                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{loc.mRPerHr ? `${loc.mRPerHr} mR/hr` : "-"}</td>
+                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{loc.mRPerWeek ? `${loc.mRPerWeek} mR/week` : "-"}</td>
+                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>
+                                <span className={loc.result === "PASS" || loc.result === "Pass" ? "text-green-600 font-semibold" : loc.result === "FAIL" || loc.result === "Fail" ? "text-red-600 font-semibold" : ""}>
+                                  {loc.result || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Calculation Formula */}
+                <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>4. Calculation Formula</h4>
+                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                      <tbody>
+                        <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                          <td className="border border-black p-3 print:p-1 bg-gray-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>
+                            <strong>Maximum Radiation level/week (mR/wk) = Work Load X Max. Radiation Level (mR/hr) / (60 X mA used for measurement)</strong>
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
-                )}
+                </div>
               </div>
             )}
 

@@ -10,25 +10,24 @@ import Standards from "../../Standards";
 import Notes from "../../Notes";
 
 import {
-    getDetails,
-    getTools,
-    saveReportHeader,
-    getReportHeaderForInventionalRadiology,
-    proxyFile,
-    getAccuracyOfIrradiationTimeByServiceId,
-    getCentralBeamAlignmentByServiceIdForInventionalRadiology,
-    getEffectiveFocalSpotByServiceIdForInventionalRadiology,
-    getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology,
-    getTotalFilterationByServiceIdForInventionalRadiology,
-    getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology,
-    getLinearityOfmAsLoadingByServiceIdForInventionalRadiology,
-    getLowContrastResolutionByServiceIdForInventionalRadiology,
-    getHighContrastResolutionByServiceIdForInventionalRadiology,
-    getExposureRateTableTopByServiceIdForInventionalRadiology,
-    getTubeHousingLeakageByServiceIdForInventionalRadiology,
-    getRadiationProtectionSurveyByServiceIdForInventionalRadiology,
-    getTimerAccuracyByServiceIdForInventionalRadiology,
-    getMeasurementOfMaLinearityByServiceIdForInventionalRadiology,
+  getDetails,
+  getTools,
+  saveReportHeader,
+  getReportHeaderForInventionalRadiology,
+  proxyFile,
+  getAccuracyOfIrradiationTimeByServiceId,
+  getCentralBeamAlignmentByServiceIdForInventionalRadiology,
+  getEffectiveFocalSpotByServiceIdForInventionalRadiology,
+  getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology,
+  getTotalFilterationByServiceIdForInventionalRadiology,
+  getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology,
+  getLinearityOfmAsLoadingByServiceIdForInventionalRadiology,
+  getLowContrastResolutionByServiceIdForInventionalRadiology,
+  getHighContrastResolutionByServiceIdForInventionalRadiology,
+  getExposureRateTableTopByServiceIdForInventionalRadiology,
+  getTubeHousingLeakageByServiceIdForInventionalRadiology,
+  getRadiationProtectionSurveyByServiceIdForInventionalRadiology,
+  getMeasurementOfMaLinearityByServiceIdForInventionalRadiology,
 } from "../../../../../../api";
 
 // Test-table imports
@@ -42,7 +41,6 @@ import ExposureRateAtTableTop from "./ExposureRateAtTableTop";
 import TubeHousingLeakage from "./TubeHousingLeakageForInventionalRadiology";
 import RadiationProtectionInterventionalRadiology from "./RadiationProtectionInventionalRadiology";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
-import TimerAccuracy from "./TimerAccuracy";
 import MeasurementOfMaLinearity from "./measurementOfMaLinearity";
 
 import { handleExportToExcel as exportToExcel } from "../../../../../../utils/exportInventionalRadiologyToExcel";
@@ -171,7 +169,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       'TOTAL FILTRATION': 'Total Filtration',
       'CONSISTENCY OF RADIATION OUTPUT': 'Consistency Of Radiation Output',
       'MEASUREMENT OF MA LINEARITY': 'Measurement of mA Linearity',
-      'TIMER ACCURACY': 'Timer Accuracy',
       'LOW CONTRAST RESOLUTION': 'Low Contrast Resolution',
       'HIGH CONTRAST RESOLUTION': 'High Contrast Resolution',
       'EXPOSURE RATE AT TABLE TOP': 'Exposure Rate At Table Top',
@@ -190,10 +187,10 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         'Result': 'Table2_Result', 'Tolerance': 'Tolerance'
       },
       'Effective Focal Spot Size': {
-         'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Focal Spot Size': 'Table1_focalSpotSize',
-         'Measured Dimension (W)': 'Table2_MeasuredWidth', 'Measured Dimension (L)': 'Table2_MeasuredLength',
-         'Measured Nominal': 'Table2_MeasuredNominal', 'Measured Focal Spot (Nominal)': 'Table2_MeasuredNominal',
-         'Tolerance Width': 'ToleranceWidth', 'Tolerance Length': 'ToleranceLength'
+        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Focal Spot Size': 'Table1_focalSpotSize',
+        'Measured Dimension (W)': 'Table2_MeasuredWidth', 'Measured Dimension (L)': 'Table2_MeasuredLength',
+        'Measured Nominal': 'Table2_MeasuredNominal', 'Measured Focal Spot (Nominal)': 'Table2_MeasuredNominal',
+        'Tolerance Width': 'ToleranceWidth', 'Tolerance Length': 'ToleranceLength'
       },
       'Accuracy Of Operating Potential': {
         'mA': 'Table1_ma', 'Time': 'Table1_time',
@@ -209,15 +206,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         'Exposure 1': 'Table2_Exp1', 'Exposure 2': 'Table2_Exp2', 'Exposure 3': 'Table2_Exp3',
         'Exposure 4': 'Table2_Exp4', 'Exposure 5': 'Table2_Exp5',
         'Average': 'Table2_Average', 'COV': 'Table2_COV', 'Tolerance': 'Tolerance'
-      },
-      // Match CTScan Timer Accuracy component field names
-      'Timer Accuracy': {
-        'kVp': 'Table1_kvp',
-        'Slice Thickness (mm)': 'Table1_SliceThickness',
-        'mA': 'Table1_ma',
-        'Set Time (ms)': 'Table2_SetTime',
-        'Observed Time (ms)': 'Table2_Result',
-        'Tolerance (%)': 'Tolerance',
       },
       // Match CTScan Measurement of mA Linearity component field names
       'Measurement of mA Linearity': {
@@ -246,7 +234,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       },
       'Tube Housing Leakage': {
         'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time', 'FCD (cm)': 'Table1_fcd', 'Workload': 'Table1_workload',
-        'Location': 'Table1_Location', 
+        'Location': 'Table1_Location',
         'Left': 'Table1_Left', 'Right': 'Table1_Right', 'Front': 'Table1_Front', 'Back': 'Table1_Back', 'Top': 'Table1_Top',
         'Tolerance Operator': 'ToleranceOperator', 'Tolerance Value': 'Table1_toleranceValue'
       },
@@ -273,11 +261,11 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         let baseTitle = rawTitle;
 
         if (/\bTUBE\s*A\b/i.test(rawTitle) || /\bFRONTAL\b/i.test(rawTitle)) {
-           tubeSuffix = ' - Frontal';
-           baseTitle = rawTitle.replace(/\s*-\s*TUBE\s*A\s*$/i, '').replace(/\s*-\s*FRONTAL\s*$/i, '').trim();
+          tubeSuffix = ' - Frontal';
+          baseTitle = rawTitle.replace(/\s*-\s*TUBE\s*A\s*$/i, '').replace(/\s*-\s*FRONTAL\s*$/i, '').trim();
         } else if (/\bTUBE\s*B\b/i.test(rawTitle) || /\bLATERAL\b/i.test(rawTitle)) {
-           tubeSuffix = ' - Lateral';
-           baseTitle = rawTitle.replace(/\s*-\s*TUBE\s*B\s*$/i, '').replace(/\s*-\s*LATERAL\s*$/i, '').trim();
+          tubeSuffix = ' - Lateral';
+          baseTitle = rawTitle.replace(/\s*-\s*TUBE\s*B\s*$/i, '').replace(/\s*-\s*LATERAL\s*$/i, '').trim();
         }
 
         const internalBase = markerUpperToInternal[baseTitle.trim().toUpperCase()] || '';
@@ -333,7 +321,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     'ConsistencyOfRadiationOutput': 'Consistency Of Radiation Output',
     'LinearityOfmAsLoading': 'Linearity Of mAs Loading',
     'MeasurementOfMaLinearity': 'Measurement of mA Linearity',
-    'TimerAccuracy': 'Timer Accuracy',
     'ExposureRateAtTableTop': 'Exposure Rate At Table Top',
     'TubeHousingLeakage': 'Tube Housing Leakage',
     'RadiationProtectionInterventionalRadiology': 'Radiation Protection Survey Report',
@@ -807,7 +794,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       checks.push(run("Total Filtration", () => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Consistency of Radiation Output", () => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Measurement of mA Linearity", () => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, tid)));
-      checks.push(run("Timer Accuracy", () => getTimerAccuracyByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Low Contrast Resolution", () => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("High Contrast Resolution", () => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, tid)));
       checks.push(run("Exposure Rate at Table Top", () => getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, tid)));
@@ -820,7 +806,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       checks.push(run("Total Filtration - Frontal", () => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Consistency of Radiation Output - Frontal", () => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Measurement of mA Linearity - Frontal", () => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, "frontal")));
-      checks.push(run("Timer Accuracy - Frontal", () => getTimerAccuracyByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Low Contrast Resolution - Frontal", () => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("High Contrast Resolution - Frontal", () => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, "frontal")));
       checks.push(run("Exposure Rate at Table Top - Frontal", () => getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, "frontal")));
@@ -831,7 +816,6 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       checks.push(run("Total Filtration - Lateral", () => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Consistency of Radiation Output - Lateral", () => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Measurement of mA Linearity - Lateral", () => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, "lateral")));
-      checks.push(run("Timer Accuracy - Lateral", () => getTimerAccuracyByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Low Contrast Resolution - Lateral", () => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("High Contrast Resolution - Lateral", () => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, "lateral")));
       checks.push(run("Exposure Rate at Table Top - Lateral", () => getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, "lateral")));
@@ -1196,225 +1180,207 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {(tubeType === 'single' ? [
-            {
-              title: "Accuracy of Irradiation Time",
-              component: (
-                <AccuracyOfIrradiationTime
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Accuracy Of Irradiation Time']}
-                />
-              ),
-            },
-            {
-              title: "Central Beam Alignment",
-              component: (
-                <CentralBeamAlignment
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Central Beam Alignment']}
-                />
-              ),
-            },
-            {
-              title: "Effective Focal Spot Size",
-              component: (
-                <EffectiveFocalspotMeasurement
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Effective Focal Spot Size']}
-                />
-              ),
-            },
-            {
-              title: "Total Filtration",
-              component: (
-                <TotalFilteration
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Total Filtration']}
-                />
-              ),
-            },
-            {
-              title: "Consistency of Radiation Output",
-              component: (
-                <ConsistencyOfRadiationOutput
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Consistency Of Radiation Output']}
-                />
-              ),
-            },
-            {
-              title: "Measurement of mA Linearity",
-              component: (
-                <MeasurementOfMaLinearity
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Measurement of mA Linearity']}
-                />
-              ),
-            },
-            {
-              title: "Timer Accuracy",
-              component: (
-                <TimerAccuracy
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Timer Accuracy']}
-                />
-              ),
-            },
-            {
-              title: "Low Contrast Resolution",
-              component: (
-                <LowContrastResolution
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Low Contrast Resolution']}
-                />
-              ),
-            },
-            {
-              title: "High Contrast Resolution",
-              component: (
-                <HighContrastResolution
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['High Contrast Resolution']}
-                />
-              ),
-            },
-            {
-              title: "Exposure Rate at Table Top",
-              component: (
-                <ExposureRateAtTableTop
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Exposure Rate At Table Top']}
-                />
-              ),
-            },
-            {
-              title: "Tube Housing Leakage",
-              component: (
-                <TubeHousingLeakage
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Tube Housing Leakage']}
-                />
-              ),
-            },
-            {
-              title: "Radiation Protection Survey Report",
-              component: (
-                <RadiationProtectionInterventionalRadiology
-                  serviceId={serviceId}
-                  tubeId={null}
-                  csvData={csvDataForComponents['Radiation Protection Survey Report']}
-                />
-              ),
-            },
-          ] : [
-            // ===== FRONTAL TUBE TESTS =====
-            {
-              title: "Accuracy of Irradiation Time - Frontal",
-              component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Frontal']} />,
-            },
-            {
-              title: "Central Beam Alignment - Frontal",
-              component: <CentralBeamAlignment serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Central Beam Alignment - Frontal']} />,
-            },
-            {
-              title: "Effective Focal Spot Size - Frontal",
-              component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Effective Focal Spot Size - Frontal']} />,
-            },
-            {
-              title: "Total Filtration - Frontal",
-              component: <TotalFilteration serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Total Filtration - Frontal']} />,
-            },
-            {
-              title: "Consistency of Radiation Output - Frontal",
-              component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Consistency Of Radiation Output - Frontal']} />,
-            },
-            {
-              title: "Measurement of mA Linearity - Frontal",
-              component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Measurement of mA Linearity - Frontal']} />,
-            },
-            {
-              title: "Timer Accuracy - Frontal",
-              component: <TimerAccuracy serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Timer Accuracy - Frontal']} />,
-            },
-            {
-              title: "Low Contrast Resolution - Frontal",
-              component: <LowContrastResolution serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Low Contrast Resolution - Frontal']} />,
-            },
-            {
-              title: "High Contrast Resolution - Frontal",
-              component: <HighContrastResolution serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['High Contrast Resolution - Frontal']} />,
-            },
-            {
-              title: "Exposure Rate at Table Top - Frontal",
-              component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Exposure Rate At Table Top - Frontal']} />,
-            },
-            {
-              title: "Tube Housing Leakage - Frontal",
-              component: <TubeHousingLeakage serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Tube Housing Leakage - Frontal']} />,
-            },
+          {
+            title: "Accuracy of Irradiation Time",
+            component: (
+              <AccuracyOfIrradiationTime
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Accuracy Of Irradiation Time']}
+              />
+            ),
+          },
+          {
+            title: "Central Beam Alignment",
+            component: (
+              <CentralBeamAlignment
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Central Beam Alignment']}
+              />
+            ),
+          },
+          {
+            title: "Effective Focal Spot Size",
+            component: (
+              <EffectiveFocalspotMeasurement
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Effective Focal Spot Size']}
+              />
+            ),
+          },
+          {
+            title: "Total Filtration",
+            component: (
+              <TotalFilteration
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Total Filtration']}
+              />
+            ),
+          },
+          {
+            title: "Consistency of Radiation Output",
+            component: (
+              <ConsistencyOfRadiationOutput
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Consistency Of Radiation Output']}
+              />
+            ),
+          },
+          {
+            title: "Measurement of mA Linearity",
+            component: (
+              <MeasurementOfMaLinearity
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Measurement of mA Linearity']}
+              />
+            ),
+          },
+          {
+            title: "Low Contrast Resolution",
+            component: (
+              <LowContrastResolution
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Low Contrast Resolution']}
+              />
+            ),
+          },
+          {
+            title: "High Contrast Resolution",
+            component: (
+              <HighContrastResolution
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['High Contrast Resolution']}
+              />
+            ),
+          },
+          {
+            title: "Exposure Rate at Table Top",
+            component: (
+              <ExposureRateAtTableTop
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Exposure Rate At Table Top']}
+              />
+            ),
+          },
+          {
+            title: "Tube Housing Leakage",
+            component: (
+              <TubeHousingLeakage
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Tube Housing Leakage']}
+              />
+            ),
+          },
+          {
+            title: "Radiation Protection Survey Report",
+            component: (
+              <RadiationProtectionInterventionalRadiology
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Radiation Protection Survey Report']}
+              />
+            ),
+          },
+        ] : [
+          // ===== FRONTAL TUBE TESTS =====
+          {
+            title: "Accuracy of Irradiation Time - Frontal",
+            component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Frontal']} />,
+          },
+          {
+            title: "Central Beam Alignment - Frontal",
+            component: <CentralBeamAlignment serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Central Beam Alignment - Frontal']} />,
+          },
+          {
+            title: "Effective Focal Spot Size - Frontal",
+            component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Effective Focal Spot Size - Frontal']} />,
+          },
+          {
+            title: "Total Filtration - Frontal",
+            component: <TotalFilteration serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Total Filtration - Frontal']} />,
+          },
+          {
+            title: "Consistency of Radiation Output - Frontal",
+            component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Consistency Of Radiation Output - Frontal']} />,
+          },
+          {
+            title: "Measurement of mA Linearity - Frontal",
+            component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Measurement of mA Linearity - Frontal']} />,
+          },
+          {
+            title: "Low Contrast Resolution - Frontal",
+            component: <LowContrastResolution serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Low Contrast Resolution - Frontal']} />,
+          },
+          {
+            title: "High Contrast Resolution - Frontal",
+            component: <HighContrastResolution serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['High Contrast Resolution - Frontal']} />,
+          },
+          {
+            title: "Exposure Rate at Table Top - Frontal",
+            component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Exposure Rate At Table Top - Frontal']} />,
+          },
+          {
+            title: "Tube Housing Leakage - Frontal",
+            component: <TubeHousingLeakage serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Tube Housing Leakage - Frontal']} />,
+          },
 
-            // ===== LATERAL TUBE TESTS =====
-            {
-              title: "Accuracy of Irradiation Time - Lateral",
-              component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Lateral']} />,
-            },
-            {
-              title: "Central Beam Alignment - Lateral",
-              component: <CentralBeamAlignment serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Central Beam Alignment - Lateral']} />,
-            },
-            {
-              title: "Effective Focal Spot Size - Lateral",
-              component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Effective Focal Spot Size - Lateral']} />,
-            },
-            {
-              title: "Total Filtration - Lateral",
-              component: <TotalFilteration serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Total Filtration - Lateral']} />,
-            },
-            {
-              title: "Consistency of Radiation Output - Lateral",
-              component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Consistency Of Radiation Output - Lateral']} />,
-            },
-            {
-              title: "Measurement of mA Linearity - Lateral",
-              component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Measurement of mA Linearity - Lateral']} />,
-            },
-            {
-              title: "Timer Accuracy - Lateral",
-              component: <TimerAccuracy serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Timer Accuracy - Lateral']} />,
-            },
-            {
-              title: "Low Contrast Resolution - Lateral",
-              component: <LowContrastResolution serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Low Contrast Resolution - Lateral']} />,
-            },
-            {
-              title: "High Contrast Resolution - Lateral",
-              component: <HighContrastResolution serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['High Contrast Resolution - Lateral']} />,
-            },
-            {
-              title: "Exposure Rate at Table Top - Lateral",
-              component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Exposure Rate At Table Top - Lateral']} />,
-            },
-            {
-              title: "Tube Housing Leakage - Lateral",
-              component: <TubeHousingLeakage serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Tube Housing Leakage - Lateral']} />,
-            },
+          // ===== LATERAL TUBE TESTS =====
+          {
+            title: "Accuracy of Irradiation Time - Lateral",
+            component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Lateral']} />,
+          },
+          {
+            title: "Central Beam Alignment - Lateral",
+            component: <CentralBeamAlignment serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Central Beam Alignment - Lateral']} />,
+          },
+          {
+            title: "Effective Focal Spot Size - Lateral",
+            component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Effective Focal Spot Size - Lateral']} />,
+          },
+          {
+            title: "Total Filtration - Lateral",
+            component: <TotalFilteration serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Total Filtration - Lateral']} />,
+          },
+          {
+            title: "Consistency of Radiation Output - Lateral",
+            component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Consistency Of Radiation Output - Lateral']} />,
+          },
+          {
+            title: "Measurement of mA Linearity - Lateral",
+            component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Measurement of mA Linearity - Lateral']} />,
+          },
+          {
+            title: "Low Contrast Resolution - Lateral",
+            component: <LowContrastResolution serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Low Contrast Resolution - Lateral']} />,
+          },
+          {
+            title: "High Contrast Resolution - Lateral",
+            component: <HighContrastResolution serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['High Contrast Resolution - Lateral']} />,
+          },
+          {
+            title: "Exposure Rate at Table Top - Lateral",
+            component: <ExposureRateAtTableTop serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Exposure Rate At Table Top - Lateral']} />,
+          },
+          {
+            title: "Tube Housing Leakage - Lateral",
+            component: <TubeHousingLeakage serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Tube Housing Leakage - Lateral']} />,
+          },
 
-            // ===== COMMON TESTS =====
-            {
-              title: "Radiation Protection Survey Report",
-              component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Radiation Protection Survey Report']} />,
-            },
-          ] as any)
+          // ===== COMMON TESTS =====
+          {
+            title: "Radiation Protection Survey Report",
+            component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Radiation Protection Survey Report']} />,
+          },
+        ] as any)
           .map((item: any, idx: number) => (
             <Disclosure key={idx} defaultOpen={idx === 0}>
               {({ open }) => (

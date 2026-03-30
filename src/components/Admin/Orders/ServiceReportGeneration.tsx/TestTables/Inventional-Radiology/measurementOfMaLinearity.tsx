@@ -133,8 +133,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
       });
 
       const mA = parseFloat(row.mAsApplied);
-      const time = parseFloat(table1Row.time);
-      const x = avgStr !== "—" && mA > 0 && time > 0 ? (avg / (mA * time)).toFixed(4) : "—";
+      const x = avgStr !== "—" && mA > 0 ? (avg / mA).toFixed(4) : "—";
       if (x !== "—") xValues.push(parseFloat(x));
 
       return { ...row, average: avgStr, x, failedCells };
@@ -144,21 +143,15 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
     const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : "—";
     const colVal =
       xMax !== "—" && xMin !== "—" && parseFloat(xMax) + parseFloat(xMin) > 0
-        ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
+        ? (Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
         : "—";
     const pass = colVal !== "—" && parseFloat(colVal) <= tol;
+    const remarks = xValues.length > 0 ? (pass ? "Pass" : "Fail") : "";
 
-    return rowsWithX.map((row) => {
-      const hasFailedCells = row.failedCells?.some(Boolean) || false;
-      const overallPass = pass && !hasFailedCells;
-      return {
-        ...row,
-        xMax,
-        xMin,
-        col: colVal,
-        remarks: overallPass ? "Pass" : colVal === "—" ? "" : "Fail",
-      };
-    });
+    return {
+      rows: rowsWithX,
+      summary: { xMax, xMin, col: colVal, remarks, rowSpan: rowsWithX.length },
+    };
   }, [table2Rows, tolerance, table1Row.time]);
 
   // CSV injection (CTScan-style fields)
@@ -290,15 +283,15 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
 
     const payload = {
       table1: [table1Row],
-      table2: processedTable2.map((row) => ({
+      table2: processedTable2.rows.map((row) => ({
         mAsApplied: parseFloat(row.mAsApplied) || 0,
-        measuredOutputs: row.measuredOutputs.map((v) => (v.trim() === "" ? null : parseFloat(v))),
+        measuredOutputs: row.measuredOutputs.map((v: string) => (v.trim() === "" ? null : parseFloat(v))),
         avgOutput: row.average !== "—" ? parseFloat(row.average) : null,
         x: row.x !== "—" ? parseFloat(row.x) : null,
-        xMax: row.xMax !== "—" ? parseFloat(row.xMax) : null,
-        xMin: row.xMin !== "—" ? parseFloat(row.xMin) : null,
-        col: row.col !== "—" ? parseFloat(row.col) : null,
-        remarks: row.remarks || "",
+        xMax: processedTable2.summary.xMax !== "—" ? parseFloat(processedTable2.summary.xMax) : null,
+        xMin: processedTable2.summary.xMin !== "—" ? parseFloat(processedTable2.summary.xMin) : null,
+        col: processedTable2.summary.col !== "—" ? parseFloat(processedTable2.summary.col) : null,
+        remarks: processedTable2.summary.remarks || "",
       })),
       tolerance,
       tubeId: tubeId || null,
@@ -441,7 +434,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {processedTable2.map((row) => (
+              {processedTable2.rows.map((row, index) => (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2 border-r">
                     <input
@@ -473,22 +466,32 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
                   ))}
                   <td className="px-4 py-2 border-r text-center text-sm">{row.average}</td>
                   <td className="px-4 py-2 border-r text-center text-sm">{row.x}</td>
-                  <td className="px-4 py-2 border-r text-center text-sm">{row.xMax}</td>
-                  <td className="px-4 py-2 border-r text-center text-sm">{row.xMin}</td>
-                  <td className="px-4 py-2 border-r text-center text-sm">{row.col}</td>
-                  <td className="px-4 py-2 border-r text-center">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        row.remarks.toLowerCase() === "pass"
-                          ? "bg-green-100 text-green-800"
-                          : row.remarks.toLowerCase() === "fail"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {row.remarks}
-                    </span>
-                  </td>
+                  {index === 0 && (
+                    <>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 border-r text-center text-sm font-medium bg-yellow-50 align-middle">
+                        {processedTable2.summary.xMax}
+                      </td>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 border-r text-center text-sm font-medium bg-yellow-50 align-middle">
+                        {processedTable2.summary.xMin}
+                      </td>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 border-r text-center text-sm font-medium bg-yellow-50 align-middle">
+                        {processedTable2.summary.col}
+                      </td>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 border-r text-center align-middle">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            processedTable2.summary.remarks.toLowerCase() === "pass"
+                              ? "bg-green-100 text-green-800"
+                              : processedTable2.summary.remarks.toLowerCase() === "fail"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {processedTable2.summary.remarks || "—"}
+                        </span>
+                      </td>
+                    </>
+                  )}
                   <td className="px-4 py-2 text-center">
                     {!isViewMode && (
                       <button onClick={() => removeTable2Row(row.id)} className="text-red-600 hover:text-red-800 p-1" title="Delete row">
