@@ -65,12 +65,14 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const toleranceOp = testData.accuracyOfIrradiationTime.tolerance?.operator || "≤";
       const toleranceVal = testData.accuracyOfIrradiationTime.tolerance?.value || "10";
 
+      // Determine overall pass/fail across all rows
+      let overallRemark: "Pass" | "Fail" | "-" = "-";
       const timeRows = validRows.map((row: any) => {
         const s = parseFloat(row.setTime);
         const m = parseFloat(row.measuredTime);
         const err = (!isNaN(s) && !isNaN(m) && s !== 0) ? Math.abs((m - s) / s * 100).toFixed(2) : null;
 
-        let rem: any = "-";
+        let rem: "Pass" | "Fail" | "-" = "-";
         if (err !== null) {
           const e = parseFloat(err);
           const v = parseFloat(toleranceVal);
@@ -79,15 +81,20 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
           else if (toleranceOp === ">") rem = e > v ? "Pass" : "Fail";
           else if (toleranceOp === ">=") rem = e >= v ? "Pass" : "Fail";
         }
+        if (rem === "Fail") overallRemark = "Fail";
+        else if (rem === "Pass" && overallRemark !== "Fail") overallRemark = "Pass";
 
         return {
           specified: row.setTime || "-",
           measured: row.measuredTime || "-",
           tolerance: `${toleranceOp} ${toleranceVal}% Error`,
-          remarks: rem,
+          remarks: overallRemark as any, // will be overwritten below
         };
       });
-      addRowsForTest("Accuracy of Irradiation Time", timeRows);
+
+      // Use rowspan for remarks — all rows share the same overall remark
+      const rowsWithSharedRemark = timeRows.map((r: any) => ({ ...r, remarks: overallRemark as any }));
+      addRowsForTest("Accuracy of Irradiation Time", rowsWithSharedRemark, true);
     }
   }
 
@@ -115,13 +122,16 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     const validRows = testData.linearityOfmALoading.table2.filter((row: any) => row.ma);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfmALoading.tolerance || "0.1";
-      // Linearity components usually have one CoL for the whole table
-      const col = testData.linearityOfmALoading.col || (validRows[0] && validRows[0].col) || "-";
-      const remarks = testData.linearityOfmALoading.remarks || (validRows[0] && validRows[0].remarks) || "";
+      // col and remarks are stored per-row (on first row), not at top level
+      const firstRow = validRows[0];
+      const col = testData.linearityOfmALoading.col || firstRow?.col || "-";
+      const remarks = testData.linearityOfmALoading.remarks || firstRow?.remarks || "";
       const isPass = remarks.toUpperCase() === "PASS";
+      // Specified: list the mA values tested
+      const mAValues = validRows.map((r: any) => r.ma).filter(Boolean).join(", ");
 
       const testRows = [{
-        specified: "-",
+        specified: mAValues || "-",
         measured: col,
         tolerance: `≤ ${tolerance}`,
         remarks: (isPass ? "Pass" : remarks ? "Fail" : "-") as any,
@@ -151,16 +161,33 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
 
   // 6. Consistency of Radiation Output
   if (testData.consistencyOfRadiationOutput?.outputRows && Array.isArray(testData.consistencyOfRadiationOutput.outputRows)) {
-    const validRows = testData.consistencyOfRadiationOutput.outputRows.filter((row: any) => row.kvp || row.mean);
+    const validRows = testData.consistencyOfRadiationOutput.outputRows.filter((row: any) => row.kvp || row.kv || row.mean || row.avg);
     if (validRows.length > 0) {
       const tolerance = testData.consistencyOfRadiationOutput.tolerance || "0.05";
+      const tolVal = typeof tolerance === "object" ? (tolerance as any).value ?? "0.05" : tolerance;
       const testRows = validRows.map((row: any) => {
-        const isPass = row.remarks?.toUpperCase() === "PASS" || row.remarks === "P";
+        // cov may be stored as object { value: "..." } — unwrap it
+        const covRaw = row.cov ?? row.cv ?? "";
+        const covStr = typeof covRaw === "object" && covRaw !== null && "value" in covRaw
+          ? String((covRaw as any).value ?? "")
+          : String(covRaw ?? "");
+        const covNum = parseFloat(covStr);
+        const tolNum = parseFloat(tolVal);
+        let rem: "Pass" | "Fail" | "-" = "-";
+        if (!isNaN(covNum) && !isNaN(tolNum)) rem = covNum <= tolNum ? "Pass" : "Fail";
+        // Also check stored remarks as fallback
+        if (rem === "-") {
+          const storedRemark = row.remarks ?? row.remark ?? "";
+          if (storedRemark.toUpperCase() === "PASS") rem = "Pass";
+          else if (storedRemark.toUpperCase() === "FAIL") rem = "Fail";
+        }
+        const kvp = row.kvp ?? row.kv ?? "";
+        const mas = row.mas ?? "";
         return {
-          specified: row.kvp && row.mas ? `${row.kvp} kV, ${row.mas} mAs` : row.kvp ? `${row.kvp} kV` : "-",
-          measured: row.cov || "-",
-          tolerance: `≤ ${tolerance}`,
-          remarks: (isPass ? "Pass" : row.remarks ? "Fail" : "-") as any,
+          specified: kvp && mas ? `${kvp} kV, ${mas} mAs` : kvp ? `${kvp} kV` : "-",
+          measured: covStr !== "" ? covStr : "-",
+          tolerance: `≤ ${tolVal}`,
+          remarks: rem,
         };
       });
       addRowsForTest("Consistency of Radiation Output (CV)", testRows);
@@ -176,12 +203,83 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const finalLeakage = testData.tubeHousingLeakage.calculatedResult?.finalLeakageRate;
 
       const testRows = [{
-        specified: "-",
-        measured: finalLeakage !== undefined ? `${finalLeakage} mGy/hr` : "-",
+        specified: `≤ ${toleranceValue} mGy/hr`,
+        measured: finalLeakage !== undefined && finalLeakage !== "—" ? `${finalLeakage} mGy/hr` : "-",
         tolerance: `≤ ${toleranceValue} mGy/hr`,
         remarks: (remark?.toUpperCase() === "PASS" ? "Pass" : remark ? "Fail" : "-") as any,
       }];
       addRowsForTest("Radiation Leakage from Tube Housing", testRows);
+    }
+  }
+
+  // 8. Radiation Protection Survey Report
+  if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
+    const locations = testData.radiationProtectionSurvey.locations;
+    const validRows = locations.filter((row: any) => row?.location || row?.mRPerWeek || row?.result);
+    if (validRows.length > 0) {
+      const workerRows = validRows.filter((r: any) => (r.category || "").toLowerCase() === "worker");
+      const publicRows = validRows.filter((r: any) => (r.category || "").toLowerCase() === "public");
+      const maxWorker = workerRows.reduce((m: number, r: any) => Math.max(m, parseFloat(r.mRPerWeek) || 0), 0);
+      const maxPublic = publicRows.reduce((m: number, r: any) => Math.max(m, parseFloat(r.mRPerWeek) || 0), 0);
+
+      const surveyRows = [
+        {
+          specified: "Worker: 40 mR/week",
+          measured: maxWorker > 0 ? `${maxWorker.toFixed(3)} mR/week` : "-",
+          tolerance: "≤ 40 mR/week",
+          remarks: (maxWorker > 0 ? (maxWorker <= 40 ? "Pass" : "Fail") : "-") as any,
+        },
+        {
+          specified: "Public: 2 mR/week",
+          measured: maxPublic > 0 ? `${maxPublic.toFixed(3)} mR/week` : "-",
+          tolerance: "≤ 2 mR/week",
+          remarks: (maxPublic > 0 ? (maxPublic <= 2 ? "Pass" : "Fail") : "-") as any,
+        },
+      ];
+      addRowsForTest("Radiation Protection Survey Report", surveyRows);
+    }
+  }
+
+  // 9. Total Filteration
+  if (testData.totalFilteration) {
+    // Data is nested: totalFiltration sub-object holds atKvp/measured1/measured2
+    // filtrationTolerance sub-object holds the threshold values
+    const tfObj = testData.totalFilteration.totalFiltration ?? testData.totalFilteration;
+    const ftObj = testData.totalFilteration.filtrationTolerance ?? {};
+
+    const atKvp = tfObj.atKvp ?? tfObj.kvp ?? tfObj.kV ?? tfObj.appliedKvp ?? "";
+    // measured1 = measured HVL, measured2 = required/tolerance value (legacy storage)
+    const measured1 = tfObj.measured1 ?? tfObj.measured ?? tfObj.measuredValue ?? tfObj.measuredHvl ?? "";
+    const measured2 = tfObj.measured2 ?? tfObj.required ?? tfObj.requiredValue ?? tfObj.minimumHvl ?? "";
+
+    // Derive required tolerance from filtrationTolerance thresholds based on kVp
+    const kvpNum = parseFloat(atKvp);
+    const k1 = parseFloat(ftObj.kvThreshold1 ?? ftObj.kvp1 ?? "70");
+    const k2 = parseFloat(ftObj.kvThreshold2 ?? ftObj.kvp2 ?? "100");
+    let reqNum = NaN;
+    if (!isNaN(kvpNum) && !isNaN(k1) && kvpNum < k1) {
+      reqNum = parseFloat(ftObj.forKvGreaterThan70 ?? ftObj.value1 ?? "");
+    } else if (!isNaN(kvpNum) && !isNaN(k1) && !isNaN(k2) && kvpNum >= k1 && kvpNum <= k2) {
+      reqNum = parseFloat(ftObj.forKvBetween70And100 ?? ftObj.value2 ?? "");
+    } else if (!isNaN(kvpNum)) {
+      reqNum = parseFloat(ftObj.forKvGreaterThan100 ?? ftObj.value3 ?? "");
+    }
+    // Fallback: measured2 often stores the required value in legacy payloads
+    if (isNaN(reqNum) && measured2 !== "") reqNum = parseFloat(measured2);
+
+    const measuredNum = parseFloat(measured1);
+    let remark: "Pass" | "Fail" | "-" = "-";
+    if (!isNaN(measuredNum) && !isNaN(reqNum)) {
+      remark = measuredNum >= reqNum ? "Pass" : "Fail";
+    }
+
+    if (atKvp !== "" || measured1 !== "") {
+      addRowsForTest("Total Filteration", [{
+        specified: atKvp !== "" ? `${atKvp} kVp` : "-",
+        measured: measured1 !== "" ? `${measured1} mmAl` : "-",
+        tolerance: !isNaN(reqNum) ? `≥ ${reqNum} mmAl` : "-",
+        remarks: remark,
+      }]);
     }
   }
 

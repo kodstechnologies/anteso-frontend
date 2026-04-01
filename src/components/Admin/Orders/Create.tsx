@@ -52,7 +52,7 @@ interface FormValues {
     designation: string
     urgency: string
     services: Service[]
-    additionalServices: Record<string, string | undefined>
+    additionalServices: Record<string, { description: string; price: string } | null>
     enquiryID?: string // Optional for generating ENQ ID
     instruction: string
 }
@@ -293,7 +293,7 @@ const CreateOrder: React.FC = () => {
                     price: Yup.number().typeError("Price must be a number").nullable()
                         .test(
                             "is-price-required",
-                            "Price is required for QA Test",
+                            "Price is required",
                             function (value) {
                                 const { workType } = this.parent;
                                 let leadOwner = null;
@@ -307,9 +307,9 @@ const CreateOrder: React.FC = () => {
                                 }
 
                                 const isEmployeeLead = employees.some(emp => String(emp._id) === String(leadOwner));
-                                const isQATest = workType && Array.isArray(workType) && workType.includes("Quality Assurance Test");
+                                // const isQATest = workType && Array.isArray(workType) && workType.includes("Quality Assurance Test");
 
-                                if (isEmployeeLead && isQATest) {
+                                if (isEmployeeLead) {
                                     return value !== null && value !== undefined && String(value).trim() !== "";
                                 }
                                 return true;
@@ -321,7 +321,13 @@ const CreateOrder: React.FC = () => {
 
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
-                return { ...schema, [service]: Yup.string().nullable() }
+                return {
+                    ...schema,
+                    [service]: Yup.object().shape({
+                        description: Yup.string().nullable(),
+                        price: Yup.number().typeError("Price must be a number").nullable().optional()
+                    }).nullable().optional()
+                }
             }, {}),
         ),
         enquiryID: Yup.string().nullable(),
@@ -404,10 +410,14 @@ const CreateOrder: React.FC = () => {
     //     }
     // };
 
-
+    const submitForm2 = async (values: FormValues) => {
+        console.log("values--------->", values);
+    }
 
     // In your submitForm function:
     const submitForm = async (values: FormValues) => {
+        console.log("values--------->", values);
+
         setIsSubmitting(true);
         try {
             const newEnquiryID = `ENQ${String(1).padStart(3, "0")}`;
@@ -475,18 +485,18 @@ const CreateOrder: React.FC = () => {
                 partyCodeOrSysId: service.partyCodeOrSysId,
                 procNoOrPoNo: service.procNoOrPoNo || "",
                 procExpiryDate: service.procExpiryDate || "",
-                price: (employees.some(emp => emp._id === values.leadOwner) && service.workType.includes("Quality Assurance Test")) ? (service.price || "") : "", // Only send price for employee + QA Test
+                price: employees.some(emp => emp._id === values.leadOwner) ? (service.price || "") : "", // Only send price if lead owner is employee
                 // ← Do NOT include workOrderCopy here anymore (it's sent as file)
             }));
 
             formData.append("services", JSON.stringify(servicesData));
-            const additional: { name: string; description: string; totalAmount: number }[] = [];
-            for (const [name, description] of Object.entries(values.additionalServices || {})) {
-                if (description !== undefined) {
+            const additional: { name: string; description: string; totalAmount: any }[] = [];
+            for (const [name, data] of Object.entries(values.additionalServices || {})) {
+                if (data && typeof data === 'object') {
                     additional.push({
                         name,
-                        description: description || "",
-                        totalAmount: 0
+                        description: data.description || "",
+                        totalAmount: data.price || 0
                     });
                 }
             }
@@ -558,19 +568,24 @@ const CreateOrder: React.FC = () => {
                     }],
                     additionalServices: serviceOptions.reduce(
                         (acc, service) => {
-                            acc[service] = undefined
+                            acc[service] = null
                             return acc
                         },
-                        {} as Record<string, string | undefined>,
+                        {} as Record<string, { description: string; price: string } | null>,
                     ),
                     enquiryID: "",
                     instruction: ""
                 }}
                 validationSchema={SubmittedForm}
                 onSubmit={submitForm}
+
             >
-                {({ errors, submitCount, values, setFieldValue }) => (
-                    <Form className="space-y-5">
+                {({ errors, submitCount, values, setFieldValue }) => {
+                    if (submitCount > 0 && Object.keys(errors).length > 0) {
+                        console.log("Form Validation Errors:", errors);
+                    }
+                    return (
+                        <Form className="space-y-5">
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Basic Details</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
@@ -943,8 +958,8 @@ const CreateOrder: React.FC = () => {
                                                             />
                                                         </div>
 
-                                                        {/* Price - ONLY for employees AND Quality Assurance Test */}
-                                                        {employees.some(emp => emp._id === values.leadOwner) && service.workType.includes("Quality Assurance Test") && (
+                                                        {/* Price - Visible for employee leads for all work types */}
+                                                        {employees.some(emp => emp._id === values.leadOwner) && (
                                                             <div className="md:col-span-3">
                                                                 <label className="text-sm font-semibold text-gray-700">
                                                                     Price <span className="text-red-500">*</span>
@@ -955,7 +970,7 @@ const CreateOrder: React.FC = () => {
                                                                     placeholder="Enter Price"
                                                                     className="form-input w-full"
                                                                 />
-                                                                <ErrorMessage name={`services.${index}.price`} component="div" className="text-red-500 text-sm" />
+                                                                <ErrorMessage name={`services.${index}.price`} component="div" className="text-red-500 text-sm mt-1" />
                                                             </div>
                                                         )}
                                                     </div>
@@ -1002,26 +1017,39 @@ const CreateOrder: React.FC = () => {
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
-                                            checked={values.additionalServices[service] !== undefined}
+                                            checked={!!values.additionalServices[service]}
                                             onChange={() => {
-                                                if (values.additionalServices[service] !== undefined) {
-                                                    setFieldValue(`additionalServices.${service}`, undefined)
+                                                if (values.additionalServices[service]) {
+                                                    setFieldValue(`additionalServices.${service}`, null)
                                                 } else {
-                                                    setFieldValue(`additionalServices.${service}`, "")
+                                                    setFieldValue(`additionalServices.${service}`, { description: "", price: "" })
                                                 }
                                             }}
-                                            className={`form-checkbox h-5 w-5 transition-colors duration-200 ${values.additionalServices[service] !== undefined ? "text-blue-600" : "text-gray-400"}`}
+                                            className={`form-checkbox h-5 w-5 transition-colors duration-200 ${values.additionalServices[service] ? "text-blue-600" : "text-gray-400"}`}
                                         />
                                         <span>{service}</span>
                                     </div>
-                                    {values.additionalServices[service] !== undefined && (
-                                        <div className="sm:col-span-2 mt-2 sm:mt-0">
-                                            <Field
-                                                type="text"
-                                                name={`additionalServices.${service}`}
-                                                placeholder="Enter info..."
-                                                className="form-input w-full"
-                                            />
+                                    {values.additionalServices[service] && (
+                                        <div className="sm:col-span-2 mt-2 sm:mt-0 flex gap-4">
+                                            <div className="flex-1">
+                                                <Field
+                                                    type="text"
+                                                    name={`additionalServices.${service}.description`}
+                                                    placeholder="Enter info..."
+                                                    className="form-input w-full"
+                                                />
+                                            </div>
+                                            {(employees.some(emp => emp._id === values.leadOwner) || dealers.some(d => d._id === values.leadOwner)) && (
+                                                <div className="w-1/3">
+                                                    <Field
+                                                        type="number"
+                                                        name={`additionalServices.${service}.price`}
+                                                        placeholder="Price"
+                                                        className="form-input w-full"
+                                                    />
+                                                    <ErrorMessage name={`additionalServices.${service}.price`} component="div" className="text-red-500 text-sm mt-1" />
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -1042,13 +1070,28 @@ const CreateOrder: React.FC = () => {
                                 <p className="text-red-500 text-sm mt-1">{errors.instruction}</p>
                             ) : null}
                         </div>
+                        {Object.keys(errors).length > 0 && submitCount > 0 && (
+                            <div className="panel bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                                <h5 className="text-red-800 dark:text-red-400 font-bold mb-2">Please fix the following errors to submit:</h5>
+                                <ul className="list-disc list-inside text-red-700 dark:text-red-300 text-sm space-y-1">
+                                    {Object.entries(errors).map(([key, value]) => {
+                                        if (typeof value === 'string') return <li key={key}>{key}: {value}</li>;
+                                        if (Array.isArray(value)) return <li key={key}>{key}: Fix errors in items</li>;
+                                        if (typeof value === 'object') return <li key={key}>{key}: Check nested fields</li>;
+                                        return null;
+                                    })}
+                                </ul>
+                            </div>
+                        )}
+
                         <div className="w-full mb-6 flex justify-end">
                             <button type="submit" className="btn btn-success mt-4" disabled={isSubmitting}>
                                 {isSubmitting ? "Creating Order..." : "Create Order"}
                             </button>
                         </div>
                     </Form>
-                )}
+                    )
+                }}
             </Formik>
         </>
     )

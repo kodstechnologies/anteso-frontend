@@ -124,7 +124,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
       const testRows = validRows.map((row: any) => {
         const covVal = row.cov ?? row.cv;
         const cov = covVal !== undefined && covVal !== null && covVal !== ""
-          ? (typeof covVal === 'number' ? covVal.toFixed(3) : parseFloat(String(covVal)).toFixed(3))
+          ? (typeof covVal === 'number' ? covVal.toFixed(3) : covVal)
           : "-";
         const cvNum = covVal !== undefined && covVal !== null && covVal !== "" ? parseFloat(String(covVal)) : NaN;
         const tolNum = parseFloat(toleranceValue);
@@ -175,20 +175,72 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
       const toleranceValue = testData.radiationLeakage.toleranceValue || "1";
       const toleranceTime = testData.radiationLeakage.toleranceTime || "1";
       const toleranceOperator = testData.radiationLeakage.toleranceOperator || "<=";
+      const toNum = (v: any): number => {
+        if (v == null || v === "") return NaN;
+        if (typeof v === "number") return v;
+        if (typeof v === "string") return parseFloat(v);
+        if (typeof v === "object" && "value" in v) return parseFloat((v as any).value);
+        return NaN;
+      };
+      const pickNum = (...vals: any[]): number => {
+        for (const val of vals) {
+          const n = toNum(val);
+          if (Number.isFinite(n)) return n;
+        }
+        return NaN;
+      };
 
-      // Use maxRadiationLeakage from the data, or calculate it
+      // Use maxRadiationLeakage if available, otherwise calculate from leakage rows.
       let measuredValue = testData.radiationLeakage.maxRadiationLeakage || "";
-      let measuredNum = parseFloat(measuredValue) || 0;
+      let measuredNum = parseFloat(String(measuredValue)) || 0;
 
-      // If maxRadiationLeakage is not available, calculate from maxLeakageResult
-      if (!measuredValue || measuredValue === "" || measuredValue === "-") {
+      // If maxRadiationLeakage is not available, calculate from maxLeakageResult or raw rows
+      if (!measuredValue || measuredValue === "" || measuredValue === "-" || measuredValue === "—") {
         const maxLeakageResult = testData.radiationLeakage.maxLeakageResult || "";
-        const maxLeakageResultNum = parseFloat(maxLeakageResult) || 0;
+        const maxLeakageResultNum = parseFloat(String(maxLeakageResult)) || 0;
         if (maxLeakageResultNum > 0) {
           measuredNum = maxLeakageResultNum / 114;
-          measuredValue = measuredNum.toFixed(3);
+          measuredValue = measuredNum.toFixed(4);
         } else {
-          measuredValue = "-";
+          const maValue = pickNum(
+            testData.radiationLeakage.ma,
+            testData.radiationLeakage.mA,
+            testData.radiationLeakage.settings?.[0]?.ma,
+            testData.radiationLeakage.settings?.[0]?.mA,
+            testData.radiationLeakage.settings?.[0]?.appliedCurrent,
+            testData.radiationLeakage.measurementSettings?.[0]?.ma,
+            testData.radiationLeakage.measurementSettings?.[0]?.mA,
+            testData.radiationLeakage.measurementSettings?.[0]?.appliedCurrent,
+            testData.radiationLeakage.testConditions?.ma
+          );
+          const workloadValue = pickNum(testData.radiationLeakage.workload, 0);
+          const maxExposureMR = validRows.reduce((acc: number, row: any) => {
+            // Prefer row.max if it's already calculated/stored
+            let rowMax = toNum(row.max);
+            
+            // If row.max is not a valid number, try to find the max from directional values
+            if (isNaN(rowMax) || rowMax <= 0) {
+              const values = [row.left, row.right, row.front, row.back, row.top, row.up, row.down]
+                .map(toNum)
+                .filter((n: number) => !isNaN(n) && n > 0);
+              rowMax = values.length > 0 ? Math.max(...values) : 0;
+            }
+
+            if (rowMax > 0) {
+              const unit = String(row.unit || "mGy/h").toLowerCase();
+              const rowMaxMR = unit.includes("mgy") ? rowMax * 114 : rowMax;
+              return rowMaxMR > acc ? rowMaxMR : acc;
+            }
+            return acc;
+          }, 0);
+
+          if (!isNaN(maValue) && maValue > 0 && !isNaN(workloadValue) && workloadValue >= 0 && !isNaN(maxExposureMR) && maxExposureMR >= 0) {
+            const maxLeakageMR = (workloadValue * maxExposureMR) / (60 * maValue);
+            measuredNum = maxLeakageMR / 114;
+            measuredValue = measuredNum.toFixed(4);
+          } else {
+            measuredValue = "-";
+          }
         }
       } else {
         measuredValue = String(measuredValue);
@@ -197,24 +249,25 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
 
       // Calculate remark based on maxRadiationLeakage
       let remark = "";
-      if (measuredValue !== "-" && measuredValue !== "") {
-        const tol = parseFloat(toleranceValue);
+      if (measuredValue !== "-" && measuredValue !== "" && measuredValue !== "—") {
+        const tol = parseFloat(String(toleranceValue));
         if (!isNaN(measuredNum) && !isNaN(tol) && tol > 0) {
-          if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
+          const lowerOp = toleranceOperator.toLowerCase();
+          if (lowerOp === "<=" || lowerOp === "less than or equal to") {
             remark = measuredNum <= tol ? "Pass" : "Fail";
-          } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
+          } else if (lowerOp === ">=" || lowerOp === "greater than or equal to") {
             remark = measuredNum >= tol ? "Pass" : "Fail";
-          } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
+          } else if (lowerOp === "<" || lowerOp === "less than") {
             remark = measuredNum < tol ? "Pass" : "Fail";
-          } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
+          } else if (lowerOp === ">" || lowerOp === "greater than") {
             remark = measuredNum > tol ? "Pass" : "Fail";
-          } else if (toleranceOperator === "=" || toleranceOperator === "equal to") {
+          } else if (lowerOp === "=" || lowerOp === "equal to") {
             remark = Math.abs(measuredNum - tol) < 0.001 ? "Pass" : "Fail";
           } else {
-            remark = "-";
+            remark = "Pass"; // Default if operator is weird but we have a value
           }
         } else {
-          remark = "-";
+          remark = "Pass";
         }
       } else {
         remark = "-";
@@ -236,7 +289,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
 
       addRowsForTest("Maximum Radiation Leakage from Tube Housing", [{
         specified: "Tube Housing",
-        measured: measuredValue !== "-" && measuredValue !== "" ? `${measuredValue} mGy/h` : "-",
+        measured: (measuredValue !== "-" && measuredValue !== "" && measuredValue !== "—") ? `${measuredValue} mGy/h` : "-",
         tolerance: `${toleranceDisplay} ${toleranceValue} mGy/h`,
         remarks: (remark === "Pass" || remark === "PASS" ? "Pass" : remark === "Fail" || remark === "FAIL" ? "Fail" : "-") as "Pass" | "Fail",
       }]);
@@ -246,11 +299,11 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
   // 6. Total Filtration (if available)
   if (testData.totalFiltration) {
     const measuredTF = testData.totalFiltration.measuredTF || testData.totalFiltration.measured || "-";
-    const appliedKV = testData.totalFiltration.appliedKV || "-";
-    const measured = parseFloat(measuredTF);
+    const appliedKV = testData.totalFiltration.atKvp || testData.totalFiltration.appliedKV || testData.totalFiltration.kv || "-";
+    const measured = parseFloat(String(measuredTF));
     const isPass = !isNaN(measured) && measured >= 2.5;
     addRowsForTest("Total Filtration", [{
-      specified: appliedKV !== "-" ? `${appliedKV} kV` : "-",
+      specified: (appliedKV !== "" && appliedKV !== "-") ? `${appliedKV} kVp` : "Varies",
       measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
       tolerance: "≥ 2.5 mm Al (>70 kVp)",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",

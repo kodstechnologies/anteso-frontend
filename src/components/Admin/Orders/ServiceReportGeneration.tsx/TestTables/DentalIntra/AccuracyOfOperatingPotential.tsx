@@ -12,7 +12,9 @@ interface RowData {
     id: string;
     appliedKvp: string;
     measuredValues: string[];
+    measuredValuesStatus: boolean[];
     averageKvp: string;
+    averageKvpStatus?: boolean;
     remarks: "PASS" | "FAIL" | "-";
 }
 
@@ -40,11 +42,23 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     const [mAStations, setMAStations] = useState<string[]>(["50 mA", "100 mA"]);
     const [ffd, setFfd] = useState<string>("");
     const [rows, setRows] = useState<RowData[]>([
-        { id: "1", appliedKvp: "60", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
-        { id: "2", appliedKvp: "80", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
-        { id: "3", appliedKvp: "100", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
-        { id: "4", appliedKvp: "120", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
+        { id: "1", appliedKvp: "60", measuredValues: ["", ""], measuredValuesStatus: [], averageKvp: "", remarks: "-" },
+        { id: "2", appliedKvp: "80", measuredValues: ["", ""], measuredValuesStatus: [], averageKvp: "", remarks: "-" },
+        { id: "3", appliedKvp: "100", measuredValues: ["", ""], measuredValuesStatus: [], averageKvp: "", remarks: "-" },
+        { id: "4", appliedKvp: "120", measuredValues: ["", ""], measuredValuesStatus: [], averageKvp: "", remarks: "-" },
     ]);
+
+    const checkTolerance = (measured: number, applied: number, tolerance: number, sign: "+" | "-" | "±"): boolean => {
+        if (isNaN(measured) || isNaN(applied) || isNaN(tolerance) || tolerance <= 0 || applied === 0) return true;
+        const diff = Math.abs(measured - applied);
+        if (sign === "+") {
+            return measured <= applied + tolerance;
+        } else if (sign === "-") {
+            return measured >= applied - tolerance;
+        } else {
+            return diff <= tolerance + 1e-6;
+        }
+    };
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
     const [toleranceValue, setToleranceValue] = useState("2.0");
@@ -80,11 +94,26 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                             const measuredValues = (m.maStations && Array.isArray(m.maStations))
                                 ? m.maStations.map((s: any) => s?.kvp ?? "")
                                 : (m.measuredValues || []);
+                                
+                            const rowApplied = parseFloat(m.appliedKvp || "0");
+                            const tol = parseFloat(data.kvpToleranceValue || "2.0");
+                            const sign = (data.kvpToleranceSign || "±") as "+" | "-" | "±";
+                            const avgNum = parseFloat(m.avgKvp || m.averageKvp || "0");
+                            
+                            const measuredStatus = measuredValues.map((val: string) => {
+                                const measured = parseFloat(val || "0");
+                                return checkTolerance(measured, rowApplied, tol, sign);
+                            });
+                            
+                            const avgStatus = checkTolerance(avgNum, rowApplied, tol, sign);
+                                
                             return {
                                 id: String(i + 1),
                                 appliedKvp: m.appliedKvp || "",
                                 measuredValues,
+                                measuredValuesStatus: measuredStatus,
                                 averageKvp: m.avgKvp || m.averageKvp || "",
+                                averageKvpStatus: avgStatus,
                                 remarks: (m.remark || m.remarks || "-") as "PASS" | "FAIL" | "-",
                             };
                         }) || rows
@@ -167,6 +196,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                         id: String(idx),
                         appliedKvp: applied,
                         measuredValues: measured,
+                        measuredValuesStatus: [],
                         averageKvp: "",
                         remarks: "-"
                     };
@@ -255,7 +285,11 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     const addMAColumn = () => {
         if (isViewMode) return;
         setMAStations(prev => [...prev, "200 mA"]);
-        setRows(prev => prev.map(row => ({ ...row, measuredValues: [...row.measuredValues, ""] })));
+        setRows(prev => prev.map(row => ({ 
+            ...row, 
+            measuredValues: [...row.measuredValues, ""],
+            measuredValuesStatus: [...(row.measuredValuesStatus || []), true]
+        })));
     };
 
     const removeMAColumn = (index: number) => {
@@ -264,6 +298,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
         setRows(prev => prev.map(row => ({
             ...row,
             measuredValues: row.measuredValues.filter((_, i) => i !== index),
+            measuredValuesStatus: (row.measuredValuesStatus || []).filter((_, i) => i !== index),
         })));
     };
 
@@ -282,6 +317,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             id: Date.now().toString(),
             appliedKvp: "",
             measuredValues: Array(mAStations.length).fill(""),
+            measuredValuesStatus: Array(mAStations.length).fill(true),
             averageKvp: "",
             remarks: "-",
         };
@@ -299,17 +335,34 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
         const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
 
         const applied = parseFloat(row.appliedKvp || "0");
-        const avgNum = parseFloat(avg || "0");
         const tol = parseFloat(toleranceValue || "0");
-        let remark: "PASS" | "FAIL" | "-" = "-";
+        const sign = toleranceSign as "+" | "-" | "±";
 
-        if (!isNaN(applied) && !isNaN(avgNum) && !isNaN(tol) && tol > 0) {
-            const diff = Math.abs(avgNum - applied);
-            const EPS = 1e-6;
-            remark = diff <= tol + EPS ? "PASS" : "FAIL";
+        const measuredStatus = measured.map(val => {
+            const mNum = parseFloat(val || "0");
+            return checkTolerance(mNum, applied, tol, sign);
+        });
+
+        const avgNum = parseFloat(avg || "0");
+        const avgStatus = checkTolerance(avgNum, applied, tol, sign);
+
+        const hasAnyFailure = measuredStatus.some(status => status === false) || avgStatus === false;
+        const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 &&
+            (measured.some(v => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
+
+        let remark: "PASS" | "FAIL" | "-" = "-";
+        if (hasValidData) {
+            remark = hasAnyFailure ? "FAIL" : "PASS";
         }
 
-        return { ...row, measuredValues: measured, averageKvp: avg, remarks: remark };
+        return { 
+            ...row, 
+            measuredValues: measured, 
+            measuredValuesStatus: measuredStatus,
+            averageKvp: avg, 
+            averageKvpStatus: avgStatus,
+            remarks: remark 
+        };
     };
 
     const updateCell = (rowId: string, field: "appliedKvp" | number, value: string) => {
@@ -460,20 +513,27 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                                         placeholder="80"
                                     />
                                 </td>
-                                {row.measuredValues.map((val, idx) => (
-                                    <td key={idx} className="px-3 py-3 text-center border-r">
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            value={val}
-                                            onChange={(e) => updateCell(row.id, idx, e.target.value)}
-                                            disabled={isViewMode}
-                                            className={`w-full px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-                                            placeholder="0.0"
-                                        />
-                                    </td>
-                                ))}
-                                <td className="px-6 py-3 text-center font-bold text-gray-800 border-r">
+                                {row.measuredValues.map((val, idx) => {
+                                    const hasValue = val !== "" && !isNaN(parseFloat(val));
+                                    const isValid = row.measuredValuesStatus && row.measuredValuesStatus.length > idx
+                                        ? row.measuredValuesStatus[idx]
+                                        : (val === "" || checkTolerance(parseFloat(val || "0"), parseFloat(row.appliedKvp || "0"), parseFloat(toleranceValue || "0"), toleranceSign));
+
+                                    return (
+                                        <td key={idx} className={`px-3 py-3 text-center border-r ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                value={val}
+                                                onChange={(e) => updateCell(row.id, idx, e.target.value)}
+                                                disabled={isViewMode}
+                                                className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${hasValue && !isValid ? 'border-red-500 bg-red-50' : 'border-gray-300'} ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                                                placeholder="0.0"
+                                            />
+                                        </td>
+                                    );
+                                })}
+                                <td className={`px-6 py-3 text-center font-bold border-r ${row.averageKvp && row.averageKvp !== "-" && row.averageKvpStatus === false ? 'bg-red-100 text-red-800' : 'text-gray-800'}`}>
                                     {row.averageKvp || "-"}
                                 </td>
                                 <td className="px-6 py-3 text-center">

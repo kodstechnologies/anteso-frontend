@@ -41,8 +41,8 @@ interface Props {
   key?: string; // Add key to interface for React
 }
 
-const ConsistencyOfRadiationOutput: React.FC<Props> = ({ 
-  serviceId, 
+const ConsistencyOfRadiationOutput: React.FC<Props> = ({
+  serviceId,
   testId: propTestId,
   onTestSaved,
   initialData
@@ -219,72 +219,72 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   // Load initialData from CSV if provided (priority over API)
   useEffect(() => {
     const currentDataString = JSON.stringify(initialData || {});
-    
+
     // Check if data has actually changed
     if (currentDataString === previousInitialDataRef.current) {
       console.log('ConsistencyOfRadiationOutput: initialData unchanged, skipping');
       return;
     }
-    
+
     previousInitialDataRef.current = currentDataString;
     console.log('ConsistencyOfRadiationOutput: useEffect triggered, initialData changed:', initialData);
-    
+
     // Reset the ref when component receives new initialData
     hasLoadedFromCSV.current = false;
-    
+
     if (!initialData) {
       console.log('ConsistencyOfRadiationOutput: No initialData provided');
       return;
     }
-    
+
     // Check if it's an empty object
     if (typeof initialData === 'object' && Object.keys(initialData).length === 0) {
       console.log('ConsistencyOfRadiationOutput: initialData is empty object');
       return;
     }
-    
+
     console.log('ConsistencyOfRadiationOutput: initialData received:', JSON.stringify(initialData, null, 2));
-    
+
     // Use a more robust check - check if initialData exists and has meaningful data
-    const hasOutputRows = initialData.outputRows && 
-      Array.isArray(initialData.outputRows) && 
-      initialData.outputRows.length > 0 && 
+    const hasOutputRows = initialData.outputRows &&
+      Array.isArray(initialData.outputRows) &&
+      initialData.outputRows.length > 0 &&
       initialData.outputRows.some((r: any) => {
         const hasKv = r.kv && String(r.kv).trim() !== '';
         const hasMas = r.mas && String(r.mas).trim() !== '';
         const hasOutputs = r.outputs && Array.isArray(r.outputs) && r.outputs.length > 0 && r.outputs.some((o: any) => o && o.value && String(o.value).trim() !== '');
         return hasKv || hasMas || hasOutputs;
       });
-    
+
     const hasTolerance = initialData.tolerance && (initialData.tolerance.operator || initialData.tolerance.value);
     const hasData = hasOutputRows || hasTolerance;
-    
-    console.log('ConsistencyOfRadiationOutput: hasData check:', { 
-      hasOutputRows, 
-      hasTolerance, 
+
+    console.log('ConsistencyOfRadiationOutput: hasData check:', {
+      hasOutputRows,
+      hasTolerance,
       hasData,
       outputRowsLength: initialData.outputRows?.length,
       firstRow: initialData.outputRows?.[0]
     });
-    
+
     if (hasData) {
       try {
         console.log('Loading ConsistencyOfRadiationOutput from initialData:', initialData);
         hasLoadedFromCSV.current = true;
-        
+
         if (hasOutputRows) {
           const firstRow = initialData.outputRows[0];
           const numMeas = firstRow.outputs?.length || 5;
           console.log('Setting measurement count to:', numMeas);
           setMeasurementCount(numMeas);
-          
+
           const mappedRows = initialData.outputRows.map((r: any, index: number) => {
             const outputs = r.outputs && Array.isArray(r.outputs) && r.outputs.length > 0
               ? r.outputs.map((o: any) => ({ value: (o && o.value) ? String(o.value) : '' }))
               : Array(numMeas).fill({ value: '' });
-            
+
             console.log(`Mapping row ${index}:`, { r, outputs });
-            
+
             return {
               id: `csv-row-${index}-${Date.now()}`,
               kv: r.kv ? String(r.kv) : '',
@@ -295,11 +295,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
               remark: r.remark ? String(r.remark) : '',
             };
           });
-          
+
           console.log('Mapped output rows:', mappedRows);
           setOutputRows(mappedRows);
         }
-        
+
         if (hasTolerance) {
           setTolerance({
             operator: initialData.tolerance.operator || '<=',
@@ -307,7 +307,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           });
           console.log('Set tolerance:', { operator: initialData.tolerance.operator || '<=', value: initialData.tolerance.value || '5.0' });
         }
-        
+
         setIsEditing(true); // Allow editing when data comes from CSV
         setIsSaved(false);
         setIsLoading(false);
@@ -327,7 +327,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       console.log('ConsistencyOfRadiationOutput: Skipping API load - CSV data available');
       return;
     }
-    
+
     if (!serviceId) {
       setIsLoading(false);
       return;
@@ -444,10 +444,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
             }`}
         >
           {isSaving ? (
@@ -471,9 +471,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       {/* FCD */}
       <div className="bg-white rounded-lg border shadow-sm">
-        
+
         <div className="p-6 flex items-center gap-4">
-          <label className="w-48 text-sm font-medium text-gray-700">FFD(cm):</label>
+          <label className="w-48 text-sm font-medium text-gray-700">FDD(cm):</label>
           <input
             type="text"
             value={fcd.value}
@@ -583,13 +583,12 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   </td>
                   <td className="px-5 py-4 text-center">
                     <span
-                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${
-                        row.remark === 'Pass'
-                          ? 'bg-green-100 text-green-800'
-                          : row.remark === 'Fail'
+                      className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${row.remark === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : row.remark === 'Fail'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-600'
-                      }`}
+                        }`}
                     >
                       {row.cv ? `${row.cv} → ${row.remark}` : '—'}
                     </span>

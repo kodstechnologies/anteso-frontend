@@ -1175,8 +1175,14 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                   const tolVal = parseFloat(testData.outputConsistency.tolerance?.value ?? '0.05') || 0.05;
                   const tolOp = testData.outputConsistency.tolerance?.operator ?? '<=';
 
-                  const getVal = (o: any): number => {
-                    if (o == null) return NaN;
+                  const getVal = (o: any, row?: any, field?: string): number => {
+                    if (o == null) {
+                      if (row && field) {
+                        const val = parseFloat(row[field]);
+                        return isNaN(val) ? NaN : val;
+                      }
+                      return NaN;
+                    }
                     if (typeof o === 'number') return o;
                     if (typeof o === 'string') return parseFloat(o);
                     if (typeof o === 'object' && 'value' in o) return parseFloat(o.value);
@@ -1200,9 +1206,13 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                         </thead>
                         <tbody>
                           {rows.map((row: any, i: number) => {
-                            const outputs: number[] = (row.outputs ?? []).map(getVal).filter((n: number) => !isNaN(n) && n > 0);
+                            const outputs: number[] = Array.from({ length: measCount }, (_, j) => {
+                              const raw = (row.outputs ?? [])[j];
+                              return getVal(raw, row, `meas${j + 1}`);
+                            }).filter((n: number) => !isNaN(n) && n > 0);
+
                             const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
-                            const avgDisplay = avg !== null ? avg.toFixed(4) : (row.avg || '-');
+                            const avgDisplay = avg !== null ? avg.toFixed(4) : (row.avg || (row.average || '-'));
                             let covDisplay = '-';
                             let remark = row.remark || '-';
                             if (avg !== null && avg > 0) {
@@ -1217,19 +1227,25 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                               covDisplay = row.cv;
                             }
                             return (
-                              <tr key={i} className="text-center">
+                              <tr key={i} className="text-center font-medium">
                                 <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.kv || '-'}</td>
-                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.mas || '-'}</td>
+                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.mas || (row.mAs || '-')}</td>
                                 {Array.from({ length: measCount }, (_, j) => {
+                                  let val = '-';
                                   const raw = (row.outputs ?? [])[j];
-                                  const display = raw != null ? (typeof raw === 'object' && 'value' in raw ? raw.value : String(raw)) : '-';
+                                  if (raw != null) {
+                                    val = (typeof raw === 'object' && 'value' in raw) ? raw.value : String(raw);
+                                  } else {
+                                    // Fallback for CSV format (meas1, meas2, etc.)
+                                    val = row[`meas${j + 1}`] || '-';
+                                  }
                                   return (
-                                    <td key={j} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{display || '-'}</td>
+                                    <td key={j} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{val}</td>
                                   );
                                 })}
-                                <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{avgDisplay}</td>
+                                <td className="border border-black p-1 text-center font-bold bg-gray-50" style={{ padding: '0px 2px', fontSize: '10px' }}>{avgDisplay}</td>
                                 <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{covDisplay}</td>
-                                <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                                <td className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>
                                   <span className={remark === 'Pass' ? 'text-green-600' : remark === 'Fail' ? 'text-red-600' : ''}>
                                     {remark}
                                   </span>

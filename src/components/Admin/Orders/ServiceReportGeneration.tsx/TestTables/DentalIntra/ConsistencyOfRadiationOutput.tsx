@@ -75,6 +75,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const stdDev = Math.sqrt(variance);
       const cov = mean > 0 ? stdDev / mean : 0;
 
+      console.log("this is inside the save processoed col methods")
       let remarks: 'Pass' | 'Fail' | '' = '';
       if (tolerance) {
         const tol = parseFloat(tolerance);

@@ -1067,6 +1067,16 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                         component: <RadiationLeakageLevel
                             serviceId={serviceId}
                             testId={savedTestIds.RadiationLeakageTestCBCT || undefined}
+                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, RadiationLeakageTestCBCT: id }))}
+                            onRefresh={() => {
+                                // ensure saved test id state is refreshed after first save
+                                getReportHeaderForCBCT(serviceId).then((res: any) => {
+                                    const id = res?.data?.RadiationLeakageTestCBCT?._id || res?.data?.RadiationLeakageTestCBCT;
+                                    if (id) {
+                                        setSavedTestIds(prev => ({ ...prev, RadiationLeakageTestCBCT: id }));
+                                    }
+                                }).catch(() => { });
+                            }}
                             csvData={csvData?.radiationLeakageLevel}
                         />
                     },

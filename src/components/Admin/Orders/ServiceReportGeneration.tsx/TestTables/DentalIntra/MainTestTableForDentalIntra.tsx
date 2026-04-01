@@ -71,20 +71,34 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
       });
       addRowsForTest("Accuracy of Operating Potential (kVp)", kvpRows);
 
+    }
+  }
+
+  // 1b. Accuracy of Irradiation Time
+  const timeDataRows = testData.accuracyOfIrradiationTime?.rows || testData.accuracyOfOperatingPotentialAndTime?.rows;
+  if (timeDataRows && Array.isArray(timeDataRows)) {
+    const validRows = timeDataRows.filter((row: any) => row.setTime || row.avgTime || (row.maStations && row.maStations[0]?.time));
+    if (validRows.length > 0) {
+      const timeToleranceSource = testData.accuracyOfIrradiationTime || testData.accuracyOfOperatingPotentialAndTime || {};
+      const timeToleranceValue = timeToleranceSource.timeToleranceValue || "10";
+
       const timeRows = validRows.map((row: any) => {
         const setTime = parseFloat(row.setTime);
-        const avgTime = parseFloat(row.avgTime);
+        const measuredStr = row.maStations?.[0]?.time ?? row.avgTime ?? "-";
+        const measuredTime = parseFloat(measuredStr);
+
         let isPass = false;
         if (row.remark === "PASS" || row.remark === "Pass") isPass = true;
         else if (row.remark === "FAIL" || row.remark === "Fail") isPass = false;
-        else if (!isNaN(setTime) && !isNaN(avgTime) && setTime > 0) {
-          const deviation = Math.abs(((avgTime - setTime) / setTime) * 100);
+        else if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
+          const deviation = Math.abs(((measuredTime - setTime) / setTime) * 100);
           isPass = deviation <= parseFloat(timeToleranceValue);
         }
+
         return {
           specified: row.setTime ?? "-",
-          measured: row.avgTime ?? "-",
-          tolerance: `${timeToleranceSign}${timeToleranceValue}%`,
+          measured: measuredStr,
+          tolerance: `≤ ${timeToleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -122,7 +136,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
         tolerance: `≤ ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }];
-      addRowsForTest("Linearity of Time (Coefficient of Linearity)", testRows);
+      addRowsForTest("Linearity of mAs loading (Coefficient of Linearity)", testRows);
     }
   }
 
@@ -146,33 +160,72 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
   }
 
   // 3. Output Consistency / Reproducibility of Radiation Output (CoV)
+  // 3. Output Consistency / Reproducibility of Radiation Output (CoV)
   if (testData.reproducibilityOfRadiationOutput?.outputRows && Array.isArray(testData.reproducibilityOfRadiationOutput.outputRows)) {
-    const validRows = testData.reproducibilityOfRadiationOutput.outputRows.filter((row: any) => row.kv || row.mas || row.cov || row.remark);
+    const validRows = testData.reproducibilityOfRadiationOutput.outputRows.filter((row: any) => row.kv || row.mas || row.outputs?.length > 0);
     if (validRows.length > 0) {
       const toleranceOperator = testData.reproducibilityOfRadiationOutput.tolerance?.operator || "<=";
       const toleranceValue = testData.reproducibilityOfRadiationOutput.tolerance?.value || "0.05";
       const tolNum = parseFloat(toleranceValue);
       const tolDecimal = tolNum >= 1 ? tolNum / 100 : tolNum;
+
+      const getVal = (o: any): number => {
+        if (o == null) return NaN;
+        if (typeof o === "number") return o;
+        if (typeof o === "string") return parseFloat(o);
+        if (typeof o === "object" && "value" in o) return parseFloat(o.value);
+        return NaN;
+      };
+
       const testRows = validRows.map((row: any) => {
-        const cvValue = row.cv != null && row.cv !== "" ? String(row.cv) : "-";
-        const cvNum = cvValue !== "-" ? parseFloat(cvValue) : NaN;
+        // Compute CoV from outputs array (same logic as the detailed view)
+        const outputs: number[] = (row.outputs ?? [])
+          .map(getVal)
+          .filter((n: number) => !isNaN(n) && n > 0);
+
+        let covDisplay = "-";
         let isPass = false;
+
+        if (outputs.length > 1) {
+          const avg = outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length;
+          if (avg > 0) {
+            const variance = outputs.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / outputs.length;
+            const cov = Math.sqrt(variance) / avg;
+            if (isFinite(cov)) {
+              covDisplay = cov.toFixed(3);
+              if (toleranceOperator === "<=") isPass = cov <= tolDecimal;
+              else if (toleranceOperator === "<") isPass = cov < tolDecimal;
+              else if (toleranceOperator === ">=") isPass = cov >= tolDecimal;
+              else if (toleranceOperator === ">") isPass = cov > tolDecimal;
+            }
+          }
+        } else {
+          // Fallback to pre-computed field if outputs aren't available
+          const cvRaw = row.cv ?? row.cov ?? row.coV ?? null;
+          if (cvRaw != null && cvRaw !== "") {
+            const cvNum = parseFloat(String(cvRaw));
+            if (!isNaN(cvNum)) {
+              covDisplay = cvNum.toFixed(3);
+              if (toleranceOperator === "<=") isPass = cvNum <= tolDecimal;
+              else if (toleranceOperator === "<") isPass = cvNum < tolDecimal;
+              else if (toleranceOperator === ">=") isPass = cvNum >= tolDecimal;
+              else if (toleranceOperator === ">") isPass = cvNum > tolDecimal;
+            }
+          }
+        }
+
+        // Let explicit remark on the row override the calculation
         if (row.remark === "Pass" || row.remark === "PASS") isPass = true;
         else if (row.remark === "Fail" || row.remark === "FAIL") isPass = false;
-        else if (!isNaN(cvNum) && !isNaN(tolNum)) {
-          if (toleranceOperator === "<=") isPass = cvNum <= tolDecimal;
-          else if (toleranceOperator === "<") isPass = cvNum < tolDecimal;
-          else if (toleranceOperator === ">=") isPass = cvNum >= tolDecimal;
-          else if (toleranceOperator === ">") isPass = cvNum > tolDecimal;
-        }
-        const formattedCv = cvValue !== "-" && !isNaN(cvNum) ? cvNum.toFixed(3) : "-";
+
         return {
           specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "-",
-          measured: formattedCv,
+          measured: covDisplay,
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
+
       addRowsForTest("Output Consistency (CoV)", testRows, true);
     }
   }

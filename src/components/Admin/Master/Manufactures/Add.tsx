@@ -11,13 +11,14 @@ import { createManufacturer, getAllStates } from "../../../../api";
 
 // ───── QA-TESTS (system + custom) ─────────────────────────────────────────────
 const systemQaTests = [
-    { label: "FIXED X RAY", value: "FIXED_X_RAY", price: 3500, system: true },
-    { label: "MOBILE X RAY", value: "MOBILE_X_RAY", price: 2500, system: true },
-    { label: "C ARM", value: "C_ARM", price: 3000, system: true },
-    { label: "MAMMOGRAP", value: "MAMMOGRAP", price: 4000, system: true },
-    { label: "CATH LAB", value: "CATH_LAB", price: 5000, system: true },
-    { label: "CT SCAN", value: "CT_SCAN", price: 6000, system: true },
-    { label: "TATKAL QA", value: "TATKAL_QA", price: 5000, system: true },
+    { label: "Radiography (Fixed)", value: "Radiography (Fixed)", price: 3500, system: true },
+    { label: "Radiography (Mobile)", value: "Radiography (Mobile)", price: 2500, system: true },
+    { label: "Radiography (Portable)", value: "Radiography (Portable)", price: 3000, system: true },
+    { label: "Radiography and Fluoroscopy", value: "Radiography and Fluoroscopy", price: 4000, system: true },
+    { label: "Interventional Radiology", value: "Interventional Radiology", price: 5000, system: true },
+    { label: "C-Arm", value: "C-Arm", price: 6000, system: true },
+    { label: "O-Arm", value: "O-Arm", price: 6000, system: true },
+    { label: "Computed Tomography", value: "Computed Tomography", price: 6000, system: true },
 ];
 
 // ───── SERVICES (default + system flag) ─────────────────
@@ -31,12 +32,12 @@ const AddManufacture = () => {
     const navigate = useNavigate();
 
     // ── QA-TEST state ───────────────────────────────────────────────────────
-    const [qaOptions, setQaOptions] = useState(systemQaTests);
+    const [qaOptions, setQaOptions] = useState<any[]>([]);  // Start empty
     const [newQaName, setNewQaName] = useState("");
     const [newQaPrice, setNewQaPrice] = useState("");
 
     // ── SERVICE state ───────────────────────────────────────────────────────
-    const [serviceOptions, setServiceOptions] = useState(defaultServices);
+    const [serviceOptions, setServiceOptions] = useState<any[]>([]);  // Start empty
     const [newSrvName, setNewSrvName] = useState("");
     const [newSrvAmount, setNewSrvAmount] = useState("");
 

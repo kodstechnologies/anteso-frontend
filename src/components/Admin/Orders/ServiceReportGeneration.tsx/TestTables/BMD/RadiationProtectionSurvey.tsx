@@ -335,9 +335,9 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
           Radiation Protection Survey Report
         </h1>
         <button
-          onClick={isViewMode ? () => setIsEditing(true) : handleSave}
-          disabled={isSaving || isDisabled}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving || isDisabled ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
         >
           {isSaving ? (
             <>

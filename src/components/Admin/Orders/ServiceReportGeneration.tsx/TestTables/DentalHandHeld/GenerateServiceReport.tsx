@@ -12,7 +12,7 @@ import {
     getLinearityOfMaLoadingByServiceIdForDentalHandHeld,
     getLinearityOfMasLoadingByServiceIdForDentalHandHeld,
     getConsistencyOfRadiationOutputByServiceIdForDentalHandHeld,
-    getRadiationLeakageLevelByServiceIdForDentalHandHeld,
+    getTubeHousingLeakageByServiceIdForDentalHandHeld,
     getRadiationProtectionSurveyByServiceIdForDentalHandHeld
 } from "../../../../../../api";
 import { Disclosure } from "@headlessui/react";
@@ -251,7 +251,6 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                         LinearityOfmAsLoadingDentalHandHeld: res.data.LinearityOfmAsLoadingDentalHandHeld?._id || res.data.LinearityOfmAsLoadingDentalHandHeld,
                         ConsistencyOfRadiationOutputDentalHandHeld: res.data.ConsistencyOfRadiationOutputDentalHandHeld?._id || res.data.ConsistencyOfRadiationOutputDentalHandHeld,
                         ReproducibilityOfRadiationOutputDentalHandHeld: res.data.ReproducibilityOfRadiationOutputDentalHandHeld?._id || res.data.ReproducibilityOfRadiationOutputDentalHandHeld,
-                        RadiationLeakageLevelDentalHandHeld: res.data.RadiationLeakageLevelDentalHandHeld?._id || res.data.RadiationLeakageLevelDentalHandHeld,
                         TubeHousingLeakageDentalHandHeld: res.data.TubeHousingLeakageDentalHandHeld?._id || res.data.TubeHousingLeakageDentalHandHeld,
                         RadiationProtectionSurveyDentalHandHeld: res.data.RadiationProtectionSurveyDentalHandHeld?._id || res.data.RadiationProtectionSurveyDentalHandHeld,
                     });
@@ -318,7 +317,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
         const checks: { name: string; check: () => Promise<boolean> }[] = [
             { name: "Accuracy Of Operating Potential", check: async () => { try { return isSaved(await getAccuracyOfOperatingPotentialByServiceIdForDentalHandHeld(serviceId)); } catch { return false; } } },
             { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getConsistencyOfRadiationOutputByServiceIdForDentalHandHeld(serviceId)); } catch { return false; } } },
-            { name: "Radiation Leakage Level", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForDentalHandHeld(serviceId)); } catch { return false; } } },
+            { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdForDentalHandHeld(serviceId)); } catch { return false; } } },
             { name: "Details Of Radiation Protection", check: async () => { try { return isSaved(await getRadiationProtectionSurveyByServiceIdForDentalHandHeld(serviceId)); } catch { return false; } } },
         ];
         if (hasTimer === true) {

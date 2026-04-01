@@ -31,10 +31,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  onTestSaved?: (testId: string) => void;
   csvData?: any[];
 }
 
-export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, onRefresh, csvData }: Props) {
+export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, onRefresh, onTestSaved, csvData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Fixed rows
@@ -62,6 +63,11 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+  const getPrimitive = (v: any) => {
+    if (v == null) return "";
+    if (typeof v === "object" && "value" in v) return (v as any).value ?? "";
+    return v;
+  };
 
   // === Auto Max per row ===
   const processedLeakage = useMemo(() => {
@@ -186,8 +192,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         return;
       }
       try {
-        const res = await getRadiationLeakageLevelByServiceIdForCBCT(serviceId);
-        const rec = res?.data;
+        const res = propTestId
+          ? await getRadiationLeakageLevelByTestIdForCBCT(propTestId)
+          : await getRadiationLeakageLevelByServiceIdForCBCT(serviceId);
+        const rec = res?.data?.data || res?.data || res || null;
         if (!rec) {
           setIsLoading(false);
           setIsEditing(true);
@@ -200,32 +208,39 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           if (rec.settings?.[0] || rec.measurementSettings?.[0]) {
             const s = rec.settings?.[0] || rec.measurementSettings?.[0];
             setSettings({
-              kv: String(s.kv || s.kvp || ''),
-              ma: String(s.ma || ''),
-              time: String(s.time || ''),
+              kv: String(getPrimitive(s.kv ?? s.kvp ?? s.kV ?? s.kVp ?? s.appliedVoltage) ?? ''),
+              ma: String(getPrimitive(s.ma ?? s.mA ?? s.appliedCurrent) ?? ''),
+              time: String(getPrimitive(s.time ?? s.exposureTime) ?? ''),
+            });
+          } else {
+            // Fallback to top-level keys when settings array is unavailable
+            setSettings({
+              kv: String(getPrimitive(rec.kv ?? rec.kvp ?? rec.kV ?? rec.kVp ?? rec.appliedVoltage) ?? ''),
+              ma: String(getPrimitive(rec.ma ?? rec.mA ?? rec.appliedCurrent) ?? ''),
+              time: String(getPrimitive(rec.time ?? rec.exposureTime) ?? ''),
             });
           }
 
           if (Array.isArray(rec.leakageMeasurements)) {
             setLeakageRows(
               rec.leakageMeasurements.map((r: any) => ({
-                location: r.location || '',
-                front: String(r.front || r.top || ''),
-                back: String(r.back || r.up || ''),
-                left: String(r.left || ''),
-                right: String(r.right || ''),
+                location: String(r.location ?? ''),
+                front: String(getPrimitive(r.front ?? r.top) ?? ''),
+                back: String(getPrimitive(r.back ?? r.up ?? r.down) ?? ''),
+                left: String(getPrimitive(r.left) ?? ''),
+                right: String(getPrimitive(r.right) ?? ''),
                 max: '',
-                unit: r.unit || 'mGy/h',
+                unit: String(getPrimitive(r.unit) ?? 'mGy/h'),
                 remark: '',
               }))
             );
           }
 
-          setWorkload(rec.workload || '');
-          setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
-          setToleranceValue(rec.toleranceValue || rec.tolerance || '');
-          setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
-          setToleranceTime(rec.toleranceTime || '1');
+          setWorkload(String(rec.workload ?? ''));
+          setWorkloadUnit(String(rec.workloadUnit ?? 'mA·min/week'));
+          setToleranceValue(String(rec.toleranceValue ?? rec.tolerance?.value ?? rec.tolerance ?? ''));
+          setToleranceOperator((rec.toleranceOperator ?? rec.tolerance?.operator ?? 'less than or equal to') as any);
+          setToleranceTime(String(rec.toleranceTime ?? '1'));
 
           setHasSaved(true);
           setIsEditing(false);
@@ -242,10 +257,12 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     };
 
     load();
-  }, [serviceId]);
+  }, [serviceId, propTestId]);
 
   // CSV Data Injection
   useEffect(() => {
+    // Do not overwrite persisted server data in edit/view mode.
+    if (hasSaved || !!testId || !!propTestId) return;
     if (csvData && csvData.length > 0) {
       // Settings
       const kv = csvData.find(r => ['kv', 'kvp', 'kV', 'kVp'].includes(r['Field Name']))?.['Value'];
@@ -302,7 +319,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         setIsEditing(true);
       }
     }
-  }, [csvData]);
+  }, [csvData, hasSaved, testId, propTestId]);
 
   // === Save / Update ===
   const handleSave = async () => {
@@ -330,6 +347,11 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
       tolerance: toleranceValue.trim(),
       toleranceOperator,
       toleranceTime: toleranceTime.trim(),
+      maxRadiationLeakage: globalMaxResultMGy,
+      maxLeakageResult: calculatedResults[0]?.calculatedMR || '',
+      ma: parseFloat(settings.ma) || 0,
+      kv: parseFloat(settings.kv) || 0,
+      time: parseFloat(settings.time) || 0,
     };
 
     try {
@@ -342,6 +364,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         const newTestId = res?.data?.testId || res?.data?._id;
         if (newTestId) {
           setTestId(newTestId);
+          onTestSaved?.(newTestId);
         }
         toast.success('Saved successfully!');
       }

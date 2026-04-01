@@ -6,8 +6,8 @@ interface MainTestTableProps {
 }
 
 const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
-  const rows: any[] = [];
   let srNo = 1;
+  const rows: any[] = [];
 
   const addRowsForTest = (
     parameter: string,
@@ -17,7 +17,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
       tolerance: string;
       remarks: "Pass" | "Fail";
     }>,
-    toleranceRowSpan: boolean = false // Optional parameter to control tolerance rowSpan
+    toleranceRowSpan: boolean = false // Optional parame  ter to control tolerance rowSpan
   ) => {
     if (testRows.length === 0) return;
 
@@ -128,9 +128,13 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
         const cov = covVal !== undefined && covVal !== null && covVal !== "" ? (typeof covVal === 'number' ? covVal.toFixed(3) : parseFloat(String(covVal)).toFixed(3)) : "-";
         const cvNum = covVal != null && covVal !== "" ? parseFloat(String(covVal)) : NaN;
         const tolNum = parseFloat(tolerance);
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (!isNaN(cvNum) && !isNaN(tolNum) && cvNum <= tolNum);
+        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || row.remark === "Pass" || row.remark === "PASS" || (!isNaN(cvNum) && !isNaN(tolNum) && cvNum <= tolNum);
+
+        const kvVal = row.kv ?? row.kvp;
+        const mAsVal = row.mas ?? row.mAs;
+
         return {
-          specified: (row.kv ?? row.kvp) ? `${row.kv ?? row.kvp} kV` : "Varies with kV",
+          specified: kvVal ? `${kvVal} kV${mAsVal ? `, ${mAsVal} mAs` : ''}` : "Varies with kV",
           measured: cov,
           tolerance: `≤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -240,7 +244,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.operatingPotential?.totalFiltration) {
     const tf = testData.operatingPotential.totalFiltration;
     const measuredTF = tf.measured || "-";
-    const appliedKV = tf.atKvp || "-";
+    const appliedKV = tf.atKvp || tf.appliedKV || "-";
     const measured = parseFloat(measuredTF);
     const required = parseFloat(tf.required) || 2.5;
     const isPass = !isNaN(measured) && measured >= required;

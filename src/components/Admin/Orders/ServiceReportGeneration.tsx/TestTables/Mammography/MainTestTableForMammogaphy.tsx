@@ -173,37 +173,53 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
       const toleranceOperator = testData.reproducibilityOfOutput.tolerance?.operator || "<=";
       const toleranceValue = testData.reproducibilityOfOutput.tolerance?.value || "5.0";
       const testRows = validRows.map((row: any) => {
-        // Extract CV from remark if available
+        // Extract CV from field or from remark as fallback
         let cvValue = "-";
         let isPass = false;
 
-        if (row.remark) {
+        // Try 'cov' or 'cv' fields first (new schema)
+        const rawCv = row.cov || row.cv || row.CV;
+        if (rawCv !== undefined && rawCv !== null && rawCv !== "") {
+          const cvNum = parseFloat(String(rawCv));
+          if (!isNaN(cvNum)) {
+            // If it's a small decimal (e.g., 0.0123), convert to percentage
+            if (cvNum > 0 && cvNum < 1) {
+              cvValue = (cvNum * 100).toFixed(2);
+            } else {
+              cvValue = cvNum.toFixed(2);
+            }
+          }
+        }
+
+        // Fallback to extraction from remark
+        if (cvValue === "-" && row.remark) {
           const cvMatch = row.remark.match(/CV:\s*([\d.]+)%/i);
           if (cvMatch) {
             cvValue = cvMatch[1];
           }
+        }
 
-          if (row.remark.includes("Pass") || row.remark.includes("PASS")) {
-            isPass = true;
-          } else if (row.remark.includes("Fail") || row.remark.includes("FAIL")) {
-            isPass = false;
-          } else if (cvValue !== "-") {
-            const cv = parseFloat(cvValue);
-            const tol = parseFloat(toleranceValue);
+        // Determine Pass/Fail
+        if (row.remark && (row.remark.includes("Pass") || row.remark.includes("PASS"))) {
+          isPass = true;
+        } else if (row.remark && (row.remark.includes("Fail") || row.remark.includes("FAIL"))) {
+          isPass = false;
+        } else if (cvValue !== "-") {
+          const cv = parseFloat(cvValue);
+          const tol = parseFloat(toleranceValue);
 
-            if (toleranceOperator === "<=") {
-              isPass = cv <= tol;
-            } else if (toleranceOperator === ">=") {
-              isPass = cv >= tol;
-            } else if (toleranceOperator === "=") {
-              isPass = Math.abs(cv - tol) < 0.01;
-            }
+          if (toleranceOperator === "<=") {
+            isPass = cv <= tol;
+          } else if (toleranceOperator === ">=") {
+            isPass = cv >= tol;
+          } else if (toleranceOperator === "=") {
+            isPass = Math.abs(cv - tol) < 0.01;
           }
         }
 
         return {
           specified: row.kv && row.mas ? `${row.kv} kV, ${row.mas} mAs` : row.kv ? `${row.kv} kV` : "Varies",
-          measured: cvValue !== "-" ? `${cvValue}%` : "-",
+          measured: cvValue !== "-" ? cvValue : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };

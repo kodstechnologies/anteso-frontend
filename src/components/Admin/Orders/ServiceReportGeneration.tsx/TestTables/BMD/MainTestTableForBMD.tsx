@@ -86,18 +86,28 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     const test = testData.totalFiltration;
     if (test.totalFiltration) {
       const tf = test.totalFiltration;
-      if (tf.measured || tf.required || tf.atKvp) {
-        let isPass = false;
-        let remark = "Fail";
-        if (tf.measured && tf.required) {
-          isPass = parseFloat(tf.measured) >= parseFloat(tf.required);
-          remark = isPass ? "Pass" : "Fail";
+      const ft = test.filtrationTolerance || {};
+      // NOTE: the UI stores the measured HVL in 'required', not 'measured'
+      const measuredVal = tf.required ?? tf.measured ?? "";
+      const atKvp = tf.atKvp ?? "";
+      if (measuredVal || atKvp) {
+        // Derive required tolerance from filtrationTolerance thresholds
+        const kvpNum = parseFloat(atKvp);
+        const k1 = parseFloat(ft.kvThreshold1 ?? "70");
+        const k2 = parseFloat(ft.kvThreshold2 ?? "100");
+        let reqNum = NaN;
+        if (!isNaN(kvpNum)) {
+          if (kvpNum < k1) reqNum = parseFloat(ft.forKvGreaterThan70 ?? "1.5");
+          else if (kvpNum <= k2) reqNum = parseFloat(ft.forKvBetween70And100 ?? "2.0");
+          else reqNum = parseFloat(ft.forKvGreaterThan100 ?? "2.5");
         }
+        const measuredNum = parseFloat(measuredVal);
+        const isPass = !isNaN(measuredNum) && !isNaN(reqNum) ? measuredNum >= reqNum : false;
         const testRows = [{
-          specified: tf.required && tf.atKvp ? `≥ ${tf.required} mm Al at ${tf.atKvp} kVp` : "-",
-          measured: tf.measured ? `${tf.measured} mm Al` : "-",
-          tolerance: "-",
-          remarks: remark as "Pass" | "Fail",
+          specified: atKvp ? `${atKvp} kVp` : "-",
+          measured: measuredVal ? `${measuredVal} mm Al` : "-",
+          tolerance: !isNaN(reqNum) ? `≥ ${reqNum} mm Al` : "-",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         }];
         addRowsForTest("Total Filtration", testRows);
       }
