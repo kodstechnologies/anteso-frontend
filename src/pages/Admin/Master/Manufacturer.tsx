@@ -54,16 +54,38 @@ const Manufacturers = () => {
 
     // Filter search
     useEffect(() => {
+        const searchLower = search.toLowerCase();
+
         const filtered = items.filter((item) => {
+            const s = (v: any) => (v ? String(v).toLowerCase() : '');
+
+            const getCreatorDisplay = (record: any): string => {
+                const creator = record.createdBy;
+                if (!creator) return '';
+                if (record.createdByModel === 'Admin' || creator.role === 'admin') {
+                    return `admin (${creator.email || ''})`;
+                } else if (creator.role === 'Employee') {
+                    const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
+                    return `${techType ? `${techType} - ` : ''}(${creator.email || ''})`;
+                }
+                return s(creator.name || creator.email);
+            };
+
+            const mouDate = item.mouValidity ? new Date(item.mouValidity).toLocaleDateString() : '';
+
             return (
-                item.manufactureName?.toLowerCase().includes(search.toLowerCase()) ||
-                item.address?.toLowerCase().includes(search.toLowerCase()) ||
-                item.contactPersonName?.toLowerCase().includes(search.toLowerCase()) ||
-                item.pinCode?.toLowerCase().includes(search.toLowerCase()) ||
-                item.branch?.toLowerCase().includes(search.toLowerCase()) ||
-                (item.mouValidity ? new Date(item.mouValidity).toLocaleDateString() : '').includes(search)
+                s(item.manufacturerId).includes(searchLower) ||
+                s(item.name).includes(searchLower) ||
+                s(item.manufactureName).includes(searchLower) ||
+                s(item.contactPersonName).includes(searchLower) ||
+                s(item.pincode).includes(searchLower) ||
+                s(item.pinCode).includes(searchLower) ||
+                s(item.branch).includes(searchLower) ||
+                mouDate.toLowerCase().includes(searchLower) ||
+                getCreatorDisplay(item).includes(searchLower)
             );
         });
+
         setInitialRecords(filtered);
     }, [search, items]);
 

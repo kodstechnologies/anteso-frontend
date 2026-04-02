@@ -100,45 +100,32 @@ const Dealers = () => {
             if (!search.trim()) {
                 return sortBy(items, 'dealersName');
             }
-            
+
             const searchLower = search.toLowerCase();
-            
+
             return items.filter((item) => {
-                // Helper function to safely get string value
-                const getSafeString = (value: any): string => {
-                    if (!value) return '';
-                    return String(value).toLowerCase();
-                };
-                
-                // Helper to extract creator display name
+                const s = (v: any) => (v ? String(v).toLowerCase() : '');
+
                 const getCreatorDisplay = (record: any): string => {
                     const creator = record.createdBy;
                     if (!creator) return '';
-                    
                     if (record.createdByModel === 'Admin' || creator.role === 'admin') {
-                        return `Admin (${creator.email})`;
+                        return `admin (${creator.email || ''})`;
                     } else if (creator.role === 'Employee') {
                         const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
-                        return `${techType ? `${techType} - ` : ''}(${creator.email})`;
+                        return `${techType ? `${techType} - ` : ''}(${creator.email || ''})`;
                     }
-                    return creator.name || creator.email || '';
+                    return s(creator.name || creator.email);
                 };
-                
-                // Check all displayed fields
+
                 return (
-                    getSafeString(item.dealersID).includes(searchLower) ||
-                    getSafeString(item.dealersName).includes(searchLower) ||
-                    getSafeString(item.name).includes(searchLower) ||
-                    getSafeString(item.address).includes(searchLower) ||
-                    getSafeString(item.pincode).includes(searchLower) ||
-                    getSafeString(item.pinCode).includes(searchLower) ||
-                    getSafeString(item.branch).includes(searchLower) ||
-                    getSafeString(item.region).includes(searchLower) ||
-                    getSafeString(item.contactPersonName).includes(searchLower) ||
-                    getSafeString(item.contactPersonPhone).includes(searchLower) ||
-                    getSafeString(item.contactPersonEmail).includes(searchLower) ||
-                    getSafeString(item.gstNo).includes(searchLower) ||
-                    getCreatorDisplay(item).toLowerCase().includes(searchLower)
+                    s(item.dealerId).includes(searchLower) ||
+                    s(item.name).includes(searchLower) ||
+                    s(item.address).includes(searchLower) ||
+                    s(item.pincode).includes(searchLower) ||
+                    s(item.pinCode).includes(searchLower) ||
+                    s(item.branch).includes(searchLower) ||
+                    getCreatorDisplay(item).includes(searchLower)
                 );
             });
         });

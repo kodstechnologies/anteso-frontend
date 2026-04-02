@@ -995,8 +995,8 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
 
               // Calculate max overall exposure level (mR/hr) for the formula block
               const allValues = measurements.flatMap((m: any) => [m.left, m.right, m.front, m.back, m.top])
-                .map(v => parseFloat(v) || 0)
-                .filter(v => v > 0);
+                .map((v: any) => parseFloat(v) || 0)
+                .filter((v: number) => v > 0);
               const maxExposureLevel = allValues.length > 0 ? Math.max(...allValues).toFixed(2) : "—";
 
               // Final max leakage result for the calculation block
