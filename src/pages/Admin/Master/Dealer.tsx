@@ -11,8 +11,8 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { getAllDealers, deleteDealer } from '../../../api'; // ✅ Import delete API
-import ConfirmModal from '../../../components/common/ConfirmModal'; // ✅ Import modal
+import { getAllDealers, deleteDealer } from '../../../api';
+import ConfirmModal from '../../../components/common/ConfirmModal';
 
 const Dealers = () => {
     const dispatch = useDispatch();
@@ -25,7 +25,7 @@ const Dealers = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
-    // ✅ Fetch dealers
+    // Fetch dealers
     useEffect(() => {
         const fetchDealers = async () => {
             try {
@@ -48,7 +48,7 @@ const Dealers = () => {
         fetchDealers();
     }, []);
 
-    // ✅ Delete row using API
+    // Delete row using API
     const handleDeleteConfirm = async () => {
         if (!selectedId) return;
 
@@ -65,13 +65,13 @@ const Dealers = () => {
         }
     };
 
-    // ✅ Open modal before deleting
+    // Open modal before deleting
     const confirmDelete = (id: string) => {
         setSelectedId(id);
         setModalOpen(true);
     };
 
-    // ✅ Pagination + Sorting + Search
+    // Pagination + Sorting + Search
     const [page, setPage] = useState(1);
     const PAGE_SIZES = [10, 20, 30, 50, 100];
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
@@ -94,16 +94,51 @@ const Dealers = () => {
         setRecords([...initialRecords.slice(from, to)]);
     }, [page, pageSize, initialRecords]);
 
+    // Enhanced search function to search across all displayed fields
     useEffect(() => {
         setInitialRecords(() => {
+            if (!search.trim()) {
+                return sortBy(items, 'dealersName');
+            }
+            
+            const searchLower = search.toLowerCase();
+            
             return items.filter((item) => {
+                // Helper function to safely get string value
+                const getSafeString = (value: any): string => {
+                    if (!value) return '';
+                    return String(value).toLowerCase();
+                };
+                
+                // Helper to extract creator display name
+                const getCreatorDisplay = (record: any): string => {
+                    const creator = record.createdBy;
+                    if (!creator) return '';
+                    
+                    if (record.createdByModel === 'Admin' || creator.role === 'admin') {
+                        return `Admin (${creator.email})`;
+                    } else if (creator.role === 'Employee') {
+                        const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
+                        return `${techType ? `${techType} - ` : ''}(${creator.email})`;
+                    }
+                    return creator.name || creator.email || '';
+                };
+                
+                // Check all displayed fields
                 return (
-                    item.dealersID?.toLowerCase().includes(search.toLowerCase()) ||
-                    item.dealersName?.toLowerCase().includes(search.toLowerCase()) ||
-                    item.address?.toLowerCase().includes(search.toLowerCase()) ||
-                    item.contactPersonName?.toLowerCase().includes(search.toLowerCase()) ||
-                    item.pinCode?.toLowerCase().includes(search.toLowerCase()) ||
-                    item.region?.toLowerCase().includes(search.toLowerCase())
+                    getSafeString(item.dealersID).includes(searchLower) ||
+                    getSafeString(item.dealersName).includes(searchLower) ||
+                    getSafeString(item.name).includes(searchLower) ||
+                    getSafeString(item.address).includes(searchLower) ||
+                    getSafeString(item.pincode).includes(searchLower) ||
+                    getSafeString(item.pinCode).includes(searchLower) ||
+                    getSafeString(item.branch).includes(searchLower) ||
+                    getSafeString(item.region).includes(searchLower) ||
+                    getSafeString(item.contactPersonName).includes(searchLower) ||
+                    getSafeString(item.contactPersonPhone).includes(searchLower) ||
+                    getSafeString(item.contactPersonEmail).includes(searchLower) ||
+                    getSafeString(item.gstNo).includes(searchLower) ||
+                    getCreatorDisplay(item).toLowerCase().includes(searchLower)
                 );
             });
         });
@@ -137,7 +172,7 @@ const Dealers = () => {
                             <input
                                 type="text"
                                 className="form-input w-auto"
-                                placeholder="Search..."
+                                placeholder="Search in all fields..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
@@ -157,7 +192,6 @@ const Dealers = () => {
                                     { accessor: 'address', sortable: true },
                                     { accessor: 'pincode', sortable: true },
                                     { accessor: 'branch', sortable: true },
-
                                     {
                                         accessor: 'createdBy',
                                         title: 'Created By',
@@ -177,6 +211,7 @@ const Dealers = () => {
 
                                             return <span className="text-green-600 font-medium">{label}</span>;
                                         },
+                                        sortable: true,
                                     },
                                     {
                                         accessor: 'action',
@@ -201,7 +236,6 @@ const Dealers = () => {
                                             </div>
                                         ),
                                     },
-
                                 ]}
                                 highlightOnHover
                                 totalRecords={initialRecords.length}
@@ -223,7 +257,7 @@ const Dealers = () => {
                 </div>
             </div>
 
-            {/* ✅ Confirm Modal */}
+            {/* Confirm Modal */}
             <ConfirmModal
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}

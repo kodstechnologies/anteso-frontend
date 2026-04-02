@@ -388,7 +388,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       <div className="bg-white rounded-lg border shadow-sm">
 
         <div className="p-6 flex items-center gap-4">
-          <label className="w-48 text-sm font-medium text-gray-700">FFD(cm):</label>
+          <label className="w-48 text-sm font-medium text-gray-700">FDD(cm):</label>
           <input
             type="text"
             value={ffd.value}

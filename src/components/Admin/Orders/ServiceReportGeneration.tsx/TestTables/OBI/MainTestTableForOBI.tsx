@@ -79,22 +79,30 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
   // 2.1 Total Filtration (from Operating Potential)
   if (opData?.totalFiltration) {
     const tf = opData.totalFiltration;
-    const measured = tf.measured || "-";
-    const required = tf.required || "2.5";
+    const ft = opData.filtrationTolerance || {};
+    // UI stores the measured HVL in 'required' field (not 'measured')
+    const measuredVal = tf.required ?? tf.measured ?? "";
+    const measured = measuredVal || "-";
 
-    // Determine pass/fail
-    let isPass = false;
-    const measVal = parseFloat(measured);
-    const reqVal = parseFloat(required);
-
-    if (!isNaN(measVal) && !isNaN(reqVal)) {
-      isPass = measVal >= reqVal;
+    // Derive required tolerance from filtrationTolerance thresholds based on kVp
+    const kvpNum = parseFloat(tf.atKvp ?? "");
+    const k1 = parseFloat(ft.kvThreshold1 ?? "70");
+    const k2 = parseFloat(ft.kvThreshold2 ?? "100");
+    let requiredTol = NaN;
+    if (!isNaN(kvpNum)) {
+      if (kvpNum < k1) requiredTol = parseFloat(ft.forKvGreaterThan70 ?? "1.5");
+      else if (kvpNum <= k2) requiredTol = parseFloat(ft.forKvBetween70And100 ?? "2.0");
+      else requiredTol = parseFloat(ft.forKvGreaterThan100 ?? "2.5");
     }
+    if (isNaN(requiredTol)) requiredTol = parseFloat(ft.forKvGreaterThan100 ?? "2.5");
+
+    const measVal = parseFloat(measured);
+    const isPass = !isNaN(measVal) && !isNaN(requiredTol) ? measVal >= requiredTol : false;
 
     addRowsForTest("Total Filtration", [{
-      specified: `Required >= ${required} mm Al`,
+      specified: !isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-",
       measured: measured !== "-" ? `${measured} mm Al` : "-",
-      tolerance: `≥ ${required} mm Al`,
+      tolerance: !isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
