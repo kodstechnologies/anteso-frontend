@@ -783,15 +783,15 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                             }
                         }
 
-                        if (field === 'Tolerance') tolerance = value;
-                        if (field === 'ToleranceOperator') toleranceOperator = value;
+                        if (field === 'Tolerance' || field === 'Tolerance_value') tolerance = value;
+                        if (field === 'ToleranceOperator' || field === 'Tolerance_operator') toleranceOperator = value || '<=';
 
                         if (field.startsWith('Table2_')) {
                             while (table2Rows.length <= rowIndex) {
                                 table2Rows.push({ ma: '', measuredOutputs: [] });
                             }
                             const fieldName = field.replace('Table2_', '');
-                            if (fieldName === 'ma') {
+                            if (fieldName === 'ma' || fieldName === 'mAApplied' || fieldName === 'mAsApplied') {
                                 table2Rows[rowIndex].ma = value;
                             } else if (fieldName.startsWith('Meas')) {
                                 const colIndex = parseInt(fieldName.replace('Meas', '')) - 1;
@@ -799,6 +799,15 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                                     table2Rows[rowIndex].measuredOutputs.push(null);
                                 }
                                 table2Rows[rowIndex].measuredOutputs[colIndex] = value.trim() === '' ? null : value;
+                            } else if (fieldName.startsWith('measuredOutput')) {
+                                const match = fieldName.match(/^measuredOutput(\d+)$/);
+                                const colIndex = match ? parseInt(match[1]) - 1 : -1;
+                                if (colIndex >= 0) {
+                                    while (table2Rows[rowIndex].measuredOutputs.length <= colIndex) {
+                                        table2Rows[rowIndex].measuredOutputs.push(null);
+                                    }
+                                    table2Rows[rowIndex].measuredOutputs[colIndex] = value.trim() === '' ? null : value;
+                                }
                             }
                         }
                     });

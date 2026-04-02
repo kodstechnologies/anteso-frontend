@@ -12,6 +12,7 @@ import {
     getLinearityOfMaLoadingByServiceIdForDentalHandHeld,
     getLinearityOfMasLoadingByServiceIdForDentalHandHeld,
     getConsistencyOfRadiationOutputByServiceIdForDentalHandHeld,
+    getRadiationLeakageLevelByServiceIdForDentalHandHeld,
     getTubeHousingLeakageByServiceIdForDentalHandHeld,
     getRadiationProtectionSurveyByServiceIdForDentalHandHeld
 } from "../../../../../../api";

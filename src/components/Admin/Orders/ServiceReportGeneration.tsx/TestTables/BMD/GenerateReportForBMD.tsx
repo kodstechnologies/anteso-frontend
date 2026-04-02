@@ -479,6 +479,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           const table1Row = { fcd: '', kv: '', time: '' };
           const table2Rows: any[] = [];
           let tolerance = '0.1';
+          let toleranceOperator = '<=';
+          let currentRow: any = null;
+          let currentRowIdx = -1;
 
           data.forEach((row) => {
             const field = (row['Field Name'] || '').trim();
@@ -486,29 +489,41 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             const rowIndexStr = (row['Row Index'] || '').trim();
             const rowIndex = rowIndexStr === '' ? 0 : parseInt(rowIndexStr) || 0;
 
-            if (field === 'Table1_FCD') table1Row.fcd = value;
-            if (field === 'Table1_kV') table1Row.kv = value;
-            if (field === 'Table1_Time') table1Row.time = value;
-            if (field === 'Tolerance') tolerance = value;
+            if (field === 'Table1_FCD' || field === 'ExposureCondition_fcd') table1Row.fcd = value;
+            if (field === 'Table1_kV' || field === 'ExposureCondition_kv') table1Row.kv = value;
+            if (field === 'Table1_Time' || field === 'ExposureCondition_time') table1Row.time = value;
+            if (field === 'Tolerance' || field === 'Tolerance_value') tolerance = value;
+            if (field === 'ToleranceOperator' || field === 'Tolerance_operator') toleranceOperator = value || '<=';
 
-            if (field.startsWith('Table2_')) {
+            if (field === 'Table2_mAApplied' || field === 'Table2_mAsApplied' || field === 'Table2_ma') {
+              currentRowIdx++;
+              currentRow = { ma: value, measuredOutputs: [] };
+              table2Rows[currentRowIdx] = currentRow;
+            } else if ((field.startsWith('Table2_measuredOutput') || field.startsWith('Table2_Meas')) && currentRow) {
+              const m1 = field.match(/^Table2_measuredOutput(\d+)$/);
+              const m2 = field.match(/^Table2_Meas(\d+)$/);
+              const mIdx = m1 ? parseInt(m1[1]) - 1 : m2 ? parseInt(m2[1]) - 1 : -1;
+              if (mIdx >= 0) {
+                while (currentRow.measuredOutputs.length <= mIdx) currentRow.measuredOutputs.push('');
+                currentRow.measuredOutputs[mIdx] = value;
+              }
+            } else if (field.startsWith('Table2_')) {
               while (table2Rows.length <= rowIndex) {
                 table2Rows.push({ ma: '', measuredOutputs: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' });
               }
               const fieldName = field.replace('Table2_', '');
-              if (fieldName === 'ma') table2Rows[rowIndex].ma = value;
-              else if (fieldName.startsWith('Meas')) {
-                const colIndex = parseInt(fieldName.replace('Meas', '')) - 1;
-                while (table2Rows[rowIndex].measuredOutputs.length <= colIndex) {
-                  table2Rows[rowIndex].measuredOutputs.push('');
-                }
+              const measMatch = fieldName.match(/^Meas(\d+)$/);
+              if (measMatch) {
+                const colIndex = parseInt(measMatch[1]) - 1;
+                while (table2Rows[rowIndex].measuredOutputs.length <= colIndex) table2Rows[rowIndex].measuredOutputs.push('');
                 table2Rows[rowIndex].measuredOutputs[colIndex] = value;
+              } else if (fieldName === 'mAApplied' || fieldName === 'mAsApplied' || fieldName === 'ma') {
+                table2Rows[rowIndex].ma = value;
               } else if (fieldName === 'Average') table2Rows[rowIndex].average = value;
               else if (fieldName === 'x') table2Rows[rowIndex].x = value;
               else if (fieldName === 'xMax') table2Rows[rowIndex].xMax = value;
               else if (fieldName === 'xMin') table2Rows[rowIndex].xMin = value;
               else if (fieldName === 'col') table2Rows[rowIndex].col = value;
-              // Remarks will be calculated automatically by the component
             }
           });
 
@@ -519,6 +534,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
                 table1: table1Row,
                 table2: table2Rows,
                 tolerance,
+                toleranceOperator,
               }
             }));
             setCsvDataVersion(prev => prev + 1);
