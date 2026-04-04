@@ -43,6 +43,129 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
     });
   };
 
+  // 4. Congruence of Radiation & Optical Field
+  if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
+    const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
+        const percentFED = row.percentFED || "-";
+        const tolerance = row.tolerance || "2";
+        const isPass = row.remark === "Pass" || (percentFED !== "-" && parseFloat(percentFED) <= parseFloat(tolerance));
+        return {
+          specified: row.dimension || "-",
+          measured: percentFED !== "-" ? `${percentFED}%` : "-",
+          tolerance: `≤ ${tolerance}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Congruence of Radiation & Optical Field", testRows);
+    }
+  }
+
+  // 3. Central Beam Alignment
+  if (testData.centralBeamAlignment?.observedTilt) {
+    const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
+    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
+    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "5";
+
+    // Determine pass/fail based on tolerance
+    let isPass = false;
+    if (testData.centralBeamAlignment.observedTilt.remark === "Pass" || testData.centralBeamAlignment.observedTilt.remark === "PASS") {
+      isPass = true;
+    } else if (testData.centralBeamAlignment.observedTilt.remark === "Fail" || testData.centralBeamAlignment.observedTilt.remark === "FAIL") {
+      isPass = false;
+    } else if (tiltValue !== "-") {
+      const observed = parseFloat(tiltValue);
+      const tol = parseFloat(toleranceValue);
+      if (!isNaN(observed) && !isNaN(tol)) {
+        if (toleranceOperator === "<") {
+          isPass = observed < tol;
+        } else if (toleranceOperator === ">") {
+          isPass = observed > tol;
+        } else if (toleranceOperator === "<=") {
+          isPass = observed <= tol;
+        } else if (toleranceOperator === ">=") {
+          isPass = observed >= tol;
+        } else if (toleranceOperator === "=") {
+          isPass = Math.abs(observed - tol) < 0.01;
+        }
+      }
+    }
+
+    // Format specified value and display with degree symbol (°)
+    const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
+    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
+
+    addRowsForTest("Central Beam Alignment", [{
+      specified: specifiedValue,
+      measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
+      tolerance: toleranceDisplay,
+      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+    }]);
+  }
+  // 5. Effective Focal Spot Size
+  if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
+    const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
+    if (validRows.length > 0) {
+      // Format values to always show one decimal place (e.g., 1.0, 2.0)
+      const formatValue = (val: any) => {
+        if (val === undefined || val === null || val === "") return null;
+        const numVal = typeof val === 'number' ? val : parseFloat(val);
+        if (isNaN(numVal)) return null;
+        return numVal.toFixed(1);
+      };
+
+      const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
+
+      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 ≤ F ≤ 1.5 MM, +0.3 F FOR F > 1.5 MM
+      const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
+      const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
+      const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
+      const mediumLower = parseFloat(toleranceCriteria.medium?.lowerLimit || "0.8");
+      const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
+      const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
+
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} MM; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} MM; +${largeMultiplier} F FOR F > ${mediumUpper} MM`;
+
+      const testRows = validRows.map((spot: any) => {
+        const isPass = spot.remark === "Pass" || spot.remark === "PASS";
+
+        const statedWidth = formatValue(spot.statedWidth);
+        const statedHeight = formatValue(spot.statedHeight);
+        const measuredWidth = formatValue(spot.measuredWidth);
+        const measuredHeight = formatValue(spot.measuredHeight);
+
+        const statedNominal = statedWidth !== null && statedHeight !== null ? (Number(statedWidth) + Number(statedHeight)) / 2 : (statedWidth ?? statedHeight);
+        const measuredNominal = measuredWidth !== null && measuredHeight !== null ? (Number(measuredWidth) + Number(measuredHeight)) / 2 : (measuredWidth ?? measuredHeight);
+
+        // Calculate tolerance limit for this row
+        let toleranceLimit = "-";
+        if (statedNominal !== null && !isNaN(Number(statedNominal))) {
+          const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
+          const smallMult = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
+          const mediumLimit = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
+          const mediumMult = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
+          const largeMult = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
+
+          let multiplier = 0.5;
+          const nominalVal = Number(statedNominal);
+          if (nominalVal < smallLimit) multiplier = smallMult;
+          else if (nominalVal <= mediumLimit) multiplier = mediumMult;
+          else multiplier = largeMult;
+
+          toleranceLimit = (nominalVal * (1 + multiplier)).toFixed(2);
+        }
+
+        return {
+          specified: statedNominal !== null ? `${Number(statedNominal).toFixed(1)} mm` : "-",
+          measured: measuredNominal !== null ? `${Number(measuredNominal).toFixed(1)} mm` : "-",
+          tolerance: toleranceLimit !== "-" ? `≤ ${toleranceLimit} mm` : "-",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Effective Focal Spot Size", testRows, false); // No longer shared since tolerance is dynamic
+    }
+  }
   // 1. Accuracy of Irradiation Time
   if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
     const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
@@ -115,169 +238,47 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
   // 2.5. Total Filtration (from totalFilteration like Fixed, or from accuracyOfOperatingPotential.totalFiltration)
   if (testData.totalFilteration?.totalFiltration) {
     const tf = testData.totalFilteration.totalFiltration;
-    const measuredStr = tf.required || "-";
+    const measuredStr = tf.required || tf.measured || "-";
     const atKvp = tf.atKvp || "-";
     const measuredVal = parseFloat(measuredStr);
     const kvp = parseFloat(atKvp);
     const ft = testData.totalFilteration.filtrationTolerance || { forKvGreaterThan70: "1.5", forKvBetween70And100: "2.0", forKvGreaterThan100: "2.5", kvThreshold1: "70", kvThreshold2: "100" };
     const threshold1 = parseFloat(ft.kvThreshold1);
     const threshold2 = parseFloat(ft.kvThreshold2);
-    let isPass = false;
-    if (!isNaN(kvp) && !isNaN(measuredVal)) {
-      const requiredTolerance = kvp < threshold1 ? parseFloat(ft.forKvGreaterThan70) : kvp >= threshold1 && kvp <= threshold2 ? parseFloat(ft.forKvBetween70And100) : parseFloat(ft.forKvGreaterThan100);
-      if (!isNaN(requiredTolerance)) isPass = measuredVal >= requiredTolerance;
+    let requiredTol = NaN;
+    if (!isNaN(kvp)) {
+      requiredTol = kvp < threshold1 ? parseFloat(ft.forKvGreaterThan70) : kvp >= threshold1 && kvp <= threshold2 ? parseFloat(ft.forKvBetween70And100) : parseFloat(ft.forKvGreaterThan100);
     }
-    const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+    const isPass = !isNaN(measuredVal) && !isNaN(requiredTol) ? measuredVal >= requiredTol : false;
     addRowsForTest("Total Filtration", [{
-      specified: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      measured: atKvp !== "-" ? `${atKvp} kVp` : "-",
-      tolerance: toleranceStr,
+      specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
+      measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
+      tolerance: !isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   } else if (testData.accuracyOfOperatingPotential?.totalFiltration && (testData.accuracyOfOperatingPotential.totalFiltration.atKvp || testData.accuracyOfOperatingPotential.totalFiltration.required)) {
     const tf = testData.accuracyOfOperatingPotential.totalFiltration;
-    const measuredStr = String(tf.required ?? "-");
+    const ft = testData.accuracyOfOperatingPotential.filtrationTolerance || { forKvGreaterThan70: "1.5", forKvBetween70And100: "2.0", forKvGreaterThan100: "2.5", kvThreshold1: "70", kvThreshold2: "100" };
+    const measuredStr = String(tf.required ?? tf.measured ?? "-");
     const atKvp = String(tf.atKvp ?? "-");
     const measuredVal = parseFloat(measuredStr);
     const kvp = parseFloat(atKvp);
-    let isPass = false;
-    if (!isNaN(kvp) && !isNaN(measuredVal)) {
-      const req = kvp < 70 ? 1.5 : kvp <= 100 ? 2.0 : 2.5;
-      isPass = measuredVal >= req;
+    const threshold1 = parseFloat(ft.kvThreshold1 ?? "70");
+    const threshold2 = parseFloat(ft.kvThreshold2 ?? "100");
+    let requiredTol = NaN;
+    if (!isNaN(kvp)) {
+      requiredTol = kvp < threshold1 ? parseFloat(ft.forKvGreaterThan70 ?? "1.5") : kvp >= threshold1 && kvp <= threshold2 ? parseFloat(ft.forKvBetween70And100 ?? "2.0") : parseFloat(ft.forKvGreaterThan100 ?? "2.5");
     }
-    const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+    const isPass = !isNaN(measuredVal) && !isNaN(requiredTol) ? measuredVal >= requiredTol : false;
     addRowsForTest("Total Filtration", [{
-      specified: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      measured: atKvp !== "-" ? `${atKvp} kVp` : "-",
-      tolerance: toleranceStr,
+      specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
+      measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
+      tolerance: !isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
 
-  // 3. Central Beam Alignment
-  if (testData.centralBeamAlignment?.observedTilt) {
-    const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
-    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "5";
 
-    // Determine pass/fail based on tolerance
-    let isPass = false;
-    if (testData.centralBeamAlignment.observedTilt.remark === "Pass" || testData.centralBeamAlignment.observedTilt.remark === "PASS") {
-      isPass = true;
-    } else if (testData.centralBeamAlignment.observedTilt.remark === "Fail" || testData.centralBeamAlignment.observedTilt.remark === "FAIL") {
-      isPass = false;
-    } else if (tiltValue !== "-") {
-      const observed = parseFloat(tiltValue);
-      const tol = parseFloat(toleranceValue);
-      if (!isNaN(observed) && !isNaN(tol)) {
-        if (toleranceOperator === "<") {
-          isPass = observed < tol;
-        } else if (toleranceOperator === ">") {
-          isPass = observed > tol;
-        } else if (toleranceOperator === "<=") {
-          isPass = observed <= tol;
-        } else if (toleranceOperator === ">=") {
-          isPass = observed >= tol;
-        } else if (toleranceOperator === "=") {
-          isPass = Math.abs(observed - tol) < 0.01;
-        }
-      }
-    }
-
-    // Format specified value and display with degree symbol (°)
-    const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
-    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
-
-    addRowsForTest("Central Beam Alignment", [{
-      specified: specifiedValue,
-      measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
-      tolerance: toleranceDisplay,
-      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-    }]);
-  }
-
-  // 4. Congruence of Radiation & Optical Field
-  if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
-    const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => {
-        const percentFED = row.percentFED || "-";
-        const tolerance = row.tolerance || "2";
-        const isPass = row.remark === "Pass" || (percentFED !== "-" && parseFloat(percentFED) <= parseFloat(tolerance));
-        return {
-          specified: row.dimension || "-",
-          measured: percentFED !== "-" ? `${percentFED}%` : "-",
-          tolerance: `≤ ${tolerance}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Congruence of Radiation & Optical Field", testRows);
-    }
-  }
-
-  // 5. Effective Focal Spot Size
-  if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
-    const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
-    if (validRows.length > 0) {
-      // Format values to always show one decimal place (e.g., 1.0, 2.0)
-      const formatValue = (val: any) => {
-        if (val === undefined || val === null || val === "") return null;
-        const numVal = typeof val === 'number' ? val : parseFloat(val);
-        if (isNaN(numVal)) return null;
-        return numVal.toFixed(1);
-      };
-
-      const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
-
-      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 ≤ F ≤ 1.5 MM, +0.3 F FOR F > 1.5 MM
-      const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
-      const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
-      const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
-      const mediumLower = parseFloat(toleranceCriteria.medium?.lowerLimit || "0.8");
-      const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
-      const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
-
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} MM; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} MM; +${largeMultiplier} F FOR F > ${mediumUpper} MM`;
-
-      const testRows = validRows.map((spot: any) => {
-        const isPass = spot.remark === "Pass" || spot.remark === "PASS";
-
-        const statedWidth = formatValue(spot.statedWidth);
-        const statedHeight = formatValue(spot.statedHeight);
-        const measuredWidth = formatValue(spot.measuredWidth);
-        const measuredHeight = formatValue(spot.measuredHeight);
-
-        const statedNominal = statedWidth !== null && statedHeight !== null ? (Number(statedWidth) + Number(statedHeight)) / 2 : (statedWidth ?? statedHeight);
-        const measuredNominal = measuredWidth !== null && measuredHeight !== null ? (Number(measuredWidth) + Number(measuredHeight)) / 2 : (measuredWidth ?? measuredHeight);
-
-        // Calculate tolerance limit for this row
-        let toleranceLimit = "-";
-        if (statedNominal !== null && !isNaN(Number(statedNominal))) {
-          const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
-          const smallMult = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
-          const mediumLimit = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
-          const mediumMult = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
-          const largeMult = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
-
-          let multiplier = 0.5;
-          const nominalVal = Number(statedNominal);
-          if (nominalVal < smallLimit) multiplier = smallMult;
-          else if (nominalVal <= mediumLimit) multiplier = mediumMult;
-          else multiplier = largeMult;
-
-          toleranceLimit = (nominalVal * (1 + multiplier)).toFixed(2);
-        }
-
-        return {
-          specified: statedNominal !== null ? `${Number(statedNominal).toFixed(1)} mm` : "-",
-          measured: measuredNominal !== null ? `${Number(measuredNominal).toFixed(1)} mm` : "-",
-          tolerance: toleranceLimit !== "-" ? `≤ ${toleranceLimit} mm` : "-",
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Effective Focal Spot Size", testRows, false); // No longer shared since tolerance is dynamic
-    }
-  }
 
   // 6. Linearity of mAs Loading
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
@@ -304,7 +305,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
             .map(getVal)
             .filter((v: number) => !isNaN(v) && v > 0);
           const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
-          
+
           const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
           const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
           const midMas = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
@@ -326,7 +327,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
 
       const colRaw = parseFloat(String(colValue));
       const col = (!isNaN(colRaw) && isFinite(colRaw)) ? colRaw.toFixed(3) : "-";
-      
+
       let isPass = testData.linearityOfMasLoading.remarks === "Pass" || testData.linearityOfMasLoading.remarks === "PASS";
       if (!isPass && col !== "-") {
         const c = parseFloat(col);
@@ -350,7 +351,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
 
   // 7. Consistency of Radiation Output (CoV)
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
-    const validRows = testData.outputConsistency.outputRows.filter((row: any) => 
+    const validRows = testData.outputConsistency.outputRows.filter((row: any) =>
       row.kv || row.cv || (row.outputs && row.outputs.length > 0) || row.remark
     );
 
@@ -370,7 +371,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         // Calculate on-the-fly if cv is missing
         const outputs: number[] = (row.outputs ?? []).map(getVal).filter((n: number) => !isNaN(n) && n > 0);
         const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
-        
+
         let cvValue = row.cv || row.cov;
         if (!cvValue && avg !== null && avg > 0) {
           const variance = outputs.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / outputs.length;
@@ -383,7 +384,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         const formattedCv = cvValue !== undefined && cvValue !== null && cvValue !== "" && cvValue !== "-"
           ? (typeof cvValue === "number" ? cvValue.toFixed(3) : parseFloat(String(cvValue)).toFixed(3))
           : "-";
-        
+
         let isPass = row.remark === "Pass" || row.remark === "PASS";
         if (!isPass && formattedCv !== "-") {
           const cv = parseFloat(formattedCv);

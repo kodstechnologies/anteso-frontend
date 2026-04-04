@@ -575,7 +575,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 6. Congruence of Radiation & Light Field */}
             {testData.congruenceOfRadiation && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Congruence of Radiation & Light Field</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Congruence of Radiation & Light Field</h3>
 
                 {/* Technique Factors */}
                 {testData.congruenceOfRadiation.techniqueFactors?.length > 0 && (
@@ -585,7 +585,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                       <table className="border-2 border-black text-sm mb-4 compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
                         <thead className="bg-gray-100">
                           <tr className="bg-blue-50">
-                            <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>SID (cm)</th>
+                            <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>FFD (cm)</th>
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
                           </tr>
@@ -650,7 +650,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 5. Central Beam Alignment Test */}
             {testData.centralBeamAlignment && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. Central Beam Alignment Test</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Central Beam Alignment Test</h3>
 
                 {/* Operating parameters */}
                 {testData.centralBeamAlignment.techniqueFactors && (
@@ -660,7 +660,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                       <table className="border-2 border-black text-sm mb-4 compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
                         <thead className="bg-gray-100">
                           <tr className="bg-blue-50">
-                            <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>SID (cm)</th>
+                            <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>FFD (cm)</th>
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
                           </tr>
@@ -710,7 +710,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 7. Effective Focal Spot */}
             {testData.effectiveFocalSpot && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>7. Effective Focal Spot Size</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Effective Focal Spot Size</h3>
                 {/* FFD small table */}
                 <div className="mb-3 print:mb-1" style={{ marginBottom: '4px' }}>
                   <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
@@ -791,14 +791,14 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 1. Accuracy of Irradiation Time */}
             {testData.accuracyOfIrradiationTime && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Accuracy of Irradiation Time</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Accuracy of Irradiation Time</h3>
                 {testData.accuracyOfIrradiationTime.testConditions && (
                   <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                     <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
                     <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FFD (cm)</th>
+                          <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FDD (cm)</th>
                           <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
                           <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>mA</th>
                         </tr>
@@ -939,7 +939,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 4. Total Filtration */}
             {testData.totalFiltration && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Total Filtration</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Total Filtration</h3>
                 {(() => {
                   const tf = testData.totalFiltration;
                   const sub = tf.totalFiltration || {};
@@ -979,7 +979,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 8. Linearity of mAs Loading */}
             {(testData.linearityOfmAsLoading || testData.linearityOfMaLoading) && (
               <div className="mb-16 print:mb-12 test-section">
-                <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: '14px', marginBottom: '4px' }}>8. Linearity of mAs Loading</h3>
+                <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: '14px', marginBottom: '4px' }}>7. Linearity of mAs Loading</h3>
                 {/* Test Conditions as table */}
                 {(() => {
                   const linearityData = testData.linearityOfmAsLoading || testData.linearityOfMaLoading;
@@ -993,7 +993,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                       <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FCD (cm)</th>
+                            <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FDD (cm)</th>
                             <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>kV</th>
                           </tr>
                         </thead>
@@ -1150,14 +1150,14 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 9. Consistency of Radiation Output */}
             {testData.outputConsistency && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>9. Consistency of Radiation Output</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>8. Consistency of Radiation Output</h3>
 
                 {testData.outputConsistency.ffd?.value && (
                   <div className="mb-4 print:mb-1">
                     <table className="border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '150px' }}>
                       <thead className="bg-gray-100">
                         <tr className="bg-blue-50">
-                          <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FFD (cm)</th>
+                          <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FDD (cm)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1271,7 +1271,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 11. Low Contrast Resolution */}
             {testData.lowContrastResolution && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>11. Low Contrast Resolution</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>9. Low Contrast Resolution</h3>
                 <div className="overflow-x-auto print:overflow-visible print:max-w-none">
                   <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <tbody>
@@ -1292,7 +1292,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 12. High Contrast Resolution */}
             {testData.highContrastResolution && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>12. High Contrast Resolution</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. High Contrast Resolution</h3>
                 <div className="overflow-x-auto print:overflow-visible print:max-w-none">
                   <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <tbody>
@@ -1450,7 +1450,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             {/* 14. Radiation Protection Survey */}
             {testData.radiationProtectionSurvey && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>14. Radiation Protection Survey</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>13. Radiation Protection Survey</h3>
 
                 {/* 1. Survey Details */}
                 {(testData.radiationProtectionSurvey.surveyDate || testData.radiationProtectionSurvey.hasValidCalibration) && (

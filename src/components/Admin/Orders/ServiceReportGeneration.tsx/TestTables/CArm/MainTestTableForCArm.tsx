@@ -38,6 +38,37 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
       });
     });
   };
+ // 2. Accuracy of Operating Potential (kVp Accuracy)
+  if (testData.operatingPotential?.measurements && Array.isArray(testData.operatingPotential.measurements)) {
+    const validRows = testData.operatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
+    if (validRows.length > 0) {
+      const toleranceSign = testData.operatingPotential.tolerance?.sign || testData.operatingPotential.tolerance?.type || testData.operatingPotential.toleranceSign || "±";
+      const toleranceValue = testData.operatingPotential.tolerance?.value || testData.operatingPotential.toleranceValue || "2.0";
+      const testRows = validRows.map((row: any) => {
+        let isPass = false;
+        if (row.remarks === "PASS" || row.remarks === "Pass") {
+          isPass = true;
+        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
+          isPass = false;
+        } else {
+          const appliedKvp = parseFloat(row.appliedKvp);
+          const avgKvp = parseFloat(row.averageKvp);
+          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
+            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
+            const tol = parseFloat(toleranceValue);
+            isPass = deviation <= tol;
+          }
+        }
+        return {
+          specified: row.appliedKvp || "-",
+          measured: row.averageKvp || "-",
+          tolerance: `${toleranceSign}${toleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
+    }
+  }
 
   // 1. Accuracy of Irradiation Time
   if (testData.irradiationTime?.irradiationTimes && Array.isArray(testData.irradiationTime.irradiationTimes)) {
@@ -76,38 +107,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 2. Accuracy of Operating Potential (kVp Accuracy)
-  if (testData.operatingPotential?.measurements && Array.isArray(testData.operatingPotential.measurements)) {
-    const validRows = testData.operatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
-    if (validRows.length > 0) {
-      const toleranceSign = testData.operatingPotential.tolerance?.sign || testData.operatingPotential.tolerance?.type || testData.operatingPotential.toleranceSign || "±";
-      const toleranceValue = testData.operatingPotential.tolerance?.value || testData.operatingPotential.toleranceValue || "2.0";
-      const testRows = validRows.map((row: any) => {
-        let isPass = false;
-        if (row.remarks === "PASS" || row.remarks === "Pass") {
-          isPass = true;
-        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
-          isPass = false;
-        } else {
-          const appliedKvp = parseFloat(row.appliedKvp);
-          const avgKvp = parseFloat(row.averageKvp);
-          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-            const tol = parseFloat(toleranceValue);
-            isPass = deviation <= tol;
-          }
-        }
-        return {
-          specified: row.appliedKvp || "-",
-          measured: row.averageKvp || "-",
-          tolerance: `${toleranceSign}${toleranceValue}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
-    }
-  }
-
+ 
   // 3. Total Filtration
   if (testData.totalFilteration?.totalFiltration) {
     const measuredTF = testData.totalFilteration.totalFiltration.measured || "-";
@@ -122,6 +122,48 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
+
+
+ // 9. Linearity of mA Loading
+  const maLinearityRows = testData.linearityOfMaLoading?.table2Rows || testData.linearityOfMaLoading?.table2;
+  if (maLinearityRows && Array.isArray(maLinearityRows)) {
+    const validRows = maLinearityRows.filter((row: any) => row.ma || row.mAsApplied || row.col);
+    if (validRows.length > 0) {
+      const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
+      const testRows = validRows.map((row: any) => {
+        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
+        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
+        const maVal = row.ma || row.mAsApplied;
+        return {
+          specified: maVal ? `${maVal} mA` : "-",
+          measured: col,
+          tolerance: `≤ ${tolerance}`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
+    }
+  }
+
+  // 10. Linearity of mAs Loading
+  if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
+    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.col);
+    if (validRows.length > 0) {
+      const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
+      const testRows = validRows.map((row: any) => {
+        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
+        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
+        return {
+          specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
+          measured: col,
+          tolerance: `≤ ${tolerance}`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Linearity of mAs Loading Stations (Coefficient of Linearity)", testRows);
+    }
+  }
+
 
   // 4. Consistency of Radiation Output (COV)
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
@@ -221,46 +263,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 9. Linearity of mA Loading
-  const maLinearityRows = testData.linearityOfMaLoading?.table2Rows || testData.linearityOfMaLoading?.table2;
-  if (maLinearityRows && Array.isArray(maLinearityRows)) {
-    const validRows = maLinearityRows.filter((row: any) => row.ma || row.mAsApplied || row.col);
-    if (validRows.length > 0) {
-      const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
-      const testRows = validRows.map((row: any) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
-        const maVal = row.ma || row.mAsApplied;
-        return {
-          specified: maVal ? `${maVal} mA` : "-",
-          measured: col,
-          tolerance: `≤ ${tolerance}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
-    }
-  }
-
-  // 10. Linearity of mAs Loading
-  if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
-    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.col);
-    if (validRows.length > 0) {
-      const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
-      const testRows = validRows.map((row: any) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
-        return {
-          specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
-          measured: col,
-          tolerance: `≤ ${tolerance}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Linearity of mAs Loading Stations (Coefficient of Linearity)", testRows);
-    }
-  }
-
+ 
   // 7. Maximum Radiation Leakage from Tube Housing
   if (testData.tubeHousingLeakage?.leakageRows && Array.isArray(testData.tubeHousingLeakage.leakageRows)) {
     const validRows = testData.tubeHousingLeakage.leakageRows.filter((row: any) => row.location || row.max);

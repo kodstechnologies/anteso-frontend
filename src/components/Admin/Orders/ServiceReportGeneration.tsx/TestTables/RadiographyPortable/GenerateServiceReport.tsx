@@ -32,6 +32,7 @@ import EffectiveFocalSpot from "./EffectiveFocalSpot";
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
 import TotalFilteration from "./TotalFilteration";
 import LinearityOfMasLoadingStations from "./LinearityOfMasLoadingStations";
+import LinearityOfMaLoadingStations from "./LinearityOfMaLoadingStations";
 import ConsistencyOfRadiationOutput from "./ConsisitencyOfRadiationOutput";
 import RadiationLeakageLevel from "./RadiationLeakageLevel";
 
@@ -1077,7 +1078,22 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
             : []),
 
           { title: "Accuracy Of Operating Potential & Total Filtration", component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration} csvDataVersion={csvDataVersion} /> },
-          { title: "Linearity Of mAs Loading Stations", component: <LinearityOfMasLoadingStations serviceId={serviceId} csvData={csvDataForComponents['Linearity of mAs Loading Stations']} refreshKey={refreshKey} /> },
+          // Linearity Test — Conditional on timer choice
+          ...(hasTimer === true
+            ? [
+              {
+                title: "Linearity Of mA Loading",
+                component: <LinearityOfMaLoadingStations serviceId={serviceId} />,
+              },
+            ]
+            : hasTimer === false
+              ? [
+                {
+                  title: "Linearity Of mAs Loading Stations",
+                  component: <LinearityOfMasLoadingStations serviceId={serviceId} csvData={csvDataForComponents['Linearity of mAs Loading Stations']} refreshKey={refreshKey} />,
+                },
+              ]
+              : []),
           { title: "Consistency of Radiation Output", component: <ConsistencyOfRadiationOutput serviceId={serviceId} csvData={csvDataForComponents['Consistency of Radiation Output']} refreshKey={refreshKey} /> },
           { title: "Tube Housing Leakage", component: <RadiationLeakageLevel serviceId={serviceId} initialData={csvDataForComponents.radiationLeakageLevel} csvDataVersion={csvDataVersion} csvData={csvDataForComponents['Radiation Leakage Level']} refreshKey={refreshKey} /> },
         ].map((item, i) => (

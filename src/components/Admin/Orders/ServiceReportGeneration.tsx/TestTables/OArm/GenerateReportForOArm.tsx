@@ -802,7 +802,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Dated
+              SRF Date
             </label>
             <input
               type="date"

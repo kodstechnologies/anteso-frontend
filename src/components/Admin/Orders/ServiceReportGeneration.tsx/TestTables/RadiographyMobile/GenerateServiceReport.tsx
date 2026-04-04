@@ -1703,17 +1703,36 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
               />
             ),
           },
-          {
-            title: "Linearity Of mAs Loading Stations",
-            component: (
-              <LinearityOfMasLoadingStations
-                key={`linearity-mas-${refreshKey}`}
-                serviceId={serviceId}
-                refreshKey={refreshKey}
-                initialData={csvDataForComponents.linearityOfMasLoading}
-              />
-            ),
-          },
+          // Linearity Test — Conditional on timer choice
+          ...(hasTimer === true
+            ? [
+              {
+                title: "Linearity Of mA Loading",
+                component: (
+                  <LinearityOfMasLoadingStations
+                    key={`linearity-ma-${refreshKey}`}
+                    serviceId={serviceId}
+                    refreshKey={refreshKey}
+                    initialData={csvDataForComponents.linearityOfMasLoading}
+                  />
+                ),
+              },
+            ]
+            : hasTimer === false
+              ? [
+                {
+                  title: "Linearity Of mAs Loading Stations",
+                  component: (
+                    <LinearityOfMasLoadingStations
+                      key={`linearity-mas-${refreshKey}`}
+                      serviceId={serviceId}
+                      refreshKey={refreshKey}
+                      initialData={csvDataForComponents.linearityOfMasLoading}
+                    />
+                  ),
+                },
+              ]
+              : []),
           {
             title: "Consistency of Radiation Output",
             component: (

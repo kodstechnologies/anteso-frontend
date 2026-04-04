@@ -319,29 +319,6 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
       addRowsForTest("Measurement of Operating Potential (kVp Accuracy)", testRows);
     }
   }
-
-  // 3. mA/mAs Linearity - Separate rows for each value
-  if (testData.maLinearity?.table2 && Array.isArray(testData.maLinearity.table2)) {
-    const tol = testData.maLinearity.tolerance || "0.1";
-    const validRows = testData.maLinearity.table2.filter((row: any) => row.mAsApplied || row.col);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((row: any, idx: number) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.col ? parseFloat(row.col) <= parseFloat(tol) : false;
-        return {
-          specified: row.mAsApplied || "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
-          tolerance: `≤ ${tol}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          measuredRowSpan: idx === 0 ? validRows.length : 0,
-          toleranceRowSpan: idx === 0 ? validRows.length : 0,
-          remarksRowSpan: idx === 0 ? validRows.length : 0,
-        };
-      });
-      addRowsForTest("mA/mAs Linearity (Coefficient of Linearity)", testRows);
-    }
-  }
-
   // 4. Timer Accuracy - Separate rows for each value
   if (testData.timerAccuracy?.table2 && Array.isArray(testData.timerAccuracy.table2)) {
     const tol = testData.timerAccuracy.tolerance || "5";
@@ -363,120 +340,25 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 5. CTDIw - Separate rows for Head and Body
-  if (testData.ctdi?.table2) {
-    const ctdiw = testData.ctdi.table2.find((r: any) => r.result === "CTDIw") || {};
-    const ctdiwRated = testData.ctdi.table2.find((r: any) => r.result === "CTDIw (Rated)") || {};
-    const tolerance = testData.ctdi.tolerance;
-    const kvp = testData.ctdi.table1?.[0]?.kvp || "-";
-    const tolValue = tolerance?.value ? parseFloat(tolerance.value) : 20;
-    const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : '±';
-    const tolStr = `${tolSign}${tolValue} % of Stated value`;
-
-    const calculateCtdiPass = (measured: any, specified: any) => {
-      const m = parseFloat(measured);
-      const s = parseFloat(specified);
-      if (isNaN(m) || isNaN(s) || s === 0) return true;
-      const diffPercent = (Math.abs(m - s) / s) * 100;
-      return diffPercent <= tolValue;
-    };
-
-    const headPass = calculateCtdiPass(ctdiw.head, ctdiwRated.head);
-    const bodyPass = calculateCtdiPass(ctdiw.body, ctdiwRated.body);
-    const overallRemarks = (headPass && bodyPass) ? "Pass" : "Fail";
-
-    const paramNode = (
-      <div className="flex flex-col">
-        <div style={{ fontSize: '10px' }}>Radiation Dose Test CTDI - (mGy/100mAs) at (kV)</div>
-        <div className="mt-1 border-t border-black w-full pt-1 text-center font-bold" style={{ fontSize: '12px' }}>
-          {kvp}
-        </div>
-      </div>
-    );
-
-    const testRows = [
-      {
-        specified: ctdiwRated.head || "-",
-        measured: ctdiw.head || "-",
-        criteria: "(Head)",
-        tolerance: tolStr,
-        remarks: overallRemarks as "Pass" | "Fail",
-        toleranceRowSpan: 2,
-        remarksRowSpan: 2,
-      },
-      {
-        specified: ctdiwRated.body || "-",
-        measured: ctdiw.body || "-",
-        criteria: "(Body)",
-        tolerance: tolStr,
-        remarks: overallRemarks as "Pass" | "Fail",
-        toleranceRowSpan: 0,
-        remarksRowSpan: 0,
-      },
-    ];
-    addRowsForTest(paramNode, testRows);
-  }
-
-  // 6. Total Filtration - Separate rows for each value
-  if (testData.totalFiltration?.rows && Array.isArray(testData.totalFiltration.rows)) {
-    const validRows = testData.totalFiltration.rows.filter((row: any) => row.appliedKV || row.measuredTF);
+  // 3. mA/mAs Linearity - Separate rows for each value
+  if (testData.maLinearity?.table2 && Array.isArray(testData.maLinearity.table2)) {
+    const tol = testData.maLinearity.tolerance || "0.1";
+    const validRows = testData.maLinearity.table2.filter((row: any) => row.mAsApplied || row.col);
     if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => {
-        const measured = parseFloat(row.measuredTF);
-        const isPass = measured >= 2.5;
+      const testRows = validRows.map((row: any, idx: number) => {
+        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
+        const isPass = row.col ? parseFloat(row.col) <= parseFloat(tol) : false;
         return {
-          specified: row.appliedKV || "-",
-          measured: `${row.measuredTF || "-"} mm Al`,
-          tolerance: "≥ 2.5 mm Al",
+          specified: row.mAsApplied || "-",
+          measured: col !== "-" ? `CoL = ${col}` : "-",
+          tolerance: `≤ ${tol}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          measuredRowSpan: idx === 0 ? validRows.length : 0,
+          toleranceRowSpan: idx === 0 ? validRows.length : 0,
+          remarksRowSpan: idx === 0 ? validRows.length : 0,
         };
       });
-      addRowsForTest("Total Filtration", testRows);
-    }
-  }
-
-  // 7. Radiation Leakage - Separate rows for each value
-  if (testData.leakage?.leakageMeasurements && Array.isArray(testData.leakage.leakageMeasurements)) {
-    const validRows = testData.leakage.leakageMeasurements.filter((item: any) => item.location || item.front || item.back || item.left || item.right || item.top);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((item: any) => {
-        // Use saved result and remark if they exist (best accuracy)
-        if (item.result && item.remark) {
-          return {
-            specified: item.location || "Tube",
-            measured: `${item.result} mGy in one hour`,
-            tolerance: `< ${testData.leakage.toleranceValue || "1"} mGy in one hour`,
-            remarks: item.remark as "Pass" | "Fail",
-          };
-        }
-
-        // Fallback calculation matching the generator logic
-        const values = [item.front, item.back, item.left, item.right, item.top]
-          .map(v => parseFloat(v))
-          .filter(v => !isNaN(v));
-        const maxMR = values.length > 0 ? Math.max(...values) : 0;
-        
-        const ma = parseFloat(testData.leakage.ma || testData.leakage.measurementSettings?.[0]?.ma) || 0;
-        const workload = parseFloat(testData.leakage.workload) || 0;
-        let result = "-";
-        let isPass = true;
-
-        if (maxMR > 0 && ma > 0 && workload > 0) {
-          const calculatedResult = (workload * maxMR) / (60 * ma);
-          const mgyVal = calculatedResult / 114;
-          result = mgyVal.toFixed(4);
-          const tol = parseFloat(testData.leakage.toleranceValue) || 1;
-          isPass = mgyVal <= tol;
-        }
-
-        return {
-          specified: item.location || "Tube",
-          measured: result !== "-" ? `${result} mGy in one hour` : "-",
-          tolerance: `< ${testData.leakage.toleranceValue || "1"} mGy in one hour`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Radiation Leakage Level", testRows);
+      addRowsForTest("mA/mAs Linearity (Coefficient of Linearity)", testRows);
     }
   }
 
@@ -546,18 +428,59 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 9. Measure Max Radiation Level - Separate rows for each value
-  if (testData.measureMaxRadiationLevel?.readings && Array.isArray(testData.measureMaxRadiationLevel.readings)) {
-    const validRows = testData.measureMaxRadiationLevel.readings.filter((row: any) => row.location || row.mRPerHr);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => ({
-        specified: row.location || "-",
-        measured: row.mRPerHr ? `${row.mRPerHr} mR/hr` : "-",
-        tolerance: row.permissibleLimit || "-",
-        remarks: (row.result === "Pass" ? "Pass" : "Fail") as "Pass" | "Fail",
-      }));
-      addRowsForTest("Measure Maximum Radiation Level", testRows);
-    }
+
+  // 5. CTDIw - Separate rows for Head and Body
+  if (testData.ctdi?.table2) {
+    const ctdiw = testData.ctdi.table2.find((r: any) => r.result === "CTDIw") || {};
+    const ctdiwRated = testData.ctdi.table2.find((r: any) => r.result === "CTDIw (Rated)") || {};
+    const tolerance = testData.ctdi.tolerance;
+    const kvp = testData.ctdi.table1?.[0]?.kvp || "-";
+    const tolValue = tolerance?.value ? parseFloat(tolerance.value) : 20;
+    const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : '±';
+    const tolStr = `${tolSign}${tolValue} % of Stated value`;
+
+    const calculateCtdiPass = (measured: any, specified: any) => {
+      const m = parseFloat(measured);
+      const s = parseFloat(specified);
+      if (isNaN(m) || isNaN(s) || s === 0) return true;
+      const diffPercent = (Math.abs(m - s) / s) * 100;
+      return diffPercent <= tolValue;
+    };
+
+    const headPass = calculateCtdiPass(ctdiw.head, ctdiwRated.head);
+    const bodyPass = calculateCtdiPass(ctdiw.body, ctdiwRated.body);
+    const overallRemarks = (headPass && bodyPass) ? "Pass" : "Fail";
+
+    const paramNode = (
+      <div className="flex flex-col">
+        <div style={{ fontSize: '10px' }}>Radiation Dose Test CTDI - (mGy/100mAs) at (kV)</div>
+        <div className="mt-1 border-t border-black w-full pt-1 text-center font-bold" style={{ fontSize: '12px' }}>
+          {kvp}
+        </div>
+      </div>
+    );
+
+    const testRows = [
+      {
+        specified: ctdiwRated.head || "-",
+        measured: ctdiw.head || "-",
+        criteria: "(Head)",
+        tolerance: tolStr,
+        remarks: overallRemarks as "Pass" | "Fail",
+        toleranceRowSpan: 2,
+        remarksRowSpan: 2,
+      },
+      {
+        specified: ctdiwRated.body || "-",
+        measured: ctdiw.body || "-",
+        criteria: "(Body)",
+        tolerance: tolStr,
+        remarks: overallRemarks as "Pass" | "Fail",
+        toleranceRowSpan: 0,
+        remarksRowSpan: 0,
+      },
+    ];
+    addRowsForTest(paramNode, testRows);
   }
 
   // 10. Low Contrast Resolution
@@ -612,6 +535,86 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
       addRowsForTest("High Contrast Resolution", testRows);
     }
   }
+
+
+  // 6. Total Filtration - Separate rows for each value
+  if (testData.totalFiltration?.rows && Array.isArray(testData.totalFiltration.rows)) {
+    const validRows = testData.totalFiltration.rows.filter((row: any) => row.appliedKV || row.measuredTF);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
+        const measured = parseFloat(row.measuredTF);
+        const isPass = measured >= 2.5;
+        return {
+          specified: row.appliedKV || "-",
+          measured: `${row.measuredTF || "-"} mm Al`,
+          tolerance: "≥ 2.5 mm Al",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Total Filtration", testRows);
+    }
+  }
+
+  // 7. Radiation Leakage - Separate rows for each value
+  if (testData.leakage?.leakageMeasurements && Array.isArray(testData.leakage.leakageMeasurements)) {
+    const validRows = testData.leakage.leakageMeasurements.filter((item: any) => item.location || item.front || item.back || item.left || item.right || item.top);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((item: any) => {
+        // Use saved result and remark if they exist (best accuracy)
+        if (item.result && item.remark) {
+          return {
+            specified: item.location || "Tube",
+            measured: `${item.result} mGy in one hour`,
+            tolerance: `< ${testData.leakage.toleranceValue || "1"} mGy in one hour`,
+            remarks: item.remark as "Pass" | "Fail",
+          };
+        }
+
+        // Fallback calculation matching the generator logic
+        const values = [item.front, item.back, item.left, item.right, item.top]
+          .map(v => parseFloat(v))
+          .filter(v => !isNaN(v));
+        const maxMR = values.length > 0 ? Math.max(...values) : 0;
+        
+        const ma = parseFloat(testData.leakage.ma || testData.leakage.measurementSettings?.[0]?.ma) || 0;
+        const workload = parseFloat(testData.leakage.workload) || 0;
+        let result = "-";
+        let isPass = true;
+
+        if (maxMR > 0 && ma > 0 && workload > 0) {
+          const calculatedResult = (workload * maxMR) / (60 * ma);
+          const mgyVal = calculatedResult / 114;
+          result = mgyVal.toFixed(4);
+          const tol = parseFloat(testData.leakage.toleranceValue) || 1;
+          isPass = mgyVal <= tol;
+        }
+
+        return {
+          specified: item.location || "Tube",
+          measured: result !== "-" ? `${result} mGy in one hour` : "-",
+          tolerance: `< ${testData.leakage.toleranceValue || "1"} mGy in one hour`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Radiation Leakage Level", testRows);
+    }
+  }
+
+
+  // 9. Measure Max Radiation Level - Separate rows for each value
+  if (testData.measureMaxRadiationLevel?.readings && Array.isArray(testData.measureMaxRadiationLevel.readings)) {
+    const validRows = testData.measureMaxRadiationLevel.readings.filter((row: any) => row.location || row.mRPerHr);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => ({
+        specified: row.location || "-",
+        measured: row.mRPerHr ? `${row.mRPerHr} mR/hr` : "-",
+        tolerance: row.permissibleLimit || "-",
+        remarks: (row.result === "Pass" ? "Pass" : "Fail") as "Pass" | "Fail",
+      }));
+      addRowsForTest("Measure Maximum Radiation Level", testRows);
+    }
+  }
+
 
   // 12. Radiation Protection Survey
   if (testData.radiationProtectionSurvey) {

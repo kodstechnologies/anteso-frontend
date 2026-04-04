@@ -307,7 +307,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
       {/* FCD */}
       <div className="bg-white shadow-md rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Focal Spot Distance (FCD)</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">FFD</h3>
         <div className="flex items-center justify-center gap-4">
           <input
             type="number"

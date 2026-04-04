@@ -49,22 +49,21 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
     time: '1.0',
   });
 
+  const INITIAL_HEADERS = ['Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5'];
+
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
     {
       id: '1',
       kvp: '80',
       ma: '100',
-      outputs: ['', '', '', '', ''],
+      outputs: Array(INITIAL_HEADERS.length).fill(''),
       mean: '',
       cov: '',
       remark: '',
     },
   ]);
 
-  const [headers, setHeaders] = useState<string[]>([
-    'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
-  ]);
-
+  const [headers, setHeaders] = useState<string[]>(INITIAL_HEADERS);
   const [tolerance, setTolerance] = useState<string>('0.02'); // Decimal: 2% = 0.02
 
   // Auto-calculate Mean, COV (decimal), and Remark per row
@@ -124,21 +123,45 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
             ffd: data.parameters?.ffd || '100',
             time: data.parameters?.time || '1.0',
           });
+          
+          const loadedHeaders = data.measurementHeaders || INITIAL_HEADERS;
+          setHeaders(loadedHeaders);
+          
           setOutputRows(
-            data.outputRows?.map((row: any) => ({
-              id: Date.now().toString() + Math.random(),
+            data.outputRows?.map((row: any, idx: number) => ({
+              id: Date.now().toString() + Math.random() + idx,
               kvp: row.kvp || '',
               ma: row.ma || '100',
-              outputs: row.outputs || Array(headers.length).fill(''),
+              outputs: row.outputs && row.outputs.length === loadedHeaders.length 
+                ? row.outputs 
+                : Array(loadedHeaders.length).fill(''),
               mean: row.mean || '',
               cov: row.cov || '',
               remark: row.remark || '',
-            })) || outputRows
+            })) || [{
+              id: Date.now().toString(),
+              kvp: '80',
+              ma: '100',
+              outputs: Array(loadedHeaders.length).fill(''),
+              mean: '',
+              cov: '',
+              remark: '',
+            }]
           );
-          setHeaders(data.measurementHeaders || headers);
           setTolerance(data.tolerance || '0.02');
           setIsSaved(true);
         } else {
+          // Reset to initial state with 5 columns
+          setHeaders(INITIAL_HEADERS);
+          setOutputRows([{
+            id: Date.now().toString(),
+            kvp: '80',
+            ma: '100',
+            outputs: Array(INITIAL_HEADERS.length).fill(''),
+            mean: '',
+            cov: '',
+            remark: '',
+          }]);
           setIsSaved(false);
         }
       } catch (err) {
@@ -172,7 +195,7 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
       Object.keys(rowMap).forEach(idxStr => {
         const r = rowMap[parseInt(idxStr)];
         const outputs: string[] = [];
-        for (let m = 0; m < 5; m++) {
+        for (let m = 0; m < 10; m++) { // Allow up to 10 columns
           const val = r[`Row_Output_${m}`];
           if (val !== undefined) outputs.push(val);
         }
@@ -190,9 +213,18 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
       });
 
       if (newRows.length > 0) {
-        const numHeaders = newRows[0].outputs.length;
-        setHeaders(Array.from({ length: numHeaders }, (_, i) => `Meas ${i + 1}`));
-        setOutputRows(newRows);
+        const numHeaders = Math.max(newRows[0].outputs.length, INITIAL_HEADERS.length);
+        const finalHeaders = Array.from({ length: numHeaders }, (_, i) => `Meas ${i + 1}`);
+        setHeaders(finalHeaders);
+        
+        // Normalize all rows to have the same number of outputs
+        const normalizedRows = newRows.map(row => ({
+          ...row,
+          outputs: row.outputs.length === numHeaders 
+            ? row.outputs 
+            : Array(numHeaders).fill('')
+        }));
+        setOutputRows(normalizedRows);
         setIsSaved(false);
         toast.success('Output Consistency: CSV data loaded');
       }
@@ -335,8 +367,8 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">FFD (cm)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">Time (s)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">FDD (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">Time (s)</th>
             </tr>
           </thead>
           <tbody className="bg-white">
@@ -375,33 +407,38 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">kVp</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">mA</th>
-                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700  border-r relative">
+                {/* Fixed width for kVp and mA columns */}
+                <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">
+                  kVp
+                </th>
+                <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">
+                  mA
+                </th>
+                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700 border-r relative">
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
-                      <button onClick={addColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                      <button onClick={addColumn} className="p-1 text-green-600 hover:bg-green-100 rounded ml-2">
                         <Plus className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">Mean (X̄)</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">COV</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">Remark</th>
-                <th rowSpan={2} className="w-10" />
+                <th rowSpan={2} className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">Mean (X̄)</th>
+                <th rowSpan={2} className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">COV</th>
+                <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">Remark</th>
+                <th rowSpan={2} className="w-12" />
               </tr>
               <tr>
                 {headers.map((h, i) => (
-                  <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700  border-r">
+                  <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border-r">
                     <div className="flex items-center justify-center gap-1">
                       <input
                         type="text"
                         value={h}
                         onChange={(e) => updateHeader(i, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className={`w-24 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       />
                       {headers.length > 1 && !isViewMode && (
                         <button onClick={() => removeColumn(i)} className="text-red-600 hover:bg-red-100 p-0.5 rounded">
@@ -422,7 +459,7 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
                       value={row.kvp}
                       onChange={(e) => updateOutputCell(row.id, 'kvp', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className="w-full min-w-[80px] px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="80"
                     />
                   </td>
@@ -432,7 +469,7 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
                       value={row.ma}
                       onChange={(e) => updateOutputCell(row.id, 'ma', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className="w-full min-w-[80px] px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="100"
                     />
                   </td>
@@ -443,18 +480,18 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
                         value={val}
                         onChange={(e) => updateOutputCell(row.id, idx, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className="w-24 px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="0.00"
                       />
                     </td>
                   ))}
-                  <td className="px-4 py-2 border-r text-center font-medium">
+                  <td className="px-4 py-2 border-r text-center font-medium bg-gray-50 min-w-[80px]">
                     {row.mean || '-'}
                   </td>
-                  <td className="px-4 py-2 border-r text-center font-medium">
+                  <td className="px-4 py-2 border-r text-center font-medium bg-gray-50 min-w-[80px]">
                     {row.cov || '-'}
                   </td>
-                  <td className="px-4 py-2 border-r text-center">
+                  <td className="px-4 py-2 border-r text-center min-w-[80px]">
                     <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full ${row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
                       row.remark === 'Fail' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-500'

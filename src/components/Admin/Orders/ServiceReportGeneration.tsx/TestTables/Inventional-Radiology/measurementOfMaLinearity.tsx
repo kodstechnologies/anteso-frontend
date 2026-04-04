@@ -120,10 +120,15 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
     const xValues: number[] = [];
     const individualTolerance = 0.1; // 10% deviation allowed from average
 
+    // Get time from table1Row and convert from ms to seconds if needed
+    const timeMs = parseFloat(table1Row.time);
+    const timeSec = !isNaN(timeMs) && timeMs > 0 ? timeMs / 1000 : 0; // Convert ms to seconds
+    const hasValidTime = timeSec > 0;
+
     const rowsWithX = table2Rows.map((row) => {
       const outputs = row.measuredOutputs.map((v) => parseFloat(v)).filter((v) => !isNaN(v) && v > 0);
       const avg = outputs.length > 0 ? outputs.reduce((a, b) => a + b, 0) / outputs.length : 0;
-      const avgStr = avg > 0 ? avg.toFixed(3) : "—";
+      const avgStr = avg > 0 ? avg.toFixed(4) : "—";
 
       const failedCells: boolean[] = row.measuredOutputs.map((val) => {
         const numVal = parseFloat(val);
@@ -133,10 +138,20 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
       });
 
       const mA = parseFloat(row.mAsApplied);
-      const x = avgStr !== "—" && mA > 0 ? (avg / mA).toFixed(4) : "—";
-      if (x !== "—") xValues.push(parseFloat(x));
+      
+      // Calculate X = mGy / (mA * time in seconds)
+      let x = null;
+      if (avgStr !== "—" && mA > 0 && hasValidTime) {
+        x = avg / (mA * timeSec);
+      } else if (avgStr !== "—" && mA > 0 && !hasValidTime) {
+        // Fallback to original calculation if time is invalid
+        x = avg / mA;
+      }
+      
+      const xDisplay = x !== null ? x.toFixed(4) : "—";
+      if (x !== null) xValues.push(x);
 
-      return { ...row, average: avgStr, x, failedCells };
+      return { ...row, average: avgStr, x: xDisplay, failedCells };
     });
 
     const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : "—";
@@ -337,15 +352,24 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
     <div className="p-6 max-w-7xl mx-auto space-y-8">
       <h2 className="text-2xl font-bold text-gray-800">Measurement of mA Linearity</h2>
 
+      {/* Warning message for missing time */}
+      {!isViewMode && table1Row.time && (isNaN(parseFloat(table1Row.time)) || parseFloat(table1Row.time) <= 0) && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-700">
+            ⚠️ Time value is required for accurate X = mGy/(mA × sec) calculation. Please enter a valid time in milliseconds (will be converted to seconds).
+          </p>
+        </div>
+      )}
+
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">Test Conditions</h3>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">kVp</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Slice Thickness (mm)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Time (ms)</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">kVp</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">Slice Thickness (mm)</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider">Time (ms)</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -381,6 +405,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
                     className={`w-full px-2 py-1 border rounded text-sm text-center ${
                       isViewMode ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300" : "border-gray-300"
                     }`}
+                    placeholder="e.g., 500 (ms)"
                   />
                 </td>
               </tr>
@@ -404,9 +429,9 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">mA Applied</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">mA Applied</th>
                 {measHeaders.map((h, idx) => (
-                  <th key={idx} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
+                  <th key={idx} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">
                     <div className="flex items-center gap-2">
                       <input
                         value={h}
@@ -424,13 +449,13 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
                     </div>
                   </th>
                 ))}
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Xmax</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Xmin</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Remarks</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">Avg</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">X (mGy/(mA·sec))</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">Xmax</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">Xmin</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">CoL</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">Remarks</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -552,4 +577,3 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
 };
 
 export default MeasurementOfMaLinearity;
-

@@ -72,9 +72,8 @@ export default function EmployeeDetailsLeaveManagement() {
             try {
                 const currentYear = new Date().getFullYear();
                 const res = await getLeavesPerEmployee(id, currentYear);
-                console.log("🚀 ~ fetchLeaveSummary ~ res:", res)
-
-                setLeaveSummary(res?.data);
+                const summary = res?.data?.data ?? res?.data ?? null;
+                setLeaveSummary(summary);
             } catch (err: any) {
                 toast.error(err.message || "Failed to fetch leave summary");
             }
@@ -327,10 +326,10 @@ export default function EmployeeDetailsLeaveManagement() {
             )}
             {leaveSummary && (
                 <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 mt-6">
-                    <h2 className="text-xl font-bold mb-4">Leave Summary ({leaveSummary.year})</h2>
+                    <h2 className="text-xl font-bold mb-4">Leave Summary ({leaveSummary.year ?? new Date().getFullYear()})</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <p><strong>Allocated Leaves:</strong> {leaveSummary.allocatedLeaves}</p>
-                        <p><strong>Comp Off Leaves:</strong> {leaveSummary.compOffLeaves}</p>
+                        <p><strong>Allocated Leaves:</strong> {leaveSummary.allocatedLeaves ?? 0}</p>
+                        <p><strong>Comp Off:</strong> {leaveSummary.compOffLeaves ?? 0}</p>
                         {/* <p><strong>Total Leaves:</strong> {leaveSummary.totalLeaves}</p>
                         <p><strong>Used Leaves:</strong> {leaveSummary.usedLeaves}</p>
                         <p><strong>Remaining Leaves:</strong> {leaveSummary.remainingLeaves}</p> */}

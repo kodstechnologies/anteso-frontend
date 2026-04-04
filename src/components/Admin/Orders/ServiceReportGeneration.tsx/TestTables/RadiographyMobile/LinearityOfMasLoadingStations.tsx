@@ -12,6 +12,7 @@ import {
 interface ExposureCondition {
   fcd: string;
   kv: string;
+  time: string;
 }
 
 interface Table2Row {
@@ -48,7 +49,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  const [exposureCondition, setExposureCondition] = useState<ExposureCondition>({ fcd: '100', kv: '80' });
+  const [exposureCondition, setExposureCondition] = useState<ExposureCondition>({ fcd: '100', kv: '80', time: '' });
 
   const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
@@ -135,6 +136,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
             setExposureCondition({
               fcd: data.table1[0].fcd || '100',
               kv: data.table1[0].kv || '80',
+              time: data.table1[0].time || '',
             });
           }
           setMeasHeaders(data.measHeaders && data.measHeaders.length > 0 ? data.measHeaders : ['Meas 1', 'Meas 2', 'Meas 3']);
@@ -175,6 +177,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       setExposureCondition({
         fcd: String(initialData.table1[0].fcd ?? '100'),
         kv: String(initialData.table1[0].kv ?? '80'),
+        time: String((initialData.table1[0] as any).time ?? ''),
       });
     }
     if (initialData.measHeaders?.length) {
@@ -260,7 +263,6 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       setIsSaving(false);
     }
   };
-
   const toggleEdit = () => {
     setIsEditing(true);
   };
@@ -271,6 +273,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
     const xValues: number[] = [];
+
+    // Get time in seconds (convert if needed)
+    const timeSec = parseFloat(exposureCondition.time);
+    const hasValidTime = !isNaN(timeSec) && timeSec > 0;
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
@@ -284,8 +290,15 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
         ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
         : parseFloat(row.mAsRange) || 0;
 
-      // Calculate X = mGy / (mA*s) and round to 4 decimal places
-      const x = avg !== null && midMas > 0 ? avg / midMas : null;
+      // Calculate X = mGy / (mAs * time) and round to 4 decimal places
+      let x = null;
+      if (avg !== null && midMas > 0 && hasValidTime) {
+        x = avg / (midMas * timeSec);
+      } else if (avg !== null && midMas > 0 && !hasValidTime) {
+        // Fallback to original calculation if time is invalid (show warning in UI)
+        x = avg / midMas;
+      }
+
       const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : '—';
       if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
 
@@ -321,7 +334,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           pass = colVal >= tol;
           break;
         case '=':
-          pass = Math.abs(colVal - tol) < 0.0001; // Allow small floating point differences
+          pass = Math.abs(colVal - tol) < 0.0001;
           break;
         default:
           pass = colVal <= tol;
@@ -331,7 +344,6 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
     const remarks = hasData && col !== '—' ? (pass ? 'Pass' : 'Fail') : '—';
 
     // Calculate validation status for each measured output
-    // If CoL fails tolerance, mark all measured values as failed (since they all contribute to CoL)
     const rowsWithStatus = rowsWithX.map((row) => {
       const measuredStatus = row.measuredOutputs.map((val) => {
         const numVal = parseFloat(val);
@@ -343,7 +355,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           return false;
         }
 
-        return true; // Default to pass
+        return true;
       });
 
       return { ...row, measuredOutputsStatus: measuredStatus };
@@ -353,8 +365,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       rows: rowsWithStatus,
       summary: { xMax, xMin, col, remarks, rowSpan: rowsWithStatus.length }
     };
-  }, [table2Rows, tolerance, toleranceOperator]);
-
+  }, [table2Rows, tolerance, toleranceOperator, exposureCondition.time]);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-10">
@@ -399,8 +410,9 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">FFD (cm)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">kV</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">FDD (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">kV</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">Time (sec)</th>
             </tr>
           </thead>
           <tbody>
@@ -415,12 +427,23 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                     }`}
                 />
               </td>
-              <td className="px-6 py-4">
+              <td className="px-6 py-4 border-r">
                 <input
                   type="text"
                   value={exposureCondition.kv}
                   onChange={e => setExposureCondition(p => ({ ...p, kv: e.target.value }))}
                   disabled={isViewMode}
+                  className={`w-full px-4 py-2 text-center border rounded font-medium border-gray-300 focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                    }`}
+                />
+              </td>
+              <td className="px-6 py-4">
+                <input
+                  type="text"
+                  value={exposureCondition.time}
+                  onChange={e => setExposureCondition(p => ({ ...p, time: e.target.value }))}
+                  disabled={isViewMode}
+                  placeholder="e.g. 0.5"
                   className={`w-full px-4 py-2 text-center border rounded font-medium border-gray-300 focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                     }`}
                 />
@@ -439,8 +462,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs Range</th>
-                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">
+                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">mA</th>
+                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
                   <div className="flex items-center justify-between px-4">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
@@ -450,12 +473,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">Avg Output</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X (mGy/mAs)</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X MAX</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X MIN</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">CoL</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Remarks</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">Avg Output</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X (mGy/mAs)</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X MAX</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X MIN</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">CoL</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 ">Remarks</th>
                 <th rowSpan={2} className="w-12"></th>
               </tr>
               <tr>

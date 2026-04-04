@@ -51,22 +51,22 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
     time: '1.0',
   });
 
+  // Initialize with 5 measurement columns
+  const INITIAL_HEADERS = ['Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5'];
+  
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
     {
       id: '1',
       kvp: '80',
       ma: '100',
-      outputs: ['', '', '', '', ''],
+      outputs: Array(INITIAL_HEADERS.length).fill(''),
       mean: '',
       cov: '',
       remark: '',
     },
   ]);
 
-  const [headers, setHeaders] = useState<string[]>([
-    'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
-  ]);
-
+  const [headers, setHeaders] = useState<string[]>(INITIAL_HEADERS);
   const [tolerance, setTolerance] = useState<string>('0.02'); // Decimal: 2% = 0.02
 
   // Handle CSV initial data
@@ -94,7 +94,15 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
 
           if (field.startsWith('Output_')) {
             while (rows.length <= rowIndex) {
-              rows.push({ id: (rows.length + 1).toString(), kvp: "", ma: "", outputs: [], mean: "", cov: "", remark: "" });
+              rows.push({ 
+                id: (rows.length + 1).toString(), 
+                kvp: "", 
+                ma: "", 
+                outputs: Array(h.length || INITIAL_HEADERS.length).fill(""), 
+                mean: "", 
+                cov: "", 
+                remark: "" 
+              });
             }
             const subField = field.replace('Output_', '');
             if (subField === 'kV') rows[rowIndex].kvp = val;
@@ -110,7 +118,17 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         });
 
         if (p.ffd || p.time) setParameters(p);
-        if (rows.length > 0) setOutputRows(rows);
+        if (rows.length > 0) {
+          // Ensure all rows have the correct number of outputs
+          const finalHeaders = h.length > 0 ? h : INITIAL_HEADERS;
+          const normalizedRows = rows.map(row => ({
+            ...row,
+            outputs: row.outputs.length === finalHeaders.length 
+              ? row.outputs 
+              : Array(finalHeaders.length).fill('')
+          }));
+          setOutputRows(normalizedRows);
+        }
         if (h.length > 0) setHeaders(h);
         setTolerance(tol);
         setIsSaved(false);
@@ -184,21 +202,45 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
             ffd: data.parameters?.ffd || '100',
             time: data.parameters?.time || '1.0',
           });
+          
+          const loadedHeaders = data.measurementHeaders || INITIAL_HEADERS;
+          setHeaders(loadedHeaders);
+          
           setOutputRows(
-            data.outputRows?.map((row: any) => ({
-              id: Date.now().toString() + Math.random(),
+            data.outputRows?.map((row: any, idx: number) => ({
+              id: Date.now().toString() + Math.random() + idx,
               kvp: row.kvp || '',
               ma: row.ma || '100',
-              outputs: row.outputs || Array(headers.length).fill(''),
+              outputs: row.outputs && row.outputs.length === loadedHeaders.length 
+                ? row.outputs 
+                : Array(loadedHeaders.length).fill(''),
               mean: row.mean || '',
               cov: row.cov || '',
               remark: row.remark || '',
-            })) || outputRows
+            })) || [{
+              id: Date.now().toString(),
+              kvp: '80',
+              ma: '100',
+              outputs: Array(loadedHeaders.length).fill(''),
+              mean: '',
+              cov: '',
+              remark: '',
+            }]
           );
-          setHeaders(data.measurementHeaders || headers);
           setTolerance(data.tolerance || '0.02');
           setIsSaved(true);
         } else {
+          // Reset to initial state with 5 columns
+          setHeaders(INITIAL_HEADERS);
+          setOutputRows([{
+            id: Date.now().toString(),
+            kvp: '80',
+            ma: '100',
+            outputs: Array(INITIAL_HEADERS.length).fill(''),
+            mean: '',
+            cov: '',
+            remark: '',
+          }]);
           setIsSaved(false);
         }
       } catch (err) {
@@ -345,8 +387,8 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">FFD (cm)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">Time (s)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">FDD (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">Time (s)</th>
             </tr>
           </thead>
           <tbody className="bg-white">
@@ -385,22 +427,27 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">kVp</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">mA</th>
-                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700  border-r relative">
+                {/* Fixed width for kVp and mA columns */}
+                <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">
+                  kVp
+                </th>
+                <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">
+                  mA
+                </th>
+                <th colSpan={headers.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700 border-r relative">
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
-                      <button onClick={addColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                      <button onClick={addColumn} className="p-1 text-green-600 hover:bg-green-100 rounded ml-2">
                         <Plus className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">Mean (X̄)</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">CoV</th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">Remark</th>
-                <th rowSpan={2} className="w-10" />
+                <th rowSpan={2} className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">Mean (X̄)</th>
+                <th rowSpan={2} className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">CoV</th>
+                <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">Remark</th>
+                <th rowSpan={2} className="w-12" />
               </tr>
               <tr>
                 {headers.map((h, i) => (
@@ -411,7 +458,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                         value={h}
                         onChange={(e) => updateHeader(i, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className={`w-24 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       />
                       {headers.length > 1 && !isViewMode && (
                         <button onClick={() => removeColumn(i)} className="text-red-600 hover:bg-red-100 p-0.5 rounded">
@@ -432,7 +479,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                       value={row.kvp}
                       onChange={(e) => updateOutputCell(row.id, 'kvp', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className="w-full min-w-[80px] px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="80"
                     />
                   </td>
@@ -442,7 +489,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                       value={row.ma}
                       onChange={(e) => updateOutputCell(row.id, 'ma', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className="w-full min-w-[80px] px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="100"
                     />
                   </td>
@@ -453,18 +500,18 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
                         value={val}
                         onChange={(e) => updateOutputCell(row.id, idx, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className="w-24 px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="0.00"
                       />
                     </td>
                   ))}
-                  <td className="px-4 py-2 border-r text-center font-medium">
+                  <td className="px-4 py-2 border-r text-center font-medium bg-gray-50 min-w-[80px]">
                     {row.mean || '-'}
                   </td>
-                  <td className="px-4 py-2 border-r text-center font-medium">
+                  <td className="px-4 py-2 border-r text-center font-medium bg-gray-50 min-w-[80px]">
                     {row.cov || '-'}
                   </td>
-                  <td className="px-4 py-2 border-r text-center">
+                  <td className="px-4 py-2 border-r text-center min-w-[80px]">
                     <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full ${row.remark === 'Pass' ? 'bg-green-100 text-green-800' :
                       row.remark === 'Fail' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-500'
