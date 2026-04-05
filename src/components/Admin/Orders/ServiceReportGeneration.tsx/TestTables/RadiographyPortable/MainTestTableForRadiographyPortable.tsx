@@ -3,9 +3,10 @@ import React from "react";
 
 interface MainTestTableProps {
   testData: any;
+  hasTimer?: boolean;
 }
 
-const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ testData }) => {
+const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ testData, hasTimer = false }) => {
   const rows: any[] = [];
   let srNo = 1;
 
@@ -309,7 +310,7 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
         tolerance: `${toleranceOperator} ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }));
-      addRowsForTest("Linearity of mA/mAs Loading (Coefficient of Linearity)", testRows, true, true);
+      addRowsForTest(hasTimer ? "Linearity of mA Loading (Coefficient of Linearity)" : "Linearity of mAs Loading (Coefficient of Linearity)", testRows, true, true);
     }
   }
 

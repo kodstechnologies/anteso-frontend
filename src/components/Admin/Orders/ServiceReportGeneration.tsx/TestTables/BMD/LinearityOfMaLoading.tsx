@@ -131,6 +131,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     const tol = parseFloat(tolerance) || 0.1;
     const xValues: number[] = [];
 
+    // Get time in seconds from table1Row
+    const timeSec = parseFloat(table1Row.time);
+    const hasValidTime = !isNaN(timeSec) && timeSec > 0;
+
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
       // Calculate average mGy and round to 4 decimal places
@@ -138,8 +142,16 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
       
       const ma = parseFloat(row.ma);
-      // Calculate X = mGy / mA and round to 4 decimal places
-      const x = avg !== null && ma > 0 ? parseFloat((avg / ma).toFixed(4)) : null;
+      
+      // Calculate X = mGy / (mA * time) and round to 4 decimal places
+      let x = null;
+      if (avg !== null && ma > 0 && hasValidTime) {
+        x = parseFloat((avg / (ma * timeSec)).toFixed(4));
+      } else if (avg !== null && ma > 0 && !hasValidTime) {
+        // Fallback to original calculation if time is invalid
+        x = parseFloat((avg / ma).toFixed(4));
+      }
+      
       const xDisplay = x !== null ? x.toFixed(4) : '—';
 
       if (x !== null) xValues.push(x);
@@ -190,7 +202,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       rows: rowsWithX,
       summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
     };
-  }, [table2Rows, tolerance, toleranceOperator]);
+  }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
 
   // === Form Valid ===
   const isFormValid = useMemo(() => {
@@ -366,13 +378,22 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     <div className="p-6 max-w-full overflow-x-auto">
       <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
 
+      {/* Warning message for missing time */}
+      {!isViewMode && table1Row.time && (isNaN(parseFloat(table1Row.time)) || parseFloat(table1Row.time) <= 0) && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-700">
+            ⚠️ Time value is required for accurate X = mGy/(mA × sec) calculation. Please enter a valid time in seconds.
+          </p>
+        </div>
+      )}
+
       {/* Table 1: FCD, kV, Time (sec) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FFD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">FDD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">kV</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (sec)</th>
             </tr>
           </thead>
@@ -421,13 +442,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
               {/* Header – make mA column wider */}
               <th
                 rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
+                className="px-6 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap"
               >
                 mA
               </th>
               <th
                 colSpan={measHeaders.length}
-                className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
+                className="px-4 py-3 text-center text-xs font-medium text-gray-700 tracking-wider border-r"
               >
                 <div className="flex items-center justify-between">
                   <span>Output (mGy)</span>
@@ -438,12 +459,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   )}
                 </div>
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mA)</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
+              <th rowSpan={2} className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">Avg Output</th>
+              <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X (mGy/(mA·sec))</th>
+              <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X MAX</th>
+              <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X MIN</th>
+              <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">CoL</th>
+              <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider whitespace-nowrap">Remarks</th>
               <th rowSpan={2} className="w-10" />
             </tr>
             <tr>
@@ -455,7 +476,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                       value={header}
                       onChange={e => updateMeasHeader(idx, e.target.value)}
                       disabled={isViewMode}
-                      className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      className={`w-24 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     />
                     {measHeaders.length > 1 && !isViewMode && (
                       <button onClick={() => removeMeasColumn(idx)} className="p-0.5 text-red-600 hover:bg-red-100 rounded">
@@ -476,7 +497,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                     value={p.ma}
                     onChange={e => updateTable2Cell(p.id, 'ma', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                    className="w-full min-w-[80px] px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                     placeholder="100"
                   />
                 </td>
@@ -489,25 +510,25 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                       value={val}
                       onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      className="w-24 px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                     />
                   </td>
                 ))}
 
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.average}</td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.x}</td>
+                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50 min-w-[80px]">{p.average}</td>
+                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50 min-w-[80px]">{p.x}</td>
                 {index === 0 && (
                   <>
-                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle min-w-[80px]">
                       {processedTable2.summary.xMax}
                     </td>
-                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle min-w-[80px]">
                       {processedTable2.summary.xMin}
                     </td>
-                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle min-w-[80px]">
                       {processedTable2.summary.col}
                     </td>
-                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center align-middle">
+                    <td rowSpan={processedTable2.summary.rowSpan} className="px-4 py-2 text-center align-middle min-w-[80px]">
                       <span
                         className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedTable2.summary.remarks === 'Pass'
                           ? 'bg-green-100 text-green-800'

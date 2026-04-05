@@ -183,29 +183,21 @@ const ViewServiceReportMammography: React.FC = () => {
           ]);
 
           setTestData({
-            accuracyOfOperatingPotential: accuracyOfOperatingPotentialRes || (data.AccuracyOfOperatingPotentialMammography ? (() => {
-              const accuracy = data.AccuracyOfOperatingPotentialMammography;
+            accuracyOfOperatingPotential: (() => {
+              const accuracy = accuracyOfOperatingPotentialRes || data.AccuracyOfOperatingPotentialMammography;
+              if (!accuracy) return null;
               // Extract dynamic mA column keys from the first row of table2
               const sampleRow = (accuracy.table2 && accuracy.table2.length > 0) ? accuracy.table2[0] : null;
               const maKeys = sampleRow ? Object.keys(sampleRow).filter(key =>
                 key.startsWith('ma') || key.startsWith('mA') || key.match(/^[a-zA-Z0-9]+mA$/i)
               ) : [];
-
-              // If no keys found, fallback to defaults
               const finalMaKeys = maKeys.length > 0 ? maKeys : ["mA10", "mA100", "mA200"];
               const mAStationsArr = finalMaKeys.map(key => {
-                // Format key (e.g., 'ma100' or 'mA100') to '100 mA' as seen in RadiographyFixed
-                // Extract numeric part and units part
                 const numericPart = key.match(/\d+/g)?.[0] || "";
                 const alphaPart = key.match(/[a-zA-Z]+/g)?.join("") || "mA";
                 const normalizedAlpha = alphaPart.toLowerCase() === "ma" ? "mA" : alphaPart;
-
-                if (numericPart && normalizedAlpha) {
-                  return `${numericPart} ${normalizedAlpha}`;
-                }
-                return key; // Fallback to original key if extraction fails
+                return numericPart ? `${numericPart} ${normalizedAlpha}` : key;
               });
-
               return {
                 ...accuracy,
                 mAStations: mAStationsArr,
@@ -215,9 +207,13 @@ const ViewServiceReportMammography: React.FC = () => {
                   averageKvp: row.avgKvp || "-",
                   remarks: row.remarks || "-"
                 })),
-                tolerance: accuracy.tolerance || { value: "1.5", type: "absolute", sign: "both" }
+                tolerance: accuracy.tolerance || {
+                  value: accuracy.toleranceValue || "1.5",
+                  type: accuracy.toleranceType || "absolute",
+                  sign: accuracy.toleranceSign || "both"
+                }
               };
-            })() : null),
+            })(),
             linearityOfMasLLoading: linearityOfMasLLoadingRes || (data.LinearityOfMasLoadingMammography ? (() => {
               const linearity = data.LinearityOfMasLoadingMammography;
               const rows = linearity.measurements || [];
@@ -599,7 +595,7 @@ const ViewServiceReportMammography: React.FC = () => {
                     <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FFD (cm)</th>
+                          <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FDD (cm)</th>
                           <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
                           <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>mA</th>
                         </tr>
@@ -812,7 +808,7 @@ const ViewServiceReportMammography: React.FC = () => {
                     <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FCD (cm)</th>
+                          <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FDD (cm)</th>
                           <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>kV</th>
                           <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>Time (Sec)</th>
                         </tr>
@@ -1029,6 +1025,7 @@ const ViewServiceReportMammography: React.FC = () => {
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Reproducibility of Radiation Output</h3>
 
+                <div className="mb-4 print:mb-1" style={{ marginBottom: '4px' }}><table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}><thead className="bg-gray-100"><tr><th className="border border-black p-1 text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>FDD (cm)</th></tr></thead><tbody><tr><td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>{testData.reproducibilityOfOutput.fdd || "-"}</td></tr></tbody></table></div>
                 {testData.reproducibilityOfOutput.outputRows && testData.reproducibilityOfOutput.outputRows.length > 0 && (() => {
                   const rows = testData.reproducibilityOfOutput.outputRows;
                   const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 3);
@@ -1162,7 +1159,7 @@ const ViewServiceReportMammography: React.FC = () => {
                   </div>
                   <div className="flex flex-col gap-1">
                     <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                      <strong>Tolerance (mGy in 1 hr):</strong> {testData.radiationLeakageLevel.toleranceOperator === 'less than or equal to' ? '≤' : testData.radiationLeakageLevel.toleranceOperator === 'greater than or equal to' ? '≥' : '='} {testData.radiationLeakageLevel.toleranceValue || "1.0"} mGy
+                      {/* <strong>Tolerance (mGy in 1 hr):</strong> {testData.radiationLeakageLevel.toleranceOperator === 'less than or equal to' ? '≤' : testData.radiationLeakageLevel.toleranceOperator === 'greater than or equal to' ? '≥' : '='} {testData.radiationLeakageLevel.toleranceValue || "1.0"} mGy */}
                     </p>
                   </div>
                 </div>

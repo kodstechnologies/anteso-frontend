@@ -22,6 +22,7 @@ import {
     getHighContrastResolutionByServiceIdForFixedRadioFluro,
     getTubeHousingLeakageByServiceIdForFixedRadioFluro,
     getRadiationProtectionSurveyByServiceIdForFixedRadioFluro,
+    getExposureRateByServiceIdForFixedRadioFluro,
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createFixedRadioFluroUploadableExcel, FixedRadioFluroExportData } from "./exportFixedRadioFluroToExcel";
@@ -306,6 +307,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             { name: "Output Consistency", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
             { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
             { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "Exposure Rate at Table Top", check: async () => { try { return isSaved(await getExposureRateByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
             { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
             { name: "Details Of Radiation Protection Survey of the Installation", check: async () => { try { return isSaved(await getRadiationProtectionSurveyByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
         ];

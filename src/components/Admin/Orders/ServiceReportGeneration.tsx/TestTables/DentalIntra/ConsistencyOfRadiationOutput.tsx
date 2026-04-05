@@ -69,13 +69,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       }
 
       const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-      // Same as RadiographyFixed: population variance (divide by N), then CoV = stdDev / mean
       const variance =
         nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / nums.length;
       const stdDev = Math.sqrt(variance);
       const cov = mean > 0 ? stdDev / mean : 0;
 
-      console.log("this is inside the save processoed col methods")
       let remarks: 'Pass' | 'Fail' | '' = '';
       if (tolerance) {
         const tol = parseFloat(tolerance);
@@ -344,7 +342,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-700">FFD (cm)</span>
+            <span className="text-sm font-semibold text-gray-700">FDD (cm)</span>
             <input
               type="number"
               value={ffd}
@@ -389,15 +387,16 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
+                {/* Fixed width columns for kVp and mAs */}
+                <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">
                   kVp
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
+                <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">
                   mAs
                 </th>
                 <th
                   colSpan={headers.length}
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-700  border-r relative"
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 border-r relative"
                 >
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
@@ -408,13 +407,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
+                <th rowSpan={2} className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 uppercase border-r whitespace-nowrap">
                   Mean (X̄)
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
-                  cov
+                <th rowSpan={2} className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 uppercase border-r whitespace-nowrap">
+                  CoV
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">
+                <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 uppercase border-r whitespace-nowrap">
                   Remarks
                 </th>
               </tr>
@@ -427,7 +426,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                         value={h}
                         onChange={(e) => updateHeader(i, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className={`w-24 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       />
                       {headers.length > 1 && !isViewMode && (
                         <button onClick={() => removeColumn(i)} className="text-red-600 hover:bg-red-100 p-0.5 rounded">
@@ -448,7 +447,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                       value={row.kvp}
                       onChange={(e) => updateOutputCell(row.id, 'kvp', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className="w-full min-w-[80px] px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="120"
                     />
                   </td>
@@ -458,7 +457,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                       value={row.mas}
                       onChange={(e) => updateOutputCell(row.id, 'mas', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className="w-full min-w-[80px] px-3 py-2 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="100"
                     />
                   </td>
@@ -469,18 +468,18 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                         value={val}
                         onChange={(e) => updateOutputCell(row.id, idx, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className="w-24 px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="0.00"
                       />
                     </td>
                   ))}
-                  <td className="px-4 py-2 border-r text-center font-medium">
+                  <td className="px-4 py-2 border-r text-center font-medium bg-gray-50 min-w-[80px]">
                     {row.mean ? parseFloat(row.mean).toFixed(3) : '-'}
                   </td>
-                  <td className="px-4 py-2 border-r text-center font-medium">
+                  <td className="px-4 py-2 border-r text-center font-medium bg-gray-50 min-w-[80px]">
                     {row.cov ? parseFloat(row.cov).toFixed(4) : '-'}
                   </td>
-                  <td className="px-4 py-2 border-r text-center">
+                  <td className="px-4 py-2 border-r text-center min-w-[80px]">
                     {row.remarks && (
                       <span
                         className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass'
@@ -548,4 +547,3 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 };
 
 export default ConsistencyOfRadiationOutput;
-

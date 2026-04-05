@@ -112,9 +112,17 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       setLoading(true);
       try {
         const res = await getAccuracyOfIrradiationTimeByServiceIdForDentalIntra(serviceId);
-        const data = res?.data;
+        const data = res?.data?.data || res?.data || res;
         if (data) {
           setTestId(data._id || null);
+          if (data.testConditions) {
+            setTable1Row({
+              id: "1",
+              fcd: String(data.testConditions.fcd || ""),
+              kv: String(data.testConditions.kv || ""),
+              ma: String(data.testConditions.ma || ""),
+            });
+          }
           setTable2Rows(
             data.rows && data.rows.length > 0
               ? data.rows.map((t: any, i: number) => ({
@@ -192,6 +200,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     const existingRows = fullData.rows || [];
 
     const payload = {
+      testConditions: {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
+        ma: table1Row.ma,
+      },
       // Merge with existing rows if possible, or create new ones
       rows: table2Rows.map((r, i) => {
         const existingRow = existingRows[i] || {};
@@ -287,7 +300,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FFD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FDD (cm)</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">kV</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">mA</th>
             </tr>

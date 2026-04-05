@@ -373,7 +373,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
-                FFD (cm)
+                FDD (cm)
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
                 kVp

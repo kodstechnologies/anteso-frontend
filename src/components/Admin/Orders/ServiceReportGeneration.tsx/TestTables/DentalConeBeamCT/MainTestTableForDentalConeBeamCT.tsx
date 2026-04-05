@@ -109,7 +109,41 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
       addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
     }
   }
+  // 6. Total Filtration (if available)
+  if (testData.totalFiltration) {
+    const measuredTF = testData.totalFiltration.measuredTF || testData.totalFiltration.measured || "-";
+    const appliedKV = testData.totalFiltration.atKvp || testData.totalFiltration.appliedKV || testData.totalFiltration.kv || "-";
+    const measured = parseFloat(String(measuredTF));
+    const isPass = !isNaN(measured) && measured >= 2.5;
+    addRowsForTest("Total Filtration", [{
+      specified: (appliedKV !== "" && appliedKV !== "-") ? `${appliedKV} kVp` : "Varies",
+      measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
+      tolerance: "≥ 2.5 mm Al (>70 kVp)",
+      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+    }]);
+  }
 
+
+    const linearityMaLoading = testData.linearityOfMaLoading;
+  const linearityMaRows = linearityMaLoading?.table2Rows || linearityMaLoading?.table2;
+
+  if (linearityMaRows && Array.isArray(linearityMaRows)) {
+    const validRows = linearityMaRows.filter((row: any) => row.ma || row.col);
+    if (validRows.length > 0) {
+      const tolerance = linearityMaLoading.tolerance || "0.1";
+      const testRows = validRows.map((row: any) => {
+        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
+        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
+        return {
+          specified: row.ma ? `${row.ma} mA` : "-",
+          measured: col,
+          tolerance: `≤ ${tolerance}`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
+    }
+  }
   // 3. Consistency of Radiation Output (CoV) — tolerance as decimal (e.g. 0.05), no %
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kvp || row.cov || row.cv);
@@ -147,26 +181,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
   }
 
   // 4. Linearity of mA Loading
-  const linearityMaLoading = testData.linearityOfMaLoading;
-  const linearityMaRows = linearityMaLoading?.table2Rows || linearityMaLoading?.table2;
 
-  if (linearityMaRows && Array.isArray(linearityMaRows)) {
-    const validRows = linearityMaRows.filter((row: any) => row.ma || row.col);
-    if (validRows.length > 0) {
-      const tolerance = linearityMaLoading.tolerance || "0.1";
-      const testRows = validRows.map((row: any) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
-        return {
-          specified: row.ma ? `${row.ma} mA` : "-",
-          measured: col,
-          tolerance: `≤ ${tolerance}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
-    }
-  }
 
   // 5. Maximum Radiation Leakage from Tube Housing
   if (testData.radiationLeakage?.leakageRows && Array.isArray(testData.radiationLeakage.leakageRows)) {
@@ -296,19 +311,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
     }
   }
 
-  // 6. Total Filtration (if available)
-  if (testData.totalFiltration) {
-    const measuredTF = testData.totalFiltration.measuredTF || testData.totalFiltration.measured || "-";
-    const appliedKV = testData.totalFiltration.atKvp || testData.totalFiltration.appliedKV || testData.totalFiltration.kv || "-";
-    const measured = parseFloat(String(measuredTF));
-    const isPass = !isNaN(measured) && measured >= 2.5;
-    addRowsForTest("Total Filtration", [{
-      specified: (appliedKV !== "" && appliedKV !== "-") ? `${appliedKV} kVp` : "Varies",
-      measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
-      tolerance: "≥ 2.5 mm Al (>70 kVp)",
-      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-    }]);
-  }
+
 
   // 7. Details of Radiation Protection Survey (if available)
   if (testData.radiationSurvey?.locations && Array.isArray(testData.radiationSurvey.locations)) {

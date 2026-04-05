@@ -33,9 +33,10 @@ interface Props {
   onRefresh?: () => void;
   onTestSaved?: (testId: string) => void;
   csvData?: any[];
+  refreshKey?: number;
 }
 
-export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, onRefresh, onTestSaved, csvData }: Props) {
+export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, onRefresh, onTestSaved, csvData, refreshKey }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Fixed rows
@@ -191,6 +192,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         setIsLoading(false);
         return;
       }
+      setIsLoading(true);
       try {
         const res = propTestId
           ? await getRadiationLeakageLevelByTestIdForCBCT(propTestId)
@@ -208,16 +210,15 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           if (rec.settings?.[0] || rec.measurementSettings?.[0]) {
             const s = rec.settings?.[0] || rec.measurementSettings?.[0];
             setSettings({
-              kv: String(getPrimitive(s.kv ?? s.kvp ?? s.kV ?? s.kVp ?? s.appliedVoltage) ?? ''),
-              ma: String(getPrimitive(s.ma ?? s.mA ?? s.appliedCurrent) ?? ''),
-              time: String(getPrimitive(s.time ?? s.exposureTime) ?? ''),
+              kv: s.kv || s.kvp || s.kV || s.kVp || s.appliedVoltage ? String(getPrimitive(s.kv ?? s.kvp ?? s.kV ?? s.kVp ?? s.appliedVoltage) ?? '') : '',
+              ma: s.ma || s.mA || s.appliedCurrent ? String(getPrimitive(s.ma ?? s.mA ?? s.appliedCurrent) ?? '') : '',
+              time: s.time || s.exposureTime ? String(getPrimitive(s.time ?? s.exposureTime) ?? '') : '',
             });
           } else {
-            // Fallback to top-level keys when settings array is unavailable
             setSettings({
-              kv: String(getPrimitive(rec.kv ?? rec.kvp ?? rec.kV ?? rec.kVp ?? rec.appliedVoltage) ?? ''),
-              ma: String(getPrimitive(rec.ma ?? rec.mA ?? rec.appliedCurrent) ?? ''),
-              time: String(getPrimitive(rec.time ?? rec.exposureTime) ?? ''),
+              kv: rec.kv || rec.kvp || rec.kV ? String(getPrimitive(rec.kv ?? rec.kvp ?? rec.kV ?? rec.kVp ?? rec.appliedVoltage) ?? '') : '',
+              ma: rec.ma || rec.mA ? String(getPrimitive(rec.ma ?? rec.mA ?? rec.appliedCurrent) ?? '') : '',
+              time: rec.time || rec.exposureTime ? String(getPrimitive(rec.time ?? rec.exposureTime) ?? '') : '',
             });
           }
 
@@ -225,10 +226,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             setLeakageRows(
               rec.leakageMeasurements.map((r: any) => ({
                 location: String(r.location ?? ''),
-                front: String(getPrimitive(r.front ?? r.top) ?? ''),
-                back: String(getPrimitive(r.back ?? r.up ?? r.down) ?? ''),
-                left: String(getPrimitive(r.left) ?? ''),
-                right: String(getPrimitive(r.right) ?? ''),
+                front: r.front != null && r.front !== 0 ? String(getPrimitive(r.front ?? r.top) ?? '') : '',
+                back: r.back != null && r.back !== 0 ? String(getPrimitive(r.back ?? r.up ?? r.down) ?? '') : '',
+                left: r.left != null && r.left !== 0 ? String(getPrimitive(r.left) ?? '') : '',
+                right: r.right != null && r.right !== 0 ? String(getPrimitive(r.right) ?? '') : '',
                 max: '',
                 unit: String(getPrimitive(r.unit) ?? 'mGy/h'),
                 remark: '',
@@ -257,7 +258,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     };
 
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, refreshKey]);
 
   // CSV Data Injection
   useEffect(() => {

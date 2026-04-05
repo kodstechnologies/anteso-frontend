@@ -134,9 +134,13 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
   };
 
   // === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks ===
-  const processedTable2 = useMemo(() => {
+ const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
     const xValues: number[] = [];
+
+    // Get time in seconds from table1Row
+    const timeSec = parseFloat(table1Row.time);
+    const hasValidTime = !isNaN(timeSec) && timeSec > 0;
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
@@ -145,8 +149,16 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
       const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
 
       const ma = parseFloat(row.ma);
-      // Calculate X = mGy / mA and round to 4 decimal places
-      const x = avg !== null && ma > 0 ? parseFloat((avg / ma).toFixed(4)) : null;
+      
+      // Calculate X = mGy / (mA * time) and round to 4 decimal places
+      let x = null;
+      if (avg !== null && ma > 0 && hasValidTime) {
+        x = parseFloat((avg / (ma * timeSec)).toFixed(4));
+      } else if (avg !== null && ma > 0 && !hasValidTime) {
+        // Fallback to original calculation if time is invalid
+        x = parseFloat((avg / ma).toFixed(4));
+      }
+      
       const xDisplay = x !== null ? x.toFixed(4) : '—';
 
       if (x !== null) xValues.push(x);
@@ -197,7 +209,8 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
       rows: rowsWithX,
       summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
     };
-  }, [table2Rows, tolerance, toleranceOperator]);
+  }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
+
 
   // === Form Valid ===
   const isFormValid = useMemo(() => {

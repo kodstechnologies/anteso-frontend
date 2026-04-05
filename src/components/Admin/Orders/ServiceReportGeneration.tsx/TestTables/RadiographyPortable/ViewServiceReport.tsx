@@ -73,6 +73,10 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
   const [searchParams] = useSearchParams();
   const serviceId = searchParams.get("serviceId");
 
+  const hasTimer = serviceId
+    ? localStorage.getItem(`radiography-portable-timer-${serviceId}`) === 'true'
+    : false;
+
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -387,7 +391,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
         {/* PAGE 2+ - SUMMARY TABLE */}
         <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section" style={{ pageBreakAfter: 'always' }}>
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
-            <MainTestTableForRadiographyPortable testData={testData} />
+            <MainTestTableForRadiographyPortable testData={testData} hasTimer={hasTimer} />
           </div>
         </div>
 
@@ -764,7 +768,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
               if (!hasMeasurements && !(totalF.required || totalF.atKvp || totalF.measured)) return null;
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                  <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Total Filtration</h3>
+                  {/* <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Total Filtration</h3>
                   {hasMeasurements && (
                     <>
                       <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Accuracy of Operating Potential</h4>
@@ -812,20 +816,63 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                         </div>
                       )}
                     </>
-                  )}
-                  {(totalF.measured !== undefined || totalF.required !== undefined || totalF.atKvp !== undefined) && (
-                    <div className="bg-gray-50 p-6 print:p-1 rounded-lg border mt-4" style={{ padding: '2px 4px' }}>
-                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Total Filtration</h4>
-                      <div className="space-y-2 print:space-y-0">
-                        <p className="text-base print:text-[9px]" style={{ fontSize: '11px' }}>
-                          <strong>Measured:</strong> {totalF.measured ?? "-"} mm Al
-                        </p>
-                        <p className="text-base print:text-[9px]" style={{ fontSize: '11px' }}>
-                          <strong>Required:</strong> {totalF.required ?? "-"} mm Al (at {totalF.atKvp ?? "-"} kVp)
-                        </p>
+                  )} */}
+                  {(totalF.measured !== undefined || totalF.required !== undefined || totalF.atKvp !== undefined) && (() => {
+                    const ft = tf.filtrationTolerance || {};
+                    const kvp = parseFloat(totalF.atKvp ?? "");
+                    const measured = parseFloat(totalF.required ?? "");
+                    const threshold1 = parseFloat(ft.kvThreshold1 ?? "70");
+                    const threshold2 = parseFloat(ft.kvThreshold2 ?? "100");
+
+                    let requiredTol = NaN;
+                    if (!isNaN(kvp)) {
+                      if (kvp < threshold1) requiredTol = parseFloat(ft.forKvGreaterThan70 ?? "1.5");
+                      else if (kvp <= threshold2) requiredTol = parseFloat(ft.forKvBetween70And100 ?? "2.0");
+                      else requiredTol = parseFloat(ft.forKvGreaterThan100 ?? "2.5");
+                    }
+
+                    const filtrationRemark = (!isNaN(measured) && !isNaN(requiredTol))
+                      ? (measured >= requiredTol ? "PASS" : "FAIL")
+                      : "-";
+
+                    return (
+                      <div className="rounded" style={{ padding: '4px 6px', marginTop: '4px' }}>
+                        <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Total Filtration</h3>
+                        <table className="w-full border border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                          <tbody>
+                            <tr>
+                              <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>At kVp</td>
+                              <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{totalF.atKvp || "-"} kVp</td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Measured Total Filtration</td>
+                              <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{totalF.required || "-"} mm Al</td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
+                              <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
+                                {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Result</td>
+                              <td className="border border-black text-center font-bold" style={{ padding: '0px 4px', fontSize: '11px' }}>
+                                <span className={filtrationRemark === "PASS" ? "text-green-600" : filtrationRemark === "FAIL" ? "text-red-600" : ""}>
+                                  {filtrationRemark}
+                                </span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
+                          <span className="font-semibold">Tolerance criteria: </span>
+                          {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
+                          {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                          {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })()}
@@ -977,65 +1024,96 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             {testData.outputConsistency && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>8. Consistency of Radiation Output</h3>
-                {testData.outputConsistency.outputRows?.length > 0 && (
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                {/* FDD small table */}
+                {testData.outputConsistency.ffd?.value && (
+                  <div className="mb-3 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>kV</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>mAs</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>Avg (X̄)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>CoV / Remark</th>
+                          <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FDD (cm)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {testData.outputConsistency.outputRows.map((row: any, i: number) => (
-                          <tr key={i} className="text-center">
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.kv || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.mas || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{row.avg ?? "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>
-                              <span className={row.remark === "Pass" || row.remark === "PASS" ? "text-green-600" : row.remark === "Fail" || row.remark === "FAIL" ? "text-red-600" : ""}>
-                                {(() => {
-                                  const computeCovFromOutputs = (outputs: any[]): number | null => {
-                                    if (!Array.isArray(outputs) || outputs.length === 0) return null;
-                                    const values = outputs
-                                      .map((v) => {
-                                        if (v == null) return NaN;
-                                        if (typeof v === "number") return v;
-                                        if (typeof v === "string") return parseFloat(v);
-                                        if (typeof v === "object" && "value" in v) return parseFloat((v as any).value);
-                                        return NaN;
-                                      })
-                                      .filter((n) => !Number.isNaN(n));
-
-                                    if (values.length === 0) return null;
-                                    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-                                    if (!mean || mean === 0) return null;
-                                    const variance = values.reduce((sum, n) => sum + Math.pow(n - mean, 2), 0) / values.length;
-                                    const stdDev = Math.sqrt(variance);
-                                    const cov = stdDev / mean;
-                                    return Number.isFinite(cov) ? cov : null;
-                                  };
-
-                                  const covVal = row.cov ?? row.cv ?? (row.outputs ? computeCovFromOutputs(row.outputs) : null);
-                                  if (covVal != null && covVal !== "") {
-                                    const covDisplay =
-                                      typeof covVal === 'number'
-                                        ? covVal.toFixed(4)
-                                        : parseFloat(String(covVal)).toFixed(4);
-                                    return row.remark ? `${covDisplay} / ${row.remark}` : covDisplay;
-                                  }
-                                  return row.remark || "-";
-                                })()}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        <tr>
+                          <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{testData.outputConsistency.ffd.value}</td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
                 )}
+                {testData.outputConsistency.outputRows?.length > 0 && (() => {
+                  const rows = testData.outputConsistency.outputRows;
+                  const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
+                  const tolVal = parseFloat(testData.outputConsistency.tolerance?.value ?? '0.05') || 0.05;
+                  const tolOp = testData.outputConsistency.tolerance?.operator ?? '<=';
+
+                  const getVal = (o: any): number => {
+                    if (o == null) return NaN;
+                    if (typeof o === 'number') return o;
+                    if (typeof o === 'string') return parseFloat(o);
+                    if (typeof o === 'object' && 'value' in o) return parseFloat(o.value);
+                    return NaN;
+                  };
+
+                  return (
+                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                      <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '10px', tableLayout: 'auto', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
+                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
+                            {Array.from({ length: measCount }, (_, i) => (
+                              <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
+                            ))}
+                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (X̄)</th>
+                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>
+                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Remark</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((row: any, i: number) => {
+                            const outputs: number[] = (row.outputs ?? []).map(getVal).filter((n: number) => !isNaN(n) && n > 0);
+                            const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+                            const avgDisplay = avg !== null ? avg.toFixed(4) : (row.avg || '-');
+                            let covDisplay = '-';
+                            let remark = row.remark || '-';
+                            if (avg !== null && avg > 0) {
+                              const variance = outputs.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / outputs.length;
+                              const cov = Math.sqrt(variance) / avg;
+                              if (isFinite(cov)) {
+                                covDisplay = cov.toFixed(3);
+                                const passes = (tolOp === '<=' || tolOp === '<') ? cov <= tolVal : cov >= tolVal;
+                                remark = passes ? 'Pass' : 'Fail';
+                              }
+                            } else if (row.cv || row.cov) {
+                              covDisplay = row.cv || row.cov;
+                            }
+                            return (
+                              <tr key={i} className="text-center">
+                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.kv || '-'}</td>
+                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.mas || '-'}</td>
+                                {Array.from({ length: measCount }, (_, j) => {
+                                  const raw = (row.outputs ?? [])[j];
+                                  const display = raw != null ? (typeof raw === 'object' && 'value' in raw ? raw.value : String(raw)) : '-';
+                                  return (
+                                    <td key={j} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{display || '-'}</td>
+                                  );
+                                })}
+                                <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{avgDisplay}</td>
+                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{covDisplay}</td>
+                                <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                                  <span className={remark === 'Pass' ? 'text-green-600' : remark === 'Fail' ? 'text-red-600' : ''}>
+                                    {remark}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
                 {testData.outputConsistency.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>

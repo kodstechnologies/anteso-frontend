@@ -39,6 +39,39 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     });
   };
 
+  // 2. Accuracy of Operating Potential (kVp)
+  if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
+    const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
+    if (validRows.length > 0) {
+      const toleranceSignRaw = testData.accuracyOfOperatingPotential.tolerance?.sign || "±";
+      const toleranceSign = toleranceSignRaw === "both" ? "±" : toleranceSignRaw === "plus" ? "+" : toleranceSignRaw === "minus" ? "-" : toleranceSignRaw;
+      const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "5";
+      const testRows = validRows.map((row: any) => {
+        let isPass = false;
+        if (row.remarks === "PASS" || row.remarks === "Pass") {
+          isPass = true;
+        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
+          isPass = false;
+        } else {
+          const appliedKvp = parseFloat(row.appliedKvp);
+          const avgKvp = parseFloat(row.averageKvp);
+          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
+            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
+            const tol = parseFloat(toleranceValue);
+            isPass = deviation <= tol;
+          }
+        }
+        return {
+          specified: row.appliedKvp || "-",
+          measured: row.averageKvp || "-",
+          tolerance: `${toleranceSign}${toleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Operating Potential (kVp)", testRows);
+    }
+  }
+
   // 1. Accuracy of Irradiation Time (Timer Test) - Following Dental Cone Beam CT pattern
   if (testData.irradiationTime?.irradiationTimes && Array.isArray(testData.irradiationTime.irradiationTimes)) {
     const validRows = testData.irradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
@@ -76,37 +109,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 2. Accuracy of Operating Potential (kVp)
-  if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
-    const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
-    if (validRows.length > 0) {
-      const toleranceSign = testData.accuracyOfOperatingPotential.tolerance?.sign || "±";
-      const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "5";
-      const testRows = validRows.map((row: any) => {
-        let isPass = false;
-        if (row.remarks === "PASS" || row.remarks === "Pass") {
-          isPass = true;
-        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
-          isPass = false;
-        } else {
-          const appliedKvp = parseFloat(row.appliedKvp);
-          const avgKvp = parseFloat(row.averageKvp);
-          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-            const tol = parseFloat(toleranceValue);
-            isPass = deviation <= tol;
-          }
-        }
-        return {
-          specified: row.appliedKvp || "-",
-          measured: row.averageKvp || "-",
-          tolerance: `${toleranceSign}${toleranceValue}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Accuracy of Operating Potential (kVp)", testRows);
-    }
-  }
+
 
   // 2. Linearity of mAs Loading
   if (testData.linearityOfMasLLoading?.measurements && Array.isArray(testData.linearityOfMasLLoading.measurements)) {

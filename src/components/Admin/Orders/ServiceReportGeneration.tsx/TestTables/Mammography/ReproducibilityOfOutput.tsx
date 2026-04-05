@@ -38,11 +38,15 @@ const ReproducibilityOfOutput: React.FC<{
   serviceId: string;
   refreshKey?: number;
   initialData?: {
+    fdd?: string;
     outputRows?: Array<{ kv: string; mas: string; outputs: string[] }>;
     tolerance?: string;
   };
 }> = ({ serviceId, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(null);
+
+  // ---- Test Conditions ------------------------------------
+  const [fdd, setFdd] = useState<string>('');
 
   // ---- Radiation Output ------------------------------------
   const [outputRows, setOutputRows] = useState<OutputRow[]>([
@@ -151,6 +155,9 @@ const ReproducibilityOfOutput: React.FC<{
   useEffect(() => {
     if (initialData) {
       console.log('ReproducibilityOfOutput: Loading initial data from CSV:', initialData);
+      if (initialData.fdd !== undefined) {
+        setFdd(initialData.fdd);
+      }
       if (initialData.outputRows && initialData.outputRows.length > 0) {
         const firstRow = initialData.outputRows[0];
         const numCols = firstRow.outputs?.length || 5;
@@ -215,6 +222,9 @@ const ReproducibilityOfOutput: React.FC<{
         if (data) {
           setTestId(data._id || null);
 
+          // Load fdd
+          setFdd(String(data.fdd || ''));
+
           // Load output rows
           if (data.outputRows && Array.isArray(data.outputRows) && data.outputRows.length > 0) {
             const firstRow = data.outputRows[0];
@@ -257,6 +267,7 @@ const ReproducibilityOfOutput: React.FC<{
     setIsSaving(true);
 
     const payload = {
+      fdd,
       outputRows: rowsWithCalc.map(r => ({
         kv: r.kv,
         mas: r.mas,
@@ -276,8 +287,8 @@ const ReproducibilityOfOutput: React.FC<{
       if (!currentTestId) {
         try {
           const existing = await getReproducibilityOfOutputByServiceIdForMammography(serviceId);
-          if (existing?.data?._id) {
-            currentTestId = existing.data._id;
+          if (existing?._id) {
+            currentTestId = existing._id;
             setTestId(currentTestId);
           }
         } catch (err) {
@@ -375,6 +386,38 @@ const ReproducibilityOfOutput: React.FC<{
         Consistency of Radiation Output
       </h2>
 
+      {/* ==================== Test Conditions (FDD) ==================== */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
+          Test Conditions
+        </h3>
+        <div className="p-6">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-blue-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider">
+                  FDD (cm)
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              <tr>
+                <td className="px-4 py-3">
+                  <input
+                    type="text"
+                    value={fdd}
+                    onChange={(e) => setFdd(e.target.value)}
+                    disabled={isViewMode}
+                    className={`w-40 px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    placeholder="e.g. 65"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* ==================== Radiation Output ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
@@ -386,15 +429,16 @@ const ReproducibilityOfOutput: React.FC<{
             <thead className="bg-blue-50">
               {/* ---- First header row ---- */}
               <tr>
+                {/* Fixed width columns for kV and mAs */}
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r"
+                  className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap"
                 >
                   Applied kV
                 </th>
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r"
+                  className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap"
                 >
                   mAs
                 </th>
@@ -402,7 +446,7 @@ const ReproducibilityOfOutput: React.FC<{
                 {/* Dynamic measured columns + plus button */}
                 <th
                   colSpan={outputColumnsCount}
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 tracking-wider border-r"
                 >
                   <div className="flex items-center justify-between">
                     <span>Radiation Output (mGy)</span>
@@ -420,23 +464,23 @@ const ReproducibilityOfOutput: React.FC<{
 
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r"
+                  className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap"
                 >
                   Avg (X̄)
                 </th>
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r"
+                  className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap"
                 >
                   CoV
                 </th>
                 <th
                   rowSpan={2}
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider bg-green-100"
+                  className="px-4 py-3 w-24 text-center text-xs font-medium text-gray-700 tracking-wider bg-green-100 whitespace-nowrap"
                 >
                   Remarks
                 </th>
-                <th rowSpan={2} className="w-10" />
+                <th rowSpan={2} className="w-12" />
               </tr>
 
               {/* ---- Second header row (editable column names) ---- */}
@@ -444,7 +488,7 @@ const ReproducibilityOfOutput: React.FC<{
                 {outputHeaders.map((header, idx) => (
                   <th
                     key={idx}
-                    className="px-2 py-2 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
+                    className="px-2 py-2 text-center text-xs font-medium text-gray-700 tracking-wider border-r"
                   >
                     <div className="flex items-center justify-center gap-1">
                       <input
@@ -452,7 +496,7 @@ const ReproducibilityOfOutput: React.FC<{
                         value={header}
                         onChange={(e) => updateHeader(idx, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-20 px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className={`w-24 px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         placeholder={`Meas ${idx + 1}`}
                       />
                       {!isViewMode && outputColumnsCount > 1 && (
@@ -474,31 +518,31 @@ const ReproducibilityOfOutput: React.FC<{
             <tbody className="bg-white divide-y divide-gray-200">
               {rowsWithCalc.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  {/* kV */}
+                  {/* kV - Fixed width with min-width */}
                   <td className="px-4 py-2 border-r">
                     <input
                       type="text"
                       value={row.kv}
                       onChange={(e) => updateCell(row.id, 'kv', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className="w-full min-w-[80px] px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="28"
                     />
                   </td>
 
-                  {/* mAs */}
+                  {/* mAs - Fixed width with min-width */}
                   <td className="px-4 py-2 border-r">
                     <input
                       type="text"
                       value={row.mas}
                       onChange={(e) => updateCell(row.id, 'mas', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className="w-full min-w-[80px] px-3 py-2 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                       placeholder="100"
                     />
                   </td>
 
-                  {/* Dynamic measured outputs */}
+                  {/* Dynamic measured outputs - Fixed width */}
                   {row.outputs.map((val, colIdx) => (
                     <td key={colIdx} className="px-2 py-2 border-r">
                       <input
@@ -506,28 +550,28 @@ const ReproducibilityOfOutput: React.FC<{
                         value={val}
                         onChange={(e) => updateCell(row.id, colIdx, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="1.25"
                       />
                     </td>
                   ))}
 
-                  {/* Avg */}
-                  <td className="px-4 py-2 border-r bg-blue-50">
+                  {/* Avg - Fixed width */}
+                  <td className="px-4 py-2 border-r bg-blue-50 min-w-[80px]">
                     <span className="w-full px-2 py-1 text-sm text-center font-medium text-gray-700">
                       {row.avg || '—'}
                     </span>
                   </td>
 
-                  {/* CV */}
-                  <td className="px-4 py-2 border-r bg-blue-50">
+                  {/* CV - Fixed width */}
+                  <td className="px-4 py-2 border-r bg-blue-50 min-w-[80px]">
                     <span className="w-full px-2 py-1 text-sm text-center font-medium text-gray-700">
                       {row.cov || '—'}
                     </span>
                   </td>
 
-                  {/* Remarks */}
-                  <td className="px-4 py-2 text-center">
+                  {/* Remarks - Fixed width */}
+                  <td className="px-4 py-2 text-center min-w-[80px]">
                     <span
                       className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${row.remark === 'Pass'
                         ? 'bg-green-100 text-green-800'

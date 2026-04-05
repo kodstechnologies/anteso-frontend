@@ -271,68 +271,43 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
       const toleranceValue = testData.tubeHousingLeakage.toleranceValue || "1";
       const toleranceOperator = testData.tubeHousingLeakage.toleranceOperator || "<=";
 
-      // Use maxRadiationLeakage from the data, or calculate it
-      let measuredValue = testData.tubeHousingLeakage.maxRadiationLeakage || "";
-      let measuredNum = parseFloat(measuredValue) || 0;
+      // Compute max mGy/hr across all leakage rows
+      // max field is in mR/hr; mgy = max / 114
+      const mgyValues = validRows
+        .map((row: any) => {
+          const mgyStored = parseFloat(row.mgy);
+          if (!isNaN(mgyStored) && mgyStored > 0) return mgyStored;
+          const maxMR = parseFloat(row.max);
+          if (!isNaN(maxMR) && maxMR > 0) return maxMR / 114;
+          return 0;
+        })
+        .filter((v: number) => v > 0);
 
-      if (!measuredValue || measuredValue === "" || measuredValue === "-") {
-        const maxLeakageResult = testData.tubeHousingLeakage.maxLeakageResult || "";
-        const maxLeakageResultNum = parseFloat(maxLeakageResult) || 0;
-        if (maxLeakageResultNum > 0) {
-          measuredNum = maxLeakageResultNum / 114;
-          measuredValue = measuredNum.toFixed(3);
-        } else {
-          measuredValue = "-";
-        }
-      } else {
-        measuredValue = String(measuredValue);
-        measuredNum = parseFloat(measuredValue) || 0;
+      const maxMGy = mgyValues.length > 0 ? Math.max(...mgyValues) : NaN;
+      const measuredValue = !isNaN(maxMGy) ? maxMGy.toFixed(4) : "-";
+      const measuredNum = parseFloat(measuredValue);
+      const tol = parseFloat(toleranceValue);
+
+      let remark: "Pass" | "Fail" = "Fail";
+      if (!isNaN(measuredNum) && !isNaN(tol)) {
+        if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") remark = measuredNum <= tol ? "Pass" : "Fail";
+        else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") remark = measuredNum >= tol ? "Pass" : "Fail";
+        else if (toleranceOperator === "<" || toleranceOperator === "less than") remark = measuredNum < tol ? "Pass" : "Fail";
+        else if (toleranceOperator === ">" || toleranceOperator === "greater than") remark = measuredNum > tol ? "Pass" : "Fail";
+        else remark = Math.abs(measuredNum - tol) < 0.001 ? "Pass" : "Fail";
       }
 
-      // Calculate remark based on maxRadiationLeakage
-      let remark = "";
-      if (measuredValue !== "-" && measuredValue !== "") {
-        const tol = parseFloat(toleranceValue);
-        if (!isNaN(measuredNum) && !isNaN(tol) && tol > 0) {
-          if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
-            remark = measuredNum <= tol ? "Pass" : "Fail";
-          } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
-            remark = measuredNum >= tol ? "Pass" : "Fail";
-          } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
-            remark = measuredNum < tol ? "Pass" : "Fail";
-          } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
-            remark = measuredNum > tol ? "Pass" : "Fail";
-          } else if (toleranceOperator === "=" || toleranceOperator === "equal to") {
-            remark = Math.abs(measuredNum - tol) < 0.001 ? "Pass" : "Fail";
-          } else {
-            remark = "-";
-          }
-        } else {
-          remark = "-";
-        }
-      } else {
-        remark = "-";
-      }
-
-      // Format tolerance operator for display
-      let toleranceDisplay = "";
-      if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
-        toleranceDisplay = "≤";
-      } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
-        toleranceDisplay = "≥";
-      } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
-        toleranceDisplay = "<";
-      } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
-        toleranceDisplay = ">";
-      } else {
-        toleranceDisplay = "=";
-      }
+      const tolSymbol = toleranceOperator === "<=" || toleranceOperator === "less than or equal to" ? "≤"
+        : toleranceOperator === ">=" || toleranceOperator === "greater than or equal to" ? "≥"
+        : toleranceOperator === "<" || toleranceOperator === "less than" ? "<"
+        : toleranceOperator === ">" || toleranceOperator === "greater than" ? ">"
+        : "=";
 
       addRowsForTest("Maximum Radiation Leakage from Tube Housing", [{
         specified: "Tube Housing",
-        measured: measuredValue !== "-" && measuredValue !== "" ? `${measuredValue} mGy/h` : "-",
-        tolerance: `${toleranceDisplay} ${toleranceValue} mGy/h in 1 hour`,
-        remarks: (remark === "Pass" || remark === "PASS" ? "Pass" : remark === "Fail" || remark === "FAIL" ? "Fail" : "-") as "Pass" | "Fail",
+        measured: measuredValue !== "-" ? `${measuredValue} mGy/h` : "-",
+        tolerance: `${tolSymbol} ${toleranceValue} mGy/h in 1 hour`,
+        remarks: remark,
       }]);
     }
   }

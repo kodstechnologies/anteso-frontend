@@ -354,6 +354,42 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
+  // 13. Alignment Test
+  if (testData.alignmentTest?.testRows && Array.isArray(testData.alignmentTest.testRows)) {
+    const validRows = testData.alignmentTest.testRows.filter((row: any) => row.parameter || row.measured);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
+        const isPass = row.remark === "Pass" || row.remark === "PASS" || row.result === "Pass" || row.result === "PASS";
+        return {
+          specified: row.parameter || row.specified || "-",
+          measured: row.measured || row.measuredValue || "-",
+          tolerance: row.tolerance || row.toleranceValue || "-",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Alignment Test", testRows);
+    }
+  }
+
+  // 14. Radiation Protection Survey
+  if (testData.radiationProtection?.locations && Array.isArray(testData.radiationProtection.locations)) {
+    const validRows = testData.radiationProtection.locations.filter((loc: any) => loc.location || loc.mRPerHr);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((loc: any) => {
+        const mRPerWeek = parseFloat(loc.mRPerWeek || "0");
+        const limit = loc.category === "worker" ? 40 : 2;
+        const isPass = loc.result === "PASS" || loc.result === "Pass" || (!isNaN(mRPerWeek) && mRPerWeek > 0 && mRPerWeek <= limit);
+        return {
+          specified: loc.location || "-",
+          measured: loc.mRPerWeek ? `${loc.mRPerWeek} mR/week` : (loc.mRPerHr ? `${loc.mRPerHr} mR/hr` : "-"),
+          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Radiation Protection Survey", testRows);
+    }
+  }
+
 
 
   if (rows.length === 0) {

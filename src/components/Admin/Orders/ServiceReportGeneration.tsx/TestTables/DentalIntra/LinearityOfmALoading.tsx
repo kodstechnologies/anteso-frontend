@@ -122,25 +122,40 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     );
   };
 
-  const processedTable2 = useMemo(() => {
+const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
     const xValues: number[] = [];
 
+    // Get time in seconds from table1Row
+    const timeSec = parseFloat(table1Row.time);
+    const hasValidTime = !isNaN(timeSec) && timeSec > 0;
+
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
+      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length) : 0;
+      const avgDisplay = avg > 0 ? avg.toFixed(4) : '—';
       const ma = parseFloat(row.ma);
-      const x = avg !== '—' && ma > 0 ? (parseFloat(avg) / ma).toFixed(4) : '—';
+      
+      // Calculate X = mGy / (mA * time) and round to 4 decimal places
+      let x = null;
+      if (avg > 0 && ma > 0 && hasValidTime) {
+        x = avg / (ma * timeSec);
+      } else if (avg > 0 && ma > 0 && !hasValidTime) {
+        // Fallback to original calculation if time is invalid
+        x = avg / ma;
+      }
+      
+      const xDisplay = x !== null ? x.toFixed(4) : '—';
 
-      if (x !== '—') xValues.push(parseFloat(x));
+      if (x !== null) xValues.push(x);
 
-      return { ...row, average: avg, x };
+      return { ...row, average: avgDisplay, x: xDisplay };
     });
 
     const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
     const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
     const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-      ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
+      ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
       : '—';
     const pass = colVal !== '—' && parseFloat(colVal) <= tol;
 
@@ -151,8 +166,9 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       col: colVal,
       remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
     }));
-  }, [table2Rows, tolerance]);
+  }, [table2Rows, tolerance, table1Row.time]);
 
+  
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
@@ -370,7 +386,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FCD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FDD (cm)</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">Time (sec)</th>
             </tr>

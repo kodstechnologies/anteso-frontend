@@ -43,38 +43,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     });
   };
 
-  // 1. Accuracy of Operating Potential (kVp)
-  if (testData.accuracyOfOperatingPotentialAndTime?.rows && Array.isArray(testData.accuracyOfOperatingPotentialAndTime.rows)) {
-    const validRows = testData.accuracyOfOperatingPotentialAndTime.rows.filter((row: any) => row.appliedKvp || row.avgKvp || row.setTime || row.avgTime);
-    if (validRows.length > 0) {
-      const kvpToleranceSign = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceSign || "±";
-      const kvpToleranceValue = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceValue || "5";
-      const timeToleranceSign = testData.accuracyOfOperatingPotentialAndTime.timeToleranceSign || "±";
-      const timeToleranceValue = testData.accuracyOfOperatingPotentialAndTime.timeToleranceValue || "10";
-
-      const kvpRows = validRows.map((row: any) => {
-        const appliedKvp = parseFloat(row.appliedKvp);
-        const avgKvp = parseFloat(row.avgKvp);
-        let isPass = false;
-        if (row.remark === "PASS" || row.remark === "Pass") isPass = true;
-        else if (row.remark === "FAIL" || row.remark === "Fail") isPass = false;
-        else if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-          const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-          isPass = deviation <= parseFloat(kvpToleranceValue);
-        }
-        return {
-          specified: row.appliedKvp || "-",
-          measured: row.avgKvp || "-",
-          tolerance: `${kvpToleranceSign}${kvpToleranceValue}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Accuracy of Operating Potential (kVp)", kvpRows);
-
-    }
-  }
-
-  // 1b. Accuracy of Irradiation Time
+ // 1b. Accuracy of Irradiation Time
   const timeDataRows = testData.accuracyOfIrradiationTime?.rows || testData.accuracyOfOperatingPotentialAndTime?.rows;
   if (timeDataRows && Array.isArray(timeDataRows)) {
     const validRows = timeDataRows.filter((row: any) => row.setTime || row.avgTime || (row.maStations && row.maStations[0]?.time));
@@ -106,6 +75,39 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
+
+  // 1. Accuracy of Operating Potential (kVp)
+  if (testData.accuracyOfOperatingPotentialAndTime?.rows && Array.isArray(testData.accuracyOfOperatingPotentialAndTime.rows)) {
+    const validRows = testData.accuracyOfOperatingPotentialAndTime.rows.filter((row: any) => row.appliedKvp || row.avgKvp || row.setTime || row.avgTime);
+    if (validRows.length > 0) {
+      const kvpToleranceSign = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceSign || "±";
+      const kvpToleranceValue = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceValue || "5";
+      const timeToleranceSign = testData.accuracyOfOperatingPotentialAndTime.timeToleranceSign || "±";
+      const timeToleranceValue = testData.accuracyOfOperatingPotentialAndTime.timeToleranceValue || "10";
+
+      const kvpRows = validRows.map((row: any) => {
+        const appliedKvp = parseFloat(row.appliedKvp);
+        const avgKvp = parseFloat(row.avgKvp);
+        let isPass = false;
+        if (row.remark === "PASS" || row.remark === "Pass") isPass = true;
+        else if (row.remark === "FAIL" || row.remark === "Fail") isPass = false;
+        else if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
+          const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
+          isPass = deviation <= parseFloat(kvpToleranceValue);
+        }
+        return {
+          specified: row.appliedKvp || "-",
+          measured: row.avgKvp || "-",
+          tolerance: `${kvpToleranceSign}${kvpToleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Operating Potential (kVp)", kvpRows);
+
+    }
+  }
+
+ 
   // 1c. Total Filtration (from same combined test)
   if (testData.accuracyOfOperatingPotentialAndTime?.totalFiltration && (testData.accuracyOfOperatingPotentialAndTime.totalFiltration.measured1 != null || testData.accuracyOfOperatingPotentialAndTime.totalFiltration.measured != null)) {
     const tf = testData.accuracyOfOperatingPotentialAndTime.totalFiltration;

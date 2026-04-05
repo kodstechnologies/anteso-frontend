@@ -46,6 +46,42 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     return Object.keys(obj).length === 0;
   };
 
+
+    // 3. Accuracy of Irradiation Time (if available)
+  if (testData.accuracyOfIrradiationTime && !isEmpty(testData.accuracyOfIrradiationTime)) {
+    const test = testData.accuracyOfIrradiationTime;
+    if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
+      const validRows = test.rows.filter((row: any) => row.setTime || row.avgTime);
+      if (validRows.length > 0) {
+        const toleranceSign = test.timeToleranceSign || "±";
+        const toleranceValue = test.timeToleranceValue || "10";
+        const testRows = validRows.map((row: any) => {
+          const setTime = parseFloat(row.setTime) || 0;
+          const avgTime = parseFloat(row.avgTime) || 0;
+          let isPass = false;
+
+          if (row.remark === "PASS" || row.remark === "Pass") {
+            isPass = true;
+          } else if (row.remark === "FAIL" || row.remark === "Fail") {
+            isPass = false;
+          } else if (setTime > 0 && avgTime > 0) {
+            const error = Math.abs((avgTime - setTime) / setTime * 100);
+            const tol = parseFloat(toleranceValue);
+            isPass = error <= tol;
+          }
+
+          return {
+            specified: row.setTime || "-",
+            measured: row.avgTime || "-",
+            tolerance: `${toleranceValue}%`,
+            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          };
+        });
+        addRowsForTest("Accuracy of Irradiation Time", testRows);
+      }
+    }
+  }
+
   // 1. Accuracy of Operating Potential (kVp Accuracy)
   if (testData.accuracyOfOperatingPotential && !isEmpty(testData.accuracyOfOperatingPotential)) {
     const test = testData.accuracyOfOperatingPotential;
@@ -114,40 +150,38 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 3. Accuracy of Irradiation Time (if available)
-  if (testData.accuracyOfIrradiationTime && !isEmpty(testData.accuracyOfIrradiationTime)) {
-    const test = testData.accuracyOfIrradiationTime;
+  // 5. Linearity of mA Loading
+  if (testData.linearityOfMaLoading && !isEmpty(testData.linearityOfMaLoading)) {
+    const test = testData.linearityOfMaLoading;
     if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
-      const validRows = test.rows.filter((row: any) => row.setTime || row.avgTime);
+      const validRows = test.rows.filter((row: any) => row.ma || row.coefficient);
       if (validRows.length > 0) {
-        const toleranceSign = test.timeToleranceSign || "±";
-        const toleranceValue = test.timeToleranceValue || "10";
+        const tolerance = test.tolerance || "0.1";
         const testRows = validRows.map((row: any) => {
-          const setTime = parseFloat(row.setTime) || 0;
-          const avgTime = parseFloat(row.avgTime) || 0;
+          const coefficient = row.coefficient ? parseFloat(row.coefficient) : null;
           let isPass = false;
 
-          if (row.remark === "PASS" || row.remark === "Pass") {
+          if (row.remark === "Pass" || row.remark === "PASS") {
             isPass = true;
-          } else if (row.remark === "FAIL" || row.remark === "Fail") {
+          } else if (row.remark === "Fail" || row.remark === "FAIL") {
             isPass = false;
-          } else if (setTime > 0 && avgTime > 0) {
-            const error = Math.abs((avgTime - setTime) / setTime * 100);
-            const tol = parseFloat(toleranceValue);
-            isPass = error <= tol;
+          } else if (coefficient !== null && !isNaN(coefficient)) {
+            const tol = parseFloat(tolerance);
+            isPass = coefficient <= tol;
           }
 
           return {
-            specified: row.setTime || "-",
-            measured: row.avgTime || "-",
-            tolerance: `${toleranceSign}${toleranceValue}%`,
+            specified: row.ma ? `${row.ma} mA` : "-",
+            measured: coefficient !== null ? coefficient.toFixed(3) : "-",
+            tolerance: `≤ ${tolerance}`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
-        addRowsForTest("Accuracy of Irradiation Time", testRows);
+        addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
       }
     }
   }
+
 
   // 4. Reproducibility of Radiation Output (COV)
   if (testData.reproducibilityOfRadiationOutput && !isEmpty(testData.reproducibilityOfRadiationOutput)) {
@@ -193,37 +227,6 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 5. Linearity of mA Loading
-  if (testData.linearityOfMaLoading && !isEmpty(testData.linearityOfMaLoading)) {
-    const test = testData.linearityOfMaLoading;
-    if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
-      const validRows = test.rows.filter((row: any) => row.ma || row.coefficient);
-      if (validRows.length > 0) {
-        const tolerance = test.tolerance || "0.1";
-        const testRows = validRows.map((row: any) => {
-          const coefficient = row.coefficient ? parseFloat(row.coefficient) : null;
-          let isPass = false;
-
-          if (row.remark === "Pass" || row.remark === "PASS") {
-            isPass = true;
-          } else if (row.remark === "Fail" || row.remark === "FAIL") {
-            isPass = false;
-          } else if (coefficient !== null && !isNaN(coefficient)) {
-            const tol = parseFloat(tolerance);
-            isPass = coefficient <= tol;
-          }
-
-          return {
-            specified: row.ma ? `${row.ma} mA` : "-",
-            measured: coefficient !== null ? coefficient.toFixed(3) : "-",
-            tolerance: `≤ ${tolerance}`,
-            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          };
-        });
-        addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
-      }
-    }
-  }
 
   // 6. Radiation Leakage Level
   if (testData.tubeHousingLeakage && !isEmpty(testData.tubeHousingLeakage)) {
@@ -261,36 +264,36 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
   }
 
   // 6. Radiation Protection Survey
-  // if (testData.radiationProtectionSurvey && !isEmpty(testData.radiationProtectionSurvey)) {
-  //   const test = testData.radiationProtectionSurvey;
-  //   if (test.locations && Array.isArray(test.locations) && test.locations.length > 0) {
-  //     const validRows = test.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
-  //     if (validRows.length > 0) {
-  //       const testRows = validRows.map((loc: any) => {
-  //         const mRPerWeek = loc.mRPerWeek || "-";
-  //         const limit = loc.category === "worker" ? 40 : 2;
-  //         let isPass = false;
+  if (testData.radiationProtectionSurvey && !isEmpty(testData.radiationProtectionSurvey)) {
+    const test = testData.radiationProtectionSurvey;
+    if (test.locations && Array.isArray(test.locations) && test.locations.length > 0) {
+      const validRows = test.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
+      if (validRows.length > 0) {
+        const testRows = validRows.map((loc: any) => {
+          const mRPerWeek = loc.mRPerWeek || "-";
+          const limit = loc.category === "worker" ? 40 : 2;
+          let isPass = false;
 
-  //         if (loc.result === "PASS" || loc.result === "Pass") {
-  //           isPass = true;
-  //         } else if (loc.result === "FAIL" || loc.result === "Fail") {
-  //           isPass = false;
-  //         } else if (mRPerWeek !== "-") {
-  //           const val = parseFloat(mRPerWeek);
-  //           isPass = val <= limit;
-  //         }
+          if (loc.result === "PASS" || loc.result === "Pass") {
+            isPass = true;
+          } else if (loc.result === "FAIL" || loc.result === "Fail") {
+            isPass = false;
+          } else if (mRPerWeek !== "-") {
+            const val = parseFloat(mRPerWeek);
+            isPass = val <= limit;
+          }
 
-  //         return {
-  //           specified: loc.location || "-",
-  //           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-  //           tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
-  //           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-  //         };
-  //       });
-  //       addRowsForTest("Radiation Protection Survey", testRows);
-  //     }
-  //   }
-  // }
+          return {
+            specified: loc.location || "-",
+            measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
+            tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          };
+        });
+        addRowsForTest("Radiation Protection Survey", testRows);
+      }
+    }
+  }
 
   if (rows.length === 0) {
     return <div className="text-center text-gray-500 py-10">No test results available.</div>;

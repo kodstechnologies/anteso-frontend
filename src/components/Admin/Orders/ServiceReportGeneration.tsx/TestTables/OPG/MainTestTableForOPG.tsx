@@ -117,6 +117,44 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
+    // 6. Total Filtration (if available)
+  if (testData.operatingPotential?.totalFiltration) {
+    const tf = testData.operatingPotential.totalFiltration;
+    const measuredTF = tf.measured || "-";
+    const appliedKV = tf.atKvp || tf.appliedKV || "-";
+    const measured = parseFloat(measuredTF);
+    const required = parseFloat(tf.required) || 2.5;
+    const isPass = !isNaN(measured) && measured >= required;
+    addRowsForTest("Total Filtration", [{
+      specified: appliedKV !== "-" ? `${appliedKV} kV` : "-",
+      measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
+      tolerance: `≥ ${required} mm Al`,
+      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+    }]);
+  }
+
+
+    // 4. Linearity of mA Loading (or mAs Loading)
+  // Backend may return table2 or table2Rows
+  const linearityRows = testData.linearityOfMaLoading?.table2Rows || testData.linearityOfMaLoading?.table2;
+  if (linearityRows && Array.isArray(linearityRows)) {
+    const validRows = linearityRows.filter((row: any) => row.ma || row.mAsRange || row.col || row.mAsApplied);
+    if (validRows.length > 0) {
+      const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
+      const testRows = validRows.map((row: any) => {
+        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
+        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
+        return {
+          specified: row.ma ? `${row.ma} mA` : row.mAsRange || "-",
+          measured: col,
+          tolerance: `≤ ${tolerance}`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
+    }
+  }
+
   // 3. Consistency of Radiation Output (COV)
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kvp || row.kv || row.cov || row.cv);
@@ -144,26 +182,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 4. Linearity of mA Loading (or mAs Loading)
-  // Backend may return table2 or table2Rows
-  const linearityRows = testData.linearityOfMaLoading?.table2Rows || testData.linearityOfMaLoading?.table2;
-  if (linearityRows && Array.isArray(linearityRows)) {
-    const validRows = linearityRows.filter((row: any) => row.ma || row.mAsRange || row.col || row.mAsApplied);
-    if (validRows.length > 0) {
-      const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
-      const testRows = validRows.map((row: any) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
-        return {
-          specified: row.ma ? `${row.ma} mA` : row.mAsRange || "-",
-          measured: col,
-          tolerance: `≤ ${tolerance}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
-    }
-  }
+
 
   // 5. Maximum Radiation Leakage from Tube Housing
   if (testData.radiationLeakage?.leakageRows && Array.isArray(testData.radiationLeakage.leakageRows)) {
@@ -240,21 +259,6 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 6. Total Filtration (if available)
-  if (testData.operatingPotential?.totalFiltration) {
-    const tf = testData.operatingPotential.totalFiltration;
-    const measuredTF = tf.measured || "-";
-    const appliedKV = tf.atKvp || tf.appliedKV || "-";
-    const measured = parseFloat(measuredTF);
-    const required = parseFloat(tf.required) || 2.5;
-    const isPass = !isNaN(measured) && measured >= required;
-    addRowsForTest("Total Filtration", [{
-      specified: appliedKV !== "-" ? `${appliedKV} kV` : "-",
-      measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
-      tolerance: `≥ ${required} mm Al`,
-      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-    }]);
-  }
 
   // 7. Details of Radiation Protection Survey (if available)
   if (testData.radiationSurvey?.locations && Array.isArray(testData.radiationSurvey.locations)) {

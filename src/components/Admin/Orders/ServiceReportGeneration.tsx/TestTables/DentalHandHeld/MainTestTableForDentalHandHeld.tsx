@@ -39,23 +39,6 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     });
   };
 
-  // 1. Accuracy of Operating Potential (kVp)
-  // Payload: { measurements: [{ appliedKvp, averageKvp, remarks }], tolerance: { value } }
-  if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
-    const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
-    if (validRows.length > 0) {
-      const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "2.0";
-      const toleranceType = testData.accuracyOfOperatingPotential.tolerance?.type || "±";
-
-      const kvpRows = validRows.map((row: any) => ({
-        specified: row.appliedKvp || "-",
-        measured: row.averageKvp || "-",
-        tolerance: `${toleranceType}${toleranceValue} kVp`,
-        remarks: (row.remarks === "PASS" ? "Pass" : row.remarks === "FAIL" ? "Fail" : "-") as any,
-      }));
-      addRowsForTest("Accuracy of Operating Potential (kVp)", kvpRows);
-    }
-  }
 
   // 2. Accuracy of Irradiation Time
   // Payload: { irradiationTimes: [{ setTime, measuredTime }], tolerance: { operator, value } }
@@ -95,6 +78,69 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       // Use rowspan for remarks — all rows share the same overall remark
       const rowsWithSharedRemark = timeRows.map((r: any) => ({ ...r, remarks: overallRemark as any }));
       addRowsForTest("Accuracy of Irradiation Time", rowsWithSharedRemark, true);
+    }
+  }
+
+
+
+  // 1. Accuracy of Operating Potential (kVp)
+  // Payload: { measurements: [{ appliedKvp, averageKvp, remarks }], tolerance: { value } }
+  if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
+    const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
+    if (validRows.length > 0) {
+      const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "2.0";
+      const toleranceType = testData.accuracyOfOperatingPotential.tolerance?.type || "±";
+
+      const kvpRows = validRows.map((row: any) => ({
+        specified: row.appliedKvp || "-",
+        measured: row.averageKvp || "-",
+        tolerance: `${toleranceType}${toleranceValue} kVp`,
+        remarks: (row.remarks === "PASS" ? "Pass" : row.remarks === "FAIL" ? "Fail" : "-") as any,
+      }));
+      addRowsForTest("Accuracy of Operating Potential (kVp)", kvpRows);
+    }
+  }
+
+  // 9. Total Filteration
+  if (testData.totalFilteration) {
+    // Data is nested: totalFiltration sub-object holds atKvp/measured1/measured2
+    // filtrationTolerance sub-object holds the threshold values
+    const tfObj = testData.totalFilteration.totalFiltration ?? testData.totalFilteration;
+    const ftObj = testData.totalFilteration.filtrationTolerance ?? {};
+
+    const atKvp = tfObj.atKvp ?? tfObj.kvp ?? tfObj.kV ?? tfObj.appliedKvp ?? "";
+    // measured1 = measured HVL, measured2 = required/tolerance value (legacy storage)
+    const measured1 = tfObj.measured1 ?? tfObj.measured ?? tfObj.measuredValue ?? tfObj.measuredHvl ?? "";
+    const measured2 = tfObj.measured2 ?? tfObj.required ?? tfObj.requiredValue ?? tfObj.minimumHvl ?? "";
+
+    // Derive required tolerance from filtrationTolerance thresholds based on kVp
+    const kvpNum = parseFloat(atKvp);
+    const k1 = parseFloat(ftObj.kvThreshold1 ?? ftObj.kvp1 ?? "70");
+    const k2 = parseFloat(ftObj.kvThreshold2 ?? ftObj.kvp2 ?? "100");
+    let reqNum = NaN;
+    if (!isNaN(kvpNum) && !isNaN(k1) && kvpNum < k1) {
+      reqNum = parseFloat(ftObj.forKvGreaterThan70 ?? ftObj.value1 ?? "");
+    } else if (!isNaN(kvpNum) && !isNaN(k1) && !isNaN(k2) && kvpNum >= k1 && kvpNum <= k2) {
+      reqNum = parseFloat(ftObj.forKvBetween70And100 ?? ftObj.value2 ?? "");
+    } else if (!isNaN(kvpNum)) {
+      reqNum = parseFloat(ftObj.forKvGreaterThan100 ?? ftObj.value3 ?? "");
+    }
+    // Fallback: measured2 often stores the required value in legacy payloads
+    if (isNaN(reqNum) && measured2 !== "") reqNum = parseFloat(measured2);
+
+    const measuredNum = parseFloat(measured1);
+    let remark: "Pass" | "Fail" | "-" = "-";
+    if (!isNaN(measuredNum) && !isNaN(reqNum)) {
+      remark = measuredNum >= reqNum ? "Pass" : "Fail";
+    }
+
+    if (atKvp !== "" || measured1 !== "") {
+      addRowsForTest("Total Filteration", [{
+        specified: atKvp !== "" ? `${atKvp} kVp` : "-",
+        measured: measured1 !== "" ? `${measured1} mmAl` : "-",
+        tolerance: !isNaN(reqNum) ? `≥ ${reqNum} mmAl` : "-",
+        remarks: remark,
+      }]);
     }
   }
 
@@ -240,48 +286,6 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     }
   }
 
-  // 9. Total Filteration
-  if (testData.totalFilteration) {
-    // Data is nested: totalFiltration sub-object holds atKvp/measured1/measured2
-    // filtrationTolerance sub-object holds the threshold values
-    const tfObj = testData.totalFilteration.totalFiltration ?? testData.totalFilteration;
-    const ftObj = testData.totalFilteration.filtrationTolerance ?? {};
-
-    const atKvp = tfObj.atKvp ?? tfObj.kvp ?? tfObj.kV ?? tfObj.appliedKvp ?? "";
-    // measured1 = measured HVL, measured2 = required/tolerance value (legacy storage)
-    const measured1 = tfObj.measured1 ?? tfObj.measured ?? tfObj.measuredValue ?? tfObj.measuredHvl ?? "";
-    const measured2 = tfObj.measured2 ?? tfObj.required ?? tfObj.requiredValue ?? tfObj.minimumHvl ?? "";
-
-    // Derive required tolerance from filtrationTolerance thresholds based on kVp
-    const kvpNum = parseFloat(atKvp);
-    const k1 = parseFloat(ftObj.kvThreshold1 ?? ftObj.kvp1 ?? "70");
-    const k2 = parseFloat(ftObj.kvThreshold2 ?? ftObj.kvp2 ?? "100");
-    let reqNum = NaN;
-    if (!isNaN(kvpNum) && !isNaN(k1) && kvpNum < k1) {
-      reqNum = parseFloat(ftObj.forKvGreaterThan70 ?? ftObj.value1 ?? "");
-    } else if (!isNaN(kvpNum) && !isNaN(k1) && !isNaN(k2) && kvpNum >= k1 && kvpNum <= k2) {
-      reqNum = parseFloat(ftObj.forKvBetween70And100 ?? ftObj.value2 ?? "");
-    } else if (!isNaN(kvpNum)) {
-      reqNum = parseFloat(ftObj.forKvGreaterThan100 ?? ftObj.value3 ?? "");
-    }
-    // Fallback: measured2 often stores the required value in legacy payloads
-    if (isNaN(reqNum) && measured2 !== "") reqNum = parseFloat(measured2);
-
-    const measuredNum = parseFloat(measured1);
-    let remark: "Pass" | "Fail" | "-" = "-";
-    if (!isNaN(measuredNum) && !isNaN(reqNum)) {
-      remark = measuredNum >= reqNum ? "Pass" : "Fail";
-    }
-
-    if (atKvp !== "" || measured1 !== "") {
-      addRowsForTest("Total Filteration", [{
-        specified: atKvp !== "" ? `${atKvp} kVp` : "-",
-        measured: measured1 !== "" ? `${measured1} mmAl` : "-",
-        tolerance: !isNaN(reqNum) ? `≥ ${reqNum} mmAl` : "-",
-        remarks: remark,
-      }]);
-    }
-  }
 
   if (rows.length === 0) {
     return <div className="text-center text-gray-500 py-10">No test results available for summary.</div>;

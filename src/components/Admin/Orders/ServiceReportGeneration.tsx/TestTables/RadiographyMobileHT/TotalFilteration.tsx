@@ -165,7 +165,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     setTotalFiltration({
                         measured: data.totalFiltration?.measured || "",
                         required: data.totalFiltration?.required || "",
-                        atKvp: data.totalFiltration?.atKvp || "",
+                        atKvp: data.totalFiltration?.appliedKV || "",
                     });
                     if (data.filtrationTolerance) {
                         setFiltrationTolerance({
@@ -210,7 +210,11 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 remarks: r.remarks,
             })),
             tolerance: { sign: toleranceSign, value: toleranceValue },
-            totalFiltration,
+            totalFiltration: {
+                measured: totalFiltration.measured,
+                required: totalFiltration.required,
+                appliedKV: totalFiltration.atKvp,
+            },
             filtrationTolerance,
         };
 
