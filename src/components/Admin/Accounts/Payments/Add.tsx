@@ -70,6 +70,43 @@ const Add = () => {
     return parseFloat(total.toFixed(2));
   };
 
+  /** Dealer/Manufacturer orders often have empty Service line prices; match machine row to lead qaTests / manufacturer services. */
+  const resolveBreakdownLineAmount = (
+    row: { serviceName?: string; amount?: number },
+    customPricing: { qaTests?: any[]; services?: any[] } | undefined,
+    pricingType: string | null
+  ) => {
+    const n = Number(row.amount);
+    if (!Number.isNaN(n) && n > 0) return n;
+    const key = (row.serviceName || '').trim().toLowerCase();
+    if (!key) return Number.isNaN(n) ? 0 : n;
+
+    const qaTests = customPricing?.qaTests || [];
+    const exact = qaTests.find((t: any) => (t.testName || '').trim().toLowerCase() === key);
+    
+    if (exact != null && exact.price != null && !Number.isNaN(Number(exact.price))) {
+      return Number(exact.price);
+    }
+    const partial = qaTests.find((t: any) => {
+      const tn = (t.testName || '').trim().toLowerCase();
+      return tn && (key.includes(tn) || tn.includes(key));
+    });
+    if (partial != null && partial.price != null && !Number.isNaN(Number(partial.price))) {
+      return Number(partial.price);
+    }
+
+    if (pricingType === 'Manufacturer' && Array.isArray(customPricing?.services)) {
+      const svc = customPricing!.services!.find(
+        (s: any) => (s.serviceName || '').trim().toLowerCase() === key
+      );
+      if (svc != null && svc.amount != null && !Number.isNaN(Number(svc.amount))) {
+        return Number(svc.amount);
+      }
+    }
+
+    return Number.isNaN(n) ? 0 : n;
+  };
+
   return (
     <>
       <ol className="flex text-gray-500 font-semibold dark:text-white-dark mb-4">
@@ -304,20 +341,32 @@ const Add = () => {
                     if (!selectedOpt) return null;
 
                     if (selectedOpt.hasPricingBreakdown && selectedOpt.pricingBreakdown?.services?.length > 0) {
+                      const breakdownTitle =
+                        selectedOpt.breakdownSource === 'Order Items'
+                          ? 'Order items breakdown'
+                          : `${selectedOpt.breakdownSource} breakdown`;
                       return (
                         <div className="mt-8 p-6 border-2 border-green-200 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50">
                           <h3 className="text-xl font-bold text-green-900 mb-4">
-                            {selectedOpt.breakdownSource} Items Breakdown
+                            {breakdownTitle}
                           </h3>
                           <div className="grid md:grid-cols-2 gap-8">
                             <div>
                               <h4 className="font-semibold text-gray-800 mb-3">Items</h4>
-                              {selectedOpt.pricingBreakdown.services.map((service: any, i: number) => (
+                              {selectedOpt.pricingBreakdown.services.map((service: any, i: number) => {
+                                const lineAmt = selectedOpt.isPrivilegedOrder
+                                  ? resolveBreakdownLineAmount(
+                                      service,
+                                      selectedOpt.customPricing,
+                                      selectedOpt.pricingType
+                                    )
+                                  : Number(service.amount) || 0;
+                                return (
                                 <div key={i} className="flex justify-between bg-white p-3 rounded-lg shadow mb-2">
                                   <span>{service.serviceName}</span>
-                                  <span className="font-bold text-green-600">₹{service.amount}</span>
+                                  <span className="font-bold text-green-600">₹{lineAmt}</span>
                                 </div>
-                              ))}
+                              );})}
                             </div>
                           </div>
                           {/* <div className="mt-6 text-right border-t-2 border-green-300 pt-4">
