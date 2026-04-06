@@ -190,8 +190,13 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
   }
 
   // 6. Tube Housing Leakage (Enhanced Logic)
-  if (testData.tubeHousingLeakage?.leakageRows && Array.isArray(testData.tubeHousingLeakage.leakageRows)) {
-    const validRows = testData.tubeHousingLeakage.leakageRows.filter((row: any) => row.location || row.max);
+  const tubeLeakRows =
+    testData.tubeHousingLeakage?.leakageRows ||
+    testData.tubeHousingLeakage?.leakageMeasurements ||
+    testData.tubeHousingLeakage?.readings ||
+    testData.tubeHousingLeakage?.measurements;
+  if (tubeLeakRows && Array.isArray(tubeLeakRows)) {
+    const validRows = tubeLeakRows.filter((row: any) => row.location || row.max || row.left || row.right || row.front || row.back || row.top);
     if (validRows.length > 0) {
       const toleranceValue = testData.tubeHousingLeakage.toleranceValue || "1.0";
       const toleranceOperator = testData.tubeHousingLeakage.toleranceOperator || "less than or equal to";
@@ -223,8 +228,16 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
   // 7. Linearity of mA/mAs Loading
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
     const lin = testData.linearityOfMasLoading;
-    const selection = lin.selection || "mAs";
-    const validRows = lin.table2.filter((row: any) => row.mAsApplied != null);
+    const isMaLinear = lin.selection === "mA" || lin.selection === "ma";
+    const selectionLabel = isMaLinear ? "mA" : "mAs";
+    const testTitle = isMaLinear
+      ? "Linearity of mA Loading (Coefficient of Linearity)"
+      : "Linearity of mAs Loading (Coefficient of Linearity)";
+    const appliedVal = (row: any) => row.mAsApplied ?? row.ma ?? row.mAsRange;
+    const validRows = lin.table2.filter((row: any) => {
+      const v = appliedVal(row);
+      return v != null && String(v).trim() !== "";
+    });
     if (validRows.length > 0) {
       const tolerance = lin.tolerance || "0.1";
       const toleranceOperator = lin.toleranceOperator || "<=";
@@ -236,15 +249,16 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
         const colNum = colVal != null && colVal !== "" && !isNaN(parseFloat(String(colVal))) ? parseFloat(String(colVal)) : NaN;
         const col = !isNaN(colNum) ? colNum.toFixed(3) : "-";
         const isPass = row.remarks === "Pass" || row.remarks === "PASS" || docRemarks === "Pass" || docRemarks === "PASS" || (!isNaN(colNum) && colNum <= parseFloat(tolerance));
-        
+        const app = appliedVal(row);
+
         return {
-          specified: row.mAsApplied != null && row.mAsApplied !== "" ? `${row.mAsApplied} ${selection}` : "-",
+          specified: app != null && app !== "" ? `${app} ${selectionLabel}` : "-",
           measured: col,
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest(`Linearity of ${selection} Loading (Coefficient of Linearity)`, testRows);
+      addRowsForTest(testTitle, testRows);
     }
   }
 

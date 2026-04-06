@@ -39,44 +39,90 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     });
   };
 
+  /** Dental HandHeld API: times often live on `rows[]` with measured value in `maStations[0].time`. */
+  const irrRowSetTime = (row: any) =>
+    row?.setTime ?? row?.set_time ?? "";
+  const irrRowMeasuredTime = (row: any) =>
+    row?.measuredTime ??
+    row?.measured_time ??
+    row?.maStations?.[0]?.time ??
+    row?.mAStations?.[0]?.time ??
+    "";
+
+  const normalizeToleranceOperator = (op: string | undefined): "<=" | "<" | ">=" | ">" => {
+    const o = String(op ?? "<=").trim();
+    if (o === "≤" || o === "<=") return "<=";
+    if (o === "≥" || o === ">=") return ">=";
+    if (o === "<") return "<";
+    if (o === ">") return ">";
+    return "<=";
+  };
 
   // 2. Accuracy of Irradiation Time
-  // Payload: { irradiationTimes: [{ setTime, measuredTime }], tolerance: { operator, value } }
-  if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
-    const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
+  // Payload: { irradiationTimes | rows: [...], tolerance | timeToleranceSign/Value }
+  const irrBlocks = testData.accuracyOfIrradiationTime;
+  const irrList =
+    irrBlocks?.irradiationTimes ??
+    irrBlocks?.table2 ??
+    irrBlocks?.rows ??
+    [];
+  if (Array.isArray(irrList) && irrList.length > 0) {
+    const validRows = irrList.filter(
+      (row: any) => String(irrRowSetTime(row)).trim() !== "" || String(irrRowMeasuredTime(row)).trim() !== ""
+    );
     if (validRows.length > 0) {
-      const toleranceOp = testData.accuracyOfIrradiationTime.tolerance?.operator || "≤";
-      const toleranceVal = testData.accuracyOfIrradiationTime.tolerance?.value || "10";
+      const toleranceOp = normalizeToleranceOperator(
+        irrBlocks.tolerance?.operator ?? irrBlocks.timeToleranceSign
+      );
+      const toleranceVal =
+        irrBlocks.tolerance?.value ?? irrBlocks.timeToleranceValue ?? "10";
+      const tolDisplay =
+        toleranceOp === "<=" ? "≤" : toleranceOp === ">=" ? "≥" : toleranceOp;
 
-      // Determine overall pass/fail across all rows
       let overallRemark: "Pass" | "Fail" | "-" = "-";
       const timeRows = validRows.map((row: any) => {
-        const s = parseFloat(row.setTime);
-        const m = parseFloat(row.measuredTime);
-        const err = (!isNaN(s) && !isNaN(m) && s !== 0) ? Math.abs((m - s) / s * 100).toFixed(2) : null;
+        const setT = irrRowSetTime(row);
+        const measT = irrRowMeasuredTime(row);
+        const s = parseFloat(String(setT));
+        const m = parseFloat(String(measT));
+        const err =
+          !isNaN(s) && !isNaN(m) && s !== 0
+            ? Math.abs(((m - s) / s) * 100).toFixed(2)
+            : null;
 
+        const stored = String(row.remark ?? row.remarks ?? "").trim().toUpperCase();
         let rem: "Pass" | "Fail" | "-" = "-";
-        if (err !== null) {
+        if (stored === "PASS") rem = "Pass";
+        else if (stored === "FAIL") rem = "Fail";
+        else if (err !== null) {
           const e = parseFloat(err);
-          const v = parseFloat(toleranceVal);
-          if (toleranceOp === "≤") rem = e <= v ? "Pass" : "Fail";
-          else if (toleranceOp === "<") rem = e < v ? "Pass" : "Fail";
-          else if (toleranceOp === ">") rem = e > v ? "Pass" : "Fail";
-          else if (toleranceOp === ">=") rem = e >= v ? "Pass" : "Fail";
+          const v = parseFloat(String(toleranceVal));
+          if (!isNaN(v)) {
+            if (toleranceOp === "<=") rem = e <= v ? "Pass" : "Fail";
+            else if (toleranceOp === "<") rem = e < v ? "Pass" : "Fail";
+            else if (toleranceOp === ">") rem = e > v ? "Pass" : "Fail";
+            else if (toleranceOp === ">=") rem = e >= v ? "Pass" : "Fail";
+          }
         }
+
         if (rem === "Fail") overallRemark = "Fail";
         else if (rem === "Pass" && overallRemark !== "Fail") overallRemark = "Pass";
 
+        const measuredDisplay =
+          err !== null ? `${measT} (${err}% err)` : measT !== "" ? String(measT) : "-";
+
         return {
-          specified: row.setTime || "-",
-          measured: row.measuredTime || "-",
-          tolerance: `${toleranceOp} ${toleranceVal}% Error`,
-          remarks: overallRemark as any, // will be overwritten below
+          specified: setT !== "" ? String(setT) : "-",
+          measured: measuredDisplay,
+          tolerance: `${tolDisplay} ${toleranceVal}% Error`,
+          remarks: rem,
         };
       });
 
-      // Use rowspan for remarks — all rows share the same overall remark
-      const rowsWithSharedRemark = timeRows.map((r: any) => ({ ...r, remarks: overallRemark as any }));
+      const rowsWithSharedRemark = timeRows.map((r: any) => ({
+        ...r,
+        remarks: overallRemark !== "-" ? overallRemark : r.remarks,
+      }));
       addRowsForTest("Accuracy of Irradiation Time", rowsWithSharedRemark, true);
     }
   }
@@ -205,34 +251,78 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     }
   }
 
-  // 6. Consistency of Radiation Output
+  // 6. Consistency of Radiation Output (CV / CoV)
+  const parseOutputCell = (o: any): number => {
+    if (o == null) return NaN;
+    if (typeof o === "number") return o;
+    if (typeof o === "string") return parseFloat(o);
+    if (typeof o === "object" && "value" in o) return parseFloat(String((o as { value?: unknown }).value ?? ""));
+    return NaN;
+  };
+
+  const computeCovFromOutputs = (row: any): string => {
+    const outs = row.outputs ?? [];
+    if (!Array.isArray(outs) || outs.length === 0) return "";
+    const nums = outs.map(parseOutputCell).filter((n: number) => !isNaN(n) && n > 0);
+    if (nums.length === 0) return "";
+    const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+    if (nums.length === 1 || mean <= 0) return "0.0000";
+    const variance =
+      nums.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (nums.length - 1);
+    const cov = Math.sqrt(variance) / mean;
+    return isFinite(cov) ? cov.toFixed(4) : "";
+  };
+
   if (testData.consistencyOfRadiationOutput?.outputRows && Array.isArray(testData.consistencyOfRadiationOutput.outputRows)) {
-    const validRows = testData.consistencyOfRadiationOutput.outputRows.filter((row: any) => row.kvp || row.kv || row.mean || row.avg);
+    const outBlock = testData.consistencyOfRadiationOutput;
+    const validRows = outBlock.outputRows.filter((row: any) => {
+      const kvp = row.kvp ?? row.kv ?? "";
+      const mas = row.mas ?? "";
+      const mean = row.mean ?? row.avg ?? "";
+      const cov = row.cov ?? row.cv ?? "";
+      const outs = row.outputs ?? [];
+      const hasOuts =
+        Array.isArray(outs) &&
+        outs.some((o: any) => {
+          const v = parseOutputCell(o);
+          return !isNaN(v);
+        });
+      return !!(kvp || mas || mean || cov || hasOuts);
+    });
     if (validRows.length > 0) {
-      const tolerance = testData.consistencyOfRadiationOutput.tolerance || "0.05";
-      const tolVal = typeof tolerance === "object" ? (tolerance as any).value ?? "0.05" : tolerance;
+      const tolerance = outBlock.tolerance ?? "0.05";
+      const tolObj = typeof tolerance === "object" && tolerance !== null ? tolerance : null;
+      const tolVal = String(tolObj?.value ?? (typeof tolerance === "string" || typeof tolerance === "number" ? tolerance : "0.05"));
+      const tolOp = normalizeToleranceOperator(tolObj?.operator ?? "<=");
+      const tolNum = parseFloat(tolVal);
+      const tolSym = tolOp === "<=" ? "≤" : tolOp === ">=" ? "≥" : tolOp;
+
       const testRows = validRows.map((row: any) => {
-        // cov may be stored as object { value: "..." } — unwrap it
         const covRaw = row.cov ?? row.cv ?? "";
-        const covStr = typeof covRaw === "object" && covRaw !== null && "value" in covRaw
-          ? String((covRaw as any).value ?? "")
-          : String(covRaw ?? "");
+        let covStr =
+          typeof covRaw === "object" && covRaw !== null && "value" in covRaw
+            ? String((covRaw as { value?: unknown }).value ?? "")
+            : String(covRaw ?? "");
+        if (covStr.trim() === "") covStr = computeCovFromOutputs(row);
         const covNum = parseFloat(covStr);
-        const tolNum = parseFloat(tolVal);
         let rem: "Pass" | "Fail" | "-" = "-";
-        if (!isNaN(covNum) && !isNaN(tolNum)) rem = covNum <= tolNum ? "Pass" : "Fail";
-        // Also check stored remarks as fallback
+        if (!isNaN(covNum) && !isNaN(tolNum)) {
+          if (tolOp === "<=" || tolOp === "<") rem = covNum <= tolNum ? "Pass" : "Fail";
+          else if (tolOp === ">=" || tolOp === ">") rem = covNum >= tolNum ? "Pass" : "Fail";
+        }
         if (rem === "-") {
-          const storedRemark = row.remarks ?? row.remark ?? "";
+          const storedRemark = String(row.remarks ?? row.remark ?? "").trim();
           if (storedRemark.toUpperCase() === "PASS") rem = "Pass";
           else if (storedRemark.toUpperCase() === "FAIL") rem = "Fail";
         }
         const kvp = row.kvp ?? row.kv ?? "";
         const mas = row.mas ?? "";
+        const meanStr = row.mean ?? row.avg ?? "";
+        const measuredParts = [covStr !== "" ? `CoV ${covStr}` : "", meanStr !== "" ? `Mean ${meanStr}` : ""].filter(Boolean);
         return {
-          specified: kvp && mas ? `${kvp} kV, ${mas} mAs` : kvp ? `${kvp} kV` : "-",
-          measured: covStr !== "" ? covStr : "-",
-          tolerance: `≤ ${tolVal}`,
+          specified: kvp && mas ? `${kvp} kV, ${mas} mAs` : kvp ? `${kvp} kV` : mas ? `${mas} mAs` : "-",
+          measured: measuredParts.length > 0 ? measuredParts.join("; ") : "-",
+          tolerance: `${tolSym} ${tolVal}`,
           remarks: rem,
         };
       });

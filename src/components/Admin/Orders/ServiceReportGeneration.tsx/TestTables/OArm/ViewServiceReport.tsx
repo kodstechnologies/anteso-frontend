@@ -117,59 +117,112 @@ const ViewServiceReportOArm: React.FC = () => {
             notes: data.notes || defaultNotes,
           });
 
-          // Transform Tube Housing Leakage Data
+          // Transform Tube Housing Leakage — support top-level + settings[] + alternate array/field names from API
           const tubeHousingData = data.TubeHousingLeakageOArm;
           let transformedRadiationLeakage = null;
 
-          if (tubeHousingData) {
-            const leakageRows = tubeHousingData.leakageMeasurements || tubeHousingData.leakageRows || [];
-            const toleranceValue = parseFloat(tubeHousingData.toleranceValue || "1.0");
-            const toleranceOperator = tubeHousingData.toleranceOperator || "less than or equal to";
+          const leakageCell = (row: any, ...keys: string[]) => {
+            for (const k of keys) {
+              const v = row[k];
+              if (v != null && v !== "") {
+                if (typeof v === "object" && v !== null && "value" in v) return String((v as { value?: unknown }).value ?? "");
+                return String(v);
+              }
+            }
+            return "";
+          };
+
+          if (tubeHousingData && typeof tubeHousingData === "object") {
+            const rawRows =
+              tubeHousingData.leakageMeasurements ||
+              tubeHousingData.leakageRows ||
+              tubeHousingData.readings ||
+              tubeHousingData.measurements ||
+              [];
+            const leakageRows = Array.isArray(rawRows) ? rawRows : [];
+
+            const sh = tubeHousingData.settings;
+            const firstSettings = Array.isArray(sh) ? sh[0] : sh;
+            const tolRaw = tubeHousingData.toleranceValue ?? tubeHousingData.tolerance?.value ?? "1.0";
+            const toleranceValue = parseFloat(String(tolRaw)) || 1.0;
+            const toleranceOperator =
+              tubeHousingData.toleranceOperator ||
+              tubeHousingData.tolerance?.operator ||
+              "less than or equal to";
 
             const processedRows = leakageRows.map((row: any) => {
-              const values = [row.left, row.right, row.front, row.back, row.top]
-                .map((v: any) => parseFloat(v) || 0)
-                .filter((v: number) => v > 0);
+              const left = leakageCell(row, "left", "Left");
+              const right = leakageCell(row, "right", "Right");
+              const front = leakageCell(row, "front", "Front");
+              const back = leakageCell(row, "back", "Back");
+              const top = leakageCell(row, "top", "Top");
+              const values = [left, right, front, back, top]
+                .map((v) => parseFloat(v) || 0)
+                .filter((v) => v > 0);
 
               const maxReading = values.length > 0 ? Math.max(...values) : 0;
-              const maxStr = maxReading > 0 ? maxReading.toFixed(2) : ""; // Raw max
+              const maxStr = maxReading > 0 ? maxReading.toFixed(2) : "";
 
-              // If backend doesn't provide remark, calculate it
-              let remark = row.remark;
+              let remark = row.remark ?? row.Remarks ?? row.remarks ?? "";
               if (!remark && maxReading > 0) {
-                // Note: true Pass/Fail deps on workload calculation (mGy/h), but if we only have raw values here we might skip
-                // However, usually we expect backend/component to save 'max' (mGy/h value hopefully calculated).
-                // For now, if 'max' is the mGy value:
-                const maxVal = parseFloat(row.max || maxStr); // Assuming row.max is the final calculated mGy/h if present
-                if (toleranceOperator === 'less than or equal to') {
-                  remark = maxVal <= toleranceValue ? 'Pass' : 'Fail';
-                } else if (toleranceOperator === 'greater than or equal to') {
-                  remark = maxVal >= toleranceValue ? 'Pass' : 'Fail';
+                const maxVal = parseFloat(String(row.max || maxStr));
+                if (!Number.isNaN(maxVal)) {
+                  if (toleranceOperator === "less than or equal to") {
+                    remark = maxVal <= toleranceValue ? "Pass" : "Fail";
+                  } else if (toleranceOperator === "greater than or equal to") {
+                    remark = maxVal >= toleranceValue ? "Pass" : "Fail";
+                  }
                 }
               }
 
               return {
                 ...row,
-                max: row.max || maxStr, // Use saved max or calculated raw max
-                remark: remark || (maxReading === 0 ? "" : "Pass"), // Fallback if no tolerance check possible
+                location: row.location || row.Location || "",
+                left,
+                right,
+                front,
+                back,
+                top,
+                max: row.max != null && row.max !== "" ? String(row.max) : maxStr,
+                remark: remark || (maxReading === 0 ? "" : "Pass"),
               };
             });
 
             transformedRadiationLeakage = {
               ...tubeHousingData,
               leakageRows: processedRows,
-              maxRadiationLeakage: tubeHousingData.maxRadiationLeakage || tubeHousingData.maxLeakageResult || "",
+              maxRadiationLeakage:
+                tubeHousingData.maxRadiationLeakage ||
+                tubeHousingData.maxLeakageResult ||
+                tubeHousingData.finalRemark ||
+                "",
+              fcd:
+                tubeHousingData.fcd ??
+                firstSettings?.fcd ??
+                firstSettings?.FCD ??
+                "",
+              kv:
+                tubeHousingData.kv ??
+                firstSettings?.kv ??
+                firstSettings?.kV ??
+                firstSettings?.KV ??
+                "",
+              ma:
+                tubeHousingData.ma ??
+                firstSettings?.ma ??
+                firstSettings?.mA ??
+                "",
+              time:
+                tubeHousingData.time ??
+                firstSettings?.time ??
+                firstSettings?.Time ??
+                "",
+              workload: tubeHousingData.workload ?? tubeHousingData.workloadValue ?? "",
+              workloadUnit: tubeHousingData.workloadUnit || "mA·min/week",
+              toleranceValue: String(tolRaw),
+              toleranceOperator,
+              toleranceTime: tubeHousingData.toleranceTime ?? "1",
             };
-          }
-
-          // Tube housing: ensure fcd, kv, ma, time from top-level or settings
-          if (transformedRadiationLeakage) {
-            const sh = tubeHousingData?.settings;
-            const firstSettings = Array.isArray(sh) ? sh[0] : sh;
-            transformedRadiationLeakage.fcd = transformedRadiationLeakage.fcd ?? firstSettings?.fcd ?? tubeHousingData?.fcd;
-            transformedRadiationLeakage.kv = transformedRadiationLeakage.kv ?? firstSettings?.kv ?? tubeHousingData?.kv;
-            transformedRadiationLeakage.ma = transformedRadiationLeakage.ma ?? firstSettings?.ma ?? tubeHousingData?.ma;
-            transformedRadiationLeakage.time = transformedRadiationLeakage.time ?? firstSettings?.time ?? tubeHousingData?.time;
           }
 
           // Extract test data from populated response
@@ -202,8 +255,22 @@ const ViewServiceReportOArm: React.FC = () => {
 
   // Safely extract value from potential Mongoose {value, _id} objects
   const safeVal = (v: any): string => {
-    if (v == null) return "-";
-    if (typeof v === "object" && "value" in v) return v.value ?? "-";
+    if (v == null || v === "") return "-";
+    if (typeof v === "object" && "value" in v) {
+      const inner = (v as { value?: unknown }).value;
+      return inner == null || inner === "" ? "-" : String(inner);
+    }
+    return String(v);
+  };
+
+  /** Tube leakage table: show 0 and other numbers; avoid `x || "-"` hiding valid zeros. */
+  const leakReadingCell = (v: any): string => {
+    if (v == null || v === "") return "-";
+    if (typeof v === "object" && v !== null && "value" in v) {
+      const inner = (v as { value?: unknown }).value;
+      if (inner == null || inner === "") return "-";
+      return String(inner);
+    }
     return String(v);
   };
 
@@ -899,10 +966,15 @@ const ViewServiceReportOArm: React.FC = () => {
             {/* 7. Tube Housing Leakage */}
             {testData.tubeHousingLeakage && (() => {
               const data = testData.tubeHousingLeakage;
-              const rows = data.leakageRows || [];
-              const maValue = parseFloat(data.ma || "0");
-              const workloadValue = parseFloat(data.workload || "0");
-              const toleranceValue = parseFloat(data.toleranceValue || "1.0");
+              const rows =
+                data.leakageRows ||
+                data.leakageMeasurements ||
+                data.readings ||
+                data.measurements ||
+                [];
+              const maValue = parseFloat(String(data.ma ?? "").trim() || "0");
+              const workloadValue = parseFloat(String(data.workload ?? "").trim() || "0");
+              const toleranceValue = parseFloat(String(data.toleranceValue ?? "1.0").trim() || "1.0");
 
               const getSummaryForLocation = (locName: string) => {
                 const row = rows.find((m: any) => m.location?.toLowerCase().includes(locName.toLowerCase()));
@@ -953,7 +1025,7 @@ const ViewServiceReportOArm: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                        <strong>Tolerance (mGy in 1 hr):</strong> {data.toleranceValue || "1.0"} {data.toleranceOperator === 'greater than or equal to' ? '≥' : '≤'} {data.toleranceTime || "1"} hr
+                        {/* <strong>Tolerance (mGy in 1 hr):</strong> {data.toleranceValue || "1.0"} {data.toleranceOperator === 'greater than or equal to' ? '≥' : '≤'} {data.toleranceTime || "1"} hr */}
                       </p>
                     </div>
                   </div>
@@ -984,14 +1056,17 @@ const ViewServiceReportOArm: React.FC = () => {
                           
                           let calculatedMR = "-";
                           let calculatedMGy = "-";
-                          let remark = row.remark || "-";
+                          let remark =
+                            row.remark != null && String(row.remark).trim() !== ""
+                              ? String(row.remark)
+                              : "-";
 
                           if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
                             const resMR = (workloadValue * rowMax) / (60 * maValue);
                             calculatedMR = resMR.toFixed(3);
                             calculatedMGy = (resMR / 114).toFixed(4);
                             
-                            if (remark === "-" || !remark) {
+                            if (remark === "-") {
                               const tolVal = toleranceValue || 1.0;
                               remark = (resMR / 114) <= tolVal ? "Pass" : "Fail";
                             }
@@ -1000,11 +1075,11 @@ const ViewServiceReportOArm: React.FC = () => {
                           return (
                             <tr key={i} className="text-center" style={{ fontSize: '10px' }}>
                               <td className="border border-black p-1 text-center font-medium" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{row.location || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{row.left || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{row.right || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{row.front || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{row.back || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{row.top || "-"}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{leakReadingCell(row.left)}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{leakReadingCell(row.right)}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{leakReadingCell(row.front)}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{leakReadingCell(row.back)}</td>
+                              <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{leakReadingCell(row.top)}</td>
                               <td className="border border-black p-1 text-center font-semibold" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{calculatedMR}</td>
                               <td className="border border-black p-1 text-center font-semibold" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>{calculatedMGy}</td>
                               <td className="border border-black p-1 text-center" style={{ padding: '2px 4px', fontSize: '10px', borderColor: '#000000' }}>
@@ -1070,10 +1145,15 @@ const ViewServiceReportOArm: React.FC = () => {
             {/* 8. Linearity of mA/mAs Loading — table1 (Test Conditions) + table2 with Measured Values like RadiographyFixed */}
             {testData.linearityOfMasLoading && (() => {
               const lin = testData.linearityOfMasLoading;
-              const selection = lin.selection || "mAs";
+              const isMaLinear = lin.selection === "mA" || lin.selection === "ma";
+              const linearitySectionTitle = isMaLinear ? "8. Linearity of mA Loading" : "8. Linearity of mAs Loading";
+              const firstColHeader = isMaLinear ? "mA" : "mAs range";
+              const xColHeader = isMaLinear ? "X (mGy/(mA·s))" : "X (mGy/mAs)";
+              const t1 = lin.table1?.[0];
+              const showTimeCol = isMaLinear || !!(t1 && String(t1.time ?? "").trim() !== "");
               return (
                 <div className="mb-16 print:mb-12 test-section">
-                  <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: '14px', marginBottom: '4px' }}>8. Linearity of {selection} Loading</h3>
+                  <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: '14px', marginBottom: '4px' }}>{linearitySectionTitle}</h3>
                   {lin.table1 && lin.table1.length > 0 && (
                     <div className="mb-4 print:mb-1" style={{ marginBottom: '6px' }}>
                       <p className="font-semibold mb-1 text-sm print:text-xs" style={{ fontSize: '11px', marginBottom: '3px' }}>Test Conditions:</p>
@@ -1082,14 +1162,14 @@ const ViewServiceReportOArm: React.FC = () => {
                           <tr>
                             <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FCD (cm)</th>
                             <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>kV</th>
-                            {lin.table1[0]?.time && <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>Time (sec)</th>}
+                            {showTimeCol && <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>Time (sec)</th>}
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
-                            <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{lin.table1[0]?.fcd || "-"}</td>
-                            <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{lin.table1[0]?.kv || "-"}</td>
-                            {lin.table1[0]?.time && <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{lin.table1[0]?.time || "-"}</td>}
+                            <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{t1?.fcd || "-"}</td>
+                            <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{t1?.kv || "-"}</td>
+                            {showTimeCol && <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{t1?.time || "-"}</td>}
                           </tr>
                         </tbody>
                       </table>
@@ -1100,18 +1180,19 @@ const ViewServiceReportOArm: React.FC = () => {
                     const measHeadersArr = lin.measHeaders && Array.isArray(lin.measHeaders) ? lin.measHeaders : [];
                     const numMeas = measHeadersArr.length || Math.max(0, ...(lin.table2 || []).map((r: any) => (r.measuredOutputs && Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0)));
                     const formatVal = (val: any) => (val === undefined || val === null || String(val).trim() === "" ? "-" : String(val));
+                    const rowApplied = (row: any) => row.mAsApplied ?? row.ma ?? row.mAsRange ?? "";
                     
                     return (
                       <div className="overflow-x-auto mb-6 print:mb-1 print:overflow-visible" style={{ marginBottom: '4px' }}>
                         <table className="w-full border-2 border-black compact-table force-small-text" style={{ fontSize: '10px', tableLayout: 'fixed', width: '100%' }}>
                           <thead className="bg-gray-100">
                             <tr>
-                              <th className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>{selection} Applied</th>
+                              <th className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>{firstColHeader}</th>
                               {Array.from({ length: numMeas }, (_, idx) => (
                                 <th key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>{measHeadersArr[idx] || `Meas ${idx + 1}`}</th>
                               ))}
                               <th className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Average Output</th>
-                              <th className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X (mGy/{selection})</th>
+                              <th className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>{xColHeader}</th>
                               <th className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X Max</th>
                               <th className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X Min</th>
                               <th className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>CoL</th>
@@ -1123,7 +1204,7 @@ const ViewServiceReportOArm: React.FC = () => {
                               const outputs = row.measuredOutputs && Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
                               return (
                                 <tr key={i} className="text-center" style={{ fontSize: '10px' }}>
-                                  <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>{formatVal(row.mAsApplied)}</td>
+                                  <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>{formatVal(rowApplied(row))}</td>
                                   {Array.from({ length: numMeas }, (_, idx) => (
                                     <td key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>{formatVal(outputs[idx])}</td>
                                   ))}

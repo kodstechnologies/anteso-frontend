@@ -70,6 +70,61 @@ interface ReportData {
   maximumRadiationLevelId?: string | null;
 }
 
+/** Keys on table2 rows that are not mA measurement columns */
+const MAMMO_TABLE2_META_KEYS = new Set([
+  "setKV",
+  "avgKvp",
+  "remarks",
+  "deviation",
+  "_id",
+  "__v",
+  "id",
+]);
+
+function isMammoMaStationColumnKey(key: string): boolean {
+  if (MAMMO_TABLE2_META_KEYS.has(key)) return false;
+  if (/^ma\d+/i.test(key)) return true;
+  if (/^mA\d+/i.test(key)) return true;
+  if (/^\d+mA$/i.test(key)) return true;
+  if (/^[a-zA-Z0-9]*mA\d+/i.test(key)) return true;
+  return false;
+}
+
+/** Union of mA column keys across all rows (first row alone may omit empty columns). */
+function collectMammoMaColumnKeys(table2: any[] | undefined): string[] {
+  const seen = new Set<string>();
+  const order: string[] = [];
+  for (const row of table2 || []) {
+    if (!row || typeof row !== "object") continue;
+    for (const k of Object.keys(row)) {
+      if (!isMammoMaStationColumnKey(k) || seen.has(k)) continue;
+      seen.add(k);
+      order.push(k);
+    }
+  }
+  order.sort((a, b) => {
+    const na = parseInt(String(a).replace(/\D/g, ""), 10);
+    const nb = parseInt(String(b).replace(/\D/g, ""), 10);
+    const aN = Number.isFinite(na) ? na : 1e9;
+    const bN = Number.isFinite(nb) ? nb : 1e9;
+    if (aN !== bN) return aN - bN;
+    return a.localeCompare(b);
+  });
+  return order;
+}
+
+/** Human-readable header: ma10 / mA100 / 200mA → "mA 10", "mA 100", "mA 200" */
+function formatMammoMaStationHeader(key: string): string {
+  const k = String(key);
+  let m = k.match(/^mA(\d+)$/i);
+  if (m) return `mA ${m[1]}`;
+  m = k.match(/^ma(\d+)$/i);
+  if (m) return `mA ${m[1]}`;
+  m = k.match(/^(\d+)mA$/i);
+  if (m) return `mA ${m[1]}`;
+  return k.replace(/([a-zA-Z])(\d)/g, "$1 $2");
+}
+
 const ViewServiceReportMammography: React.FC = () => {
   const [searchParams] = useSearchParams();
   const serviceId = searchParams.get("serviceId");
@@ -186,26 +241,24 @@ const ViewServiceReportMammography: React.FC = () => {
             accuracyOfOperatingPotential: (() => {
               const accuracy = accuracyOfOperatingPotentialRes || data.AccuracyOfOperatingPotentialMammography;
               if (!accuracy) return null;
-              // Extract dynamic mA column keys from the first row of table2
-              const sampleRow = (accuracy.table2 && accuracy.table2.length > 0) ? accuracy.table2[0] : null;
-              const maKeys = sampleRow ? Object.keys(sampleRow).filter(key =>
-                key.startsWith('ma') || key.startsWith('mA') || key.match(/^[a-zA-Z0-9]+mA$/i)
-              ) : [];
-              const finalMaKeys = maKeys.length > 0 ? maKeys : ["mA10", "mA100", "mA200"];
-              const mAStationsArr = finalMaKeys.map(key => {
-                const numericPart = key.match(/\d+/g)?.[0] || "";
-                const alphaPart = key.match(/[a-zA-Z]+/g)?.join("") || "mA";
-                const normalizedAlpha = alphaPart.toLowerCase() === "ma" ? "mA" : alphaPart;
-                return numericPart ? `${numericPart} ${normalizedAlpha}` : key;
-              });
+              let finalMaKeys = collectMammoMaColumnKeys(accuracy.table2);
+              if (finalMaKeys.length === 0) {
+                finalMaKeys = ["ma10", "ma100", "ma200"];
+              }
+              const mAStationsArr = finalMaKeys.map((key) => formatMammoMaStationHeader(key));
               return {
                 ...accuracy,
                 mAStations: mAStationsArr,
+                maColumnKeys: finalMaKeys,
                 measurements: (accuracy.table2 || []).map((row: any) => ({
-                  appliedKvp: row.setKV || "-",
-                  measuredValues: finalMaKeys.map(key => row[key] || "-"),
-                  averageKvp: row.avgKvp || "-",
-                  remarks: row.remarks || "-"
+                  appliedKvp: row.setKV ?? row.setKvp ?? "-",
+                  measuredValues: finalMaKeys.map((key) => {
+                    const v = row[key];
+                    if (v === null || v === undefined || v === "") return "-";
+                    return typeof v === "object" && v !== null && "value" in v ? (v as any).value : String(v);
+                  }),
+                  averageKvp: row.avgKvp ?? "-",
+                  remarks: row.remarks ?? "-",
                 })),
                 tolerance: accuracy.tolerance || {
                   value: accuracy.toleranceValue || "1.5",
@@ -353,7 +406,26 @@ const ViewServiceReportMammography: React.FC = () => {
               };
             })() : null),
             totalFiltrationAndAluminium: totalFiltrationRes || data.TotalFilterationAndAlluminiumMammography || null,
-            reproducibilityOfOutput: reproducibilityRes || data.ReproducibilityOfRadiationOutputMammography || null,
+            reproducibilityOfOutput: (() => {
+              const raw = reproducibilityRes || data.ReproducibilityOfRadiationOutputMammography || null;
+              if (!raw) return null;
+              const tolRaw = raw.tolerance;
+              const toleranceNormalized =
+                typeof tolRaw === "object" && tolRaw != null && (tolRaw as any).value != null
+                  ? tolRaw
+                  : { value: String(tolRaw ?? "0.05"), operator: "<=" };
+              const fddVal =
+                raw.fdd ??
+                (raw as any).fcd ??
+                (raw as any).FDD ??
+                (raw as any).testConditions?.fdd ??
+                "";
+              return {
+                ...raw,
+                fdd: fddVal !== undefined && fddVal !== null ? String(fddVal) : "",
+                tolerance: toleranceNormalized,
+              };
+            })(),
             radiationLeakageLevel: leakageRes || data.RadiationLeakageLevelMammography || null,
             imagingPhantom: imagingPhantomRes || data.ImagingPhantomMammography || null,
             radiationProtectionSurvey: protectionRes || data.DetailsOfRadiationProtectionMammography || null,
@@ -1025,7 +1097,7 @@ const ViewServiceReportMammography: React.FC = () => {
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Reproducibility of Radiation Output</h3>
 
-                <div className="mb-4 print:mb-1" style={{ marginBottom: '4px' }}><table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}><thead className="bg-gray-100"><tr><th className="border border-black p-1 text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>FDD (cm)</th></tr></thead><tbody><tr><td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>{testData.reproducibilityOfOutput.fdd || "-"}</td></tr></tbody></table></div>
+                <div className="mb-4 print:mb-1" style={{ marginBottom: '4px' }}><table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}><thead className="bg-gray-100"><tr><th className="border border-black p-1 text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>FDD (cm)</th></tr></thead><tbody><tr><td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 4px', fontSize: '11px' }}>{testData.reproducibilityOfOutput.fdd || (testData.reproducibilityOfOutput as any).fcd || "-"}</td></tr></tbody></table></div>
                 {testData.reproducibilityOfOutput.outputRows && testData.reproducibilityOfOutput.outputRows.length > 0 && (() => {
                   const rows = testData.reproducibilityOfOutput.outputRows;
                   const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 3);

@@ -148,7 +148,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             transformedOperatingPotential = {
               ...operatingPotentialData,
               rows: rows,
-              toleranceSign: operatingPotentialData.tolerance?.sign || "±",
+              toleranceSign: operatingPotentialData.tolerance?.sign || operatingPotentialData.tolerance?.type || "±",
               toleranceValue: operatingPotentialData.tolerance?.value || "2.0",
               mAStations: operatingPotentialData.mAStations || [],
             };
@@ -964,7 +964,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                     <thead className="bg-gray-100">
                       <tr className="bg-blue-50">
                         <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ width: '15%', padding: '0px 2px', fontSize: '10px' }}>Location</th>
-                        <th colSpan={7} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mR/hr)</th>
+                        <th colSpan={4} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mR/hr)</th>
                         <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mR in 1 hr)</th>
                         <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mGy in 1 hr)</th>
                         <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Remarks</th>
@@ -974,9 +974,6 @@ const ViewServiceReportCBCT: React.FC = () => {
                         <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Right</th>
                         <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Front</th>
                         <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Back</th>
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Top</th>
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Up</th>
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Down</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1007,16 +1004,13 @@ const ViewServiceReportCBCT: React.FC = () => {
                         );
                         const workloadValue = pickNum(testData.radiationLeakage.workload, 0);
 
-                        // CBCT data mapping: handle standard directions consistently
+                        // CBCT: exposure columns are Left / Right / Front / Back only
                         const left = parseFloat(row.left || "0");
                         const right = parseFloat(row.right || "0");
                         const front = parseFloat(row.front || "0");
                         const back = parseFloat(row.back || "0");
-                        const top = parseFloat(row.top || "0");
-                        const up = parseFloat(row.up || "0");
-                        const down = parseFloat(row.down || "0");
 
-                        const values = [left, right, front, back, top, up, down].filter(v => v > 0);
+                        const values = [left, right, front, back].filter(v => v > 0);
                         const rowMax = values.length > 0 ? Math.max(...values) : 0;
                         
                         // Convert to mR/hr if unit is mGy/h
@@ -1045,9 +1039,6 @@ const ViewServiceReportCBCT: React.FC = () => {
                             <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.right || "-"}</td>
                             <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.front || "-"}</td>
                             <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.back || "-"}</td>
-                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.top || "-"}</td>
-                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.up || "-"}</td>
-                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.down || "-"}</td>
                             <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMR}</td>
                             <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMGy}</td>
                             <td className="border border-black p-1 text-center font-semibold text-xs" style={{ padding: '0px 2px', fontSize: '10px' }}>
@@ -1097,11 +1088,8 @@ const ViewServiceReportCBCT: React.FC = () => {
                     const r = parseFloat(row.right || "0");
                     const f = parseFloat(row.front || "0");
                     const b = parseFloat(row.back || "0");
-                    const t = parseFloat(row.top || "0");
-                    const u = parseFloat(row.up || "0");
-                    const d = parseFloat(row.down || "0");
-                    
-                    const values = [l, r, f, b, t, u, d].filter(v => v > 0);
+
+                    const values = [l, r, f, b].filter(v => v > 0);
                     const rowMax = values.length > 0 ? Math.max(...values) : 0;
                     const exposureLevelMR = (row.unit === 'mGy/h' ? rowMax * 114 : rowMax);
                     if (!(exposureLevelMR > 0 && maValue > 0 && workloadValue > 0)) return null;

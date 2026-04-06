@@ -36,9 +36,75 @@ interface Props {
     table1?: Array<{ time: string; sliceThickness: string }>;
     table2?: Array<{ setKV: string;[key: string]: any }>;
     tolerance?: { value: string; type: 'percent' | 'absolute'; sign: 'plus' | 'minus' | 'both' };
-    totalFiltration?: { measured: string; required: string; atKvp: string };
-    filtrationTolerance?: { forKvGreaterThan70: string; forKvBetween70And100: string; forKvGreaterThan100: string; kvThreshold1: string; kvThreshold2: string };
   };
+}
+
+const TABLE2_META_KEYS = new Set([
+  'setKV',
+  'avgKvp',
+  'remarks',
+  'deviation',
+  '_id',
+  '__v',
+  'id',
+]);
+
+function isMammoTable2MaKey(key: string): boolean {
+  if (TABLE2_META_KEYS.has(key)) return false;
+  if (/^ma\d+/i.test(key)) return true;
+  if (/^mA\d+/i.test(key)) return true;
+  if (/^\d+mA$/i.test(key)) return true;
+  if (/^[a-zA-Z0-9]*mA\d+/i.test(key)) return true;
+  return false;
+}
+
+/** All mA column keys across rows (first row may omit empty fields). */
+function collectMammoTable2MaKeys(table2: any[] | undefined): string[] {
+  const seen = new Set<string>();
+  const order: string[] = [];
+  for (const row of table2 || []) {
+    if (!row || typeof row !== 'object') continue;
+    for (const k of Object.keys(row)) {
+      if (!isMammoTable2MaKey(k) || seen.has(k)) continue;
+      seen.add(k);
+      order.push(k);
+    }
+  }
+  order.sort((a, b) => {
+    const na = parseInt(String(a).replace(/\D/g, ''), 10);
+    const nb = parseInt(String(b).replace(/\D/g, ''), 10);
+    const aN = Number.isFinite(na) ? na : 1e9;
+    const bN = Number.isFinite(nb) ? nb : 1e9;
+    if (aN !== bN) return aN - bN;
+    return a.localeCompare(b);
+  });
+  return order;
+}
+
+function formatMammoMaLabelFromKey(key: string): string {
+  const k = String(key);
+  let m = k.match(/^mA(\d+)$/i);
+  if (m) return `mA ${m[1]}`;
+  m = k.match(/^ma(\d+)$/i);
+  if (m) return `mA ${m[1]}`;
+  m = k.match(/^(\d+)mA$/i);
+  if (m) return `mA ${m[1]}`;
+  return k.replace(/([a-zA-Z])(\d)/g, '$1 $2');
+}
+
+function cellValueFromRow(row: any, key: string): string {
+  const v = row?.[key];
+  if (v === null || v === undefined || v === '') return '';
+  if (typeof v === 'object' && v !== null && 'value' in v) return String((v as any).value ?? '');
+  return String(v);
+}
+
+function maColumnsFromKeys(maKeys: string[]): MAColumn[] {
+  return maKeys.map((key) => ({
+    id: `ma-key-${key}`,
+    label: formatMammoMaLabelFromKey(key),
+    value: '',
+  }));
 }
 
 const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
@@ -71,15 +137,6 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
   const [toleranceValue, setToleranceValue] = useState<string>('1.5');
   const [toleranceType, setToleranceType] = useState<'percent' | 'absolute'>('absolute');
   const [toleranceSign, setToleranceSign] = useState<'plus' | 'minus' | 'both'>('both');
-
-  const [totalFiltration, setTotalFiltration] = useState({ measured: '', required: '', atKvp: '' });
-  const [filtrationTolerance, setFiltrationTolerance] = useState({
-    forKvGreaterThan70: '1.5',
-    forKvBetween70And100: '2.0',
-    forKvGreaterThan100: '2.5',
-    kvThreshold1: '70',
-    kvThreshold2: '100',
-  });
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,29 +175,22 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
     );
   };
 
-  // Update mA column header label (editable in table header)
+  // Update mA column header label (editable in table header) — must mirror into every row for save + consistency
   const updateMAHeader = (index: number, value: string) => {
     setGlobalMAColumns(prev => {
-      const updated = [...prev];
-      if (!updated[index]) return prev;
-      updated[index] = { ...updated[index], label: value.trim() || `mA ${index + 1}` };
-      return updated;
+      const next = [...prev];
+      if (!next[index]) return prev;
+      const colId = next[index].id;
+      const label = value.trim() || `mA ${index + 1}`;
+      next[index] = { ...next[index], label };
+      setTable2Rows((rows) =>
+        rows.map((row) => ({
+          ...row,
+          maColumns: row.maColumns.map((c) => (c.id === colId ? { ...c, label } : c)),
+        }))
+      );
+      return next;
     });
-  };
-
-  // PASS/FAIL for Total Filtration (same logic as RadiographyFixed TotalFilteration)
-  const getFiltrationRemark = (): 'PASS' | 'FAIL' | '-' => {
-    const kvp = parseFloat(totalFiltration.atKvp);
-    const measured = parseFloat(totalFiltration.required);
-    const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
-    const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
-    if (isNaN(kvp) || isNaN(measured)) return '-';
-    let requiredTolerance: number;
-    if (kvp < threshold1) requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan70);
-    else if (kvp >= threshold1 && kvp <= threshold2) requiredTolerance = parseFloat(filtrationTolerance.forKvBetween70And100);
-    else requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan100);
-    if (isNaN(requiredTolerance)) return '-';
-    return measured >= requiredTolerance ? 'PASS' : 'FAIL';
   };
 
   // === Table 2: Add/Remove Rows ===
@@ -248,34 +298,24 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
       }
 
       if (initialData.table2 && initialData.table2.length > 0) {
-        // Extract all possible mA keys from the first row
-        const sampleRow = initialData.table2[0];
-        const maKeys = Object.keys(sampleRow).filter(key =>
-          key.startsWith('ma') || key.match(/^mA\s*\d+$/i)
-        );
+        const maKeys = collectMammoTable2MaKeys(initialData.table2);
+        const loadedMAColumns =
+          maKeys.length > 0 ? maColumnsFromKeys(maKeys) : [...defaultMAColumns];
 
-        // Create global mA columns from the data
-        const loadedMAColumns: MAColumn[] = maKeys.map((key, idx) => ({
-          id: `ma-col-${Date.now()}-${idx}`,
-          label: key.replace(/([A-Z])/g, ' $1').trim(), // Convert camelCase to spaces
-          value: '',
-        }));
+        setGlobalMAColumns(loadedMAColumns);
 
-        if (loadedMAColumns.length > 0) {
-          setGlobalMAColumns(loadedMAColumns);
-        }
-
-        // Load table2 rows
         setTable2Rows(
           initialData.table2.map((r, idx) => ({
             id: `csv-row-${Date.now()}-${idx}`,
             setKV: String(r.setKV || ''),
-            maColumns: loadedMAColumns.length > 0
-              ? loadedMAColumns.map(col => ({
+            maColumns: loadedMAColumns.map((col) => {
+              const storageKey =
+                col.id.startsWith('ma-key-') ? col.id.slice('ma-key-'.length) : col.label.replace(/\s+/g, '');
+              return {
                 ...col,
-                value: String(r[col.label.replace(/\s+/g, '')] || r[col.label] || '')
-              }))
-              : defaultMAColumns.map(col => ({ ...col, value: '' })),
+                value: cellValueFromRow(r, storageKey),
+              };
+            }),
             avgKvp: '',
             remarks: (r.remarks as '' | 'Pass' | 'Fail') || '',
           }))
@@ -286,22 +326,6 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         setToleranceValue(initialData.tolerance.value || '1.5');
         setToleranceType(initialData.tolerance.type || 'absolute');
         setToleranceSign(initialData.tolerance.sign || 'both');
-      }
-      if (initialData.totalFiltration) {
-        setTotalFiltration({
-          measured: String(initialData.totalFiltration.measured ?? ''),
-          required: String(initialData.totalFiltration.required ?? ''),
-          atKvp: String(initialData.totalFiltration.atKvp ?? ''),
-        });
-      }
-      if (initialData.filtrationTolerance) {
-        setFiltrationTolerance({
-          forKvGreaterThan70: String(initialData.filtrationTolerance.forKvGreaterThan70 ?? '1.5'),
-          forKvBetween70And100: String(initialData.filtrationTolerance.forKvBetween70And100 ?? '2.0'),
-          forKvGreaterThan100: String(initialData.filtrationTolerance.forKvGreaterThan100 ?? '2.5'),
-          kvThreshold1: String(initialData.filtrationTolerance.kvThreshold1 ?? '70'),
-          kvThreshold2: String(initialData.filtrationTolerance.kvThreshold2 ?? '100'),
-        });
       }
       setIsEditing(true);
       setIsLoading(false);
@@ -333,34 +357,26 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
           });
         }
 
-        // Table 2 - handle dynamic columns
+        // Table 2 — union mA keys from all rows (Mongo may omit empty keys on the first row)
         if (Array.isArray(rec.table2) && rec.table2.length > 0) {
-          // Extract all mA keys from the data
-          const sampleRow = rec.table2[0];
-          const maKeys = Object.keys(sampleRow).filter(key =>
-            key.startsWith('ma') || key.match(/^mA\s*\d+$/i) || key === 'ma10' || key === 'ma100' || key === 'ma200'
-          );
+          const maKeys = collectMammoTable2MaKeys(rec.table2);
+          const loadedMAColumns =
+            maKeys.length > 0 ? maColumnsFromKeys(maKeys) : [...defaultMAColumns];
 
-          const loadedMAColumns: MAColumn[] = maKeys.map((key, idx) => ({
-            id: `ma-col-${Date.now()}-${idx}`,
-            label: key.replace(/([A-Z])/g, ' $1').trim(),
-            value: '',
-          }));
-
-          if (loadedMAColumns.length > 0) {
-            setGlobalMAColumns(loadedMAColumns);
-          }
+          setGlobalMAColumns(loadedMAColumns);
 
           setTable2Rows(
             rec.table2.map((r: any, idx: number) => ({
               id: `row-${Date.now()}-${idx}`,
               setKV: String(r.setKV ?? ''),
-              maColumns: loadedMAColumns.length > 0
-                ? loadedMAColumns.map(col => ({
+              maColumns: loadedMAColumns.map((col) => {
+                const storageKey =
+                  col.id.startsWith('ma-key-') ? col.id.slice('ma-key-'.length) : col.label.replace(/\s+/g, '');
+                return {
                   ...col,
-                  value: String(r[col.label.replace(/\s+/g, '')] || r[col.label] || r[col.label.toLowerCase().replace(/\s+/g, '')] || '')
-                }))
-                : defaultMAColumns.map(col => ({ ...col, value: '' })),
+                  value: cellValueFromRow(r, storageKey),
+                };
+              }),
               avgKvp: '',
               remarks: r.remarks || '',
             }))
@@ -372,23 +388,6 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
           setToleranceValue(String(rec.tolerance.value || '1.5'));
           setToleranceType(rec.tolerance.type || 'absolute');
           setToleranceSign(rec.tolerance.sign || 'both');
-        }
-
-        if (rec.totalFiltration) {
-          setTotalFiltration({
-            measured: String(rec.totalFiltration.measured ?? ''),
-            required: String(rec.totalFiltration.required ?? ''),
-            atKvp: String(rec.totalFiltration.atKvp ?? ''),
-          });
-        }
-        if (rec.filtrationTolerance) {
-          setFiltrationTolerance({
-            forKvGreaterThan70: String(rec.filtrationTolerance.forKvGreaterThan70 ?? '1.5'),
-            forKvBetween70And100: String(rec.filtrationTolerance.forKvBetween70And100 ?? '2.0'),
-            forKvGreaterThan100: String(rec.filtrationTolerance.forKvGreaterThan100 ?? '2.5'),
-            kvThreshold1: String(rec.filtrationTolerance.kvThreshold1 ?? '70'),
-            kvThreshold2: String(rec.filtrationTolerance.kvThreshold2 ?? '100'),
-          });
         }
 
         setHasSaved(true);
@@ -445,8 +444,6 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
       toleranceValue,
       toleranceType,
       toleranceSign,
-      totalFiltration,
-      filtrationTolerance,
     };
 
     try {
@@ -708,131 +705,6 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
           />
           <span className="font-medium text-indigo-800">kV</span>
         </div>
-      </div>
-
-      {/* Total Filtration (same as RadiographyFixed TotalFilteration) */}
-      <div
-        className={`bg-white shadow-lg rounded-lg border p-8 ${getFiltrationRemark() === 'FAIL' && totalFiltration.required !== '' && !isNaN(parseFloat(totalFiltration.required))
-            ? 'border-red-300 bg-red-50'
-            : 'border-gray-300'
-          }`}
-      >
-        <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
-        <div className="flex flex-col items-center justify-center gap-6">
-          <div className="flex items-center justify-center gap-4 flex-wrap">
-            <span className="text-xl font-medium text-gray-700">Total Filtration is (at</span>
-            <input
-              type="number"
-              step="1"
-              value={totalFiltration.atKvp}
-              onChange={(e) => setTotalFiltration({ ...totalFiltration, atKvp: e.target.value })}
-              disabled={isViewMode}
-              className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'
-                }`}
-              placeholder="80"
-            />
-            <span className="text-xl font-medium text-gray-700">kVp)</span>
-            <input
-              type="number"
-              step="0.01"
-              value={totalFiltration.required}
-              onChange={(e) => setTotalFiltration({ ...totalFiltration, required: e.target.value })}
-              disabled={isViewMode}
-              className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg ${isViewMode
-                  ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed'
-                  : getFiltrationRemark() === 'FAIL' && totalFiltration.required !== '' && !isNaN(parseFloat(totalFiltration.required))
-                    ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-4 focus:ring-red-200'
-                    : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'
-                }`}
-              placeholder="2.50"
-            />
-            <span className="text-3xl font-bold text-gray-800">mm of Al</span>
-          </div>
-          <div className="flex items-center justify-center">
-            <span
-              className={`text-5xl font-bold ${getFiltrationRemark() === 'PASS' ? 'text-green-600' : getFiltrationRemark() === 'FAIL' ? 'text-red-600' : 'text-gray-400'
-                }`}
-            >
-              {getFiltrationRemark()}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tolerance for Total Filtration (amber box, same as RadiographyFixed TotalFilteration) */}
-      <div className="bg-amber-50 border-2 border-amber-400 rounded-lg p-6">
-        <p className="text-lg font-bold text-amber-900 mb-3">Tolerance for Total Filtration:</p>
-        <ul className="space-y-3 text-amber-800">
-          <li className="flex items-center gap-3 flex-wrap">
-            <span>•</span>
-            <input
-              type="number"
-              step="0.1"
-              value={filtrationTolerance.forKvGreaterThan70}
-              onChange={(e) => setFiltrationTolerance({ ...filtrationTolerance, forKvGreaterThan70: e.target.value })}
-              disabled={isViewMode}
-              className={`w-20 px-2 py-1 text-center border rounded font-bold ${isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
-            />
-            <span>mm Al for kV {'<'}</span>
-            <input
-              type="number"
-              step="1"
-              value={filtrationTolerance.kvThreshold1}
-              onChange={(e) => setFiltrationTolerance({ ...filtrationTolerance, kvThreshold1: e.target.value })}
-              disabled={isViewMode}
-              className={`w-16 px-2 py-1 text-center border rounded font-bold ${isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
-            />
-          </li>
-          <li className="flex items-center gap-3 flex-wrap">
-            <span>•</span>
-            <input
-              type="number"
-              step="0.1"
-              value={filtrationTolerance.forKvBetween70And100}
-              onChange={(e) => setFiltrationTolerance({ ...filtrationTolerance, forKvBetween70And100: e.target.value })}
-              disabled={isViewMode}
-              className={`w-20 px-2 py-1 text-center border rounded font-bold ${isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
-            />
-            <span>mm Al for</span>
-            <input
-              type="number"
-              step="1"
-              value={filtrationTolerance.kvThreshold1}
-              onChange={(e) => setFiltrationTolerance({ ...filtrationTolerance, kvThreshold1: e.target.value })}
-              disabled={isViewMode}
-              className={`w-16 px-2 py-1 text-center border rounded font-bold ${isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
-            />
-            <span>≤ kV ≤</span>
-            <input
-              type="number"
-              step="1"
-              value={filtrationTolerance.kvThreshold2}
-              onChange={(e) => setFiltrationTolerance({ ...filtrationTolerance, kvThreshold2: e.target.value })}
-              disabled={isViewMode}
-              className={`w-16 px-2 py-1 text-center border rounded font-bold ${isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
-            />
-          </li>
-          <li className="flex items-center gap-3 flex-wrap">
-            <span>•</span>
-            <input
-              type="number"
-              step="0.1"
-              value={filtrationTolerance.forKvGreaterThan100}
-              onChange={(e) => setFiltrationTolerance({ ...filtrationTolerance, forKvGreaterThan100: e.target.value })}
-              disabled={isViewMode}
-              className={`w-20 px-2 py-1 text-center border rounded font-bold ${isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
-            />
-            <span>mm Al for kV {'>'}</span>
-            <input
-              type="number"
-              step="1"
-              value={filtrationTolerance.kvThreshold2}
-              onChange={(e) => setFiltrationTolerance({ ...filtrationTolerance, kvThreshold2: e.target.value })}
-              disabled={isViewMode}
-              className={`w-16 px-2 py-1 text-center border rounded font-bold ${isViewMode ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
-            />
-          </li>
-        </ul>
       </div>
 
       {/* SAVE BUTTON */}

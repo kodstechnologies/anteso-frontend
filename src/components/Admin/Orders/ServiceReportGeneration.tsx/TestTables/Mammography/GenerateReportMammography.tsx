@@ -546,8 +546,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 }
             }
 
-            // Process Accuracy of Operating Potential (kVp) – use dynamic measurement columns similar to Radiography Fixed,
-            // but only populate the AccuracyOfOperatingPotential table (no Total Filtration here).
+            // Process Accuracy of Operating Potential (kVp) – Total filtration is captured only under "Total Filtration & Aluminium".
             if (groupedData['Accuracy of Operating Potential'] && groupedData['Accuracy of Operating Potential'].length > 0) {
                 try {
                     const data = groupedData['Accuracy of Operating Potential'];
@@ -558,10 +557,6 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     const kVpMeasurements: any[] = [];
                     const tol: any = {};
                     let currentBlock: any = null;
-                    const totalFiltration: { atKvp: string; required: string; measured: string } = { atKvp: '', required: '', measured: '' };
-                    const filtrationTolerance: { forKvGreaterThan70: string; forKvBetween70And100: string; forKvGreaterThan100: string; kvThreshold1: string; kvThreshold2: string } = {
-                        forKvGreaterThan70: '1.5', forKvBetween70And100: '2.0', forKvGreaterThan100: '2.5', kvThreshold1: '70', kvThreshold2: '100',
-                    };
 
                     data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();
@@ -579,14 +574,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                             currentBlock.measurements.push(value);
                         } else if (field.startsWith('Tolerance_')) {
                             tol[field.split('_')[1]] = value;
-                        } else if (field === 'TotalFiltration_atKvp') totalFiltration.atKvp = value;
-                        else if (field === 'TotalFiltration_Required') totalFiltration.required = value;
-                        else if (field === 'TotalFiltration_Measured') totalFiltration.measured = value;
-                        else if (field === 'FiltrationTolerance_forKvGreaterThan70') filtrationTolerance.forKvGreaterThan70 = value;
-                        else if (field === 'FiltrationTolerance_forKvBetween70And100') filtrationTolerance.forKvBetween70And100 = value;
-                        else if (field === 'FiltrationTolerance_forKvGreaterThan100') filtrationTolerance.forKvGreaterThan100 = value;
-                        else if (field === 'FiltrationTolerance_kvThreshold1') filtrationTolerance.kvThreshold1 = value;
-                        else if (field === 'FiltrationTolerance_kvThreshold2') filtrationTolerance.kvThreshold2 = value;
+                        }
                     });
 
                     // Convert measurement blocks into the table2 format expected by AccuracyOfOperatingPotential
@@ -598,7 +586,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         return row;
                     });
 
-                    const hasAopData = table1Row.time || table1Row.sliceThickness || table2.length > 0 || totalFiltration.atKvp || totalFiltration.required || totalFiltration.measured;
+                    const hasAopData = table1Row.time || table1Row.sliceThickness || table2.length > 0;
                     if (hasAopData) {
                         setCsvDataForComponents(prev => ({
                             ...prev,
@@ -611,16 +599,6 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                                     sign: (tol.Sign || tol.sign || 'both') as 'plus' | 'minus' | 'both',
                                 },
                                 measHeaders,
-                                ...(totalFiltration.atKvp || totalFiltration.required || totalFiltration.measured ? {
-                                    totalFiltration: {
-                                        atKvp: totalFiltration.atKvp,
-                                        required: totalFiltration.required,
-                                        measured: totalFiltration.measured,
-                                    },
-                                } : {}),
-                                ...(filtrationTolerance.forKvGreaterThan70 || filtrationTolerance.forKvBetween70And100 || filtrationTolerance.forKvGreaterThan100 ? {
-                                    filtrationTolerance,
-                                } : {}),
                             },
                         }));
                         console.log('✓ Accuracy of Operating Potential data prepared for form (dynamic columns)');
@@ -1423,7 +1401,6 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         if (Array.isArray((data as any).irradiationTimes) && (data as any).irradiationTimes.length > 0) return true;
         if (Array.isArray((data as any).outputRows) && (data as any).outputRows.length > 0) return true;
         if (Array.isArray((data as any).leakageMeasurements) && (data as any).leakageMeasurements.length > 0) return true;
-        if ((data as any).totalFiltration != null && typeof (data as any).totalFiltration === "object") return true;
         if (Array.isArray((data as any).readings) && (data as any).readings.length > 0) return true;
         if (Array.isArray((data as any).locations) && (data as any).locations.length > 0) return true;
         return false;

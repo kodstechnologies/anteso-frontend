@@ -21,6 +21,7 @@ import {
   getExposureRateByServiceIdForOArm,
   getTubeHousingLeakageByServiceIdForOArm,
   getLinearityOfMasLoadingStationByServiceIdForOArm,
+  getAccuracyOfIrradiationTimeByServiceIdForOArm,
   proxyFile,
 } from "../../../../../../api";
 import { createOArmUploadableExcel, OArmExportData } from "./exportOArmToExcel";
@@ -306,8 +307,13 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForOArm(serviceId)); } catch { return false; } } },
       { name: "Exposure Rate At Table Top", check: async () => { try { return isSaved(await getExposureRateByServiceIdForOArm(serviceId)); } catch { return false; } } },
       { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdForOArm(serviceId)); } catch { return false; } } },
-      { name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId)); } catch { return false; } } },
     ];
+    if (hasTimer === true) {
+      checks.push({ name: "Accuracy Of Irradiation Time", check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForOArm(serviceId)); } catch { return false; } } });
+      checks.push({ name: "Linearity Of mA Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId)); } catch { return false; } } });
+    } else if (hasTimer === false) {
+      checks.push({ name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId)); } catch { return false; } } });
+    }
     const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
     return results.filter((r) => !r.saved).map((r) => r.name);
   };
@@ -431,11 +437,13 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       } catch (err) {
         console.log("Tube Housing Leakage not found or error:", err);
       }
-      try {
-        const res = await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId);
-        if (res) exportData.linearityOfMasLoading = res;
-      } catch (err) {
-        console.log("Linearity of mAs Loading not found or error:", err);
+      if (hasTimer === true || hasTimer === false) {
+        try {
+          const res = await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId);
+          if (res) exportData.linearityOfMasLoading = res;
+        } catch (err) {
+          console.log("Linearity loading data not found or error:", err);
+        }
       }
       if (Object.keys(exportData).length <= 1 && !exportData.reportHeader) {
         toast.error("No data found to export. Please save test data first.", { id: "export-excel-oarm" });
@@ -468,6 +476,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       'LOW CONTRAST RESOLUTION': 'Low Contrast Resolution',
       'EXPOSURE RATE AT TABLE TOP': 'Exposure Rate At Table Top',
       'TUBE HOUSING LEAKAGE': 'Tube Housing Leakage',
+      'LINEARITY OF MA LOADING': 'Linearity of mA Loading',
       'LINEARITY OF MAS LOADING': 'Linearity of mAs Loading',
       'ACCURACY OF IRRADIATION TIME': 'Accuracy of Irradiation Time',
     };
@@ -502,6 +511,12 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         'Workload': 'Workload',
         'Location': 'Leakage_Location', 'Left': 'Leakage_Left', 'Right': 'Leakage_Right',
         'Front': 'Leakage_Front', 'Back': 'Leakage_Back', 'Top': 'Leakage_Top',
+      },
+      'Linearity of mA Loading': {
+        'FCD': 'Exposure_FCD', 'kV': 'Exposure_KV', 'Time': 'Exposure_Time',
+        'mA': 'Row_mAsRange',
+        'Meas 1': 'Row_Meas_0', 'Meas 2': 'Row_Meas_1', 'Meas 3': 'Row_Meas_2',
+        'Meas 4': 'Row_Meas_3', 'Meas 5': 'Row_Meas_4',
       },
       'Linearity of mAs Loading': {
         'FCD': 'Exposure_FCD', 'kV': 'Exposure_KV',
@@ -972,7 +987,28 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
           { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} csvData={csvDataForComponents['Low Contrast Resolution']} /> },
           { title: "Exposure Rate At Table Top", component: <ExposureRateAtTableTop serviceId={serviceId} csvData={csvDataForComponents['Exposure Rate At Table Top']} /> },
           { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} csvData={csvDataForComponents['Tube Housing Leakage']} /> },
-          { title: "Linearity Of mAs Loading", component: <LinearityOfMasLoadingStations serviceId={serviceId} csvData={csvDataForComponents['Linearity of mAs Loading']} /> },
+
+          ...(hasTimer === true
+            ? [{
+              title: "Linearity Of mA Loading",
+              component: <LinearityOfMasLoadingStations
+                key={`linearity-ma-${refreshKey}`}
+                serviceId={serviceId}
+                mode="mA"
+                csvData={csvDataForComponents['Linearity of mA Loading']}
+              />,
+            }]
+            : hasTimer === false
+              ? [{
+                title: "Linearity Of mAs Loading",
+                component: <LinearityOfMasLoadingStations
+                  key={`linearity-mas-${refreshKey}`}
+                  serviceId={serviceId}
+                  mode="mAs"
+                  csvData={csvDataForComponents['Linearity of mAs Loading']}
+                />,
+              }]
+              : []),
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
             {({ open }) => (
@@ -980,6 +1016,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
                 <Disclosure.Button className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition">
                   <span>{item.title}</span>
                   <ChevronDownIcon className={`w-6 h-6 transition-transform ${open ? "rotate-180" : ""}`} />
+
                 </Disclosure.Button>
 
                 <Disclosure.Panel className="border border-gray-300 rounded-b-lg p-6 bg-gray-50 mb-6">

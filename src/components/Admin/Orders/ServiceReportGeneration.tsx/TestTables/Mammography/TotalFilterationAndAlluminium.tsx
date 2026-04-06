@@ -80,6 +80,44 @@ const TotalFiltrationAndAluminium: React.FC<{
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
+  const parseRecFinite = (s: string): number | null => {
+    const n = parseFloat(String(s ?? "").trim().replace(/,/g, "."));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  /** Min / max / kVp must be valid numbers, ≥ 0, and min ≤ max */
+  const recommendedValuesValidation = useMemo(() => {
+    const rowIssues: Record<string, string> = {};
+    let firstError: string | null = null;
+    rows.forEach((row, i) => {
+      const label = `Row ${i + 1}`;
+      const rv = row.recommendedValue;
+      if (!rv) {
+        rowIssues[row.id] = "Recommended range required";
+        if (!firstError) firstError = `${label}: set recommended min, max, and kVp`;
+        return;
+      }
+      const min = parseRecFinite(rv.minValue);
+      const max = parseRecFinite(rv.maxValue);
+      const kvp = parseRecFinite(rv.kvp);
+      if (min === null || max === null || kvp === null) {
+        rowIssues[row.id] = "Valid numbers required";
+        if (!firstError) firstError = `${label}: recommended min, max, and kVp must be valid numbers`;
+        return;
+      }
+      if (min < 0 || max < 0 || kvp < 0) {
+        rowIssues[row.id] = "Must be ≥ 0";
+        if (!firstError) firstError = `${label}: recommended values must be zero or positive`;
+        return;
+      }
+      if (min > max) {
+        rowIssues[row.id] = "Min must be ≤ max";
+        if (!firstError) firstError = `${label}: recommended min must be ≤ max`;
+      }
+    });
+    return { ok: Object.keys(rowIssues).length === 0, rowIssues, firstError };
+  }, [rows]);
+
   // Calculate remarks for each row based on recommended values
   const rowsWithRemarks = useMemo(() => {
     return rows.map((row) => {
@@ -230,6 +268,13 @@ const TotalFiltrationAndAluminium: React.FC<{
   // Save handler
   const saveData = async () => {
     if (!serviceId) return;
+    if (!recommendedValuesValidation.ok) {
+      toast.error(
+        recommendedValuesValidation.firstError ||
+          "Fix Recommended Value fields: use valid numbers with min ≤ max."
+      );
+      return;
+    }
 
     setIsSaving(true);
     const payload = {
@@ -287,7 +332,7 @@ const TotalFiltrationAndAluminium: React.FC<{
       alEquivalence: '',
       hvt: '',
       remarks: '',
-      recommendedValue: { minValue: '0.30', maxValue: '0.37', kvp: '' },
+      recommendedValue: { minValue: '0.30', maxValue: '0.37', kvp: '28' },
     }]);
   };
 
@@ -361,7 +406,7 @@ const TotalFiltrationAndAluminium: React.FC<{
           {(isEditing || !hasSaved) && (
             <button
               onClick={saveData}
-              disabled={isSaving}
+              disabled={isSaving || !recommendedValuesValidation.ok}
               className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
@@ -409,6 +454,11 @@ const TotalFiltrationAndAluminium: React.FC<{
         <h3 className="px-6 py-4 text-lg font-semibold bg-blue-50 border-b text-blue-900">
           HVT Measurement Data
         </h3>
+        {!isViewMode && !recommendedValuesValidation.ok && recommendedValuesValidation.firstError && (
+          <p className="px-6 py-2 text-sm text-red-600 bg-red-50 border-b border-red-100">
+            {recommendedValuesValidation.firstError}
+          </p>
+        )}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
@@ -474,31 +524,36 @@ const TotalFiltrationAndAluminium: React.FC<{
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1 flex-wrap text-xs">
-                        <input
-                          type="text"
-                          value={row.recommendedValue?.minValue || ''}
-                          onChange={(e) => updateRecommendedValue(row.id, 'minValue', e.target.value)}
-                          className="w-14 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500"
-                          placeholder="0.30"
-                        />
-                        <span className="text-gray-600">≤ HVL ≤</span>
-                        <input
-                          type="text"
-                          value={row.recommendedValue?.maxValue || ''}
-                          onChange={(e) => updateRecommendedValue(row.id, 'maxValue', e.target.value)}
-                          className="w-14 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500"
-                          placeholder="0.37"
-                        />
-                        <span className="text-gray-600">at</span>
-                        <input
-                          type="text"
-                          value={row.recommendedValue?.kvp || ''}
-                          onChange={(e) => updateRecommendedValue(row.id, 'kvp', e.target.value)}
-                          className="w-12 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500"
-                          placeholder="28"
-                        />
-                        <span className="text-gray-600">kVp</span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1 flex-wrap text-xs">
+                          <input
+                            type="text"
+                            value={row.recommendedValue?.minValue || ''}
+                            onChange={(e) => updateRecommendedValue(row.id, 'minValue', e.target.value)}
+                            className={`w-14 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500 ${recommendedValuesValidation.rowIssues[row.id] ? 'border-red-500 bg-red-50' : ''}`}
+                            placeholder="0.30"
+                          />
+                          <span className="text-gray-600">≤ HVL ≤</span>
+                          <input
+                            type="text"
+                            value={row.recommendedValue?.maxValue || ''}
+                            onChange={(e) => updateRecommendedValue(row.id, 'maxValue', e.target.value)}
+                            className={`w-14 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500 ${recommendedValuesValidation.rowIssues[row.id] ? 'border-red-500 bg-red-50' : ''}`}
+                            placeholder="0.37"
+                          />
+                          <span className="text-gray-600">at</span>
+                          <input
+                            type="text"
+                            value={row.recommendedValue?.kvp || ''}
+                            onChange={(e) => updateRecommendedValue(row.id, 'kvp', e.target.value)}
+                            className={`w-12 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500 ${recommendedValuesValidation.rowIssues[row.id] ? 'border-red-500 bg-red-50' : ''}`}
+                            placeholder="28"
+                          />
+                          <span className="text-gray-600">kVp</span>
+                        </div>
+                        {recommendedValuesValidation.rowIssues[row.id] && (
+                          <span className="text-[10px] text-red-600">{recommendedValuesValidation.rowIssues[row.id]}</span>
+                        )}
                       </div>
                     )}
                   </td>

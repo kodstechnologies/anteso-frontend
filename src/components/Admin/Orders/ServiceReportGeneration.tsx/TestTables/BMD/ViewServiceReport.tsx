@@ -1071,10 +1071,28 @@ const ViewServiceReportBMD: React.FC = () => {
             )}
             {/* 2. Reproducibility of Radiation Output */}
             {testData.reproducibilityOfRadiationOutput?.outputRows?.length > 0 && (() => {
-              const rows = testData.reproducibilityOfRadiationOutput.outputRows;
+              const repro = testData.reproducibilityOfRadiationOutput;
+              const rows = repro.outputRows;
               const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
-              const tolVal = parseFloat(testData.reproducibilityOfRadiationOutput.tolerance?.value ?? '0.05') || 0.05;
-              const tolOp = testData.reproducibilityOfRadiationOutput.tolerance?.operator ?? '<=';
+              const tolVal = parseFloat(repro.tolerance?.value ?? '0.05') || 0.05;
+              const tolOp = repro.tolerance?.operator ?? '<=';
+
+              /** BMD model stores FDD as `fcd: { value }` (same as entry form “FDD(cm)”). */
+              const fddCmDisplay = (() => {
+                const f = repro.fcd;
+                if (f != null && typeof f === "object" && "value" in f) {
+                  const v = (f as { value?: unknown }).value;
+                  if (v != null && String(v).trim() !== "") return String(v).trim();
+                }
+                if (typeof f === "string" && f.trim() !== "") return f.trim();
+                const ffd = (repro as { ffd?: { value?: unknown } | string }).ffd;
+                if (ffd != null && typeof ffd === "object" && "value" in ffd) {
+                  const v = ffd.value;
+                  if (v != null && String(v).trim() !== "") return String(v).trim();
+                }
+                if (typeof ffd === "string" && ffd.trim() !== "") return ffd.trim();
+                return "-";
+              })();
 
               const getVal = (o: any): number => {
                 if (o == null) return NaN;
@@ -1087,6 +1105,21 @@ const ViewServiceReportBMD: React.FC = () => {
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                   <h3 className="text-xl font-bold  mb-4 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Reproducibility of radiation output(mGy)</h3>
+                  <div className="mb-3 print:mb-1" style={{ marginBottom: '6px' }}>
+                    <p className="font-semibold mb-1 text-sm print:text-xs" style={{ fontSize: '11px', marginBottom: '3px' }}>Operating parameters</p>
+                    <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FDD (cm)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{fddCmDisplay}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                   <div className="overflow-x-auto print:overflow-visible">
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '10px', tableLayout: 'auto', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">

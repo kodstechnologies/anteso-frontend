@@ -297,7 +297,11 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
     setIsSaving(true);
     try {
       const payload = {
-        settings: [settings], // Save as array often safer for backend consistency
+        fcd: settings.fcd,
+        kv: settings.kv,
+        ma: settings.ma,
+        time: settings.time,
+        settings: [settings],
         leakageMeasurements: processedLeakage.map(row => ({
           location: row.location,
           left: row.left,

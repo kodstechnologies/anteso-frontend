@@ -227,7 +227,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Reproducibility of Radiation Output (CV)", testRows, true);
+      addRowsForTest("Reproducibility of Radiation Output", testRows, true);
     }
   }
 

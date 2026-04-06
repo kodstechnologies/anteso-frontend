@@ -79,11 +79,17 @@ export const createOArmUploadableExcel = (data: OArmExportData): XLSX.WorkBook =
 
   const lmas = unwrap(data.linearityOfMasLoading);
   if (lmas?.table2?.length) {
-    allData.push(["TEST: LINEARITY OF mAs LOADING"]);
-    allData.push(["mAs Range", "Measured mR 1", "Measured mR 2", "Measured mR 3"]);
+    const isMa = lmas.selection === "mA";
+    allData.push([isMa ? "TEST: LINEARITY OF mA LOADING" : "TEST: LINEARITY OF mAs LOADING"]);
+    allData.push(
+      isMa
+        ? ["mA Station", "Measured mR 1", "Measured mR 2", "Measured mR 3"]
+        : ["mAs Range", "Measured mR 1", "Measured mR 2", "Measured mR 3"]
+    );
     lmas.table2.forEach((r: any) => {
       const outs = r.measuredOutputs || [];
-      allData.push([r.mAsRange ?? "", outs[0] ?? "", outs[1] ?? "", outs[2] ?? ""]);
+      const firstCol = r.mAsApplied ?? r.mAsRange ?? r.ma ?? "";
+      allData.push([firstCol, outs[0] ?? "", outs[1] ?? "", outs[2] ?? ""]);
     });
     allData.push([]);
   }

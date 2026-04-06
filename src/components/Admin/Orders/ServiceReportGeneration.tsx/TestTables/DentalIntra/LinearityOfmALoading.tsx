@@ -122,7 +122,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     );
   };
 
-const processedTable2 = useMemo(() => {
+  const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
     const xValues: number[] = [];
 
@@ -379,16 +379,26 @@ const processedTable2 = useMemo(() => {
   }
 
   return (
-    <div className="p-6 max-w-full overflow-x-auto">
+    <div className="p-6 max-w-full">
       <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
 
+      {/* Warning message for missing time */}
+      {!isViewMode && table1Row.time && (isNaN(parseFloat(table1Row.time)) || parseFloat(table1Row.time) <= 0) && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-700">
+            ⚠️ Time value is required for accurate X = mGy/(mA × sec) calculation. Please enter a valid time in seconds.
+          </p>
+        </div>
+      )}
+
+      {/* Table 1: FCD, kV, Time (sec) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FDD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">Time (sec)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">FDD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">kV</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">Time (sec)</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -428,141 +438,133 @@ const processedTable2 = useMemo(() => {
         </table>
       </div>
 
+      {/* Table 2: mA + Output (mGy) with horizontal scroll and sticky mA column */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-blue-50">
-            <tr>
-              <th
-                rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
-              >
-                mA
-              </th>
-              <th
-                colSpan={measHeaders.length}
-                className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
-              >
-                <div className="flex items-center justify-between">
-                  <span>Output (mGy)</span>
-                  {!isViewMode && (
-                    <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mA)</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
-              <th rowSpan={2} className="w-10" />
-            </tr>
-            <tr>
-              {measHeaders.map((header, idx) => (
-                <th key={idx} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                  <div className="flex items-center justify-center gap-1">
-                    <input
-                      type="text"
-                      value={header}
-                      onChange={e => updateMeasHeader(idx, e.target.value)}
-                      disabled={isViewMode}
-                      className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                    />
-                    {measHeaders.length > 1 && !isViewMode && (
-                      <button onClick={() => removeMeasColumn(idx)} className="p-0.5 text-red-600 hover:bg-red-100 rounded">
-                        <Trash2 className="w-3 h-3" />
+        <div className="overflow-x-auto">
+          <table className="min-w-max divide-y divide-gray-200">
+            <thead className="bg-blue-50">
+              {/* First header row */}
+              <tr>
+                {/* Sticky left column for mA */}
+                <th
+                  rowSpan={2}
+                  className="sticky left-0 z-10 px-6 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap bg-blue-50"
+                >
+                  mA
+                </th>
+                <th
+                  colSpan={measHeaders.length}
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 tracking-wider border-r"
+                >
+                  <div className="flex items-center justify-between whitespace-nowrap">
+                    <span>Output (mGy)</span>
+                    {!isViewMode && (
+                      <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded ml-2">
+                        <Plus className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {processedTable2.map((p, rowIdx) => (
-              <tr key={p.id} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-r">
-                  <input
-                    type="text"
-                    value={p.ma}
-                    onChange={e => updateTable2Cell(p.id, 'ma', e.target.value)}
-                    disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                    placeholder="100"
-                  />
-                </td>
-
-                {p.measuredOutputs.map((val, colIdx) => (
-                  <td key={colIdx} className="px-2 py-2 border-r">
+                <th rowSpan={2} className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">Avg Output</th>
+                <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X (mGy/(mA·sec))</th>
+                <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X MAX</th>
+                <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X MIN</th>
+                <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">CoL</th>
+                <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider whitespace-nowrap">Remarks</th>
+                <th rowSpan={2} className="w-12" />
+              </tr>
+              {/* Second header row */}
+              <tr>
+                {measHeaders.map((header, idx) => (
+                  <th key={idx} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+                    <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                      <input
+                        type="text"
+                        value={header}
+                        onChange={e => updateMeasHeader(idx, e.target.value)}
+                        disabled={isViewMode}
+                        className={`w-24 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      />
+                      {measHeaders.length > 1 && !isViewMode && (
+                        <button onClick={() => removeMeasColumn(idx)} className="p-0.5 text-red-600 hover:bg-red-100 rounded">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {processedTable2.map((p, rowIdx) => (
+                <tr key={p.id} className="hover:bg-gray-50">
+                  {/* Sticky left column for mA value */}
+                  <td className="sticky left-0 z-10 px-4 py-2 border-r bg-white">
                     <input
-                      type="number"
-                      step="any"
-                      value={val}
-                      onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
+                      type="text"
+                      value={p.ma}
+                      onChange={e => updateTable2Cell(p.id, 'ma', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      className="w-full min-w-[80px] px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                      placeholder="100"
                     />
                   </td>
-                ))}
 
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">
-                  {p.average}
-                </td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">
-                  {p.x}
-                </td>
-                {rowIdx === 0 && (
-                  <>
-                    <td
-                      rowSpan={processedTable2.length}
-                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
-                    >
-                      {p.xMax}
+                  {p.measuredOutputs.map((val, colIdx) => (
+                    <td key={colIdx} className="px-2 py-2 border-r">
+                      <input
+                        type="number"
+                        step="any"
+                        value={val}
+                        onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
+                        disabled={isViewMode}
+                        className="w-24 px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                      />
                     </td>
-                    <td
-                      rowSpan={processedTable2.length}
-                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
-                    >
-                      {p.xMin}
-                    </td>
-                    <td
-                      rowSpan={processedTable2.length}
-                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
-                    >
-                      {p.col}
-                    </td>
-                  </>
-                )}
+                  ))}
 
-                <td className="px-4 py-2 text-center">
-                  <span
-                    className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${p.remarks === 'Pass'
-                      ? 'bg-green-100 text-green-800'
-                      : p.remarks === 'Fail'
-                        ? 'bg-red-100 text-red-800'
-                        : 'text-gray-400'
-                      }`}
-                  >
-                    {p.remarks || '—'}
-                  </span>
-                </td>
-
-                <td className="px-2 py-2 text-center">
-                  {table2Rows.length > 1 && !isViewMode && (
-                    <button
-                      onClick={() => window.confirm('Delete this row?') && removeTable2Row(p.id)}
-                      className="text-red-600 hover:bg-red-100 p-1 rounded transition-colors"
+                  <td className="px-4 py-2 text-center border-r font-medium bg-gray-50 min-w-[80px]">
+                    {p.average}
+                  </td>
+                  <td className="px-4 py-2 text-center border-r font-medium bg-gray-50 min-w-[80px]">
+                    {p.x}
+                  </td>
+                  <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50 min-w-[80px]">
+                    {p.xMax}
+                  </td>
+                  <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50 min-w-[80px]">
+                    {p.xMin}
+                  </td>
+                  <td className="px-4 py-2 text-center border-r font-medium bg-yellow-50 min-w-[80px]">
+                    {p.col}
+                  </td>
+                  <td className="px-4 py-2 text-center min-w-[80px]">
+                    <span
+                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${p.remarks === 'Pass'
+                        ? 'bg-green-100 text-green-800'
+                        : p.remarks === 'Fail'
+                          ? 'bg-red-100 text-red-800'
+                          : 'text-gray-400'
+                        }`}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      {p.remarks || '—'}
+                    </span>
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {table2Rows.length > 1 && !isViewMode && (
+                      <button
+                        onClick={() => window.confirm('Delete this row?') && removeTable2Row(p.id)}
+                        className="text-red-600 hover:bg-red-100 p-1 rounded transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <div className="px-4 py-3 bg-gray-50 border-t flex justify-between items-center">
           {!isViewMode && (
@@ -574,7 +576,7 @@ const processedTable2 = useMemo(() => {
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) less than</span>
+            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Tolerance (CoL) less than</span>
             <input
               type="number"
               step="0.001"
@@ -624,4 +626,3 @@ const processedTable2 = useMemo(() => {
 };
 
 export default LinearityOfMaLoading;
-

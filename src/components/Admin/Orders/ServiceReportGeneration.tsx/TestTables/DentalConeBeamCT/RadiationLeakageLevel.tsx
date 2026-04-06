@@ -328,31 +328,32 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     setIsSaving(true);
 
     const payload = {
-      measurementSettings: [
+      // Backend schema expects `settings` with string kvp/ma/time (not measurementSettings / kv)
+      settings: [
         {
-          kv: parseFloat(settings.kv) || 0,
-          ma: parseFloat(settings.ma) || 0,
-          time: parseFloat(settings.time) || 0,
+          ffd: '',
+          kvp: settings.kv.trim(),
+          ma: settings.ma.trim(),
+          time: settings.time.trim(),
         },
       ],
-      leakageMeasurements: leakageRows.map(r => ({
+      leakageMeasurements: processedLeakage.map(r => ({
         location: r.location,
-        front: parseFloat(r.front) || 0,
-        back: parseFloat(r.back) || 0,
-        left: parseFloat(r.left) || 0,
-        right: parseFloat(r.right) || 0,
+        front: String(r.front ?? '').trim(),
+        back: String(r.back ?? '').trim(),
+        left: String(r.left ?? '').trim(),
+        right: String(r.right ?? '').trim(),
+        max: String(r.max ?? '').trim(),
         unit: r.unit,
+        remark: String(r.remark ?? '').trim(),
       })),
-      workload: parseFloat(workload) || 0,
+      workload: workload.trim() || '0',
       workloadUnit,
-      tolerance: toleranceValue.trim(),
+      toleranceValue: toleranceValue.trim(),
       toleranceOperator,
       toleranceTime: toleranceTime.trim(),
-      maxRadiationLeakage: globalMaxResultMGy,
+      maxRadiationLeakage: globalMaxResultMGy === '—' ? '' : globalMaxResultMGy,
       maxLeakageResult: calculatedResults[0]?.calculatedMR || '',
-      ma: parseFloat(settings.ma) || 0,
-      kv: parseFloat(settings.kv) || 0,
-      time: parseFloat(settings.time) || 0,
     };
 
     try {
