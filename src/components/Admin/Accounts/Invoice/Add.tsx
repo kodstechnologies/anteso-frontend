@@ -15,9 +15,11 @@ interface ServiceItem {
   machineType?: string;
   description?: string;
   quantity?: number;
+  /** Legacy unit rate (Customer); prefer totalAmount for line totals. */
   rate?: number;
+  /** Line total for the machine (same meaning as order service totalAmount). */
+  totalAmount?: number;
   hsnno?: string;
-
 }
 
 interface AdditionalService {
@@ -63,11 +65,24 @@ type TaxType = 'cgst' | 'sgst' | 'igst';
 
 // SRF Machine options
 const machineOptions: OptionType[] = [
-  'Fixed X-Ray', 'Mobile X-Ray', 'C-Arm', 'Cath Lab/Interventional Radiology',
-  'Mammography', 'CT Scan', 'PET CT', 'CT Simulator', 'OPG', 'CBCT',
-  'BMD/DEXA', 'Dental IOPA', 'Dental Hand Held', 'O Arm', 'KV Imaging (OBI)',
-  'Lead Apron Test', 'Thyroid Shield Test', 'Gonad Shield Test',
-  'Radiation Survey of Radiation Facility', 'Others',
+  "Radiography (Fixed)",
+  "Radiography (Mobile)",
+  "Radiography (Portable)",
+  "Radiography and Fluoroscopy",
+  "Interventional Radiology",
+  "C-Arm",
+  "O-Arm",
+  "Computed Tomography",
+  "Mammography",
+  "Dental Cone Beam CT",
+  "Ortho Pantomography (OPG)",
+  "Dental (Intra Oral)",
+  "Dental (Hand-held)",
+  "Bone Densitometer (BMD)",
+  "KV Imaging (OBI)",
+  "Radiography (Mobile) with HT",
+  "Lead Apron/Thyroid Shield/Gonad Shield",
+  "Others",
 ].map(label => ({ label, value: label }));
 
 // Validation Schema
@@ -83,6 +98,7 @@ const InvoiceSchema = Yup.object().shape({
       description: Yup.string(),
       quantity: Yup.number().integer('Must be an integer').min(1, 'Quantity must be at least 1'),
       rate: Yup.number().min(0, 'Rate cannot be negative'),
+      totalAmount: Yup.number().min(0, 'Total amount cannot be negative'),
       hsnno: Yup.string(),
     })
   ),
@@ -107,6 +123,7 @@ const InvoiceSchema = Yup.object().shape({
           description: Yup.string(),
           quantity: Yup.number().integer('Must be an integer').min(1, 'Quantity must be at least 1'),
           rate: Yup.number().min(0, 'Rate cannot be negative'),
+          totalAmount: Yup.number().min(0, 'Total amount cannot be negative'),
           hsnno: Yup.string(),
         })
       ),
@@ -145,6 +162,15 @@ const InvoiceSchema = Yup.object().shape({
   }),
 });
 
+/** Line total: prefer totalAmount; else quantity × rate (legacy). */
+const serviceLineTotal = (s: ServiceItem): number => {
+  const ta = Number(s.totalAmount);
+  if (!Number.isNaN(ta) && ta > 0) return ta;
+  const q = Number(s.quantity) || 0;
+  const r = Number(s.rate) || 0;
+  return q * r;
+};
+
 // GrandTotalDisplay Component
 const GrandTotalDisplay: React.FC = () => {
   const { values } = useFormikContext<FormValues>();
@@ -156,7 +182,7 @@ const GrandTotalDisplay: React.FC = () => {
 
   if (values.type === 'Customer') {
     servicesSubtotal = values.services.reduce(
-      (sum: number, s: ServiceItem) => sum + (s.quantity || 0) * (s.rate || 0),
+      (sum: number, s: ServiceItem) => sum + serviceLineTotal(s),
       0
     );
     additionalSubtotal = values.additionalServices.reduce(
@@ -167,7 +193,7 @@ const GrandTotalDisplay: React.FC = () => {
   } else if (values.type === 'Dealer/Manufacturer') {
     dealerSubtotal = values.dealerHospitals.reduce((sum: number, d: DealerHospital) => {
       const dhServicesSubtotal = (d.services || []).reduce(
-        (s: number, service: ServiceItem) => s + (service.quantity || 0) * (service.rate || 0),
+        (s: number, service: ServiceItem) => s + serviceLineTotal(service),
         0
       );
       const dhAdditionalSubtotal = (d.additionalServices || []).reduce(
@@ -227,7 +253,7 @@ const AutoCalculateTotals: React.FC = () => {
     let subtotal = 0;
     if (values.type === 'Customer') {
       const servicesSubtotal = values.services.reduce(
-        (sum: number, s: ServiceItem) => sum + (s.quantity || 0) * (s.rate || 0),
+        (sum: number, s: ServiceItem) => sum + serviceLineTotal(s),
         0
       );
       const additionalSubtotal = values.additionalServices.reduce(
@@ -238,7 +264,7 @@ const AutoCalculateTotals: React.FC = () => {
     } else if (values.type === 'Dealer/Manufacturer') {
       const dealerSubtotal = values.dealerHospitals.reduce((sum: number, d: DealerHospital) => {
         const dhServicesSubtotal = (d.services || []).reduce(
-          (s: number, service: ServiceItem) => s + (service.quantity || 0) * (service.rate || 0),
+          (s: number, service: ServiceItem) => s + serviceLineTotal(service),
           0
         );
         const dhAdditionalSubtotal = (d.additionalServices || []).reduce(
@@ -269,7 +295,7 @@ const AutoCalculateTotals: React.FC = () => {
     if (values.type === 'Dealer/Manufacturer') {
       values.dealerHospitals.forEach((dh: DealerHospital, index: number) => {
         const dhServicesSubtotal = (dh.services || []).reduce(
-          (s: number, service: ServiceItem) => s + (service.quantity || 0) * (service.rate || 0),
+          (s: number, service: ServiceItem) => s + serviceLineTotal(service),
           0
         );
         const dhAdditionalSubtotal = (dh.additionalServices || []).reduce(
@@ -312,15 +338,18 @@ const Add = () => {
           });
         }
 
-        // Fetch dealer orders
+        // Dealer + Manufacturer orders (same API; leadType distinguishes)
         const dealerRes = await getDealerOrders();
-        // console.log("🚀 ~ fetchSrfNumbers ~ dealerRes:", dealerRes);
-        if (dealerRes?.success) {
-          const dealerOptions = dealerRes.data.map((item: any) => ({
-            label: `${item.srfNumber} (Dealer)`,
-            value: item.srfNumber,
-          }));
-          options = [...options, ...dealerOptions];
+        if (dealerRes?.success && Array.isArray(dealerRes.data)) {
+          const dmOptions = dealerRes.data.map((item: any) => {
+            const tag =
+              item.leadType === 'Manufacturer' ? '(Manufacturer)' : '(Dealer)';
+            return {
+              label: `${item.srfNumber} ${tag}`,
+              value: item.srfNumber,
+            };
+          });
+          options = [...options, ...dmOptions];
           dealerRes.data.forEach((item: any) => {
             map[item.srfNumber] = item._id;
           });
@@ -363,7 +392,7 @@ const Add = () => {
           grandTotal: 0,
           taxes: { cgst: { checked: false, amount: 0 }, sgst: { checked: false, amount: 0 }, igst: { checked: false, amount: 0 } },
           discountPercent: 0,
-          services: [{ machineType: '', description: '', quantity: 1, rate: 0, hsnno: '' }],
+          services: [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }],
           additionalServices: [],
           dealerHospitals: [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, services: [], additionalServices: [] }],
         }}
@@ -373,13 +402,13 @@ const Add = () => {
             console.log('Submitting form with values:', JSON.stringify(values, null, 2));
             let subtotal = 0;
             if (values.type === 'Customer') {
-              const servicesSubtotal = values.services.reduce((sum, s) => sum + (s.quantity || 0) * (s.rate || 0), 0);
+              const servicesSubtotal = values.services.reduce((sum, s) => sum + serviceLineTotal(s), 0);
               const additionalSubtotal = values.additionalServices.reduce((sum, as) => sum + (as.totalAmount || 0), 0);
               subtotal = servicesSubtotal + additionalSubtotal;
             } else if (values.type === 'Dealer/Manufacturer') {
               const dealerSubtotal = values.dealerHospitals.reduce((sum, d) => {
                 const dhServicesSubtotal = (d.services || []).reduce(
-                  (s, service) => s + (service.quantity || 0) * (service.rate || 0),
+                  (s, service) => s + serviceLineTotal(service),
                   0
                 );
                 const dhAdditionalSubtotal = (d.additionalServices || []).reduce(
@@ -445,7 +474,7 @@ const Add = () => {
                     setFieldValue('buyerName', '');
                     setFieldValue('address', '');
                     setFieldValue('state', '');
-                    setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, hsnno: '' }]);
+                    setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }]);
                     setFieldValue('additionalServices', []);
                     setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, services: [], additionalServices: [] }]);
                     setFieldValue('taxes', { cgst: { checked: false, amount: 0 }, sgst: { checked: false, amount: 0 }, igst: { checked: false, amount: 0 } });
@@ -477,6 +506,27 @@ const Add = () => {
                         // console.log("🚀 ~ SRF Number onChange ~ res:", res);
                         if (res?.success && res.data) {
                           const details = res.data;
+                          const enquiryServices = details?.quotation?.enquiry?.services || [];
+                          const norm = (v: any) => String(v || '').trim().toLowerCase();
+                          const resolveServiceTotal = (s: any) => {
+                            const direct = Number(s?.totalAmount) || 0;
+                            if (direct > 0) return direct;
+
+                            const key = norm(s?.machineType);
+                            const fromEnquiryExact = enquiryServices.find((es: any) => norm(es?.machineType) === key);
+                            const fromEnquiryPartial = !fromEnquiryExact
+                              ? enquiryServices.find((es: any) => {
+                                const n = norm(es?.machineType);
+                                return n && key && (n.includes(key) || key.includes(n));
+                              })
+                              : null;
+                            const enquiryTotal = Number(fromEnquiryExact?.totalAmount || fromEnquiryPartial?.totalAmount) || 0;
+                            if (enquiryTotal > 0) return enquiryTotal;
+
+                            const qty = Number(s?.quantity) || 1;
+                            const rate = Number(s?.price || s?.rate) || 0;
+                            return qty * rate;
+                          };
                           setFieldValue('buyerName', details.hospitalName || details.dealerName || '');
                           setFieldValue('address', details.fullAddress || details.address || '');
                           setFieldValue('state', details.state || '');
@@ -504,18 +554,19 @@ const Add = () => {
                             if (details.services?.length) {
                               const mappedServices: ServiceItem[] = details.services.map((s: any) => {
                                 const qty = s.quantity || 1;
-                                const total = s.totalAmount || 0;
+                                const total = resolveServiceTotal(s);
                                 return {
                                   machineType: s.machineType || '',
                                   description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
                                   quantity: qty,
-                                  rate: qty > 0 ? total / qty : 0, // Rate per unit
+                                  totalAmount: total,
+                                  rate: qty > 0 ? total / qty : 0,
                                   hsnno: s.machineModel || '',
                                 };
                               });
                               setFieldValue('services', mappedServices);
                             } else {
-                              setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, hsnno: '' }]);
+                              setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }]);
                             }
 
                             if (details.additionalServices?.length) {
@@ -532,17 +583,30 @@ const Add = () => {
                           }
                           else if (values.type === 'Dealer/Manufacturer') {
                             let mainSubtotal = (details.quotation?.subtotal || 0) - (details.advanceAmount || 0);
-                            const mappedServices: ServiceItem[] = details.services?.length
-                              ? details.services.map((s: any) => ({
-                                machineType: s.machineType || '',
-                                description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
-                               quantity: s.quantity || 1,
-                                rate: s.totalAmount || 0,  // Use totalAmount directly
-                                hsnno: s.machineModel || '',
-                              }))
+                            const sourceServices: any[] =
+                              details.services?.length
+                                ? details.services
+                                : (details.quotation?.enquiry?.services || []);
+                            const mappedServices: ServiceItem[] = sourceServices.length
+                              ? sourceServices.map((s: any) => {
+                                const qty = s.quantity || 1;
+                                const total = resolveServiceTotal(s);
+                                return {
+                                  machineType: s.machineType || '',
+                                  description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
+                                  quantity: qty,
+                                  totalAmount: total,
+                                  rate: qty > 0 ? total / qty : 0,
+                                  hsnno: s.machineModel || '',
+                                };
+                              })
                               : [];
-                            const mappedAdditional: AdditionalService[] = details.additionalServices?.length
-                              ? details.additionalServices.map((as: any) => ({
+                            const sourceAdditional: any[] =
+                              details.additionalServices?.length
+                                ? details.additionalServices
+                                : (details.quotation?.enquiry?.additionalServices || []);
+                            const mappedAdditional: AdditionalService[] = sourceAdditional.length
+                              ? sourceAdditional.map((as: any) => ({
                                 name: as.name || '',
                                 description: as.description || '',
                                 totalAmount: as.totalAmount || 0,
@@ -563,7 +627,7 @@ const Add = () => {
                             setFieldValue('additionalServices', []);
                           } else {
                             setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, services: [], additionalServices: [] }]);
-                            setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, hsnno: '' }]);
+                            setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }]);
                             setFieldValue('additionalServices', []);
                           }
                         }
@@ -575,7 +639,16 @@ const Add = () => {
                 >
                   <option value="">Select SRF Number</option>
                   {srfOptions
-                    .filter((opt) => values.type === '' || opt.label.includes(values.type === 'Customer' ? '(Customer)' : '(Dealer)'))
+                    .filter((opt) => {
+                      if (values.type === '') return true;
+                      if (values.type === 'Customer') return opt.label.includes('(Customer)');
+                      if (values.type === 'Dealer/Manufacturer') {
+                        return (
+                          opt.label.includes('(Dealer)') || opt.label.includes('(Manufacturer)')
+                        );
+                      }
+                      return true;
+                    })
                     .map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
@@ -602,7 +675,7 @@ const Add = () => {
                   {({ push, remove }) => (
                     <>
                       {values.services.map((_, index) => (
-                        <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-4">
+                        <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start mb-4">
                           <div>
                             <label className="block mb-1 font-medium">Machine Type</label>
                             <Field as="select" name={`services[${index}].machineType`} className="form-select">
@@ -620,17 +693,14 @@ const Add = () => {
                             />
                           </div>
 
-                          <div>
+                          <div className="md:col-span-2">
                             <label className="block mb-1 font-medium">Description</label>
                             <Field
+                              as="textarea"
+                              rows={4}
                               name={`services[${index}].description`}
-                              className="form-input"
+                              className="form-input min-h-[6rem] resize-y"
                               placeholder="Enter description"
-                            />
-                            <ErrorMessage
-                              name={`services[${index}].description`}
-                              component="div"
-                              className="text-red-500 text-sm mt-1"
                             />
                           </div>
 
@@ -650,15 +720,15 @@ const Add = () => {
                           </div>
 
                           <div>
-                            <label className="block mb-1 font-medium">Rate</label>
+                            <label className="block mb-1 font-medium">Total amount</label>
                             <Field
-                              name={`services[${index}].rate`}
+                              name={`services[${index}].totalAmount`}
                               type="number"
                               className="form-input"
                               placeholder="0"
                             />
                             <ErrorMessage
-                              name={`services[${index}].rate`}
+                              name={`services[${index}].totalAmount`}
                               component="div"
                               className="text-red-500 text-sm mt-1"
                             />
@@ -702,6 +772,7 @@ const Add = () => {
                               description: '',
                               quantity: 1,
                               rate: 0,
+                              totalAmount: 0,
                               hsnno: '',
                             })
                           }
@@ -724,7 +795,7 @@ const Add = () => {
                   {({ push, remove }) => (
                     <>
                       {values.additionalServices.map((_, index) => (
-                        <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-4">
+                        <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-4">
                           <div>
                             <label className="block mb-1 font-medium">Name</label>
                             <Field
@@ -739,11 +810,13 @@ const Add = () => {
                             />
                           </div>
 
-                          <div>
+                          <div className="md:col-span-2">
                             <label className="block mb-1 font-medium">Description</label>
                             <Field
+                              as="textarea"
+                              rows={3}
                               name={`additionalServices[${index}].description`}
-                              className="form-input"
+                              className="form-input min-h-[4.5rem] resize-y"
                               placeholder="Enter description"
                             />
                             <ErrorMessage
@@ -861,7 +934,7 @@ const Add = () => {
                               {({ push: pushService, remove: removeService }) => (
                                 <>
                                   {values.dealerHospitals[index].services?.map((_, serviceIndex) => (
-                                    <div key={serviceIndex} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-4">
+                                    <div key={serviceIndex} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-start mb-4">
                                       <div>
                                         <label className="block mb-1 font-medium">Machine Type</label>
                                         <Field
@@ -883,11 +956,13 @@ const Add = () => {
                                         />
                                       </div>
 
-                                      <div>
+                                      <div className="md:col-span-2">
                                         <label className="block mb-1 font-medium">Description</label>
                                         <Field
+                                          as="textarea"
+                                          rows={4}
                                           name={`dealerHospitals[${index}].services[${serviceIndex}].description`}
-                                          className="form-input"
+                                          className="form-input min-h-[6rem] resize-y"
                                           placeholder="Enter description"
                                         />
                                         <ErrorMessage
@@ -913,18 +988,18 @@ const Add = () => {
                                       </div>
 
                                       <div>
-                                        <label className="block mb-1 font-medium">Rate</label>
+                                        <label className="block mb-1 font-medium">Total amount</label>
                                         <Field
-                                          name={`dealerHospitals[${index}].services[${serviceIndex}].rate`}
+                                          name={`dealerHospitals[${index}].services[${serviceIndex}].totalAmount`}
                                           type="number"
                                           className="form-input"
                                           placeholder="0"
                                         />
-                                        {/* <ErrorMessage
-                                          name=`dealerHospitals[${index}].services[${serviceIndex}].rate`
-                                        component="div"
-                                        className="text-red-500 text-sm mt-1"
-                                        /> */}
+                                        <ErrorMessage
+                                          name={`dealerHospitals[${index}].services[${serviceIndex}].totalAmount`}
+                                          component="div"
+                                          className="text-red-500 text-sm mt-1"
+                                        />
                                       </div>
 
                                       <div>
@@ -966,6 +1041,7 @@ const Add = () => {
                                           description: '',
                                           quantity: 1,
                                           rate: 0,
+                                          totalAmount: 0,
                                           hsnno: '',
                                         })
                                       }
@@ -986,7 +1062,7 @@ const Add = () => {
                               {({ push: pushAdditional, remove: removeAdditional }) => (
                                 <>
                                   {values.dealerHospitals[index].additionalServices?.map((_, additionalIndex) => (
-                                    <div key={additionalIndex} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-4">
+                                    <div key={additionalIndex} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-4">
                                       <div>
                                         <label className="block mb-1 font-medium">Name</label>
                                         <Field
@@ -1001,11 +1077,13 @@ const Add = () => {
                                         />
                                       </div>
 
-                                      <div>
+                                      <div className="md:col-span-2">
                                         <label className="block mb-1 font-medium">Description</label>
                                         <Field
+                                          as="textarea"
+                                          rows={3}
                                           name={`dealerHospitals[${index}].additionalServices[${additionalIndex}].description`}
-                                          className="form-input"
+                                          className="form-input min-h-[4.5rem] resize-y"
                                           placeholder="Enter description"
                                         />
                                         <ErrorMessage
