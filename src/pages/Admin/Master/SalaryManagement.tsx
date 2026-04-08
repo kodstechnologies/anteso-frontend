@@ -11,7 +11,7 @@ import IconEye from '../../../components/Icon/IconEye';
 import Breadcrumb, { BreadcrumbItem } from '../../../components/common/Breadcrumb';
 import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
-import { getAllEmployees } from '../../../api'; // ✅ import API function
+import { getAllEmployees } from '../../../api';
 
 const SalaryManagement = () => {
     const dispatch = useDispatch();
@@ -24,12 +24,12 @@ const SalaryManagement = () => {
     const [page, setPage] = useState(1);
     const PAGE_SIZES = [10, 20, 30, 50, 100];
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-    const [initialRecords, setInitialRecords] = useState<any[]>([]);
+    const [filteredRecords, setFilteredRecords] = useState<any[]>([]); // Changed from initialRecords
     const [records, setRecords] = useState<any[]>([]);
     const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
     const [search, setSearch] = useState('');
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'name',
+        columnAccessor: 'clientId', // Changed to clientId for better default sorting
         direction: 'asc',
     });
 
@@ -44,7 +44,6 @@ const SalaryManagement = () => {
                     clientId: `EMP${String(index + 1).padStart(3, '0')}`,
                 }));
                 setItems(formatted);
-                setInitialRecords(sortBy(formatted, 'name'));
             } catch (error) {
                 console.error("Error fetching employees:", error);
             }
@@ -52,50 +51,55 @@ const SalaryManagement = () => {
         fetchEmployees();
     }, []);
 
-    useEffect(() => setPage(1), [pageSize]);
+    // Apply search and sorting to get filtered records
+    useEffect(() => {
+        if (!items.length) return;
+        
+        // First filter based on search
+        let filtered = items.filter((item) =>
+            [
+                item.clientId,
+                item.name,
+                item.email,
+                item.address,
+                item.phone,
+                item.business,
+                item.gstNo,
+                item.designation,
+                item.title,
+                item.amount?.toString(),
+                item.month,
+                item.total?.toString(),
+            ]
+                .join(' ')
+                .toLowerCase()
+                .includes(search.toLowerCase())
+        );
+        
+        // Then apply sorting
+        const sorted = sortBy(filtered, sortStatus.columnAccessor);
+        const finalData = sortStatus.direction === 'desc' ? sorted.reverse() : sorted;
+        
+        setFilteredRecords(finalData);
+        setPage(1); // Reset to first page when search or sort changes
+    }, [items, search, sortStatus]);
 
+    // Update paginated records when filtered records, page, or pageSize changes
     useEffect(() => {
         const from = (page - 1) * pageSize;
         const to = from + pageSize;
-        setRecords([...initialRecords.slice(from, to)]);
-    }, [page, pageSize, initialRecords]);
+        setRecords(filteredRecords.slice(from, to));
+    }, [filteredRecords, page, pageSize]);
 
+    // Reset to page 1 when page size changes
     useEffect(() => {
-        setInitialRecords(() =>
-            items.filter((item) =>
-                [
-                    item.clientId,
-                    item.name,
-                    item.email,
-                    item.address,
-                    item.phone,
-                    item.business,
-                    item.gstNo,
-                    item.designation,
-                    item.title,
-                    item.amount?.toString(),
-                    item.month,
-                    item.total?.toString(),
-                ]
-                    .join(' ')
-                    .toLowerCase()
-                    .includes(search.toLowerCase())
-            )
-        );
-    }, [search, items]);
-
-    useEffect(() => {
-        const sorted = sortBy(initialRecords, sortStatus.columnAccessor);
-        setRecords(sortStatus.direction === 'desc' ? sorted.reverse() : sorted);
         setPage(1);
-    }, [sortStatus, initialRecords]);
+    }, [pageSize]);
 
     const deleteRow = (id: any = null) => {
         if (window.confirm('Are you sure you want to delete selected row(s)?')) {
             const result = items.filter((user) => user.id !== id);
             setItems(result);
-            setInitialRecords(result);
-            setRecords(result);
             setSelectedRecords([]);
             setSearch('');
             setPage(1);
@@ -131,10 +135,11 @@ const SalaryManagement = () => {
                             records={records}
                             columns={[
                                 { accessor: 'clientId', title: 'EMP ID', sortable: true },
-                                { accessor: 'name', sortable: true },
-                                { accessor: 'email', sortable: true },
-                                // { accessor: 'month', title: 'Month', sortable: true },
-                                // { accessor: 'total', title: 'Total Payable', sortable: true },
+                                { accessor: 'name', title: 'Name', sortable: true },
+                                { accessor: 'email', title: 'Email', sortable: true },
+                                { accessor: 'designation', title: 'Designation', sortable: true },
+                                { accessor: 'department', title: 'Department', sortable: true },
+                                { accessor: 'phone', title: 'Phone', sortable: true },
                                 {
                                     accessor: 'action',
                                     title: 'Actions',
@@ -142,19 +147,18 @@ const SalaryManagement = () => {
                                     textAlignment: 'center',
                                     render: (row) => (
                                         <div className="flex gap-4 items-center w-max mx-auto">
-                                            <NavLink to={`/admin/hrms/salary-management-view/${row._id}`} className="flex hover:text-primary">
+                                            <NavLink 
+                                                to={`/admin/hrms/salary-management-view/${row._id}`} 
+                                                className="flex hover:text-primary"
+                                            >
                                                 <IconEye />
                                             </NavLink>
-                                            {/* <IconEdit className="w-4.5 h-4.5 hover:text-info" /> */}
-                                            {/* <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(row._id)}>
-                                                <IconTrashLines />
-                                            </button> */}
                                         </div>
                                     ),
                                 },
                             ]}
                             highlightOnHover
-                            totalRecords={initialRecords.length}
+                            totalRecords={filteredRecords.length}
                             recordsPerPage={pageSize}
                             page={page}
                             onPageChange={setPage}
@@ -164,7 +168,9 @@ const SalaryManagement = () => {
                             onSortStatusChange={setSortStatus}
                             selectedRecords={selectedRecords}
                             onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing ${from} to ${to} of ${totalRecords} entries`}
+                            paginationText={({ from, to, totalRecords }) => 
+                                `Showing ${from} to ${to} of ${totalRecords} entries`
+                            }
                         />
                     </div>
                 </div>

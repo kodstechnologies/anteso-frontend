@@ -1,10 +1,9 @@
 import * as Yup from "yup";
-import { Field, Form, Formik, FieldArray } from "formik";
+import { Field, Form, Formik } from "formik";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { showMessage } from "../../../common/ShowMessage";
 import { useEffect, useState } from "react";
 import { editManufacturerById, getManufacturerById, getAllStates } from "../../../../api";
-import Cookies from "js-cookie";
 
 const systemQaTests = [
     { label: "FIXED X RAY", value: "FIXED_X_RAY", price: 3500, system: true },
@@ -35,24 +34,14 @@ const machineOptions = [
     "Lead Apron/Thyroid Shield/Gonad Shield",
     "Others"
 ];
-// ───── SYSTEM SERVICES ────────────────────────────────────────────────────
-const defaultServices = [
-    { label: "Institute Registration", value: "INSTITUTE_REGISTRATION", amount: 0, system: true },
-    { label: "Procurement", value: "PROCUREMENT", amount: 0, system: true },
-    { label: "License", value: "LICENSE", amount: 0, system: true },
-];
-
 const EditManufacture = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
     const [stateOptions, setStateOptions] = useState<string[]>([]);
     const [qaOptions, setQaOptions] = useState(systemQaTests);
-    const [serviceOptions, setServiceOptions] = useState(defaultServices);
     const [newQaName, setNewQaName] = useState("");
     const [newQaPrice, setNewQaPrice] = useState("");
-    const [newSrvName, setNewSrvName] = useState("");
-    const [newSrvAmount, setNewSrvAmount] = useState("");
 
     // ── FETCH STATES ───────────────────────────────────────────────────────
     useEffect(() => {
@@ -80,7 +69,6 @@ const EditManufacture = () => {
         phone: "",
         contactPersonName: "",
         qaTests: [] as string[],
-        services: [] as string[],
         travel: "",
         fixedCost: "",
     });
@@ -106,22 +94,7 @@ const EditManufacture = () => {
                     }
                 }) || [];
 
-                // Merge system + custom services
-                const allServices = [...defaultServices];
-                const selectedServices = data.services?.map((s: any) => {
-                    const existing = allServices.find(o => o.label === s.serviceName);
-                    if (existing) {
-                        existing.amount = s.amount;
-                        return existing.value;
-                    } else {
-                        const newValue = s.serviceName.toUpperCase().replace(/\s+/g, "_");
-                        allServices.push({ label: s.serviceName, value: newValue, amount: s.amount, system: false });
-                        return newValue;
-                    }
-                }) || [];
-
                 setQaOptions(allQaTests);
-                setServiceOptions(allServices);
 
                 setInitialValues({
                     manufactureName: data.name || "",
@@ -135,9 +108,8 @@ const EditManufacture = () => {
                     phone: data.phone || "",
                     contactPersonName: data.contactPersonName || "",
                     qaTests: selectedQa,
-                    services: selectedServices,
                     travel: data.travelCost === "Actual Cost" ? "actual" : "fixed",
-                    fixedCost: data.travelCost === "Fixed Cost" ? (data.cost || "") : "",
+                    fixedCost: data.cost || "",
                 });
             } catch (error) {
                 console.error("Error fetching manufacturer:", error);
@@ -164,13 +136,12 @@ const EditManufacture = () => {
             .required("Please enter phone number"),
         contactPersonName: Yup.string().required("Please enter contact person name"),
         qaTests: Yup.array().of(Yup.string()),
-        services: Yup.array().of(Yup.string()).min(1, "Select at least one service"),
         travel: Yup.string().required("Please select travel type"),
         fixedCost: Yup.string().when("travel", {
-            is: "fixed",
+            is: (travel: string) => !!travel,
             then: (schema) =>
                 schema
-                    .required("Fixed cost is required")
+                    .required("Cost is required")
                     .test("is-positive", "Enter valid amount", (val) => {
                         const num = Number(val);
                         return !isNaN(num) && num >= 0;
@@ -187,11 +158,6 @@ const EditManufacture = () => {
                 return { testName: opt?.label ?? v, price: opt?.price ?? 0 };
             });
 
-            const servicePayload = values.services.map((v: string) => {
-                const opt = serviceOptions.find(o => o.value === v);
-                return { serviceName: opt?.label ?? v, amount: opt?.amount ?? 0 };
-            });
-
             const payload: any = {
                 name: values.manufactureName,
                 email: values.email,
@@ -204,11 +170,9 @@ const EditManufacture = () => {
                 mouValidity: values.mouValidity,
                 contactPersonName: values.contactPersonName,
                 qaTests: qaPayload,
-                services: servicePayload,
                 travelCost: values.travel === "actual" ? "Actual Cost" : "Fixed Cost",
+                cost: values.fixedCost,
             };
-
-            if (values.travel === "fixed") payload.cost = values.fixedCost;
 
             await editManufacturerById(id!, payload);
             showMessage("Manufacturer updated successfully", "success");
@@ -477,97 +441,6 @@ const EditManufacture = () => {
                             </div>
                         </div>
 
-                        {/* ── SERVICES ── */}
-                        <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Services</h5>
-                            <div className="space-y-3">
-                                <div className="flex items-center max-w-[36rem] font-semibold text-sm text-gray-700">
-                                    <div className="w-1/2">Service</div>
-                                    <div className="w-24 text-center">Amount ₹</div>
-                                    <div className="w-20 text-right">Action</div>
-                                </div>
-
-                                {serviceOptions.map((opt, idx) => (
-                                    <div key={opt.value} className="flex items-center max-w-[36rem] gap-2">
-                                        <div className="flex items-center gap-2 w-1/2">
-                                            <Field
-                                                type="checkbox"
-                                                name="services"
-                                                value={opt.value}
-                                                className="form-checkbox"
-                                                onChange={(e: any) => {
-                                                    const checked = e.target.checked;
-                                                    const cur = values.services || [];
-                                                    setFieldValue("services", checked ? [...cur, opt.value] : cur.filter((t: string) => t !== opt.value));
-                                                }}
-                                            />
-                                            <label className="text-sm">{opt.label}</label>
-                                        </div>
-                                        <div className="w-24">
-                                            <input
-                                                type="number"
-                                                value={opt.amount === 0 ? "" : opt.amount}
-                                                onChange={(e) => {
-                                                    const newA = Number(e.target.value) || 0;
-                                                    const upd = [...serviceOptions];
-                                                    upd[idx].amount = newA;
-                                                    setServiceOptions(upd);
-                                                }}
-                                                className="form-input w-full text-sm"
-                                                placeholder="₹"
-                                            />
-                                        </div>
-                                        <div className="w-20 text-right">
-                                            {!opt.system && (
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-danger btn-sm"
-                                                    onClick={() => {
-                                                        setServiceOptions(serviceOptions.filter((_, i) => i !== idx));
-                                                        setFieldValue("services", values.services.filter((t: string) => t !== opt.value));
-                                                    }}
-                                                >
-                                                    Delete
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-
-                                <div className="mt-4 flex flex-wrap items-center gap-3 max-w-[36rem]">
-                                    <input
-                                        type="text"
-                                        placeholder="New Service"
-                                        className="form-input w-1/2"
-                                        value={newSrvName}
-                                        onChange={(e) => setNewSrvName(e.target.value)}
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="Amount"
-                                        className="form-input w-24"
-                                        value={newSrvAmount}
-                                        onChange={(e) => setNewSrvAmount(e.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary"
-                                        onClick={() => {
-                                            const name = newSrvName.trim();
-                                            if (!name) return showMessage("Enter name", "error");
-                                            const value = name.toUpperCase().replace(/\s+/g, "_");
-                                            if (serviceOptions.some(o => o.value === value)) return showMessage("Already exists", "warning");
-                                            setServiceOptions([...serviceOptions, { label: name, value, amount: Number(newSrvAmount) || 0, system: false }]);
-                                            setNewSrvName("");
-                                            setNewSrvAmount("");
-                                        }}
-                                    >
-                                        + Add
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
                         {/* ── TRAVEL COST ── */}
                         <div className="panel">
                             <h5 className="font-semibold text-lg mb-4">Travel Cost</h5>
@@ -583,7 +456,15 @@ const EditManufacture = () => {
                                         <div className="text-danger mt-1">{errors.travel}</div>
                                     )}
                                 </div>
-
+                                {values.travel && (
+                                    <div className={submitCount && errors.fixedCost && touched.fixedCost ? "has-error" : ""}>
+                                        <label>Cost (₹)</label>
+                                        <Field name="fixedCost" type="number" className="form-input" placeholder="Enter Cost" />
+                                        {errors.fixedCost && touched.fixedCost && typeof errors.fixedCost === "string" && (
+                                            <div className="text-danger mt-1">{errors.fixedCost}</div>
+                                        )}
+                                    </div>
+                                )}
 
                             </div>
                         </div>

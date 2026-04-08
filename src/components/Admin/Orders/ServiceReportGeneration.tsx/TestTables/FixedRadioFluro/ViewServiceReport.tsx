@@ -21,7 +21,7 @@ import {
 } from "../../../../../../api";
 import FixedRadioFlouroResultTable from "./FixedRadioFluoroResultTable";
 import MainTestTableForFixedRadioFluro from "./MainTestTableForFixedRadioFluro";
-import logo from "../../../../../../assets/logo/logo-sm.png";
+import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
@@ -124,7 +124,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             accuracyOfOperatingPotential: data.accuracyOfOperatingPotentialFixedRadioFluoro || data.accuracyOfOperatingPotentialRadigraphyFixed || null,
             outputConsistency: data.OutputConsistencyForFixedRadioFlouro || data.ConsistencyOfRadiationOutputFixedRadiography || null,
             linearityOfmAsLoading: data.LinearityOfmAsLoadingFixedRadioFluoro || data.LinearityOfmAsLoadingRadiographyFixed || null,
-            linearityOfMaLoading: data.LinearityOfmAsLoadingFixedRadioFluoro || data.LinearityOfmAsLoadingRadiographyFixed || null,
+            linearityOfMaLoading: data.LinearityOfMaLoadingFixedRadioFluoro || data.LinearityOfMasLoadingStationsFixedRadioFluoro || null,
             tubeHousingLeakage: data.TubeHousingLeakageFixedRadioFlouro || data.RadiationLeakageLevelRadiographyFixed || null,
             accuracyOfIrradiationTime: data.AccuracyOfIrradiationTimeFixedRadioFluoro || data.AccuracyOfIrradiationTimeRadiographyFixed || null,
             congruenceOfRadiation: data.CongruenceOfRadiationForRadioFluro || data.CongruenceOfRadiationRadioGraphyFixed || null,
@@ -197,7 +197,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             tubeHousingLeakage: prev.tubeHousingLeakage || tubeHousingRes || null,
             radiationProtectionSurvey: prev.radiationProtectionSurvey || radiationProtectionRes || null,
             accuracyOfIrradiationTime: prev.accuracyOfIrradiationTime || accuracyOfIrradiationTimeRes || null,
-            linearityOfmAsLoading: prev.linearityOfmAsLoading || linearityOfMasRes || linearityOfMaStationsRes || null,
+            linearityOfmAsLoading: prev.linearityOfmAsLoading || linearityOfMasRes || null,
             linearityOfMaLoading: prev.linearityOfMaLoading || linearityOfMaStationsRes || null,
             accuracyOfOperatingPotential: prev.accuracyOfOperatingPotential || accuracyOfOperatingPotentialRes || null,
           }));
@@ -1029,17 +1029,30 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
               </div>
             )}
 
-            {/* 8. Linearity of mAs Loading */}
+            {/* 7. Linearity of mAs/mA Loading */}
             {(testData.linearityOfmAsLoading || testData.linearityOfMaLoading) && (
               <div className="mb-16 print:mb-12 test-section">
-                <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: '14px', marginBottom: '4px' }}>7. Linearity of mAs Loading</h3>
+                <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: '14px', marginBottom: '4px' }}>
+                  {(() => {
+                    const maData = testData.linearityOfMaLoading;
+                    const masData = testData.linearityOfmAsLoading;
+                    const data = (maData?.table2?.length ? maData : null) || (masData?.table2?.length ? masData : null) || maData || masData;
+                    const table1 = data?.table1 || data?.testConditions;
+                    const conditions = Array.isArray(table1) ? table1?.[0] : table1;
+                    const hasTimer = conditions?.time !== undefined && conditions?.time !== null && String(conditions?.time).trim() !== "";
+                    return hasTimer ? "7. Linearity of mA Loading Stations" : "7. Linearity of mAs Loading";
+                  })()}
+                </h3>
                 {/* Test Conditions as table */}
                 {(() => {
-                  const linearityData = testData.linearityOfmAsLoading || testData.linearityOfMaLoading;
+                  const maData = testData.linearityOfMaLoading;
+                  const masData = testData.linearityOfmAsLoading;
+                  const linearityData = (maData?.table2?.length ? maData : null) || (masData?.table2?.length ? masData : null) || maData || masData;
                   const table1 = linearityData.table1 || linearityData.testConditions;
                   if (!table1 || (Array.isArray(table1) && table1.length === 0)) return null;
 
                   const conditions = Array.isArray(table1) ? table1[0] : table1;
+                  const hasTimer = conditions?.time !== undefined && conditions?.time !== null && String(conditions?.time).trim() !== "";
                   return (
                     <div className="mb-4 print:mb-1" style={{ marginBottom: '6px' }}>
                       <p className="font-semibold mb-1 text-sm print:text-xs" style={{ fontSize: '11px', marginBottom: '3px' }}>Test Conditions:</p>
@@ -1048,12 +1061,18 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                           <tr>
                             <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FDD (cm)</th>
                             <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>kV</th>
+                            {hasTimer && (
+                              <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>Time (sec)</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
                             <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{safeVal(conditions?.fcd || conditions?.sid)}</td>
                             <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{safeVal(conditions?.kv)}</td>
+                            {hasTimer && (
+                              <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: '0px 8px', fontSize: '11px' }}>{safeVal(conditions?.time)}</td>
+                            )}
                           </tr>
                         </tbody>
                       </table>
@@ -1062,7 +1081,9 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                 })()}
 
                 {(() => {
-                  const linearityData = testData.linearityOfmAsLoading || testData.linearityOfMaLoading;
+                  const maData = testData.linearityOfMaLoading;
+                  const masData = testData.linearityOfmAsLoading;
+                  const linearityData = (maData?.table2?.length ? maData : null) || (masData?.table2?.length ? masData : null) || maData || masData;
                   const rows = linearityData.table2 || [];
                   if (rows.length === 0) return null;
 
@@ -1075,6 +1096,11 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                     const str = String(val).trim();
                     return str === '' || str === '—' || str === 'undefined' || str === 'null' ? '-' : str;
                   };
+
+                  const table1 = linearityData.table1 || linearityData.testConditions;
+                  const conditions = Array.isArray(table1) ? table1?.[0] : table1;
+                  const timeSec = parseFloat(String(conditions?.time ?? ""));
+                  const hasValidTimer = !isNaN(timeSec) && timeSec > 0;
 
                   // Recalculate values using same logic as reference
                   const xValues: number[] = [];
@@ -1093,7 +1119,12 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                       ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
                       : parseFloat(mAsLabel) || 0;
 
-                    const x = avg !== null && midMas > 0 ? avg / midMas : null;
+                    let x = null;
+                    if (avg !== null && midMas > 0 && hasValidTimer) {
+                      x = avg / (midMas * timeSec);
+                    } else if (avg !== null && midMas > 0) {
+                      x = avg / midMas;
+                    }
                     const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : '—';
                     if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
 
@@ -1127,12 +1158,14 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                       <table className="w-full border-2 border-black compact-table force-small-text" style={{ fontSize: '10px', tableLayout: 'fixed', width: '100%' }}>
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>mA/mAs</th>
+                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>mA</th>
                             <th colSpan={measHeaders.length} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
                               Output (mGy)
                             </th>
                             <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Avg Output</th>
-                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X (mGy/mA)</th>
+                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
+                              X ({hasValidTimer ? "mGy/(mA*s)" : "mGy/mA"})
+                            </th>
                             <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MAX</th>
                             <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MIN</th>
                             <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>CoL</th>

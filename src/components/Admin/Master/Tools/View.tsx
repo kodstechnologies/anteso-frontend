@@ -25,6 +25,7 @@ interface ToolType {
     engineerName?: string;
     issueDate?: string;
     submitDate?: string;
+    applicableMachines?: string[];
 }
 
 const View: React.FC = () => {
@@ -138,6 +139,24 @@ const View: React.FC = () => {
                     <Detail label="Submit Date" value={history?.submitDate || "-"} icon={<FaCalendarAlt />} />
                 </div>
             </div>
+
+            {/* Applicable Machines */}
+            {tool.applicableMachines && tool.applicableMachines.length > 0 && (
+                <div className="bg-white rounded-xl shadow-xl p-8 mt-10">
+                    <div className="mb-8 flex items-center gap-3">
+                        <HiCpuChip className="text-primary text-2xl" />
+                        <h1 className="text-2xl font-bold text-gray-800">Applicable Machines</h1>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {tool.applicableMachines.map((machine, index) => (
+                            <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
+                                <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                                <span className="text-gray-700 font-medium">{machine}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

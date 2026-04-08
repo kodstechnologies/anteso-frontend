@@ -127,37 +127,51 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   };
 
   // === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks ===
-  const processedTable2 = useMemo(() => {
-    const tol = parseFloat(tolerance) || 0.1;
-    const xValues: number[] = [];
+ // === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks ===
+const processedTable2 = useMemo(() => {
+  const tol = parseFloat(tolerance) || 0.1;
+  const xValues: number[] = [];
 
-    const rowsWithX = table2Rows.map(row => {
-      const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
-      const ma = parseFloat(row.ma);
-      const x = avg !== '—' && ma > 0 ? (parseFloat(avg) / ma).toFixed(4) : '—';
+  // Get time in seconds
+  const timeSec = parseFloat(table1Row.time);
+  const hasValidTime = !isNaN(timeSec) && timeSec > 0;
 
-      if (x !== '—') xValues.push(parseFloat(x));
+  const rowsWithX = table2Rows.map(row => {
+    const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+    const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
+    const ma = parseFloat(row.ma);
+    
+    // Calculate X = mGy / (mA * time)
+    let x = '—';
+    if (avg !== '—' && ma > 0 && hasValidTime) {
+      const avgNum = parseFloat(avg);
+      x = (avgNum / (ma * timeSec)).toFixed(4);
+    } else if (avg !== '—' && ma > 0 && !hasValidTime) {
+      // Fallback to original calculation if time is invalid (show warning in UI)
+      const avgNum = parseFloat(avg);
+      x = (avgNum / ma).toFixed(4);
+    }
 
-      return { ...row, average: avg, x };
-    });
+    if (x !== '—') xValues.push(parseFloat(x));
 
-    const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
-    const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
-    const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-      ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
-      : '—';
-    const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+    return { ...row, average: avg, x };
+  });
 
-    return rowsWithX.map(row => ({
-      ...row,
-      xMax,
-      xMin,
-      col: colVal,
-      remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
-    }));
-  }, [table2Rows, tolerance]);
+  const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
+  const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
+  const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
+    ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
+    : '—';
+  const pass = colVal !== '—' && parseFloat(colVal) <= tol;
 
+  return rowsWithX.map(row => ({
+    ...row,
+    xMax,
+    xMin,
+    col: colVal,
+    remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
+  }));
+}, [table2Rows, tolerance, table1Row.time]);
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
@@ -476,7 +490,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 </div>
               </th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mA)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mAs)</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>

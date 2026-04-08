@@ -39,6 +39,7 @@ interface Invoice {
 const Invoices: React.FC = () => {
   const dispatch = useDispatch();
   const [items, setItems] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState<string>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -51,7 +52,6 @@ const Invoices: React.FC = () => {
     direction: 'asc',
   });
 
-  // 👇 for confirmation modal
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
@@ -63,57 +63,101 @@ const Invoices: React.FC = () => {
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
+        setLoading(true);
         const res = await getAllInvoices();
-        const data: Invoice[] = res.data.data.map((item: Invoice) => ({
+        console.log("Full API response:", res);
+        
+        // Handle different response structures
+        let invoicesData = [];
+        if (res?.data?.data) {
+          invoicesData = res.data.data;
+        } else if (res?.data) {
+          invoicesData = Array.isArray(res.data) ? res.data : [res.data];
+        } else if (Array.isArray(res)) {
+          invoicesData = res;
+        } else {
+          invoicesData = [];
+        }
+        
+        console.log("Invoices data extracted:", invoicesData);
+        
+        const formattedData: Invoice[] = invoicesData.map((item: any) => ({
           ...item,
           status: item.payment?.paymentStatus === 'paid' ? 'Paid' : 'Pending',
         }));
-        setItems(data);
+        
+        setItems(formattedData);
+        console.log(`Loaded ${formattedData.length} invoices`);
       } catch (err) {
         console.error('Failed to fetch invoices:', err);
+        showMessage('Failed to fetch invoices', 'error');
+      } finally {
+        setLoading(false);
       }
     };
     fetchInvoices();
   }, []);
 
+  // Filter records based on search and date range
   const filteredRecords = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return items.filter((item) => {
-      const srfOk = !q || String(item.srfNumber || '').toLowerCase().includes(q);
-      return srfOk && isInDateRange(item.createdAt, dateFrom, dateTo);
+    const filtered = items.filter((item) => {
+      // Search by SRF number or buyer name or invoice ID
+      const matchesSearch = !q || 
+        String(item.srfNumber || '').toLowerCase().includes(q) ||
+        String(item.buyerName || '').toLowerCase().includes(q) ||
+        String(item.invoiceId || '').toLowerCase().includes(q);
+      
+      const matchesDate = isInDateRange(item.createdAt, dateFrom, dateTo);
+      
+      return matchesSearch && matchesDate;
     });
+    
+    console.log(`Filtered to ${filtered.length} invoices`);
+    return filtered;
   }, [items, search, dateFrom, dateTo]);
 
+  // Sort records
   const sortedRecords = useMemo(() => {
     const data = [...filteredRecords];
     const accessor = sortStatus.columnAccessor as keyof Invoice | string;
     if (!accessor) return data;
+    
     data.sort((a, b) => {
       const aVal = a[accessor as keyof Invoice];
       const bVal = b[accessor as keyof Invoice];
+      
       if (accessor === 'createdAt') {
         const at = aVal ? new Date(aVal as string).getTime() : 0;
         const bt = bVal ? new Date(bVal as string).getTime() : 0;
         return sortStatus.direction === 'asc' ? at - bt : bt - at;
       }
+      
       if (accessor === 'grandtotal') {
         const an = Number(aVal) || 0;
         const bn = Number(bVal) || 0;
         return sortStatus.direction === 'asc' ? an - bn : bn - an;
       }
+      
       const aStr = String(aVal ?? '').toLowerCase();
       const bStr = String(bVal ?? '').toLowerCase();
       const cmp = aStr.localeCompare(bStr);
       return sortStatus.direction === 'asc' ? cmp : -cmp;
     });
+    
     return data;
   }, [filteredRecords, sortStatus]);
 
+  // Paginate records
   const paginatedRecords = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return sortedRecords.slice(start, start + pageSize);
+    const end = start + pageSize;
+    const paginated = sortedRecords.slice(start, end);
+    console.log(`Page ${page}: Showing ${paginated.length} of ${sortedRecords.length} records`);
+    return paginated;
   }, [sortedRecords, page, pageSize]);
 
+  // Reset to page 1 when filters or page size change
   useEffect(() => {
     setPage(1);
   }, [search, pageSize, dateFrom, dateTo]);
@@ -123,9 +167,10 @@ const Invoices: React.FC = () => {
     setSearch('');
     setDateFrom('');
     setDateTo('');
+    setPage(1);
   };
 
-  // 👇 Handle delete
+  // Handle delete
   const handleDeleteClick = (id: string) => {
     setSelectedInvoiceId(id);
     setConfirmOpen(true);
@@ -137,13 +182,21 @@ const Invoices: React.FC = () => {
       await deleteInvoice(selectedInvoiceId);
       const updated = items.filter((inv) => inv._id !== selectedInvoiceId);
       setItems(updated);
-      showMessage('Invoice deleted successfully', 'success'); // ✅ Success message
+      showMessage('Invoice deleted successfully', 'success');
+      
+      // Adjust page if current page becomes empty
+      const totalPages = Math.ceil((updated.length) / pageSize);
+      if (page > totalPages && totalPages > 0) {
+        setPage(totalPages);
+      } else if (updated.length === 0) {
+        setPage(1);
+      }
     } catch (err: any) {
       console.error('Failed to delete invoice:', err);
       showMessage(
         err?.response?.data?.message || 'Failed to delete invoice',
         'error'
-      ); // ❌ Error message
+      );
     } finally {
       setConfirmOpen(false);
       setSelectedInvoiceId(null);
@@ -190,7 +243,7 @@ const Invoices: React.FC = () => {
               <input
                 type="text"
                 className="form-input w-auto min-w-[200px]"
-                placeholder="Search by SRF number..."
+                placeholder="Search by SRF, name, or invoice ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -207,65 +260,97 @@ const Invoices: React.FC = () => {
             </div>
           </div>
 
-          <div className="datatables pagination-padding">
-            <DataTable
-              className="whitespace-nowrap table-hover"
-              records={paginatedRecords}
-              columns={[
-                { accessor: 'invoiceId', title: 'Invoice ID', sortable: true },
-                { accessor: 'srfNumber', title: 'SRF No', sortable: true },
-                {
-                  accessor: 'createdAt',
-                  title: 'Created At',
-                  sortable: true,
-                  render: (row: Invoice) => formatCreatedAtDisplay(row.createdAt),
-                },
-                { accessor: 'buyerName', title: 'Customer Name', sortable: true },
-                { accessor: 'address', title: 'Address', sortable: true },
-                { accessor: 'state', title: 'State', sortable: true },
-                { accessor: 'grandtotal', title: 'Total Amount', sortable: true },
-                {
-                  accessor: 'action',
-                  title: 'Actions',
-                  render: ({ _id }: Invoice) => (
-                    <div className="flex gap-4 items-center w-max mx-auto">
-                      <NavLink
-                        to={`/admin/invoice/viewInvoice/${_id}`}
-                        className="flex hover:text-primary"
-                      >
-                        <IconFile />
-                      </NavLink>
-                      <button
-                        type="button"
-                        className="flex hover:text-danger"
-                        onClick={() => handleDeleteClick(_id)}
-                      >
-                        <IconTrashLines />
-                      </button>
-                    </div>
-                  ),
-                },
-              ]}
-              highlightOnHover
-              totalRecords={filteredRecords.length}
-              recordsPerPage={pageSize}
-              page={page}
-              onPageChange={setPage}
-              recordsPerPageOptions={PAGE_SIZES}
-              onRecordsPerPageChange={setPageSize}
-              sortStatus={sortStatus}
-              onSortStatusChange={setSortStatus}
-              selectedRecords={selectedRecords}
-              onSelectedRecordsChange={setSelectedRecords}
-              paginationText={({ from, to, totalRecords }) =>
-                `Showing ${from} to ${to} of ${totalRecords} entries`
-              }
-            />
-          </div>
+          {/* Show loading state */}
+          {loading && (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading invoices...</p>
+            </div>
+          )}
+
+          {/* Show no data message */}
+          {!loading && items.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-600">No invoices found.</p>
+            </div>
+          )}
+
+          {/* Show table only when there are records */}
+          {!loading && items.length > 0 && (
+            <div className="datatables pagination-padding">
+              <DataTable
+                className="whitespace-nowrap table-hover"
+                records={paginatedRecords}
+                columns={[
+                  { accessor: 'invoiceId', title: 'Invoice ID', sortable: true },
+                  { accessor: 'srfNumber', title: 'SRF No', sortable: true },
+                  {
+                    accessor: 'createdAt',
+                    title: 'Created At',
+                    sortable: true,
+                    render: (row: Invoice) => formatCreatedAtDisplay(row.createdAt),
+                  },
+                  { accessor: 'buyerName', title: 'Customer Name', sortable: true },
+                  { accessor: 'address', title: 'Address', sortable: true },
+                  { accessor: 'state', title: 'State', sortable: true },
+                  { 
+                    accessor: 'grandtotal', 
+                    title: 'Total Amount', 
+                    sortable: true,
+                    render: (row: Invoice) => `₹${row.grandtotal?.toLocaleString() || 0}`
+                  },
+                  // {
+                  //   accessor: 'status',
+                  //   title: 'Status',
+                  //   sortable: true,
+                  //   render: (row: Invoice) => (
+                  //     <span className={`badge ${row.status === 'Paid' ? 'bg-success' : 'bg-warning'} text-white px-2 py-1 rounded`}>
+                  //       {row.status || 'Pending'}
+                  //     </span>
+                  //   ),
+                  // },
+                  {
+                    accessor: 'action',
+                    title: 'Actions',
+                    render: ({ _id }: Invoice) => (
+                      <div className="flex gap-4 items-center w-max mx-auto">
+                        <NavLink
+                          to={`/admin/invoice/viewInvoice/${_id}`}
+                          className="flex hover:text-primary"
+                        >
+                          <IconFile />
+                        </NavLink>
+                        <button
+                          type="button"
+                          className="flex hover:text-danger"
+                          onClick={() => handleDeleteClick(_id)}
+                        >
+                          <IconTrashLines />
+                        </button>
+                      </div>
+                    ),
+                  },
+                ]}
+                highlightOnHover
+                totalRecords={filteredRecords.length}
+                recordsPerPage={pageSize}
+                page={page}
+                onPageChange={setPage}
+                recordsPerPageOptions={PAGE_SIZES}
+                onRecordsPerPageChange={setPageSize}
+                sortStatus={sortStatus}
+                onSortStatusChange={setSortStatus}
+                selectedRecords={selectedRecords}
+                onSelectedRecordsChange={setSelectedRecords}
+                paginationText={({ from, to, totalRecords }) =>
+                  `Showing ${from} to ${to} of ${totalRecords} entries`
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ✅ Delete Confirmation Modal */}
       <ConfirmModal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}

@@ -33,8 +33,8 @@ const Enquiry = () => {
     const [page, setPage] = useState(1);
     const PAGE_SIZES = [10, 20, 30, 50, 100];
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-    const [initialRecords, setInitialRecords] = useState(sortBy(items, 'Hospitalname'));
-    const [records, setRecords] = useState(initialRecords);
+    const [filteredRecords, setFilteredRecords] = useState<any[]>([]); // Renamed from initialRecords
+    const [records, setRecords] = useState<any[]>([]);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
     const [search, setSearch] = useState('');
     const [dateFrom, setDateFrom] = useState('');
@@ -42,7 +42,7 @@ const Enquiry = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [rowToDelete, setRowToDelete] = useState<number | null>(null);
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'Hospitalname',
+        columnAccessor: 'enquiryID', // Changed to a more appropriate default
         direction: 'asc',
     });
     const [copied, setCopied] = useState(false);
@@ -50,6 +50,7 @@ const Enquiry = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                setLoading(true);
                 const response = await getAllEnquiry();
                 console.log("🚀 ~ fetchData ~ response:", response)
                
@@ -68,15 +69,11 @@ const Enquiry = () => {
                     email: item.emailAddress,
                     phone: item.contactNumber,
                     designation: item.designation,
-                    
-                    quotation: item.quotationStatus?.toLowerCase(), // keep status here
-                    remark: item.quotation?.[0]?.rejectionRemark || null, // 👈 pick rejectionRemark if exists                    id: item._id,
+                    quotation: item.quotationStatus?.toLowerCase(),
+                    remark: item.quotation?.[0]?.rejectionRemark || null,
                 }));
 
                 setItems(enriched);
-                setInitialRecords(enriched); // keep backend sort (latest first)
-                setRecords(enriched.slice(0, pageSize));
-
                 setLoading(false);
             } catch (err: any) {
                 setError(err.message);
@@ -86,7 +83,6 @@ const Enquiry = () => {
 
         fetchData();
     }, []);
-    // useEffect
 
     const handleCopy = async () => {
         try {
@@ -99,32 +95,29 @@ const Enquiry = () => {
         }
     };
     
-    // Clear all filters
     const clearFilters = () => {
         setSearch('');
         setDateFrom('');
         setDateTo('');
+        setPage(1); // Reset to first page when clearing filters
     };
     
     const deleteRow = (id: number | null = null) => {
-        setRowToDelete(id); // Store row or null (for bulk)
-        setShowConfirmModal(true); // Open confirm modal
+        setRowToDelete(id);
+        setShowConfirmModal(true);
     };
+    
     const handleConfirmDelete = async () => {
         try {
             if (rowToDelete !== null) {
                 await deleteEnquiryById(rowToDelete);
                 const filtered = items.filter((item) => item._id !== rowToDelete);
                 setItems(filtered);
-                setInitialRecords(filtered);
-                setRecords(filtered.slice(0, pageSize));
             } else {
-                const ids = selectedRecords.map((d: any) => d._id); // ✅ use _id
+                const ids = selectedRecords.map((d: any) => d._id);
                 await Promise.all(ids.map((id: string) => deleteEnquiryById(id)));
-                const filtered = items.filter((d) => !ids.includes(d._id)); // ✅ filter with _id
+                const filtered = items.filter((d) => !ids.includes(d._id));
                 setItems(filtered);
-                setInitialRecords(filtered);
-                setRecords(filtered.slice(0, pageSize));
                 setPage(1);
             }
 
@@ -139,32 +132,21 @@ const Enquiry = () => {
         }
     };
 
-
-
-    // Function to update status
     const updateQuotation = (id: number, newStatus: 'create' | 'created' | 'approved' | 'rejected') => {
         const updatedItems = items.map((item) => (item.id === id ? { ...item, status: newStatus } : item));
         setItems(updatedItems);
-        setInitialRecords(sortBy(updatedItems, sortStatus.columnAccessor));
-        navigate(`/admin/quotation/add/${id}`)
+        navigate(`/admin/quotation/add/${id}`);
     };
 
+    // Apply filters and sorting to get filtered records
     useEffect(() => {
-        setPage(1);
-    }, [pageSize]);
-
-    useEffect(() => {
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize;
-        setRecords([...initialRecords.slice(from, to)]);
-    }, [page, pageSize, initialRecords]);
-
-    useEffect(() => {
-        setInitialRecords(() => {
-            return items.filter((item) => {
-                const q = search.toLowerCase();
-                const matchesSearch =
-                    !search.trim() ||
+        let filtered = [...items];
+        
+        // Apply search filter
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            filtered = filtered.filter((item) => {
+                return (
                     (item.enquiryID && String(item.enquiryID).toLowerCase().includes(q)) ||
                     (item.hName && String(item.hName).toLowerCase().includes(q)) ||
                     (item.fullAddress && String(item.fullAddress).toLowerCase().includes(q)) ||
@@ -175,23 +157,43 @@ const Enquiry = () => {
                     (item.email && String(item.email).toLowerCase().includes(q)) ||
                     (item.phone && String(item.phone).toLowerCase().includes(q)) ||
                     (item.designation && String(item.designation).toLowerCase().includes(q)) ||
-                    (item.quotation && String(item.quotation).toLowerCase().includes(q));
-                const matchesDate = isInDateRange(item.createdAt, dateFrom, dateTo);
-                return matchesSearch && matchesDate;
+                    (item.quotation && String(item.quotation).toLowerCase().includes(q))
+                );
             });
-        });
-    }, [search, items, dateFrom, dateTo]);
+        }
+        
+        // Apply date filter
+        if (dateFrom || dateTo) {
+            filtered = filtered.filter((item) => isInDateRange(item.createdAt, dateFrom, dateTo));
+        }
+        
+        // Apply sorting
+        filtered = sortBy(filtered, sortStatus.columnAccessor);
+        if (sortStatus.direction === 'desc') {
+            filtered = filtered.reverse();
+        }
+        
+        setFilteredRecords(filtered);
+        setPage(1); // Reset to first page when filters change
+    }, [items, search, dateFrom, dateTo, sortStatus]);
 
+    // Update paginated records when filtered records, page, or pageSize changes
     useEffect(() => {
-        const data = sortBy(initialRecords, sortStatus.columnAccessor);
-        setRecords(sortStatus.direction === 'desc' ? data.reverse() : data);
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize;
+        setRecords(filteredRecords.slice(from, to));
+    }, [filteredRecords, page, pageSize]);
+
+    // Reset to page 1 when page size changes
+    useEffect(() => {
         setPage(1);
-    }, [sortStatus, initialRecords]);
+    }, [pageSize]);
 
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
         { label: 'Enquiry', icon: <IconBox /> },
     ];
+
     return (
         <>
             <Breadcrumb items={breadcrumbItems} />
@@ -278,19 +280,29 @@ const Enquiry = () => {
                                 },
                                 {
                                     accessor: 'city',
+                                    title: 'City',
                                     sortable: true,
                                 },
-                                { accessor: 'district', title: 'District', sortable: true },
+                                { 
+                                    accessor: 'district', 
+                                    title: 'District', 
+                                    sortable: true 
+                                },
                                 {
                                     accessor: 'state',
+                                    title: 'State',
                                     sortable: true,
                                 },
                                 {
                                     accessor: 'pincode',
+                                    title: 'Pincode',
                                     sortable: true,
                                 },
-                                { accessor: 'branch', title: 'Branch Name', sortable: true },
-
+                                { 
+                                    accessor: 'branch', 
+                                    title: 'Branch Name', 
+                                    sortable: true 
+                                },
                                 {
                                     accessor: 'contactperson',
                                     title: 'Contact Person',
@@ -298,14 +310,17 @@ const Enquiry = () => {
                                 },
                                 {
                                     accessor: 'email',
+                                    title: 'Email',
                                     sortable: true,
                                 },
                                 {
                                     accessor: 'phone',
+                                    title: 'Phone',
                                     sortable: true,
                                 },
                                 {
                                     accessor: 'designation',
+                                    title: 'Designation',
                                     sortable: true,
                                 },
                                 {
@@ -345,7 +360,7 @@ const Enquiry = () => {
                                                 </button>
                                             );
                                         }
-                                        return <span className="text-gray-500 italic">N/A</span>; // default case
+                                        return <span className="text-gray-500 italic">N/A</span>;
                                     },
                                 },
                                 {
@@ -382,9 +397,6 @@ const Enquiry = () => {
                                                 <NavLink to={`/admin/enquiry/view/${id}`} className="flex hover:text-primary">
                                                     <IconEye />
                                                 </NavLink>
-                                                {/* <NavLink to={`/admin/enquiry/edit/${id}`} className="flex hover:text-info">
-                                                    <IconEdit className="w-4.5 h-4.5" />
-                                                </NavLink> */}
                                                 <button type="button" className="flex hover:text-danger" onClick={() => deleteRow(id)}>
                                                     <IconTrashLines />
                                                 </button>
@@ -392,10 +404,9 @@ const Enquiry = () => {
                                         );
                                     },
                                 }
-
                             ]}
                             highlightOnHover
-                            totalRecords={initialRecords.length}
+                            totalRecords={filteredRecords.length}
                             recordsPerPage={pageSize}
                             page={page}
                             onPageChange={(p) => setPage(p)}
@@ -416,7 +427,6 @@ const Enquiry = () => {
                     title="Delete Confirmation"
                     message="Are you sure you want to delete the selected enquiry?"
                 />
-
             </div>
         </>
     );

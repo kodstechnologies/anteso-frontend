@@ -269,6 +269,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+  const isTimerSelected = String(exposureCondition.time || '').trim() !== '';
+  const testTitle = isTimerSelected
+    ? 'Linearity of mAs Loading'
+    : 'Linearity of mA Loading Stations';
+  const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
 
   const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
@@ -290,12 +295,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
         ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
         : parseFloat(row.mAsRange) || 0;
 
-      // Calculate X = mGy / (mAs * time) and round to 4 decimal places
+      // Timer selected: X = mGy/(mA*s). Otherwise: X = mGy/mA.
       let x = null;
       if (avg !== null && midMas > 0 && hasValidTime) {
         x = avg / (midMas * timeSec);
       } else if (avg !== null && midMas > 0 && !hasValidTime) {
-        // Fallback to original calculation if time is invalid (show warning in UI)
         x = avg / midMas;
       }
 
@@ -366,6 +370,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       summary: { xMax, xMin, col, remarks, rowSpan: rowsWithStatus.length }
     };
   }, [table2Rows, tolerance, toleranceOperator, exposureCondition.time]);
+
+  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-10">
@@ -378,7 +384,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Linearity of mAs Loading (Across mAs Ranges)</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{testTitle}</h2>
         <button
           onClick={isViewMode ? toggleEdit : handleSave}
           disabled={isSaving}
@@ -397,7 +403,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonText} mAs Linearity
+              {buttonText} {isTimerSelected ? 'mAs' : 'mA'} Linearity
             </>
           )}
         </button>
@@ -455,7 +461,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
         <div className="px-6 py-4 bg-blue-50 border-b">
-          <h3 className="text-lg font-semibold text-blue-900">Linearity of Radiation Output Across mAs Ranges</h3>
+          <h3 className="text-lg font-semibold text-blue-900">
+            {isTimerSelected
+              ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
+              : 'Linearity of mA Loading Stations'}
+          </h3>
         </div>
 
         <div className="overflow-x-auto">
@@ -474,7 +484,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                   </div>
                 </th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">Avg Output</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X (mGy/mAs)</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X ({xUnitLabel})</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X MAX</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X MIN</th>
                 <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">CoL</th>

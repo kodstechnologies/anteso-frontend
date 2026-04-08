@@ -167,9 +167,15 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
       const ma = parseFloat(row.ma);
       const timeSec = parseFloat(table1Row.time);
-      const mAs = !isNaN(ma) && ma > 0 && !isNaN(timeSec) && timeSec > 0 ? ma * timeSec : null;
-      // X should be mGy / mAs (where mAs = mA × s)
-      const x = avg !== null && mAs && mAs > 0 ? parseFloat((avg / mAs).toFixed(4)) : null;
+      const hasValidTime = !isNaN(timeSec) && timeSec > 0;
+      const mAs = !isNaN(ma) && ma > 0 && hasValidTime ? ma * timeSec : null;
+      // Timer selected: X = mGy/(mA*s). Otherwise: X = mGy/mA.
+      let x: number | null = null;
+      if (avg !== null && mAs && mAs > 0) {
+        x = parseFloat((avg / mAs).toFixed(4));
+      } else if (avg !== null && !isNaN(ma) && ma > 0) {
+        x = parseFloat((avg / ma).toFixed(4));
+      }
       const xDisplay = x !== null ? x.toFixed(4) : '—';
 
       if (x !== null) xValues.push(x);
@@ -220,7 +226,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       rows: rowsWithX,
       summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
     };
-  }, [table2Rows, tolerance, toleranceOperator]);
+  }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
 
   // === Form Valid ===
   const isFormValid = useMemo(() => {
@@ -382,6 +388,14 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+  const isTimerSelected = String(table1Row.time || '').trim() !== '';
+  const tableTitle = isTimerSelected
+    ? 'Linearity of mAs Loading'
+    : 'Linearity of mA Loading Stations';
+  const sectionTitle = isTimerSelected
+    ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
+    : 'Linearity of mA Loading Stations';
+  const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
 
   if (isLoading) {
     return (
@@ -394,7 +408,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
+      <h2 className="text-2xl font-bold mb-6">{tableTitle}</h2>
 
       {/* Table 1: FCD, kV, Time (sec) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
@@ -445,6 +459,9 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
       {/* Table 2: mA + Output (mGy) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <div className="px-4 py-3 bg-blue-50 border-b">
+          <h3 className="text-lg font-semibold text-blue-900">{sectionTitle}</h3>
+        </div>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
@@ -469,7 +486,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 </div>
               </th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mA)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X ({xUnitLabel})</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
@@ -631,7 +648,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonText} mA Linearity
+              {buttonText} {isTimerSelected ? 'mAs' : 'mA'} Linearity
             </>
           )}
         </button>

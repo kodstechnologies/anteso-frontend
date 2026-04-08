@@ -147,77 +147,88 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   };
 
   // === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks ===
-  const processedTable2 = useMemo(() => {
-    const tol = parseFloat(tolerance) || 0.1;
-    const xValues: number[] = [];
+const processedTable2 = useMemo(() => {
+  const tol = parseFloat(tolerance) || 0.1;
+  const xValues: number[] = [];
 
-    const rowsWithX = table2Rows.map(row => {
-      const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      // Calculate average mGy and round to 4 decimal places
-      const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
-      const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
-      
-      const ma = parseFloat(row.ma);
-      // Calculate X = mGy / mA and round to 4 decimal places
-      const x = avg !== null && ma > 0 ? parseFloat((avg / ma).toFixed(4)) : null;
-      const xDisplay = x !== null ? x.toFixed(4) : '—';
+  // Get time in seconds from table1Row
+  const timeSec = parseFloat(table1Row.time);
+  const hasValidTime = !isNaN(timeSec) && timeSec > 0;
 
-      if (x !== null) xValues.push(x);
-
-      return { ...row, average: avgDisplay, x: xDisplay };
-    });
-
-    const hasData = xValues.length > 0;
-    // Round xMax and xMin to 4 decimal places
-    const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
-    const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
+  const rowsWithX = table2Rows.map(row => {
+    const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+    // Calculate average mGy and round to 4 decimal places
+    const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
+    const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
     
-    // Calculate COL: |xMax - xMin| / (xMax + xMin) and round to 4 decimal places
-    const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-      ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
-      : null;
-    const col = hasData && colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
+    const ma = parseFloat(row.ma);
     
-    // Determine pass/fail based on tolerance operator and CoL value
-    let pass = false;
-    let remarks = '—';
-    
-    if (hasData && col !== '—' && colNum !== null) {
-      const colVal = parseFloat(col);
-      switch (toleranceOperator) {
-        case '<':
-          pass = colVal < tol;
-          break;
-        case '>':
-          pass = colVal > tol;
-          break;
-        case '<=':
-          pass = colVal <= tol;
-          break;
-        case '>=':
-          pass = colVal >= tol;
-          break;
-        case '=':
-          pass = Math.abs(colVal - tol) < 0.0001; // Allow small floating point differences
-          break;
-        default:
-          pass = colVal <= tol;
-      }
-      remarks = pass ? 'Pass' : 'Fail';
+    // Calculate X = mGy / (mA * time) and round to 4 decimal places
+    let x = null;
+    if (avg !== null && ma > 0 && hasValidTime) {
+      x = parseFloat((avg / (ma * timeSec)).toFixed(4));
+    } else if (avg !== null && ma > 0 && !hasValidTime) {
+      // Fallback to original calculation if time is invalid
+      x = parseFloat((avg / ma).toFixed(4));
     }
+    
+    const xDisplay = x !== null ? x.toFixed(4) : '—';
 
-    return {
-      rows: rowsWithX.map(row => ({
-        ...row,
-        xMax,
-        xMin,
-        col,
-        remarks,
-      })),
-      summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
-    };
-  }, [table2Rows, tolerance, toleranceOperator]);
+    if (x !== null) xValues.push(x);
 
+    return { ...row, average: avgDisplay, x: xDisplay };
+  });
+
+  const hasData = xValues.length > 0;
+  // Round xMax and xMin to 4 decimal places
+  const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
+  const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
+  
+  // Calculate COL: |xMax - xMin| / (xMax + xMin) and round to 4 decimal places
+  const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
+    ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+    : null;
+  const col = hasData && colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
+  
+  // Determine pass/fail based on tolerance operator and CoL value
+  let pass = false;
+  let remarks = '—';
+  
+  if (hasData && col !== '—' && colNum !== null) {
+    const colVal = parseFloat(col);
+    switch (toleranceOperator) {
+      case '<':
+        pass = colVal < tol;
+        break;
+      case '>':
+        pass = colVal > tol;
+        break;
+      case '<=':
+        pass = colVal <= tol;
+        break;
+      case '>=':
+        pass = colVal >= tol;
+        break;
+      case '=':
+        pass = Math.abs(colVal - tol) < 0.0001;
+        break;
+      default:
+        pass = colVal <= tol;
+    }
+    remarks = pass ? 'Pass' : 'Fail';
+  }
+
+  return {
+    rows: rowsWithX.map(row => ({
+      ...row,
+      xMax,
+      xMin,
+      col,
+      remarks,
+    })),
+    summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
+  };
+}, [table2Rows, tolerance, toleranceOperator, table1Row.time]); // Add table1Row.time to dependencies
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
@@ -401,7 +412,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FFD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FDD (cm)</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">Time (sec)</th>
             </tr>
@@ -469,7 +480,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 </div>
               </th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">X (mGy/mA)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">X (mGy/mAs)</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">X MAX</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">X MIN</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">CoL</th>

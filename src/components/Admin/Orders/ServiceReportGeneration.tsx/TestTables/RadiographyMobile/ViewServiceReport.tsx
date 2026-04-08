@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForRadiographyMobile, getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile } from "../../../../../../api";
-import logo from "../../../../../../assets/logo/logo-sm.png";
+import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
@@ -888,7 +888,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                             </th>
                             <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Avg Output</th>
                             <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
-                              {isMaLoading ? "X (mGy/mA)" : "X (mGy/mAs)"}
+                              {isMaLoading ? "X " : "X"}
                             </th>
                             <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MAX</th>
                             <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MIN</th>

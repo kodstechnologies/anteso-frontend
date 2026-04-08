@@ -284,17 +284,35 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 8. Radiation Protection Survey
+  // 8. Radiation Protection Survey (CT Scan-style: Worker/Public max weekly summary rows)
   if (testData.radiationProtectionSurvey) {
-    const surveyDate = testData.radiationProtectionSurvey.surveyDate ? new Date(testData.radiationProtectionSurvey.surveyDate).toLocaleDateString("en-GB") : "-";
-    const hasValidCalibration = testData.radiationProtectionSurvey.hasValidCalibration || "-";
-    const isPass = hasValidCalibration.toLowerCase().includes("yes") || hasValidCalibration.toLowerCase().includes("valid");
-    addRowsForTest("Radiation Protection Survey", [{
-      specified: "Survey Date",
-      measured: surveyDate,
-      tolerance: "As per standard",
-      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-    }]);
+    const survey = testData.radiationProtectionSurvey;
+    const locations: any[] = Array.isArray(survey.locations) ? survey.locations : [];
+    if (locations.length > 0) {
+      const workerLocs = locations.filter((l: any) => l.category === "worker");
+      const publicLocs = locations.filter((l: any) => l.category === "public");
+
+      const maxWorkerWeekly = Math.max(...workerLocs.map((l: any) => parseFloat(l.mRPerWeek) || 0), 0);
+      const maxPublicWeekly = Math.max(...publicLocs.map((l: any) => parseFloat(l.mRPerWeek) || 0), 0);
+
+      const surveyRows: Array<{ specified: string; measured: string; tolerance: string; remarks: "Pass" | "Fail" }> = [];
+
+      surveyRows.push({
+        specified: "For Radiation Worker",
+        measured: maxWorkerWeekly > 0 ? `${maxWorkerWeekly.toFixed(3)} mR/week` : "-",
+        tolerance: "≤ 40 mR/week",
+        remarks: (maxWorkerWeekly > 0 ? (maxWorkerWeekly <= 40 ? "Pass" : "Fail") : "Pass") as "Pass" | "Fail",
+      });
+
+      surveyRows.push({
+        specified: "For Public",
+        measured: maxPublicWeekly > 0 ? `${maxPublicWeekly.toFixed(3)} mR/week` : "-",
+        tolerance: "≤ 2 mR/week",
+        remarks: (maxPublicWeekly > 0 ? (maxPublicWeekly <= 2 ? "Pass" : "Fail") : "Pass") as "Pass" | "Fail",
+      });
+
+      addRowsForTest("Radiation Protection Survey", surveyRows);
+    }
   }
 
   // 9. Equipment Settings Verification

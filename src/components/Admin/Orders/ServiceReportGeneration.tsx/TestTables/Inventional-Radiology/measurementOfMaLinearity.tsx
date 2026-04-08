@@ -120,10 +120,9 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
     const xValues: number[] = [];
     const individualTolerance = 0.1; // 10% deviation allowed from average
 
-    // Get time from table1Row and convert from ms to seconds if needed
-    const timeMs = parseFloat(table1Row.time);
-    const timeSec = !isNaN(timeMs) && timeMs > 0 ? timeMs / 1000 : 0; // Convert ms to seconds
-    const hasValidTime = timeSec > 0;
+    // X formula: mGy / (mA * time)
+    const timeVal = parseFloat(table1Row.time);
+    const hasValidTime = !isNaN(timeVal) && timeVal > 0;
 
     const rowsWithX = table2Rows.map((row) => {
       const outputs = row.measuredOutputs.map((v) => parseFloat(v)).filter((v) => !isNaN(v) && v > 0);
@@ -139,10 +138,10 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
 
       const mA = parseFloat(row.mAsApplied);
       
-      // Calculate X = mGy / (mA * time in seconds)
+      // Calculate X = mGy / (mA * time)
       let x = null;
       if (avgStr !== "—" && mA > 0 && hasValidTime) {
-        x = avg / (mA * timeSec);
+        x = avg / (mA * timeVal);
       } else if (avgStr !== "—" && mA > 0 && !hasValidTime) {
         // Fallback to original calculation if time is invalid
         x = avg / mA;
@@ -356,7 +355,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
       {!isViewMode && table1Row.time && (isNaN(parseFloat(table1Row.time)) || parseFloat(table1Row.time) <= 0) && (
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-sm text-amber-700">
-            ⚠️ Time value is required for accurate X = mGy/(mA × sec) calculation. Please enter a valid time in milliseconds (will be converted to seconds).
+            Time value is required for accurate X = mGy/(mA*time) calculation.
           </p>
         </div>
       )}
@@ -369,7 +368,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">kVp</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">Slice Thickness (mm)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider">Time (ms)</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider">Time</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -405,7 +404,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
                     className={`w-full px-2 py-1 border rounded text-sm text-center ${
                       isViewMode ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300" : "border-gray-300"
                     }`}
-                    placeholder="e.g., 500 (ms)"
+                    placeholder="e.g., 0.5"
                   />
                 </td>
               </tr>

@@ -84,6 +84,65 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
+  // 0.5. Accuracy of Irradiation Time
+  if (
+    testData.accuracyOfIrradiationTime?.irradiationTimes &&
+    Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)
+  ) {
+    const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter(
+      (row: any) => row.setTime || row.measuredTime
+    );
+    if (validRows.length > 0) {
+      const tol = testData.accuracyOfIrradiationTime.tolerance || {};
+      const tolOp = tol.operator || "<=";
+      const tolVal = parseFloat(tol.value ?? "10");
+
+      const calcError = (setVal: any, measuredVal: any): number | null => {
+        const s = parseFloat(String(setVal ?? ""));
+        const m = parseFloat(String(measuredVal ?? ""));
+        if (isNaN(s) || isNaN(m) || s === 0) return null;
+        return Math.abs(((m - s) / s) * 100);
+      };
+
+      const passesTolerance = (err: number): boolean => {
+        if (isNaN(tolVal)) return false;
+        switch (tolOp) {
+          case ">":
+            return err > tolVal;
+          case "<":
+            return err < tolVal;
+          case ">=":
+            return err >= tolVal;
+          case "<=":
+            return err <= tolVal;
+          case "=":
+            return Math.abs(err - tolVal) < 0.0001;
+          default:
+            return err <= tolVal;
+        }
+      };
+
+      const testRows = validRows.map((row: any) => {
+        const err = calcError(row.setTime, row.measuredTime);
+        const measured = err !== null ? `${err.toFixed(2)}%` : "-";
+        const explicitRemark = row.remark || row.remarks || "";
+        const isPass =
+          explicitRemark === "Pass" ||
+          explicitRemark === "PASS" ||
+          (err !== null && passesTolerance(err));
+
+        return {
+          specified: row.setTime ? `${row.setTime} mSec` : "-",
+          measured,
+          tolerance: `Error ${tolOp} ${tol.value || "10"}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+
+      addRowsForTest("Accuracy of Irradiation Time", testRows, true);
+    }
+  }
+
   // 1. Total Filtration (O-Arm Standardized)
   if (testData.totalFilteration?.totalFiltration) {
     const tf = testData.totalFilteration.totalFiltration;

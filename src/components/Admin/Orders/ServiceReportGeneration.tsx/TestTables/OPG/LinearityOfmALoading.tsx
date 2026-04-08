@@ -126,38 +126,51 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   };
 
   // === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks ===
-  const processedTable2 = useMemo(() => {
-    const tol = parseFloat(tolerance) || 0.1;
-    const xValues: number[] = [];
+// === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks ===
+const processedTable2 = useMemo(() => {
+  const tol = parseFloat(tolerance) || 0.1;
+  const xValues: number[] = [];
 
-    const rowsWithX = table2Rows.map(row => {
-      const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4) : '—';
-      const ma = parseFloat(row.ma);
-      const timer = parseFloat(table1Row.time) || 1; // Default to 1 if not set to avoid division issues, though OPG usually has it
-      const x = avg !== '—' && ma > 0 ? (parseFloat(avg) / (ma * timer)).toFixed(4) : '—';
+  // Get time in seconds
+  const timeSec = parseFloat(table1Row.time);
+  const hasValidTime = !isNaN(timeSec) && timeSec > 0;
 
-      if (x !== '—') xValues.push(parseFloat(x));
+  const rowsWithX = table2Rows.map(row => {
+    const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+    const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4) : '—';
+    const ma = parseFloat(row.ma);
+    
+    // Calculate X = mGy / (mA * s) [which equals mGy/mAs]
+    let x = '—';
+    if (avg !== '—' && ma > 0 && hasValidTime && timeSec > 0) {
+      const avgNum = parseFloat(avg);
+      x = (avgNum / (ma * timeSec)).toFixed(4);
+    } else if (avg !== '—' && ma > 0 && !hasValidTime) {
+      // Fallback to original calculation if time is invalid
+      const avgNum = parseFloat(avg);
+      x = (avgNum / ma).toFixed(4);
+    }
 
-      return { ...row, average: avg, x };
-    });
+    if (x !== '—') xValues.push(parseFloat(x));
 
-    const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
-    const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
-    const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-      ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
-      : '—';
-    const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+    return { ...row, average: avg, x };
+  });
 
-    return rowsWithX.map(row => ({
-      ...row,
-      xMax,
-      xMin,
-      col: colVal,
-      remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
-    }));
-  }, [table2Rows, tolerance]);
+  const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
+  const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
+  const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
+    ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
+    : '—';
+  const pass = colVal !== '—' && parseFloat(colVal) <= tol;
 
+  return rowsWithX.map(row => ({
+    ...row,
+    xMax,
+    xMin,
+    col: colVal,
+    remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
+  }));
+}, [table2Rows, tolerance, table1Row.time]); // Add table1Row.time to dependencies
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (

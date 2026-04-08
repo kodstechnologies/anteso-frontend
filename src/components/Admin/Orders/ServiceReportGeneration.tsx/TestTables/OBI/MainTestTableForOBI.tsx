@@ -39,6 +39,127 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     });
   };
 
+
+  // 6. Congruence of Radiation
+  if (testData.congruenceOfRadiation?.congruenceMeasurements && Array.isArray(testData.congruenceOfRadiation.congruenceMeasurements)) {
+    const validRows = testData.congruenceOfRadiation.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
+        const isPass = row.remark === "Pass" || row.remark === "PASS";
+        return {
+          specified: row.dimension || "-",
+          measured: row.percentFED ? `${row.percentFED}%` : "-",
+          tolerance: row.tolerance ? `≤ ${row.tolerance}%` : "-",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Congruence of Radiation", testRows);
+    }
+  }
+
+
+  // 5. Central Beam Alignment
+  if (testData.centralBeamAlignment) {
+    const observedTilt = testData.centralBeamAlignment.observedTilt;
+    const tolerance = testData.centralBeamAlignment.tolerance;
+    if (observedTilt && tolerance) {
+      const observed = parseFloat(observedTilt.value);
+      const tol = parseFloat(tolerance.value);
+      const operator = observedTilt.operator || "<=";
+      let isPass = false;
+
+      if (!isNaN(observed) && !isNaN(tol)) {
+        if (operator === "<=") isPass = observed <= tol;
+        else if (operator === ">=") isPass = observed >= tol;
+        else if (operator === "=") isPass = Math.abs(observed - tol) < 0.01;
+        else if (operator === "<") isPass = observed < tol;
+        else if (operator === ">") isPass = observed > tol;
+      }
+
+      addRowsForTest("Central Beam Alignment", [{
+        specified: "Observed Tilt",
+        measured: observedTilt.value ? `${observedTilt.value}°` : "-",
+        tolerance: `${tolerance.operator || "≤"} ${tolerance.value || "-"}°`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }]);
+    }
+  }
+
+
+  // 7. Effective Focal Spot
+  if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
+    const validRows = testData.effectiveFocalSpot.focalSpots.filter((row: any) => row.focusType || row.measuredWidth);
+    if (validRows.length > 0) {
+      const testRows: Array<{
+        specified: string | number;
+        measured: string | number;
+        tolerance: string | React.ReactNode;
+        remarks: "Pass" | "Fail";
+      }> = [];
+
+      // Determine the tolerance string based on logic
+      // + 0.5 f for f < 0.8 mm
+      // + 0.4 f for 0.8 <= f <= 1.5 mm
+      // + 0.3 f for f > 1.5 mm
+      const toleranceDisplay = (
+        <div className="flex flex-col gap-1 text-left text-xs">
+          <span>+ 0.5 f for f &lt; 0.8 mm</span>
+          <span>+ 0.4 f for 0.8 &le; f &le; 1.5 mm</span>
+          <span>+ 0.3 f for f &gt; 1.5 mm</span>
+        </div>
+      );
+
+      validRows.forEach((row: any, index: number) => {
+        const isPass = row.remark === "Pass" || row.remark === "PASS";
+        testRows.push({
+          specified: row.focusType || "-",
+          measured: row.measuredWidth && row.measuredHeight ? `${row.measuredWidth} × ${row.measuredHeight} mm` : "-",
+          tolerance: toleranceDisplay, // Render JSX
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        });
+      });
+
+      addRowsForTest("Effective Focal Spot", testRows, true); // Use shared tolerance row span
+    }
+  }
+
+  // 3. Timer Test
+  if (testData.timerTest?.irradiationTimes && Array.isArray(testData.timerTest.irradiationTimes)) {
+    const validRows = testData.timerTest.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
+    if (validRows.length > 0) {
+      const toleranceOperator = testData.timerTest.tolerance?.operator || "<=";
+      const toleranceValue = testData.timerTest.tolerance?.value || "5";
+      const testRows = validRows.map((row: any) => {
+        const setTime = parseFloat(row.setTime);
+        const measuredTime = parseFloat(row.measuredTime);
+        let error = "-";
+        let isPass = false;
+
+        if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
+          error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
+          const errorVal = parseFloat(error);
+          const tol = parseFloat(toleranceValue);
+
+          if (toleranceOperator === "<=") {
+            isPass = errorVal <= tol;
+          } else if (toleranceOperator === ">=") {
+            isPass = errorVal >= tol;
+          } else if (toleranceOperator === "=") {
+            isPass = Math.abs(errorVal - tol) < 0.01;
+          }
+        }
+
+        return {
+          specified: row.setTime || "-",
+          measured: row.measuredTime || "-",
+          tolerance: `${toleranceOperator} ${toleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Irradiation Time", testRows);
+    }
+  }
+
   // 1. Accuracy of Operating Potential
 
   const opData = testData.operatingPotential;
@@ -107,43 +228,6 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     }]);
   }
 
-  // 3. Timer Test
-  if (testData.timerTest?.irradiationTimes && Array.isArray(testData.timerTest.irradiationTimes)) {
-    const validRows = testData.timerTest.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
-    if (validRows.length > 0) {
-      const toleranceOperator = testData.timerTest.tolerance?.operator || "<=";
-      const toleranceValue = testData.timerTest.tolerance?.value || "5";
-      const testRows = validRows.map((row: any) => {
-        const setTime = parseFloat(row.setTime);
-        const measuredTime = parseFloat(row.measuredTime);
-        let error = "-";
-        let isPass = false;
-
-        if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
-          error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
-          const errorVal = parseFloat(error);
-          const tol = parseFloat(toleranceValue);
-
-          if (toleranceOperator === "<=") {
-            isPass = errorVal <= tol;
-          } else if (toleranceOperator === ">=") {
-            isPass = errorVal >= tol;
-          } else if (toleranceOperator === "=") {
-            isPass = Math.abs(errorVal - tol) < 0.01;
-          }
-        }
-
-        return {
-          specified: row.setTime || "-",
-          measured: row.measuredTime || "-",
-          tolerance: `${toleranceOperator} ${toleranceValue}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Accuracy of Irradiation Time", testRows);
-    }
-  }
-
   // 4. Output Consistency (COV)
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kv || row.avg);
@@ -176,86 +260,43 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 5. Central Beam Alignment
-  if (testData.centralBeamAlignment) {
-    const observedTilt = testData.centralBeamAlignment.observedTilt;
-    const tolerance = testData.centralBeamAlignment.tolerance;
-    if (observedTilt && tolerance) {
-      const observed = parseFloat(observedTilt.value);
-      const tol = parseFloat(tolerance.value);
-      const operator = observedTilt.operator || "<=";
-      let isPass = false;
 
-      if (!isNaN(observed) && !isNaN(tol)) {
-        if (operator === "<=") isPass = observed <= tol;
-        else if (operator === ">=") isPass = observed >= tol;
-        else if (operator === "=") isPass = Math.abs(observed - tol) < 0.01;
-        else if (operator === "<") isPass = observed < tol;
-        else if (operator === ">") isPass = observed > tol;
-      }
-
-      addRowsForTest("Central Beam Alignment", [{
-        specified: "Observed Tilt",
-        measured: observedTilt.value ? `${observedTilt.value}°` : "-",
-        tolerance: `${tolerance.operator || "≤"} ${tolerance.value || "-"}°`,
+  // 12. Low Contrast Sensitivity
+  if (testData.lowContrastSensitivity) {
+    const lcsData = testData.lowContrastSensitivity;
+    if (lcsData.smallestHoleSize || lcsData.recommendedStandard) {
+      const measured = parseFloat(lcsData.smallestHoleSize || "999");
+      const standard = parseFloat(lcsData.recommendedStandard || "0");
+      const isPass = !isNaN(measured) && !isNaN(standard) && measured < standard;
+      
+      addRowsForTest("Low Contrast Resolution", [{
+        specified: `Recommended <= ${lcsData.recommendedStandard || "-"} mm`,
+        measured: lcsData.smallestHoleSize ? `${lcsData.smallestHoleSize} mm` : "-",
+        tolerance: `< ${lcsData.recommendedStandard || "-"} mm`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }]);
     }
   }
 
-  // 6. Congruence of Radiation
-  if (testData.congruenceOfRadiation?.congruenceMeasurements && Array.isArray(testData.congruenceOfRadiation.congruenceMeasurements)) {
-    const validRows = testData.congruenceOfRadiation.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => {
-        const isPass = row.remark === "Pass" || row.remark === "PASS";
-        return {
-          specified: row.dimension || "-",
-          measured: row.percentFED ? `${row.percentFED}%` : "-",
-          tolerance: row.tolerance ? `≤ ${row.tolerance}%` : "-",
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Congruence of Radiation", testRows);
+  // 11. High Contrast Sensitivity
+  if (testData.highContrastSensitivity) {
+    const hcsData = testData.highContrastSensitivity;
+    if (hcsData.measuredLpPerMm || hcsData.recommendedStandard) {
+      const measured = parseFloat(hcsData.measuredLpPerMm || "0");
+      const standard = parseFloat(hcsData.recommendedStandard || "0");
+      const isPass = !isNaN(measured) && !isNaN(standard) && measured > standard;
+      
+      addRowsForTest("High Contrast Resolution", [{
+        specified: `Recommended >= ${hcsData.recommendedStandard || "-"} lp/mm`,
+        measured: hcsData.measuredLpPerMm ? `${hcsData.measuredLpPerMm} lp/mm` : "-",
+        tolerance: `> ${hcsData.recommendedStandard || "-"} lp/mm`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }]);
     }
   }
 
-  // 7. Effective Focal Spot
-  if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
-    const validRows = testData.effectiveFocalSpot.focalSpots.filter((row: any) => row.focusType || row.measuredWidth);
-    if (validRows.length > 0) {
-      const testRows: Array<{
-        specified: string | number;
-        measured: string | number;
-        tolerance: string | React.ReactNode;
-        remarks: "Pass" | "Fail";
-      }> = [];
 
-      // Determine the tolerance string based on logic
-      // + 0.5 f for f < 0.8 mm
-      // + 0.4 f for 0.8 <= f <= 1.5 mm
-      // + 0.3 f for f > 1.5 mm
-      const toleranceDisplay = (
-        <div className="flex flex-col gap-1 text-left text-xs">
-          <span>+ 0.5 f for f &lt; 0.8 mm</span>
-          <span>+ 0.4 f for 0.8 &le; f &le; 1.5 mm</span>
-          <span>+ 0.3 f for f &gt; 1.5 mm</span>
-        </div>
-      );
 
-      validRows.forEach((row: any, index: number) => {
-        const isPass = row.remark === "Pass" || row.remark === "PASS";
-        testRows.push({
-          specified: row.focusType || "-",
-          measured: row.measuredWidth && row.measuredHeight ? `${row.measuredWidth} × ${row.measuredHeight} mm` : "-",
-          tolerance: toleranceDisplay, // Render JSX
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        });
-      });
-
-      addRowsForTest("Effective Focal Spot", testRows, true); // Use shared tolerance row span
-    }
-  }
 
   // 8. Linearity of mAs Loading Stations
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
@@ -283,7 +324,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
       const tolerance = testData.linearityOfTime.tolerance || "0.1";
       const col = testData.linearityOfTime.coefficientOfLinearity || "-";
       const isPass = testData.linearityOfTime.remarks === "Pass" || (col !== "-" && parseFloat(col) < parseFloat(tolerance));
-      addRowsForTest("Linearity of Time", [{
+      addRowsForTest("Linearity Of mA loading", [{
         specified: "Coefficient of Linearity",
         measured: col,
         tolerance: `CoL < ${tolerance}`,
@@ -320,39 +361,8 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 11. High Contrast Sensitivity
-  if (testData.highContrastSensitivity) {
-    const hcsData = testData.highContrastSensitivity;
-    if (hcsData.measuredLpPerMm || hcsData.recommendedStandard) {
-      const measured = parseFloat(hcsData.measuredLpPerMm || "0");
-      const standard = parseFloat(hcsData.recommendedStandard || "0");
-      const isPass = !isNaN(measured) && !isNaN(standard) && measured > standard;
-      
-      addRowsForTest("High Contrast Sensitivity", [{
-        specified: `Recommended >= ${hcsData.recommendedStandard || "-"} lp/mm`,
-        measured: hcsData.measuredLpPerMm ? `${hcsData.measuredLpPerMm} lp/mm` : "-",
-        tolerance: `> ${hcsData.recommendedStandard || "-"} lp/mm`,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      }]);
-    }
-  }
 
-  // 12. Low Contrast Sensitivity
-  if (testData.lowContrastSensitivity) {
-    const lcsData = testData.lowContrastSensitivity;
-    if (lcsData.smallestHoleSize || lcsData.recommendedStandard) {
-      const measured = parseFloat(lcsData.smallestHoleSize || "999");
-      const standard = parseFloat(lcsData.recommendedStandard || "0");
-      const isPass = !isNaN(measured) && !isNaN(standard) && measured < standard;
-      
-      addRowsForTest("Low Contrast Sensitivity", [{
-        specified: `Recommended <= ${lcsData.recommendedStandard || "-"} mm`,
-        measured: lcsData.smallestHoleSize ? `${lcsData.smallestHoleSize} mm` : "-",
-        tolerance: `< ${lcsData.recommendedStandard || "-"} mm`,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      }]);
-    }
-  }
+
 
   // 13. Alignment Test
   if (testData.alignmentTest?.testRows && Array.isArray(testData.alignmentTest.testRows)) {

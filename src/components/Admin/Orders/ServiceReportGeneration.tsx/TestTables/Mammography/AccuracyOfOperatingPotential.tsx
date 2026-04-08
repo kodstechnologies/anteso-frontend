@@ -39,6 +39,14 @@ interface Props {
   };
 }
 
+const normalizeToleranceSign = (sign: any): 'plus' | 'minus' | 'both' => {
+  const raw = String(sign ?? '').trim().toLowerCase();
+  if (raw === 'plus' || raw === '+') return 'plus';
+  if (raw === 'minus' || raw === '-') return 'minus';
+  if (raw === 'both' || raw === '±' || raw === '+/-' || raw === '+/-') return 'both';
+  return 'both';
+};
+
 const TABLE2_META_KEYS = new Set([
   'setKV',
   'avgKvp',
@@ -58,6 +66,19 @@ function isMammoTable2MaKey(key: string): boolean {
   return false;
 }
 
+function canonicalMammoMaKey(key: string): string {
+  const raw = String(key || '').trim();
+  let m = raw.match(/^ma(\d+)$/i);
+  if (m) return `ma${m[1]}`;
+  m = raw.match(/^mA(\d+)$/i);
+  if (m) return `ma${m[1]}`;
+  m = raw.match(/^(\d+)mA$/i);
+  if (m) return `ma${m[1]}`;
+  m = raw.match(/mA\s*(\d+)/i);
+  if (m) return `ma${m[1]}`;
+  return raw.replace(/\s+/g, '');
+}
+
 /** All mA column keys across rows (first row may omit empty fields). */
 function collectMammoTable2MaKeys(table2: any[] | undefined): string[] {
   const seen = new Set<string>();
@@ -65,9 +86,11 @@ function collectMammoTable2MaKeys(table2: any[] | undefined): string[] {
   for (const row of table2 || []) {
     if (!row || typeof row !== 'object') continue;
     for (const k of Object.keys(row)) {
-      if (!isMammoTable2MaKey(k) || seen.has(k)) continue;
-      seen.add(k);
-      order.push(k);
+      if (!isMammoTable2MaKey(k)) continue;
+      const canonicalKey = canonicalMammoMaKey(k);
+      if (seen.has(canonicalKey)) continue;
+      seen.add(canonicalKey);
+      order.push(canonicalKey);
     }
   }
   order.sort((a, b) => {
@@ -93,7 +116,19 @@ function formatMammoMaLabelFromKey(key: string): string {
 }
 
 function cellValueFromRow(row: any, key: string): string {
-  const v = row?.[key];
+  const canonicalKey = canonicalMammoMaKey(key);
+  const num = canonicalKey.match(/^ma(\d+)$/i)?.[1];
+  const candidates = num
+    ? [canonicalKey, `mA${num}`, `ma${num}`, `${num}mA`]
+    : [canonicalKey, key];
+
+  let v: any = undefined;
+  for (const c of candidates) {
+    if (Object.prototype.hasOwnProperty.call(row || {}, c)) {
+      v = row?.[c];
+      break;
+    }
+  }
   if (v === null || v === undefined || v === '') return '';
   if (typeof v === 'object' && v !== null && 'value' in v) return String((v as any).value ?? '');
   return String(v);
@@ -325,7 +360,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
       if (initialData.tolerance) {
         setToleranceValue(initialData.tolerance.value || '1.5');
         setToleranceType(initialData.tolerance.type || 'absolute');
-        setToleranceSign(initialData.tolerance.sign || 'both');
+        setToleranceSign(normalizeToleranceSign(initialData.tolerance.sign));
       }
       setIsEditing(true);
       setIsLoading(false);
@@ -387,7 +422,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         if (rec.tolerance) {
           setToleranceValue(String(rec.tolerance.value || '1.5'));
           setToleranceType(rec.tolerance.type || 'absolute');
-          setToleranceSign(rec.tolerance.sign || 'both');
+          setToleranceSign(normalizeToleranceSign(rec.tolerance.sign));
         }
 
         setHasSaved(true);
@@ -414,8 +449,8 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
         // Create dynamic object with mA columns
         const maValues: any = {};
         r.maColumns.forEach(col => {
-          // Create key from label (remove spaces)
-          const key = col.label.replace(/\s+/g, '');
+          // Persist normalized key to avoid duplicate columns after reload (mA10/ma10/10mA)
+          const key = canonicalMammoMaKey(col.label);
           maValues[key] = parseFloat(col.value) || null;
         });
 

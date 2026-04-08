@@ -435,8 +435,9 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       </div>
 
       {/* Table 2: mA + Output (mGy) */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div className="bg-white shadow-md rounded-lg">
+        <div className="overflow-x-auto">
+        <table className="min-w-max w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
               {/* Header – make mA column wider */}
@@ -557,6 +558,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             ))}
           </tbody>
         </table>
+        </div>
 
         <div className="px-4 py-3 bg-gray-50 border-t flex justify-between items-center">
           {!isViewMode && (

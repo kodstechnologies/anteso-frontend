@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForLeadApron, getLeadApronTestByTestId } from "../../../../../../api";
-import logo from "../../../../../../assets/logo/logo-sm.png";
+import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
@@ -159,9 +159,9 @@ const ViewServiceReportLeadApron: React.FC = () => {
     <>
       {/* Floating Buttons */}
       <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
-        <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
+        {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
-        </button>
+        </button> */}
         <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Download PDF
         </button>

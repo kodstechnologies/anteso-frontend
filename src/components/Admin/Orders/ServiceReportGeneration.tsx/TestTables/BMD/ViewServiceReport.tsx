@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForBMD, saveReportHeaderForBMD, getReportNumbers, getAccuracyOfIrradiationTimeByServiceIdForBMD, getDetails, getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD } from "../../../../../../api";
-import logo from "../../../../../../assets/logo/logo-sm.png";
+import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
@@ -1030,7 +1030,7 @@ const ViewServiceReportBMD: React.FC = () => {
                               <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
                             ))}
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg Output</th>
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>X (mGy/mA)</th>
+                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>X </th>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>X MAX</th>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>X MIN</th>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoL</th>

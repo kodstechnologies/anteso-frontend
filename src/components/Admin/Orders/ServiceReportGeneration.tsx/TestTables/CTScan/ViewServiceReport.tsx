@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForCTScan } from "../../../../../../api";
 import MainTestTableForCTScan from "./MainTestTableForCTScan";
 import MechanicalTestSummary from "./MechanicalTestSummary";
-import logo from "../../../../../../assets/logo/logo-sm.png";
+import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";

@@ -265,7 +265,7 @@ const InvoiceDealer = () => {
                                                     <th className="border border-black px-1 py-1 text-xs">Machine Type</th>
                                                     <th className="border border-black px-1 py-1 text-xs w-[28%]">Description of Services</th>                                                    <th className="border border-black px-1 py-1 text-xs">HSN/SAC Number</th>
                                                     <th className="border border-black px-1 py-1 text-xs">Quantity</th>
-                                                    <th className="border border-black px-1 py-1 text-xs">Rate</th>
+                                                    {/* <th className="border border-black px-1 py-1 text-xs">Rate</th> */}
                                                     <th className="border border-black px-1 py-1 text-xs">Amount</th>
                                                 </tr>
                                             </thead>
@@ -279,7 +279,7 @@ const InvoiceDealer = () => {
                                                             <td className="border border-black px-1 py-1 break-words">{item.description || "-"}</td>
                                                             <td className="border border-black px-1 py-1">{item.hsnno || "-"}</td>
                                                             <td className="border border-black px-1 py-1 text-right">{item.quantity || 0}</td>
-                                                            <td className="border border-black px-1 py-1 text-right">₹{(item.rate || 0).toLocaleString("en-IN")}</td>
+                                                            {/* <td className="border border-black px-1 py-1 text-right">₹{(item.rate || 0).toLocaleString("en-IN")}</td> */}
                                                             <td className="border border-black px-1 py-1 text-right">₹{Number(amount.toFixed(2)).toLocaleString("en-IN")}</td>                                                        </tr>
                                                     );
                                                 })}

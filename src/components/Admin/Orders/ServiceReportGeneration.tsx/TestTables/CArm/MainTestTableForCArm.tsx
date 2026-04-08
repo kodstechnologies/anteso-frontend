@@ -38,38 +38,6 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
       });
     });
   };
- // 2. Accuracy of Operating Potential (kVp Accuracy)
-  if (testData.operatingPotential?.measurements && Array.isArray(testData.operatingPotential.measurements)) {
-    const validRows = testData.operatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
-    if (validRows.length > 0) {
-      const toleranceSign = testData.operatingPotential.tolerance?.sign || testData.operatingPotential.tolerance?.type || testData.operatingPotential.toleranceSign || "±";
-      const toleranceValue = testData.operatingPotential.tolerance?.value || testData.operatingPotential.toleranceValue || "2.0";
-      const testRows = validRows.map((row: any) => {
-        let isPass = false;
-        if (row.remarks === "PASS" || row.remarks === "Pass") {
-          isPass = true;
-        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
-          isPass = false;
-        } else {
-          const appliedKvp = parseFloat(row.appliedKvp);
-          const avgKvp = parseFloat(row.averageKvp);
-          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-            const tol = parseFloat(toleranceValue);
-            isPass = deviation <= tol;
-          }
-        }
-        return {
-          specified: row.appliedKvp || "-",
-          measured: row.averageKvp || "-",
-          tolerance: `${toleranceSign}${toleranceValue}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
-    }
-  }
-
   // 1. Accuracy of Irradiation Time
   if (testData.irradiationTime?.irradiationTimes && Array.isArray(testData.irradiationTime.irradiationTimes)) {
     const validRows = testData.irradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
@@ -107,7 +75,38 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
- 
+ // 2. Accuracy of Operating Potential (kVp Accuracy)
+  if (testData.operatingPotential?.measurements && Array.isArray(testData.operatingPotential.measurements)) {
+    const validRows = testData.operatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
+    if (validRows.length > 0) {
+      const toleranceSign = testData.operatingPotential.tolerance?.sign || testData.operatingPotential.tolerance?.type || testData.operatingPotential.toleranceSign || "±";
+      const toleranceValue = testData.operatingPotential.tolerance?.value || testData.operatingPotential.toleranceValue || "2.0";
+      const testRows = validRows.map((row: any) => {
+        let isPass = false;
+        if (row.remarks === "PASS" || row.remarks === "Pass") {
+          isPass = true;
+        } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
+          isPass = false;
+        } else {
+          const appliedKvp = parseFloat(row.appliedKvp);
+          const avgKvp = parseFloat(row.averageKvp);
+          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
+            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
+            const tol = parseFloat(toleranceValue);
+            isPass = deviation <= tol;
+          }
+        }
+        return {
+          specified: row.appliedKvp || "-",
+          measured: row.averageKvp || "-",
+          tolerance: `${toleranceSign}${toleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
+    }
+  }
+
   // 3. Total Filtration
   if (testData.totalFilteration?.totalFiltration) {
     const measuredTF = testData.totalFilteration.totalFiltration.measured || "-";
@@ -160,7 +159,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Linearity of mAs Loading Stations (Coefficient of Linearity)", testRows);
+      addRowsForTest("Linearity of mA Loading Stations (Coefficient of Linearity)", testRows);
     }
   }
 
@@ -263,54 +262,6 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
- 
-  // 7. Maximum Radiation Leakage from Tube Housing
-  if (testData.tubeHousingLeakage?.leakageRows && Array.isArray(testData.tubeHousingLeakage.leakageRows)) {
-    const validRows = testData.tubeHousingLeakage.leakageRows.filter((row: any) => row.location || row.max);
-    if (validRows.length > 0) {
-      const toleranceValue = testData.tubeHousingLeakage.toleranceValue || "1";
-      const toleranceOperator = testData.tubeHousingLeakage.toleranceOperator || "<=";
-
-      // Compute max mGy/hr across all leakage rows
-      // max field is in mR/hr; mgy = max / 114
-      const mgyValues = validRows
-        .map((row: any) => {
-          const mgyStored = parseFloat(row.mgy);
-          if (!isNaN(mgyStored) && mgyStored > 0) return mgyStored;
-          const maxMR = parseFloat(row.max);
-          if (!isNaN(maxMR) && maxMR > 0) return maxMR / 114;
-          return 0;
-        })
-        .filter((v: number) => v > 0);
-
-      const maxMGy = mgyValues.length > 0 ? Math.max(...mgyValues) : NaN;
-      const measuredValue = !isNaN(maxMGy) ? maxMGy.toFixed(4) : "-";
-      const measuredNum = parseFloat(measuredValue);
-      const tol = parseFloat(toleranceValue);
-
-      let remark: "Pass" | "Fail" = "Fail";
-      if (!isNaN(measuredNum) && !isNaN(tol)) {
-        if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") remark = measuredNum <= tol ? "Pass" : "Fail";
-        else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") remark = measuredNum >= tol ? "Pass" : "Fail";
-        else if (toleranceOperator === "<" || toleranceOperator === "less than") remark = measuredNum < tol ? "Pass" : "Fail";
-        else if (toleranceOperator === ">" || toleranceOperator === "greater than") remark = measuredNum > tol ? "Pass" : "Fail";
-        else remark = Math.abs(measuredNum - tol) < 0.001 ? "Pass" : "Fail";
-      }
-
-      const tolSymbol = toleranceOperator === "<=" || toleranceOperator === "less than or equal to" ? "≤"
-        : toleranceOperator === ">=" || toleranceOperator === "greater than or equal to" ? "≥"
-        : toleranceOperator === "<" || toleranceOperator === "less than" ? "<"
-        : toleranceOperator === ">" || toleranceOperator === "greater than" ? ">"
-        : "=";
-
-      addRowsForTest("Maximum Radiation Leakage from Tube Housing", [{
-        specified: "Tube Housing",
-        measured: measuredValue !== "-" ? `${measuredValue} mGy/h` : "-",
-        tolerance: `${tolSymbol} ${toleranceValue} mGy/h in 1 hour`,
-        remarks: remark,
-      }]);
-    }
-  }
 
   if (rows.length === 0) {
     return <div className="text-center text-gray-500 py-10">No test results available.</div>;

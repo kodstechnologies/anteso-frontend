@@ -1461,6 +1461,23 @@ export const getMachineDetails = async (id: any) => {
 
 }
 
+export const getCustomerFeedbackByOrderId = async (orderId: string) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/orders/customer-feedback/${orderId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data?.data;
+    } catch (error: any) {
+        console.error("🚀 ~ getCustomerFeedbackByOrderId ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch customer feedback"
+        );
+    }
+};
+
 // 1.
 // export const getMachineDetails = async (id: any) => {
 //     try {
@@ -11637,4 +11654,18 @@ export const updateTubeHousingLeakageForInventionalRadiology = async (testId: st
         headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
+};
+export const getCustomMachines = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get('/custom-machines/all', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ getCustomMachines ~ error:", error);
+        throw error;
+    }
 };

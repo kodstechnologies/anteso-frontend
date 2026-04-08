@@ -44,6 +44,20 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     return today.toISOString().split('T')[0];
   };
 
+  const normalizeDateForInput = (value?: string | null) => {
+    if (!value) return "";
+    const raw = String(value).trim();
+    if (!raw) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const ddmmyyyy = raw.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
+    if (ddmmyyyy) {
+      const [, dd, mm, yyyy] = ddmmyyyy;
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().split('T')[0];
+  };
+
   const [testId, setTestId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
@@ -51,7 +65,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
   const [isLoading, setIsLoading] = useState(true);
   // Default survey date to QA test submitted date (if provided), otherwise today
   const [surveyDate, setSurveyDate] = useState<string>(
-    initialSurveyDate ? (typeof initialSurveyDate === 'string' ? initialSurveyDate.split('T')[0] : getTodayDate()) : getTodayDate()
+    initialSurveyDate ? normalizeDateForInput(initialSurveyDate) || getTodayDate() : getTodayDate()
   );
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
@@ -193,7 +207,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     if (initialData) {
       console.log('RadiationProtectionSurvey: Loading initial data from CSV:', initialData);
       if (initialData.surveyDate) {
-        setSurveyDate(initialData.surveyDate);
+        setSurveyDate(normalizeDateForInput(initialData.surveyDate));
       }
       if (initialData.hasValidCalibration !== undefined) {
         setHasValidCalibration(initialData.hasValidCalibration);
@@ -272,7 +286,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
         console.log('RadiationProtectionSurvey: Loaded data:', data);
         if (data) {
           setTestId(data._id || null);
-          setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+          setSurveyDate(normalizeDateForInput(data.surveyDate));
           // Calibration status is set by the tools check useEffect, don't override it here
           // (The tools check will run and set it based on current calibration dates)
           setAppliedCurrent(data.appliedCurrent || "100");
@@ -317,6 +331,11 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
       toast.error("Please select a survey date");
       return;
     }
+    const normalizedSurveyDate = normalizeDateForInput(surveyDate);
+    if (!normalizedSurveyDate) {
+      toast.error("Please enter a valid survey date");
+      return;
+    }
     if (!hasValidCalibration.trim()) {
       toast.error("Please select calibration status");
       return;
@@ -328,7 +347,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     }
 
     const payload = {
-      surveyDate,
+      surveyDate: normalizedSurveyDate,
       hasValidCalibration,
       appliedCurrent,
       appliedVoltage,

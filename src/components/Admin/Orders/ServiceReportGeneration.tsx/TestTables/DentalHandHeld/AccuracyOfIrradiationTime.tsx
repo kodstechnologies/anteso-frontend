@@ -116,13 +116,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                 if (data) {
                     setTestId(data._id || null);
 
-                    // Table 1 Row (Test Conditions) - taking from first row or common fields
+                    // Table 1 Row (Test Conditions)
                     const firstRow = data.rows?.[0] || {};
                     setTable1Row({
                         id: "1",
-                        fcd: data.ffd || "",
-                        kv: firstRow.appliedKvp || "",
-                        ma: data.mAStations?.[0] || "",
+                        fcd: data.testConditions?.fcd || data.ffd || "",
+                        kv: data.testConditions?.kv || firstRow.appliedKvp || "",
+                        ma: data.testConditions?.ma || data.mAStations?.[0] || "",
                     });
 
                     // Table 2 Rows (Irradiation Times) - currently this component only supports 1 mA station in its UI
@@ -211,7 +211,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             const existingRows = fullData.rows || [];
 
             const payload = {
-                ffd: table1Row.fcd,
+                testConditions: {
+                    fcd: table1Row.fcd,
+                    kv: table1Row.kv,
+                    ma: table1Row.ma,
+                },
                 // MERGE STRATEGY: Preserve kVp data from existing rows
                 rows: table2Rows.map((r, i) => {
                     const existingRow = existingRows[i] || {};

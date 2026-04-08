@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForOArm, saveReportHeader } from "../../../../../../api";
-import logo from "../../../../../../assets/logo/logo-sm.png";
+import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
@@ -706,7 +706,15 @@ const ViewServiceReportOArm: React.FC = () => {
                 {testData.totalFilteration.totalFiltration && (() => {
                   const tf = testData.totalFilteration.totalFiltration;
                   const ft = testData.totalFilteration.filtrationTolerance || {};
-                  const kvp = parseFloat(tf.atKvp ?? "");
+                  const atKvpDisplay =
+                    tf.atKvp ??
+                    tf.atkVp ??
+                    tf.kVp ??
+                    tf.kvp ??
+                    tf.appliedKvp ??
+                    tf.appliedKv ??
+                    "";
+                  const kvp = parseFloat(atKvpDisplay ?? "");
                   const measured = parseFloat(tf.required ?? ""); // Backend often saves it as 'required' in this context
                   const threshold1 = parseFloat(ft.kvThreshold1 ?? "70");
                   const threshold2 = parseFloat(ft.kvThreshold2 ?? "100");
@@ -729,7 +737,9 @@ const ViewServiceReportOArm: React.FC = () => {
                         <tbody>
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>At kVp</td>
-                            <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{tf.atKvp || "-"} kVp</td>
+                            <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
+                              {atKvpDisplay ? `${atKvpDisplay} kVp` : "-"}
+                            </td>
                           </tr>
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Measured Total Filtration</td>

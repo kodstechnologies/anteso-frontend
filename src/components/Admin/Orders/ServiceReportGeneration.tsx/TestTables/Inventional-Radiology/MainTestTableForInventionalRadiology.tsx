@@ -482,7 +482,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 
   return (
     <div className="mt-4 print:mt-2">
-      <h2 className="text-2xl font-bold text-center underline mb-4 print:mb-2 print:text-xl">
+      <h2 className="text-xl font-bold text-center underline mb-4 print:mb-2 print:text-sm">
         SUMMARY OF QA TEST RESULTS
       </h2>
 

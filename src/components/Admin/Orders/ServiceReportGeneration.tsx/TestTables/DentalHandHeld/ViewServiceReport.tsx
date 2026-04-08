@@ -12,7 +12,7 @@ import {
   getTubeHousingLeakageByServiceIdForDentalHandHeld,
   getRadiationProtectionSurveyByServiceIdForDentalHandHeld
 } from "../../../../../../api";
-import logo from "../../../../../../assets/logo/logo-sm.png";
+import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
@@ -145,9 +145,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
               ...d,
               irradiationTimes: d.irradiationTimes || d.table2 || mappedFromRows,
               testConditions: {
-                fcd: d?.ffd ?? d?.fcd ?? d?.rows?.[0]?.fcd ?? "",
-                kv: d?.rows?.[0]?.appliedKvp ?? d?.rows?.[0]?.kv ?? "",
-                ma: d?.mAStations?.[0] ?? d?.rows?.[0]?.maStations?.[0]?.ma ?? "",
+                fcd: d?.testConditions?.fcd ?? d?.ffd ?? d?.fcd ?? d?.rows?.[0]?.fcd ?? "",
+                kv: d?.testConditions?.kv ?? d?.rows?.[0]?.appliedKvp ?? d?.rows?.[0]?.kv ?? "",
+                ma: d?.testConditions?.ma ?? d?.mAStations?.[0] ?? d?.rows?.[0]?.maStations?.[0]?.ma ?? "",
               },
               tolerance: {
                 operator: d?.timeToleranceSign ?? d?.tolerance?.operator ?? "<=",
@@ -187,10 +187,39 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             if (!d) return null;
             // Support both direct fields and nested rows
             const measurements = d.leakageMeasurements || d.leakageRows || [];
+            const settingsObj = d.measurementSettings?.[0] || d.measurementSettings || d.settings?.[0] || d.settings || {};
+            const normalizedSettings = {
+              fcd: settingsObj.fcd || settingsObj.distance || d.fcd || d.distance || "",
+              kv: settingsObj.kv || settingsObj.kvp || d.kv || d.kvp || "",
+              ma: settingsObj.ma || settingsObj.mA || d.ma || d.mA || "",
+              time:
+                settingsObj.time ||
+                settingsObj.Time ||
+                settingsObj.timeSec ||
+                settingsObj.timeInSec ||
+                settingsObj.exposureTime ||
+                d.time ||
+                d.Time ||
+                d.timeSec ||
+                d.timeInSec ||
+                d.exposureTime ||
+                "",
+            };
+
             return {
               ...d,
               leakageMeasurements: measurements,
-              measurementSettings: d.measurementSettings || {},
+              // Keep a predictable shape for render section
+              measurementSettings: normalizedSettings,
+              fcd: normalizedSettings.fcd,
+              kv: normalizedSettings.kv,
+              ma: normalizedSettings.ma,
+              time: normalizedSettings.time,
+              workload: d.workload?.value || d.workload || "",
+              workloadUnit: d.workload?.unit || d.workloadUnit || "mA·min/week",
+              toleranceValue: d.tolerance?.value || d.toleranceValue || "1",
+              toleranceOperator: d.tolerance?.operator || d.toleranceOperator || "less than or equal to",
+              toleranceTime: d.tolerance?.time || d.toleranceTime || "1",
               calculatedResult: d.calculatedResult || {}
             };
           };
@@ -1067,18 +1096,26 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             {/* 7. Tube Housing Leakage */}
             {testData.tubeHousingLeakage?.leakageMeasurements?.length > 0 && (() => {
               const leakageData = testData.tubeHousingLeakage;
-              const settings = leakageData.measurementSettings || {};
+              const settings =
+                (Array.isArray(leakageData.measurementSettings)
+                  ? leakageData.measurementSettings[0]
+                  : leakageData.measurementSettings) ||
+                (Array.isArray(leakageData.settings) ? leakageData.settings[0] : leakageData.settings) ||
+                {};
               const measurements = leakageData.leakageMeasurements || [];
-              const workload = leakageData.workload?.value || "0";
+              const workload = leakageData.workload?.value || leakageData.workload || "0";
               const workloadUnit = leakageData.workload?.unit || "mA·min/week";
-              const maUsed = parseFloat(settings.ma || "0") || 1;
-              const workloadVal = parseFloat(workload) || 0;
-              const tolVal = parseFloat(leakageData.tolerance?.value || "1.0") || 1.0;
-              const tolOp = leakageData.tolerance?.operator || "less than or equal to";
+              const maUsed = parseFloat(leakageData.ma || settings.ma || "0") || 1;
+              const workloadVal = parseFloat(String(workload)) || 0;
+              const tolVal = parseFloat(leakageData.tolerance?.value || leakageData.toleranceValue || "1.0") || 1.0;
+              const tolOp = leakageData.tolerance?.operator || leakageData.toleranceOperator || "less than or equal to";
+              const tolTime = leakageData.tolerance?.time || leakageData.toleranceTime || "1";
 
               const getDisplayOp = (op: string) => {
                 if (op === "less than or equal to") return "≤";
                 if (op === "greater than or equal to") return "≥";
+                if (op === "<=") return "≤";
+                if (op === ">=") return "≥";
                 return op || "≤";
               };
 
@@ -1100,10 +1137,12 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                         </thead>
                         <tbody>
                           <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{settings.distance || settings.fcd || "100"}</td>
-                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{settings.kv || "-"}</td>
-                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{settings.ma || "-"}</td>
-                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{settings.time || "-"}</td>
+                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{leakageData.fcd || settings.distance || settings.fcd || "100"}</td>
+                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{leakageData.kv || settings.kv || "-"}</td>
+                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{leakageData.ma || settings.ma || "-"}</td>
+                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                              {leakageData.time || settings.time || settings.Time || settings.timeSec || settings.timeInSec || settings.exposureTime || "-"}
+                            </td>
                           </tr>
                         </tbody>
                       </table>
@@ -1117,11 +1156,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                         <strong>Workload:</strong> {workload} {workloadUnit}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                        <strong>Tolerance (mGy in 1 hr):</strong> {getDisplayOp(tolOp)} {tolVal} mGy in {leakageData.tolerance?.time || "1"} hr
-                      </p>
-                    </div>
+                    <div></div>
                   </div>
 
                   {/* Exposure Level Table */}
@@ -1244,7 +1279,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
 
                         <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
                           <p className="text-[11px] print:text-[8px] leading-relaxed">
-                            <strong>Note:</strong> The maximum leakage radiation from the X-ray tube housing and collimator, measured at a distance of 1 meter from the focus, averaged over an area of 100 cm², shall not exceed 1.0 mGy in one hour when the tube is operated at its maximum rated continuous filament current at the maximum rated tube potential.
+                            <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{" "}
+                            {getDisplayOp(tolOp)}{" "}
+                            <strong>{tolVal} mGy ({tolVal * 114} mR) in {tolTime} hour.</strong>
                           </p>
                         </div>
                       </div>

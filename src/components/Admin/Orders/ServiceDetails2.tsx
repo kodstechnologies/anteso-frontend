@@ -21,7 +21,7 @@ import {
     Trash2,
     Plus,
 } from "lucide-react"
-import { getAssignedStaffName, getMachineDetails, deleteMachineFromOrder } from "../../../api"
+import { getAssignedStaffName, getMachineDetails, deleteMachineFromOrder, getCustomerFeedbackByOrderId } from "../../../api"
 import {
     getActiveTechnicians,
     getActiveStaffs,
@@ -251,6 +251,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
     const [employees, setEmployees] = useState<any[]>([])
     const [leadOwnerId, setLeadOwnerId] = useState<string | null>(null)
+    const [customerFeedback, setCustomerFeedback] = useState<string>("")
 
     type ReportData = {
         qaTestReportNumber: string;
@@ -762,6 +763,16 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         }
     };
 
+    const fetchCustomerFeedback = async () => {
+        if (!orderId) return;
+        try {
+            const response = await getCustomerFeedbackByOrderId(orderId);
+            setCustomerFeedback(response?.customerFeedback || "");
+        } catch (err) {
+            setCustomerFeedback("");
+        }
+    };
+
     useEffect(() => {
         if (Object.keys(assignedStaffData).length > 0 && (technicians.length > 0 || officeStaff.length > 0)) {
             const newAssignments: Record<string, any> = {};
@@ -925,6 +936,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
         fetchMachineData()
         fetchDropdownData()
+        fetchCustomerFeedback()
     }, [orderId])
 
     const handleViewFile = (workTypeId: string) => {
@@ -2185,6 +2197,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     Add Machine
                 </button>
             </div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Customer Feedback</h3>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {customerFeedback?.trim() ? customerFeedback : "No feedback submitted yet."}
+                </p>
+            </div>
             <div className="grid gap-6">
                 {machineData.map((service, index) => (
                     <div key={service.id} className="shadow-lg border-0 bg-white rounded-lg overflow-hidden relative">
@@ -2798,7 +2816,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 {canAssignQATest(workType) && (selectedStatuses[workType.id] === "complete" || selectedStatuses[workType.id] === "generated" || selectedStatuses[workType.id] === "paid") && (
                                                                     <div className="space-y-3 p-3 bg-green-50 rounded-md border border-green-200">
                                                                         <label className="block text-sm font-medium text-green-700">
-                                                                            Upload File
+                                                                            Upload Generated Report for Verification
                                                                         </label>
                                                                         <input
                                                                             type="file"

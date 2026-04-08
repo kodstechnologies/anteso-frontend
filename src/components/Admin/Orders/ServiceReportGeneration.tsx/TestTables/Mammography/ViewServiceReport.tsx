@@ -16,7 +16,7 @@ import {
   getMaximumRadiationLevelByServiceIdForMammography,
 } from "../../../../../../api";
 import MainTestTableForMammography from "../../TestTables/Mammography/MainTestTableForMammogaphy";
-import logo from "../../../../../../assets/logo/logo-sm.png";
+import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
@@ -31,6 +31,11 @@ interface Tool {
   range: string;
   calibrationCertificateNo: string;
   calibrationValidTill: string;
+}
+
+interface Note {
+  slNo: string;
+  text: string;
 }
 
 interface ReportData {
@@ -54,7 +59,7 @@ interface ReportData {
   temperature: string;
   humidity: string;
   toolsUsed: Tool[];
-  notes: { slNo: string; text: string }[];
+  notes: Note[];
   category: string;
   // Mammography test IDs
   accuracyOfOperatingPotentialId?: string | null;
@@ -69,6 +74,16 @@ interface ReportData {
   equipmentSettingId?: string | null;
   maximumRadiationLevelId?: string | null;
 }
+
+const defaultNotes: Note[] = [
+  { slNo: "5.1", text: "The Test Report relates only to the above item only." },
+  { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
+  { slNo: "5.3", text: "Corrections/erasing invalidates the Test Report." },
+  { slNo: "5.4", text: "Referred standard for Testing: AERB Test Protocol 2016 - AERB/RF-MED/SC-3 (Rev. 2) Quality Assurance Formats." },
+  { slNo: "5.5", text: "Any error in this Report should be brought to our knowledge within 30 days from the date of this report." },
+  { slNo: "5.6", text: "Results reported are valid at the time of and under the stated conditions of measurements." },
+  { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
+];
 
 /** Keys on table2 rows that are not mA measurement columns */
 const MAMMO_TABLE2_META_KEYS = new Set([
@@ -123,6 +138,31 @@ function formatMammoMaStationHeader(key: string): string {
   m = k.match(/^(\d+)mA$/i);
   if (m) return `mA ${m[1]}`;
   return k.replace(/([a-zA-Z])(\d)/g, "$1 $2");
+}
+
+function normalizeMammographyRadiationProtectionSurvey(survey: any) {
+  if (!survey || !Array.isArray(survey.locations)) return survey;
+  const appliedCurrent = parseFloat(survey.appliedCurrent) || 0;
+  const workload = parseFloat(survey.workload) || 0;
+
+  const locations = survey.locations.map((loc: any) => {
+    const mRPerHr = parseFloat(loc?.mRPerHr) || 0;
+    let mRPerWeek = parseFloat(loc?.mRPerWeek);
+    if ((Number.isNaN(mRPerWeek) || mRPerWeek <= 0) && mRPerHr > 0 && appliedCurrent > 0 && workload > 0) {
+      mRPerWeek = (workload * mRPerHr) / (60 * appliedCurrent);
+    }
+    const category = loc?.category || "worker";
+    const limit = category === "worker" ? 40 : 2;
+    const result = mRPerWeek > 0 ? (mRPerWeek <= limit ? "PASS" : "FAIL") : (loc?.result || "");
+
+    return {
+      ...loc,
+      mRPerWeek: mRPerWeek > 0 ? mRPerWeek.toFixed(3) : (loc?.mRPerWeek || ""),
+      result,
+    };
+  });
+
+  return { ...survey, locations };
 }
 
 const ViewServiceReportMammography: React.FC = () => {
@@ -181,7 +221,7 @@ const ViewServiceReportMammography: React.FC = () => {
             temperature: data.temperature || "",
             humidity: data.humidity || "",
             toolsUsed: data.toolsUsed || [],
-            notes: data.notes || [],
+            notes: data.notes || defaultNotes,
             category: data.category || "N/A",
             // Extract test IDs from populated objects
             accuracyOfOperatingPotentialId: data.AccuracyOfOperatingPotentialMammography?._id || null,
@@ -428,7 +468,9 @@ const ViewServiceReportMammography: React.FC = () => {
             })(),
             radiationLeakageLevel: leakageRes || data.RadiationLeakageLevelMammography || null,
             imagingPhantom: imagingPhantomRes || data.ImagingPhantomMammography || null,
-            radiationProtectionSurvey: protectionRes || data.DetailsOfRadiationProtectionMammography || null,
+            radiationProtectionSurvey: normalizeMammographyRadiationProtectionSurvey(
+              protectionRes || data.DetailsOfRadiationProtectionMammography || null
+            ),
             equipmentSetting: equipmentSettingRes || data.EquipmentSettingMammography || null,
             maximumRadiationLevel: maxRadiationRes || data.MaximumRadiationLevelMammography || null,
           });
@@ -483,6 +525,9 @@ const ViewServiceReportMammography: React.FC = () => {
     );
   }
 
+  const toolsArray = report.toolsUsed || [];
+  const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
+
   return (
     <>
       <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
@@ -536,6 +581,10 @@ const ViewServiceReportMammography: React.FC = () => {
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                   <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Customer</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
+                </tr>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>SRF Date</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{formatDate(report.srfDate)}</td>
                 </tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                   <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address</td>
@@ -600,7 +649,7 @@ const ViewServiceReportMammography: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.toolsUsed.length > 0 ? report.toolsUsed.map((t, i) => (
+                  {toolsArray.length > 0 ? toolsArray.map((t, i) => (
                     <tr key={i} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{i + 1}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{t.nomenclature}</td>
@@ -621,9 +670,9 @@ const ViewServiceReportMammography: React.FC = () => {
           <section className="mb-6 print:mb-3">
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">5. Notes</h2>
             <div className="ml-8 text-sm print:text-[8px] print:ml-4" style={{ fontSize: '12px', lineHeight: '1.2' }}>
-              {report.notes.length > 0 ? report.notes.map(n => (
+              {notesArray.map(n => (
                 <p key={n.slNo} className="mb-1 print:mb-0.5" style={{ fontSize: '12px', lineHeight: '1.2', marginBottom: '2px' }}><strong>{n.slNo}.</strong> {n.text}</p>
-              )) : <p>No notes added.</p>}
+              ))}
             </div>
           </section>
           {/* Signature */}

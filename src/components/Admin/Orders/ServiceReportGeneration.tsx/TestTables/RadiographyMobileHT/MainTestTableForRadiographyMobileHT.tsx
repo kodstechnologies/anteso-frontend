@@ -41,6 +41,77 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
       });
     });
   };
+  // 4. Congruence of Radiation & Optical Field
+  if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
+    const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
+    if (validRows.length > 0) {
+      const testRows = validRows.map((row: any) => {
+        const percentFED = row.percentFED || "-";
+        const tolerance = row.tolerance || "2";
+        const isPass = row.remark === "Pass" || (percentFED !== "-" && parseFloat(percentFED) <= parseFloat(tolerance));
+        const dimension = row.dimension || "-";
+        const formattedDimension = dimension !== "-" && String(dimension).trim() !== "" ? String(dimension).trim() : "-";
+        return {
+          specified: formattedDimension,
+          measured: percentFED !== "-" ? `${percentFED}%` : "-",
+          tolerance: `<= ${tolerance}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Congruence of Radiation & Optical Field", testRows);
+    }
+  }
+
+  // 3. Central Beam Alignment
+  if (testData.centralBeamAlignment?.observedTilt) {
+    const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
+    const tolOp = testData.centralBeamAlignment.tolerance?.operator || "<=";
+    const tolVal = testData.centralBeamAlignment.tolerance?.value ?? "5";
+    const isPass = testData.centralBeamAlignment.observedTilt.remark === "Pass" ||
+      (tiltValue !== "-" && parseFloat(tiltValue) <= 5);
+    addRowsForTest("Central Beam Alignment", [{
+      specified: "<= 5 degrees",
+      measured: tiltValue !== "-" ? `${tiltValue} degrees` : "-",
+      tolerance: `${tolOp} ${tolVal} degrees`,
+      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+    }]);
+  }
+
+  // 5. Effective Focal Spot Size
+  if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
+    const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
+    if (validRows.length > 0) {
+      const formatValue = (val: any) => {
+        if (val === undefined || val === null || val === "") return null;
+        const numVal = typeof val === "number" ? val : parseFloat(val);
+        if (isNaN(numVal)) return null;
+        return numVal.toFixed(1);
+      };
+      const tc = testData.effectiveFocalSpot.toleranceCriteria || {};
+      const sm = parseFloat(tc.small?.multiplier || "0.5");
+      const sl = parseFloat(tc.small?.upperLimit || "0.8");
+      const mm = parseFloat(tc.medium?.multiplier || "0.4");
+      const ml = parseFloat(tc.medium?.lowerLimit || "0.8");
+      const mu = parseFloat(tc.medium?.upperLimit || "1.5");
+      const lm = parseFloat(tc.large?.multiplier || "0.3");
+      const toleranceStr = `+${sm} F FOR F < ${sl} MM; +${mm} F FOR ${ml} <= F <= ${mu} MM; +${lm} F FOR F > ${mu} MM`;
+      const testRows = validRows.map((spot: any) => {
+        const isPass = spot.remark === "Pass" || spot.remark === "PASS";
+        const sw = formatValue(spot.statedWidth);
+        const sh = formatValue(spot.statedHeight);
+        const mw = formatValue(spot.measuredWidth);
+        const mh = formatValue(spot.measuredHeight);
+        return {
+          specified: sw !== null && sh !== null ? `${sw} x ${sh} mm` : "-",
+          measured: mw !== null && mh !== null ? `${mw} x ${mh} mm` : "-",
+          tolerance: toleranceStr,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Effective Focal Spot Size", testRows, true);
+    }
+  }
+
 
   // 1. Accuracy of Irradiation Time
   if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
@@ -151,76 +222,9 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }]);
   }
 
-  // 3. Central Beam Alignment
-  if (testData.centralBeamAlignment?.observedTilt) {
-    const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const tolOp = testData.centralBeamAlignment.tolerance?.operator || "<=";
-    const tolVal = testData.centralBeamAlignment.tolerance?.value ?? "5";
-    const isPass = testData.centralBeamAlignment.observedTilt.remark === "Pass" ||
-      (tiltValue !== "-" && parseFloat(tiltValue) <= 5);
-    addRowsForTest("Central Beam Alignment", [{
-      specified: "<= 5 degrees",
-      measured: tiltValue !== "-" ? `${tiltValue} degrees` : "-",
-      tolerance: `${tolOp} ${tolVal} degrees`,
-      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-    }]);
-  }
 
-  // 4. Congruence of Radiation & Optical Field
-  if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
-    const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => {
-        const percentFED = row.percentFED || "-";
-        const tolerance = row.tolerance || "2";
-        const isPass = row.remark === "Pass" || (percentFED !== "-" && parseFloat(percentFED) <= parseFloat(tolerance));
-        const dimension = row.dimension || "-";
-        const formattedDimension = dimension !== "-" && String(dimension).trim() !== "" ? String(dimension).trim() : "-";
-        return {
-          specified: formattedDimension,
-          measured: percentFED !== "-" ? `${percentFED}%` : "-",
-          tolerance: `<= ${tolerance}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Congruence of Radiation & Optical Field", testRows);
-    }
-  }
 
-  // 5. Effective Focal Spot Size
-  if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
-    const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
-    if (validRows.length > 0) {
-      const formatValue = (val: any) => {
-        if (val === undefined || val === null || val === "") return null;
-        const numVal = typeof val === "number" ? val : parseFloat(val);
-        if (isNaN(numVal)) return null;
-        return numVal.toFixed(1);
-      };
-      const tc = testData.effectiveFocalSpot.toleranceCriteria || {};
-      const sm = parseFloat(tc.small?.multiplier || "0.5");
-      const sl = parseFloat(tc.small?.upperLimit || "0.8");
-      const mm = parseFloat(tc.medium?.multiplier || "0.4");
-      const ml = parseFloat(tc.medium?.lowerLimit || "0.8");
-      const mu = parseFloat(tc.medium?.upperLimit || "1.5");
-      const lm = parseFloat(tc.large?.multiplier || "0.3");
-      const toleranceStr = `+${sm} F FOR F < ${sl} MM; +${mm} F FOR ${ml} <= F <= ${mu} MM; +${lm} F FOR F > ${mu} MM`;
-      const testRows = validRows.map((spot: any) => {
-        const isPass = spot.remark === "Pass" || spot.remark === "PASS";
-        const sw = formatValue(spot.statedWidth);
-        const sh = formatValue(spot.statedHeight);
-        const mw = formatValue(spot.measuredWidth);
-        const mh = formatValue(spot.measuredHeight);
-        return {
-          specified: sw !== null && sh !== null ? `${sw} x ${sh} mm` : "-",
-          measured: mw !== null && mh !== null ? `${mw} x ${mh} mm` : "-",
-          tolerance: toleranceStr,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Effective Focal Spot Size", testRows, true);
-    }
-  }
+
 
   // 6. Linearity of mA/mAs Loading
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {

@@ -86,13 +86,39 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.accuracyOfOperatingPotential && !isEmpty(testData.accuracyOfOperatingPotential)) {
     const test = testData.accuracyOfOperatingPotential;
     if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
-      const validRows = test.rows.filter((row: any) => row.appliedKvp || row.appliedkVp || row.avgKvp);
+      const getAvgKvpDisplay = (row: any): string => {
+        const directAvg = row.avgKvp ?? row.averageKvp ?? row.avgKV ?? row.avgkvp;
+        if (directAvg !== undefined && directAvg !== null && String(directAvg).trim() !== "") {
+          return String(directAvg);
+        }
+
+        // Fallback: derive average from measured values when avgKvp is not persisted
+        const rawMeasured = Array.isArray(row.measuredValues) ? row.measuredValues : [];
+        const nums = rawMeasured
+          .map((v: any) => (typeof v === "object" && v !== null ? v.value ?? v.measured ?? "" : v))
+          .map((v: any) => parseFloat(String(v)))
+          .filter((n: number) => !isNaN(n));
+
+        if (nums.length === 0) return "";
+        const avg = nums.reduce((a: number, b: number) => a + b, 0) / nums.length;
+        return avg.toFixed(2);
+      };
+
+      const validRows = test.rows.filter(
+        (row: any) =>
+          row.appliedKvp ||
+          row.appliedkVp ||
+          row.avgKvp ||
+          row.averageKvp ||
+          (Array.isArray(row.measuredValues) && row.measuredValues.length > 0)
+      );
       if (validRows.length > 0) {
         const toleranceSign = test.kvpToleranceSign || "±";
         const toleranceValue = test.kvpToleranceValue || "5";
         const testRows = validRows.map((row: any) => {
+          const avgKvpDisplay = getAvgKvpDisplay(row);
           const appliedKvp = parseFloat(row.appliedKvp || row.appliedkVp) || 0;
-          const avgKvp = parseFloat(row.avgKvp) || 0;
+          const avgKvp = parseFloat(avgKvpDisplay) || 0;
           let isPass = false;
 
           if (row.remark === "PASS" || row.remark === "Pass") {
@@ -107,7 +133,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
 
           return {
             specified: row.appliedKvp || row.appliedkVp || "-",
-            measured: row.avgKvp || "-",
+            measured: avgKvpDisplay || "-",
             tolerance: `${toleranceSign}${toleranceValue}%`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };

@@ -18,7 +18,8 @@ const showMessage = (msg = "", type: "success" | "error" | "warning" = "success"
     });
 };
 
-const MACHINE_TYPES = [
+/** All selectable types except "Others" — used to detect custom typed machine names */
+const STANDARD_MACHINE_TYPES = [
     "Radiography (Fixed)",
     "Radiography (Mobile)",
     "Radiography (Portable)",
@@ -36,8 +37,9 @@ const MACHINE_TYPES = [
     "KV Imaging (OBI)",
     "Radiography (Mobile) with HT",
     "Lead Apron/Thyroid Shield/Gonad Shield",
-    "Others",
 ];
+
+const MACHINE_TYPES = [...STANDARD_MACHINE_TYPES, "Others"];
 
 const WORK_TYPES = [
     { value: "Quality Assurance Test", label: "Quality Assurance Test (QA Raw + QA Test)" },
@@ -64,6 +66,8 @@ export default function AddMachineModal({
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         machineType: "",
+        /** True when user chose "Others" and entered a custom type (saved to CustomMachine on backend). */
+        fromOthers: false,
         equipmentId: "",
         machineModel: "",
         partyCodeOrSysId: "",
@@ -78,6 +82,28 @@ export default function AddMachineModal({
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
+
+    const handleMachineTypeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        if (value === "Others") {
+            setFormData((prev) => ({ ...prev, machineType: "Others", fromOthers: true }));
+        } else {
+            setFormData((prev) => ({ ...prev, machineType: value, fromOthers: false }));
+        }
+    };
+
+    const isOthersFlow =
+        formData.machineType === "Others" ||
+        (!!formData.machineType &&
+            !STANDARD_MACHINE_TYPES.includes(formData.machineType) &&
+            formData.machineType !== "");
+
+    const selectMachineTypeValue =
+        formData.machineType && STANDARD_MACHINE_TYPES.includes(formData.machineType)
+            ? formData.machineType
+            : formData.machineType
+              ? "Others"
+              : "";
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -112,8 +138,13 @@ export default function AddMachineModal({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.machineType || !formData.equipmentId) {
-            showMessage("Machine Type and Equipment ID are required", "error");
+        if (!formData.equipmentId?.trim()) {
+            showMessage("Equipment ID is required", "error");
+            return;
+        }
+
+        if (!formData.machineType || formData.machineType === "Others") {
+            showMessage("Please select a machine type or enter a custom name for Others", "error");
             return;
         }
 
@@ -138,6 +169,7 @@ export default function AddMachineModal({
         try {
             const data = new FormData();
             data.append("machineType", formData.machineType);
+            data.append("fromOthers", formData.fromOthers ? "true" : "false");
             data.append("equipmentId", formData.equipmentId);
             data.append("machineModel", formData.machineModel);
 
@@ -165,6 +197,7 @@ export default function AddMachineModal({
     const resetForm = () => {
         setFormData({
             machineType: "",
+            fromOthers: false,
             equipmentId: "",
             machineModel: "",
             partyCodeOrSysId: "",
@@ -203,8 +236,8 @@ export default function AddMachineModal({
                         <label className="block text-sm font-medium text-gray-700 mb-1">Machine Type *</label>
                         <select
                             name="machineType"
-                            value={formData.machineType}
-                            onChange={handleChange}
+                            value={selectMachineTypeValue}
+                            onChange={handleMachineTypeSelect}
                             required
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
@@ -216,6 +249,28 @@ export default function AddMachineModal({
                             ))}
                         </select>
                     </div>
+
+                    {isOthersFlow && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Specify Other Machine Type <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.machineType === "Others" ? "" : formData.machineType}
+                                onChange={(e) => {
+                                    const customValue = e.target.value.trim();
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        machineType: customValue || "Others",
+                                        fromOthers: true,
+                                    }));
+                                }}
+                                placeholder="e.g. LINAC, Brachytherapy, etc."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                    )}
 
                     {/* Equipment ID */}
                     <div>

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForInventionalRadiology, getCentralBeamAlignmentByServiceIdForInventionalRadiology, getEffectiveFocalSpotByServiceIdForInventionalRadiology, getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology, getRadiationProtectionSurveyByServiceIdForInventionalRadiology, getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology, getMeasurementOfMaLinearityByServiceIdForInventionalRadiology } from "../../../../../../api";
-import logo from "../../../../../../assets/logo/logo-sm.png";
+import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
@@ -260,7 +260,7 @@ const ViewServiceReport: React.FC = () => {
     return "";
   };
   const hasMaLinearityRows = (data: any) => {
-    const rows = data?.table2 || data?.Table2;
+    const rows = data?.table2 || data?.Table2 || data?.rows || data?.Rows;
     return Array.isArray(rows) && rows.length > 0;
   };
 
@@ -341,6 +341,196 @@ const ViewServiceReport: React.FC = () => {
         </tbody>
       </table>
     </div>
+  );
+
+  const hasTubeHousingLeakageData = (leakage: any) =>
+    !!(leakage && (leakage.leakageMeasurements?.length > 0 || leakage.fcd));
+
+  const renderTubeHousingLeakageTable = (tubeHousingLeakage: any) => (
+    <>
+      {/* Test Conditions Table */}
+      <div className="mb-4 print:mb-1">
+        <div className="overflow-x-auto mb-2 print:mb-1">
+          <table className="border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
+            <thead className="bg-gray-100">
+              <tr className="bg-blue-50">
+                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>FDD (cm)</th>
+                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
+                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mA</th>
+                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Time (Sec)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{tubeHousingLeakage.fcd || "100"}</td>
+                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{tubeHousingLeakage.kv || "-"}</td>
+                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{tubeHousingLeakage.ma || "-"}</td>
+                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{tubeHousingLeakage.time || "-"}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Workload and Tolerance Info */}
+      <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
+        <div>
+          <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
+            <strong>Workload:</strong> {tubeHousingLeakage.workload || "-"} mA·min/week
+          </p>
+        </div>
+        <div>
+          {/* Intentionally left empty to preserve current print layout */}
+        </div>
+      </div>
+
+      {/* Exposure Level Table */}
+      {tubeHousingLeakage.leakageMeasurements?.length > 0 && (
+        <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+          <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+            <thead className="bg-gray-100">
+              <tr className="bg-blue-50">
+                <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ width: '15%', padding: '0px 2px', fontSize: '10px' }}>Location</th>
+                <th colSpan={5} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mR/hr)</th>
+                <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mR in 1 hr)</th>
+                <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mGy in 1 hr)</th>
+                <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Remarks</th>
+              </tr>
+              <tr className="bg-gray-50">
+                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Left</th>
+                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Right</th>
+                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Front</th>
+                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Back</th>
+                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Top</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tubeHousingLeakage.leakageMeasurements.map((row: any, i: number) => {
+                const maValue = parseFloat(tubeHousingLeakage.ma || "0");
+                const workloadValue = parseFloat(tubeHousingLeakage.workload || "0");
+                const toleranceVal = parseFloat(tubeHousingLeakage.toleranceValue || "1");
+                const toleranceOperator = tubeHousingLeakage.toleranceOperator || "less than or equal to";
+
+                const values = [row.left, row.right, row.front, row.back, row.top]
+                  .map(v => parseFloat(v) || 0)
+                  .filter(v => v > 0);
+                const rowMax = values.length > 0 ? Math.max(...values) : 0;
+
+                let calculatedMR = "-";
+                let calculatedMGy = "-";
+                let remark = row.remark || "-";
+
+                if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
+                  const resMR = (workloadValue * rowMax) / (60 * maValue);
+                  const resMGy = resMR / 114;
+                  calculatedMR = resMR.toFixed(3);
+                  calculatedMGy = resMGy.toFixed(4);
+
+                  if (!remark || remark === "-" || remark === "") {
+                    let pass = false;
+                    if (toleranceOperator === "less than or equal to") pass = resMGy <= toleranceVal;
+                    else if (toleranceOperator === "greater than or equal to") pass = resMGy >= toleranceVal;
+                    else pass = Math.abs(resMGy - toleranceVal) < 0.01;
+                    remark = pass ? "Pass" : "Fail";
+                  }
+                }
+
+                return (
+                  <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                    <td className="border border-black p-1 text-center font-medium" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.location || "-"}</td>
+                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.left || "-"}</td>
+                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.right || "-"}</td>
+                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.front || "-"}</td>
+                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.back || "-"}</td>
+                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.top || "-"}</td>
+                    <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMR}</td>
+                    <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMGy}</td>
+                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                      <span className={remark === "Pass" ? "text-green-600 font-bold" : remark === "Fail" ? "text-red-600 font-bold" : ""}>
+                        {remark}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Calculation Formula, Summary Blocks and Tolerance */}
+      {(() => {
+        const maValue = parseFloat(tubeHousingLeakage.ma || "0");
+        const workloadValue = parseFloat(tubeHousingLeakage.workload || "0");
+
+        const getSummaryForLocation = (locName: string) => {
+          const row = tubeHousingLeakage.leakageMeasurements?.find((m: any) => m.location === locName);
+          if (!row) return null;
+          const values = [row.left, row.right, row.front, row.back, row.top].map((v: any) => parseFloat(v) || 0).filter((v: number) => v > 0);
+          const rowMax = values.length > 0 ? Math.max(...values) : 0;
+          const resMR = (workloadValue * rowMax) / (60 * maValue);
+          const resMGy = resMR / 114;
+          return { rowMax, resMR, resMGy };
+        };
+
+        const tubeSummary = getSummaryForLocation("Tube Housing");
+        const collimatorSummary = getSummaryForLocation("Collimator");
+
+        return (
+          <div className="space-y-4 print:space-y-1">
+            {/* Formula Block */}
+            <div className="bg-gray-50 p-4 print:p-1 rounded border border-gray-200">
+              <p className="text-sm print:text-[10px] font-bold mb-2 print:mb-1">Calculation Formula:</p>
+              <div className="bg-white p-3 print:p-1 border border-dashed border-gray-400 text-center font-mono text-sm print:text-[10px]">
+                Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+              </div>
+              <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
+                Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+              </p>
+            </div>
+
+            {/* Summary Blocks */}
+            <div className="grid grid-cols-2 gap-4 print:gap-1">
+              {tubeSummary && (
+                <div className="border border-blue-200 rounded p-3 print:p-1 bg-blue-50/30">
+                  <p className="font-bold text-xs print:text-[9px] text-blue-800 mb-2">Tube Housing Summary:</p>
+                  <div className="text-[11px] print:text-[8px] space-y-1">
+                    <p>Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong></p>
+                    <p>Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
+                    <p>In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-blue-700">{tubeSummary.resMGy.toFixed(4)} mGy</span></p>
+                  </div>
+                </div>
+              )}
+              {collimatorSummary && (
+                <div className="border border-indigo-200 rounded p-3 print:p-1 bg-indigo-50/30">
+                  <p className="font-bold text-xs print:text-[9px] text-indigo-800 mb-2">Collimator Summary:</p>
+                  <div className="text-[11px] print:text-[8px] space-y-1">
+                    <p>Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong></p>
+                    <p>Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
+                    <p>In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-indigo-700">{collimatorSummary.resMGy.toFixed(4)} mGy</span></p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Tolerance Narrative */}
+            <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
+              <p className="text-[11px] print:text-[8px] leading-relaxed">
+                <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
+                {tubeHousingLeakage.toleranceOperator === 'less than or equal to'
+                  ? '≤'
+                  : tubeHousingLeakage.toleranceOperator === 'greater than or equal to'
+                    ? '≥'
+                    : '='}{' '}
+                <strong>
+                  {tubeHousingLeakage.toleranceValue || '1'} mGy ({parseFloat(tubeHousingLeakage.toleranceValue || '1') * 114} mR) in one hour.
+                </strong>
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+    </>
   );
 
   const downloadPDF = async () => {
@@ -661,8 +851,8 @@ const ViewServiceReport: React.FC = () => {
 
     const t1First = Array.isArray(table1) && table1.length > 0 ? table1[0] : null;
     const hasMas = t1First?.time && String(t1First.time).trim() !== "" && String(t1First.time).trim() !== "-";
-    const mAsColLabel = hasMas ? "mAs" : "mA";
-    const xColLabel = hasMas ? "X (mGy/mAs)" : "X (mGy/mA)";
+    const mAsColLabel = "mA";
+    const xColLabel = hasMas ? "X (mGy/(mA*s))" : "X (mGy/mA)";
 
     return (
       <>
@@ -677,6 +867,7 @@ const ViewServiceReport: React.FC = () => {
                   <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>Time (ms)</th>
                 </tr>
               </thead>
+
               <tbody>
                 <tr>
                   <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: "0px 8px", fontSize: "11px" }}>{table1[0]?.kvp ?? table1[0]?.kVp ?? "-"}</td>
@@ -728,20 +919,27 @@ const ViewServiceReport: React.FC = () => {
 
                 const xValues: number[] = [];
                 const processedRows = rows.map((row: any) => {
-                  const outputs = (row.measuredOutputs ?? [])
+                  const outputs = (row.measuredOutputs ?? row.outputs ?? [])
                     .map((v: any) => parseFloat(v))
                     .filter((v: number) => !isNaN(v) && v > 0);
                   const avg =
                     outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
                   const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : "—";
 
-                  const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
-                  const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-                  const midMas = match
+                  const mALabel = String(row.mAsApplied ?? row.mAApplied ?? row.mAsRange ?? row.ma ?? "");
+                  const match = mALabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                  const midMA = match
                     ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
-                    : parseFloat(mAsLabel) || 0;
+                    : parseFloat(mALabel) || 0;
+                  const timeVal = parseFloat(String(table1?.[0]?.time ?? t1First?.time ?? ""));
+                  const hasValidTime = !isNaN(timeVal) && timeVal > 0;
 
-                  const x = avg !== null && midMas > 0 ? avg / midMas : null;
+                  let x = null;
+                  if (avg !== null && midMA > 0 && hasValidTime) {
+                    x = avg / (midMA * timeVal);
+                  } else if (avg !== null && midMA > 0) {
+                    x = avg / midMA;
+                  }
                   const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : "—";
                   if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
 
@@ -785,7 +983,7 @@ const ViewServiceReport: React.FC = () => {
                 return processedRows.map((row: any, i: number) => (
                   <tr key={i} className="text-center" style={{ fontSize: "10px" }}>
                     <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>
-                      {formatV(row.mAsApplied ?? row.mAsRange)}
+                      {formatV(row.mAsApplied ?? row.mAApplied ?? row.mAsRange ?? row.ma)}
                     </td>
                     {measHeaders.map((_: string, idx: number) => (
                       <td key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>
@@ -1034,18 +1232,18 @@ const ViewServiceReport: React.FC = () => {
               <>
                 {/* Summary for Tube Frontal */}
                 <div className="mb-8 print:mb-4 w-full flex flex-col items-center">
-                  <h3 className="text-xl font-bold text-center mb-4 print:mb-2 print:text-base" style={{ fontSize: '14px' }}>
+                  <h1 className="text-xl font-bold text-center mb-4 print:mb-2 print:text-base" style={{ fontSize: '14px' }}>
                     SUMMARY OF QA TEST RESULTS - TUBE FRONTAL
-                  </h3>
+                  </h1>
                   <div className="w-full flex justify-center">
                     <MainTestTableForInventionalRadiology testData={testDataFrontal} />
                   </div>
                 </div>
                 {/* Summary for Tube Lateral */}
                 <div className="mb-8 print:mb-4 w-full flex flex-col items-center">
-                  <h3 className="text-xl font-bold text-center mb-4 print:mb-2 print:text-base" style={{ fontSize: '14px' }}>
+                  <h1 className="text-xl font-bold text-center mb-4 print:mb-2 print:text-base" style={{ fontSize: '14px' }}>
                     SUMMARY OF QA TEST RESULTS - TUBE LATERAL
-                  </h3>
+                  </h1>
                   <div className="w-full flex justify-center">
                     <MainTestTableForInventionalRadiology testData={testDataLateral} />
                   </div>
@@ -1806,7 +2004,7 @@ const ViewServiceReport: React.FC = () => {
                   const hasMas = t1?.time && String(t1.time).trim() !== "" && String(t1.time).trim() !== "-";
                   return (
                     <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: "14px", marginBottom: "4px" }}>
-                      6. {hasMas ? "Measurement of mAs Linearity" : "Measurement of mA Linearity"}
+                      6. {hasMas ? "Measurement of mA Linearity" : "Measurement of mA Linearity"}
                     </h3>
                   );
                 })()}
@@ -2113,193 +2311,24 @@ const ViewServiceReport: React.FC = () => {
          
 
             {/* 10. Tube Housing Leakage (RadiographyFixed Radiation Leakage Level style) */}
-            {testData.tubeHousingLeakage && (testData.tubeHousingLeakage.leakageMeasurements?.length > 0 || testData.tubeHousingLeakage.fcd) && (
+            {((isDoubleTube &&
+              (hasTubeHousingLeakageData(testDataFrontal.tubeHousingLeakage) ||
+                hasTubeHousingLeakageData(testDataLateral.tubeHousingLeakage))) ||
+              (!isDoubleTube && hasTubeHousingLeakageData(testData.tubeHousingLeakage))) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>11. Tube Housing Leakage</h3>
-                {/* Test Conditions Table */}
-                <div className="mb-4 print:mb-1">
-                  <div className="overflow-x-auto mb-2 print:mb-1">
-                    <table className="border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
-                      <thead className="bg-gray-100">
-                        <tr className="bg-blue-50">
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>FDD (cm)</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mA</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Time (Sec)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                          <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.tubeHousingLeakage.fcd || "100"}</td>
-                          <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.tubeHousingLeakage.kv || "-"}</td>
-                          <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.tubeHousingLeakage.ma || "-"}</td>
-                          <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.tubeHousingLeakage.time || "-"}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Workload and Tolerance Info */}
-                <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
-                  <div>
-                    <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                      <strong>Workload:</strong> {testData.tubeHousingLeakage.workload || "-"} mA·min/week
-                    </p>
-                  </div>
-                  <div>
-                    {/* <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                      <strong>Tolerance (mGy in 1 hr):</strong> {testData.tubeHousingLeakage.toleranceOperator === 'less than or equal to' ? '≤' : testData.tubeHousingLeakage.toleranceOperator === 'greater than or equal to' ? '≥' : '='} {testData.tubeHousingLeakage.toleranceValue || "1"} in {testData.tubeHousingLeakage.toleranceTime || "1"} hr
-                    </p> */}
-                  </div>
-                </div>
-
-                {/* Exposure Level Table */}
-                {testData.tubeHousingLeakage.leakageMeasurements?.length > 0 && (
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                      <thead className="bg-gray-100">
-                        <tr className="bg-blue-50">
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ width: '15%', padding: '0px 2px', fontSize: '10px' }}>Location</th>
-                          <th colSpan={5} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mR/hr)</th>
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mR in 1 hr)</th>
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mGy in 1 hr)</th>
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Remarks</th>
-                        </tr>
-                        <tr className="bg-gray-50">
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Left</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Right</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Front</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Back</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Top</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testData.tubeHousingLeakage.leakageMeasurements.map((row: any, i: number) => {
-                          const maValue = parseFloat(testData.tubeHousingLeakage.ma || "0");
-                          const workloadValue = parseFloat(testData.tubeHousingLeakage.workload || "0");
-                          const toleranceVal = parseFloat(testData.tubeHousingLeakage.toleranceValue || "1");
-                          const toleranceOperator = testData.tubeHousingLeakage.toleranceOperator || "less than or equal to";
-
-                          const values = [row.left, row.right, row.front, row.back, row.top]
-                            .map(v => parseFloat(v) || 0)
-                            .filter(v => v > 0);
-                          const rowMax = values.length > 0 ? Math.max(...values) : 0;
-
-                          let calculatedMR = "-";
-                          let calculatedMGy = "-";
-                          let remark = row.remark || "-";
-
-                          if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
-                            const resMR = (workloadValue * rowMax) / (60 * maValue);
-                            const resMGy = resMR / 114;
-                            calculatedMR = resMR.toFixed(3);
-                            calculatedMGy = resMGy.toFixed(4);
-
-                            if (!remark || remark === "-" || remark === "") {
-                              let pass = false;
-                              if (toleranceOperator === "less than or equal to") pass = resMGy <= toleranceVal;
-                              else if (toleranceOperator === "greater than or equal to") pass = resMGy >= toleranceVal;
-                              else pass = Math.abs(resMGy - toleranceVal) < 0.01;
-                              remark = pass ? "Pass" : "Fail";
-                            }
-                          }
-
-                          return (
-                            <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                              <td className="border border-black p-1 text-center font-medium" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.location || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.left || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.right || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.front || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.back || "-"}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.top || "-"}</td>
-                              <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMR}</td>
-                              <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMGy}</td>
-                              <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>
-                                <span className={remark === "Pass" ? "text-green-600 font-bold" : remark === "Fail" ? "text-red-600 font-bold" : ""}>
-                                  {remark}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                {renderTestTable(
+                  hasTubeHousingLeakageData(testDataFrontal.tubeHousingLeakage)
+                    ? { tubeHousingLeakage: testDataFrontal.tubeHousingLeakage }
+                    : null,
+                  hasTubeHousingLeakageData(testDataLateral.tubeHousingLeakage)
+                    ? { tubeHousingLeakage: testDataLateral.tubeHousingLeakage }
+                    : null,
+                  hasTubeHousingLeakageData(testData.tubeHousingLeakage)
+                    ? { tubeHousingLeakage: testData.tubeHousingLeakage }
+                    : null,
+                  (data) => renderTubeHousingLeakageTable(data.tubeHousingLeakage)
                 )}
-
-                {/* Calculation Formula, Summary Blocks and Tolerance */}
-                {(() => {
-                  const maValue = parseFloat(testData.tubeHousingLeakage.ma || "0");
-                  const workloadValue = parseFloat(testData.tubeHousingLeakage.workload || "0");
-
-                  const getSummaryForLocation = (locName: string) => {
-                    const row = testData.tubeHousingLeakage.leakageMeasurements?.find((m: any) => m.location === locName);
-                    if (!row) return null;
-                    const values = [row.left, row.right, row.front, row.back, row.top].map((v: any) => parseFloat(v) || 0).filter((v: number) => v > 0);
-                    const rowMax = values.length > 0 ? Math.max(...values) : 0;
-                    const resMR = (workloadValue * rowMax) / (60 * maValue);
-                    const resMGy = resMR / 114;
-                    return { rowMax, resMR, resMGy };
-                  };
-
-                  const tubeSummary = getSummaryForLocation("Tube Housing");
-                  const collimatorSummary = getSummaryForLocation("Collimator");
-
-                  return (
-                    <div className="space-y-4 print:space-y-1">
-                      {/* Formula Block */}
-                      <div className="bg-gray-50 p-4 print:p-1 rounded border border-gray-200">
-                        <p className="text-sm print:text-[10px] font-bold mb-2 print:mb-1">Calculation Formula:</p>
-                        <div className="bg-white p-3 print:p-1 border border-dashed border-gray-400 text-center font-mono text-sm print:text-[10px]">
-                          Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
-                        </div>
-                        <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
-                          Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
-                        </p>
-                      </div>
-
-                      {/* Summary Blocks */}
-                      <div className="grid grid-cols-2 gap-4 print:gap-1">
-                        {tubeSummary && (
-                          <div className="border border-blue-200 rounded p-3 print:p-1 bg-blue-50/30">
-                            <p className="font-bold text-xs print:text-[9px] text-blue-800 mb-2">Tube Housing Summary:</p>
-                            <div className="text-[11px] print:text-[8px] space-y-1">
-                              <p>Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong></p>
-                              <p>Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
-                              <p>In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-blue-700">{tubeSummary.resMGy.toFixed(4)} mGy</span></p>
-                            </div>
-                          </div>
-                        )}
-                        {collimatorSummary && (
-                          <div className="border border-indigo-200 rounded p-3 print:p-1 bg-indigo-50/30">
-                            <p className="font-bold text-xs print:text-[9px] text-indigo-800 mb-2">Collimator Summary:</p>
-                            <div className="text-[11px] print:text-[8px] space-y-1">
-                              <p>Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong></p>
-                              <p>Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
-                              <p>In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-indigo-700">{collimatorSummary.resMGy.toFixed(4)} mGy</span></p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Tolerance Narrative */}
-                      <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
-                        <p className="text-[11px] print:text-[8px] leading-relaxed">
-                          <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
-                          {testData.tubeHousingLeakage.toleranceOperator === 'less than or equal to'
-                            ? '≤'
-                            : testData.tubeHousingLeakage.toleranceOperator === 'greater than or equal to'
-                              ? '≥'
-                              : '='}{' '}
-                          <strong>
-                            {testData.tubeHousingLeakage.toleranceValue || '1'} mGy ({parseFloat(testData.tubeHousingLeakage.toleranceValue || '1') * 114} mR) in one hour.
-                          </strong>
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             )}
 

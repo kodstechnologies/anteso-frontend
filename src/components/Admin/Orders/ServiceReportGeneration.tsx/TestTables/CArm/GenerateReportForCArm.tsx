@@ -1247,7 +1247,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           // Conditional Linearity Test
           ...(hasTimer === true
             ? [{
-              title: "Linearity Of mA Loading",
+              title: "Linearity of mA Loading",
               component: <LinearityOfMaLoading
                 key={`linearity-ma-${refreshKey}`}
                 serviceId={serviceId}
@@ -1257,7 +1257,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
             }]
             : hasTimer === false
               ? [{
-                title: "Linearity Of mAs Loading",
+                title: "Linearity of mAs Loading",
                 component: <LinearityOfMasLoading
                   key={`linearity-mas-${refreshKey}`}
                   serviceId={serviceId}

@@ -26,6 +26,8 @@ interface MultiSelectFieldProps {
 
 interface Service {
     machineType: string
+    /** True when user chose "Others" and entered a custom machine type (saved to CustomMachine on backend). */
+    fromOthers?: boolean
     equipmentNo: string
     workType: string[]
     machineModel: string
@@ -307,9 +309,10 @@ const CreateOrder: React.FC = () => {
                                 }
 
                                 const isEmployeeLead = employees.some(emp => String(emp._id) === String(leadOwner));
+                                const isManufacturerLead = manufacturer.some(m => String(m._id) === String(leadOwner));
                                 // const isQATest = workType && Array.isArray(workType) && workType.includes("Quality Assurance Test");
 
-                                if (isEmployeeLead) {
+                                if (isEmployeeLead || isManufacturerLead) {
                                     return value !== null && value !== undefined && String(value).trim() !== "";
                                 }
                                 return true;
@@ -478,6 +481,7 @@ const CreateOrder: React.FC = () => {
             // Services JSON (keep as-is, but now files are sent separately)
             const servicesData = values.services.map(service => ({
                 machineType: service.machineType,
+                fromOthers: !!service.fromOthers,
                 equipmentNo: service.equipmentNo || "",
                 workType: service.workType || [],
                 machineModel: service.machineModel || "",
@@ -485,7 +489,9 @@ const CreateOrder: React.FC = () => {
                 partyCodeOrSysId: service.partyCodeOrSysId,
                 procNoOrPoNo: service.procNoOrPoNo || "",
                 procExpiryDate: service.procExpiryDate || "",
-                price: employees.some(emp => emp._id === values.leadOwner) ? (service.price || "") : "", // Only send price if lead owner is employee
+                price: (employees.some(emp => emp._id === values.leadOwner) || manufacturer.some(m => m._id === values.leadOwner))
+                    ? (service.price || "")
+                    : "",
                 // ← Do NOT include workOrderCopy here anymore (it's sent as file)
             }));
 
@@ -556,6 +562,7 @@ const CreateOrder: React.FC = () => {
                     urgency: "",
                     services: [{
                         machineType: "",
+                        fromOthers: false,
                         equipmentNo: "",
                         workType: [],
                         machineModel: "",
@@ -819,9 +826,11 @@ const CreateOrder: React.FC = () => {
                                                                     const value = e.target.value;
                                                                     if (value !== "Others") {
                                                                         setFieldValue(`services.${index}.machineType`, value);
+                                                                        setFieldValue(`services.${index}.fromOthers`, false);
                                                                     } else {
                                                                         // User selected "Others" → keep "Others" temporarily, but allow typing
                                                                         setFieldValue(`services.${index}.machineType`, "Others");
+                                                                        setFieldValue(`services.${index}.fromOthers`, true);
                                                                     }
                                                                 }}
                                                             >
@@ -861,6 +870,7 @@ const CreateOrder: React.FC = () => {
                                                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                                                         const customValue = e.target.value.trim();
                                                                         setFieldValue(`services.${index}.machineType`, customValue || "Others");
+                                                                        setFieldValue(`services.${index}.fromOthers`, true);
                                                                     }}
                                                                 />
                                                                 <ErrorMessage
@@ -958,8 +968,8 @@ const CreateOrder: React.FC = () => {
                                                             />
                                                         </div>
 
-                                                        {/* Price - Visible for employee leads for all work types */}
-                                                        {employees.some(emp => emp._id === values.leadOwner) && (
+                                                        {/* Price - Visible for employee/manufacturer leads */}
+                                                        {(employees.some(emp => emp._id === values.leadOwner) || manufacturer.some(m => m._id === values.leadOwner)) && (
                                                             <div className="md:col-span-3">
                                                                 <label className="text-sm font-semibold text-gray-700">
                                                                     Price <span className="text-red-500">*</span>
@@ -984,6 +994,7 @@ const CreateOrder: React.FC = () => {
                                             onClick={() =>
                                                 push({
                                                     machineType: "",
+                                                    fromOthers: false,
                                                     equipmentNo: "",
                                                     workType: [],
                                                     machineModel: "",
@@ -1039,7 +1050,7 @@ const CreateOrder: React.FC = () => {
                                                     className="form-input w-full"
                                                 />
                                             </div>
-                                            {(employees.some(emp => emp._id === values.leadOwner) || dealers.some(d => d._id === values.leadOwner)) && (
+                                            {(employees.some(emp => emp._id === values.leadOwner) || dealers.some(d => d._id === values.leadOwner) || manufacturer.some(m => m._id === values.leadOwner)) && (
                                                 <div className="w-1/3">
                                                     <Field
                                                         type="number"

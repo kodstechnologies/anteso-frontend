@@ -15,7 +15,7 @@ import { getAllEmployees, getAllAllocatedLeaves, allocateLeavesForAll } from '..
 import DatePicker from 'react-flatpickr';
 import 'react-datepicker/dist/react-datepicker.css';
 import Flatpickr from 'react-flatpickr';
-import 'flatpickr/dist/themes/material_blue.css'; // Or any flatpickr theme you like
+import 'flatpickr/dist/themes/material_blue.css';
 import 'flatpickr/dist/flatpickr.css';
 
 const Hrms = () => {
@@ -37,12 +37,12 @@ const Hrms = () => {
     const [page, setPage] = useState(1);
     const PAGE_SIZES = [10, 20, 30, 50, 100];
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-    const [initialRecords, setInitialRecords] = useState<any[]>([]);
+    const [filteredRecords, setFilteredRecords] = useState<any[]>([]); // Changed from initialRecords
     const [records, setRecords] = useState<any[]>([]);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
     const [search, setSearch] = useState('');
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'name',
+        columnAccessor: 'empId', // Changed to empId as default
         direction: 'asc',
     });
 
@@ -68,7 +68,7 @@ const Hrms = () => {
     const fetchAllocations = async () => {
         try {
             const res = await getAllAllocatedLeaves(selectedYear);
-            console.log("🚀 ~ fetchAllocations ~ res:", res)
+            console.log("🚀 ~ fetchAllocations ~ res:", res);
             setAllocations(Array.isArray(res?.data) ? res.data : []);
         } catch (error) {
             console.error("Error fetching allocations:", error);
@@ -82,16 +82,14 @@ const Hrms = () => {
 
     const totalAllocated = useMemo(() => {
         if (!allocations.length) return 0;
-
-        // If all employees have same totalLeaves, just take from first one
         const leavesPerEmployee = allocations[0]?.totalLeaves || 0;
         return leavesPerEmployee;
     }, [allocations]);
 
-
-    // Search & Merge logic
+    // Apply search, merge with allocations, and apply sorting
     useEffect(() => {
-        const filtered = items.filter((item) => {
+        // First filter based on search
+        let filtered = items.filter((item) => {
             return (
                 item.empId?.toLowerCase().includes(search.toLowerCase()) ||
                 item.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -102,6 +100,7 @@ const Hrms = () => {
             );
         });
 
+        // Merge with allocations data
         const allocMap = new Map(allocations.map((a: any) => [a.employeeId, a]));
         const merged = filtered.map((emp: any) => ({
             ...emp,
@@ -110,22 +109,30 @@ const Hrms = () => {
             remainingLeaves: allocMap.get(emp._id)?.remainingLeaves || 0,
         }));
 
-        setInitialRecords(merged);
-    }, [search, items, allocations]);
+        // Apply sorting
+        const sorted = sortBy(merged, sortStatus.columnAccessor);
+        const finalData = sortStatus.direction === 'desc' ? sorted.reverse() : sorted;
+        
+        setFilteredRecords(finalData);
+        setPage(1); // Reset to first page when search or allocations change
+    }, [search, items, allocations, sortStatus]);
 
-    // Pagination logic
+    // Update paginated records when filtered records, page, or pageSize changes
     useEffect(() => {
         const from = (page - 1) * pageSize;
         const to = from + pageSize;
-        setRecords([...initialRecords.slice(from, to)]);
-    }, [page, pageSize, initialRecords]);
+        setRecords(filteredRecords.slice(from, to));
+    }, [filteredRecords, page, pageSize]);
 
-    // Sorting
+    // Reset to page 1 when page size changes
     useEffect(() => {
-        const data2 = sortBy(initialRecords, sortStatus.columnAccessor);
-        setRecords(sortStatus.direction === 'desc' ? data2.reverse() : data2);
         setPage(1);
-    }, [sortStatus, initialRecords]);
+    }, [pageSize]);
+
+    // Reset to page 1 when year changes
+    useEffect(() => {
+        setPage(1);
+    }, [selectedYear]);
 
     const handleAllocate = async () => {
         if (!totalLeavesInput) return;
@@ -163,9 +170,9 @@ const Hrms = () => {
                             <div className="flex items-center gap-2">
                                 <label className="text-sm font-medium">Select Year:</label>
                                 <Flatpickr
-                                    value={new Date(selectedYear, 0, 1)} // First day of the selected year
+                                    value={new Date(selectedYear, 0, 1)}
                                     options={{
-                                        dateFormat: 'Y',       // Year only
+                                        dateFormat: 'Y',
                                         defaultDate: new Date(selectedYear, 0, 1),
                                         wrap: false,
                                     }}
@@ -185,7 +192,6 @@ const Hrms = () => {
                             <span className="text-sm text-gray-600 dark:text-gray-400">
                                 Total Leaves per Employee: {totalAllocated}
                             </span>
-
                         </div>
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input
@@ -198,13 +204,6 @@ const Hrms = () => {
                         </div>
                     </div>
 
-                    {/* <div className="px-5 mb-4">
-                        <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-                            <span>Total Employees: {items.length}</span>
-                            <span>Allocated Employees: {allocations.length}</span>
-                        </div>
-                    </div> */}
-
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
@@ -216,6 +215,7 @@ const Hrms = () => {
                                 { accessor: 'phone', title: 'Phone', sortable: true },
                                 { accessor: 'designation', title: 'Designation', sortable: true },
                                 { accessor: 'department', title: 'Department', sortable: true },
+                             
                                 {
                                     accessor: 'action',
                                     title: 'Actions',
@@ -229,20 +229,12 @@ const Hrms = () => {
                                             >
                                                 <IconEye />
                                             </NavLink>
-                                            {/* <IconEdit className="w-4.5 h-4.5 cursor-pointer hover:text-info" /> */}
-                                            {/* <button
-                                                type="button"
-                                                className="flex hover:text-danger"
-                                                onClick={() => console.log("delete employee", _id)}
-                                            >
-                                                <IconTrashLines />
-                                            </button> */}
                                         </div>
                                     ),
                                 },
                             ]}
                             highlightOnHover
-                            totalRecords={initialRecords.length}
+                            totalRecords={filteredRecords.length}
                             recordsPerPage={pageSize}
                             page={page}
                             onPageChange={setPage}
