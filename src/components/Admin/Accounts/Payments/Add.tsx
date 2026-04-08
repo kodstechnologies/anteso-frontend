@@ -3,7 +3,7 @@ import { Formik, Form, Field, ErrorMessage } from 'formik';
 import { Link, useNavigate } from 'react-router-dom';
 import { showMessage } from '../../../common/ShowMessage';
 import { useState, useEffect } from 'react';
-import { allOrdersWithClient, getTotalAmount, createPayment, getPaymentsBySrf } from '../../../../api';
+import { allOrdersWithClient, getTotalAmount, createPayment, getPaymentsBySrf, getAllManufacturer } from '../../../../api';
 
 const paymentTypes = ['advance', 'balance', 'complete'];
 const paymentModes = ['Cash', 'Bank transfer', 'Cheque', 'UPI', 'Other']; // ✅ Added payment modes
@@ -11,6 +11,7 @@ const paymentModes = ['Cash', 'Bank transfer', 'Cheque', 'UPI', 'Other']; // ✅
 const Add = () => {
   const navigate = useNavigate();
   const [srfClientOptions, setSrfClientOptions] = useState<any[]>([]);
+  const [manufacturers, setManufacturers] = useState<any[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,10 +19,20 @@ const Add = () => {
       try {
         const res = await allOrdersWithClient();
         console.log("res", res)
+        const manufacturerRes = await getAllManufacturer().catch(() => null);
+        const manufacturerList =
+          Array.isArray(manufacturerRes?.data?.data)
+            ? manufacturerRes.data.data
+            : Array.isArray(manufacturerRes?.data)
+              ? manufacturerRes.data
+              : [];
+        setManufacturers(manufacturerList);
+
         const options = res.data.orders.map((order: any) => ({
           value: order.srfNumber,
           label: order.srfNumberWithHospital,
           _id: order._id,
+          leadOwner: order.leadOwner || null,
           isPrivilegedOrder: order.isPrivilegedOrder || false,
           pricingType: order.pricingType || null,
           customPricing: order.customPricing || { qaTests: [], services: [] },
@@ -83,7 +94,7 @@ const Add = () => {
 
     const qaTests = customPricing?.qaTests || [];
     const exact = qaTests.find((t: any) => (t.testName || '').trim().toLowerCase() === key);
-    
+
     if (exact != null && exact.price != null && !Number.isNaN(Number(exact.price))) {
       return Number(exact.price);
     }
@@ -105,6 +116,33 @@ const Add = () => {
     }
 
     return Number.isNaN(n) ? 0 : n;
+  };
+
+  const calculateOrderItemsBreakdownTotal = (
+    selectedOption: any,
+    manufacturerList: any[]
+  ) => {
+    if (!selectedOption?.pricingBreakdown?.services?.length) return 0;
+
+    const itemsTotal = selectedOption.pricingBreakdown.services.reduce((acc: number, service: any) => {
+      const lineAmt = selectedOption.isPrivilegedOrder
+        ? resolveBreakdownLineAmount(service, selectedOption.customPricing, selectedOption.pricingType)
+        : Number(service.amount) || 0;
+      return acc + lineAmt;
+    }, 0);
+
+    const selectedManufacturer = manufacturerList.find(
+      (m) => String(m._id) === String(selectedOption.leadOwner)
+    );
+    const manufacturerTravelCost =
+      selectedOption.pricingType === 'Manufacturer' &&
+      selectedManufacturer?.travelCost === 'Fixed Cost' &&
+      selectedManufacturer?.cost != null &&
+      selectedManufacturer?.cost !== ''
+        ? Number(selectedManufacturer.cost)
+        : 0;
+
+    return parseFloat((itemsTotal + manufacturerTravelCost).toFixed(2));
   };
 
   return (
@@ -203,9 +241,17 @@ const Add = () => {
 
                         let suggestedTotal = 0;
 
-                        if (selectedOption.isPrivilegedOrder && selectedOption.customPricing) {
-                          suggestedTotal = calculateTotalFromCustomPricing(selectedOption.customPricing);
-                          showMessage(`${selectedOption.pricingType} Pricing Applied: ₹${suggestedTotal}`, "info");
+                        const pricingType = String(selectedOption.pricingType || "").toLowerCase();
+                        const isDealerOrManufacturer =
+                          pricingType === "dealer" || pricingType === "manufacturer";
+
+                        if (
+                          isDealerOrManufacturer &&
+                          selectedOption.hasPricingBreakdown &&
+                          selectedOption.pricingBreakdown?.services?.length > 0
+                        ) {
+                          suggestedTotal = calculateOrderItemsBreakdownTotal(selectedOption, manufacturers);
+                          showMessage(`Order items breakdown total applied: ₹${suggestedTotal}`, "info");
                         } else {
                           try {
                             const res = await getTotalAmount(selectedSrf);
@@ -341,6 +387,17 @@ const Add = () => {
                     if (!selectedOpt) return null;
 
                     if (selectedOpt.hasPricingBreakdown && selectedOpt.pricingBreakdown?.services?.length > 0) {
+                      const selectedManufacturer = manufacturers.find(
+                        (m) => String(m._id) === String(selectedOpt.leadOwner)
+                      );
+                      const manufacturerTravelCost =
+                        selectedOpt.pricingType === 'Manufacturer' &&
+                        selectedManufacturer?.travelCost === 'Fixed Cost' &&
+                        selectedManufacturer?.cost != null &&
+                        selectedManufacturer?.cost !== ''
+                          ? Number(selectedManufacturer.cost)
+                          : 0;
+
                       const breakdownTitle =
                         selectedOpt.breakdownSource === 'Order Items'
                           ? 'Order items breakdown'
@@ -356,17 +413,24 @@ const Add = () => {
                               {selectedOpt.pricingBreakdown.services.map((service: any, i: number) => {
                                 const lineAmt = selectedOpt.isPrivilegedOrder
                                   ? resolveBreakdownLineAmount(
-                                      service,
-                                      selectedOpt.customPricing,
-                                      selectedOpt.pricingType
-                                    )
+                                    service,
+                                    selectedOpt.customPricing,
+                                    selectedOpt.pricingType
+                                  )
                                   : Number(service.amount) || 0;
                                 return (
-                                <div key={i} className="flex justify-between bg-white p-3 rounded-lg shadow mb-2">
-                                  <span>{service.serviceName}</span>
-                                  <span className="font-bold text-green-600">₹{lineAmt}</span>
+                                  <div key={i} className="flex justify-between bg-white p-3 rounded-lg shadow mb-2">
+                                    <span>{service.serviceName}</span>
+                                    <span className="font-bold text-green-600">₹{lineAmt}</span>
+                                  </div>
+                                );
+                              })}
+                              {manufacturerTravelCost > 0 && (
+                                <div className="flex justify-between bg-amber-50 p-3 rounded-lg shadow mb-2 border border-amber-200">
+                                  <span>Travel Cost</span>
+                                  <span className="font-bold text-amber-700">₹{manufacturerTravelCost}</span>
                                 </div>
-                              );})}
+                              )}
                             </div>
                           </div>
                           {/* <div className="mt-6 text-right border-t-2 border-green-300 pt-4">

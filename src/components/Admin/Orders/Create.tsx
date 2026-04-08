@@ -309,10 +309,9 @@ const CreateOrder: React.FC = () => {
                                 }
 
                                 const isEmployeeLead = employees.some(emp => String(emp._id) === String(leadOwner));
-                                const isManufacturerLead = manufacturer.some(m => String(m._id) === String(leadOwner));
                                 // const isQATest = workType && Array.isArray(workType) && workType.includes("Quality Assurance Test");
 
-                                if (isEmployeeLead || isManufacturerLead) {
+                                if (isEmployeeLead) {
                                     return value !== null && value !== undefined && String(value).trim() !== "";
                                 }
                                 return true;
@@ -489,7 +488,7 @@ const CreateOrder: React.FC = () => {
                 partyCodeOrSysId: service.partyCodeOrSysId,
                 procNoOrPoNo: service.procNoOrPoNo || "",
                 procExpiryDate: service.procExpiryDate || "",
-                price: (employees.some(emp => emp._id === values.leadOwner) || manufacturer.some(m => m._id === values.leadOwner))
+                price: (employees.some(emp => emp._id === values.leadOwner))
                     ? (service.price || "")
                     : "",
                 // ← Do NOT include workOrderCopy here anymore (it's sent as file)
@@ -624,6 +623,23 @@ const CreateOrder: React.FC = () => {
                                         )}
                                     </Field>
                                     <ErrorMessage name="leadOwner" component="div" className="text-danger mt-1" />
+                                    {(() => {
+                                        const selectedManufacturer = manufacturer.find((m) => String(m._id) === String(values.leadOwner));
+                                        if (!selectedManufacturer) return null;
+                                        const travelType = selectedManufacturer.travelCost || "-";
+                                        const fixedCost =
+                                            travelType === "Fixed Cost" && selectedManufacturer.cost != null && selectedManufacturer.cost !== ""
+                                                ? `Rs. ${selectedManufacturer.cost}`
+                                                : "-";
+                                        return (
+                                            <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
+                                                <div><strong>Manufacturer Travel Cost:</strong> {travelType}</div>
+                                                {travelType === "Fixed Cost" && (
+                                                    <div><strong>Fixed Travel Cost:</strong> {fixedCost}</div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 <div className={submitCount && errors.hospitalName ? "has-error" : submitCount ? "has-success" : ""}>
@@ -968,8 +984,8 @@ const CreateOrder: React.FC = () => {
                                                             />
                                                         </div>
 
-                                                        {/* Price - Visible for employee/manufacturer leads */}
-                                                        {(employees.some(emp => emp._id === values.leadOwner) || manufacturer.some(m => m._id === values.leadOwner)) && (
+                                                        {/* Price - Visible only for employee leads */}
+                                                        {(employees.some(emp => emp._id === values.leadOwner)) && (
                                                             <div className="md:col-span-3">
                                                                 <label className="text-sm font-semibold text-gray-700">
                                                                     Price <span className="text-red-500">*</span>

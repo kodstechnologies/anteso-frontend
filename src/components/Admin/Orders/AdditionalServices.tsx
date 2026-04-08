@@ -21,7 +21,10 @@ import {
     AlertCircle,
     X,
     ExternalLink,
-    MessageSquare
+    MessageSquare,
+    Zap,
+    Plus,
+    IndianRupee
 } from "lucide-react";
 import { showMessage } from "../../../components/common/ShowMessage";
 
@@ -179,7 +182,7 @@ const AdditionalServices = () => {
                         <FileText className="h-7 w-7 text-indigo-600" />
                         Additional Service Management
                     </h1>
-                    <p className="text-gray-500 mt-1">Track, assign, and manage supplementary project requirements</p>
+                    {/* <p className="text-gray-500 mt-1">Track, assign, and manage supplementary project requirements</p> */}
                 </div>
                 {/* Special Instructions Tooltip/Card */}
 
@@ -205,9 +208,33 @@ const AdditionalServices = () => {
                                                 {service.status.toUpperCase()}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
+                                        {/* <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed mb-4">
                                             {service.description || "No description available."}
-                                        </p>
+                                        </p> */}
+
+                                        {/* Note and Price Section */}
+                                        <div className="grid grid-cols-2 gap-3 mt-4">
+                                            <div className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <FileText className="h-3.5 w-3.5 text-indigo-600" />
+                                                    <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider">note</span>
+                                                </div>
+                                                <p className="text-sm font-semibold text-gray-700 leading-relaxed truncate">
+                                                    {service.description || "-"}
+                                                </p>
+                                            </div>
+                                            <div className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <Zap className="h-3.5 w-3.5 text-emerald-600" />
+                                                    <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider">price</span>
+                                                </div>
+                                                <p className="text-lg font-black text-emerald-700">
+                                                    {service.totalAmount !== undefined && service.totalAmount !== null
+                                                        ? `₹${service.totalAmount}`
+                                                        : "—"}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="p-5 space-y-4 flex-1">

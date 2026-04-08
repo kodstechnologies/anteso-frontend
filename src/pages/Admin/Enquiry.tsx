@@ -42,8 +42,8 @@ const Enquiry = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [rowToDelete, setRowToDelete] = useState<number | null>(null);
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'enquiryID', // Changed to a more appropriate default
-        direction: 'asc',
+        columnAccessor: 'createdAt',
+        direction: 'desc',
     });
     const [copied, setCopied] = useState(false);
 

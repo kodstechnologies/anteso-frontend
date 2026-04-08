@@ -356,21 +356,23 @@ export default function AddMachineModal({
                         </div>
                     </div>
 
-                    {/* Unified Price Field */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Price {isEmployeeLead ? "*" : "(Optional)"}
-                        </label>
-                        <input
-                            type="number"
-                            name="price"
-                            value={formData.price}
-                            onChange={handleChange}
-                            placeholder="Enter unified price for all work types"
-                            min="0"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
+                    {/* Unified Price Field - only for employee leads */}
+                    {isEmployeeLead && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Price *
+                            </label>
+                            <input
+                                type="number"
+                                name="price"
+                                value={formData.price}
+                                onChange={handleChange}
+                                placeholder="Enter unified price for all work types"
+                                min="0"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                    )}
 
                     {/* Party Code / Sys ID */}
                     <div>

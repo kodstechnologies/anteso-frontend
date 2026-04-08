@@ -35,6 +35,7 @@ import {
     assignToOfficeStaffByElora,
     updateServicePrice,
     getAllActiveEmployees,
+    getAllManufacturer,
 } from "../../../api"
 import { useNavigate } from "react-router-dom";
 import AddMachineModal from "./AddMachineModal";
@@ -157,6 +158,12 @@ interface ServicesCardProps {
     orderId?: any
 }
 
+interface AdditionalServiceItem {
+    name: string
+    description?: string
+    totalAmount?: number | string
+}
+
 interface ConfirmModalProps {
     open: boolean;
     onClose: () => void;
@@ -250,8 +257,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
     const [employees, setEmployees] = useState<any[]>([])
+    const [manufacturers, setManufacturers] = useState<any[]>([])
     const [leadOwnerId, setLeadOwnerId] = useState<string | null>(null)
     const [customerFeedback, setCustomerFeedback] = useState<string>("")
+    const [additionalServices, setAdditionalServices] = useState<AdditionalServiceItem[]>([])
 
     type ReportData = {
         qaTestReportNumber: string;
@@ -297,19 +306,28 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const fetchDropdownData = async () => {
         try {
             setLoadingDropdowns(true)
-            const [techniciansData, staffData, employeesData] = await Promise.all([
+            const [techniciansData, staffData, employeesData, manufacturersData] = await Promise.all([
                 getActiveTechnicians(),
                 getActiveStaffs(),
-                getAllActiveEmployees()
+                getAllActiveEmployees(),
+                getAllManufacturer()
             ])
 
             setTechnicians(techniciansData.data || [])
             setOfficeStaff(staffData.data || [])
             setEmployees(employeesData.data || [])
+            const manufacturerList =
+                Array.isArray(manufacturersData?.data?.data)
+                    ? manufacturersData.data.data
+                    : Array.isArray(manufacturersData?.data)
+                        ? manufacturersData.data
+                        : [];
+            setManufacturers(manufacturerList)
         } catch (error) {
             console.error("Error fetching dropdown data:", error)
             setTechnicians([])
             setOfficeStaff([])
+            setManufacturers([])
         } finally {
             setLoadingDropdowns(false)
         }
@@ -373,6 +391,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setLoading(true);
             setError(null);
             const response = await getMachineDetails(orderId);
+            const extraServices = Array.isArray(response.additionalServices) ? response.additionalServices : [];
+            setAdditionalServices(extraServices);
 
             // Access leadOwner and services from the new response structure
             const machinesArray = Array.isArray(response.services) ? response.services : [];
@@ -2203,6 +2223,29 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     {customerFeedback?.trim() ? customerFeedback : "No feedback submitted yet."}
                 </p>
             </div>
+
+            {(() => {
+                const selectedManufacturer = manufacturers.find((m: any) => String(m._id) === String(leadOwnerId));
+                if (!selectedManufacturer) return null;
+                const travelType = selectedManufacturer.travelCost || "-";
+                const fixedCost =
+                    travelType === "Fixed Cost" && selectedManufacturer.cost != null && selectedManufacturer.cost !== ""
+                        ? `Rs. ${selectedManufacturer.cost}`
+                        : "-";
+                return (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                        <h3 className="text-sm font-semibold text-blue-900 mb-1">Manufacturer Travel Cost Details</h3>
+                        <p className="text-sm text-blue-800">
+                            <strong>Travel Cost Type:</strong> {travelType}
+                        </p>
+                        {travelType === "Fixed Cost" && (
+                            <p className="text-sm text-blue-800 mt-1">
+                                <strong>Fixed Travel Cost:</strong> {fixedCost}
+                            </p>
+                        )}
+                    </div>
+                );
+            })()}
             <div className="grid gap-6">
                 {machineData.map((service, index) => (
                     <div key={service.id} className="shadow-lg border-0 bg-white rounded-lg overflow-hidden relative">

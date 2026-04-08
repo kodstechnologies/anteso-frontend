@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Field, Form, Formik, ErrorMessage, FieldArray, useFormikContext } from 'formik';
 import * as Yup from 'yup';
 import { Link, useNavigate } from 'react-router-dom';
-import { getAllSrfNumber, getAllDetails, createInvoice, getDealerOrders } from '../../../../api';
+import { getAllSrfNumber, getAllDetails, createInvoice, getDealerOrders, getAllManufacturer } from '../../../../api';
 import { showMessage } from '../../../../components/common/ShowMessage';
 
 // Define interfaces for type safety
@@ -35,6 +35,8 @@ interface DealerHospital {
   dealerState?: string;
   modelNo?: string;
   amount?: number;
+  travelCostType?: string;
+  travelCostPrice?: number;
   services?: ServiceItem[];
   additionalServices?: AdditionalService[];
 }
@@ -200,7 +202,8 @@ const GrandTotalDisplay: React.FC = () => {
         (s: number, as: AdditionalService) => s + (as.totalAmount || 0),
         0
       );
-      return sum + dhServicesSubtotal + dhAdditionalSubtotal;
+      const dhTravel = Number(d.travelCostPrice) || 0;
+      return sum + dhServicesSubtotal + dhAdditionalSubtotal + dhTravel;
     }, 0);
     subtotal = dealerSubtotal;
   }
@@ -271,7 +274,8 @@ const AutoCalculateTotals: React.FC = () => {
           (s: number, as: AdditionalService) => s + (as.totalAmount || 0),
           0
         );
-        return sum + dhServicesSubtotal + dhAdditionalSubtotal;
+        const dhTravel = Number(d.travelCostPrice) || 0;
+        return sum + dhServicesSubtotal + dhAdditionalSubtotal + dhTravel;
       }, 0);
       subtotal = dealerSubtotal;
     }
@@ -302,7 +306,8 @@ const AutoCalculateTotals: React.FC = () => {
           (s: number, as: AdditionalService) => s + (as.totalAmount || 0),
           0
         );
-        setFieldValue(`dealerHospitals[${index}].amount`, dhServicesSubtotal + dhAdditionalSubtotal);
+        const dhTravel = Number(dh.travelCostPrice) || 0;
+        setFieldValue(`dealerHospitals[${index}].amount`, dhServicesSubtotal + dhAdditionalSubtotal + dhTravel);
       });
     }
   }, [values, setFieldValue]);
@@ -313,6 +318,7 @@ const AutoCalculateTotals: React.FC = () => {
 const Add = () => {
   const [srfOptions, setSrfOptions] = useState<OptionType[]>([]);
   const [orderMap, setOrderMap] = useState<Record<string, string>>({});
+  const [manufacturers, setManufacturers] = useState<any[]>([]);
   const [orderId, setOrderId] = useState<string>('');
   const navigate = useNavigate();
   const sellerState = 'Maharashtra';
@@ -355,6 +361,16 @@ const Add = () => {
           });
         }
 
+        // Fetch manufacturers to resolve fixed travel cost for Manufacturer leadOwner
+        const manufacturerRes = await getAllManufacturer().catch(() => null);
+        const manufacturerList =
+          Array.isArray(manufacturerRes?.data?.data)
+            ? manufacturerRes.data.data
+            : Array.isArray(manufacturerRes?.data)
+              ? manufacturerRes.data
+              : [];
+        setManufacturers(manufacturerList);
+
         setSrfOptions(options);
         setOrderMap(map);
       } catch (error) {
@@ -394,7 +410,7 @@ const Add = () => {
           discountPercent: 0,
           services: [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }],
           additionalServices: [],
-          dealerHospitals: [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, services: [], additionalServices: [] }],
+          dealerHospitals: [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, travelCostType: '', travelCostPrice: 0, services: [], additionalServices: [] }],
         }}
         validationSchema={InvoiceSchema}
         onSubmit={async (values, { setSubmitting, resetForm }) => {
@@ -415,7 +431,8 @@ const Add = () => {
                   (s, as) => s + (as.totalAmount || 0),
                   0
                 );
-                return sum + dhServicesSubtotal + dhAdditionalSubtotal;
+                const dhTravel = Number(d.travelCostPrice) || 0;
+                return sum + dhServicesSubtotal + dhAdditionalSubtotal + dhTravel;
               }, 0);
               subtotal = dealerSubtotal;
             }
@@ -476,7 +493,7 @@ const Add = () => {
                     setFieldValue('state', '');
                     setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }]);
                     setFieldValue('additionalServices', []);
-                    setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, services: [], additionalServices: [] }]);
+                    setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, travelCostType: '', travelCostPrice: 0, services: [], additionalServices: [] }]);
                     setFieldValue('taxes', { cgst: { checked: false, amount: 0 }, sgst: { checked: false, amount: 0 }, igst: { checked: false, amount: 0 } });
                     setFieldValue('discountPercent', 0);
                   }}
@@ -579,7 +596,7 @@ const Add = () => {
                             } else {
                               setFieldValue('additionalServices', []);
                             }
-                            setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, services: [], additionalServices: [] }]);
+                            setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, travelCostType: '', travelCostPrice: 0, services: [], additionalServices: [] }]);
                           }
                           else if (values.type === 'Dealer/Manufacturer') {
                             let mainSubtotal = (details.quotation?.subtotal || 0) - (details.advanceAmount || 0);
@@ -612,6 +629,17 @@ const Add = () => {
                                 totalAmount: as.totalAmount || 0,
                               }))
                               : [];
+
+                            // If lead owner is Manufacturer with fixed travel cost, keep it as separate travel fields.
+                            const selectedManufacturer = manufacturers.find(
+                              (m: any) => String(m._id) === String(details.leadOwner)
+                            );
+                            const fixedTravelCost =
+                              selectedManufacturer?.travelCost === 'Fixed Cost' &&
+                              selectedManufacturer?.cost != null &&
+                              selectedManufacturer?.cost !== ''
+                                ? Number(selectedManufacturer.cost)
+                                : 0;
                             const dealerHospital: DealerHospital = {
                               partyCode: details.partyCodeOrSysId || '',
                               hospitalName: details.hospitalName || '',
@@ -619,6 +647,8 @@ const Add = () => {
                               dealerState: details.state || '',
                               modelNo: '',
                               amount: mainSubtotal,
+                              travelCostType: selectedManufacturer?.travelCost || '',
+                              travelCostPrice: fixedTravelCost > 0 ? fixedTravelCost : 0,
                               services: mappedServices,
                               additionalServices: mappedAdditional,
                             };
@@ -626,7 +656,7 @@ const Add = () => {
                             setFieldValue('services', []);
                             setFieldValue('additionalServices', []);
                           } else {
-                            setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, services: [], additionalServices: [] }]);
+                            setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, travelCostType: '', travelCostPrice: 0, services: [], additionalServices: [] }]);
                             setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }]);
                             setFieldValue('additionalServices', []);
                           }
@@ -925,6 +955,28 @@ const Add = () => {
                                 className="text-red-500 text-sm mt-1"
                               />
                             </div>
+
+                            <div>
+                              <label className="block mb-1 font-medium">Travel Cost Type</label>
+                              <Field
+                                name={`dealerHospitals[${index}].travelCostType`}
+                                type="text"
+                                className="form-input bg-gray-50"
+                                placeholder="-"
+                                readOnly
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block mb-1 font-medium">Travel Cost Price</label>
+                              <Field
+                                name={`dealerHospitals[${index}].travelCostPrice`}
+                                type="number"
+                                className="form-input bg-gray-50"
+                                placeholder="0"
+                                readOnly
+                              />
+                            </div>
                           </div>
 
                           {/* Nested Service Details */}
@@ -1164,6 +1216,8 @@ const Add = () => {
                               dealerState: '',
                               modelNo: '',
                               amount: 0,
+                              travelCostType: '',
+                              travelCostPrice: 0,
                               services: [],
                               additionalServices: [],
                             })

@@ -323,6 +323,10 @@ const InvoiceDealer = () => {
                                 {invoice.dealerHospitals?.map((dh: any, dhIndex: number) => {
                                     const hospitalServices = dh.services || [];
                                     const hospitalAdditionalServices = dh.additionalServices || [];
+                                    const travelCostLine = hospitalAdditionalServices.find(
+                                        (as: any) => String(as?.name || "").trim().toLowerCase() === "travel cost"
+                                    );
+                                    const travelCostAmount = Number(travelCostLine?.totalAmount || dh?.travelCostPrice || 0);
 
                                     const hospitalSubtotal =
                                         hospitalServices.reduce((sum: number, s: any) => sum + (s.rate * s.quantity || 0), 0) +
@@ -396,6 +400,12 @@ const InvoiceDealer = () => {
                                                         </tbody>
                                                     </table>
                                                 </div>
+                                            )}
+
+                                            {travelCostAmount > 0 && (
+                                                <p className="text-xs font-semibold mt-2">
+                                                    Travel Cost Included: ₹{travelCostAmount.toLocaleString("en-IN")}
+                                                </p>
                                             )}
 
                                             <div className="text-right mt-2 font-semibold text-xs">
