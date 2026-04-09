@@ -117,25 +117,47 @@ const Tools = () => {
         const to = from + pageSize;
         setRecords([...initialRecords.slice(from, to)]);
     }, [page, pageSize, initialRecords]);
-
     useEffect(() => {
         const filtered = items.filter((item) => {
             const query = search.toLowerCase();
-            return (
-                item.nomenclature?.toLowerCase().includes(query) ||
-                item.manufacturer?.toLowerCase().includes(query) ||
-                item.model?.toLowerCase().includes(query) ||
-                item.srNo?.toLowerCase().includes(query) ||
-                item.calibrationCertificateNo?.toLowerCase().includes(query) ||
-                item.calibrationDate?.toLowerCase().includes(query) ||
-                item.range?.toLowerCase().includes(query) ||
-                item.toolID?.toLowerCase().includes(query)
-            );
+
+            return Object.values(item).some((value) => {
+                if (!value) return false;
+
+                // 1. Handle Date objects
+                if (value instanceof Date) {
+                    return dayjs(value).format("DD-MM-YYYY").toLowerCase().includes(query);
+                }
+
+                // 2. Handle Strings
+                if (typeof value === 'string') {
+                    const lowerValue = value.toLowerCase();
+                    if (lowerValue.includes(query)) return true;
+
+                    // If it matches date pattern, check formatted version
+                    if (value.includes('-') && !isNaN(Date.parse(value))) {
+                        return dayjs(value).format("DD-MM-YYYY").toLowerCase().includes(query);
+                    }
+                    return false;
+                }
+
+                // 3. Handle Numbers
+                if (typeof value === 'number') {
+                    return value.toString().includes(query);
+                }
+
+                // 4. Handle Nested Objects (like createdBy)
+                if (typeof value === 'object' && value !== null) {
+                    return Object.values(value).some((v) => (v ? v.toString().toLowerCase().includes(query) : false));
+                }
+
+                return false;
+            });
         });
+
         setInitialRecords(filtered);
         setPage(1);
     }, [search, items]);
-
     useEffect(() => {
         const data2 = sortBy(initialRecords, sortStatus.columnAccessor);
         setRecords(sortStatus.direction === 'desc' ? data2.reverse() : data2);

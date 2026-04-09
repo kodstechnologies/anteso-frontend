@@ -1289,6 +1289,23 @@ export const getEngineerByToolId = async (id: any) => {
     }
 }
 
+export const getExpiringTools = async () => {
+    try {
+        const token = Cookies.get('accessToken')
+        const res = await api.get('/tools/expiring-tools', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ getExpiringTools ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch expiring tools"
+        );
+    }
+};
+
 export const deleteToolById = async (id: any) => {
     try {
         const token = Cookies.get("accessToken")

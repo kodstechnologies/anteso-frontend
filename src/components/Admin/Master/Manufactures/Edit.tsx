@@ -5,15 +5,6 @@ import { showMessage } from "../../../common/ShowMessage";
 import { useEffect, useState } from "react";
 import { editManufacturerById, getManufacturerById, getAllStates } from "../../../../api";
 
-const systemQaTests = [
-    { label: "FIXED X RAY", value: "FIXED_X_RAY", price: 3500, system: true },
-    { label: "MOBILE X RAY", value: "MOBILE_X_RAY", price: 2500, system: true },
-    { label: "C ARM", value: "C_ARM", price: 3000, system: true },
-    { label: "MAMMOGRAP", value: "MAMMOGRAP", price: 4000, system: true },
-    { label: "CATH LAB", value: "CATH_LAB", price: 5000, system: true },
-    { label: "CT SCAN", value: "CT_SCAN", price: 6000, system: true },
-    { label: "TATKAL QA", value: "TATKAL_QA", price: 5000, system: true },
-];
 const machineOptions = [
     "Radiography (Fixed)",
     "Radiography (Mobile)",
@@ -39,7 +30,7 @@ const EditManufacture = () => {
     const navigate = useNavigate();
 
     const [stateOptions, setStateOptions] = useState<string[]>([]);
-    const [qaOptions, setQaOptions] = useState(systemQaTests);
+    const [qaOptions, setQaOptions] = useState<any[]>([]);
     const [newQaName, setNewQaName] = useState("");
     const [newQaPrice, setNewQaPrice] = useState("");
 
@@ -80,21 +71,14 @@ const EditManufacture = () => {
                 const res = await getManufacturerById(id);
                 const data = res.data.data;
 
-                // Merge system + custom QA tests
-                const allQaTests = [...systemQaTests];
-                const selectedQa = data.qaTests?.map((t: any) => {
-                    const existing = allQaTests.find(o => o.label === t.testName);
-                    if (existing) {
-                        existing.price = t.price;
-                        return existing.value;
-                    } else {
-                        const newValue = t.testName.toUpperCase().replace(/\s+/g, "_");
-                        allQaTests.push({ label: t.testName, value: newValue, price: t.price, system: false });
-                        return newValue;
-                    }
-                }) || [];
-
-                setQaOptions(allQaTests);
+                // Load only assigned QA tests
+                const selectedQa =
+                    data.qaTests?.map((t: any) => {
+                        const value = t.testName.toUpperCase().replace(/\s+/g, '_');
+                        return { label: t.testName, value, price: t.price, system: false };
+                    }) || [];
+                setQaOptions(selectedQa);
+                const selectedQaValues = selectedQa.map((q: any) => q.value);
 
                 setInitialValues({
                     manufactureName: data.name || "",
@@ -107,7 +91,7 @@ const EditManufacture = () => {
                     email: data.email || "",
                     phone: data.phone || "",
                     contactPersonName: data.contactPersonName || "",
-                    qaTests: selectedQa,
+                    qaTests: selectedQaValues,
                     travel: data.travelCost === "Actual Cost" ? "actual" : "fixed",
                     fixedCost: data.cost || "",
                 });
@@ -171,7 +155,7 @@ const EditManufacture = () => {
                 contactPersonName: values.contactPersonName,
                 qaTests: qaPayload,
                 travelCost: values.travel === "actual" ? "Actual Cost" : "Fixed Cost",
-                cost: values.fixedCost,
+                cost: values.fixedCost ? Number(values.fixedCost) : undefined,
             };
 
             await editManufacturerById(id!, payload);

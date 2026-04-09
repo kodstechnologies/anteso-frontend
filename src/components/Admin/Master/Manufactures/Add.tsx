@@ -68,10 +68,10 @@ const AddManufacture = () => {
 
         // Fixed cost as STRING to avoid "0" error
         fixedCost: Yup.string().when("travel", {
-            is: "fixed",
+            is: (val: string) => !!val,
             then: (schema) =>
                 schema
-                    .required("Fixed cost is required")
+                    .required("Cost is required")
                     .test("is-positive-number", "Enter a valid amount", (val) => {
                         if (!val) return false;
                         const num = Number(val);
@@ -104,7 +104,7 @@ const AddManufacture = () => {
                 travelCost: values.travel === "actual" ? "Actual Cost" : "Fixed Cost",
             };
 
-            if (values.travel === "fixed") payload.cost = values.fixedCost;
+            if (values.fixedCost) payload.cost = Number(values.fixedCost);
 
             const res = await createManufacturer(payload);
             const { statusCode, message } = res.data;

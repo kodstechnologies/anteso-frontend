@@ -220,10 +220,10 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             </div>
             <img src={logo} alt="Logo" className="h-28 print:h-20" />
           </div>
-          <div className="text-center mb-4 print:mb-2">
+          {/* <div className="text-center mb-4 print:mb-2">
             <p className="text-sm print:text-[9px]">Government of India, Atomic Energy Regulatory Board</p>
             <p className="text-sm print:text-[9px]">Radiological Safety Division, Mumbai-400094</p>
-          </div>
+          </div> */}
           <h1 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-base" style={{ fontSize: '15px' }}>
             QA TEST REPORT FOR RADIOGRAPHY (FIXED) X-RAY EQUIPMENT
           </h1>
@@ -761,7 +761,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
                     <div className=" rounded" style={{ padding: '4px 6px', marginTop: '4px' }}>
                       <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Total Filtration
-                      </h3> 
+                      </h3>
                       <table className="w-full border border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
                           <tr>
@@ -1243,8 +1243,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                           {testData.radiationLeakageLevel.toleranceOperator === 'less than or equal to'
                             ? '<'
                             : testData.radiationLeakageLevel.toleranceOperator === 'greater than or equal to'
-                            ? '>'
-                            : '='}{' '}
+                              ? '>'
+                              : '='}{' '}
                           <strong>
                             {testData.radiationLeakageLevel.toleranceValue || '1'} mGy ({parseFloat(testData.radiationLeakageLevel.toleranceValue || '1') * 114} mR) in one hour.
                           </strong>

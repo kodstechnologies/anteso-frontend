@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { getDetailsById } from "../../api"
-import antesoLogo from "../../assets/logo/logo-sm.png";
+import antesoLogo from "../../assets/logo/anteso-logo2.png";
 import { Printer } from "lucide-react";
 
 type Employee = {

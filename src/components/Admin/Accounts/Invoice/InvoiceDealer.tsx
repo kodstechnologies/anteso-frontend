@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { getInvoiceById, uploadInvoice } from "../../../../api"; // added uploadInvoice API
-import antesoLogo from "../../../../assets/logo/logo-sm.png";
+import antesoLogo from "../../../../assets/logo/anteso-logo2.png";
 import signature from "../../../../assets/quotationImg/signature.png";
 import qrcode from "../../../../assets/quotationImg/qrcode.png";
 import { useParams } from "react-router-dom";
@@ -334,11 +334,11 @@ const InvoiceDealer = () => {
 
                                     return (
                                         <div key={dhIndex} className="border border-black p-2">
-                                            <div className="bg-gray-100 p-2 border-b border-black text-xs font-semibold">
+                                            {/* <div className="bg-gray-100 p-2 border-b border-black text-xs font-semibold">
                                                 <p><strong>Hospital:</strong> {dh.hospitalName} ({dh.partyCode})</p>
                                                 <p><strong>Location:</strong> {dh.location}, <strong>State:</strong> {dh.dealerState}</p>
                                                 <p><strong>Model:</strong> {dh.modelNo} | <strong>Sr. No:</strong> {dh.srNo || "-"}</p>
-                                            </div>
+                                            </div> */}
 
                                             {hospitalServices.length > 0 && (
                                                 <div className="mt-2">
@@ -407,9 +407,10 @@ const InvoiceDealer = () => {
                                                     Travel Cost Included: ₹{travelCostAmount.toLocaleString("en-IN")}
                                                 </p>
                                             )}
-
+                                            {/* 
                                             <div className="text-right mt-2 font-semibold text-xs">
-                                                <p>Subtotal for this hospital: ₹{hospitalSubtotal.toFixed(2).toLocaleString("en-IN")}</p>                                            </div>
+                                                <p>Subtotal for this hospital: ₹{hospitalSubtotal.toFixed(2).toLocaleString("en-IN")}</p>
+                                            </div> */}
                                         </div>
                                     );
                                 })}
@@ -461,12 +462,12 @@ const InvoiceDealer = () => {
                             {uploading ? "Uploading..." : "Upload Invoice"}
                         </button>
                     )}
-                    <button
+                    {/* <button
                         onClick={() => window.print()}
                         className="bg-teal-600 hover:bg-teal-700 text-white text-xs px-4 py-2 rounded"
                     >
                         Print Invoice
-                    </button>
+                    </button> */}
                 </div>
 
             </div>

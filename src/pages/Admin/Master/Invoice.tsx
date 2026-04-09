@@ -48,8 +48,8 @@ const Invoices: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
   const [selectedRecords, setSelectedRecords] = useState<Invoice[]>([]);
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-    columnAccessor: 'invoiceId',
-    direction: 'asc',
+    columnAccessor: 'createdAt',
+    direction: 'desc',
   });
 
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -66,7 +66,7 @@ const Invoices: React.FC = () => {
         setLoading(true);
         const res = await getAllInvoices();
         console.log("Full API response:", res);
-        
+
         // Handle different response structures
         let invoicesData = [];
         if (res?.data?.data) {
@@ -78,14 +78,14 @@ const Invoices: React.FC = () => {
         } else {
           invoicesData = [];
         }
-        
+
         console.log("Invoices data extracted:", invoicesData);
-        
+
         const formattedData: Invoice[] = invoicesData.map((item: any) => ({
           ...item,
           status: item.payment?.paymentStatus === 'paid' ? 'Paid' : 'Pending',
         }));
-        
+
         setItems(formattedData);
         console.log(`Loaded ${formattedData.length} invoices`);
       } catch (err) {
@@ -103,16 +103,16 @@ const Invoices: React.FC = () => {
     const q = search.trim().toLowerCase();
     const filtered = items.filter((item) => {
       // Search by SRF number or buyer name or invoice ID
-      const matchesSearch = !q || 
+      const matchesSearch = !q ||
         String(item.srfNumber || '').toLowerCase().includes(q) ||
         String(item.buyerName || '').toLowerCase().includes(q) ||
         String(item.invoiceId || '').toLowerCase().includes(q);
-      
+
       const matchesDate = isInDateRange(item.createdAt, dateFrom, dateTo);
-      
+
       return matchesSearch && matchesDate;
     });
-    
+
     console.log(`Filtered to ${filtered.length} invoices`);
     return filtered;
   }, [items, search, dateFrom, dateTo]);
@@ -122,29 +122,29 @@ const Invoices: React.FC = () => {
     const data = [...filteredRecords];
     const accessor = sortStatus.columnAccessor as keyof Invoice | string;
     if (!accessor) return data;
-    
+
     data.sort((a, b) => {
       const aVal = a[accessor as keyof Invoice];
       const bVal = b[accessor as keyof Invoice];
-      
+
       if (accessor === 'createdAt') {
         const at = aVal ? new Date(aVal as string).getTime() : 0;
         const bt = bVal ? new Date(bVal as string).getTime() : 0;
         return sortStatus.direction === 'asc' ? at - bt : bt - at;
       }
-      
+
       if (accessor === 'grandtotal') {
         const an = Number(aVal) || 0;
         const bn = Number(bVal) || 0;
         return sortStatus.direction === 'asc' ? an - bn : bn - an;
       }
-      
+
       const aStr = String(aVal ?? '').toLowerCase();
       const bStr = String(bVal ?? '').toLowerCase();
       const cmp = aStr.localeCompare(bStr);
       return sortStatus.direction === 'asc' ? cmp : -cmp;
     });
-    
+
     return data;
   }, [filteredRecords, sortStatus]);
 
@@ -183,7 +183,7 @@ const Invoices: React.FC = () => {
       const updated = items.filter((inv) => inv._id !== selectedInvoiceId);
       setItems(updated);
       showMessage('Invoice deleted successfully', 'success');
-      
+
       // Adjust page if current page becomes empty
       const totalPages = Math.ceil((updated.length) / pageSize);
       if (page > totalPages && totalPages > 0) {
@@ -284,18 +284,19 @@ const Invoices: React.FC = () => {
                 columns={[
                   { accessor: 'invoiceId', title: 'Invoice ID', sortable: true },
                   { accessor: 'srfNumber', title: 'SRF No', sortable: true },
+
+                  { accessor: 'buyerName', title: 'Customer Name', sortable: true },
+                  { accessor: 'address', title: 'Address', sortable: true },
+                  { accessor: 'state', title: 'State', sortable: true },
                   {
                     accessor: 'createdAt',
                     title: 'Created At',
                     sortable: true,
                     render: (row: Invoice) => formatCreatedAtDisplay(row.createdAt),
                   },
-                  { accessor: 'buyerName', title: 'Customer Name', sortable: true },
-                  { accessor: 'address', title: 'Address', sortable: true },
-                  { accessor: 'state', title: 'State', sortable: true },
-                  { 
-                    accessor: 'grandtotal', 
-                    title: 'Total Amount', 
+                  {
+                    accessor: 'grandtotal',
+                    title: 'Total Amount',
                     sortable: true,
                     render: (row: Invoice) => `₹${row.grandtotal?.toLocaleString() || 0}`
                   },

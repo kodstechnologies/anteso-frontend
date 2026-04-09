@@ -136,7 +136,6 @@ const Add = () => {
     );
     const manufacturerTravelCost =
       selectedOption.pricingType === 'Manufacturer' &&
-      selectedManufacturer?.travelCost === 'Fixed Cost' &&
       selectedManufacturer?.cost != null &&
       selectedManufacturer?.cost !== ''
         ? Number(selectedManufacturer.cost)
@@ -392,7 +391,6 @@ const Add = () => {
                       );
                       const manufacturerTravelCost =
                         selectedOpt.pricingType === 'Manufacturer' &&
-                        selectedManufacturer?.travelCost === 'Fixed Cost' &&
                         selectedManufacturer?.cost != null &&
                         selectedManufacturer?.cost !== ''
                           ? Number(selectedManufacturer.cost)

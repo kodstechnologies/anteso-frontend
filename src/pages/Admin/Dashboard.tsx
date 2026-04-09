@@ -1,5 +1,6 @@
 // Dashboard.tsx
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../store/themeConfigSlice';
 import PendingLeaveApprovals from './PendingLeaveApprovals';
@@ -20,7 +21,11 @@ import {
     CartesianGrid,
     ReferenceLine,
 } from 'recharts';
-import { monthlyStats, employeeTrips as fetchEmployeeTrips, getSummary } from '../../api'; // your API calls
+import { monthlyStats, employeeTrips as fetchEmployeeTrips, getSummary, getExpiringTools } from '../../api'; // your API calls
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 import {
     Users,
     Wrench,  // Changed from Toolbox (reliable tool icon)
@@ -52,6 +57,7 @@ const COLORS = ['#A5B4FC', '#A7F3D0', '#FDE68A', '#FECACA']; // Subtle, softer c
 
 const Dashboard: React.FC = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const [pieData, setPieData] = useState<PieStats[]>([]);
     const [barData, setBarData] = useState<BarStats[]>([]);
@@ -78,7 +84,66 @@ const Dashboard: React.FC = () => {
         }
 
         fetchDashboardData();
-    }, [dispatch]);
+        if (role === 'admin') {
+            checkExpiringTools();
+        }
+    }, [dispatch, role]);
+
+    const checkExpiringTools = async () => {
+        try {
+            const res = await getExpiringTools();
+            if (res.success && res.count > 0) {
+                MySwal.fire({
+                    title: <div className="text-xl font-bold text-red-600 flex items-center gap-2">
+                        <AlertCircle className="h-6 w-6" />
+                        Expiring Calibration Alerts
+                    </div>,
+                    html: (
+                        <div className="mt-4 text-left">
+                            <p className="text-gray-600 mb-4">The following tools are expiring within the next 7 days:</p>
+                            <div className="max-h-60 overflow-y-auto border rounded-lg">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Tool Name</th>
+                                            <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Serial No.</th>
+                                            <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Valid Till</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {res.data.map((tool: any) => (
+                                            <tr key={tool._id}>
+                                                <td className="px-4 py-2 text-sm text-gray-900">{tool.nomenclature}</td>
+                                                <td className="px-4 py-2 text-sm text-gray-600">{tool.SrNo}</td>
+                                                <td className="px-4 py-2 text-sm font-medium text-red-500">
+                                                    {new Date(tool.calibrationValidTill).toLocaleDateString("en-GB")}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ),
+                    icon: 'warning',
+                    confirmButtonText: 'Acknowledged',
+                    confirmButtonColor: '#EF4444',
+                    width: '600px',
+                    padding: '2rem',
+                    customClass: {
+                        popup: 'rounded-2xl',
+                        confirmButton: 'rounded-lg px-6 py-2.5 font-semibold transition-all hover:scale-105 active:scale-95'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        navigate('/admin/tools');
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error checking expiring tools:', error);
+        }
+    };
 
 
     const fetchDashboardData = async () => {
@@ -361,7 +426,7 @@ const Dashboard: React.FC = () => {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {currentTrips.length > 0 ? (
                                     currentTrips.map((trip, index) => {
-                                        const formatDate = (dateString:any) => {
+                                        const formatDate = (dateString: any) => {
                                             if (!dateString) return "N/A";
                                             const date = new Date(dateString);
                                             // if (isNaN(date)) return "Invalid Date";

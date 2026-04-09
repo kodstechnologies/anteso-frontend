@@ -9,6 +9,7 @@ import { showMessage } from '../../../../components/common/ShowMessage';
 interface OptionType {
   value: string;
   label: string;
+  category?: string;
 }
 
 interface ServiceItem {
@@ -337,6 +338,7 @@ const Add = () => {
           const customerOptions = customerRes.data.data.map((item: any) => ({
             label: `${item.srfNumber} - ${item.name} (Customer)`,
             value: item.srfNumber,
+            category: 'Customer',
           }));
           options = [...options, ...customerOptions];
           customerRes.data.data.forEach((item: any) => {
@@ -353,6 +355,7 @@ const Add = () => {
             return {
               label: `${item.srfNumber} ${tag}`,
               value: item.srfNumber,
+              category: 'Dealer/Manufacturer',
             };
           });
           options = [...options, ...dmOptions];
@@ -635,7 +638,6 @@ const Add = () => {
                               (m: any) => String(m._id) === String(details.leadOwner)
                             );
                             const fixedTravelCost =
-                              selectedManufacturer?.travelCost === 'Fixed Cost' &&
                               selectedManufacturer?.cost != null &&
                               selectedManufacturer?.cost !== ''
                                 ? Number(selectedManufacturer.cost)
@@ -670,14 +672,8 @@ const Add = () => {
                   <option value="">Select SRF Number</option>
                   {srfOptions
                     .filter((opt) => {
-                      if (values.type === '') return true;
-                      if (values.type === 'Customer') return opt.label.includes('(Customer)');
-                      if (values.type === 'Dealer/Manufacturer') {
-                        return (
-                          opt.label.includes('(Dealer)') || opt.label.includes('(Manufacturer)')
-                        );
-                      }
-                      return true;
+                      if (!values.type) return true;
+                      return opt.category === values.type;
                     })
                     .map((opt) => (
                       <option key={opt.value} value={opt.value}>

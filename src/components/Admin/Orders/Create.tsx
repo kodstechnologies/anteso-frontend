@@ -627,15 +627,15 @@ const CreateOrder: React.FC = () => {
                                         const selectedManufacturer = manufacturer.find((m) => String(m._id) === String(values.leadOwner));
                                         if (!selectedManufacturer) return null;
                                         const travelType = selectedManufacturer.travelCost || "-";
-                                        const fixedCost =
-                                            travelType === "Fixed Cost" && selectedManufacturer.cost != null && selectedManufacturer.cost !== ""
+                                        const travelCostDisplay =
+                                            selectedManufacturer.cost != null && selectedManufacturer.cost !== ""
                                                 ? `Rs. ${selectedManufacturer.cost}`
                                                 : "-";
                                         return (
                                             <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
                                                 <div><strong>Manufacturer Travel Cost:</strong> {travelType}</div>
-                                                {travelType === "Fixed Cost" && (
-                                                    <div><strong>Fixed Travel Cost:</strong> {fixedCost}</div>
+                                                {travelCostDisplay !== "-" && (
+                                                    <div><strong>Amount:</strong> {travelCostDisplay}</div>
                                                 )}
                                             </div>
                                         );
