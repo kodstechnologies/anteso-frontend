@@ -990,6 +990,7 @@ const CreateOrder: React.FC = () => {
                                                                         setFieldValue(`services.${index}.workOrderCopy`, file || null);
                                                                     }}
                                                                 />
+                                                                <div className="text-xs text-gray-500 mt-1">Max file size: 6 MB (.pdf)</div>
                                                             </div>
 
                                                             {/* Price - Visible only for employee leads */}
