@@ -592,531 +592,539 @@ const CreateOrder: React.FC = () => {
                     }
                     return (
                         <Form className="space-y-5">
-                        <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Basic Details</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
-                                <div className={submitCount && errors.leadOwner ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="leadOwner">Lead Owner</label>
-                                    <Field as="select" name="leadOwner" id="leadOwner" className="form-input">
-                                        <option value="">Select Lead Owner</option>
-                                        {loading ? (
-                                            <option disabled>Loading...</option>
-                                        ) : (
-                                            <>
-                                                {employees.map((emp) => (
-                                                    <option key={emp._id} value={emp._id}>
-                                                        {emp.name} - Employee
-                                                    </option>
-                                                ))}
-                                                {dealers.map((dealer) => (
-                                                    <option key={dealer._id} value={dealer._id}>
-                                                        {dealer.name} - Dealer
-                                                    </option>
-                                                ))}
-                                                {manufacturer.map((m) => (
-                                                    <option key={m._id} value={m._id}>
-                                                        {m.name} - Manufacturer
-                                                    </option>
-                                                ))}
+                            <div className="panel">
+                                <h5 className="font-semibold text-lg mb-4">Basic Details</h5>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
+                                    <div className={submitCount && errors.leadOwner ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="leadOwner">Lead Owner</label>
+                                        <Field as="select" name="leadOwner" id="leadOwner" className="form-input">
+                                            <option value="">Select Lead Owner</option>
+                                            {loading ? (
+                                                <option disabled>Loading...</option>
+                                            ) : (
+                                                <>
+                                                    {employees.map((emp) => (
+                                                        <option key={emp._id} value={emp._id}>
+                                                            {emp.name} - Employee
+                                                        </option>
+                                                    ))}
+                                                    {dealers.map((dealer) => (
+                                                        <option key={dealer._id} value={dealer._id}>
+                                                            {dealer.name} - Dealer
+                                                        </option>
+                                                    ))}
+                                                    {manufacturer.map((m) => (
+                                                        <option key={m._id} value={m._id}>
+                                                            {m.name} - Manufacturer
+                                                        </option>
+                                                    ))}
 
-                                            </>
-                                        )}
-                                    </Field>
-                                    <ErrorMessage name="leadOwner" component="div" className="text-danger mt-1" />
-                                    {(() => {
-                                        const selectedManufacturer = manufacturer.find((m) => String(m._id) === String(values.leadOwner));
-                                        if (!selectedManufacturer) return null;
-                                        const travelType = selectedManufacturer.travelCost || "-";
-                                        const travelCostDisplay =
-                                            selectedManufacturer.cost != null && selectedManufacturer.cost !== ""
-                                                ? `Rs. ${selectedManufacturer.cost}`
-                                                : "-";
-                                        return (
-                                            <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
-                                                <div><strong>Manufacturer Travel Cost:</strong> {travelType}</div>
-                                                {travelCostDisplay !== "-" && (
-                                                    <div><strong>Amount:</strong> {travelCostDisplay}</div>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
+                                                </>
+                                            )}
+                                        </Field>
+                                        <ErrorMessage name="leadOwner" component="div" className="text-danger mt-1" />
+                                        {(() => {
+                                            const selectedManufacturer = manufacturer.find((m) => String(m._id) === String(values.leadOwner));
+                                            if (!selectedManufacturer) return null;
+                                            const travelType = selectedManufacturer.travelCost || "-";
+                                            const travelCostDisplay =
+                                                selectedManufacturer.cost != null && selectedManufacturer.cost !== ""
+                                                    ? `Rs. ${selectedManufacturer.cost}`
+                                                    : "-";
+                                            return (
+                                                <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-2 text-xs text-blue-900">
+                                                    <div><strong>Manufacturer Travel Cost:</strong> {travelType}</div>
+                                                    {travelCostDisplay !== "-" && (
+                                                        <div><strong>Amount:</strong> {travelCostDisplay}</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
 
-                                <div className={submitCount && errors.hospitalName ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="hospitalName">Hospital Name</label>
-                                    <Field
-                                        name="hospitalName"
-                                        type="text"
-                                        id="hospitalName"
-                                        placeholder="Enter Hospital Name"
-                                        className="form-input"
-                                    />
-                                    {submitCount && errors.hospitalName ? (
-                                        <div className="text-danger mt-1">{errors.hospitalName}</div>
-                                    ) : null}
-                                </div>
-                                <div className={submitCount && errors.fullAddress ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="fullAddress">Full Address</label>
-                                    <Field
-                                        name="fullAddress"
-                                        type="text"
-                                        id="fullAddress"
-                                        placeholder="Enter Full Address"
-                                        className="form-input"
-                                    />
-                                    {submitCount && errors.fullAddress ? (
-                                        <div className="text-danger mt-1">{errors.fullAddress}</div>
-                                    ) : null}
-                                </div>
-                                <div className={submitCount && errors.city ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="city">City</label>
-                                    <Field name="city" type="text" id="city" placeholder="Enter City Name" className="form-input" />
-                                    {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
-                                </div>
-                                <div className={submitCount && errors.district ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="district">District</label>
-                                    <Field
-                                        name="district"
-                                        type="text"
-                                        id="district"
-                                        placeholder="Enter District Name"
-                                        className="form-input"
-                                    />
-                                    {submitCount && errors.district ? <div className="text-danger mt-1">{errors.district}</div> : null}
-                                </div>
-                                <div
-                                    className={
-                                        submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""
-                                    }
-                                >
-                                    <label htmlFor="state">State</label>
-                                    <Field
-                                        as="select"
-                                        name="state"
-                                        id="state"
-                                        className="form-input"
-                                        disabled={loading}
+                                    <div className={submitCount && errors.hospitalName ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="hospitalName">Hospital Name</label>
+                                        <Field
+                                            name="hospitalName"
+                                            type="text"
+                                            id="hospitalName"
+                                            placeholder="Enter Hospital Name"
+                                            className="form-input"
+                                        />
+                                        {submitCount && errors.hospitalName ? (
+                                            <div className="text-danger mt-1">{errors.hospitalName}</div>
+                                        ) : null}
+                                    </div>
+                                    <div className={submitCount && errors.fullAddress ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="fullAddress">Full Address</label>
+                                        <Field
+                                            name="fullAddress"
+                                            type="text"
+                                            id="fullAddress"
+                                            placeholder="Enter Full Address"
+                                            className="form-input"
+                                        />
+                                        {submitCount && errors.fullAddress ? (
+                                            <div className="text-danger mt-1">{errors.fullAddress}</div>
+                                        ) : null}
+                                    </div>
+                                    <div className={submitCount && errors.city ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="city">City</label>
+                                        <Field name="city" type="text" id="city" placeholder="Enter City Name" className="form-input" />
+                                        {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
+                                    </div>
+                                    <div className={submitCount && errors.district ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="district">District</label>
+                                        <Field
+                                            name="district"
+                                            type="text"
+                                            id="district"
+                                            placeholder="Enter District Name"
+                                            className="form-input"
+                                        />
+                                        {submitCount && errors.district ? <div className="text-danger mt-1">{errors.district}</div> : null}
+                                    </div>
+                                    <div
+                                        className={
+                                            submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""
+                                        }
                                     >
-                                        <option value="">Select State</option>
-                                        {states.map((st, index) => (
-                                            <option key={index} value={String(st)}>
-                                                {String(st)}
-                                            </option>
-                                        ))}
-                                    </Field>
-                                    {submitCount && errors.state ? (
-                                        <div className="text-danger mt-1">{errors.state}</div>
-                                    ) : null}
-                                </div>
-                                <div className={submitCount && errors.pinCode ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="pinCode">PIN Code</label>
-                                    <Field
-                                        name="pinCode"
-                                        type="text"
-                                        id="pinCode"
-                                        placeholder="Enter PIN Code"
-                                        className="form-input"
-                                        maxLength={6}
-                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                            e.target.value = e.target.value.replace(/[^0-9]/g, ''); // only numbers
-                                        }}
-                                    />
+                                        <label htmlFor="state">State</label>
+                                        <Field
+                                            as="select"
+                                            name="state"
+                                            id="state"
+                                            className="form-input"
+                                            disabled={loading}
+                                        >
+                                            <option value="">Select State</option>
+                                            {states.map((st, index) => (
+                                                <option key={index} value={String(st)}>
+                                                    {String(st)}
+                                                </option>
+                                            ))}
+                                        </Field>
+                                        {submitCount && errors.state ? (
+                                            <div className="text-danger mt-1">{errors.state}</div>
+                                        ) : null}
+                                    </div>
+                                    <div className={submitCount && errors.pinCode ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="pinCode">PIN Code</label>
+                                        <Field
+                                            name="pinCode"
+                                            type="text"
+                                            id="pinCode"
+                                            placeholder="Enter PIN Code"
+                                            className="form-input"
+                                            maxLength={6}
+                                            onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                e.target.value = e.target.value.replace(/[^0-9]/g, ''); // only numbers
+                                            }}
+                                        />
 
-                                    {submitCount && errors.pinCode ? <div className="text-danger mt-1">{errors.pinCode}</div> : null}
-                                </div>
-                                <div className={submitCount && errors.branchName ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="branchName">Branch Name</label>
-                                    <Field name="branchName" type="text" id="branchName" placeholder="Enter Branch Name" className="form-input" />
-                                    {submitCount && errors.branchName ? <div className="text-danger mt-1">{errors.branchName}</div> : null}
-                                </div>
-                                <div className={submitCount && errors.contactPersonName ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="contactPersonName">Contact Person Name</label>
-                                    <Field
-                                        name="contactPersonName"
-                                        type="text"
-                                        id="contactPersonName"
-                                        placeholder="Enter Contact Person Name"
-                                        className="form-input"
-                                    />
-                                    {submitCount && errors.contactPersonName ? (
-                                        <div className="text-danger mt-1">{errors.contactPersonName}</div>
-                                    ) : null}
-                                </div>
-                                <div className={submitCount && errors.emailAddress ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="emailAddress">Email Address</label>
-                                    <Field
-                                        name="emailAddress"
-                                        type="text"
-                                        id="emailAddress"
-                                        placeholder="Enter Email Address"
-                                        className="form-input"
-                                    />
-                                    {submitCount && errors.emailAddress ? (
-                                        <div className="text-danger mt-1">{errors.emailAddress}</div>
-                                    ) : null}
-                                </div>
-                                <div className={submitCount && errors.contactNumber ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="contactNumber">Contact Number</label>
-                                    <Field
-                                        name="contactNumber"
-                                        type="text"
-                                        id="contactNumber"
-                                        placeholder="Enter Contact Number"
-                                        className="form-input"
-                                        maxLength={10} // restrict typing to 10 digits
-                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                            e.target.value = e.target.value.replace(/[^0-9]/g, ""); // allow only numbers
-                                        }}
-                                    />
-                                    {submitCount && errors.contactNumber ? (
-                                        <div className="text-danger mt-1">{errors.contactNumber}</div>
-                                    ) : null}
-                                </div>
+                                        {submitCount && errors.pinCode ? <div className="text-danger mt-1">{errors.pinCode}</div> : null}
+                                    </div>
+                                    <div className={submitCount && errors.branchName ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="branchName">Branch Name</label>
+                                        <Field name="branchName" type="text" id="branchName" placeholder="Enter Branch Name" className="form-input" />
+                                        {submitCount && errors.branchName ? <div className="text-danger mt-1">{errors.branchName}</div> : null}
+                                    </div>
+                                    <div className={submitCount && errors.contactPersonName ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="contactPersonName">Contact Person Name</label>
+                                        <Field
+                                            name="contactPersonName"
+                                            type="text"
+                                            id="contactPersonName"
+                                            placeholder="Enter Contact Person Name"
+                                            className="form-input"
+                                        />
+                                        {submitCount && errors.contactPersonName ? (
+                                            <div className="text-danger mt-1">{errors.contactPersonName}</div>
+                                        ) : null}
+                                    </div>
+                                    <div className={submitCount && errors.emailAddress ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="emailAddress">Email Address</label>
+                                        <Field
+                                            name="emailAddress"
+                                            type="text"
+                                            id="emailAddress"
+                                            placeholder="Enter Email Address"
+                                            className="form-input"
+                                        />
+                                        {submitCount && errors.emailAddress ? (
+                                            <div className="text-danger mt-1">{errors.emailAddress}</div>
+                                        ) : null}
+                                    </div>
+                                    <div className={submitCount && errors.contactNumber ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="contactNumber">Contact Number</label>
+                                        <Field
+                                            name="contactNumber"
+                                            type="text"
+                                            id="contactNumber"
+                                            placeholder="Enter Contact Number"
+                                            className="form-input"
+                                            maxLength={10} // restrict typing to 10 digits
+                                            onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                e.target.value = e.target.value.replace(/[^0-9]/g, ""); // allow only numbers
+                                            }}
+                                        />
+                                        {submitCount && errors.contactNumber ? (
+                                            <div className="text-danger mt-1">{errors.contactNumber}</div>
+                                        ) : null}
+                                    </div>
 
-                                <div className={submitCount && errors.designation ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="designation">Designation</label>
-                                    <Field
-                                        name="designation"
-                                        type="text"
-                                        id="designation"
-                                        placeholder="Enter Designation"
-                                        className="form-input"
-                                    />
-                                    {submitCount && errors.designation ? (
-                                        <div className="text-danger mt-1">{errors.designation}</div>
-                                    ) : null}
-                                </div>
+                                    <div className={submitCount && errors.designation ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="designation">Designation</label>
+                                        <Field
+                                            name="designation"
+                                            type="text"
+                                            id="designation"
+                                            placeholder="Enter Designation"
+                                            className="form-input"
+                                        />
+                                        {submitCount && errors.designation ? (
+                                            <div className="text-danger mt-1">{errors.designation}</div>
+                                        ) : null}
+                                    </div>
 
-                                <div className={submitCount && errors.urgency ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="urgency">Urgency</label>
-                                    <Field as="select" name="urgency" id="urgency" className="form-select w-full">
-                                        <option value="">Select Urgency Type</option>
-                                        {urgency.map((option) => (
-                                            <option key={option} value={option}>
-                                                {option}
-                                            </option>
-                                        ))}
-                                    </Field>
-                                    <ErrorMessage name="urgency" component="div" className="text-danger mt-1" />
+                                    <div className={submitCount && errors.urgency ? "has-error" : submitCount ? "has-success" : ""}>
+                                        <label htmlFor="urgency">Urgency</label>
+                                        <Field as="select" name="urgency" id="urgency" className="form-select w-full">
+                                            <option value="">Select Urgency Type</option>
+                                            {urgency.map((option) => (
+                                                <option key={option} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
+                                        </Field>
+                                        <ErrorMessage name="urgency" component="div" className="text-danger mt-1" />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Services</h5>
-                            <FieldArray name="services">
-                                {({ push, remove }) => (
-                                    <>
-                                        {values.services.map((service, index) => {
-                                            const selectedMachineType = service.machineType;
-                                            const isOthersSelected = selectedMachineType === "Others" ||
-                                                (!machineOptions.map(o => o.value).includes(selectedMachineType) && selectedMachineType);
+                            <div className="panel">
+                                <h5 className="font-semibold text-lg mb-4">Services</h5>
+                                <FieldArray name="services">
+                                    {({ push, remove }) => (
+                                        <>
+                                            {values.services.map((service, index) => {
+                                                const selectedMachineType = service.machineType;
+                                                const isOthersSelected = selectedMachineType === "Others" ||
+                                                    (!machineOptions.map(o => o.value).includes(selectedMachineType) && selectedMachineType);
 
-                                            const selectedLeadOwner = values.leadOwner;
-                                            const selectedDealer = dealers.find(d => String(d._id) === String(selectedLeadOwner));
-                                            const selectedManufacturer = manufacturer.find(m => String(m._id) === String(selectedLeadOwner));
+                                                const selectedLeadOwner = values.leadOwner;
+                                                const selectedDealer = dealers.find(d => String(d._id) === String(selectedLeadOwner));
+                                                const selectedManufacturer = manufacturer.find(m => String(m._id) === String(selectedLeadOwner));
 
-                                            const allowedTests = (selectedDealer?.qaTests || selectedManufacturer?.qaTests || []).map((t: any) => t.testName);
-                                            const isRestricted = !!(selectedDealer || selectedManufacturer);
+                                                const allowedTests = (selectedDealer?.qaTests || selectedManufacturer?.qaTests || []).map((t: any) => t.testName);
+                                                const isRestricted = !!(selectedDealer || selectedManufacturer);
 
-                                            return (
-                                                <div key={index} className="border border-gray-200 rounded-lg p-5 mb-6 relative">
-                                                    {values.services.length > 1 && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => remove(index)}
-                                                            className="absolute top-2 right-2 text-red-500 hover:text-red-700 z-10"
-                                                        >
-                                                            <AnimatedTrashIcon onClick={() => remove(index)} />
-                                                        </button>
-                                                    )}
-
-                                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                                                        {/* Machine Type Dropdown */}
-                                                        <div className="md:col-span-3">
-                                                            <label className="text-sm font-semibold text-gray-700">Machine Type</label>
-                                                            <Field
-                                                                as="select"
-                                                                name={`services.${index}.machineType`}
-                                                                className="form-select w-full"
-                                                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                                                                    const value = e.target.value;
-                                                                    if (value !== "Others") {
-                                                                        setFieldValue(`services.${index}.machineType`, value);
-                                                                        setFieldValue(`services.${index}.fromOthers`, false);
-                                                                    } else {
-                                                                        // User selected "Others" → keep "Others" temporarily, but allow typing
-                                                                        setFieldValue(`services.${index}.machineType`, "Others");
-                                                                        setFieldValue(`services.${index}.fromOthers`, true);
-                                                                    }
-                                                                }}
+                                                return (
+                                                    <div key={index} className="border border-gray-200 rounded-lg p-5 mb-6 relative">
+                                                        {values.services.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => remove(index)}
+                                                                className="absolute top-2 right-2 text-red-500 hover:text-red-700 z-10"
                                                             >
-                                                                <option value="">Select Machine Type</option>
-                                                                {machineOptions.map((option) => {
-                                                                    const isDisabled = isRestricted &&
-                                                                        option.value !== "" &&
-                                                                        option.value !== "Others" &&
-                                                                        !allowedTests.includes(option.value);
+                                                                <AnimatedTrashIcon onClick={() => remove(index)} />
+                                                            </button>
+                                                        )}
 
-                                                                    return (
-                                                                        <option key={option.value} value={option.value} disabled={isDisabled}>
-                                                                            {option.label}
-                                                                        </option>
-                                                                    );
-                                                                })}
-                                                            </Field>
-                                                            <ErrorMessage
-                                                                name={`services.${index}.machineType`}
-                                                                component="div"
-                                                                className="text-red-500 text-sm mt-1"
-                                                            />
-                                                        </div>
-
-                                                        {/* Show custom input if "Others" is selected OR user has typed a custom value */}
-                                                        {isOthersSelected && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                                            {/* Machine Type Dropdown */}
                                                             <div className="md:col-span-3">
-                                                                <label className="text-sm font-semibold text-gray-700">
-                                                                    Specify Other Machine Type <span className="text-red-500">*</span>
-                                                                </label>
+                                                                <label className="text-sm font-semibold text-gray-700">Machine Type</label>
                                                                 <Field
-                                                                    type="text"
-                                                                    name={`services.${index}.machineType`}  // ← Important: bind directly to machineType!
-                                                                    placeholder="e.g. LINAC, Brachytherapy, etc."
-                                                                    className="form-input w-full mt-1"
-                                                                    value={selectedMachineType === "Others" ? "" : selectedMachineType}
-                                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                                                        const customValue = e.target.value.trim();
-                                                                        setFieldValue(`services.${index}.machineType`, customValue || "Others");
-                                                                        setFieldValue(`services.${index}.fromOthers`, true);
+                                                                    as="select"
+                                                                    name={`services.${index}.machineType`}
+                                                                    className="form-select w-full"
+                                                                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                                                                        const value = e.target.value;
+                                                                        if (value !== "Others") {
+                                                                            setFieldValue(`services.${index}.machineType`, value);
+                                                                            setFieldValue(`services.${index}.fromOthers`, false);
+                                                                        } else {
+                                                                            // User selected "Others" → keep "Others" temporarily, but allow typing
+                                                                            setFieldValue(`services.${index}.machineType`, "Others");
+                                                                            setFieldValue(`services.${index}.fromOthers`, true);
+                                                                        }
                                                                     }}
-                                                                />
+                                                                >
+                                                                    <option value="">Select Machine Type</option>
+                                                                    {machineOptions.map((option) => {
+                                                                        const isDisabled = isRestricted &&
+                                                                            option.value !== "" &&
+                                                                            option.value !== "Others" &&
+                                                                            !allowedTests.includes(option.value);
+
+                                                                        return (
+                                                                            <option key={option.value} value={option.value} disabled={isDisabled}>
+                                                                                {option.label}
+                                                                            </option>
+                                                                        );
+                                                                    })}
+                                                                </Field>
                                                                 <ErrorMessage
                                                                     name={`services.${index}.machineType`}
                                                                     component="div"
                                                                     className="text-red-500 text-sm mt-1"
                                                                 />
                                                             </div>
-                                                        )}
 
-                                                        {/* Quantity */}
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-sm font-semibold text-gray-700">Quantity</label>
-                                                            <Field
-                                                                type="number"
-                                                                name={`services.${index}.quantity`}
-                                                                placeholder="Qty"
-                                                                min="1"
-                                                                className="form-input w-full"
-                                                            />
-                                                            <ErrorMessage name={`services.${index}.quantity`} component="div" className="text-red-500 text-sm" />
-                                                        </div>
+                                                            {/* Show custom input if "Others" is selected OR user has typed a custom value */}
+                                                            {isOthersSelected && (
+                                                                <div className="md:col-span-3">
+                                                                    <label className="text-sm font-semibold text-gray-700">
+                                                                        Specify Other Machine Type <span className="text-red-500">*</span>
+                                                                    </label>
+                                                                    <Field
+                                                                        type="text"
+                                                                        name={`services.${index}.machineType`}  // ← Important: bind directly to machineType!
+                                                                        placeholder="e.g. LINAC, Brachytherapy, etc."
+                                                                        className="form-input w-full mt-1"
+                                                                        value={selectedMachineType === "Others" ? "" : selectedMachineType}
+                                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                                            const customValue = e.target.value.trim();
+                                                                            setFieldValue(`services.${index}.machineType`, customValue || "Others");
+                                                                            setFieldValue(`services.${index}.fromOthers`, true);
+                                                                        }}
+                                                                    />
+                                                                    <ErrorMessage
+                                                                        name={`services.${index}.machineType`}
+                                                                        component="div"
+                                                                        className="text-red-500 text-sm mt-1"
+                                                                    />
+                                                                </div>
+                                                            )}
 
-                                                        {/* Equipment No. */}
-                                                        <div className="md:col-span-2">
-                                                            <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
-                                                            <Field
-                                                                type="text"
-                                                                name={`services.${index}.equipmentNo`}
-                                                                placeholder="Enter ID"
-                                                                className="form-input w-full"
-                                                            />
-                                                        </div>
-
-                                                        {/* Work Type */}
-                                                        <div className="md:col-span-3">
-                                                            <label className="text-sm font-semibold text-gray-700">Type Of Work</label>
-                                                            <MultiSelectField name={`services.${index}.workType`} options={workTypeOptions} />
-                                                        </div>
-
-                                                        {/* Machine Model */}
-                                                        <div className="md:col-span-3">
-                                                            <label className="text-sm font-semibold text-gray-700">Machine Model</label>
-                                                            <Field
-                                                                type="text"
-                                                                name={`services.${index}.machineModel`}
-                                                                placeholder="Enter Model"
-                                                                className="form-input w-full"
-                                                            />
-                                                        </div>
-
-                                                        {/* Party Code/Sys ID - MANDATORY */}
-                                                        <div className="md:col-span-3">
-                                                            <label className="text-sm font-semibold text-gray-700">Party Code/Sys ID <span className="text-red-500">*</span></label>
-                                                            <Field
-                                                                type="text"
-                                                                name={`services.${index}.partyCodeOrSysId`}
-                                                                placeholder="Enter Party Code/Sys ID"
-                                                                className="form-input w-full"
-                                                            />
-                                                            <ErrorMessage name={`services.${index}.partyCodeOrSysId`} component="div" className="text-red-500 text-sm" />
-                                                        </div>
-
-                                                        {/* PROC NO/PO NO - OPTIONAL */}
-                                                        <div className="md:col-span-3">
-                                                            <label className="text-sm font-semibold text-gray-700">PROC NO/PO NO</label>
-                                                            <Field
-                                                                type="text"
-                                                                name={`services.${index}.procNoOrPoNo`}
-                                                                placeholder="Enter PROC NO/PO NO"
-                                                                className="form-input w-full"
-                                                            />
-                                                        </div>
-
-                                                        {/* PROC Expiry Date - OPTIONAL */}
-                                                        <div className="md:col-span-3">
-                                                            <label className="text-sm font-semibold text-gray-700">PROC Expiry Date</label>
-                                                            <Field
-                                                                name={`services.${index}.procExpiryDate`}
-                                                                type="date"
-                                                                className="form-input w-full"
-                                                                min={new Date().toISOString().split("T")[0]}
-                                                            />
-                                                        </div>
-
-                                                        {/* Work Order Copy - OPTIONAL */}
-                                                        <div className="md:col-span-3">
-                                                            <label className="text-sm font-semibold text-gray-700">Work Order Copy</label>
-                                                            <input
-                                                                type="file"
-                                                                className="form-input w-full"
-                                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                                                    setFieldValue(`services.${index}.workOrderCopy`, e.currentTarget.files?.[0] || null);
-                                                                }}
-                                                            />
-                                                        </div>
-
-                                                        {/* Price - Visible only for employee leads */}
-                                                        {(employees.some(emp => emp._id === values.leadOwner)) && (
-                                                            <div className="md:col-span-3">
-                                                                <label className="text-sm font-semibold text-gray-700">
-                                                                    Price <span className="text-red-500">*</span>
-                                                                </label>
+                                                            {/* Quantity */}
+                                                            <div className="md:col-span-2">
+                                                                <label className="text-sm font-semibold text-gray-700">Quantity</label>
                                                                 <Field
                                                                     type="number"
-                                                                    name={`services.${index}.price`}
-                                                                    placeholder="Enter Price"
+                                                                    name={`services.${index}.quantity`}
+                                                                    placeholder="Qty"
+                                                                    min="1"
                                                                     className="form-input w-full"
                                                                 />
-                                                                <ErrorMessage name={`services.${index}.price`} component="div" className="text-red-500 text-sm mt-1" />
+                                                                <ErrorMessage name={`services.${index}.quantity`} component="div" className="text-red-500 text-sm" />
                                                             </div>
-                                                        )}
+
+                                                            {/* Equipment No. */}
+                                                            <div className="md:col-span-2">
+                                                                <label className="text-sm font-semibold text-gray-700">Equipment ID/Serial No.</label>
+                                                                <Field
+                                                                    type="text"
+                                                                    name={`services.${index}.equipmentNo`}
+                                                                    placeholder="Enter ID"
+                                                                    className="form-input w-full"
+                                                                />
+                                                            </div>
+
+                                                            {/* Work Type */}
+                                                            <div className="md:col-span-3">
+                                                                <label className="text-sm font-semibold text-gray-700">Type Of Work</label>
+                                                                <MultiSelectField name={`services.${index}.workType`} options={workTypeOptions} />
+                                                            </div>
+
+                                                            {/* Machine Model */}
+                                                            <div className="md:col-span-3">
+                                                                <label className="text-sm font-semibold text-gray-700">Machine Model</label>
+                                                                <Field
+                                                                    type="text"
+                                                                    name={`services.${index}.machineModel`}
+                                                                    placeholder="Enter Model"
+                                                                    className="form-input w-full"
+                                                                />
+                                                            </div>
+
+                                                            {/* Party Code/Sys ID - MANDATORY */}
+                                                            <div className="md:col-span-3">
+                                                                <label className="text-sm font-semibold text-gray-700">Party Code/Sys ID <span className="text-red-500">*</span></label>
+                                                                <Field
+                                                                    type="text"
+                                                                    name={`services.${index}.partyCodeOrSysId`}
+                                                                    placeholder="Enter Party Code/Sys ID"
+                                                                    className="form-input w-full"
+                                                                />
+                                                                <ErrorMessage name={`services.${index}.partyCodeOrSysId`} component="div" className="text-red-500 text-sm" />
+                                                            </div>
+
+                                                            {/* PROC NO/PO NO - OPTIONAL */}
+                                                            <div className="md:col-span-3">
+                                                                <label className="text-sm font-semibold text-gray-700">PROC NO/PO NO</label>
+                                                                <Field
+                                                                    type="text"
+                                                                    name={`services.${index}.procNoOrPoNo`}
+                                                                    placeholder="Enter PROC NO/PO NO"
+                                                                    className="form-input w-full"
+                                                                />
+                                                            </div>
+
+                                                            {/* PROC Expiry Date - OPTIONAL */}
+                                                            <div className="md:col-span-3">
+                                                                <label className="text-sm font-semibold text-gray-700">PROC Expiry Date</label>
+                                                                <Field
+                                                                    name={`services.${index}.procExpiryDate`}
+                                                                    type="date"
+                                                                    className="form-input w-full"
+                                                                    min={new Date().toISOString().split("T")[0]}
+                                                                />
+                                                            </div>
+
+                                                            {/* Work Order Copy - OPTIONAL */}
+                                                            <div className="md:col-span-3">
+                                                                <label className="text-sm font-semibold text-gray-700">Work Order Copy</label>
+                                                                <input
+                                                                    type="file"
+                                                                    accept=".pdf"
+                                                                    className="form-input w-full"
+                                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                                        const file = e.currentTarget.files?.[0];
+                                                                        if (file && file.size >= 6 * 1024 * 1024) {
+                                                                            showMessage("File size must be less than 6 MB", "error");
+                                                                            e.target.value = "";
+                                                                            setFieldValue(`services.${index}.workOrderCopy`, null);
+                                                                            return;
+                                                                        }
+                                                                        setFieldValue(`services.${index}.workOrderCopy`, file || null);
+                                                                    }}
+                                                                />
+                                                            </div>
+
+                                                            {/* Price - Visible only for employee leads */}
+                                                            {(employees.some(emp => emp._id === values.leadOwner)) && (
+                                                                <div className="md:col-span-3">
+                                                                    <label className="text-sm font-semibold text-gray-700">
+                                                                        Price <span className="text-red-500">*</span>
+                                                                    </label>
+                                                                    <Field
+                                                                        type="number"
+                                                                        name={`services.${index}.price`}
+                                                                        placeholder="Enter Price"
+                                                                        className="form-input w-full"
+                                                                    />
+                                                                    <ErrorMessage name={`services.${index}.price`} component="div" className="text-red-500 text-sm mt-1" />
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
 
-                                        {/* Add button */}
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                push({
-                                                    machineType: "",
-                                                    fromOthers: false,
-                                                    equipmentNo: "",
-                                                    workType: [],
-                                                    machineModel: "",
-                                                    quantity: "",
-                                                    workOrderCopy: null,
-                                                    partyCodeOrSysId: "",
-                                                    procNoOrPoNo: "",
-                                                    procExpiryDate: "",
-                                                    price: "" // ✅ added price
-                                                })
-                                            }
-                                            className="btn btn-primary w-full sm:w-auto"
-                                        >
-                                            + Add Another Machine
-                                        </button>
-
-                                        {errors.services && typeof errors.services === "string" && (
-                                            <div className="text-red-500 text-sm mt-2">{errors.services}</div>
-                                        )}
-                                    </>
-                                )}
-                            </FieldArray>
-                        </div>
-                        <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Additional Services</h5>
-                            {serviceOptions.map((service) => (
-                                <div
-                                    key={service}
-                                    className="grid grid-cols-1 sm:grid-cols-3 items-start gap-4 py-2 border-b border-gray-200"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={!!values.additionalServices[service]}
-                                            onChange={() => {
-                                                if (values.additionalServices[service]) {
-                                                    setFieldValue(`additionalServices.${service}`, null)
-                                                } else {
-                                                    setFieldValue(`additionalServices.${service}`, { description: "", price: "" })
+                                            {/* Add button */}
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    push({
+                                                        machineType: "",
+                                                        fromOthers: false,
+                                                        equipmentNo: "",
+                                                        workType: [],
+                                                        machineModel: "",
+                                                        quantity: "",
+                                                        workOrderCopy: null,
+                                                        partyCodeOrSysId: "",
+                                                        procNoOrPoNo: "",
+                                                        procExpiryDate: "",
+                                                        price: "" // ✅ added price
+                                                    })
                                                 }
-                                            }}
-                                            className={`form-checkbox h-5 w-5 transition-colors duration-200 ${values.additionalServices[service] ? "text-blue-600" : "text-gray-400"}`}
-                                        />
-                                        <span>{service}</span>
-                                    </div>
-                                    {values.additionalServices[service] && (
-                                        <div className="sm:col-span-2 mt-2 sm:mt-0 flex gap-4">
-                                            <div className="flex-1">
-                                                <Field
-                                                    type="text"
-                                                    name={`additionalServices.${service}.description`}
-                                                    placeholder="Enter info..."
-                                                    className="form-input w-full"
-                                                />
-                                            </div>
-                                            {(employees.some(emp => emp._id === values.leadOwner) || dealers.some(d => d._id === values.leadOwner) || manufacturer.some(m => m._id === values.leadOwner)) && (
-                                                <div className="w-1/3">
+                                                className="btn btn-primary w-full sm:w-auto"
+                                            >
+                                                + Add Another Machine
+                                            </button>
+
+                                            {errors.services && typeof errors.services === "string" && (
+                                                <div className="text-red-500 text-sm mt-2">{errors.services}</div>
+                                            )}
+                                        </>
+                                    )}
+                                </FieldArray>
+                            </div>
+                            <div className="panel">
+                                <h5 className="font-semibold text-lg mb-4">Additional Services</h5>
+                                {serviceOptions.map((service) => (
+                                    <div
+                                        key={service}
+                                        className="grid grid-cols-1 sm:grid-cols-3 items-start gap-4 py-2 border-b border-gray-200"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={!!values.additionalServices[service]}
+                                                onChange={() => {
+                                                    if (values.additionalServices[service]) {
+                                                        setFieldValue(`additionalServices.${service}`, null)
+                                                    } else {
+                                                        setFieldValue(`additionalServices.${service}`, { description: "", price: "" })
+                                                    }
+                                                }}
+                                                className={`form-checkbox h-5 w-5 transition-colors duration-200 ${values.additionalServices[service] ? "text-blue-600" : "text-gray-400"}`}
+                                            />
+                                            <span>{service}</span>
+                                        </div>
+                                        {values.additionalServices[service] && (
+                                            <div className="sm:col-span-2 mt-2 sm:mt-0 flex gap-4">
+                                                <div className="flex-1">
                                                     <Field
-                                                        type="number"
-                                                        name={`additionalServices.${service}.price`}
-                                                        placeholder="Price"
+                                                        type="text"
+                                                        name={`additionalServices.${service}.description`}
+                                                        placeholder="Enter info..."
                                                         className="form-input w-full"
                                                     />
-                                                    <ErrorMessage name={`additionalServices.${service}.price`} component="div" className="text-red-500 text-sm mt-1" />
                                                 </div>
-                                            )}
-                                        </div>
-                                    )}
+                                                {(employees.some(emp => emp._id === values.leadOwner) || dealers.some(d => d._id === values.leadOwner) || manufacturer.some(m => m._id === values.leadOwner)) && (
+                                                    <div className="w-1/3">
+                                                        <Field
+                                                            type="number"
+                                                            name={`additionalServices.${service}.price`}
+                                                            placeholder="Price"
+                                                            className="form-input w-full"
+                                                        />
+                                                        <ErrorMessage name={`additionalServices.${service}.price`} component="div" className="text-red-500 text-sm mt-1" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="panel">
+                                <h5 className="font-semibold text-lg mb-4">Special Instructions</h5>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <Field
+                                        name="instruction"
+                                        type="text"
+                                        id="instruction"
+                                        placeholder="Enter special instruction"
+                                        className="form-input"
+                                    />
                                 </div>
-                            ))}
-                        </div>
-                        <div className="panel">
-                            <h5 className="font-semibold text-lg mb-4">Special Instructions</h5>
-                            <div className="grid grid-cols-1 gap-4">
-                                <Field
-                                    name="instruction"
-                                    type="text"
-                                    id="instruction"
-                                    placeholder="Enter special instruction"
-                                    className="form-input"
-                                />
+                                {submitCount && errors.instruction ? (
+                                    <p className="text-red-500 text-sm mt-1">{errors.instruction}</p>
+                                ) : null}
                             </div>
-                            {submitCount && errors.instruction ? (
-                                <p className="text-red-500 text-sm mt-1">{errors.instruction}</p>
-                            ) : null}
-                        </div>
-                        {Object.keys(errors).length > 0 && submitCount > 0 && (
-                            <div className="panel bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                                <h5 className="text-red-800 dark:text-red-400 font-bold mb-2">Please fix the following errors to submit:</h5>
-                                <ul className="list-disc list-inside text-red-700 dark:text-red-300 text-sm space-y-1">
-                                    {Object.entries(errors).map(([key, value]) => {
-                                        if (typeof value === 'string') return <li key={key}>{key}: {value}</li>;
-                                        if (Array.isArray(value)) return <li key={key}>{key}: Fix errors in items</li>;
-                                        if (typeof value === 'object') return <li key={key}>{key}: Check nested fields</li>;
-                                        return null;
-                                    })}
-                                </ul>
-                            </div>
-                        )}
+                            {Object.keys(errors).length > 0 && submitCount > 0 && (
+                                <div className="panel bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                                    <h5 className="text-red-800 dark:text-red-400 font-bold mb-2">Please fix the following errors to submit:</h5>
+                                    <ul className="list-disc list-inside text-red-700 dark:text-red-300 text-sm space-y-1">
+                                        {Object.entries(errors).map(([key, value]) => {
+                                            if (typeof value === 'string') return <li key={key}>{key}: {value}</li>;
+                                            if (Array.isArray(value)) return <li key={key}>{key}: Fix errors in items</li>;
+                                            if (typeof value === 'object') return <li key={key}>{key}: Check nested fields</li>;
+                                            return null;
+                                        })}
+                                    </ul>
+                                </div>
+                            )}
 
-                        <div className="w-full mb-6 flex justify-end">
-                            <button type="submit" className="btn btn-success mt-4" disabled={isSubmitting}>
-                                {isSubmitting ? "Creating Order..." : "Create Order"}
-                            </button>
-                        </div>
-                    </Form>
+                            <div className="w-full mb-6 flex justify-end">
+                                <button type="submit" className="btn btn-success mt-4" disabled={isSubmitting}>
+                                    {isSubmitting ? "Creating Order..." : "Create Order"}
+                                </button>
+                            </div>
+                        </Form>
                     )
                 }}
             </Formik>
