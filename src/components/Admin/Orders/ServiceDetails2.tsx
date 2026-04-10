@@ -36,6 +36,7 @@ import {
     updateServicePrice,
     getAllActiveEmployees,
     getAllManufacturer,
+    getAllDealers,
 } from "../../../api"
 import { useNavigate } from "react-router-dom";
 import AddMachineModal from "./AddMachineModal";
@@ -258,6 +259,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
     const [employees, setEmployees] = useState<any[]>([])
     const [manufacturers, setManufacturers] = useState<any[]>([])
+    const [dealers, setDealers] = useState<any[]>([])
     const [leadOwnerId, setLeadOwnerId] = useState<string | null>(null)
     const [customerFeedback, setCustomerFeedback] = useState<string>("")
     const [additionalServices, setAdditionalServices] = useState<AdditionalServiceItem[]>([])
@@ -306,11 +308,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const fetchDropdownData = async () => {
         try {
             setLoadingDropdowns(true)
-            const [techniciansData, staffData, employeesData, manufacturersData] = await Promise.all([
+            const [techniciansData, staffData, employeesData, manufacturersData, dealersRes] = await Promise.all([
                 getActiveTechnicians(),
                 getActiveStaffs(),
                 getAllActiveEmployees(),
-                getAllManufacturer()
+                getAllManufacturer(),
+                getAllDealers().catch(() => null),
             ])
 
             setTechnicians(techniciansData.data || [])
@@ -323,11 +326,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                         ? manufacturersData.data
                         : [];
             setManufacturers(manufacturerList)
+            setDealers(Array.isArray(dealersRes?.data?.dealers) ? dealersRes.data.dealers : [])
         } catch (error) {
             console.error("Error fetching dropdown data:", error)
             setTechnicians([])
             setOfficeStaff([])
             setManufacturers([])
+            setDealers([])
         } finally {
             setLoadingDropdowns(false)
         }
@@ -3300,7 +3305,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 onClose={() => setAddMachineModalOpen(false)}
                 orderId={orderId || ""}
                 onSuccess={fetchMachineData}
-                isEmployeeLead={employees.some(emp => emp._id === leadOwnerId)}
+                requireMachinePrice={(() => {
+                    if (!leadOwnerId) return false
+                    const id = String(leadOwnerId)
+                    const isEmployee = employees.some((emp: any) => String(emp._id) === id)
+                    const isManufacturer = manufacturers.some((m: any) => String(m._id) === id)
+                    const isDealer = dealers.some((d: any) => String(d._id) === id)
+                    return isEmployee || isManufacturer || isDealer
+                })()}
             />
         </div>
     )

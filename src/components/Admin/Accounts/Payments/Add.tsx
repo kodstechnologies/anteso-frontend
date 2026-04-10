@@ -244,20 +244,27 @@ const Add = () => {
                         const isDealerOrManufacturer =
                           pricingType === "dealer" || pricingType === "manufacturer";
 
+                        let fromBreakdown = 0;
                         if (
                           isDealerOrManufacturer &&
                           selectedOption.hasPricingBreakdown &&
                           selectedOption.pricingBreakdown?.services?.length > 0
                         ) {
-                          suggestedTotal = calculateOrderItemsBreakdownTotal(selectedOption, manufacturers);
-                          showMessage(`Order items breakdown total applied: ₹${suggestedTotal}`, "info");
-                        } else {
-                          try {
-                            const res = await getTotalAmount(selectedSrf);
-                            suggestedTotal = parseFloat(Number(res.data.totalAmount || 0).toFixed(2));
-                          } catch (err) {
-                            showMessage("Could not fetch total amount", "error");
+                          fromBreakdown = calculateOrderItemsBreakdownTotal(selectedOption, manufacturers);
+                        }
+
+                        try {
+                          const res = await getTotalAmount(selectedSrf);
+                          const apiTotal = parseFloat(Number(res.data.totalAmount || 0).toFixed(2));
+                          suggestedTotal = isDealerOrManufacturer
+                            ? Math.max(fromBreakdown, apiTotal)
+                            : apiTotal;
+                          if (isDealerOrManufacturer && suggestedTotal > 0) {
+                            showMessage(`Total amount applied: ₹${suggestedTotal}`, "info");
                           }
+                        } catch (err) {
+                          showMessage("Could not fetch total amount", "error");
+                          suggestedTotal = isDealerOrManufacturer ? fromBreakdown : 0;
                         }
 
                         setFieldValue("totalAmount", suggestedTotal || 0);

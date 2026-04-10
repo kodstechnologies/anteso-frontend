@@ -53,7 +53,8 @@ interface AddMachineModalProps {
     onClose: () => void;
     orderId: string;
     onSuccess: () => void;
-    isEmployeeLead?: boolean;
+    /** When true, show Price field and require a valid numeric price (employee / dealer / manufacturer orders). */
+    requireMachinePrice?: boolean;
 }
 
 export default function AddMachineModal({
@@ -61,7 +62,7 @@ export default function AddMachineModal({
     onClose,
     orderId,
     onSuccess,
-    isEmployeeLead = false
+    requireMachinePrice = false,
 }: AddMachineModalProps) {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -159,8 +160,7 @@ export default function AddMachineModal({
             return;
         }
 
-        // Validate price (required only for employee leads)
-        if (isEmployeeLead && (!formData.price || isNaN(Number(formData.price)))) {
+        if (requireMachinePrice && (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) < 0)) {
             showMessage("Price is required", "error");
             return;
         }
@@ -356,8 +356,7 @@ export default function AddMachineModal({
                         </div>
                     </div>
 
-                    {/* Unified Price Field - only for employee leads */}
-                    {isEmployeeLead && (
+                    {requireMachinePrice && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Price *
