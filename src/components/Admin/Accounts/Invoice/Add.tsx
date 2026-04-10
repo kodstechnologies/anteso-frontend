@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Field, Form, Formik, ErrorMessage, FieldArray, useFormikContext } from 'formik';
+import { Field, Form, Formik, ErrorMessage, FieldArray, useFormikContext, FieldProps } from 'formik';
 import * as Yup from 'yup';
 import { Link, useNavigate } from 'react-router-dom';
+import Select from 'react-select';
 import { getAllSrfNumber, getAllDetails, createInvoice, getDealerOrders, getAllManufacturer } from '../../../../api';
 import { showMessage } from '../../../../components/common/ShowMessage';
 
@@ -10,6 +11,8 @@ interface OptionType {
   value: string;
   label: string;
   category?: string;
+  leadType?: string;
+  orderId?: string;
 }
 
 interface ServiceItem {
@@ -65,6 +68,50 @@ interface FormValues {
 
 // Define tax keys as a union type
 type TaxType = 'cgst' | 'sgst' | 'igst';
+
+const workTypeOptions: OptionType[] = [
+  { value: 'Quality Assurance Test', label: 'Quality Assurance Test' },
+  { value: 'License for Operation', label: 'License for Operation' },
+  { value: 'Decommissioning', label: 'Decommissioning' },
+  { value: 'Decommissioning and Recommissioning', label: 'Decommissioning and Recommissioning' },
+];
+
+const WorkTypeMultiSelectField: React.FC<{ name: string }> = ({ name }) => (
+  <Field name={name}>
+    {({ field, form }: FieldProps) => {
+      const selectedValues = String(field.value || '')
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean);
+      return (
+        <Select
+          isMulti
+          options={workTypeOptions}
+          className="w-full"
+          classNamePrefix="select"
+          value={workTypeOptions.filter((option) => selectedValues.includes(option.value))}
+          onChange={(selectedOptions) => {
+            const values = (selectedOptions || []).map((option) => option.value);
+            form.setFieldValue(name, values.join(', '));
+          }}
+          onBlur={() => form.setFieldTouched(name, true)}
+          menuPortalTarget={document.body}
+          styles={{
+            control: (base, state) => ({
+              ...base,
+              minHeight: '38px',
+              fontSize: '0.875rem',
+              padding: '0px 4px',
+              borderColor: state.isFocused ? '#3b82f6' : base.borderColor,
+              boxShadow: state.isFocused ? '0 0 0 0px #3b82f6' : base.boxShadow,
+            }),
+            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+          }}
+        />
+      );
+    }}
+  </Field>
+);
 
 // SRF Machine options
 const machineOptions: OptionType[] = [
@@ -335,32 +382,47 @@ const Add = () => {
         const customerRes = await getAllSrfNumber();
         // console.log("🚀 ~ fetchSrfNumbers ~ customerRes:", customerRes);
         if (customerRes?.data?.success) {
-          const customerOptions = customerRes.data.data.map((item: any) => ({
-            label: `${item.srfNumber} - ${item.name} (Customer)`,
-            value: item.srfNumber,
-            category: 'Customer',
-          }));
+          const customerData = Array.isArray(customerRes.data.data) ? customerRes.data.data : [];
+          const customerOptions = customerData
+            .filter((item: any) => {
+              const leadType = String(item?.leadType || '').trim().toLowerCase();
+              // Keep only customer entries from this API response.
+              return !leadType || leadType === 'customer';
+            })
+            .map((item: any) => ({
+              label: `${item.srfNumber} - ${item.name} (Customer)`,
+              value: item.srfNumber,
+              category: 'Customer',
+              orderId: item.orderId,
+            }));
           options = [...options, ...customerOptions];
-          customerRes.data.data.forEach((item: any) => {
-            map[item.srfNumber] = item.orderId;
+          customerOptions.forEach((item: any) => {
+            map[`Customer::${item.value}`] = item.orderId;
           });
         }
 
         // Dealer + Manufacturer orders (same API; leadType distinguishes)
         const dealerRes = await getDealerOrders();
         if (dealerRes?.success && Array.isArray(dealerRes.data)) {
-          const dmOptions = dealerRes.data.map((item: any) => {
-            const tag =
-              item.leadType === 'Manufacturer' ? '(Manufacturer)' : '(Dealer)';
-            return {
-              label: `${item.srfNumber} ${tag}`,
-              value: item.srfNumber,
-              category: 'Dealer/Manufacturer',
-            };
-          });
+          const dmOptions = dealerRes.data
+            .filter((item: any) => {
+              const leadType = String(item?.leadType || '').trim().toLowerCase();
+              return leadType === 'dealer' || leadType === 'manufacturer';
+            })
+            .map((item: any) => {
+              const leadType = String(item?.leadType || '').trim().toLowerCase();
+              const tag = leadType === 'manufacturer' ? '(Manufacturer)' : '(Dealer)';
+              return {
+                label: `${item.srfNumber} ${tag}`,
+                value: item.srfNumber,
+                category: 'Dealer/Manufacturer',
+                leadType: leadType === 'manufacturer' ? 'Manufacturer' : 'Dealer',
+                orderId: item._id,
+              };
+            });
           options = [...options, ...dmOptions];
-          dealerRes.data.forEach((item: any) => {
-            map[item.srfNumber] = item._id;
+          dmOptions.forEach((item: any) => {
+            map[`Dealer/Manufacturer::${item.value}`] = item.orderId;
           });
         }
 
@@ -475,7 +537,15 @@ const Add = () => {
           }
         }}
       >
-        {({ values, setFieldValue }) => (
+        {({ values, setFieldValue }) => {
+          const selectedSRF = srfOptions.find(
+            (opt) => opt.value === values.srfNumber && (!values.type || opt.category === values.type)
+          );
+          const isDealer = selectedSRF?.leadType === 'Dealer';
+          const isManufacturer = selectedSRF?.leadType === 'Manufacturer';
+          const dmHeading = isDealer ? "Dealer Details" : isManufacturer ? "Manufacturer Details" : "Dealer / Manufacturer Details";
+
+          return (
           <Form className="space-y-5">
             <AutoCalculateTotals />
 
@@ -517,7 +587,10 @@ const Add = () => {
                   onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
                     const selectedValue = e.target.value;
                     setFieldValue('srfNumber', selectedValue);
-                    const selectedOrderId = orderMap[selectedValue];
+                    const selectedOrderId = orderMap[`${values.type}::${selectedValue}`];
+                    const selectedOption = srfOptions.find(
+                      (opt) => opt.value === selectedValue && opt.category === values.type
+                    );
                     setOrderId(selectedOrderId || '');
 
                     if (selectedOrderId) {
@@ -634,9 +707,10 @@ const Add = () => {
                               : [];
 
                             // If lead owner is Manufacturer with fixed travel cost, keep it as separate travel fields.
-                            const selectedManufacturer = manufacturers.find(
-                              (m: any) => String(m._id) === String(details.leadOwner)
-                            );
+                            const selectedManufacturer =
+                              selectedOption?.leadType === 'Manufacturer'
+                                ? manufacturers.find((m: any) => String(m._id) === String(details.leadOwner))
+                                : null;
                             const fixedTravelCost =
                               selectedManufacturer?.cost != null &&
                               selectedManufacturer?.cost !== ''
@@ -720,14 +794,8 @@ const Add = () => {
                           </div>
 
                           <div className="md:col-span-2">
-                            <label className="block mb-1 font-medium">Description</label>
-                            <Field
-                              as="textarea"
-                              rows={4}
-                              name={`services[${index}].description`}
-                              className="form-input min-h-[6rem] resize-y"
-                              placeholder="Enter description"
-                            />
+                            <label className="block mb-1 font-medium">Work Type</label>
+                            <WorkTypeMultiSelectField name={`services[${index}].description`} />
                           </div>
 
                           <div>
@@ -903,7 +971,7 @@ const Add = () => {
             {/* Dealer/Manufacturer Section */}
             {values.type === 'Dealer/Manufacturer' && (
               <div className="panel">
-                <h5 className="font-semibold text-lg mb-4">Dealer / Manufacturer Details</h5>
+                <h5 className="font-semibold text-lg mb-4">{dmHeading}</h5>
                 <FieldArray name="dealerHospitals">
                   {({ push, remove }) => (
                     <>
@@ -952,27 +1020,31 @@ const Add = () => {
                               />
                             </div>
 
-                            <div>
-                              <label className="block mb-1 font-medium">Travel Cost Type</label>
-                              <Field
-                                name={`dealerHospitals[${index}].travelCostType`}
-                                type="text"
-                                className="form-input bg-gray-50"
-                                placeholder="-"
-                                readOnly
-                              />
-                            </div>
+                            {!isDealer && (
+                              <>
+                                <div>
+                                  <label className="block mb-1 font-medium">Travel Cost Type</label>
+                                  <Field
+                                    name={`dealerHospitals[${index}].travelCostType`}
+                                    type="text"
+                                    className="form-input bg-gray-50"
+                                    placeholder="-"
+                                    readOnly
+                                  />
+                                </div>
 
-                            <div>
-                              <label className="block mb-1 font-medium">Travel Cost Price</label>
-                              <Field
-                                name={`dealerHospitals[${index}].travelCostPrice`}
-                                type="number"
-                                className="form-input bg-gray-50"
-                                placeholder="0"
-                                readOnly
-                              />
-                            </div>
+                                <div>
+                                  <label className="block mb-1 font-medium">Travel Cost Price</label>
+                                  <Field
+                                    name={`dealerHospitals[${index}].travelCostPrice`}
+                                    type="number"
+                                    className="form-input bg-gray-50"
+                                    placeholder="0"
+                                    readOnly
+                                  />
+                                </div>
+                              </>
+                            )}
                           </div>
 
                           {/* Nested Service Details */}
@@ -1005,13 +1077,9 @@ const Add = () => {
                                       </div>
 
                                       <div className="md:col-span-2">
-                                        <label className="block mb-1 font-medium">Description</label>
-                                        <Field
-                                          as="textarea"
-                                          rows={4}
+                                        <label className="block mb-1 font-medium">Work Type</label>
+                                        <WorkTypeMultiSelectField
                                           name={`dealerHospitals[${index}].services[${serviceIndex}].description`}
-                                          className="form-input min-h-[6rem] resize-y"
-                                          placeholder="Enter description"
                                         />
                                         <ErrorMessage
                                           name={`dealerHospitals[${index}].services[${serviceIndex}].description`}
@@ -1293,7 +1361,8 @@ const Add = () => {
               <Link to="/admin/invoice" className="btn btn-secondary">Cancel</Link>
             </div>
           </Form>
-        )}
+          );
+        }}
       </Formik>
     </div>
   );

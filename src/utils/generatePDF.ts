@@ -56,8 +56,8 @@ function applyHairlineBorders(root: HTMLElement): void {
     // Fix cells
     table.querySelectorAll('td, th').forEach((cell) => {
       const htmlCell = cell as HTMLElement;
-      // THE KEY FIX: force 1px border on every cell, no exceptions
-      htmlCell.style.border = '1px solid #000';
+      // THE KEY FIX: force thin grey border on every cell, no exceptions
+      htmlCell.style.border = '0.1px solid #666';
       htmlCell.style.boxSizing = 'border-box';
       htmlCell.style.verticalAlign = 'middle';
       htmlCell.style.borderRadius = '0';
@@ -171,16 +171,16 @@ function buildOnClone(elementId: string, contentWidthPx: number) {
         ht.style.setProperty('text-align', 'center', 'important');
         ht.style.setProperty('border-collapse', 'collapse', 'important');
         ht.style.setProperty('border-spacing', '0', 'important');
-        ht.style.setProperty('border', '1px solid #000', 'important');
+        ht.style.setProperty('border', '0.1px solid #666', 'important');
       });
       clonedElement.querySelectorAll('table td, table th').forEach((cell) => {
         const el = cell as HTMLElement;
         el.style.setProperty('text-align', 'center', 'important');
         el.style.setProperty('vertical-align', 'middle', 'important');
-        el.style.setProperty('border', '1px solid #000', 'important');
-        el.style.setProperty('border-width', '1px', 'important');
+        el.style.setProperty('border', '0.1px solid #666', 'important');
+        el.style.setProperty('border-width', '0.1px', 'important');
         el.style.setProperty('border-style', 'solid', 'important');
-        el.style.setProperty('border-color', '#000000', 'important');
+        el.style.setProperty('border-color', '#666666', 'important');
       });
       // Last section: flex column + min height so company footer sits at bottom of the final PDF page.
       clonedElement.querySelectorAll('.report-pdf-last-page-shell').forEach((el) => {
