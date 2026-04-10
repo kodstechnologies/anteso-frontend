@@ -614,15 +614,18 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
       </h2>
 
       <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
-        <table className="border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto' }}>
+        <table
+          className="border border-black text-xs print:text-[9px] print:min-w-full"
+          style={{ width: 'auto', textAlign: 'center', borderCollapse: 'collapse', borderWidth: 1, borderStyle: 'solid', borderColor: '#000' }}
+        >
           <thead className="bg-gray-200">
             <tr>
-              <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center print:text-[9px]">Sr. No.</th>
-              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-left w-72 print:text-[9px]">Parameters Used</th>
-              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32 print:text-[9px]">Specified Values</th>
-              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32 print:text-[9px]">Measured Values</th>
-              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-40 print:text-[9px]">Tolerance</th>
-              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-green-100 w-24 print:text-[9px]">Remarks</th>
+              <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center align-middle font-bold print:text-[9px]">Sr. No.</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold w-72 print:text-[9px]">Parameters Used</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold w-32 print:text-[9px]">Specified Values</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold w-32 print:text-[9px]">Measured Values</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold w-40 print:text-[9px]">Tolerance</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold bg-green-100 w-24 print:text-[9px]">Remarks</th>
             </tr>
           </thead>
           <tbody>
@@ -638,20 +641,20 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
               return (
                 <tr key={index}>
                   {row.isFirstRow && (
-                    <td rowSpan={row.rowSpan} className="border border-black px-3 py-3 print:px-2 print:py-1.5 text-center font-bold bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">
+                    <td rowSpan={row.rowSpan} className="border border-black px-3 py-3 print:px-2 print:py-1.5 text-center align-middle font-normal bg-transparent print:bg-transparent print:text-[9px] print:leading-tight">
                       {row.srNo}
                     </td>
                   )}
                   {row.isFirstRow && (
-                    <td rowSpan={row.rowSpan} className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-left font-medium leading-tight print:leading-tight bg-transparent print:bg-transparent print:text-[9px]">
+                    <td rowSpan={row.rowSpan} className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-normal leading-tight print:leading-tight bg-transparent print:bg-transparent print:text-[9px]">
                       {row.parameter}
                     </td>
                   )}
-                  <td className="border border-black px-4 py-3 text-center">{row.specified}</td>
+                  <td className="border border-black px-4 py-3 text-center align-middle font-normal">{row.specified}</td>
                   {shouldRenderMeasured && (
                     <td
                       {...(row.measuredRowSpan > 0 ? { rowSpan: row.measuredRowSpan } : {})}
-                      className="border border-black px-4 py-3 text-center font-semibold"
+                      className="border border-black px-4 py-3 text-center align-middle font-normal"
                     >
                       {row.measured}
                     </td>
@@ -659,12 +662,12 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
                   {shouldRenderTolerance && (
                     <td
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
-                      className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent"
+                      className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent"
                     >
                       {row.tolerance}
                     </td>
                   )}
-                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center print:text-[9px] print:leading-tight ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                  <td className={`border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle print:text-[9px] print:leading-tight ${row.remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                     }`}>
                     {row.remarks}
                   </td>

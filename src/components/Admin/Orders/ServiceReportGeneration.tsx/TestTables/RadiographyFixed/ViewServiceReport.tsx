@@ -71,6 +71,29 @@ const defaultNotes: Note[] = [
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
 ];
 
+/** Logos + SRF / ULR box — repeated at the top of each PDF page section. */
+const ReportPdfPageHeader: React.FC<{
+  report: ReportData;
+  formatDate: (dateStr: string) => string;
+}> = ({ report, formatDate }) => (
+  <div className="report-pdf-page-header flex justify-between items-center mb-4">
+    <img src={logoA} alt="NABL" className="h-28 print:h-20" />
+    <div className="text-right">
+      <table style={{ fontSize: '9px', borderCollapse: 'collapse', borderSpacing: '0', tableLayout: 'auto', width: 'auto', maxWidth: '200px', border: '1px solid #000' }}>
+        <tbody>
+          {[["SRF No.", report.srfNumber], ["SRF Date", formatDate(report.srfDate)], ["ULR No.", report.reportULRNumber || "N/A"]].map(([label, val]) => (
+            <tr key={String(label)}>
+              <th scope="row" style={{ padding: '1px 4px', fontSize: '9px', lineHeight: '1.2', whiteSpace: 'nowrap', fontWeight: 700, textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', boxSizing: 'border-box' }}>{label}</th>
+              <td style={{ padding: '1px 4px', fontSize: '9px', lineHeight: '1.2', whiteSpace: 'nowrap', fontWeight: 400, textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', boxSizing: 'border-box' }}>{val}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <img src={logo} alt="Logo" className="h-28 print:h-20" />
+  </div>
+);
+
 const ViewServiceReportRadiographyFixed: React.FC = () => {
   const [searchParams] = useSearchParams();
   const serviceId = searchParams.get("serviceId");
@@ -223,6 +246,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
   const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
 
   // Shared thin-border cell style
+  /** Table body / value cells: centered, normal weight (headers use <th> + CSS). */
   const cellStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
     padding: '4px 6px',
     fontSize: '11px',
@@ -231,6 +255,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     height: 'auto',
     borderColor: '#000',
     textAlign: 'center',
+    verticalAlign: 'middle',
+    fontWeight: 400,
     boxSizing: 'border-box',
     ...extra,
   });
@@ -242,6 +268,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     borderSpacing: '0',
     width: '100%',
     border: '1px solid #000',
+    textAlign: 'center',
   };
 
   return (
@@ -256,23 +283,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
       <div id="report-content" className="fixed-report-pdf">
         {/* PAGE 1 - MAIN REPORT */}
         <div className="bg-white px-8 py-2" style={{ pageBreakAfter: 'always' }}>
-          {/* Header */}
-          <div className="flex justify-between items-center mb-4">
-            <img src={logoA} alt="NABL" className="h-28 print:h-20" />
-            <div className="text-right">
-              <table style={{ fontSize: '9px', borderCollapse: 'collapse', borderSpacing: '0', tableLayout: 'auto', width: 'auto', maxWidth: '200px', border: '1px solid #000' }}>
-                <tbody>
-                  {[["SRF No.", report.srfNumber], ["SRF Date", formatDate(report.srfDate)], ["ULR No.", report.reportULRNumber || "N/A"]].map(([label, val]) => (
-                    <tr key={label}>
-                      <td style={{ padding: '1px 4px', fontSize: '9px', lineHeight: '1.2', whiteSpace: 'nowrap', fontWeight: 'bold', border: '1px solid #000', boxSizing: 'border-box' }}>{label}</td>
-                      <td style={{ padding: '1px 4px', fontSize: '9px', lineHeight: '1.2', whiteSpace: 'nowrap', border: '1px solid #000', boxSizing: 'border-box' }}>{val}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <img src={logo} alt="Logo" className="h-28 print:h-20" />
-          </div>
+          <ReportPdfPageHeader report={report} formatDate={formatDate} />
 
           <h1 className="text-center font-bold underline mb-2" style={{ fontSize: '15px' }}>
             QA TEST REPORT FOR RADIOGRAPHY (FIXED) X-RAY EQUIPMENT
@@ -286,8 +297,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             <h2 className="font-bold mb-1" style={{ fontSize: '12px' }}>1. Customer Details</h2>
             <table style={tableStyle} className="compact-table">
               <tbody>
-                <tr><td style={cellStyle({ fontWeight: 'bold', width: '50%', border: '1px solid #000' })}>Name of the testing site</td><td style={cellStyle({ border: '1px solid #000' })}>{report.customerName}</td></tr>
-                <tr><td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>Address of the testing site</td><td style={cellStyle({ border: '1px solid #000' })}>{report.address}</td></tr>
+                <tr><th scope="row" style={cellStyle({ width: '50%', border: '1px solid #000', fontWeight: 700 })}>Name of the testing site</th><td style={cellStyle({ border: '1px solid #000' })}>{report.customerName}</td></tr>
+                <tr><th scope="row" style={cellStyle({ border: '1px solid #000', fontWeight: 700 })}>Address of the testing site</th><td style={cellStyle({ border: '1px solid #000' })}>{report.address}</td></tr>
               </tbody>
             </table>
           </section>
@@ -297,8 +308,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             <h2 className="font-bold mb-1" style={{ fontSize: '12px' }}>2. Reference</h2>
             <table style={tableStyle} className="compact-table">
               <tbody>
-                <tr><td style={cellStyle({ fontWeight: 'bold', width: '50%', border: '1px solid #000' })}>SRF No. & Date</td><td style={cellStyle({ border: '1px solid #000' })}>{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
-                <tr><td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>Test Report No. & Issue Date</td><td style={cellStyle({ border: '1px solid #000' })}>{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+                <tr><th scope="row" style={cellStyle({ width: '50%', border: '1px solid #000', fontWeight: 700 })}>SRF No. & Date</th><td style={cellStyle({ border: '1px solid #000' })}>{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
+                <tr><th scope="row" style={cellStyle({ border: '1px solid #000', fontWeight: 700 })}>Test Report No. & Issue Date</th><td style={cellStyle({ border: '1px solid #000' })}>{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
               </tbody>
             </table>
           </section>
@@ -326,7 +337,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   ["Humidity (%)", report.humidity || "-"],
                 ].map(([label, value]) => (
                   <tr key={label}>
-                    <td style={cellStyle({ fontWeight: 'bold', width: '50%', border: '1px solid #000' })}>{label}</td>
+                    <th scope="row" style={cellStyle({ width: '50%', border: '1px solid #000', fontWeight: 700 })}>{label}</th>
                     <td style={cellStyle({ border: '1px solid #000' })}>{value}</td>
                   </tr>
                 ))}
@@ -341,7 +352,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
               <thead>
                 <tr>
                   {["Sl No.", "Nomenclature", "Make / Model", "Sr. No.", "Range", "Certificate No.", "Valid Till"].map((h, i) => (
-                    <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', width: ['6%','20%','16%','12%','12%','18%','16%'][i] })}>{h}</th>
+                    <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000', width: ['6%','20%','16%','12%','12%','18%','16%'][i] })}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -385,14 +396,19 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
         {/* PAGE 2 - SUMMARY TABLE */}
         <div className="bg-white px-8 py-2 test-section" style={{ pageBreakAfter: 'always' }}>
+          <ReportPdfPageHeader report={report} formatDate={formatDate} />
           <div style={{ width: '100%' }}>
             <MainTestTableForRadiographyFixed testData={testData} hasTimer={hasTimer} />
           </div>
         </div>
 
-        {/* PAGE 3+ - DETAILED TEST RESULTS */}
-        <div className="bg-white px-8 py-2 test-section">
-          <div style={{ width: '100%' }}>
+        {/* PAGE 3+ - DETAILED TEST RESULTS (footer pinned to bottom of last page in PDF via clone styles) */}
+        <div
+          className="bg-white px-8 py-2 test-section report-pdf-last-page-shell"
+          style={{ display: 'flex', flexDirection: 'column', width: '100%', boxSizing: 'border-box' }}
+        >
+          <ReportPdfPageHeader report={report} formatDate={formatDate} />
+          <div className="report-pdf-last-main" style={{ width: '100%', flex: '0 1 auto' }}>
             <h2 className="font-bold text-center underline mb-4" style={{ fontSize: '16px' }}>DETAILED TEST RESULTS</h2>
 
             {/* 1. Congruence */}
@@ -404,7 +420,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <p style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '2px' }}>Technique Factors:</p>
                     <table style={{ ...tableStyle, width: 'auto' }}>
                       <thead><tr>
-                        {["FFD (cm)", "kV", "mAs"].map(h => <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', padding: '1px 8px' })}>{h}</th>)}
+                        {["FFD (cm)", "kV", "mAs"].map(h => <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000', padding: '1px 8px' })}>{h}</th>)}
                       </tr></thead>
                       <tbody>
                         {testData.congruence.techniqueFactors.map((tf: any, idx: number) => (
@@ -422,7 +438,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   <table style={tableStyle} className="compact-table">
                     <thead><tr>
                       {["Dimension", "Observed Shift (cm)", "Edge Shift (cm)", "% FFD", "Tolerance (%)", "Remarks"].map(h => (
-                        <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{h}</th>
+                        <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000' })}>{h}</th>
                       ))}
                     </tr></thead>
                     <tbody>
@@ -451,7 +467,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '3px' }}>Operating parameters:</p>
                     <table style={{ ...tableStyle, width: 'auto' }}>
                       <thead><tr>
-                        {["FFD (cm)", "kV", "mAs"].map(h => <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', padding: '1px 8px' })}>{h}</th>)}
+                        {["FFD (cm)", "kV", "mAs"].map(h => <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000', padding: '1px 8px' })}>{h}</th>)}
                       </tr></thead>
                       <tbody><tr>
                         <td style={cellStyle({ border: '1px solid #000', padding: '1px 8px' })}>{testData.centralBeamAlignment.techniqueFactors.fcd || "-"}</td>
@@ -467,16 +483,16 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <table style={tableStyle} className="compact-table">
                       <tbody>
                         <tr>
-                          <td style={cellStyle({ fontWeight: 'bold', width: '50%', textAlign: 'left', border: '1px solid #000' })}>Observed tilt</td>
+                          <th scope="row" style={cellStyle({ width: '50%', border: '1px solid #000', fontWeight: 700 })}>Observed tilt</th>
                           <td style={cellStyle({ border: '1px solid #000' })}>
                             {testData.centralBeamAlignment.observedTilt.value || "-"}&deg;
                             {testData.centralBeamAlignment.observedTilt.remark && (
-                              <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>{testData.centralBeamAlignment.observedTilt.remark}</span>
+                              <span style={{ marginLeft: '8px' }}>{testData.centralBeamAlignment.observedTilt.remark}</span>
                             )}
                           </td>
                         </tr>
                         <tr>
-                          <td style={cellStyle({ fontWeight: 'bold', textAlign: 'left', border: '1px solid #000' })}>Tolerance: Central Beam Alignment</td>
+                          <th scope="row" style={cellStyle({ border: '1px solid #000', fontWeight: 700 })}>Tolerance: Central Beam Alignment</th>
                           <td style={cellStyle({ border: '1px solid #000' })}>
                             {testData.centralBeamAlignment.tolerance && typeof testData.centralBeamAlignment.tolerance === 'object'
                               ? `${testData.centralBeamAlignment.tolerance.operator || "<"} ${testData.centralBeamAlignment.tolerance.value || "1.5"}°`
@@ -496,18 +512,18 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 <h3 className="font-bold mb-2" style={{ fontSize: '12px' }}>3. Effective Focal Spot Size</h3>
                 <div style={{ marginBottom: '4px' }}>
                   <table style={{ ...tableStyle, width: 'auto' }}>
-                    <thead><tr><th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', padding: '1px 12px' })}>FFD (cm)</th></tr></thead>
+                    <thead><tr><th style={cellStyle({ fontWeight: 700, border: '1px solid #000', padding: '1px 12px' })}>FFD (cm)</th></tr></thead>
                     <tbody><tr><td style={cellStyle({ border: '1px solid #000', padding: '1px 12px' })}>{testData.effectiveFocalSpot.fcd || "-"}</td></tr></tbody>
                   </table>
                 </div>
                 {testData.effectiveFocalSpot.focalSpots?.length > 0 && (
                   <table style={tableStyle} className="compact-table">
                     <thead><tr>
-                      <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', width: '14%' })}></th>
-                      <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', width: '26%' })}>Stated Focal Spot of Tube (mm)</th>
-                      <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', width: '26%' })}>Measured Focal Spot (mm)</th>
-                      <th style={{ ...cellStyle({ border: '1px solid #000', width: '34%' }), textAlign: 'left', fontSize: '10px', lineHeight: '1.3', padding: '2px 4px' }}>
-                        <strong>Tolerance:</strong><br />
+                      <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', width: '14%' })}></th>
+                      <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', width: '26%' })}>Stated Focal Spot of Tube (mm)</th>
+                      <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', width: '26%' })}>Measured Focal Spot (mm)</th>
+                      <th style={{ ...cellStyle({ fontWeight: 700, border: '1px solid #000', width: '34%' }), textAlign: 'center', fontSize: '10px', lineHeight: '1.3', padding: '2px 4px' }}>
+                        Tolerance:<br />
                         1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm<br />
                         2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm<br />
                         3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm
@@ -524,10 +540,10 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                         const measured = fmt(spot.measuredNominal ?? (spot.measuredWidth != null && spot.measuredHeight != null ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2 : spot.measuredWidth ?? spot.measuredHeight));
                         return (
                           <tr key={i}>
-                            <td style={cellStyle({ fontWeight: 'bold', textAlign: 'left', border: '1px solid #000', padding: '2px 4px' })}>{spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}</td>
+                            <th scope="row" style={cellStyle({ border: '1px solid #000', padding: '2px 4px', fontWeight: 700 })}>{spot.focusType || (i === 0 ? "Large Focus" : "Small Focus")}</th>
                             <td style={cellStyle({ border: '1px solid #000' })}>{stated}</td>
                             <td style={cellStyle({ border: '1px solid #000' })}>{measured}</td>
-                            <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{spot.remark || "-"}</td>
+                            <td style={cellStyle({ border: '1px solid #000' })}>{spot.remark || "-"}</td>
                           </tr>
                         );
                       })}
@@ -546,7 +562,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <p style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '2px' }}>Test Conditions:</p>
                     <table style={{ ...tableStyle, width: 'auto' }}>
                       <thead><tr>
-                        {["FDD (cm)", "kV", "mA"].map(h => <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', padding: '1px 8px' })}>{h}</th>)}
+                        {["FDD (cm)", "kV", "mA"].map(h => <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000', padding: '1px 8px' })}>{h}</th>)}
                       </tr></thead>
                       <tbody><tr>
                         <td style={cellStyle({ border: '1px solid #000', padding: '1px 8px' })}>{testData.accuracyOfIrradiationTime.testConditions.fcd || "-"}</td>
@@ -582,7 +598,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                       <table style={tableStyle} className="compact-table">
                         <thead><tr>
                           {["Set Time (sec)", "Measured Time (sec)", "% Error", "Remarks"].map(h => (
-                            <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{h}</th>
+                            <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000' })}>{h}</th>
                           ))}
                         </tr></thead>
                         <tbody>
@@ -593,8 +609,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                               <tr key={i}>
                                 <td style={cellStyle({ border: '1px solid #000' })}>{row.setTime || "-"}</td>
                                 <td style={cellStyle({ border: '1px solid #000' })}>{row.measuredTime || "-"}</td>
-                                <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{error !== "-" ? `${error}%` : "-"}</td>
-                                <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{remark}</td>
+                                <td style={cellStyle({ border: '1px solid #000' })}>{error !== "-" ? `${error}%` : "-"}</td>
+                                <td style={cellStyle({ border: '1px solid #000' })}>{remark}</td>
                               </tr>
                             );
                           })}
@@ -615,7 +631,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   <table style={tableStyle} className="compact-table">
                     <thead><tr>
                       {["Set kV", "10 mA", "100 mA", "200 mA", "Avg kVp", "Remarks"].map(h => (
-                        <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{h}</th>
+                        <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000' })}>{h}</th>
                       ))}
                     </tr></thead>
                     <tbody>
@@ -625,7 +641,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                           <td style={cellStyle({ border: '1px solid #000' })}>{row.ma10 || "-"}</td>
                           <td style={cellStyle({ border: '1px solid #000' })}>{row.ma100 || "-"}</td>
                           <td style={cellStyle({ border: '1px solid #000' })}>{row.ma200 || "-"}</td>
-                          <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{row.avgKvp || "-"}</td>
+                          <td style={cellStyle({ border: '1px solid #000' })}>{row.avgKvp || "-"}</td>
                           <td style={cellStyle({ border: '1px solid #000' })}>{row.remarks || "-"}</td>
                         </tr>
                       ))}
@@ -643,12 +659,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <h3 className="font-bold mb-2" style={{ fontSize: '12px' }}>5. Accuracy of Operating Potential</h3>
                     <table style={tableStyle} className="compact-table">
                       <thead><tr>
-                        <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>Applied kVp</th>
+                        <th style={cellStyle({ fontWeight: 700, border: '1px solid #000' })}>Applied kVp</th>
                         {testData.totalFilteration.mAStations?.map((ma: string, idx: number) => (
-                          <th key={idx} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{ma}</th>
+                          <th key={idx} style={cellStyle({ fontWeight: 700, border: '1px solid #000' })}>{ma}</th>
                         ))}
-                        <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>Average kVp</th>
-                        <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>Remarks</th>
+                        <th style={cellStyle({ fontWeight: 700, border: '1px solid #000' })}>Average kVp</th>
+                        <th style={cellStyle({ fontWeight: 700, border: '1px solid #000' })}>Remarks</th>
                       </tr></thead>
                       <tbody>
                         {testData.totalFilteration.measurements.map((row: any, i: number) => (
@@ -657,7 +673,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                             {testData.totalFilteration.mAStations?.map((_: string, idx: number) => (
                               <td key={idx} style={cellStyle({ border: '1px solid #000' })}>{row.measuredValues?.[idx] || "-"}</td>
                             ))}
-                            <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{row.averageKvp || "-"}</td>
+                            <td style={cellStyle({ border: '1px solid #000' })}>{row.averageKvp || "-"}</td>
                             <td style={cellStyle({ border: '1px solid #000' })}>{row.remarks || "-"}</td>
                           </tr>
                         ))}
@@ -689,7 +705,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                         <tbody>
                           {[["At kVp", `${tf.atKvp || "-"} kVp`], ["Measured Total Filtration", `${tf.required || "-"} mm Al`], ["Required (Tolerance)", !isNaN(reqTol) ? `≥ ${reqTol} mm Al` : "-"], ["Result", filtRemark]].map(([label, val]) => (
                             <tr key={label}>
-                              <td style={cellStyle({ fontWeight: 'bold', width: '50%', textAlign: 'left', border: '1px solid #000', padding: '2px 6px' })}>{label}</td>
+                              <th scope="row" style={cellStyle({ width: '50%', border: '1px solid #000', padding: '2px 6px', fontWeight: 700 })}>{label}</th>
                               <td style={cellStyle({ border: '1px solid #000' })}>{val}</td>
                             </tr>
                           ))}
@@ -717,9 +733,9 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                       <p style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '3px' }}>Test Conditions:</p>
                       <table style={{ ...tableStyle, width: 'auto' }}>
                         <thead><tr>
-                          <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', padding: '1px 12px' })}>FDD (cm)</th>
-                          <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', padding: '1px 12px' })}>kV</th>
-                          {hasTimer && <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', padding: '1px 12px' })}>Time (sec)</th>}
+                          <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', padding: '1px 12px' })}>FDD (cm)</th>
+                          <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', padding: '1px 12px' })}>kV</th>
+                          {hasTimer && <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', padding: '1px 12px' })}>Time (sec)</th>}
                         </tr></thead>
                         <tbody><tr>
                           <td style={cellStyle({ border: '1px solid #000', padding: '1px 12px' })}>{t1?.fcd || "-"}</td>
@@ -762,18 +778,18 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                       <table style={{ ...tableStyle, fontSize: '10px' }}>
                         <thead>
                           <tr>
-                            <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>mA</th>
-                            <th colSpan={measHeaders.length} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>Output (mGy)</th>
-                            <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>Avg Output</th>
-                            <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>X</th>
-                            <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>X MAX</th>
-                            <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>X MIN</th>
-                            <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>CoL</th>
-                            <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>Remarks</th>
+                            <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>mA</th>
+                            <th colSpan={measHeaders.length} style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>Output (mGy)</th>
+                            <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>Avg Output</th>
+                            <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>X</th>
+                            <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>X MAX</th>
+                            <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>X MIN</th>
+                            <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>CoL</th>
+                            <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>Remarks</th>
                           </tr>
                           <tr>
                             <th style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}></th>
-                            {measHeaders.map((h: string, idx: number) => <th key={idx} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{h || `Meas ${idx + 1}`}</th>)}
+                            {measHeaders.map((h: string, idx: number) => <th key={idx} style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>{h || `Meas ${idx + 1}`}</th>)}
                             <th style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}></th>
                             <th style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}></th>
                             <th style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}></th>
@@ -787,14 +803,14 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                             <tr key={i}>
                               <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{fmtV(row.mAsApplied ?? row.mAsRange)}</td>
                               {measHeaders.map((_: string, idx: number) => <td key={idx} style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{fmtV(row.measuredOutputs?.[idx])}</td>)}
-                              <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{row._avgDisplay}</td>
-                              <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{row._xDisplay}</td>
+                              <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{row._avgDisplay}</td>
+                              <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{row._xDisplay}</td>
                               {i === 0 ? (
                                 <>
-                                  <td rowSpan={rows.length} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>{xMax}</td>
-                                  <td rowSpan={rows.length} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>{xMin}</td>
-                                  <td rowSpan={rows.length} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>{col}</td>
-                                  <td rowSpan={rows.length} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>{remarks}</td>
+                                  <td rowSpan={rows.length} style={cellStyle({ border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>{xMax}</td>
+                                  <td rowSpan={rows.length} style={cellStyle({ border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>{xMin}</td>
+                                  <td rowSpan={rows.length} style={cellStyle({ border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>{col}</td>
+                                  <td rowSpan={rows.length} style={cellStyle({ border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>{remarks}</td>
                                 </>
                               ) : null}
                             </tr>
@@ -815,7 +831,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 {testData.outputConsistency.ffd?.value && (
                   <div style={{ marginBottom: '4px' }}>
                     <table style={{ ...tableStyle, width: 'auto' }}>
-                      <thead><tr><th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', padding: '1px 12px' })}>FDD (cm)</th></tr></thead>
+                      <thead><tr><th style={cellStyle({ fontWeight: 700, border: '1px solid #000', padding: '1px 12px' })}>FDD (cm)</th></tr></thead>
                       <tbody><tr><td style={cellStyle({ border: '1px solid #000', padding: '1px 12px' })}>{testData.outputConsistency.ffd.value}</td></tr></tbody>
                     </table>
                   </div>
@@ -830,12 +846,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <div style={{ marginBottom: '4px' }}>
                       <table style={{ ...tableStyle, fontSize: '10px', tableLayout: 'auto' }}>
                         <thead><tr>
-                          <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>kV</th>
-                          <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>mAs</th>
-                          {Array.from({ length: measCount }, (_, i) => <th key={i} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>Meas {i + 1}</th>)}
-                          <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>Avg (X̄)</th>
-                          <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>CoV</th>
-                          <th style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>Remark</th>
+                          <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>kV</th>
+                          <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>mAs</th>
+                          {Array.from({ length: measCount }, (_, i) => <th key={i} style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>Meas {i + 1}</th>)}
+                          <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>Avg (X̄)</th>
+                          <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>CoV</th>
+                          <th style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>Remark</th>
                         </tr></thead>
                         <tbody>
                           {rows.map((row: any, i: number) => {
@@ -853,9 +869,9 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                                 <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{row.kv || '-'}</td>
                                 <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{row.mas || '-'}</td>
                                 {Array.from({ length: measCount }, (_, j) => { const raw = (row.outputs ?? [])[j]; const display = raw != null ? (typeof raw === 'object' && 'value' in raw ? raw.value : String(raw)) : '-'; return <td key={j} style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{display || '-'}</td>; })}
-                                <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{avgDisplay}</td>
+                                <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{avgDisplay}</td>
                                 <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{covDisplay}</td>
-                                <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{remark}</td>
+                                <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{remark}</td>
                               </tr>
                             );
                           })}
@@ -875,7 +891,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 <div style={{ marginBottom: '4px' }}>
                   <table style={{ ...tableStyle, width: 'auto' }}>
                     <thead><tr>
-                      {["FDD (cm)", "kV", "mA", "Time (Sec)"].map(h => <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', padding: '1px 8px' })}>{h}</th>)}
+                      {["FDD (cm)", "kV", "mA", "Time (Sec)"].map(h => <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000', padding: '1px 8px' })}>{h}</th>)}
                     </tr></thead>
                     <tbody><tr>
                       <td style={cellStyle({ border: '1px solid #000', padding: '1px 8px' })}>{testData.radiationLeakageLevel.fcd || testData.radiationLeakageLevel.settings?.fcd || "100"}</td>
@@ -890,14 +906,14 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   <table style={{ ...tableStyle, fontSize: '10px' }}>
                     <thead>
                       <tr>
-                        <th rowSpan={2} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px', width: '15%', verticalAlign: 'middle' })}>Location</th>
-                        <th colSpan={5} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>Exposure Level (mR/hr)</th>
-                        <th rowSpan={2} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>Result (mR in 1 hr)</th>
-                        <th rowSpan={2} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>Result (mGy in 1 hr)</th>
-                        <th rowSpan={2} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>Remarks</th>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px', width: '15%', verticalAlign: 'middle' })}>Location</th>
+                        <th colSpan={5} style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>Exposure Level (mR/hr)</th>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>Result (mR in 1 hr)</th>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>Result (mGy in 1 hr)</th>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px', verticalAlign: 'middle' })}>Remarks</th>
                       </tr>
                       <tr>
-                        {["Left", "Right", "Front", "Back", "Top"].map(h => <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{h}</th>)}
+                        {["Left", "Right", "Front", "Back", "Top"].map(h => <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000', fontSize: '10px' })}>{h}</th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -914,11 +930,11 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                         }
                         return (
                           <tr key={i}>
-                            <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{row.location || "-"}</td>
+                            <th scope="row" style={cellStyle({ border: '1px solid #000', fontSize: '10px', fontWeight: 700 })}>{row.location || "-"}</th>
                             {["left", "right", "front", "back", "top"].map(k => <td key={k} style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{(row as any)[k] || "-"}</td>)}
-                            <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{calcMR}</td>
-                            <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{calcMGy}</td>
-                            <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000', fontSize: '10px' })}>{remark}</td>
+                            <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{calcMR}</td>
+                            <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{calcMGy}</td>
+                            <td style={cellStyle({ border: '1px solid #000', fontSize: '10px' })}>{remark}</td>
                           </tr>
                         );
                       })}
@@ -985,8 +1001,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>1. Survey Details</p>
                     <table style={tableStyle} className="compact-table">
                       <tbody>
-                        <tr><td style={cellStyle({ fontWeight: 'bold', width: '60%', textAlign: 'left', border: '1px solid #000', padding: '2px 6px' })}>Date of Radiation Protection Survey</td><td style={cellStyle({ border: '1px solid #000' })}>{testData.radiationProtectionSurvey.surveyDate ? formatDate(testData.radiationProtectionSurvey.surveyDate) : "-"}</td></tr>
-                        <tr><td style={cellStyle({ fontWeight: 'bold', textAlign: 'left', border: '1px solid #000', padding: '2px 6px' })}>Whether Radiation Survey Meter used has Valid Calibration Certificate</td><td style={cellStyle({ border: '1px solid #000' })}>{testData.radiationProtectionSurvey.hasValidCalibration || "-"}</td></tr>
+                        <tr><th scope="row" style={cellStyle({ width: '60%', border: '1px solid #000', padding: '2px 6px', fontWeight: 700 })}>Date of Radiation Protection Survey</th><td style={cellStyle({ border: '1px solid #000' })}>{testData.radiationProtectionSurvey.surveyDate ? formatDate(testData.radiationProtectionSurvey.surveyDate) : "-"}</td></tr>
+                        <tr><th scope="row" style={cellStyle({ border: '1px solid #000', padding: '2px 6px', fontWeight: 700 })}>Whether Radiation Survey Meter used has Valid Calibration Certificate</th><td style={cellStyle({ border: '1px solid #000' })}>{testData.radiationProtectionSurvey.hasValidCalibration || "-"}</td></tr>
                       </tbody>
                     </table>
                   </div>
@@ -997,7 +1013,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <table style={tableStyle} className="compact-table">
                       <tbody>
                         {[["Applied Current (mA)", testData.radiationProtectionSurvey.appliedCurrent], ["Applied Voltage (kV)", testData.radiationProtectionSurvey.appliedVoltage], ["Exposure Time(s)", testData.radiationProtectionSurvey.exposureTime], ["Workload (mA min/week)", testData.radiationProtectionSurvey.workload]].map(([label, val]) => (
-                          <tr key={label}><td style={cellStyle({ fontWeight: 'bold', width: '50%', textAlign: 'left', border: '1px solid #000', padding: '2px 6px' })}>{label}</td><td style={cellStyle({ border: '1px solid #000' })}>{val || "-"}</td></tr>
+                          <tr key={label}><th scope="row" style={cellStyle({ width: '50%', border: '1px solid #000', padding: '2px 6px', fontWeight: 700 })}>{label}</th><td style={cellStyle({ border: '1px solid #000' })}>{val || "-"}</td></tr>
                         ))}
                       </tbody>
                     </table>
@@ -1008,15 +1024,15 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>3. Measured Maximum Radiation Levels (mR/hr) at different Locations</p>
                     <table style={tableStyle} className="compact-table">
                       <thead><tr>
-                        {["Location", "Max. Radiation Level", "Result", "Remarks"].map(h => <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{h}</th>)}
+                        {["Location", "Max. Radiation Level", "Result", "Remarks"].map(h => <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000' })}>{h}</th>)}
                       </tr></thead>
                       <tbody>
                         {testData.radiationProtectionSurvey.locations.map((loc: any, i: number) => (
                           <tr key={i}>
-                            <td style={cellStyle({ textAlign: 'left', border: '1px solid #000', padding: '2px 6px' })}>{loc.location || "-"}</td>
+                            <td style={cellStyle({ border: '1px solid #000', padding: '2px 6px' })}>{loc.location || "-"}</td>
                             <td style={cellStyle({ border: '1px solid #000' })}>{loc.mRPerHr ? `${loc.mRPerHr} mR/hr` : "-"}</td>
                             <td style={cellStyle({ border: '1px solid #000' })}>{loc.mRPerWeek ? `${loc.mRPerWeek} mR/week` : "-"}</td>
-                            <td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{loc.result || "-"}</td>
+                            <td style={cellStyle({ border: '1px solid #000' })}>{loc.result || "-"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1026,7 +1042,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 <div style={{ marginBottom: '4px' }}>
                   <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>4. Calculation Formula</p>
                   <table style={tableStyle} className="compact-table">
-                    <tbody><tr><td style={cellStyle({ textAlign: 'left', border: '1px solid #000', padding: '2px 6px' })}><strong>Maximum Radiation level/week (mR/wk) = Work Load X Max. Radiation Level (mR/hr) / (60 X mA used for measurement)</strong></td></tr></tbody>
+                    <tbody><tr><td style={cellStyle({ border: '1px solid #000', padding: '2px 6px' })}>Maximum Radiation level/week (mR/wk) = Work Load X Max. Radiation Level (mR/hr) / (60 X mA used for measurement)</td></tr></tbody>
                   </table>
                 </div>
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (() => {
@@ -1042,10 +1058,10 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     <div style={{ marginBottom: '4px' }}>
                       <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>5. Summary of Maximum Radiation Level/week (mR/wk)</p>
                       <table style={tableStyle} className="compact-table">
-                        <thead><tr>{["Category", "Result", "Remarks"].map(h => <th key={h} style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{h}</th>)}</tr></thead>
+                        <thead><tr>{["Category", "Result", "Remarks"].map(h => <th key={h} style={cellStyle({ fontWeight: 700, border: '1px solid #000' })}>{h}</th>)}</tr></thead>
                         <tbody>
-                          <tr><td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>For Radiation Worker</td><td style={cellStyle({ border: '1px solid #000' })}>{maxWorkerWeekly || "0.000"} mR/week</td><td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{workerResult || "-"}</td></tr>
-                          <tr><td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>For Public</td><td style={cellStyle({ border: '1px solid #000' })}>{maxPublicWeekly || "0.000"} mR/week</td><td style={cellStyle({ fontWeight: 'bold', border: '1px solid #000' })}>{publicResult || "-"}</td></tr>
+                          <tr><th scope="row" style={cellStyle({ border: '1px solid #000', fontWeight: 700 })}>For Radiation Worker</th><td style={cellStyle({ border: '1px solid #000' })}>{maxWorkerWeekly || "0.000"} mR/week</td><td style={cellStyle({ border: '1px solid #000' })}>{workerResult || "-"}</td></tr>
+                          <tr><th scope="row" style={cellStyle({ border: '1px solid #000', fontWeight: 700 })}>For Public</th><td style={cellStyle({ border: '1px solid #000' })}>{maxPublicWeekly || "0.000"} mR/week</td><td style={cellStyle({ border: '1px solid #000' })}>{publicResult || "-"}</td></tr>
                         </tbody>
                       </table>
                       <div style={{ marginTop: '4px', fontSize: '10px' }}>
@@ -1071,8 +1087,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>6. Permissible Limit</p>
                   <table style={tableStyle} className="compact-table">
                     <tbody>
-                      <tr><td style={cellStyle({ fontWeight: 'bold', width: '50%', textAlign: 'left', border: '1px solid #000', padding: '2px 6px' })}>For location of Radiation Worker</td><td style={cellStyle({ border: '1px solid #000' })}>20 mSv in a year (40 mR/week)</td></tr>
-                      <tr><td style={cellStyle({ fontWeight: 'bold', textAlign: 'left', border: '1px solid #000', padding: '2px 6px' })}>For Location of Member of Public</td><td style={cellStyle({ border: '1px solid #000' })}>1 mSv in a year (2mR/week)</td></tr>
+                      <tr><th scope="row" style={cellStyle({ width: '50%', border: '1px solid #000', padding: '2px 6px', fontWeight: 700 })}>For location of Radiation Worker</th><td style={cellStyle({ border: '1px solid #000' })}>20 mSv in a year (40 mR/week)</td></tr>
+                      <tr><th scope="row" style={cellStyle({ border: '1px solid #000', padding: '2px 6px', fontWeight: 700 })}>For Location of Member of Public</th><td style={cellStyle({ border: '1px solid #000' })}>1 mSv in a year (2mR/week)</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -1082,19 +1098,27 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             {Object.values(testData).every(v => !v) && (
               <p className="text-center text-gray-500" style={{ marginTop: '32px', fontSize: '14px' }}>No detailed test results available for this report.</p>
             )}
+          </div>
 
-            <div style={{ marginTop: '16px', paddingTop: '8px', borderTop: '1px solid #ccc' }}>
-              <p style={{ fontSize: '11px' }}><strong>Date:</strong> {todayDate}</p>
-              <p style={{ fontSize: '11px' }}><strong>Place:</strong> {customerCity}</p>
-              <footer style={{ textAlign: 'center', fontSize: '10px', color: '#555', marginTop: '8px' }}>
-                <p>ANTESO BIOMEDICAL OPC PRIVATE LIMITED.</p>
-                <p>2ND FLOOR, FLAT NO. 290, POCKET D - 7, SECTOR 6, ROHINI, North West Delhi, Delhi, 110085</p>
-                <p>Email: info@antesobiomedicalengg.com</p>
-              </footer>
-            </div>
+          <div
+            className="report-pdf-footer-block"
+            style={{
+              width: '100%',
+              flexShrink: 0,
+              marginTop: 'auto',
+              paddingTop: '16px',
+              borderTop: '1px solid #ccc',
+            }}
+          >
+            <p style={{ fontSize: '11px' }}><strong>Date:</strong> {todayDate}</p>
+            <p style={{ fontSize: '11px' }}><strong>Place:</strong> {customerCity}</p>
+            <footer style={{ textAlign: 'center', fontSize: '10px', color: '#555', marginTop: '8px' }}>
+              <p>ANTESO BIOMEDICAL OPC PRIVATE LIMITED.</p>
+              <p>2ND FLOOR, FLAT NO. 290, POCKET D - 7, SECTOR 6, ROHINI, North West Delhi, Delhi, 110085</p>
+              <p>Email: info@antesobiomedicalengg.com</p>
+            </footer>
           </div>
         </div>
-      </div>
 
       <style>{`
         .fixed-report-pdf {
@@ -1115,14 +1139,30 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         .fixed-report-pdf table {
           border-collapse: collapse !important;
           border-spacing: 0 !important;
-          border: 1px solid #000 !important;
+          border-width: 1px !important;
+          border-style: solid !important;
+          border-color: #000000 !important;
+          text-align: center !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+        .fixed-report-pdf table td p,
+        .fixed-report-pdf table th p,
+        .fixed-report-pdf table td span,
+        .fixed-report-pdf table th span {
+          text-align: center !important;
         }
         .fixed-report-pdf td,
         .fixed-report-pdf th {
-          border: 1px solid #000 !important;
+          border-width: 1px !important;
+          border-style: solid !important;
+          border-color: #000000 !important;
           box-sizing: border-box !important;
           vertical-align: middle !important;
+          text-align: center !important;
           border-radius: 0 !important;
+          outline: none !important;
+          box-shadow: none !important;
           padding: 4px 6px !important;
           line-height: 1.3 !important;
           height: auto !important;
@@ -1130,9 +1170,17 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           white-space: normal !important;
           word-break: break-word !important;
         }
-        /* Kill Tailwind border-2 everywhere */
+        .fixed-report-pdf table thead th,
+        .fixed-report-pdf table tbody th {
+          font-weight: 700 !important;
+        }
+        .fixed-report-pdf table tbody td {
+          font-weight: 400 !important;
+        }
+        /* Hairline only — override Tailwind thick borders (avoid matching border-2xl etc.) */
         .fixed-report-pdf .border-2,
-        .fixed-report-pdf [class*="border-2"] {
+        .fixed-report-pdf .border-4,
+        .fixed-report-pdf .border-8 {
           border-width: 1px !important;
         }
         .fixed-report-pdf .compact-table td,
@@ -1153,28 +1201,57 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         .fixed-report-pdf .overflow-x-auto {
           overflow: visible !important;
         }
+        .fixed-report-pdf .report-pdf-page-header {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        .fixed-report-pdf .report-pdf-footer-block {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
         @media print {
           body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           @page { margin: 0.5cm; size: A4; }
           .print\\:break-before-page { page-break-before: always; }
           .test-section { page-break-inside: avoid; break-inside: avoid; }
-          /* Absolute border reset for print */
-          table, td, th {
-            border: 1px solid #000 !important;
+          /* Absolute border reset for print (report root only) */
+          .fixed-report-pdf table {
+            border-width: 1px !important;
+            border-style: solid !important;
+            border-color: #000000 !important;
             border-collapse: collapse !important;
             box-sizing: border-box !important;
           }
-          td, th {
+          .fixed-report-pdf td,
+          .fixed-report-pdf th {
+            border-width: 1px !important;
+            border-style: solid !important;
+            border-color: #000000 !important;
+            box-sizing: border-box !important;
+          }
+          .fixed-report-pdf td,
+          .fixed-report-pdf th {
             padding: 4px 6px !important;
             line-height: 1.3 !important;
             height: auto !important;
             min-height: 16px !important;
             white-space: normal !important;
+            text-align: center !important;
+            vertical-align: middle !important;
+          }
+          .fixed-report-pdf thead th,
+          .fixed-report-pdf tbody th {
+            font-weight: 700 !important;
+          }
+          .fixed-report-pdf tbody td {
+            font-weight: 400 !important;
           }
           thead { display: table-header-group; }
           h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
         }
       `}</style>
+      </div>
+
     </>
   );
 };

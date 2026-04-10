@@ -115,7 +115,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
-    rpId: "",
+        rpId: "",
         csvFileUrl: "",
     });
 
@@ -172,6 +172,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
                     csvFileUrl: "", // Initialize csvFileUrl
+                    rpId: data.rpId || "",
                 });
 
                 const mapped: Standard[] = toolRes.data.toolsAssigned.map(
@@ -241,7 +242,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                         temperature: res.data.temperature || prev.temperature,
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
-            rpId: res.data.rpId || prev.rpId,
+                        rpId: res.data.rpId || prev.rpId,
                         csvFileUrl: res.data.csvFileUrl || prev.csvFileUrl,
                     }));
                     if (res.data.testDate) setMinIssueDate(res.data.testDate);
@@ -983,7 +984,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                         { label: "Testing Done At Location", name: "location" },
                         { label: "Temperature (°C)", name: "temperature", type: "number" },
                         { label: "Humidity (RH %)", name: "humidity", type: "number" },
-            { label: "RP Id", name: "rpId" },
+                        { label: "RP Id", name: "rpId" },
                     ].map((field) => (
                         <div key={field.name}>
                             <label className="block text-sm font-medium text-gray-700 mb-1">

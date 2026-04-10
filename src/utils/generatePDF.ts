@@ -18,7 +18,7 @@ function applyHairlineBorders(root: HTMLElement): void {
     const htmlTable = table as HTMLElement;
     htmlTable.style.borderCollapse = 'collapse';
     htmlTable.style.borderSpacing = '0';
-    htmlTable.style.border = '1px solid #000';
+    htmlTable.style.border = '0.5px solid #000';
     htmlTable.style.width = '100%';
     htmlTable.style.maxWidth = '100%';
     htmlTable.style.tableLayout = 'fixed';
@@ -166,6 +166,39 @@ function buildOnClone(elementId: string, contentWidthPx: number) {
     // For fixed report layout, preserve component-defined table spacing/styles
     // to avoid header/value overlap from aggressive clone-time compaction.
     if (preserveFixedReportLayout) {
+      clonedElement.querySelectorAll('table').forEach((t) => {
+        const ht = t as HTMLElement;
+        ht.style.setProperty('text-align', 'center', 'important');
+        ht.style.setProperty('border-collapse', 'collapse', 'important');
+        ht.style.setProperty('border-spacing', '0', 'important');
+        ht.style.setProperty('border', '1px solid #000', 'important');
+      });
+      clonedElement.querySelectorAll('table td, table th').forEach((cell) => {
+        const el = cell as HTMLElement;
+        el.style.setProperty('text-align', 'center', 'important');
+        el.style.setProperty('vertical-align', 'middle', 'important');
+        el.style.setProperty('border', '1px solid #000', 'important');
+        el.style.setProperty('border-width', '1px', 'important');
+        el.style.setProperty('border-style', 'solid', 'important');
+        el.style.setProperty('border-color', '#000000', 'important');
+      });
+      // Last section: flex column + min height so company footer sits at bottom of the final PDF page.
+      clonedElement.querySelectorAll('.report-pdf-last-page-shell').forEach((el) => {
+        const h = el as HTMLElement;
+        h.style.setProperty('display', 'flex', 'important');
+        h.style.setProperty('flex-direction', 'column', 'important');
+        // ~A4 body height so flex + margin-top:auto pins Date/Place/footer to the sheet bottom (not eaten by flex:1 main).
+        h.style.setProperty('min-height', '280mm', 'important');
+        h.style.setProperty('box-sizing', 'border-box', 'important');
+      });
+      clonedElement.querySelectorAll('.report-pdf-last-main').forEach((el) => {
+        (el as HTMLElement).style.setProperty('flex', '0 1 auto', 'important');
+      });
+      clonedElement.querySelectorAll('.report-pdf-footer-block').forEach((el) => {
+        const f = el as HTMLElement;
+        f.style.setProperty('margin-top', 'auto', 'important');
+        f.style.setProperty('flex-shrink', '0', 'important');
+      });
       return;
     }
 

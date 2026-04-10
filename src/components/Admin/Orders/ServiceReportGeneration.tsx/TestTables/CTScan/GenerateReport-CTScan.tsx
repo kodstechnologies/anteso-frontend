@@ -129,7 +129,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
-    rpId: "",
+        rpId: "",
     });
 
     const defaultNotesList = [
@@ -191,6 +191,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
+                    rpId: data.rpId || "",
                 });
 
                 // Map tools
@@ -860,7 +861,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                         temperature: res.data.temperature || prev.temperature,
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
-            rpId: res.data.rpId || prev.rpId,
+                        rpId: res.data.rpId || prev.rpId,
                     }));
                     if (res.data.testDate) setMinIssueDate(res.data.testDate);
                 }
@@ -1089,7 +1090,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                         { label: "Location", name: "location" },
                         { label: "Temperature (°C)", name: "temperature", type: "number" },
                         { label: "Humidity (%)", name: "humidity", type: "number" },
-            { label: "RP Id", name: "rpId" },
+                        { label: "RP Id", name: "rpId" },
                     ].map(field => (
                         <div key={field.name}>
                             <label className="block font-medium mb-1">{field.label}</label>

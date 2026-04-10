@@ -182,6 +182,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
           temperature: "",
           humidity: "",
           engineerNameRPId: detRes.data.engineerAssigned?.name || "",
+          rpId: detRes.data.rpId || "",
         });
 
         const mapped: Standard[] = toolRes.data.toolsAssigned.map(
