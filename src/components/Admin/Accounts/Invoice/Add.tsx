@@ -236,7 +236,7 @@ const GrandTotalDisplay: React.FC = () => {
       0
     );
     additionalSubtotal = values.additionalServices.reduce(
-      (sum: number, as: AdditionalService) => sum + (as.totalAmount || 0),
+      (sum: number, as: AdditionalService) => sum + (Number(as.totalAmount) || 0),
       0
     );
     subtotal = servicesSubtotal + additionalSubtotal;
@@ -247,7 +247,7 @@ const GrandTotalDisplay: React.FC = () => {
         0
       );
       const dhAdditionalSubtotal = (d.additionalServices || []).reduce(
-        (s: number, as: AdditionalService) => s + (as.totalAmount || 0),
+        (s: number, as: AdditionalService) => s + (Number(as.totalAmount) || 0),
         0
       );
       const dhTravel = Number(d.travelCostPrice) || 0;
@@ -308,7 +308,7 @@ const AutoCalculateTotals: React.FC = () => {
         0
       );
       const additionalSubtotal = values.additionalServices.reduce(
-        (sum: number, as: AdditionalService) => sum + (as.totalAmount || 0),
+        (sum: number, as: AdditionalService) => sum + (Number(as.totalAmount) || 0),
         0
       );
       subtotal = servicesSubtotal + additionalSubtotal;
@@ -319,7 +319,7 @@ const AutoCalculateTotals: React.FC = () => {
           0
         );
         const dhAdditionalSubtotal = (d.additionalServices || []).reduce(
-          (s: number, as: AdditionalService) => s + (as.totalAmount || 0),
+          (s: number, as: AdditionalService) => s + (Number(as.totalAmount) || 0),
           0
         );
         const dhTravel = Number(d.travelCostPrice) || 0;
@@ -351,7 +351,7 @@ const AutoCalculateTotals: React.FC = () => {
           0
         );
         const dhAdditionalSubtotal = (dh.additionalServices || []).reduce(
-          (s: number, as: AdditionalService) => s + (as.totalAmount || 0),
+          (s: number, as: AdditionalService) => s + (Number(as.totalAmount) || 0),
           0
         );
         const dhTravel = Number(dh.travelCostPrice) || 0;
@@ -481,19 +481,75 @@ const Add = () => {
         onSubmit={async (values, { setSubmitting, resetForm }) => {
           try {
             console.log('Submitting form with values:', JSON.stringify(values, null, 2));
+            const isNonEmptyText = (v: any) => String(v ?? '').trim().length > 0;
+            const isPositiveNumber = (v: any) => Number(v) > 0;
+
+            const cleanedCustomerServices: ServiceItem[] = (values.services || []).filter((s) => {
+              return (
+                isNonEmptyText(s.machineType) ||
+                isNonEmptyText(s.description) ||
+                isNonEmptyText(s.hsnno) ||
+                isPositiveNumber(s.quantity) ||
+                isPositiveNumber(s.totalAmount) ||
+                isPositiveNumber(s.rate)
+              );
+            });
+
+            const cleanedCustomerAdditional: AdditionalService[] = (values.additionalServices || []).filter((as) => {
+              return (
+                isNonEmptyText(as.name) ||
+                isNonEmptyText(as.description) ||
+                isPositiveNumber(as.totalAmount)
+              );
+            });
+
+            const cleanedDealerHospitals: DealerHospital[] = (values.dealerHospitals || [])
+              .map((dh) => ({
+                ...dh,
+                services: (dh.services || []).filter((s) => {
+                  return (
+                    isNonEmptyText(s.machineType) ||
+                    isNonEmptyText(s.description) ||
+                    isNonEmptyText(s.hsnno) ||
+                    isPositiveNumber(s.quantity) ||
+                    isPositiveNumber(s.totalAmount) ||
+                    isPositiveNumber(s.rate)
+                  );
+                }),
+                additionalServices: (dh.additionalServices || []).filter((as) => {
+                  return (
+                    isNonEmptyText(as.name) ||
+                    isNonEmptyText(as.description) ||
+                    isPositiveNumber(as.totalAmount)
+                  );
+                }),
+              }))
+              .filter((dh) => {
+                return (
+                  isNonEmptyText(dh.partyCode) ||
+                  isNonEmptyText(dh.hospitalName) ||
+                  isNonEmptyText(dh.city) ||
+                  isNonEmptyText(dh.dealerState) ||
+                  isNonEmptyText(dh.modelNo) ||
+                  isPositiveNumber(dh.travelCostPrice) ||
+                  (dh.services && dh.services.length > 0) ||
+                  (dh.additionalServices && dh.additionalServices.length > 0)
+                );
+              });
+
             let subtotal = 0;
             if (values.type === 'Customer') {
-              const servicesSubtotal = values.services.reduce((sum, s) => sum + serviceLineTotal(s), 0);
-              const additionalSubtotal = values.additionalServices.reduce((sum, as) => sum + (as.totalAmount || 0), 0);
+              const servicesSubtotal = cleanedCustomerServices.reduce((sum, s) => sum + serviceLineTotal(s), 0);
+              const additionalSubtotal = cleanedCustomerAdditional.reduce((sum, as) => sum + (Number(as.totalAmount) || 0), 0);
               subtotal = servicesSubtotal + additionalSubtotal;
             } else if (values.type === 'Dealer/Manufacturer') {
-              const dealerSubtotal = values.dealerHospitals.reduce((sum, d) => {
+              const dealerSubtotal = cleanedDealerHospitals.reduce((sum, d) => {
                 const dhServicesSubtotal = (d.services || []).reduce(
                   (s, service) => s + serviceLineTotal(service),
                   0
                 );
                 const dhAdditionalSubtotal = (d.additionalServices || []).reduce(
-                  (s, as) => s + (as.totalAmount || 0),
+                  (s, as) => s + (Number(as.totalAmount) || 0),
                   0
                 );
                 const dhTravel = Number(d.travelCostPrice) || 0;
@@ -515,6 +571,9 @@ const Add = () => {
 
             const payload = {
               ...values,
+              services: values.type === 'Customer' ? cleanedCustomerServices : [],
+              additionalServices: values.type === 'Customer' ? cleanedCustomerAdditional : [],
+              dealerHospitals: values.type === 'Dealer/Manufacturer' ? cleanedDealerHospitals : [],
               amount: grandTotal,
               grandTotal,
               orderId,

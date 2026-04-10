@@ -126,10 +126,14 @@ const InvoiceDealer = () => {
         hsn: s.hsnno || "-",
         qty: s.quantity || 0,
         rate: s.rate || 0,
-        amount: (s.rate ?? 0) * (s.quantity ?? 0),
+        amount: Number(s.totalAmount ?? ((s.rate ?? 0) * (s.quantity ?? 0))),
     })) || [];
 
-    const additionalServicesItems = invoice.order?.additionalServices?.map((as: any, index: number) => ({
+    const additionalServicesSource = Array.isArray(invoice.additionalServices) && invoice.additionalServices.length > 0
+        ? invoice.additionalServices
+        : (invoice.order?.additionalServices || []);
+
+    const additionalServicesItems = additionalServicesSource.map((as: any, index: number) => ({
         id: index + 1,
         name: as.name,
         description: as.description,
@@ -261,8 +265,8 @@ const InvoiceDealer = () => {
                                         <table className="w-full table-fixed border border-black border-collapse text-[10px]">
                                             <thead className="bg-gray-100">
                                                 <tr>
-                                                    <th className="border border-black px-1 py-1 text-xs">S No</th>
-                                                    <th className="border border-black px-1 py-1 text-xs">Machine Type</th>
+                                                    <th className="border border-black px-1 py-1 text-xs w-[6%]">S No</th>
+                                                    <th className="border border-black px-1 py-1 text-xs w-[22%]">Machine Type</th>
                                                     <th className="border border-black px-1 py-1 text-xs w-[28%]">Description of Services</th>                                                    <th className="border border-black px-1 py-1 text-xs">HSN/SAC Number</th>
                                                     <th className="border border-black px-1 py-1 text-xs">Quantity</th>
                                                     {/* <th className="border border-black px-1 py-1 text-xs">Rate</th> */}
@@ -271,16 +275,16 @@ const InvoiceDealer = () => {
                                             </thead>
                                             <tbody>
                                                 {invoice.services.map((item: any, index: number) => {
-                                                    const amount = (item.rate || 0) * (item.quantity || 0);
+                                                    const amount = Number(item.totalAmount ?? ((item.rate || 0) * (item.quantity || 0)));
                                                     return (
                                                         <tr key={index}>
-                                                            <td className="border border-black px-1 py-1">{index + 1}</td>
-                                                            <td className="border border-black px-1 py-1">{item.machineType || "-"}</td>
+                                                            <td className="border border-black px-1 py-1 w-[6%] text-center">{index + 1}</td>
+                                                            <td className="border border-black px-1 py-1 w-[22%] break-words whitespace-normal">{item.machineType || "-"}</td>
                                                             <td className="border border-black px-1 py-1 break-words">{item.description || "-"}</td>
                                                             <td className="border border-black px-1 py-1">{item.hsnno || "-"}</td>
                                                             <td className="border border-black px-1 py-1 text-right">{item.quantity || 0}</td>
                                                             {/* <td className="border border-black px-1 py-1 text-right">₹{(item.rate || 0).toLocaleString("en-IN")}</td> */}
-                                                            <td className="border border-black px-1 py-1 text-right">₹{Number(amount.toFixed(2)).toLocaleString("en-IN")}</td>                                                        </tr>
+                                                            <td className="border border-black px-1 py-1 text-right">₹{amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>                                                        </tr>
                                                     );
                                                 })}
                                             </tbody>
@@ -289,7 +293,7 @@ const InvoiceDealer = () => {
                                 )}
 
                                 {/* Additional Services Table */}
-                                {invoice.order?.additionalServices && invoice.order.additionalServices.length > 0 && (
+                                {additionalServicesItems.length > 0 && (
                                     <div className="mt-4">
                                         <h3 className="text-sm font-bold mb-2">Additional Services</h3>
                                         <table className="w-full table-fixed border border-black border-collapse text-[10px]">
@@ -302,13 +306,16 @@ const InvoiceDealer = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {invoice.order.additionalServices.map((item: any, index: number) => (
+                                                {additionalServicesItems.map((item: any, index: number) => (
                                                     <tr key={index}>
                                                         <td className="border border-black px-1 py-1">{index + 1}</td>
                                                         <td className="border border-black px-1 py-1">{item.name || "-"}</td>
                                                         <td className="border border-black px-1 py-1">{item.description || "-"}</td>
                                                         <td className="border border-black px-1 py-1 text-right">
-                                                            ₹{(item.totalAmount || 0).toFixed(2).toLocaleString("en-IN")}
+                                                            ₹{Number(item.amount || 0).toLocaleString("en-IN", {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2,
+                                                            })}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -329,8 +336,8 @@ const InvoiceDealer = () => {
                                     const travelCostAmount = Number(travelCostLine?.totalAmount || dh?.travelCostPrice || 0);
 
                                     const hospitalSubtotal =
-                                        hospitalServices.reduce((sum: number, s: any) => sum + (s.rate * s.quantity || 0), 0) +
-                                        hospitalAdditionalServices.reduce((sum: number, as: any) => sum + (as.totalAmount || 0), 0);
+                                        hospitalServices.reduce((sum: number, s: any) => sum + Number(s.totalAmount ?? (s.rate * s.quantity || 0)), 0) +
+                                        hospitalAdditionalServices.reduce((sum: number, as: any) => sum + (Number(as.totalAmount) || 0), 0);
 
                                     return (
                                         <div key={dhIndex} className="border border-black p-2">
@@ -346,8 +353,8 @@ const InvoiceDealer = () => {
                                                     <table className="w-full table-fixed border border-black border-collapse text-[10px]">
                                                         <thead className="bg-gray-50">
                                                             <tr>
-                                                                <th className="border border-black px-1 py-1 text-xs">S No</th>
-                                                                <th className="border border-black px-1 py-1 text-xs">Machine Type</th>
+                                                                <th className="border border-black px-1 py-1 text-xs w-[6%]">S No</th>
+                                                                <th className="border border-black px-1 py-1 text-xs w-[22%]">Machine Type</th>
                                                                 <th className="border border-black px-1 py-1 text-xs w-[28%]">Description</th>
                                                                 <th className="border border-black px-1 py-1 text-xs">HSN/SAC</th>
                                                                 <th className="border border-black px-1 py-1 text-xs">Qty</th>
@@ -358,14 +365,14 @@ const InvoiceDealer = () => {
                                                         <tbody>
                                                             {hospitalServices.map((s: any, sIdx: number) => (
                                                                 <tr key={sIdx}>
-                                                                    <td className="border border-black px-1 py-1">{sIdx + 1}</td>
-                                                                    <td className="border border-black px-1 py-1">{s.machineType || "-"}</td>
+                                                                    <td className="border border-black px-1 py-1 w-[6%] text-center">{sIdx + 1}</td>
+                                                                    <td className="border border-black px-1 py-1 w-[22%] break-words whitespace-normal">{s.machineType || "-"}</td>
                                                                     <td className="border border-black px-1 py-1 break-words">{s.description}</td>
                                                                     <td className="border border-black px-1 py-1">{s.hsnno || "-"}</td>
                                                                     <td className="border border-black px-1 py-1 text-right">{s.quantity || 0}</td>
                                                                     <td className="border border-black px-1 py-1 text-right">₹{(s.rate || 0).toLocaleString("en-IN")}</td>
                                                                     <td className="border border-black px-1 py-1 text-right">
-                                                                        ₹{((s.rate || 0) * (s.quantity || 0)).toLocaleString("en-IN")}
+                                                                        ₹{Number(s.totalAmount ?? ((s.rate || 0) * (s.quantity || 0))).toLocaleString("en-IN")}
                                                                     </td>
                                                                 </tr>
                                                             ))}
@@ -393,7 +400,7 @@ const InvoiceDealer = () => {
                                                                     <td className="border border-black px-1 py-1">{as.name}</td>
                                                                     <td className="border border-black px-1 py-1">{as.description}</td>
                                                                     <td className="border border-black px-1 py-1 text-right">
-                                                                        ₹{(as.totalAmount || 0).toLocaleString("en-IN")}
+                                                                        ₹{(Number(as.totalAmount) || 0).toLocaleString("en-IN")}
                                                                     </td>
                                                                 </tr>
                                                             ))}

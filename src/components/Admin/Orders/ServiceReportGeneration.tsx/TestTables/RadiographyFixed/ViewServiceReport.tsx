@@ -405,10 +405,16 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         {/* PAGE 3+ - DETAILED TEST RESULTS (footer pinned to bottom of last page in PDF via clone styles) */}
         <div
           className="bg-white px-8 py-2 test-section report-pdf-last-page-shell"
-          style={{ display: 'flex', flexDirection: 'column', width: '100%', boxSizing: 'border-box' }}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            boxSizing: 'border-box',
+            minHeight: '287mm',
+          }}
         >
           <ReportPdfPageHeader report={report} formatDate={formatDate} />
-          <div className="report-pdf-last-main" style={{ width: '100%', flex: '0 1 auto' }}>
+          <div className="report-pdf-last-main" style={{ width: '100%', flex: 1 }}>
             <h2 className="font-bold text-center underline mb-4" style={{ fontSize: '16px' }}>DETAILED TEST RESULTS</h2>
 
             {/* 1. Congruence */}
@@ -1208,6 +1214,16 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         .fixed-report-pdf .report-pdf-footer-block {
           page-break-inside: avoid !important;
           break-inside: avoid !important;
+          margin-top: auto !important;
+        }
+        .fixed-report-pdf .report-pdf-last-page-shell {
+          display: flex !important;
+          flex-direction: column !important;
+          min-height: 287mm !important;
+          box-sizing: border-box !important;
+        }
+        .fixed-report-pdf .report-pdf-last-main {
+          flex: 1 1 auto !important;
         }
         @media print {
           body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
@@ -1245,6 +1261,9 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           }
           .fixed-report-pdf tbody td {
             font-weight: 400 !important;
+          }
+          .fixed-report-pdf .report-pdf-last-page-shell {
+            min-height: 287mm !important;
           }
           thead { display: table-header-group; }
           h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }

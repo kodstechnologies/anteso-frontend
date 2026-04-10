@@ -8,11 +8,46 @@ export interface GeneratePDFOptions {
 }
 
 /**
+ * Injects a <style> tag into the cloned document that nukes all thick borders
+ * down to a true hairline. This runs BEFORE html2canvas rasterizes, so it wins
+ * over every existing stylesheet in the clone.
+ */
+function injectHairlineStylesheet(clonedDoc: Document): void {
+  const style = clonedDoc.createElement('style');
+  style.textContent = `
+    /* ── HAIRLINE RESET ── scoped to table elements only, no new borders added ── */
+    table {
+      border-collapse: collapse !important;
+      border-spacing: 0 !important;
+      border-width: 0.5px !important;
+      border-style: solid !important;
+      border-color: #000000 !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+    table td,
+    table th {
+      border-width: 0.5px !important;
+      border-style: solid !important;
+      border-color: #000000 !important;
+      box-sizing: border-box !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+    .border-2, .border-4, .border-8,
+    .border-t-2, .border-b-2, .border-l-2, .border-r-2 {
+      border-width: 0.5px !important;
+    }
+  `;
+  clonedDoc.head.appendChild(style);
+}
+
+/**
  * Applies hairline border fix to all tables/cells in a cloned element.
  * Must run for BOTH preserveFixedReportLayout=true and false.
  */
 function applyHairlineBorders(root: HTMLElement): void {
-  // Fix all tables
   const tables = root.querySelectorAll('table');
   tables.forEach((table) => {
     const htmlTable = table as HTMLElement;
@@ -56,8 +91,10 @@ function applyHairlineBorders(root: HTMLElement): void {
     // Fix cells
     table.querySelectorAll('td, th').forEach((cell) => {
       const htmlCell = cell as HTMLElement;
-      // THE KEY FIX: force thin grey border on every cell, no exceptions
-      htmlCell.style.border = '0.1px solid #666';
+      htmlCell.style.setProperty('border', '0.5px solid #000000', 'important');
+      htmlCell.style.setProperty('border-width', '0.5px', 'important');
+      htmlCell.style.setProperty('border-style', 'solid', 'important');
+      htmlCell.style.setProperty('border-color', '#000000', 'important');
       htmlCell.style.boxSizing = 'border-box';
       htmlCell.style.verticalAlign = 'middle';
       htmlCell.style.borderRadius = '0';
@@ -92,7 +129,7 @@ function applyHairlineBorders(root: HTMLElement): void {
         htmlCell.style.lineHeight = '1.2';
       }
 
-      // Remove white/gray backgrounds (keep text visible)
+      // Remove white/gray backgrounds
       htmlCell.classList.remove('bg-white', 'bg-gray-50');
       htmlCell.style.setProperty('background-color', 'transparent', 'important');
       htmlCell.style.setProperty('background', 'transparent', 'important');
@@ -110,8 +147,13 @@ function applyHairlineBorders(root: HTMLElement): void {
         spanEl.style.borderRadius = '0';
         spanEl.style.display = 'inline';
         const spanBg = window.getComputedStyle(spanEl).backgroundColor;
-        if (spanBg === 'white' || spanBg === 'rgb(255, 255, 255)' || spanBg === 'rgba(255, 255, 255, 1)' ||
-          spanBg === 'rgb(249, 250, 251)' || spanBg === 'rgba(249, 250, 251, 1)') {
+        if (
+          spanBg === 'white' ||
+          spanBg === 'rgb(255, 255, 255)' ||
+          spanBg === 'rgba(255, 255, 255, 1)' ||
+          spanBg === 'rgb(249, 250, 251)' ||
+          spanBg === 'rgba(249, 250, 251, 1)'
+        ) {
           spanEl.style.setProperty('background-color', 'transparent', 'important');
           spanEl.style.setProperty('background', 'transparent', 'important');
         }
@@ -143,6 +185,9 @@ function applyHairlineBorders(root: HTMLElement): void {
 
 function buildOnClone(elementId: string, contentWidthPx: number) {
   return (clonedDoc: Document) => {
+    // ── Step 1: inject the nuclear hairline stylesheet first ──
+    injectHairlineStylesheet(clonedDoc);
+
     const clonedElement = clonedDoc.getElementById(elementId);
     if (!clonedElement) return;
 
@@ -163,36 +208,43 @@ function buildOnClone(elementId: string, contentWidthPx: number) {
       (el as HTMLElement).style.display = 'none';
     });
 
-    // For fixed report layout, preserve component-defined table spacing/styles
-    // to avoid header/value overlap from aggressive clone-time compaction.
     if (preserveFixedReportLayout) {
+      // ── Step 2a (fixed-report): force hairline inline on every table + cell ──
       clonedElement.querySelectorAll('table').forEach((t) => {
         const ht = t as HTMLElement;
         ht.style.setProperty('text-align', 'center', 'important');
         ht.style.setProperty('border-collapse', 'collapse', 'important');
         ht.style.setProperty('border-spacing', '0', 'important');
-        ht.style.setProperty('border', '0.1px solid #666', 'important');
+        ht.style.setProperty('border', '0.5px solid #000000', 'important');
+        ht.style.setProperty('border-width', '0.5px', 'important');
+        ht.style.setProperty('outline', 'none', 'important');
+        ht.style.setProperty('box-shadow', 'none', 'important');
       });
+
       clonedElement.querySelectorAll('table td, table th').forEach((cell) => {
         const el = cell as HTMLElement;
         el.style.setProperty('text-align', 'center', 'important');
         el.style.setProperty('vertical-align', 'middle', 'important');
-        el.style.setProperty('border', '0.1px solid #666', 'important');
-        el.style.setProperty('border-width', '0.1px', 'important');
+        el.style.setProperty('border', '0.5px solid #000000', 'important');
+        el.style.setProperty('border-width', '0.5px', 'important');
         el.style.setProperty('border-style', 'solid', 'important');
-        el.style.setProperty('border-color', '#666666', 'important');
+        el.style.setProperty('border-color', '#000000', 'important');
+        el.style.setProperty('box-sizing', 'border-box', 'important');
+        el.style.setProperty('outline', 'none', 'important');
+        el.style.setProperty('box-shadow', 'none', 'important');
+        el.style.setProperty('border-radius', '0', 'important');
       });
-      // Last section: flex column + min height so company footer sits at bottom of the final PDF page.
+
+      // ── Step 2b: flex layout for last-page footer pinning ──
       clonedElement.querySelectorAll('.report-pdf-last-page-shell').forEach((el) => {
         const h = el as HTMLElement;
         h.style.setProperty('display', 'flex', 'important');
         h.style.setProperty('flex-direction', 'column', 'important');
-        // ~A4 body height so flex + margin-top:auto pins Date/Place/footer to the sheet bottom (not eaten by flex:1 main).
-        h.style.setProperty('min-height', '280mm', 'important');
+        h.style.setProperty('min-height', '287mm', 'important');
         h.style.setProperty('box-sizing', 'border-box', 'important');
       });
       clonedElement.querySelectorAll('.report-pdf-last-main').forEach((el) => {
-        (el as HTMLElement).style.setProperty('flex', '0 1 auto', 'important');
+        (el as HTMLElement).style.setProperty('flex', '1 1 auto', 'important');
       });
       clonedElement.querySelectorAll('.report-pdf-footer-block').forEach((el) => {
         const f = el as HTMLElement;
@@ -202,10 +254,9 @@ function buildOnClone(elementId: string, contentWidthPx: number) {
       return;
     }
 
-    // For non-fixed-report layouts, normalize table rendering.
+    // ── Step 2b (non-fixed-report): full normalisation pass ──
     applyHairlineBorders(clonedElement);
 
-    // Additional layout fixes for non-fixed-report layouts
     clonedElement.querySelectorAll('*').forEach((el) => {
       const htmlEl = el as HTMLElement;
       if (htmlEl.classList.contains('p-10')) htmlEl.style.padding = '0';
@@ -214,19 +265,29 @@ function buildOnClone(elementId: string, contentWidthPx: number) {
       if (htmlEl.classList.contains('mb-20') || htmlEl.classList.contains('mb-16') || htmlEl.classList.contains('mb-12')) htmlEl.style.marginBottom = '16px';
       if (htmlEl.classList.contains('min-h-screen')) htmlEl.style.minHeight = 'auto';
       if (htmlEl.classList.contains('mx-auto')) { htmlEl.style.marginLeft = '0'; htmlEl.style.marginRight = '0'; }
-      if (htmlEl.classList.contains('max-w-5xl') || htmlEl.classList.contains('max-w-7xl') || htmlEl.classList.contains('max-w-6xl')) {
-        htmlEl.style.maxWidth = '100%'; htmlEl.style.width = '100%';
+      if (
+        htmlEl.classList.contains('max-w-5xl') ||
+        htmlEl.classList.contains('max-w-7xl') ||
+        htmlEl.classList.contains('max-w-6xl')
+      ) {
+        htmlEl.style.maxWidth = '100%';
+        htmlEl.style.width = '100%';
       }
       if (htmlEl.tagName === 'SECTION' || htmlEl.classList.contains('section')) {
-        htmlEl.style.maxWidth = '100%'; htmlEl.style.width = '100%'; htmlEl.style.boxSizing = 'border-box';
+        htmlEl.style.maxWidth = '100%';
+        htmlEl.style.width = '100%';
+        htmlEl.style.boxSizing = 'border-box';
       }
     });
 
     clonedElement.querySelectorAll('.overflow-x-auto, [class*="overflow"]').forEach((container) => {
       const c = container as HTMLElement;
-      c.style.overflowX = 'hidden'; c.style.overflow = 'hidden';
-      c.style.width = '100%'; c.style.maxWidth = '100%';
-      c.style.padding = '0'; c.style.boxSizing = 'border-box';
+      c.style.overflowX = 'hidden';
+      c.style.overflow = 'hidden';
+      c.style.width = '100%';
+      c.style.maxWidth = '100%';
+      c.style.padding = '0';
+      c.style.boxSizing = 'border-box';
     });
   };
 }
