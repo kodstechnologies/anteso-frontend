@@ -117,7 +117,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
-    rpId: "",
+        rpId: "",
         reportULRNumber: "",
     });
     const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
@@ -239,6 +239,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
+                    rpId: data.rpId
                 });
 
                 // Map tools
@@ -1804,7 +1805,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         { label: "Location", name: "location" },
                         { label: "Temperature (°C)", name: "temperature", type: "number" },
                         { label: "Humidity (%)", name: "humidity", type: "number" },
-            { label: "RP Id", name: "rpId" },
+                        { label: "RP Id", name: "rpId" },
                     ].map(field => (
                         <div key={field.name}>
                             <label className="block font-medium mb-1">{field.label}</label>

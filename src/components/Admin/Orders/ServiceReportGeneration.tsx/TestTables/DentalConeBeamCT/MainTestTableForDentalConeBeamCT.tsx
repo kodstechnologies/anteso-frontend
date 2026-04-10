@@ -124,7 +124,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
   }
 
 
-    const linearityMaLoading = testData.linearityOfMaLoading;
+  const linearityMaLoading = testData.linearityOfMaLoading;
   const linearityMaRows = linearityMaLoading?.table2Rows || linearityMaLoading?.table2;
 
   if (linearityMaRows && Array.isArray(linearityMaRows)) {
@@ -135,7 +135,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
         const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
         const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
         return {
-          specified: (row.kv || test.kv) ? `${row.kv || test.kv} kV` : (row.ma ? `${row.ma} mA` : "-"),
+          specified: (row.kv) ? `${row.kv} kV` : (row.ma ? `${row.ma} mA` : "-"),
           measured: col,
           tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -232,7 +232,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
           const maxExposureMR = validRows.reduce((acc: number, row: any) => {
             // Prefer row.max if it's already calculated/stored
             let rowMax = toNum(row.max);
-            
+
             // If row.max is not a valid number, try to find the max from directional values
             if (isNaN(rowMax) || rowMax <= 0) {
               const values = [row.left, row.right, row.front, row.back, row.top, row.up, row.down]
