@@ -132,6 +132,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
+    rpId: "",
   });
   const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
   useEffect(() => {
@@ -258,6 +259,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
+            rpId: res.data.rpId || prev.rpId,
           }));
           if (res.data.testDate) setMinIssueDate(res.data.testDate);
         }

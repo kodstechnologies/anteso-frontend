@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/CArm/MainTestTableForCArm.tsx
+﻿// src/components/reports/TestTables/CArm/MainTestTableForCArm.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -79,7 +79,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.operatingPotential?.measurements && Array.isArray(testData.operatingPotential.measurements)) {
     const validRows = testData.operatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.operatingPotential.tolerance?.sign || testData.operatingPotential.tolerance?.type || testData.operatingPotential.toleranceSign || "±";
+      const toleranceSign = testData.operatingPotential.tolerance?.sign || testData.operatingPotential.tolerance?.type || testData.operatingPotential.toleranceSign || "Â±";
       const toleranceValue = testData.operatingPotential.tolerance?.value || testData.operatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -115,9 +115,9 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
     const required = parseFloat(requiredTF);
     const isPass = !isNaN(measured) && !isNaN(required) && measured >= required;
     addRowsForTest("Total Filtration", [{
-      specified: requiredTF !== "-" ? `${requiredTF} mm Al` : "-",
-      measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
-      tolerance: `≥ ${requiredTF} ${requiredTF !== "-" ? "mm Al" : ""}`,
+      specified: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
+      measured: requiredTF !== "-" ? `${requiredTF} mm Al` : "-",
+      tolerance: `â‰¥ ${requiredTF} ${requiredTF !== "-" ? "mm Al" : ""}`,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -136,7 +136,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: maVal ? `${maVal} mA` : "-",
           measured: col,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -155,7 +155,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
           measured: col,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -175,7 +175,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.kvp && row.ma ? `${row.kvp} kVp, ${row.ma} mA` : row.kvp ? `${row.kvp} kVp` : "Varies",
           measured: cov,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -226,9 +226,9 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
         let toleranceDisplay = "As per standard";
 
         if (mode === "AEC Mode") {
-          toleranceDisplay = `≤ ${aecTolerance} cGy/Min`;
+          toleranceDisplay = `â‰¤ ${aecTolerance} cGy/Min`;
         } else if (mode === "Manual Mode") {
-          toleranceDisplay = `≤ ${nonAecTolerance} cGy/Min`;
+          toleranceDisplay = `â‰¤ ${nonAecTolerance} cGy/Min`;
         }
 
         return {
@@ -254,7 +254,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.location || "-",
           measured: max !== "-" ? `${max} ${row.unit || "mGy/h"}` : "-",
-          tolerance: `${toleranceOperator === "less than or equal to" ? "≤" : toleranceOperator === "greater than or equal to" ? "≥" : "="} ${toleranceValue} mGy/h`,
+          tolerance: `${toleranceOperator === "less than or equal to" ? "â‰¤" : toleranceOperator === "greater than or equal to" ? "â‰¥" : "="} ${toleranceValue} mGy/h`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -330,3 +330,4 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData }) => {
 };
 
 export default MainTestTableForCArm;
+

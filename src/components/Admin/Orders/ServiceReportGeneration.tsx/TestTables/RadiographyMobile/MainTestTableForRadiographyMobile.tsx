@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/RadiographyMobile/MainTestTableForRadiographyMobile.tsx
+﻿// src/components/reports/TestTables/RadiographyMobile/MainTestTableForRadiographyMobile.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -54,7 +54,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         return {
           specified: row.dimension || "-",
           measured: percentFED !== "-" ? `${percentFED}%` : "-",
-          tolerance: `≤ ${tolerance}%`,
+          tolerance: ` ${tolerance}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -92,7 +92,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
       }
     }
 
-    // Format specified value and display with degree symbol (°)
+    // Format specified value and display with degree symbol (Â°)
     const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
     const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
 
@@ -117,7 +117,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
 
       const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
 
-      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 ≤ F ≤ 1.5 MM, +0.3 F FOR F > 1.5 MM
+      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 â‰¤ F â‰¤ 1.5 MM, +0.3 F FOR F > 1.5 MM
       const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
       const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
       const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
@@ -125,7 +125,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} MM; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} MM; +${largeMultiplier} F FOR F > ${mediumUpper} MM`;
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower}  F  ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -159,7 +159,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         return {
           specified: statedNominal !== null ? `${Number(statedNominal).toFixed(1)} mm` : "-",
           measured: measuredNominal !== null ? `${Number(measuredNominal).toFixed(1)} mm` : "-",
-          tolerance: toleranceLimit !== "-" ? `≤ ${toleranceLimit} mm` : "-",
+          tolerance: toleranceLimit !== "-" ? `â‰¤ ${toleranceLimit} mm` : "-",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -199,7 +199,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Accuracy of Irradiation Time", testRows);
+      addRowsForTest("Accuracy of Irradiation Time(sec)", testRows);
     }
   }
 
@@ -207,8 +207,14 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.accuracyOfOperatingPotential.toleranceSign || "±";
-      const toleranceValue = testData.accuracyOfOperatingPotential.toleranceValue || "2.0";
+      const toleranceSign =
+        testData.accuracyOfOperatingPotential.tolerance?.sign ||
+        testData.accuracyOfOperatingPotential.toleranceSign ||
+        "±";
+      const toleranceValue =
+        testData.accuracyOfOperatingPotential.tolerance?.value ||
+        testData.accuracyOfOperatingPotential.toleranceValue ||
+        "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
         if (row.remarks === "PASS" || row.remarks === "Pass") {
@@ -227,7 +233,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         return {
           specified: row.setKV || "-",
           measured: row.avgKvp || "-",
-          tolerance: `${toleranceSign}${toleranceValue}%`,
+          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -253,7 +259,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: !isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-",
+      tolerance: !isNaN(requiredTol) ? ` ${requiredTol} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   } else if (testData.accuracyOfOperatingPotential?.totalFiltration && (testData.accuracyOfOperatingPotential.totalFiltration.atKvp || testData.accuracyOfOperatingPotential.totalFiltration.required)) {
@@ -273,7 +279,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: !isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-",
+      tolerance: !isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -284,6 +290,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
     const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.col != null || row.x != null);
     if (validRows.length > 0) {
+      const linearityKv = testData.linearityOfMasLoading?.table1?.[0]?.kv || testData.linearityOfMasLoading?.kv || "";
       const getVal = (o: any): number => {
         if (o == null) return NaN;
         if (typeof o === 'number') return o;
@@ -337,15 +344,16 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         else if (toleranceOperator === ">") isPass = c > tolerance;
       }
 
-      const testRows = validRows.map((row: any) => {
-        return {
-          specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
+      // Keep one summary row like RadiographyFixed so "Specified Values" naturally follows single-row behavior.
+      addRowsForTest(
+        "Linearity of mAs Loading (Coefficient of Linearity)",
+        [{
+          specified: linearityKv ? `at ${linearityKv} kV` : "-",
           measured: col !== "-" ? `CoL = ${col}` : "-",
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Linearity of mAs Loading (Coefficient of Linearity)", testRows, true, true);
+        }]
+      );
     }
   }
 
@@ -396,7 +404,9 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         }
 
         return {
-          specified: row.kv ? `${row.kv} kV` : "Varies",
+          specified: (row.kv || row.kvp) && (row.ma || row.mas || row.mAs)
+            ? `at ${row.kv || row.kvp} kV ${row.ma || row.mas || row.mAs} mA`
+            : ((row.kv || row.kvp) ? `${row.kv || row.kvp} kV` : "Varies"),
           measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -419,12 +429,12 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         const isPass = maxStr !== "-" && parseFloat(maxStr) < parseFloat(toleranceValue);
         return {
           specified: row.location || "-",
-          measured: maxStr !== "-" ? `${maxStr} mGy/h` : "-",
-          tolerance: `≤ ${toleranceValue} mGy/h`,
+          measured: maxStr !== "-" ? `${maxStr} mGy in one hour` : "-",
+          tolerance: ` ${toleranceValue} mGy in one hour`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation Leakage Level", testRows);
+      addRowsForTest("Radiation leakage level at 1m from tube housing", testRows);
     }
   }
 
@@ -505,3 +515,4 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
 };
 
 export default MainTestTableForRadiographyMobile;
+

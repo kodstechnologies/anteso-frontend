@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/BMD/MainTestTableForBMD.tsx
+﻿// src/components/reports/TestTables/BMD/MainTestTableForBMD.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -53,7 +53,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
     if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
       const validRows = test.rows.filter((row: any) => row.setTime || row.avgTime);
       if (validRows.length > 0) {
-        const toleranceSign = test.timeToleranceSign || "±";
+        const toleranceSign = test.timeToleranceSign || "Â±";
         const toleranceValue = test.timeToleranceValue || "10";
         const testRows = validRows.map((row: any) => {
           const setTime = parseFloat(row.setTime) || 0;
@@ -113,7 +113,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
           (Array.isArray(row.measuredValues) && row.measuredValues.length > 0)
       );
       if (validRows.length > 0) {
-        const toleranceSign = test.kvpToleranceSign || "±";
+        const toleranceSign = test.kvpToleranceSign || "Â±";
         const toleranceValue = test.kvpToleranceValue || "5";
         const testRows = validRows.map((row: any) => {
           const avgKvpDisplay = getAvgKvpDisplay(row);
@@ -166,9 +166,9 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
         const measuredNum = parseFloat(measuredVal);
         const isPass = !isNaN(measuredNum) && !isNaN(reqNum) ? measuredNum >= reqNum : false;
         const testRows = [{
-          specified: atKvp ? `${atKvp} kVp` : "-",
-          measured: measuredVal ? `${measuredVal} mm Al` : "-",
-          tolerance: !isNaN(reqNum) ? `≥ ${reqNum} mm Al` : "-",
+          specified: measuredVal ? `${measuredVal} mm Al` : "-",
+          measured: atKvp ? `${atKvp} kVp` : "-",
+          tolerance: !isNaN(reqNum) ? `â‰¥ ${reqNum} mm Al` : "-",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         }];
         addRowsForTest("Total Filtration", testRows);
@@ -197,9 +197,9 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
           }
 
           return {
-            specified: row.ma ? `${row.ma} mA` : "-",
+            specified: (row.kv || test.kv) ? `${row.kv || test.kv} kV` : (row.ma ? `${row.ma} mA` : "-"),
             measured: coefficient !== null ? coefficient.toFixed(3) : "-",
-            tolerance: `≤ ${tolerance}`,
+            tolerance: `â‰¤ ${tolerance}`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
@@ -280,7 +280,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
           return {
             specified: row.location || "-",
             measured: max !== "-" ? `${max} ${row.unit || "mGy/h"}` : "-",
-            tolerance: `${toleranceOperator === "less than or equal to" ? "≤" : toleranceOperator === "greater than or equal to" ? "≥" : "="} ${toleranceValue} mGy/h`,
+            tolerance: `${toleranceOperator === "less than or equal to" ? "â‰¤" : toleranceOperator === "greater than or equal to" ? "â‰¥" : "="} ${toleranceValue} mGy/h`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
@@ -312,7 +312,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
           return {
             specified: loc.location || "-",
             measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-            tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+            tolerance: loc.category === "worker" ? "â‰¤ 40 mR/week" : "â‰¤ 2 mR/week",
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
@@ -388,3 +388,4 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData }) => {
 };
 
 export default MainTestTableForBMD;
+

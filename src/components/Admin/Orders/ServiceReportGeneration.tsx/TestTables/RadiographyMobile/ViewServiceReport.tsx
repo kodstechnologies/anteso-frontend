@@ -40,6 +40,7 @@ interface ReportData {
   condition: string;
   testingProcedureNumber: string;
   engineerNameRPId: string;
+  rpId?: string;
   testDate: string;
   testDueDate: string;
   location: string;
@@ -72,11 +73,14 @@ const defaultNotes: Note[] = [
 const ViewServiceReportRadiographyMobile: React.FC = () => {
   const [searchParams] = useSearchParams();
   const serviceId = searchParams.get("serviceId");
+  const pickRpId = (obj: any): string =>
+    obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.engineerAssigned?.rpId || "N/A";
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
+  const [calculatedPages, setCalculatedPages] = useState<string>("");
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -106,6 +110,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
             engineerNameRPId: data.engineerNameRPId || "N/A",
+            rpId: pickRpId(data),
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
             location: data.location || "N/A",
@@ -143,6 +148,27 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             outputConsistency: data.ConsistencyOfRadiationOutputRadiographyMobile || null,
             radiationLeakageLevel: data.RadiationLeakageLevelRadiographyMobile || null,
           });
+
+          // Keep page count behavior consistent with RadiographyFixed.
+          let pagesCount = 1;
+          const detailedTestSections = [
+            { data: data.CongruenceOfRadiationRadioGraphyMobile, pages: 0.5 },
+            { data: data.CentralBeamAlignmentRadiographyMobile, pages: 0.5 },
+            { data: data.EffectiveFocalSpotRadiographyMobile, pages: 0.5 },
+            { data: data.AccuracyOfIrradiationTimeRadiographyMobile, pages: 0.5 },
+            { data: accOpPot, pages: 1 },
+            { data: data.LinearityOfmAsLoadingRadiographyMobile, pages: 1 },
+            { data: data.ConsistencyOfRadiationOutputRadiographyMobile, pages: 1 },
+            { data: data.RadiationLeakageLevelRadiographyMobile, pages: 1 },
+          ];
+          let detailedPages = 0;
+          detailedTestSections.forEach((section) => {
+            if (section.data && typeof section.data === "object" && Object.keys(section.data).length > 0) {
+              detailedPages += section.pages;
+            }
+          });
+          pagesCount += Math.ceil(detailedPages);
+          setCalculatedPages(String(pagesCount));
         } else {
           setNotFound(true);
         }
@@ -158,6 +184,18 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
   }, [serviceId]);
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
+  const todayDate = new Date().toLocaleDateString("en-GB");
+  const extractCity = (raw: string) => {
+    if (!raw || raw === "N/A") return "";
+    const parts = raw.split(",").map(p => p.trim()).filter(Boolean);
+    if (parts.length === 0) return "";
+    const alphaParts = parts.filter(p => /[A-Za-z]/.test(p) && !/^\d{6}$/.test(p.replace(/\s+/g, "")));
+    if (alphaParts.length === 0) return "";
+    const stateOrCountry = /^(india|bharat|uttar pradesh|up|delhi|new delhi|haryana|maharashtra|karnataka|tamil nadu|kerala|gujarat|rajasthan|punjab|bihar|west bengal|telangana|andhra pradesh|odisha|jharkhand|chhattisgarh|madhya pradesh|goa|assam|jammu and kashmir|ladakh|himachal pradesh|uttarakhand|manipur|meghalaya|mizoram|nagaland|sikkim|tripura|arunachal pradesh)$/i;
+    const city = [...alphaParts].reverse().find(p => !stateOrCountry.test(p));
+    return city || alphaParts[alphaParts.length - 1];
+  };
+  const customerCity = extractCity(report?.location || "") || extractCity(report?.address || "") || "-";
 
   const downloadPDF = async () => {
     try {
@@ -229,10 +267,10 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             </div>
             <img src={logo} alt="Logo" className="h-28 print:h-20" />
           </div>
-          <div className="text-center mb-4 print:mb-2">
+          {/* <div className="text-center mb-4 print:mb-2">
             <p className="text-sm print:text-[9px]">Government of India, Atomic Energy Regulatory Board</p>
             <p className="text-sm print:text-[9px]">Radiological Safety Division, Mumbai-400094</p>
-          </div>
+          </div> */}
           <h1 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-base" style={{ fontSize: '15px' }}>
             QA TEST REPORT FOR RADIOGRAPHY (MOBILE) X-RAY EQUIPMENT
           </h1>
@@ -245,11 +283,11 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Customer</td>
+                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
                 </tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address</td>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.address}</td>
                 </tr>
               </tbody>
@@ -275,10 +313,12 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                   ["Make", report.make || "-"],
                   ["Model", report.model],
                   ["Serial No.", report.slNumber],
-                  ["Category", report.category || "-"],
+                  ...(report.category && report.category !== "N/A" && report.category !== "-" ? [["Category", report.category]] : []),
                   ["Condition", report.condition],
                   ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                  ["Engineer Name & RP ID", report.engineerNameRPId],
+                  ["Engineer Name", report.engineerNameRPId],
+                  ["RP ID", report.rpId || "-"],
+                  ["No. of Pages", calculatedPages || "-"],
                   ["Test Date", formatDate(report.testDate)],
                   ["Due Date", formatDate(report.testDueDate)],
                   ["Location", report.location],
@@ -344,11 +384,11 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               <p className="font-bold print:text-xs">Authorized Signatory</p>
             </div>
           </div>
-          <footer className="text-center text-xs print:text-[8px] text-gray-600 mt-6 print:mt-3">
+          {/* <footer className="text-center text-xs print:text-[8px] text-gray-600 mt-6 print:mt-3">
             <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
             <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
             <p>Email: info@antesobiomedicalengg.com</p>
-          </footer>
+          </footer> */}
         </div>
 
         {/* PAGE 2+ - SUMMARY TABLE */}
@@ -474,7 +514,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                           <tr>
                             <td className="border border-black p-3 font-medium w-1/2">Observed tilt</td>
                             <td className="border border-black p-3 text-center">
-                              {testData.centralBeamAlignment.observedTilt.value || "-"}
+                              {testData.centralBeamAlignment.observedTilt.value || "-"}&deg;
                               {testData.centralBeamAlignment.observedTilt.remark && (
                                 <span className={`ml-2 ${testData.centralBeamAlignment.observedTilt.remark === "Pass" ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}`}>
                                   {testData.centralBeamAlignment.observedTilt.remark}
@@ -633,8 +673,8 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr className="bg-blue-50">
-                          <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
-                          <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
+                          <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (sec)</th>
+                          <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (sec)</th>
                           <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
                           <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                         </tr>
@@ -731,6 +771,13 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                     </table>
                   </div>
                 )}
+                {testData.accuracyOfOperatingPotential.tolerance && (
+                  <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: "2px 4px", marginTop: "4px" }}>
+                    <p className="text-sm print:text-[9px]" style={{ fontSize: "11px", margin: "2px 0" }}>
+                      <strong>Tolerance:</strong> {testData.accuracyOfOperatingPotential.tolerance.sign || "±"} {testData.accuracyOfOperatingPotential.tolerance.value || "-"} kVp
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -806,7 +853,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                           </tr>
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Measured Total Filtration</td>
-                            <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{tf.required || tf.measured || "-"} mm Al</td>
+                            <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{tf.required || "-"} mm Al</td>
                           </tr>
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
@@ -1239,6 +1286,17 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                 No detailed test results available for this report.
               </p>
             )}
+            <div className="mt-8 print:mt-4 pt-4 border-t border-gray-300">
+            <div className="grid grid-cols-1 justify-between text-sm print:text-[9px] mb-4">
+                <p><strong>Date:</strong> {todayDate}</p>
+                <p><strong>Place:</strong> {customerCity}</p>
+              </div>
+              <footer className="text-center text-xs print:text-[8px] text-gray-700">
+                <p>ANTESO BIOMEDICAL OPC PRIVATE LIMITED.</p>
+                <p>2ND FLOOR, FLAT NO. 290, POCKET D - 7, SECTOR 6, ROHINI, North West Delhi, Delhi, 110085</p>
+                <p>Email: info@antesobiomedicalengg.com</p>
+              </footer>
+            </div>
           </div>
         </div>
       </div>

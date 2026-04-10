@@ -61,6 +61,8 @@ interface DetailsResponse {
 
 const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
   const navigate = useNavigate();
+  const pickRpId = (obj: any): string =>
+    obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.engineerAssigned?.rpId || "";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -109,6 +111,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
+    rpId: "",
     category: "",
   });
 
@@ -226,6 +229,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
+          rpId: pickRpId(data),
           category: data.category || "",
         });
 
@@ -280,6 +284,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
+            rpId: pickRpId(res.data) || prev.rpId,
           }));
           if (res.data.testDate) setMinIssueDate(res.data.testDate);
           if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
@@ -360,6 +365,9 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       }
       const payload = {
         ...formData,
+        rpid: formData.rpId,
+        rpID: formData.rpId,
+        RPId: formData.rpId,
         toolsUsed: tools.map(t => ({
           tool: t.certificate || null,
           SrNo: t.SrNo,
@@ -1585,6 +1593,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             { label: "Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },
             { label: "Humidity (%)", name: "humidity", type: "number" },
+            { label: "RP Id", name: "rpId" },
           ].map(field => (
             <div key={field.name}>
               <label className="block font-medium mb-1">{field.label}</label>

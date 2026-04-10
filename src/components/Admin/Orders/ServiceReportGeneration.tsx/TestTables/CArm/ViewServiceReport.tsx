@@ -40,6 +40,7 @@ interface ReportData {
   condition: string;
   testingProcedureNumber: string;
   engineerNameRPId: string;
+  rpId?: string;
   testDate: string;
   testDueDate: string;
   location: string;
@@ -163,6 +164,7 @@ const ViewServiceReportCArm: React.FC = () => {
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
             engineerNameRPId: data.engineerNameRPId || "N/A",
+            rpId: data.rpId || "N/A",
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
             location: data.location || "N/A",
@@ -429,7 +431,8 @@ const ViewServiceReportCArm: React.FC = () => {
                   ["Serial No.", report.slNumber],
                   ["Condition", report.condition],
                   ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                  ["Engineer Name & RP ID", report.engineerNameRPId],
+                  ["Engineer Name", report.engineerNameRPId],
+                  ["RP ID", report.rpId || "-"],
                   ["Test Date", formatDate(report.testDate)],
                   ["Due Date", formatDate(report.testDueDate)],
                   ["Location", report.location],

@@ -134,6 +134,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
+    rpId: "",
     category: "",
   });
 
@@ -1050,6 +1051,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
+          rpId: data.rpId || "",
           category: data.category || "",
         });
 
@@ -1120,6 +1122,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
+            rpId: res.data.rpId || prev.rpId,
           }));
           if (res.data.testDate) setMinIssueDate(res.data.testDate);
 
@@ -1542,6 +1545,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             { label: "Testing Done At Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },
             { label: "Humidity (RH %)", name: "humidity", type: "number" },
+            { label: "RP Id", name: "rpId" },
           ].map((field, i) => (
             <div key={i}>
               <label className="block text-sm font-medium text-gray-700 mb-1">

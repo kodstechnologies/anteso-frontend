@@ -39,6 +39,7 @@ interface ReportData {
   condition: string;
   testingProcedureNumber: string;
   engineerNameRPId: string;
+  rpId?: string;
   testDate: string;
   testDueDate: string;
   location: string;
@@ -110,6 +111,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
             engineerNameRPId: data.engineerNameRPId || "N/A",
+            rpId: data.rpId || "N/A",
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
             location: data.location || "N/A",
@@ -173,6 +175,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
           condition: d.condition,
           testingProcedureNumber: d.testingProcedureNumber,
           engineerNameRPId: d.engineerNameRPId,
+          rpId: d.rpId,
           testDate: d.testDate,
           testDueDate: d.testDueDate,
           location: d.location,
@@ -267,11 +270,11 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Customer</td>
+                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
                 </tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address</td>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.address}</td>
                 </tr>
               </tbody>
@@ -305,16 +308,17 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   ["Make", report.make || "-"],
                   ["Model", report.model],
                   ["Serial No.", report.slNumber],
-                  ["Category", report.category || "-"],
+                  ...(report.category && report.category !== "N/A" && report.category !== "-" ? [["Category", report.category]] : []),
                   ["Condition", report.condition],
                   ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                  ["Engineer Name & RP ID", report.engineerNameRPId],
+                  ["Engineer Name", report.engineerNameRPId],
+                  ["RP ID", report.rpId || "-"],
                   ["Test Date", formatDate(report.testDate)],
                   ["Due Date", formatDate(report.testDueDate)],
                   ["Location", report.location],
-                  ["Temperature (°C)", report.temperature || "-"],
+                  ["Temperature (Â°C)", report.temperature || "-"],
                   ["Humidity (%)", report.humidity || "-"],
-                  ["No. of Pages", report.pages ?? "-"],
+                  ["No. of Pages", report.pages || "-"],
                 ].map(([label, value]) => (
                   <tr key={label} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                     <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</td>
@@ -380,7 +384,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
           </div>
           <footer className="text-center text-xs print:text-[8px] text-gray-600 mt-6 print:mt-3">
             <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+            <p>2nd Floor, D-290, Sector â€“ 63, Noida, New Delhi â€“ 110085</p>
             <p>Email: info@antesobiomedicalengg.com</p>
           </footer>
         </div>
@@ -403,7 +407,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
             <h2 className="text-3xl font-bold text-center underline mb-6 print:mb-2 print:text-xl">DETAILED TEST RESULTS</h2>
 
-  {/* 4. Congruence */}
+            {/* 4. Congruence */}
             {testData.congruence && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Congruence of Radiation & Light Field</h3>
@@ -465,7 +469,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
               </div>
             )}
 
- {/* 3. Central Beam Alignment */}
+            {/* 3. Central Beam Alignment */}
             {testData.centralBeamAlignment && (
               <div className="mb-16 print:mb-2 print:break-inside-avoid" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Central Beam Alignment</h3>
@@ -507,7 +511,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                           <tr>
                             <td className="border border-black p-3 font-medium w-1/2">Observed tilt</td>
                             <td className="border border-black p-3 text-center">
-                              {testData.centralBeamAlignment.observedTilt.value || "-"}
+                              {testData.centralBeamAlignment.observedTilt.value || "-"}&deg;
                               {testData.centralBeamAlignment.observedTilt.remark && (
                                 <span className={`ml-2 ${testData.centralBeamAlignment.observedTilt.remark === "Pass" ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}`}>
                                   {testData.centralBeamAlignment.observedTilt.remark}
@@ -532,7 +536,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             )}
 
 
-                {/* 5. Effective Focal Spot */}
+            {/* 5. Effective Focal Spot */}
             {testData.effectiveFocalSpot && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Effective Focal Spot Size</h3>
@@ -558,8 +562,8 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                       <thead className="bg-gray-100">
                         <tr>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ width: '12%', padding: '0px 1px', fontSize: '11px' }}>Focus Type</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Stated Focal Spot of Tube</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Stated Focal Spot of Tube(mm)</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ width: '24%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot(mm)</th>
                           <th className="border border-black p-2 print:p-1 text-left" style={{ width: '30%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.1' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <strong>Tolerance:</strong>
@@ -644,8 +648,8 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (sec)</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (sec)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Error (%)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                         </tr>
@@ -751,7 +755,15 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   {aop.tolerance && (
                     <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        <strong>Tolerance:</strong> {aop.tolerance.sign === 'both' ? '±' : aop.tolerance.sign === 'plus' ? '+' : '-'}{aop.tolerance.value}{aop.tolerance.type === 'percent' ? '%' : ' kVp'}
+                        <strong>Tolerance:</strong> {((sign: any) => {
+                          if (!sign) return "±";
+                          const s = String(sign).toLowerCase().replace(/\s+/g, "");
+                          if (s.includes("plus") && s.includes("minus")) return "±";
+                          if (s === "both" || s === "±") return "±";
+                          if (s === "plus" || s === "+") return "+";
+                          if (s === "minus" || s === "-") return "-";
+                          return sign;
+                        })(aop.tolerance?.sign)} {aop.tolerance.value}{aop.tolerance.type === 'percent' ? '%' : ' kVp'}
                       </p>
                     </div>
                   )}
@@ -811,7 +823,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                       {tf.tolerance && (
                         <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                           <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                            <strong>Tolerance:</strong> {tf.tolerance.sign || "±"} {tf.tolerance.value || "-"} kV
+                            <strong>Tolerance:</strong> {tf.tolerance.sign || "Â±"} {tf.tolerance.value || "-"} kV
                           </p>
                         </div>
                       )}
@@ -851,7 +863,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                             <tr>
                               <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                               <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
+                                {!isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-"}
                               </td>
                             </tr>
                             <tr>
@@ -867,7 +879,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                         <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                           <span className="font-semibold">Tolerance criteria: </span>
                           {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
-                          {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                          {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} â‰¤ kV â‰¤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                           {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                         </div>
                       </div>
@@ -877,9 +889,9 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
               );
             })()}
 
-           
 
-        
+
+
 
             {/* 6. Linearity of mAs Loading */}
             {testData.linearityOfMasLoading && (() => {
@@ -967,7 +979,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                             const formatValue = (val: any) => {
                               if (val === undefined || val === null) return "-";
                               const str = String(val).trim();
-                              return str === "" || str === "—" || str === "undefined" || str === "null" ? "-" : str;
+                              return str === "" || str === "â€”" || str === "undefined" || str === "null" ? "-" : str;
                             };
 
                             return (
@@ -1012,7 +1024,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   {testData.linearityOfMasLoading.tolerance && (
                     <div className="bg-gray-50 p-4 rounded border">
                       <p className="text-sm">
-                        <strong>Tolerance (CoL):</strong> {testData.linearityOfMasLoading.toleranceOperator || "≤"} {testData.linearityOfMasLoading.tolerance || "0.1"}
+                        <strong>Tolerance (CoL):</strong> {testData.linearityOfMasLoading.toleranceOperator || "â‰¤"} {testData.linearityOfMasLoading.tolerance || "0.1"}
                       </p>
                     </div>
                   )}
@@ -1065,7 +1077,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                             {Array.from({ length: measCount }, (_, i) => (
                               <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
                             ))}
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (X̄)</th>
+                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (XÌ„)</th>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Remark</th>
                           </tr>
@@ -1135,12 +1147,12 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
               const allValues = measurements.flatMap((m: any) => [m.left, m.right, m.front, m.back, m.top])
                 .map((v: any) => parseFloat(v) || 0)
                 .filter((v: any) => v > 0);
-              const maxExposureLevel = allValues.length > 0 ? Math.max(...allValues).toFixed(2) : "—";
+              const maxExposureLevel = allValues.length > 0 ? Math.max(...allValues).toFixed(2) : "â€”";
 
               // Final max leakage result for the calculation block
-              const calculatedMaxLeakage = maxExposureLevel !== "—" && maValue > 0 && workloadValue > 0
+              const calculatedMaxLeakage = maxExposureLevel !== "â€”" && maValue > 0 && workloadValue > 0
                 ? ((workloadValue * parseFloat(maxExposureLevel)) / (60 * maValue)).toFixed(3)
-                : "—";
+                : "â€”";
 
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -1239,12 +1251,12 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                     <div className="bg-gray-50 p-2 border border-black rounded" style={{ fontSize: '10px' }}>
                       <p className="mb-1"><strong>Work Load and Max Leakage Calculation:</strong></p>
                       <div className="grid grid-cols-1 gap-1">
-                        <p><strong>Work Load:</strong> {data.workload || "-"} mA·min in one hour</p>
+                        <p><strong>Work Load:</strong> {data.workload || "-"} mAÂ·min in one hour</p>
                         <div className="flex gap-2 items-start mt-1">
                           <span className="font-bold">Max Leakage =</span>
                           <div>
-                            <span className="inline-block border-b border-black pb-1">({data.workload || "—"} mA·min in 1 hr × {maxExposureLevel} max Exposure Level (mR/hr))</span>
-                            <span className="block text-center mt-1">(60 × {maValue || "—"} mA used for measurement)</span>
+                            <span className="inline-block border-b border-black pb-1">({data.workload || "â€”"} mAÂ·min in 1 hr Ã— {maxExposureLevel} max Exposure Level (mR/hr))</span>
+                            <span className="block text-center mt-1">(60 Ã— {maValue || "â€”"} mA used for measurement)</span>
                           </div>
                           <span className="font-bold ml-2">= {calculatedMaxLeakage} mR in one hour</span>
                         </div>
@@ -1261,17 +1273,17 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                           const rowValues = [result.left, result.right, result.front, result.back, result.top]
                             .map(v => parseFloat(v) || 0)
                             .filter(v => v > 0);
-                          const maxValue = rowValues.length > 0 ? Math.max(...rowValues).toFixed(2) : '—';
-                          const resultMR = (maxValue !== '—' && maValue > 0 && workloadValue > 0)
+                          const maxValue = rowValues.length > 0 ? Math.max(...rowValues).toFixed(2) : 'â€”';
+                          const resultMR = (maxValue !== 'â€”' && maValue > 0 && workloadValue > 0)
                             ? (workloadValue * parseFloat(maxValue)) / (60 * maValue)
                             : 0;
-                          const calculatedMGy = resultMR > 0 ? (resultMR / 114).toFixed(4) : '—';
+                          const calculatedMGy = resultMR > 0 ? (resultMR / 114).toFixed(4) : 'â€”';
 
                           return (
                             <div key={idx} className="flex flex-col gap-1 border-b border-gray-200 pb-1 last:border-0">
                               <span className="font-medium">Maximum Radiation Leakage from {result.location}:</span>
                               <div className="flex gap-2 items-center text-[9px]">
-                                <span className="text-gray-600">Formula: ({workloadValue} × {maxValue}) / (60 × {maValue}) = </span>
+                                <span className="text-gray-600">Formula: ({workloadValue} Ã— {maxValue}) / (60 Ã— {maValue}) = </span>
                                 <span className="font-bold px-2 py-0.5 bg-blue-50 border border-blue-200 rounded">{calculatedMGy} mGy in one hour</span>
                               </div>
                             </div>
@@ -1380,3 +1392,4 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
 };
 
 export default ViewServiceReportRadiographyPortable;
+

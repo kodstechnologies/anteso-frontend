@@ -66,7 +66,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
   ]);
 
   const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
-  const [toleranceValue, setToleranceValue] = useState("2.0");
+  const [toleranceValue, setToleranceValue] = useState("5.0");
   const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "", atKvp: "" });
   const [filtrationTolerance, setFiltrationTolerance] = useState({
     forKvGreaterThan70: "1.5",

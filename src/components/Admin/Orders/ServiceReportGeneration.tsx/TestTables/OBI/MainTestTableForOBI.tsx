@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/OBI/MainTestTableForOBI.tsx
+﻿// src/components/reports/TestTables/OBI/MainTestTableForOBI.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -49,7 +49,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.dimension || "-",
           measured: row.percentFED ? `${row.percentFED}%` : "-",
-          tolerance: row.tolerance ? `≤ ${row.tolerance}%` : "-",
+          tolerance: row.tolerance ? `â‰¤ ${row.tolerance}%` : "-",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -78,8 +78,8 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
 
       addRowsForTest("Central Beam Alignment", [{
         specified: "Observed Tilt",
-        measured: observedTilt.value ? `${observedTilt.value}°` : "-",
-        tolerance: `${tolerance.operator || "≤"} ${tolerance.value || "-"}°`,
+        measured: observedTilt.value ? `${observedTilt.value}Â°` : "-",
+        tolerance: `${tolerance.operator || "â‰¤"} ${tolerance.value || "-"}Â°`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }]);
     }
@@ -113,7 +113,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
         const isPass = row.remark === "Pass" || row.remark === "PASS";
         testRows.push({
           specified: row.focusType || "-",
-          measured: row.measuredWidth && row.measuredHeight ? `${row.measuredWidth} × ${row.measuredHeight} mm` : "-",
+          measured: row.measuredWidth && row.measuredHeight ? `${row.measuredWidth} Ã— ${row.measuredHeight} mm` : "-",
           tolerance: toleranceDisplay, // Render JSX
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         });
@@ -168,7 +168,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     if (Array.isArray(rowsToProcess)) {
       const validRows = rowsToProcess.filter((row: any) => row.appliedKvp || row.averageKvp || row.setKV || row.avgKvp);
       if (validRows.length > 0) {
-        const toleranceSign = opData.toleranceSign || "±";
+        const toleranceSign = opData.toleranceSign || "Â±";
         const toleranceValue = opData.toleranceValue || "2.0";
         const testRows = validRows.map((row: any) => {
           let isPass = false;
@@ -221,9 +221,9 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
     const isPass = !isNaN(measVal) && !isNaN(requiredTol) ? measVal >= requiredTol : false;
 
     addRowsForTest("Total Filtration", [{
-      specified: !isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-",
-      measured: measured !== "-" ? `${measured} mm Al` : "-",
-      tolerance: !isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-",
+      specified: measured !== "-" ? `${measured} mm Al` : "-",
+      measured: !isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-",
+      tolerance: !isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -252,7 +252,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.kv ? `${row.kv} kV` : "Varies with kV",
           measured: cov,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -309,7 +309,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
           measured: col,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -353,7 +353,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.location || "-",
           measured: max !== "-" ? `${max} mGy/h` : "-",
-          tolerance: `${toleranceOperator === "less than or equal to" ? "≤" : toleranceOperator === "greater than or equal to" ? "≥" : "="} ${toleranceValue} mGy/h`,
+          tolerance: `${toleranceOperator === "less than or equal to" ? "â‰¤" : toleranceOperator === "greater than or equal to" ? "â‰¥" : "="} ${toleranceValue} mGy/h`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -392,7 +392,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: loc.location || "-",
           measured: loc.mRPerWeek ? `${loc.mRPerWeek} mR/week` : (loc.mRPerHr ? `${loc.mRPerHr} mR/hr` : "-"),
-          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          tolerance: loc.category === "worker" ? "â‰¤ 40 mR/week" : "â‰¤ 2 mR/week",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -469,3 +469,4 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData }) => {
 };
 
 export default MainTestTableForOBI;
+

@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/RadiographyMobileHT/MainTestTableForRadiographyMobileHT.tsx
+﻿// src/components/reports/TestTables/RadiographyMobileHT/MainTestTableForRadiographyMobileHT.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -145,7 +145,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.accuracyOfOperatingPotential.toleranceSign || "±";
+      const toleranceSign = testData.accuracyOfOperatingPotential.toleranceSign || "Â±";
       const toleranceValue = testData.accuracyOfOperatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -174,7 +174,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
   if (testData.totalFilteration?.measurements && Array.isArray(testData.totalFilteration.measurements)) {
     const validRows = testData.totalFilteration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.totalFilteration.tolerance?.sign || "±";
+      const toleranceSign = testData.totalFilteration.tolerance?.sign || "Â±";
       const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -215,8 +215,8 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     const isPass = !isNaN(measuredVal) && !isNaN(requiredTol) && measuredVal >= requiredTol;
     const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 <= kV <= 100; 2.5 mm Al for kV > 100";
     addRowsForTest("Total Filtration", [{
-      specified: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      measured: appliedKV !== "-" ? `${appliedKV} kVp` : "-",
+      specified: appliedKV !== "-" ? `${appliedKV} kVp` : "-",
+      measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
       tolerance: toleranceStr,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
@@ -335,7 +335,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
         }
 
         return {
-          specified: row.kv ? `${row.kv} kV` : "Varies",
+          specified: (row.kv || row.kvp) && (row.ma || row.mas || row.mAs) ? `at ${row.kv || row.kvp} kV ${row.ma || row.mas || row.mAs} mA` : ((row.kv || row.kvp) ? `${row.kv || row.kvp} kV` : "Varies"),
           measured: formattedCv !== "-" ? `CoV = ${formattedCv}` : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -459,3 +459,4 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
 };
 
 export default MainTestTableForRadiographyMobileHT;
+

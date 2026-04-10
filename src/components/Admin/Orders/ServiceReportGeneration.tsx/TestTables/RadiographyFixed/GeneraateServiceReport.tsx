@@ -68,6 +68,8 @@ interface DetailsResponse {
 
 const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
   const navigate = useNavigate();
+  const pickRpId = (obj: any): string =>
+    obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.engineerAssigned?.rpId || "";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -107,6 +109,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
+    rpId: "",
     category: "",
   });
   const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
@@ -200,6 +203,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
+          rpId: pickRpId(data),
           category: data.category || "",
         });
 
@@ -248,6 +252,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               temperature: reportData.temperature || prev.temperature,
               humidity: reportData.humidity || prev.humidity,
               engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
+              rpId: pickRpId(reportData) || prev.rpId,
             }));
             if (reportData.testDate) setMinIssueDate(reportData.testDate);
 
@@ -1440,6 +1445,9 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
 
       const payload = {
         ...formData,
+        rpid: formData.rpId,
+        rpID: formData.rpId,
+        RPId: formData.rpId,
         toolsUsed: tools.map((t) => ({
           tool: t.certificate || null,
           SrNo: t.SrNo,
@@ -1665,6 +1673,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             { label: "Category", name: "category" },
             { label: "Condition of Test Item", name: "condition" },
             { label: "Testing Procedure Number", name: "testingProcedureNumber" },
+            { label: "Engineer Name", name: "engineerNameRPId" },
+            { label: "RP Id", name: "rpId" },
             { label: "No. of Pages", name: "pages" },
             { label: "Test Date", name: "testDate", type: "date" },
             { label: "Test Due Date", name: "testDueDate", type: "date" },

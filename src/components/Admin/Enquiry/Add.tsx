@@ -6,7 +6,7 @@ import { FieldArray, Field, Form, Formik, ErrorMessage, type FieldProps } from "
 import { Link, useNavigate } from "react-router-dom"
 import Select from "react-select"
 import { showMessage } from "../../common/ShowMessage"
-import { addEnquiryCreateDirectOrder, getAllDealers, getAllEmployees, getAllManufacturer, getAllStates, getAllActiveEmployees } from "../../../api/index" // Update this path
+import { addEnquiryCreateDirectOrder, getAllDealers, getAllEmployees, getAllStates, getAllActiveEmployees } from "../../../api/index" // Update this path
 import AnimatedTrashIcon from "../../common/AnimatedTrashIcon"
 
 // Define interfaces
@@ -166,7 +166,6 @@ const AddEnquiry: React.FC = () => {
     const [dealerOptions, setDealerOptions] = useState<{ label: string; value: string }[]>([]);
     const [states, setStates] = useState<StateType[]>([]);
     const [loading, setLoading] = useState(true);
-    const [manufacturerOptions, setManufacturerOptions] = useState<{ label: string; value: string }[]>([]);
 
     useEffect(() => {
         const fetchStates = async () => {
@@ -210,24 +209,8 @@ const AddEnquiry: React.FC = () => {
                 console.error("Failed to load dealers", err);
             }
         };
-        const fetchManufacturers = async () => {
-            try {
-                const res = await getAllManufacturer(); // ✅ call your API
-                const data = res.data.data || res.data; // handle both response shapes
-                const options = data.map((m: any) => ({
-                    label: `${m.name} - manufacturer`,
-                    value: m._id,
-                }));
-                // ✅ Append them to the dropdown by merging with existing options
-                setManufacturerOptions(options);
-            } catch (err) {
-                console.error("Failed to load manufacturers", err);
-            }
-        };
-
         fetchEmployees();
         fetchDealers();
-        fetchManufacturers();
 
     }, []);
 
@@ -395,13 +378,6 @@ const AddEnquiry: React.FC = () => {
                                         ))}
 
                                         {dealerOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-
-
-                                        {manufacturerOptions.map((option) => (
                                             <option key={option.value} value={option.value}>
                                                 {option.label}
                                             </option>

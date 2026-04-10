@@ -45,7 +45,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     ]);
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
-    const [toleranceValue, setToleranceValue] = useState("2.0");
+    const [toleranceValue, setToleranceValue] = useState("5.0");
     const [totalFiltration, setTotalFiltration] = useState({
         measured: "",
         required: "",
@@ -204,7 +204,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             }
         };
         loadTest();
-    }, [serviceId, initialTestId, toleranceSign, toleranceValue]);
+    }, [serviceId, initialTestId]);
 
     // Save function
     const saveTest = async () => {

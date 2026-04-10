@@ -1,4 +1,4 @@
-// // src/components/reports/TestTables/CTScan/MainTestTableForCTScan.tsx
+﻿// // src/components/reports/TestTables/CTScan/MainTestTableForCTScan.tsx
 // import React from "react";
 
 // interface MainTestTableProps {
@@ -23,7 +23,7 @@
 //   if (testData.radiationProfile?.table2?.[0]) {
 //     const row = testData.radiationProfile.table2[0];
 //     const isPass = row.remarks === "Pass";
-//     addRow("Radiation Profile Width / Slice Thickness (mm)", row.applied || "-", row.measured || "-", "±10% or ±1 mm", isPass ? "Pass" : "Fail");
+//     addRow("Radiation Profile Width / Slice Thickness (mm)", row.applied || "-", row.measured || "-", "Â±10% or Â±1 mm", isPass ? "Pass" : "Fail");
 //   }
 
 //   if (testData.operatingPotential?.table2?.[0]) {
@@ -31,7 +31,7 @@
 //     const tol = testData.operatingPotential.tolerance?.value || 5;
 //     const deviation = row.deviation ? Math.abs(parseFloat(row.deviation)) : null;
 //     const isPass = deviation !== null && deviation <= tol;
-//     addRow("Measurement of Operating Potential (kVp Accuracy)", row.setKV || "-", row.avgKvp || "-", `±${tol}%`, isPass ? "Pass" : "Fail");
+//     addRow("Measurement of Operating Potential (kVp Accuracy)", row.setKV || "-", row.avgKvp || "-", `Â±${tol}%`, isPass ? "Pass" : "Fail");
 //   }
 
 //   if (testData.maLinearity?.table2?.[0]) {
@@ -41,7 +41,7 @@
 //     const linearity = row.linearity || "-";
 //     const tol = testData.maLinearity.tolerance || "0.1";
 //     const isPass = parseFloat(linearity) <= parseFloat(tol);
-//     addRow("mA/mAs Linearity (Coefficient of Linearity)", "Varies", linearity, `≤ ±${tol}`, isPass ? "Pass" : "Fail");
+//     addRow("mA/mAs Linearity (Coefficient of Linearity)", "Varies", linearity, `â‰¤ Â±${tol}`, isPass ? "Pass" : "Fail");
 //   }
 
 //   if (testData.timerAccuracy?.table2?.[0]) {
@@ -51,21 +51,21 @@
 //       ? Math.abs(((parseFloat(row.observedTime) - parseFloat(row.setTime)) / parseFloat(row.setTime)) * 100).toFixed(2)
 //       : null;
 //     const isPass = error !== null && parseFloat(error) <= parseFloat(tol);
-//     addRow("Timer Accuracy", row.setTime || "-", row.observedTime || "-", `±${tol}%`, isPass ? "Pass" : "Fail");
+//     addRow("Timer Accuracy", row.setTime || "-", row.observedTime || "-", `Â±${tol}%`, isPass ? "Pass" : "Fail");
 //   }
 
 //   if (testData.ctdi?.table2) {
 //     const ctdiwHead = testData.ctdi.table2.find((r: any) => r.result?.includes("CTDIw"))?.head || "-";
 //     const ctdiwBody = testData.ctdi.table2.find((r: any) => r.result?.includes("CTDIw"))?.body || "-";
-//     addRow("CTDIw (Head Phantom)", "As per protocol", ctdiwHead, "≤ Reference", ctdiwHead === "-" ? "Fail" : "Pass");
-//     addRow("CTDIw (Body Phantom)", "As per protocol", ctdiwBody, "≤ Reference", ctdiwBody === "-" ? "Fail" : "Pass");
+//     addRow("CTDIw (Head Phantom)", "As per protocol", ctdiwHead, "â‰¤ Reference", ctdiwHead === "-" ? "Fail" : "Pass");
+//     addRow("CTDIw (Body Phantom)", "As per protocol", ctdiwBody, "â‰¤ Reference", ctdiwBody === "-" ? "Fail" : "Pass");
 //   }
 
 //   if (testData.totalFiltration?.rows?.[0]) {
 //     const row = testData.totalFiltration.rows[0];
 //     const measured = parseFloat(row.measuredTF);
 //     const isPass = measured >= 2.5;
-//     addRow("Total Filtration", row.appliedKV || "-", `${row.measuredTF || "-"} mm Al`, "≥ 2.5 mm Al (>70 kVp)", isPass ? "Pass" : "Fail");
+//     addRow("Total Filtration", row.appliedKV || "-", `${row.measuredTF || "-"} mm Al`, "â‰¥ 2.5 mm Al (>70 kVp)", isPass ? "Pass" : "Fail");
 //   }
 
 //   if (testData.leakage?.leakageMeasurements?.[0]) {
@@ -183,8 +183,8 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     // If index is provided (0, 1, 2), use fixed labels from generator
     if (index !== undefined) {
       if (index === 0) return "0.5 mm";
-      if (index === 1) return "±50%";
-      if (index === 2) return "±1.0 mm";
+      if (index === 1) return "Â±50%";
+      if (index === 2) return "Â±1.0 mm";
     }
 
     const appliedNum = typeof applied === 'string' ? parseFloat(applied) : applied;
@@ -193,9 +193,9 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     if (appliedNum < 1.0) {
       return "0.5 mm";
     } else if (appliedNum >= 1.0 && appliedNum <= 2.0) {
-      return "±50%";
+      return "Â±50%";
     } else {
-      return "±1.0 mm";
+      return "Â±1.0 mm";
     }
   };
 
@@ -206,7 +206,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const type = tolerance.type || 'percent';
     const sign = tolerance.sign || 'both';
 
-    const signSymbol = sign === 'both' ? '±' : sign === 'plus' ? '+' : '-';
+    const signSymbol = sign === 'both' ? 'Â±' : sign === 'plus' ? '+' : '-';
     const unit = type === 'percent' ? '%' : ' kVp';
     return `${signSymbol}${value}${unit}`;
   };
@@ -214,7 +214,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
   // Helper function to format Timer Accuracy tolerance
   const formatTimerAccuracyTolerance = (tolerance: string | number): string => {
     if (!tolerance) return "-";
-    return `±${tolerance}%`;
+    return `Â±${tolerance}%`;
   };
 
   const addRowsForTest = (
@@ -351,7 +351,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.mAsApplied || "-",
           measured: col !== "-" ? `CoL = ${col}` : "-",
-          tolerance: `≤ ${tol}`,
+          tolerance: `â‰¤ ${tol}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           measuredRowSpan: idx === 0 ? validRows.length : 0,
           toleranceRowSpan: idx === 0 ? validRows.length : 0,
@@ -415,7 +415,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
               isPass = covNum >= tolValue;
             }
           }
-          const operatorSymbol = tolOperator === '<=' ? '≤' : tolOperator === '<' ? '<' : tolOperator === '>=' ? '≥' : '>';
+          const operatorSymbol = tolOperator === '<=' ? 'â‰¤' : tolOperator === '<' ? '<' : tolOperator === '>=' ? 'â‰¥' : '>';
           return {
             specified: row.kvp ? `${row.kvp} kVp` : "Varies with kVp",
             measured: formattedCov !== "-" ? "CoV = " + formattedCov : "-",
@@ -436,7 +436,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const tolerance = testData.ctdi.tolerance;
     const kvp = testData.ctdi.table1?.[0]?.kvp || "-";
     const tolValue = tolerance?.value ? parseFloat(tolerance.value) : 20;
-    const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : '±';
+    const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : 'Â±';
     const tolStr = `${tolSign}${tolValue} % of Stated value`;
 
     const calculateCtdiPass = (measured: any, specified: any) => {
@@ -491,7 +491,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     addRowsForTest("Low Contrast Resolution", [{
       specified: `Contrast: ${contrastLevel}%`,
       measured: `${observedSize} mm`,
-      tolerance: "≤ 5.0 mm at 1% contrast",
+      tolerance: "â‰¤ 5.0 mm at 1% contrast",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -547,7 +547,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.appliedKV || "-",
           measured: `${row.measuredTF || "-"} mm Al`,
-          tolerance: "≥ 2.5 mm Al",
+          tolerance: "â‰¥ 2.5 mm Al",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -630,18 +630,18 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
       const surveyRows: any[] = [];
 
       surveyRows.push({
-        specified: "≤ 40 mR/week",
+        specified: "â‰¤ 40 mR/week",
         measured: maxWorkerWeekly > 0 ? `${maxWorkerWeekly.toFixed(3)} mR/week` : "-",
         criteria: "For Radiation Worker",
-        tolerance: "≤ 40 mR/week",
+        tolerance: "â‰¤ 40 mR/week",
         remarks: (maxWorkerWeekly > 0 ? (maxWorkerWeekly <= 40 ? "Pass" : "Fail") : "Pass") as "Pass" | "Fail",
       });
 
       surveyRows.push({
-        specified: "≤ 2 mR/week",
+        specified: "â‰¤ 2 mR/week",
         measured: maxPublicWeekly > 0 ? `${maxPublicWeekly.toFixed(3)} mR/week` : "-",
         criteria: "For Public",
-        tolerance: "≤ 2 mR/week",
+        tolerance: "â‰¤ 2 mR/week",
         remarks: (maxPublicWeekly > 0 ? (maxPublicWeekly <= 2 ? "Pass" : "Fail") : "Pass") as "Pass" | "Fail",
       });
 

@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/DentalConeBeamCT/MainTestTableForDentalConeBeamCT.tsx
+﻿// src/components/reports/TestTables/DentalConeBeamCT/MainTestTableForDentalConeBeamCT.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -81,7 +81,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
   if (testData.operatingPotential?.rows && Array.isArray(testData.operatingPotential.rows)) {
     const validRows = testData.operatingPotential.rows.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.operatingPotential.toleranceSign || "±";
+      const toleranceSign = testData.operatingPotential.toleranceSign || "Â±";
       const toleranceValue = testData.operatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -116,9 +116,9 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
     const measured = parseFloat(String(measuredTF));
     const isPass = !isNaN(measured) && measured >= 2.5;
     addRowsForTest("Total Filtration", [{
-      specified: (appliedKV !== "" && appliedKV !== "-") ? `${appliedKV} kVp` : "Varies",
-      measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
-      tolerance: "≥ 2.5 mm Al (>70 kVp)",
+      specified: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
+      measured: (appliedKV !== "" && appliedKV !== "-") ? `${appliedKV} kVp` : "Varies",
+      tolerance: "â‰¥ 2.5 mm Al (>70 kVp)",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -135,16 +135,16 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
         const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
         const isPass = row.remarks === "Pass" || row.remarks === "PASS" || (row.col ? parseFloat(row.col) <= parseFloat(tolerance) : false);
         return {
-          specified: row.ma ? `${row.ma} mA` : "-",
+          specified: (row.kv || test.kv) ? `${row.kv || test.kv} kV` : (row.ma ? `${row.ma} mA` : "-"),
           measured: col,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
       addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
     }
   }
-  // 3. Consistency of Radiation Output (CoV) — tolerance as decimal (e.g. 0.05), no %
+  // 3. Consistency of Radiation Output (CoV) â€” tolerance as decimal (e.g. 0.05), no %
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kvp || row.cov || row.cv);
     if (validRows.length > 0) {
@@ -210,7 +210,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
       let measuredNum = parseFloat(String(measuredValue)) || 0;
 
       // If maxRadiationLeakage is not available, calculate from maxLeakageResult or raw rows
-      if (!measuredValue || measuredValue === "" || measuredValue === "-" || measuredValue === "—") {
+      if (!measuredValue || measuredValue === "" || measuredValue === "-" || measuredValue === "â€”") {
         const maxLeakageResult = testData.radiationLeakage.maxLeakageResult || "";
         const maxLeakageResultNum = parseFloat(String(maxLeakageResult)) || 0;
         if (maxLeakageResultNum > 0) {
@@ -264,7 +264,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
 
       // Calculate remark based on maxRadiationLeakage
       let remark = "";
-      if (measuredValue !== "-" && measuredValue !== "" && measuredValue !== "—") {
+      if (measuredValue !== "-" && measuredValue !== "" && measuredValue !== "â€”") {
         const tol = parseFloat(String(toleranceValue));
         if (!isNaN(measuredNum) && !isNaN(tol) && tol > 0) {
           const lowerOp = toleranceOperator.toLowerCase();
@@ -291,9 +291,9 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
       // Format tolerance operator for display
       let toleranceDisplay = "";
       if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
-        toleranceDisplay = "≤";
+        toleranceDisplay = "â‰¤";
       } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
-        toleranceDisplay = "≥";
+        toleranceDisplay = "â‰¥";
       } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
         toleranceDisplay = "<";
       } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
@@ -304,7 +304,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
 
       addRowsForTest("Maximum Radiation Leakage from Tube Housing", [{
         specified: "Tube Housing",
-        measured: (measuredValue !== "-" && measuredValue !== "" && measuredValue !== "—") ? `${measuredValue} mGy/h` : "-",
+        measured: (measuredValue !== "-" && measuredValue !== "" && measuredValue !== "â€”") ? `${measuredValue} mGy/h` : "-",
         tolerance: `${toleranceDisplay} ${toleranceValue} mGy/h`,
         remarks: (remark === "Pass" || remark === "PASS" ? "Pass" : remark === "Fail" || remark === "FAIL" ? "Fail" : "-") as "Pass" | "Fail",
       }]);
@@ -324,7 +324,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
         return {
           specified: loc.location || "-",
           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          tolerance: loc.category === "worker" ? "â‰¤ 40 mR/week" : "â‰¤ 2 mR/week",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -403,3 +403,4 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
 };
 
 export default MainTestTableForDentalConeBeamCT;
+

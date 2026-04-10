@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/OArm/MainTestTableForOArm.tsx
+﻿// src/components/reports/TestTables/OArm/MainTestTableForOArm.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -43,7 +43,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.operatingPotential?.measurements && Array.isArray(testData.operatingPotential.measurements)) {
     const validRows = testData.operatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
     if (validRows.length > 0) {
-      const toleranceSign = testData.operatingPotential.tolerance?.sign || "±";
+      const toleranceSign = testData.operatingPotential.tolerance?.sign || "Â±";
       const toleranceValue = testData.operatingPotential.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -165,11 +165,11 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
     }
 
     const isPass = !isNaN(measuredNum) && measuredNum >= requiredTolerance;
-    const toleranceStr = `≥ ${requiredTolerance} mm Al (At ${tf.atKvp || "-"} kVp)`;
+    const toleranceStr = `â‰¥ ${requiredTolerance} mm Al (At ${tf.atKvp || "-"} kVp)`;
 
     addRowsForTest("Total Filtration", [{
-      specified: `≥ ${requiredTolerance} mm Al`,
-      measured: (tf.required || tf.measured) ? `${tf.required || tf.measured} mm Al` : "-",
+      specified: (tf.required || tf.measured) ? `${tf.required || tf.measured} mm Al` : "-",
+      measured: `â‰¥ ${requiredTolerance} mm Al`,
       tolerance: `Reference kVp: ${tf.atKvp || "-"}`,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
@@ -187,7 +187,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.kvp && row.ma ? `${row.kvp} kVp, ${row.ma} mA` : row.kvp ? `${row.kvp} kVp` : "Varies",
           measured: displayCov,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -205,7 +205,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
     addRowsForTest("High Contrast Resolution", [{
       specified: "Line Pairs per mm",
       measured: measuredLpPerMm ? `${measuredLpPerMm} lp/mm` : "-",
-      tolerance: `≥ ${recommendedStandard} lp/mm`,
+      tolerance: `â‰¥ ${recommendedStandard} lp/mm`,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -220,7 +220,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
     addRowsForTest("Low Contrast Resolution", [{
       specified: "Smallest Visible Hole",
       measured: smallestHoleSize ? `${smallestHoleSize} mm` : "-",
-      tolerance: `≤ ${recommendedStandard} mm`,
+      tolerance: `â‰¤ ${recommendedStandard} mm`,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -240,7 +240,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.distance ? `${row.distance} cm` : "-",
           measured: row.exposure ? `${row.exposure} cGy/min` : "-", // Updated unit to cGy/min
-          tolerance: `≤ ${toleranceVal} cGy/min`,
+          tolerance: `â‰¤ ${toleranceVal} cGy/min`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -262,8 +262,8 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
       const toleranceTime = testData.tubeHousingLeakage.toleranceTime === '1' ? '1 hour' : '1 hour';
 
       // Map operator to symbol
-      let opSymbol = "≤";
-      if (toleranceOperator === "greater than or equal to") opSymbol = "≥";
+      let opSymbol = "â‰¤";
+      if (toleranceOperator === "greater than or equal to") opSymbol = "â‰¥";
       if (toleranceOperator === "=") opSymbol = "=";
 
       const toleranceDisplay = `${opSymbol} ${toleranceValue} mGy/hr`;
@@ -311,7 +311,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
         const app = appliedVal(row);
 
         return {
-          specified: app != null && app !== "" ? `${app} ${selectionLabel}` : "-",
+          specified: (row.kv || lin.kv) ? `${row.kv || lin.kv} kV` : (app != null && app !== "" ? `${app} ${selectionLabel}` : "-"),
           measured: col,
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -388,3 +388,4 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData }) => {
 };
 
 export default MainTestTableForOArm;
+

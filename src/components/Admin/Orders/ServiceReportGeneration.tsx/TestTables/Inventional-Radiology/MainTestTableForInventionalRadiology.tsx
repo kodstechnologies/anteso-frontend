@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/InventionalRadiology/MainTestTableForInventionalRadiology.tsx
+﻿// src/components/reports/TestTables/InventionalRadiology/MainTestTableForInventionalRadiology.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -49,9 +49,9 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     const tolerance = testData.centralBeamAlignment.tolerance?.value || "1.5";
     const remark = testData.centralBeamAlignment.observedTilt?.remark || "-";
     addRowsForTest("Central Beam Alignment Test", [{
-      specified: `Tolerance: < ${tolerance}°`,
-      measured: observed !== "-" ? `${observed}°` : "-",
-      tolerance: `< ${tolerance}°`,
+      specified: `Tolerance: < ${tolerance}Â°`,
+      measured: observed !== "-" ? `${observed}Â°` : "-",
+      tolerance: `< ${tolerance}Â°`,
       remarks: (remark === "Pass" ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -70,7 +70,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 
       const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
 
-      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 ≤ F ≤ 1.5 MM, +0.3 F FOR F > 1.5 MM
+      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 â‰¤ F â‰¤ 1.5 MM, +0.3 F FOR F > 1.5 MM
       const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
       const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
       const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
@@ -78,7 +78,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} MM; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} MM; +${largeMultiplier} F FOR F > ${mediumUpper} MM`;
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} MM; +${mediumMultiplier} F FOR ${mediumLower} â‰¤ F â‰¤ ${mediumUpper} MM; +${largeMultiplier} F FOR F > ${mediumUpper} MM`;
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -90,14 +90,14 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 
         let specifiedStr = "-";
         if (statedWidth !== null && statedHeight !== null) {
-          specifiedStr = `${statedWidth} × ${statedHeight} mm`;
+          specifiedStr = `${statedWidth} Ã— ${statedHeight} mm`;
         } else if (spot.statedNominal != null) {
           specifiedStr = `${formatValue(spot.statedNominal)} mm`;
         }
 
         let measuredStr = "-";
         if (measuredWidth !== null && measuredHeight !== null) {
-          measuredStr = `${measuredWidth} × ${measuredHeight} mm`;
+          measuredStr = `${measuredWidth} Ã— ${measuredHeight} mm`;
         } else if (spot.measuredNominal != null) {
           measuredStr = `${formatValue(spot.measuredNominal)} mm`;
         }
@@ -148,11 +148,11 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // 5. Accuracy of Operating Potential (Total Filtration) — from measurements array
+  // 5. Accuracy of Operating Potential (Total Filtration) â€” from measurements array
   if (testData.totalFilteration?.measurements && Array.isArray(testData.totalFilteration.measurements)) {
     const validRows = testData.totalFilteration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
     if (validRows.length > 0) {
-      const toleranceSign = testData.totalFilteration.tolerance?.sign || "±";
+      const toleranceSign = testData.totalFilteration.tolerance?.sign || "Â±";
       const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -204,7 +204,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // 7. Total Filtration result — same field mapping and kVp-band tolerance as Radiography Fixed
+  // 7. Total Filtration result â€” same field mapping and kVp-band tolerance as Radiography Fixed
   if (testData.totalFilteration?.totalFiltration) {
     const tf = testData.totalFilteration.totalFiltration;
     const measuredStr = (tf.required ?? tf.measured ?? "-").toString();
@@ -240,7 +240,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       }
     }
 
-    const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+    const toleranceStr = "1.5 mm Al for kV â‰¤ 70; 2.0 mm Al for 70 â‰¤ kV â‰¤ 100; 2.5 mm Al for kV > 100";
 
     addRowsForTest("Total Filtration", [{
       specified: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
@@ -327,11 +327,11 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 
 
 
-  // 4. Accuracy of Operating Potential (kVp Accuracy) — aligned with Radiography Fixed
+  // 4. Accuracy of Operating Potential (kVp Accuracy) â€” aligned with Radiography Fixed
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.accuracyOfOperatingPotential.toleranceSign || "±";
+      const toleranceSign = testData.accuracyOfOperatingPotential.toleranceSign || "Â±";
       const toleranceValue = testData.accuracyOfOperatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -364,7 +364,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     const testRows = testData.consistencyOfRadiationOutput.outputRows.filter((row: any) => row.kvp).map((row: any) => ({
       specified: `${row.kvp} kV, ${row.mas} mAs`,
       measured: `COV: ${row.cov || "-"}`,
-      tolerance: "COV ≤ 0.05",
+      tolerance: "COV â‰¤ 0.05",
       remarks: (row.remarks === "Pass" ? "Pass" : "Fail") as "Pass" | "Fail",
     }));
     addRowsForTest("Consistency of Radiation Output", testRows);
@@ -416,8 +416,8 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       const manualTolerance = parseFloat(String(testData.exposureRateTableTop.nonAecTolerance ?? "5"));
       const getMode = (row: any) => String(row.mode || row.remark || row.remarks || "").trim();
       const getToleranceByMode = (mode: string) => {
-        if (/aec/i.test(mode)) return !isNaN(aecTolerance) ? `≤ ${aecTolerance} mGy/min` : "≤ 10 mGy/min";
-        if (/manual/i.test(mode)) return !isNaN(manualTolerance) ? `≤ ${manualTolerance} mGy/min` : "≤ 5 mGy/min";
+        if (/aec/i.test(mode)) return !isNaN(aecTolerance) ? `â‰¤ ${aecTolerance} mGy/min` : "â‰¤ 10 mGy/min";
+        if (/manual/i.test(mode)) return !isNaN(manualTolerance) ? `â‰¤ ${manualTolerance} mGy/min` : "â‰¤ 5 mGy/min";
         return "As per selected mode";
       };
 
@@ -454,7 +454,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
         return {
           specified: row.location || "-",
           measured: max !== "-" ? `${max} mGy/h` : "-",
-          tolerance: `≤ ${toleranceValue} mGy/h`,
+          tolerance: `â‰¤ ${toleranceValue} mGy/h`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -469,7 +469,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       const testRows = validLocations.map((loc: any) => ({
         specified: loc.category === "worker" ? "Worker Area" : "Public Area",
         measured: `${loc.mRPerHr || "0"} mR/hr (${loc.mRPerWeek || "0"} mR/wk)`,
-        tolerance: loc.category === "worker" ? "≤ 40 mR/wk" : "≤ 2 mR/wk",
+        tolerance: loc.category === "worker" ? "â‰¤ 40 mR/wk" : "â‰¤ 2 mR/wk",
         remarks: (loc.result === "PASS" ? "Pass" : "Fail") as "Pass" | "Fail",
       }));
       addRowsForTest("Radiation Protection Survey Report", testRows);
@@ -552,4 +552,5 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 };
 
 export default MainTestTableForInventionalRadiology;
+
 

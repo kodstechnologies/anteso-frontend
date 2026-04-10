@@ -100,6 +100,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+    rpId: "",
         category: "",
         reportULRNumber: "",
     });
@@ -1312,6 +1313,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
+          rpId: data.rpId || "",
                     category: data.category || "",
                 });
 
@@ -1678,6 +1680,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         { label: "Location", name: "location" },
                         { label: "Temperature (°C)", name: "temperature", type: "number" },
                         { label: "Humidity (%)", name: "humidity", type: "number" },
+            { label: "RP Id", name: "rpId" },
                     ].map(field => (
                         <div key={field.name}>
                             <label className="block font-medium mb-1">{field.label}</label>

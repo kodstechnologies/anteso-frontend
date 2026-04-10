@@ -1,4 +1,4 @@
-// src/components/reports/ViewServiceReportOArm.tsx
+﻿// src/components/reports/ViewServiceReportOArm.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForOArm, saveReportHeader } from "../../../../../../api";
@@ -41,6 +41,7 @@ interface ReportData {
   condition: string;
   testingProcedureNumber: string;
   engineerNameRPId: string;
+  rpId?: string;
   testDate: string;
   testDueDate: string;
   location: string;
@@ -108,6 +109,7 @@ const ViewServiceReportOArm: React.FC = () => {
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
             engineerNameRPId: data.engineerNameRPId || "N/A",
+            rpId: data.rpId || "N/A",
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
             location: data.location || "N/A",
@@ -117,7 +119,7 @@ const ViewServiceReportOArm: React.FC = () => {
             notes: data.notes || defaultNotes,
           });
 
-          // Transform Tube Housing Leakage — support top-level + settings[] + alternate array/field names from API
+          // Transform Tube Housing Leakage â€” support top-level + settings[] + alternate array/field names from API
           const tubeHousingData = data.TubeHousingLeakageOArm;
           let transformedRadiationLeakage = null;
 
@@ -218,7 +220,7 @@ const ViewServiceReportOArm: React.FC = () => {
                 firstSettings?.Time ??
                 "",
               workload: tubeHousingData.workload ?? tubeHousingData.workloadValue ?? "",
-              workloadUnit: tubeHousingData.workloadUnit || "mA·min/week",
+              workloadUnit: tubeHousingData.workloadUnit || "mAÂ·min/week",
               toleranceValue: String(tolRaw),
               toleranceOperator,
               toleranceTime: tubeHousingData.toleranceTime ?? "1",
@@ -471,11 +473,12 @@ const ViewServiceReportOArm: React.FC = () => {
                     ["Serial No.", report.slNumber],
                     ["Condition", report.condition],
                     ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                    ["Engineer Name & RP ID", report.engineerNameRPId],
+                    ["Engineer Name", report.engineerNameRPId],
+                  ["RP ID", report.rpId || "-"],
                     ["Test Date", formatDate(report.testDate)],
                     ["Due Date", formatDate(report.testDueDate)],
                     ["Location", report.location],
-                    ["Temperature (°C)", report.temperature || "-"],
+                    ["Temperature (Â°C)", report.temperature || "-"],
                     ["Humidity (%)", report.humidity || "-"],
                     ["No. of Pages", report.pages ?? "-"],
                   ].map(([label, value]) => (
@@ -544,7 +547,7 @@ const ViewServiceReportOArm: React.FC = () => {
 
             <footer className="text-center text-xs print:text-[8px] text-gray-600 mt-6 print:mt-3">
               <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-              <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+              <p>2nd Floor, D-290, Sector â€“ 63, Noida, New Delhi â€“ 110085</p>
               <p>Email: info@antesobiomedicalengg.com</p>
             </footer>
         </div>
@@ -657,7 +660,7 @@ const ViewServiceReportOArm: React.FC = () => {
               </div>
             )}
 
-            {/* 2. Total Filtration — Accuracy of Operating Potential table + Total Filtration result (like RadiographyFixed) */}
+            {/* 2. Total Filtration â€” Accuracy of Operating Potential table + Total Filtration result (like RadiographyFixed) */}
             {testData.totalFilteration && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Total Filtration</h3>
@@ -697,7 +700,7 @@ const ViewServiceReportOArm: React.FC = () => {
                     {testData.totalFilteration.tolerance && (
                       <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                         <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                          <strong>Tolerance:</strong> {testData.totalFilteration.tolerance.sign || "±"} {testData.totalFilteration.tolerance.value || "-"}%
+                          <strong>Tolerance:</strong> {testData.totalFilteration.tolerance.sign || "Â±"} {testData.totalFilteration.tolerance.value || "-"}%
                         </p>
                       </div>
                     )}
@@ -748,7 +751,7 @@ const ViewServiceReportOArm: React.FC = () => {
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                              {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
+                              {!isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -765,7 +768,7 @@ const ViewServiceReportOArm: React.FC = () => {
                       <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                         <span className="font-semibold">Tolerance criteria: </span>
                         {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
-                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} â‰¤ kV â‰¤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                         {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                       </div>
                     </div>
@@ -774,7 +777,7 @@ const ViewServiceReportOArm: React.FC = () => {
               </div>
             )}
 
-            {/* 3. Output Consistency — same columns as Generate: parameters + kVp, mA, Meas 1..N, Mean, COV, Remark */}
+            {/* 3. Output Consistency â€” same columns as Generate: parameters + kVp, mA, Meas 1..N, Mean, COV, Remark */}
             {testData.outputConsistency && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Consistency of Radiation Output</h3>
@@ -812,7 +815,7 @@ const ViewServiceReportOArm: React.FC = () => {
                             <th key={hi} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{h}</th>
                           ));
                           })()}
-                          <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Mean (X̄)</th>
+                          <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Mean (XÌ„)</th>
                           <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>COV</th>
                           <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Remark</th>
                         </tr>
@@ -1030,12 +1033,12 @@ const ViewServiceReportOArm: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
                     <div>
                       <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                        <strong>Workload:</strong> {data.workload || "-"} {data.workloadUnit || "mA·min/week"}
+                        <strong>Workload:</strong> {data.workload || "-"} {data.workloadUnit || "mAÂ·min/week"}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                        {/* <strong>Tolerance (mGy in 1 hr):</strong> {data.toleranceValue || "1.0"} {data.toleranceOperator === 'greater than or equal to' ? '≥' : '≤'} {data.toleranceTime || "1"} hr */}
+                        {/* <strong>Tolerance (mGy in 1 hr):</strong> {data.toleranceValue || "1.0"} {data.toleranceOperator === 'greater than or equal to' ? 'â‰¥' : 'â‰¤'} {data.toleranceTime || "1"} hr */}
                       </p>
                     </div>
                   </div>
@@ -1110,10 +1113,10 @@ const ViewServiceReportOArm: React.FC = () => {
                     <div className="bg-gray-50 p-4 print:p-1 rounded border border-gray-200">
                       <p className="text-sm print:text-[10px] font-bold mb-2 print:mb-1">Calculation Formula:</p>
                       <div className="bg-white p-3 print:p-1 border border-dashed border-gray-400 text-center font-mono text-sm print:text-[10px]">
-                        Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                        Maximum Leakage (mR in 1 hr) = (Workload Ã— Max Exposure) / (60 Ã— mA)
                       </div>
                       <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
-                        Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                        Where: Workload = {workloadValue} mAÂ·min/week | mA = {maValue} | 1 mGy = 114 mR
                       </p>
                     </div>
 
@@ -1124,7 +1127,7 @@ const ViewServiceReportOArm: React.FC = () => {
                           <p className="font-bold text-xs print:text-[9px] text-blue-800 mb-2">Tube Housing Summary:</p>
                           <div className="text-[11px] print:text-[8px] space-y-1">
                             <p>Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong></p>
-                            <p>Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
+                            <p>Result: ({workloadValue} Ã— {tubeSummary.rowMax}) / (60 Ã— {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
                             <p>In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-blue-700">{tubeSummary.resMGy.toFixed(4)} mGy</span></p>
                           </div>
                         </div>
@@ -1134,7 +1137,7 @@ const ViewServiceReportOArm: React.FC = () => {
                           <p className="font-bold text-xs print:text-[9px] text-indigo-800 mb-2">Collimator Summary:</p>
                           <div className="text-[11px] print:text-[8px] space-y-1">
                             <p>Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong></p>
-                            <p>Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
+                            <p>Result: ({workloadValue} Ã— {collimatorSummary.rowMax}) / (60 Ã— {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
                             <p>In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-indigo-700">{collimatorSummary.resMGy.toFixed(4)} mGy</span></p>
                           </div>
                         </div>
@@ -1144,7 +1147,7 @@ const ViewServiceReportOArm: React.FC = () => {
                     {/* Tolerance Narrative */}
                     <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
                       <p className="text-[11px] print:text-[8px] leading-relaxed">
-                        <strong className="text-blue-700">Note:</strong> The maximum leakage radiation from the X-ray tube housing and collimator, measured at a distance of 1 meter from the focus, averaged over an area of 100 cm², shall not exceed 1.0 mGy in one hour when the tube is operated at its maximum rated continuous filament current at the maximum rated tube potential.
+                        <strong className="text-blue-700">Note:</strong> The maximum leakage radiation from the X-ray tube housing and collimator, measured at a distance of 1 meter from the focus, averaged over an area of 100 cmÂ², shall not exceed 1.0 mGy in one hour when the tube is operated at its maximum rated continuous filament current at the maximum rated tube potential.
                       </p>
                     </div>
                   </div>
@@ -1152,13 +1155,13 @@ const ViewServiceReportOArm: React.FC = () => {
               );
             })()}
 
-            {/* 8. Linearity of mA/mAs Loading — table1 (Test Conditions) + table2 with Measured Values like RadiographyFixed */}
+            {/* 8. Linearity of mA/mAs Loading â€” table1 (Test Conditions) + table2 with Measured Values like RadiographyFixed */}
             {testData.linearityOfMasLoading && (() => {
               const lin = testData.linearityOfMasLoading;
               const isMaLinear = lin.selection === "mA" || lin.selection === "ma";
               const linearitySectionTitle = isMaLinear ? "8. Linearity of mA Loading" : "8. Linearity of mAs Loading";
               const firstColHeader = isMaLinear ? "mA" : "mAs range";
-              const xColHeader = isMaLinear ? "X (mGy/(mA·s))" : "X (mGy/mAs)";
+              const xColHeader = isMaLinear ? "X (mGy/(mAÂ·s))" : "X (mGy/mAs)";
               const t1 = lin.table1?.[0];
               const showTimeCol = isMaLinear || !!(t1 && String(t1.time ?? "").trim() !== "");
               return (
@@ -1240,7 +1243,7 @@ const ViewServiceReportOArm: React.FC = () => {
                   {lin.tolerance && (
                     <div className="bg-gray-50 p-4 print:p-1 rounded border">
                       <p className="text-sm print:text-[10px]" style={{ fontSize: '10px' }}>
-                        <strong>Tolerance (CoL):</strong> {lin.toleranceOperator || "≤"} {lin.tolerance || "0.1"}
+                        <strong>Tolerance (CoL):</strong> {lin.toleranceOperator || "â‰¤"} {lin.tolerance || "0.1"}
                       </p>
                     </div>
                   )}
@@ -1335,3 +1338,4 @@ const ViewServiceReportOArm: React.FC = () => {
 };
 
 export default ViewServiceReportOArm;
+

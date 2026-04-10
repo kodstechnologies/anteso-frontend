@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/OPG/MainTestTableForOPG.tsx
+﻿// src/components/reports/TestTables/OPG/MainTestTableForOPG.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -88,7 +88,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.operatingPotential?.rows && Array.isArray(testData.operatingPotential.rows)) {
     const validRows = testData.operatingPotential.rows.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.operatingPotential.toleranceSign || "±";
+      const toleranceSign = testData.operatingPotential.toleranceSign || "Â±";
       const toleranceValue = testData.operatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -126,9 +126,9 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
     const required = parseFloat(tf.required) || 2.5;
     const isPass = !isNaN(measured) && measured >= required;
     addRowsForTest("Total Filtration", [{
-      specified: appliedKV !== "-" ? `${appliedKV} kV` : "-",
-      measured: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
-      tolerance: `≥ ${required} mm Al`,
+      specified: measuredTF !== "-" ? `${measuredTF} mm Al` : "-",
+      measured: appliedKV !== "-" ? `${appliedKV} kV` : "-",
+      tolerance: `â‰¥ ${required} mm Al`,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -147,7 +147,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.ma ? `${row.ma} mA` : row.mAsRange || "-",
           measured: col,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -174,7 +174,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: kvVal ? `${kvVal} kV${mAsVal ? `, ${mAsVal} mAs` : ''}` : "Varies with kV",
           measured: cov,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -239,9 +239,9 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
       // Format tolerance operator for display
       let toleranceDisplay = "";
       if (toleranceOperator === "<=" || toleranceOperator === "less than or equal to") {
-        toleranceDisplay = "≤";
+        toleranceDisplay = "â‰¤";
       } else if (toleranceOperator === ">=" || toleranceOperator === "greater than or equal to") {
-        toleranceDisplay = "≥";
+        toleranceDisplay = "â‰¥";
       } else if (toleranceOperator === "<" || toleranceOperator === "less than") {
         toleranceDisplay = "<";
       } else if (toleranceOperator === ">" || toleranceOperator === "greater than") {
@@ -271,7 +271,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: loc.location || "-",
           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          tolerance: loc.category === "worker" ? "â‰¤ 40 mR/week" : "â‰¤ 2 mR/week",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -346,4 +346,5 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
 };
 
 export default MainTestTableForOPG;
+
 

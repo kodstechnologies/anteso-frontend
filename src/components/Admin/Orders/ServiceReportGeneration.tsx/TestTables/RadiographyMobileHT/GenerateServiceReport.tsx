@@ -115,6 +115,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
+    rpId: "",
     category: "",
   });
   const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
@@ -209,6 +210,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
+          rpId: data.rpId || "",
           category: data.category || "",
         });
 
@@ -267,6 +269,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
+            rpId: res.data.rpId || prev.rpId,
           }));
           if (res.data.testDate) setMinIssueDate(res.data.testDate);
 
@@ -1541,6 +1544,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             { label: "Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },
             { label: "Humidity (%)", name: "humidity", type: "number" },
+            { label: "RP Id", name: "rpId" },
           ].map((field) => (
             <div key={field.name}>
               <label className="block font-medium mb-1">{field.label}</label>

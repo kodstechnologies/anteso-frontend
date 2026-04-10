@@ -60,7 +60,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
     { id: '1', appliedKvp: '', measuredValues: ['', '', ''], measuredValuesStatus: [], averageKvp: '', remarks: '-' },
   ]);
 
-  const [toleranceValue, setToleranceValue] = useState<string>('2.0');
+  const [toleranceValue, setToleranceValue] = useState<string>('5.0');
   const [toleranceType, setToleranceType] = useState<'percent' | 'absolute'>('percent');
   const [toleranceSign, setToleranceSign] = useState<'plus' | 'minus' | 'both'>('both');
   const signForCheck = toleranceSign === 'both' ? '±' : toleranceSign === 'plus' ? '+' : '-';
@@ -501,17 +501,15 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
                   );
                 })}
                 <td
-                  className={`px-6 py-3 text-center font-bold border-r ${
-                    row.averageKvp && row.averageKvp !== '-' && row.averageKvpStatus === false ? 'bg-red-100 text-red-800' : 'text-gray-800'
-                  }`}
+                  className={`px-6 py-3 text-center font-bold border-r ${row.averageKvp && row.averageKvp !== '-' && row.averageKvpStatus === false ? 'bg-red-100 text-red-800' : 'text-gray-800'
+                    }`}
                 >
                   {row.averageKvp || '-'}
                 </td>
                 <td className="px-6 py-3 text-center">
                   <span
-                    className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${
-                      row.remarks === 'PASS' ? 'bg-green-100 text-green-800' : row.remarks === 'FAIL' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
-                    }`}
+                    className={`inline-flex px-4 py-2 rounded-full text-sm font-bold ${row.remarks === 'PASS' ? 'bg-green-100 text-green-800' : row.remarks === 'FAIL' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
+                      }`}
                   >
                     {row.remarks}
                   </span>
@@ -581,9 +579,8 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
           type="button"
           onClick={isViewMode ? () => setIsEditing(true) : handleSave}
           disabled={isSaving || (!isViewMode && !isFormValid)}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
-            isSaving || (!isViewMode && !isFormValid) ? 'bg-gray-400 cursor-not-allowed' : isViewMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid) ? 'bg-gray-400 cursor-not-allowed' : isViewMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
         >
           {isSaving ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>

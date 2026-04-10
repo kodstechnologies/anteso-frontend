@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/DentalHandHeld/MainTestTableForDentalHandHeld.tsx
+﻿// src/components/reports/TestTables/DentalHandHeld/MainTestTableForDentalHandHeld.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -51,8 +51,8 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
 
   const normalizeToleranceOperator = (op: string | undefined): "<=" | "<" | ">=" | ">" => {
     const o = String(op ?? "<=").trim();
-    if (o === "≤" || o === "<=") return "<=";
-    if (o === "≥" || o === ">=") return ">=";
+    if (o === "â‰¤" || o === "<=") return "<=";
+    if (o === "â‰¥" || o === ">=") return ">=";
     if (o === "<") return "<";
     if (o === ">") return ">";
     return "<=";
@@ -77,7 +77,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const toleranceVal =
         irrBlocks.tolerance?.value ?? irrBlocks.timeToleranceValue ?? "10";
       const tolDisplay =
-        toleranceOp === "<=" ? "≤" : toleranceOp === ">=" ? "≥" : toleranceOp;
+        toleranceOp === "<=" ? "â‰¤" : toleranceOp === ">=" ? "â‰¥" : toleranceOp;
 
       let overallRemark: "Pass" | "Fail" | "-" = "-";
       const timeRows = validRows.map((row: any) => {
@@ -135,7 +135,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
       const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "2.0";
-      const toleranceType = testData.accuracyOfOperatingPotential.tolerance?.type || "±";
+      const toleranceType = testData.accuracyOfOperatingPotential.tolerance?.type || "Â±";
 
       const kvpRows = validRows.map((row: any) => ({
         specified: row.appliedKvp || "-",
@@ -184,7 +184,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       addRowsForTest("Total Filteration", [{
         specified: atKvp !== "" ? `${atKvp} kVp` : "-",
         measured: measured1 !== "" ? `${measured1} mmAl` : "-",
-        tolerance: !isNaN(reqNum) ? `≥ ${reqNum} mmAl` : "-",
+        tolerance: !isNaN(reqNum) ? `â‰¥ ${reqNum} mmAl` : "-",
         remarks: remark,
       }]);
     }
@@ -202,7 +202,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const testRows = [{
         specified: "-",
         measured: col,
-        tolerance: `≤ ${tolerance}`,
+        tolerance: `â‰¤ ${tolerance}`,
         remarks: (isPass ? "Pass" : remarks ? "Fail" : "-") as any,
       }];
       addRowsForTest("Linearity of Time (Coefficient of Linearity)", testRows);
@@ -225,7 +225,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const testRows = [{
         specified: mAValues || "-",
         measured: col,
-        tolerance: `≤ ${tolerance}`,
+        tolerance: `â‰¤ ${tolerance}`,
         remarks: (isPass ? "Pass" : remarks ? "Fail" : "-") as any,
       }];
       addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
@@ -244,7 +244,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const testRows = [{
         specified: "-",
         measured: col,
-        tolerance: `≤ ${tolerance}`,
+        tolerance: `â‰¤ ${tolerance}`,
         remarks: (isPass ? "Pass" : remarks ? "Fail" : "-") as any,
       }];
       addRowsForTest("Linearity of mAs Loading (Coefficient of Linearity)", testRows);
@@ -295,7 +295,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const tolVal = String(tolObj?.value ?? (typeof tolerance === "string" || typeof tolerance === "number" ? tolerance : "0.05"));
       const tolOp = normalizeToleranceOperator(tolObj?.operator ?? "<=");
       const tolNum = parseFloat(tolVal);
-      const tolSym = tolOp === "<=" ? "≤" : tolOp === ">=" ? "≥" : tolOp;
+      const tolSym = tolOp === "<=" ? "â‰¤" : tolOp === ">=" ? "â‰¥" : tolOp;
 
       const testRows = validRows.map((row: any) => {
         const covRaw = row.cov ?? row.cv ?? "";
@@ -339,9 +339,9 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const finalLeakage = testData.tubeHousingLeakage.calculatedResult?.finalLeakageRate;
 
       const testRows = [{
-        specified: `≤ ${toleranceValue} mGy/hr`,
-        measured: finalLeakage !== undefined && finalLeakage !== "—" ? `${finalLeakage} mGy/hr` : "-",
-        tolerance: `≤ ${toleranceValue} mGy/hr`,
+        specified: `â‰¤ ${toleranceValue} mGy/hr`,
+        measured: finalLeakage !== undefined && finalLeakage !== "â€”" ? `${finalLeakage} mGy/hr` : "-",
+        tolerance: `â‰¤ ${toleranceValue} mGy/hr`,
         remarks: (remark?.toUpperCase() === "PASS" ? "Pass" : remark ? "Fail" : "-") as any,
       }];
       addRowsForTest("Radiation Leakage from Tube Housing", testRows);
@@ -362,13 +362,13 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
         {
           specified: "Worker: 40 mR/week",
           measured: maxWorker > 0 ? `${maxWorker.toFixed(3)} mR/week` : "-",
-          tolerance: "≤ 40 mR/week",
+          tolerance: "â‰¤ 40 mR/week",
           remarks: (maxWorker > 0 ? (maxWorker <= 40 ? "Pass" : "Fail") : "-") as any,
         },
         {
           specified: "Public: 2 mR/week",
           measured: maxPublic > 0 ? `${maxPublic.toFixed(3)} mR/week` : "-",
-          tolerance: "≤ 2 mR/week",
+          tolerance: "â‰¤ 2 mR/week",
           remarks: (maxPublic > 0 ? (maxPublic <= 2 ? "Pass" : "Fail") : "-") as any,
         },
       ];
@@ -442,3 +442,4 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
 };
 
 export default MainTestTableForDentalHandHeld;
+

@@ -57,6 +57,7 @@ interface ReportData {
   condition: string;
   testingProcedureNumber: string;
   engineerNameRPId: string;
+  rpId?: string;
   testDate: string;
   testDueDate: string;
   location: string;
@@ -447,11 +448,11 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Customer</td>
+                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{safeVal(report.customerName)}</td>
                 </tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address</td>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{safeVal(report.address)}</td>
                 </tr>
               </tbody>
@@ -481,7 +482,8 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                   ["Category", safeVal(report.category) || "-"],
                   ["Condition", safeVal(report.condition)],
                   ["Testing Procedure No.", safeVal(report.testingProcedureNumber) || "-"],
-                  ["Engineer Name & RP ID", safeVal(report.engineerNameRPId)],
+                  ["Engineer Name", safeVal(report.engineerNameRPId)],
+                  ["RP ID", safeVal(report.rpId || "-")],
                   ["Test Date", formatDate(safeVal(report.testDate))],
                   ["Due Date", formatDate(safeVal(report.testDueDate))],
                   ["Location", safeVal(report.location)],
@@ -962,7 +964,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                     {testData.totalFiltration.tolerance && (
                       <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                         <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                          <strong>Tolerance:</strong> {testData.totalFiltration.tolerance.sign || "±"} {testData.totalFiltration.tolerance.value || "-"}%
+                          <strong>Tolerance:</strong> {testData.totalFiltration.tolerance.sign || "±"} {testData.totalFiltration.tolerance.value || "-"} kVp
                         </p>
                       </div>
                     )}

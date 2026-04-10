@@ -148,6 +148,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
+    rpId: "",
     category: "",
     reportULRNumber: "",
   });
@@ -642,6 +643,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
+          rpId: data.rpId || "",
           category: "",
         });
 
@@ -1076,6 +1078,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
             { label: "Testing Done At Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },
             { label: "Humidity (RH %)", name: "humidity", type: "number" },
+            { label: "RP Id", name: "rpId" },
           ].map((field) => (
             <div key={field.name}>
               <label className="block text-sm font-medium text-gray-700 mb-1">

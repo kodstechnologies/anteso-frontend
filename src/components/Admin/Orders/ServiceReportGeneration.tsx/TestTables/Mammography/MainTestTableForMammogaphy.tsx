@@ -1,4 +1,4 @@
-// src/components/reports/TestTables/Mammography/MainTestTableForMammography.tsx
+﻿// src/components/reports/TestTables/Mammography/MainTestTableForMammography.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -43,8 +43,8 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
   if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
     const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceSignRaw = testData.accuracyOfOperatingPotential.tolerance?.sign || "±";
-      const toleranceSign = toleranceSignRaw === "both" ? "±" : toleranceSignRaw === "plus" ? "+" : toleranceSignRaw === "minus" ? "-" : toleranceSignRaw;
+      const toleranceSignRaw = testData.accuracyOfOperatingPotential.tolerance?.sign || "Â±";
+      const toleranceSign = toleranceSignRaw === "both" ? "Â±" : toleranceSignRaw === "plus" ? "+" : toleranceSignRaw === "minus" ? "-" : toleranceSignRaw;
       const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "5";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -122,7 +122,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
         return {
           specified: row.mAsRange || "-",
           measured: col,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -141,7 +141,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
         return {
           specified: row.mAsApplied || "-",
           measured: x,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `â‰¤ ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -156,12 +156,12 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
       const testRows = validRows.map((row: any) => {
         const hvt = row.hvt ? parseFloat(row.hvt).toFixed(2) : "-";
         const kvp = row.kvp || "-";
-        // Check against tolerance - typically ≥ 0.3 mm Al at 30 kVp
+        // Check against tolerance - typically â‰¥ 0.3 mm Al at 30 kVp
         const isPass = row.hvt ? parseFloat(row.hvt) >= 0.3 : false;
         return {
           specified: kvp !== "-" ? `${kvp} kVp` : "-",
           measured: hvt !== "-" ? `${hvt} mm Al` : "-",
-          tolerance: "≥ 0.3 mm Al",
+          tolerance: "â‰¥ 0.3 mm Al",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -243,7 +243,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
         return {
           specified: location.location || "-",
           measured: max !== "-" ? `${max} ${location.unit || "mGy/h"}` : "-",
-          tolerance: `≤ ${toleranceValue} mGy/h`,
+          tolerance: `â‰¤ ${toleranceValue} mGy/h`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -300,14 +300,14 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
       surveyRows.push({
         specified: "For Radiation Worker",
         measured: maxWorkerWeekly > 0 ? `${maxWorkerWeekly.toFixed(3)} mR/week` : "-",
-        tolerance: "≤ 40 mR/week",
+        tolerance: "â‰¤ 40 mR/week",
         remarks: (maxWorkerWeekly > 0 ? (maxWorkerWeekly <= 40 ? "Pass" : "Fail") : "Pass") as "Pass" | "Fail",
       });
 
       surveyRows.push({
         specified: "For Public",
         measured: maxPublicWeekly > 0 ? `${maxPublicWeekly.toFixed(3)} mR/week` : "-",
-        tolerance: "≤ 2 mR/week",
+        tolerance: "â‰¤ 2 mR/week",
         remarks: (maxPublicWeekly > 0 ? (maxPublicWeekly <= 2 ? "Pass" : "Fail") : "Pass") as "Pass" | "Fail",
       });
 
@@ -342,7 +342,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
         return {
           specified: reading.location || "-",
           measured: mRPerHr !== "-" ? `${mRPerHr} mR/hr` : "-",
-          tolerance: isWorkerArea ? "≤ 2 mR/hr" : "≤ 0.2 mR/hr",
+          tolerance: isWorkerArea ? "â‰¤ 2 mR/hr" : "â‰¤ 0.2 mR/hr",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -415,3 +415,4 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
 };
 
 export default MainTestTableForMammography;
+

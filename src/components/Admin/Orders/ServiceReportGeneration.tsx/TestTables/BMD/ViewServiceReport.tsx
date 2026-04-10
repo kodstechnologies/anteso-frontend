@@ -1,4 +1,4 @@
-// src/components/reports/ViewServiceReportBMD.tsx
+﻿// src/components/reports/ViewServiceReportBMD.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForBMD, saveReportHeaderForBMD, getReportNumbers, getAccuracyOfIrradiationTimeByServiceIdForBMD, getDetails, getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD } from "../../../../../../api";
@@ -43,6 +43,7 @@ interface ReportData {
   condition?: string;
   testingProcedureNumber?: string;
   engineerNameRPId?: string;
+  rpId?: string;
   testDate?: any;
   testDueDate?: string;
   location?: string;
@@ -106,6 +107,7 @@ const ViewServiceReportBMD: React.FC = () => {
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
             engineerNameRPId: data.engineerNameRPId || "N/A",
+            rpId: data.rpId || "N/A",
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
             location: data.location || "N/A",
@@ -143,7 +145,7 @@ const ViewServiceReportBMD: React.FC = () => {
               const values = [left, right, foot, head].filter(v => v > 0);
               const max = values.length > 0 ? Math.max(...values).toFixed(3) : "0";
 
-              // Calculate result (mR in one hour): (workload × max) / (60 × mA)
+              // Calculate result (mR in one hour): (workload Ã— max) / (60 Ã— mA)
               let result = "-";
               if (workloadValue > 0 && parseFloat(max) > 0 && maValue > 0) {
                 const calculatedMR = (workloadValue * parseFloat(max)) / (60 * maValue);
@@ -264,7 +266,7 @@ const ViewServiceReportBMD: React.FC = () => {
                   avgTime: t.measuredTime || "",
                   remark: t.remark || "-",
                 })) || [],
-                timeToleranceSign: irrData.tolerance?.operator === ">" || irrData.tolerance?.operator === ">=" ? "+" : irrData.tolerance?.operator === "<" || irrData.tolerance?.operator === "<=" ? "-" : "±",
+                timeToleranceSign: irrData.tolerance?.operator === ">" || irrData.tolerance?.operator === ">=" ? "+" : irrData.tolerance?.operator === "<" || irrData.tolerance?.operator === "<=" ? "-" : "Â±",
                 timeToleranceValue: irrData.tolerance?.value || "10",
               };
             }
@@ -307,9 +309,9 @@ const ViewServiceReportBMD: React.FC = () => {
                   measuredValues: m.measuredValues || [],
                 })),
                 mAStations: data.totalFiltration.mAStations || ["50 mA", "100 mA"],
-                kvpToleranceSign: data.totalFiltration.tolerance?.sign || "±",
+                kvpToleranceSign: data.totalFiltration.tolerance?.sign || "Â±",
                 kvpToleranceValue: data.totalFiltration.tolerance?.value || "2.0",
-                timeToleranceSign: "±",
+                timeToleranceSign: "Â±",
                 timeToleranceValue: "10"
               };
             }
@@ -553,10 +555,12 @@ const ViewServiceReportBMD: React.FC = () => {
                   ["Make", report.make],
                   ["Model", report.model],
                   ["Serial No.", report.slNumber],
-                  ["Category", report.category || "-"],
+                  ...(report.category && report.category !== "N/A" && report.category !== "-" ? [["Category", report.category]] : []),
                   ["Location", report.location],
                   ["Test Date", formatDate(report.testDate)],
-                  ["No. of Pages", report.pages ?? pageCount ?? "-"],
+                  ["Engineer Name", report.engineerNameRPId || "-"],
+                  ["RP ID", report.rpId || "-"],
+                  ["No. of Pages", report.pages ?? "-"],
                 ].map(([label, value]) => (
                   <tr key={label} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                     <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</td>
@@ -625,7 +629,7 @@ const ViewServiceReportBMD: React.FC = () => {
 
           <footer className="text-center text-xs print:text-[8px] text-gray-600 mt-6 print:mt-3">
             <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+            <p>2nd Floor, D-290, Sector â€“ 63, Noida, New Delhi â€“ 110085</p>
             <p>Email: info@antesobiomedicalengg.com</p>
           </footer>
         </div>
@@ -709,11 +713,11 @@ const ViewServiceReportBMD: React.FC = () => {
                   </table>
                 </div>
                 <div className="mt-4 print:mt-1 grid grid-cols-2 gap-4 print:gap-1" style={{ marginTop: '2px' }}>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>kVp Tolerance : {testData.accuracyOfOperatingPotential.kvpToleranceSign || "±"} {testData.accuracyOfOperatingPotential.kvpToleranceValue || "5"} kV</p>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>Time Tolerance : {testData.accuracyOfOperatingPotential.timeToleranceSign || "±"} {testData.accuracyOfOperatingPotential.timeToleranceValue || "10"} %</p>
+                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>kVp Tolerance : {testData.accuracyOfOperatingPotential.kvpToleranceSign || "Â±"} {testData.accuracyOfOperatingPotential.kvpToleranceValue || "5"} kV</p>
+                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>Time Tolerance : {testData.accuracyOfOperatingPotential.timeToleranceSign || "Â±"} {testData.accuracyOfOperatingPotential.timeToleranceValue || "10"} %</p>
                 </div> */}
 
-                {/* Accuracy of Irradiation Time — shown inside section 1 */}
+                {/* Accuracy of Irradiation Time â€” shown inside section 1 */}
                 {testData.accuracyOfIrradiationTimeFull?.irradiationTimes?.length > 0 && (
                   <div className="mt-6 print:mt-2" style={{ marginTop: '8px' }}>
                     {/* <h4 className="text-sm font-semibold mb-2 print:mb-1 print:text-[9px]" style={{ fontSize: '11px', marginBottom: '4px' }}>Accuracy of Irradiation Time</h4> */}
@@ -791,14 +795,14 @@ const ViewServiceReportBMD: React.FC = () => {
                     {testData.accuracyOfIrradiationTimeFull.tolerance && (
                       <div className="mt-2 print:mt-1" style={{ marginTop: '2px' }}>
                         <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                          Tolerance : Error {testData.accuracyOfIrradiationTimeFull.tolerance.operator === ">" || testData.accuracyOfIrradiationTimeFull.tolerance.operator === ">=" ? ">" : testData.accuracyOfIrradiationTimeFull.tolerance.operator === "<" || testData.accuracyOfIrradiationTimeFull.tolerance.operator === "<=" ? "<" : "±"} {testData.accuracyOfIrradiationTimeFull.tolerance.value || "10"} %
+                          Tolerance : Error {testData.accuracyOfIrradiationTimeFull.tolerance.operator === ">" || testData.accuracyOfIrradiationTimeFull.tolerance.operator === ">=" ? ">" : testData.accuracyOfIrradiationTimeFull.tolerance.operator === "<" || testData.accuracyOfIrradiationTimeFull.tolerance.operator === "<=" ? "<" : "Â±"} {testData.accuracyOfIrradiationTimeFull.tolerance.value || "10"} %
                         </p>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Total Filtration result card — shown inside section 1, following RadiographyFixed pattern
+                {/* Total Filtration result card â€” shown inside section 1, following RadiographyFixed pattern
                 {testData.totalFiltration?.totalFiltration && (() => {
                   const tf = testData.totalFiltration.totalFiltration;
                   const ft = testData.totalFiltration.filtrationTolerance || {};
@@ -831,7 +835,7 @@ const ViewServiceReportBMD: React.FC = () => {
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                              {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
+                              {!isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -845,7 +849,7 @@ const ViewServiceReportBMD: React.FC = () => {
                       <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                         <span className="font-semibold">Tolerance criteria: </span>
                         {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
-                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} â‰¤ kV â‰¤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                         {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                       </div>
                     </div>
@@ -897,7 +901,7 @@ const ViewServiceReportBMD: React.FC = () => {
                     </div>
                     <div className="mt-4 print:mt-1" style={{ marginTop: '2px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                        Tolerance : {testData.totalFiltration.tolerance?.sign || "±"} {testData.totalFiltration.tolerance?.value || "2.0"} kV
+                        Tolerance : {testData.totalFiltration.tolerance?.sign || "Â±"} {testData.totalFiltration.tolerance?.value || "2.0"} kV
                       </p>
                     </div>
                   </div>
@@ -942,7 +946,7 @@ const ViewServiceReportBMD: React.FC = () => {
                             <tr>
                               <td className="border border-black font-semibold bg-gray-50 text-left" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                               <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
+                                {!isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-"}
                               </td>
                             </tr>
                             <tr>
@@ -958,7 +962,7 @@ const ViewServiceReportBMD: React.FC = () => {
                         <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                           <span className="font-semibold">Tolerance criteria: </span>
                           {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
-                          {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                          {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} â‰¤ kV â‰¤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                           {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                         </div>
                       </div>
@@ -996,7 +1000,7 @@ const ViewServiceReportBMD: React.FC = () => {
                   </div>
                 )}
 
-                {/* Linearity Table — recalculate CoL inline */}
+                {/* Linearity Table â€” recalculate CoL inline */}
                 {(() => {
                   const rows = testData.linearityOfMaLoading.rows;
                   const tolVal = parseFloat(testData.linearityOfMaLoading.tolerance ?? '0.1') || 0.1;
@@ -1004,10 +1008,10 @@ const ViewServiceReportBMD: React.FC = () => {
                   const processed = rows.map((row: any) => {
                     const outputs = (row.measuredOutputs ?? []).map((v: any) => parseFloat(v)).filter((v: number) => !isNaN(v) && v > 0);
                     const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
-                    const avgDisplay = avg !== null ? avg.toFixed(3) : (row.average || '—');
+                    const avgDisplay = avg !== null ? avg.toFixed(3) : (row.average || 'â€”');
                     const ma = parseFloat(row.ma);
                     const x = avg !== null && ma > 0 ? avg / ma : null;
-                    const xDisplay = x !== null ? x.toFixed(4) : (row.x_bar || '—');
+                    const xDisplay = x !== null ? x.toFixed(4) : (row.x_bar || 'â€”');
                     if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
                     return { ...row, _avgDisplay: avgDisplay, _xDisplay: xDisplay };
                   });
@@ -1015,9 +1019,9 @@ const ViewServiceReportBMD: React.FC = () => {
                   const xMax = hasData ? Math.max(...xValues) : NaN;
                   const xMin = hasData ? Math.min(...xValues) : NaN;
                   const col = hasData && (xMax + xMin) > 0 ? Math.abs(xMax - xMin) / (xMax + xMin) : NaN;
-                  const colDisplay = !isNaN(col) ? col.toFixed(4) : (rows[0]?.coefficient || '—');
+                  const colDisplay = !isNaN(col) ? col.toFixed(4) : (rows[0]?.coefficient || 'â€”');
                   const pass = !isNaN(col) ? col <= tolVal : (rows[0]?.remark?.toUpperCase() === 'PASS');
-                  const remarkDisplay = !isNaN(col) ? (pass ? 'PASS' : 'FAIL') : (rows[0]?.remark || '—');
+                  const remarkDisplay = !isNaN(col) ? (pass ? 'PASS' : 'FAIL') : (rows[0]?.remark || 'â€”');
                   const measCount = Math.max(...rows.map((r: any) => (r.measuredOutputs ?? []).length), 0);
 
                   return (
@@ -1050,8 +1054,8 @@ const ViewServiceReportBMD: React.FC = () => {
                               <td className="border border-black p-1 text-center font-medium" style={{ padding: '0px 2px', fontSize: '10px' }}>{row._xDisplay}</td>
                               {i === 0 && (
                                 <>
-                                  <td rowSpan={processed.length} className="border border-black p-1 text-center font-medium bg-yellow-50 align-middle" style={{ padding: '0px 2px', fontSize: '10px' }}>{!isNaN(xMax) ? xMax.toFixed(4) : '—'}</td>
-                                  <td rowSpan={processed.length} className="border border-black p-1 text-center font-medium bg-yellow-50 align-middle" style={{ padding: '0px 2px', fontSize: '10px' }}>{!isNaN(xMin) ? xMin.toFixed(4) : '—'}</td>
+                                  <td rowSpan={processed.length} className="border border-black p-1 text-center font-medium bg-yellow-50 align-middle" style={{ padding: '0px 2px', fontSize: '10px' }}>{!isNaN(xMax) ? xMax.toFixed(4) : 'â€”'}</td>
+                                  <td rowSpan={processed.length} className="border border-black p-1 text-center font-medium bg-yellow-50 align-middle" style={{ padding: '0px 2px', fontSize: '10px' }}>{!isNaN(xMin) ? xMin.toFixed(4) : 'â€”'}</td>
                                   <td rowSpan={processed.length} className="border border-black p-1 text-center font-bold bg-yellow-50 align-middle" style={{ padding: '0px 2px', fontSize: '10px' }}>{colDisplay}</td>
                                   <td rowSpan={processed.length} className={`border border-black p-1 text-center font-bold align-middle ${pass ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'}`} style={{ padding: '0px 2px', fontSize: '10px' }}>{remarkDisplay}</td>
                                 </>
@@ -1065,7 +1069,7 @@ const ViewServiceReportBMD: React.FC = () => {
                 })()}
 
                 <div className="mt-2 print:mt-1" style={{ marginTop: '4px' }}>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>Tolerance : Coefficient of Linearity ≤ {testData.linearityOfMaLoading.tolerance || "0.1"}</p>
+                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>Tolerance : Coefficient of Linearity â‰¤ {testData.linearityOfMaLoading.tolerance || "0.1"}</p>
                 </div>
               </div>
             )}
@@ -1077,7 +1081,7 @@ const ViewServiceReportBMD: React.FC = () => {
               const tolVal = parseFloat(repro.tolerance?.value ?? '0.05') || 0.05;
               const tolOp = repro.tolerance?.operator ?? '<=';
 
-              /** BMD model stores FDD as `fcd: { value }` (same as entry form “FDD(cm)”). */
+              /** BMD model stores FDD as `fcd: { value }` (same as entry form â€œFDD(cm)â€). */
               const fddCmDisplay = (() => {
                 const f = repro.fcd;
                 if (f != null && typeof f === "object" && "value" in f) {
@@ -1129,7 +1133,7 @@ const ViewServiceReportBMD: React.FC = () => {
                           {Array.from({ length: measCount }, (_, i) => (
                             <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
                           ))}
-                          <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (X̄)</th>
+                          <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (XÌ„)</th>
                           <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>
                           <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Remark</th>
                         </tr>
@@ -1222,7 +1226,7 @@ const ViewServiceReportBMD: React.FC = () => {
                   </div>
                   <div>
                     {/* <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                      <strong>Tolerance:</strong> {testData.tubeHousingLeakage.toleranceOperator === "less than or equal to" ? "≤" : testData.tubeHousingLeakage.toleranceOperator === "greater than or equal to" ? "≥" : "="} {testData.tubeHousingLeakage.toleranceValue || "1"} mGy ({parseFloat(testData.tubeHousingLeakage.toleranceValue || "1") * 114} mR) in one hour
+                      <strong>Tolerance:</strong> {testData.tubeHousingLeakage.toleranceOperator === "less than or equal to" ? "â‰¤" : testData.tubeHousingLeakage.toleranceOperator === "greater than or equal to" ? "â‰¥" : "="} {testData.tubeHousingLeakage.toleranceValue || "1"} mGy ({parseFloat(testData.tubeHousingLeakage.toleranceValue || "1") * 114} mR) in one hour
                     </p> */}
                   </div>
                 </div>
@@ -1301,7 +1305,7 @@ const ViewServiceReportBMD: React.FC = () => {
                       <div className="bg-gray-50 p-3 print:p-1 rounded border border-gray-200">
                         <p className="text-sm print:text-[10px] font-bold mb-1">Calculation Formula:</p>
                         <div className="bg-white p-2 print:p-1 border border-dashed border-gray-400 text-center font-mono text-sm print:text-[10px]">
-                          Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                          Maximum Leakage (mR in 1 hr) = (Workload Ã— Max Exposure) / (60 Ã— mA)
                         </div>
                         <p className="text-[10px] print:text-[8px] mt-1 text-gray-600 italic">
                           Where: Workload = {workloadValue} mAmin/hr | mA = {maValue} | 1 mGy = 114 mR
@@ -1336,7 +1340,7 @@ const ViewServiceReportBMD: React.FC = () => {
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied Current (mA)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied Voltage (kV)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Exposure Time (s)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Workload (mA·min/week)</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Workload (mAÂ·min/week)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Valid Calibration Certificate</th>
                         </tr>
                       </thead>
@@ -1602,7 +1606,7 @@ const ViewServiceReportBMD: React.FC = () => {
                           <div className="bg-gray-50 p-3 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                             <p className="text-sm print:text-[9px] font-semibold mb-1" style={{ fontSize: '11px', margin: '2px 0' }}>Calculation for Maximum Radiation Level/week (For Radiation Worker):</p>
                             <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxWorkerLocation.location}</p>
-                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtectionSurvey.workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtectionSurvey.appliedCurrent || '—'} mA)</p>
+                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtectionSurvey.workload || 'â€”'} mAmin/week Ã— {maxWorkerLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {testData.radiationProtectionSurvey.appliedCurrent || 'â€”'} mA)</p>
                             <p className="text-xs print:text-[8px] mt-1" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxWorkerWeekly} mR/week</p>
                           </div>
                         )}
@@ -1610,7 +1614,7 @@ const ViewServiceReportBMD: React.FC = () => {
                           <div className="bg-gray-50 p-3 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                             <p className="text-sm print:text-[9px] font-semibold mb-1" style={{ fontSize: '11px', margin: '2px 0' }}>Calculation for Maximum Radiation Level/week (For Public):</p>
                             <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxPublicLocation.location}</p>
-                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtectionSurvey.workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtectionSurvey.appliedCurrent || '—'} mA)</p>
+                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtectionSurvey.workload || 'â€”'} mAmin/week Ã— {maxPublicLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {testData.radiationProtectionSurvey.appliedCurrent || 'â€”'} mA)</p>
                             <p className="text-xs print:text-[8px] mt-1" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxPublicWeekly} mR/week</p>
                           </div>
                         )}

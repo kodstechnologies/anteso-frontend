@@ -1,4 +1,4 @@
-// src/components/reports/ViewServiceReportCTScan.tsx
+﻿// src/components/reports/ViewServiceReportCTScan.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForCTScan } from "../../../../../../api";
@@ -41,6 +41,7 @@ interface ReportData {
   condition: string;
   testingProcedureNumber: string;
   engineerNameRPId: string;
+  rpId?: string;
   testDate: string;
   testDueDate: string;
   location: string;
@@ -124,6 +125,7 @@ const ViewServiceReportCTScan: React.FC = () => {
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
             engineerNameRPId: data.engineerNameRPId || "N/A",
+            rpId: data.rpId || "N/A",
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
             location: data.location || "N/A",
@@ -249,8 +251,8 @@ const ViewServiceReportCTScan: React.FC = () => {
     // If index is provided (0, 1, 2), use fixed labels from generator
     if (index !== undefined) {
       if (index === 0) return "0.5 mm";
-      if (index === 1) return "±50%";
-      if (index === 2) return "±1.0 mm";
+      if (index === 1) return "Â±50%";
+      if (index === 2) return "Â±1.0 mm";
     }
 
     const appliedNum = typeof applied === 'string' ? parseFloat(applied) : applied;
@@ -259,9 +261,9 @@ const ViewServiceReportCTScan: React.FC = () => {
     if (appliedNum < 1.0) {
       return "0.5 mm";
     } else if (appliedNum >= 1.0 && appliedNum <= 2.0) {
-      return "±50%";
+      return "Â±50%";
     } else {
-      return "±1.0 mm";
+      return "Â±1.0 mm";
     }
   };
 
@@ -272,7 +274,7 @@ const ViewServiceReportCTScan: React.FC = () => {
     const type = tolerance.type || 'percent';
     const sign = tolerance.sign || 'both';
 
-    const signSymbol = sign === 'both' ? '±' : sign === 'plus' ? '+' : '-';
+    const signSymbol = sign === 'both' ? 'Â±' : sign === 'plus' ? '+' : '-';
     const unit = type === 'percent' ? '%' : ' kVp';
     return `${signSymbol}${value}${unit}`;
   };
@@ -344,15 +346,15 @@ const ViewServiceReportCTScan: React.FC = () => {
 
   // Helper function to format CTDI tolerance
   const formatCtdiTolerance = (tolerance: any): string => {
-    if (!tolerance) return "±20%"; // Default AERB tolerance
-    const sign = tolerance.sign === "both" ? "±" : tolerance.sign === "plus" ? "+" : "-";
+    if (!tolerance) return "Â±20%"; // Default AERB tolerance
+    const sign = tolerance.sign === "both" ? "Â±" : tolerance.sign === "plus" ? "+" : "-";
     return `${sign}${tolerance.value} mGy/100mAs`;
   };
 
   // Helper function to format Timer Accuracy tolerance
   const formatTimerAccuracyTolerance = (tolerance: string | number): string => {
     if (!tolerance) return "-";
-    return `±${tolerance}%`;
+    return `Â±${tolerance}%`;
   };
 
   // Helper to render High Contrast Resolution content (table2 or result/operatingParams)
@@ -585,11 +587,12 @@ const ViewServiceReportCTScan: React.FC = () => {
                   ["Serial No.", report.slNumber],
                   ["Condition", report.condition],
                   ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                  ["Engineer Name & RP ID", report.engineerNameRPId],
+                  ["Engineer Name", report.engineerNameRPId],
+                  ["RP ID", report.rpId || "-"],
                   ["Test Date", formatDate(report.testDate)],
                   ["Due Date", formatDate(report.testDueDate)],
                   ["Location", report.location],
-                  ["Temperature (°C)", report.temperature || "-"],
+                  ["Temperature (Â°C)", report.temperature || "-"],
                   ["Humidity (%)", report.humidity || "-"],
                   ["No. of Pages", report.pages ?? "-"],
                 ].map(([label, value]) => (
@@ -654,7 +657,7 @@ const ViewServiceReportCTScan: React.FC = () => {
           </div>
           <footer className="text-center text-xs print:text-[8px] text-gray-600 mt-6 print:mt-3">
             <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+            <p>2nd Floor, D-290, Sector â€“ 63, Noida, New Delhi â€“ 110085</p>
             <p>Email: info@antesobiomedicalengg.com</p>
           </footer>
         </div>
@@ -1255,7 +1258,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                   {Array.from({ length: Math.max(testDataTubeA.outputConsistency.outputRows[0]?.outputs?.length || 0, 5) }).map((_, idx) => (
                                     <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas {idx + 1}</th>
                                   ))}
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (X̄)</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (XÌ„)</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                                 </tr>
@@ -1352,7 +1355,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                   {Array.from({ length: Math.max(testDataTubeB.outputConsistency.outputRows[0]?.outputs?.length || 0, 5) }).map((_, idx) => (
                                     <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas {idx + 1}</th>
                                   ))}
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (X̄)</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (XÌ„)</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                                 </tr>
@@ -1449,7 +1452,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                 {Array.from({ length: Math.max(testData.outputConsistency.outputRows[0]?.outputs?.length || 0, 5) }).map((_, idx) => (
                                   <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas {idx + 1}</th>
                                 ))}
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (X̄)</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (XÌ„)</th>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                               </tr>
@@ -1834,7 +1837,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
                           <div>
                             <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                              <strong>Workload:</strong> {data.workload || "-"} {data.workloadUnit || "mA·min/week"}
+                              <strong>Workload:</strong> {data.workload || "-"} {data.workloadUnit || "mAÂ·min/week"}
                             </p>
                           </div>
                         </div>
@@ -1899,10 +1902,10 @@ const ViewServiceReportCTScan: React.FC = () => {
                           <div className="bg-gray-50 p-4 print:p-1 rounded border border-gray-200">
                             <p className="text-sm print:text-[10px] font-bold mb-2 print:mb-1">Calculation Formula:</p>
                             <div className="bg-white p-3 print:p-1 border border-dashed border-gray-400 text-center font-mono text-sm print:text-[10px]">
-                              Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                              Maximum Leakage (mR in 1 hr) = (Workload Ã— Max Exposure) / (60 Ã— mA)
                             </div>
                             <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
-                              Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                              Where: Workload = {workloadValue} mAÂ·min/week | mA = {maValue} | 1 mGy = 114 mR
                             </p>
                           </div>
                           <div className="grid grid-cols-2 gap-4 print:gap-1">
@@ -1911,7 +1914,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                 <p className="font-bold text-xs print:text-[9px] text-blue-800 mb-2">Tube Housing Summary:</p>
                                 <div className="text-[11px] print:text-[8px] space-y-1">
                                   <p>Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong></p>
-                                  <p>Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
+                                  <p>Result: ({workloadValue} Ã— {tubeSummary.rowMax}) / (60 Ã— {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
                                   <p>In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-blue-700">{tubeSummary.resMGy.toFixed(4)} mGy</span></p>
                                 </div>
                               </div>
@@ -1921,7 +1924,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                 <p className="font-bold text-xs print:text-[9px] text-indigo-800 mb-2">Collimator Summary:</p>
                                 <div className="text-[11px] print:text-[8px] space-y-1">
                                   <p>Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong></p>
-                                  <p>Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
+                                  <p>Result: ({workloadValue} Ã— {collimatorSummary.rowMax}) / (60 Ã— {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
                                   <p>In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-indigo-700">{collimatorSummary.resMGy.toFixed(4)} mGy</span></p>
                                 </div>
                               </div>
@@ -1930,7 +1933,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                           <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
                             <p className="text-[11px] print:text-[8px] leading-relaxed">
                               <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
-                              {data.toleranceOperator === 'less than or equal to' ? '≤' : data.toleranceOperator === 'greater than or equal to' ? '≥' : '='}{' '}
+                              {data.toleranceOperator === 'less than or equal to' ? 'â‰¤' : data.toleranceOperator === 'greater than or equal to' ? 'â‰¥' : '='}{' '}
                               <strong>{data.toleranceValue || data.tolerance || '1'} mGy ({parseFloat(data.toleranceValue || data.tolerance || '1') * 114} mR) in one hour.</strong>
                             </p>
                           </div>
@@ -2032,7 +2035,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.actual || "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measured || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.gantryTilt.toleranceSign || "±"}{testData.gantryTilt.toleranceValue || "2"}°</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.gantryTilt.toleranceSign || "Â±"}{testData.gantryTilt.toleranceValue || "2"}Â°</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                               <span className={row.remark === "Pass" ? "text-green-600 font-bold" : row.remark === "Fail" ? "text-red-600 font-bold" : ""}>
                                 {row.remark || "-"}
@@ -2218,7 +2221,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                             <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                               <p className="text-sm print:text-[9px] font-semibold mb-2 print:mb-0.5" style={{ fontSize: '11px', margin: '2px 0', fontWeight: 'bold' }}>Calculation for Maximum Radiation Level/week (For Radiation Worker):</p>
                               <p className="text-xs print:text-[8px] mb-1 print:mb-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxWorkerLocation.location}</p>
-                              <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({survey.workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {survey.appliedCurrent || '—'} mA)</p>
+                              <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({survey.workload || 'â€”'} mAmin/week Ã— {maxWorkerLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {survey.appliedCurrent || 'â€”'} mA)</p>
                               <p className="text-xs print:text-[8px] mt-1 print:mt-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxWorkerWeekly} mR/week</p>
                             </div>
                           )}
@@ -2226,7 +2229,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                             <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                               <p className="text-sm print:text-[9px] font-semibold mb-2 print:mb-0.5" style={{ fontSize: '11px', margin: '2px 0', fontWeight: 'bold' }}>Calculation for Maximum Radiation Level/week (For Public):</p>
                               <p className="text-xs print:text-[8px] mb-1 print:mb-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxPublicLocation.location}</p>
-                              <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({survey.workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {survey.appliedCurrent || '—'} mA)</p>
+                              <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({survey.workload || 'â€”'} mAmin/week Ã— {maxPublicLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {survey.appliedCurrent || 'â€”'} mA)</p>
                               <p className="text-xs print:text-[8px] mt-1 print:mt-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxPublicWeekly} mR/week</p>
                             </div>
                           )}
@@ -2272,7 +2275,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                     <tbody>
                       <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.alignmentOfTableGantry.result || "-"}</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.alignmentOfTableGantry.toleranceSign || "±"}{testData.alignmentOfTableGantry.toleranceValue || "2"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.alignmentOfTableGantry.toleranceSign || "Â±"}{testData.alignmentOfTableGantry.toleranceValue || "2"}</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           <span className={testData.alignmentOfTableGantry.remark === "Pass" ? "text-green-600 font-bold" : testData.alignmentOfTableGantry.remark === "Fail" ? "text-red-600 font-bold" : ""}>
                             {testData.alignmentOfTableGantry.remark || "-"}

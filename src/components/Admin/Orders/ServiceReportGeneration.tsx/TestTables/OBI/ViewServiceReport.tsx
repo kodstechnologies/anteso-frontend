@@ -1,4 +1,4 @@
-// src/components/reports/ViewServiceReportOBI.tsx
+﻿// src/components/reports/ViewServiceReportOBI.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForOBI, getDetails } from "../../../../../../api";
@@ -40,6 +40,7 @@ interface ReportData {
   condition?: string;
   testingProcedureNumber?: string;
   engineerNameRPId?: string;
+  rpId?: string;
   testDate?: any;
   testDueDate?: string;
   location?: string;
@@ -48,7 +49,7 @@ interface ReportData {
   pages?: string;
   toolsUsed?: Tool[];
   notes?: Note[];
-
+  category:any;
   // All OBI Tests
   AlignmentTestOBI?: any;
   accuracyOfOperatingPotentialOBI?: any;
@@ -75,7 +76,7 @@ const defaultNotes: Note[] = [
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
 ];
 
-/** Matches LinearityOfTime.tsx — DB rows often omit summary fields; derive them for the PDF view. */
+/** Matches LinearityOfTime.tsx â€” DB rows often omit summary fields; derive them for the PDF view. */
 function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
   const testConditions = lotData.testConditions || {};
   const time = parseFloat(testConditions.time) || 0;
@@ -114,10 +115,10 @@ function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : null;
   const coefficientOfLinearity =
-    colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : "—";
+    colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : "â€”";
 
-  let remarks = "—";
-  if (coefficientOfLinearity !== "—" && colNum !== null) {
+  let remarks = "â€”";
+  if (coefficientOfLinearity !== "â€”" && colNum !== null) {
     const colVal = parseFloat(coefficientOfLinearity);
     let pass = false;
     switch (op) {
@@ -143,8 +144,8 @@ function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
   }
 
   return {
-    xMax: xMax || "—",
-    xMin: xMin || "—",
+    xMax: xMax || "â€”",
+    xMin: xMin || "â€”",
     coefficientOfLinearity,
     remarks,
   };
@@ -153,7 +154,7 @@ function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
 function hasOBILinearitySummaryValue(v: any): boolean {
   if (v == null) return false;
   const s = String(v).trim();
-  return s !== "" && s !== "—";
+  return s !== "" && s !== "â€”";
 }
 
 const ViewServiceReportOBI: React.FC = () => {
@@ -197,6 +198,7 @@ const ViewServiceReportOBI: React.FC = () => {
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
             engineerNameRPId: data.engineerNameRPId || "N/A",
+            rpId: data.rpId || "N/A",
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
             location: data.location || "N/A",
@@ -204,6 +206,7 @@ const ViewServiceReportOBI: React.FC = () => {
             humidity: data.humidity || "",
             toolsUsed: data.toolsUsed || [],
             notes: data.notes || defaultNotes,
+            category: data.category ,
           });
 
           // Transform backend data structures to match frontend expectations
@@ -234,7 +237,7 @@ const ViewServiceReportOBI: React.FC = () => {
                 mAStations: opData.mAStations || [],
                 totalFiltration: opData.totalFiltration || { measured: "", required: "" },
                 ffd: opData.ffd || "",
-                toleranceSign: opData.tolerance?.sign || "±",
+                toleranceSign: opData.tolerance?.sign || "Â±",
                 toleranceValue: opData.tolerance?.value || "2.0",
               };
             }
@@ -245,7 +248,7 @@ const ViewServiceReportOBI: React.FC = () => {
             return {
               ...opData,
               table2,
-              toleranceSign: opData.tolerance?.sign || opData.toleranceSign || "±",
+              toleranceSign: opData.tolerance?.sign || opData.toleranceSign || "Â±",
               toleranceValue: opData.tolerance?.value || opData.toleranceValue || "2.0",
             };
           };
@@ -654,6 +657,9 @@ const ViewServiceReportOBI: React.FC = () => {
                   ["Make", report.make || "-"],
                   ["Model", report.model],
                   ["Serial No.", report.slNumber],
+                  ...(report.category && report.category !== "N/A" && report.category !== "-" ? [["Category", report.category]] : []),
+                  ["Engineer Name", report.engineerNameRPId || "-"],
+                  ["RP ID", report.rpId || "-"],
                   ["Location", report.location],
                   ["Test Date", formatDate(report.testDate)],
                   ["No. of Pages", calculatedPages || report.pages || "-"],
@@ -720,7 +726,7 @@ const ViewServiceReportOBI: React.FC = () => {
           </div>
           <footer className="text-center text-xs print:text-[8px] text-gray-600 mt-6 print:mt-3">
             <p>ANTESO Biomedical Engg Pvt. Ltd.</p>
-            <p>2nd Floor, D-290, Sector – 63, Noida, New Delhi – 110085</p>
+            <p>2nd Floor, D-290, Sector â€“ 63, Noida, New Delhi â€“ 110085</p>
             <p>Email: info@antesobiomedicalengg.com</p>
           </footer>
         </div>
@@ -833,8 +839,8 @@ const ViewServiceReportOBI: React.FC = () => {
                     </thead>
                     <tbody>
                       <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}°` : "-"}</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.tolerance?.operator || "≤"} {testData.centralBeamAlignment.tolerance?.value || "-"}°</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}Â°` : "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.tolerance?.operator || "â‰¤"} {testData.centralBeamAlignment.tolerance?.value || "-"}Â°</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           <span className={testData.centralBeamAlignment.finalResult === "Pass" || testData.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600 font-semibold" : testData.centralBeamAlignment.finalResult === "Fail" || testData.centralBeamAlignment.observedTilt?.remark === "Fail" ? "text-red-600 font-semibold" : ""}>
                             {testData.centralBeamAlignment.finalResult || testData.centralBeamAlignment.observedTilt?.remark || "-"}
@@ -1025,7 +1031,7 @@ const ViewServiceReportOBI: React.FC = () => {
                     {/* Tolerance */}
                     <div className="bg-gray-50 p-4 print:p-1 rounded border mb-4" style={{ padding: '2px 4px', marginTop: '4px', marginBottom: '4px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign || "±"} {testData.operatingPotential.toleranceValue || "2.0"}%
+                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign || "Â±"} {testData.operatingPotential.toleranceValue || "2.0"}%
                       </p>
                     </div>
 
@@ -1068,7 +1074,7 @@ const ViewServiceReportOBI: React.FC = () => {
                               <tr>
                                 <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                                 <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                  {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
+                                  {!isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-"}
                                 </td>
                               </tr>
                               <tr>
@@ -1083,7 +1089,7 @@ const ViewServiceReportOBI: React.FC = () => {
                             <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                               <span className="font-semibold">Tolerance criteria: </span>
                               {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
-                              {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                              {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} â‰¤ kV â‰¤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                               {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                             </div>
                           )}
@@ -1127,7 +1133,7 @@ const ViewServiceReportOBI: React.FC = () => {
                     {/* Tolerance */}
                     <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign || "±"} {testData.operatingPotential.toleranceValue || "2.0"}%
+                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign || "Â±"} {testData.operatingPotential.toleranceValue || "2.0"}%
                       </p>
                     </div>
                   </>
@@ -1332,7 +1338,7 @@ const ViewServiceReportOBI: React.FC = () => {
                     const formatCell = (val: any) => {
                       if (val === undefined || val === null) return "-";
                       const str = String(val).trim();
-                      return str === "" || str === "—" || str === "undefined" || str === "null" ? "-" : str;
+                      return str === "" || str === "â€”" || str === "undefined" || str === "null" ? "-" : str;
                     };
 
                     const getOutputs = (row: any): string[] => {
@@ -1563,10 +1569,10 @@ const ViewServiceReportOBI: React.FC = () => {
                   <p className="text-sm print:text-[10px]" style={{ fontSize: "10px", margin: "2px 0" }}>
                     <strong>Tolerance (CoL):</strong>{" "}
                     {testData.linearityOfTime.toleranceOperator === "<="
-                      ? "≤"
+                      ? "â‰¤"
                       : testData.linearityOfTime.toleranceOperator === ">="
-                        ? "≥"
-                        : testData.linearityOfTime.toleranceOperator || "≤"}{" "}
+                        ? "â‰¥"
+                        : testData.linearityOfTime.toleranceOperator || "â‰¤"}{" "}
                     {testData.linearityOfTime.tolerance || "0.1"}
                   </p>
                 </div>
@@ -1645,7 +1651,7 @@ const ViewServiceReportOBI: React.FC = () => {
                 {/* Tolerance */}
                 <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Tolerance:</strong> Coefficient of Linearity ≤ {testData.linearityOfMasLoading.tolerance || "0.1"}
+                    <strong>Tolerance:</strong> Coefficient of Linearity â‰¤ {testData.linearityOfMasLoading.tolerance || "0.1"}
                   </p>
                 </div>
               </div>
@@ -1929,7 +1935,7 @@ const ViewServiceReportOBI: React.FC = () => {
                           <div className="bg-gray-50 p-3 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                             <p className="text-sm print:text-[9px] font-semibold mb-1" style={{ fontSize: '11px', margin: '2px 0' }}>Calculation for Maximum Radiation Level/week (For Radiation Worker):</p>
                             <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxWorkerLocation.location}</p>
-                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtection.workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtection.appliedCurrent || '—'} mA)</p>
+                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtection.workload || 'â€”'} mAmin/week Ã— {maxWorkerLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {testData.radiationProtection.appliedCurrent || 'â€”'} mA)</p>
                             <p className="text-xs print:text-[8px] mt-1" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxWorkerWeekly} mR/week</p>
                           </div>
                         )}
@@ -1937,7 +1943,7 @@ const ViewServiceReportOBI: React.FC = () => {
                           <div className="bg-gray-50 p-3 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                             <p className="text-sm print:text-[9px] font-semibold mb-1" style={{ fontSize: '11px', margin: '2px 0' }}>Calculation for Maximum Radiation Level/week (For Public):</p>
                             <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxPublicLocation.location}</p>
-                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtection.workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtection.appliedCurrent || '—'} mA)</p>
+                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtection.workload || 'â€”'} mAmin/week Ã— {maxPublicLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {testData.radiationProtection.appliedCurrent || 'â€”'} mA)</p>
                             <p className="text-xs print:text-[8px] mt-1" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxPublicWeekly} mR/week</p>
                           </div>
                         )}
@@ -2079,3 +2085,4 @@ const ViewServiceReportOBI: React.FC = () => {
 };
 
 export default ViewServiceReportOBI;
+

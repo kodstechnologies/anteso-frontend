@@ -9,6 +9,11 @@ interface MainTestTableProps {
 const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testData, hasTimer = false }) => {
   const rows: any[] = [];
   let srNo = 1;
+  const asDisplayNumber = (value: any): string | null => {
+    if (value === undefined || value === null || value === "") return null;
+    const n = typeof value === "number" ? value : parseFloat(String(value));
+    return Number.isNaN(n) ? String(value).trim() || null : String(Number(n));
+  };
 
   const addRowsForTest = (
     parameter: string,
@@ -128,7 +133,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} MM; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} MM; +${largeMultiplier} F FOR F > ${mediumUpper} MM`;
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -139,8 +144,9 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
         const measuredHeight = formatValue(spot.measuredHeight);
 
         return {
-          specified: statedWidth !== null && statedHeight !== null ? `${statedWidth} × ${statedHeight} mm` : "-",
-          measured: measuredWidth !== null && measuredHeight !== null ? `${measuredWidth} × ${measuredHeight} mm` : "-",
+          // Show single value instead of 2x2 style values in summary.
+          specified: statedWidth !== null ? `${statedWidth} mm` : "-",
+          measured: measuredWidth !== null ? `${measuredWidth} mm` : "-",
           tolerance: toleranceStr,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -183,7 +189,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Accuracy of Irradiation Time", testRows);
+      addRowsForTest("Accuracy of Irradiation Time(sec)", testRows);
     }
   }
 
@@ -191,8 +197,14 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.accuracyOfOperatingPotential.toleranceSign || "±";
-      const toleranceValue = testData.accuracyOfOperatingPotential.toleranceValue || "2.0";
+      const toleranceSign =
+        testData.accuracyOfOperatingPotential.tolerance?.sign ||
+        testData.accuracyOfOperatingPotential.toleranceSign ||
+        "±";
+      const toleranceValue =
+        testData.accuracyOfOperatingPotential.tolerance?.value ||
+        testData.accuracyOfOperatingPotential.toleranceValue ||
+        "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
         if (row.remarks === "PASS" || row.remarks === "Pass") {
@@ -211,7 +223,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
         return {
           specified: row.setKV || "-",
           measured: row.avgKvp || "-",
-          tolerance: `${toleranceSign}${toleranceValue}%`,
+          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -269,7 +281,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
         return {
           specified: row.appliedKvp || "-",
           measured: measuredDisplay,
-          tolerance: `${toleranceSign}${toleranceValue}%`,
+          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -318,9 +330,9 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
     const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
 
     addRowsForTest("Total Filtration", [{
-      specified: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      // Show the kVp at which total filtration is specified
-      measured: atKvp !== "-" ? `${atKvp} kVp` : "-",
+      // Interchange specified/measured values as requested.
+      specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
+      measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
       tolerance: toleranceStr,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
@@ -390,16 +402,26 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
         else if (toleranceOperator === ">") isPass = c > t;
       }
 
-      const testRows = validRows.map((row: any) => {
-        return {
-          specified: row.mAsApplied ? `${row.mAsApplied} mAs` : "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
-          tolerance: `${toleranceOperator} ${tolerance}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      // Use row span for both tolerance and measured value so they appear once for the group
-      addRowsForTest(linearityLabel, testRows, true, true);
+      const tableLevelKv =
+        testData.linearityOfMasLoading?.kv ??
+        testData.linearityOfMasLoading?.kV ??
+        testData.linearityOfMasLoading?.setKv ??
+        testData.linearityOfMasLoading?.setKV ??
+        // In many payloads kV is stored in table1 test conditions.
+        (Array.isArray(testData.linearityOfMasLoading?.table1)
+          ? testData.linearityOfMasLoading?.table1?.[0]?.kv
+          : testData.linearityOfMasLoading?.table1?.kv);
+
+      const firstRow = validRows[0] || {};
+      const kvValue = asDisplayNumber(firstRow.kv ?? firstRow.kV ?? firstRow.setKV ?? firstRow.setKv ?? tableLevelKv);
+      const testRows = [{
+        // Keep this as a single summary row so specified value is shown only once.
+        specified: kvValue ? `at ${kvValue} kV` : "-",
+        measured: col !== "-" ? `CoL = ${col}` : "-",
+        tolerance: `${toleranceOperator} ${tolerance}`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      }];
+      addRowsForTest(linearityLabel, testRows);
     }
   }
 
@@ -420,6 +442,19 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
         if (typeof o === 'object' && 'value' in o) return parseFloat(o.value);
         return NaN;
       };
+
+      const tableLevelKv =
+        testData.outputConsistency?.kv ??
+        testData.outputConsistency?.kV ??
+        testData.outputConsistency?.setKV ??
+        testData.outputConsistency?.setKv;
+      const tableLevelMa =
+        testData.outputConsistency?.mA ??
+        testData.outputConsistency?.ma ??
+        testData.outputConsistency?.mas ??
+        testData.outputConsistency?.tubeCurrent ??
+        testData.outputConsistency?.setMA ??
+        testData.outputConsistency?.setMa;
 
       const testRows = validRows.map((row: any) => {
         // Calculate on-the-fly if cv is missing
@@ -449,8 +484,24 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
           else if (toleranceOperator === ">") isPass = cv > tol;
         }
 
+        const kvValue = asDisplayNumber(row.kv ?? row.kV ?? row.setKV ?? row.setKv ?? tableLevelKv);
+        const maValue = asDisplayNumber(
+          row.mA ??
+          row.ma ??
+          row.mas ??
+          row.tubeCurrent ??
+          row.setMA ??
+          row.setMa ??
+          tableLevelMa
+        );
+        const specifiedDisplay = kvValue && maValue
+          ? `at ${kvValue} kV ${maValue} mA`
+          : kvValue
+            ? `at ${kvValue} kV`
+            : "Varies";
+
         return {
-          specified: row.kv ? `${row.kv} kV` : "Varies",
+          specified: specifiedDisplay,
           measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -466,7 +517,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
     if (validRows.length > 0) {
       const toleranceValue = testData.radiationLeakageLevel.toleranceValue || "1";
       const toleranceTime = testData.radiationLeakageLevel.toleranceTime || "1";
-      const toleranceUnit = testData.radiationLeakageLevel.leakageMeasurements[0]?.unit || "mGy/h";
+      const toleranceUnit = testData.radiationLeakageLevel.leakageMeasurements[0]?.unit || "mGy in one hour";
 
       const testRows = validRows.map((row: any) => {
         // Use the result field if available (calculated mR/week), otherwise use max (mR/h)
@@ -478,7 +529,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
           const resultValue = parseFloat(row.result);
           if (!isNaN(resultValue)) {
             if (toleranceUnit === "mGy/h") {
-              measuredValue = `${(resultValue / 114).toFixed(4)} mGy/h`;
+              measuredValue = `${(resultValue / 114).toFixed(4)} mGy in one hour`;
               isPass = (resultValue / 114) < parseFloat(toleranceValue);
             } else {
               measuredValue = `${resultValue.toFixed(4)} ${toleranceUnit}`;
@@ -490,7 +541,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
           const maxValue = parseFloat(row.max);
           if (!isNaN(maxValue) && maxValue > 0) {
             if (toleranceUnit === "mGy/h") {
-              measuredValue = `${(maxValue / 114).toFixed(4)} mGy/h`;
+              measuredValue = `${(maxValue / 114).toFixed(4)} mGy in one hour`;
               isPass = (maxValue / 114) < parseFloat(toleranceValue);
             } else {
               measuredValue = `${maxValue.toFixed(2)} ${toleranceUnit}`;
@@ -503,7 +554,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
           if (values.length > 0) {
             const max = Math.max(...values);
             if (toleranceUnit === "mGy/h") {
-              measuredValue = `${(max / 114).toFixed(4)} mGy/h`;
+              measuredValue = `${(max / 114).toFixed(4)} mGy in one hour`;
               isPass = (max / 114) < parseFloat(toleranceValue);
             } else {
               measuredValue = `${max.toFixed(2)} ${toleranceUnit}`;
@@ -529,7 +580,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Tube Housing Leakage", testRows);
+      addRowsForTest("Radiation leakage level at 1m from tube housing", testRows);
     }
   }
 
