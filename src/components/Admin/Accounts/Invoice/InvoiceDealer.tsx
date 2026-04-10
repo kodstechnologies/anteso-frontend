@@ -299,8 +299,8 @@ const InvoiceDealer = () => {
                                         <table className="w-full table-fixed border border-black border-collapse text-[10px]">
                                             <thead className="bg-gray-100">
                                                 <tr>
-                                                    <th className="border border-black px-1 py-1 text-xs">S No</th>
-                                                    <th className="border border-black px-1 py-1 text-xs">Name</th>
+                                                    <th className="border border-black px-1 py-1 text-xs w-[6%]">S No</th>
+                                                    <th className="border border-black px-1 py-1 text-xs w-[34%]">Name</th>
                                                     <th className="border border-black px-1 py-1 text-xs w-[40%]">Description</th>
                                                     <th className="border border-black px-1 py-1 text-xs">Amount</th>
                                                 </tr>
@@ -308,8 +308,8 @@ const InvoiceDealer = () => {
                                             <tbody>
                                                 {additionalServicesItems.map((item: any, index: number) => (
                                                     <tr key={index}>
-                                                        <td className="border border-black px-1 py-1">{index + 1}</td>
-                                                        <td className="border border-black px-1 py-1">{item.name || "-"}</td>
+                                                        <td className="border border-black px-1 py-1 w-[6%] text-center">{index + 1}</td>
+                                                        <td className="border border-black px-1 py-1 w-[34%] break-words">{item.name || "-"}</td>
                                                         <td className="border border-black px-1 py-1">{item.description || "-"}</td>
                                                         <td className="border border-black px-1 py-1 text-right">
                                                             ₹{Number(item.amount || 0).toLocaleString("en-IN", {
@@ -387,8 +387,8 @@ const InvoiceDealer = () => {
                                                     <table className="w-full table-fixed border border-black border-collapse text-[10px]">
                                                         <thead className="bg-gray-50">
                                                             <tr>
-                                                                <th className="border border-black px-1 py-1 text-xs">S No</th>
-                                                                <th className="border border-black px-1 py-1 text-xs">Name</th>
+                                                                <th className="border border-black px-1 py-1 text-xs w-[6%]">S No</th>
+                                                                <th className="border border-black px-1 py-1 text-xs w-[34%]">Name</th>
                                                                 <th className="border border-black px-1 py-1 text-xs w-[40%]">Description</th>
                                                                 <th className="border border-black px-1 py-1 text-xs">Amount</th>
                                                             </tr>
@@ -396,8 +396,8 @@ const InvoiceDealer = () => {
                                                         <tbody>
                                                             {hospitalAdditionalServices.map((as: any, asIdx: number) => (
                                                                 <tr key={asIdx}>
-                                                                    <td className="border border-black px-1 py-1">{asIdx + 1}</td>
-                                                                    <td className="border border-black px-1 py-1">{as.name}</td>
+                                                                    <td className="border border-black px-1 py-1 w-[6%] text-center">{asIdx + 1}</td>
+                                                                    <td className="border border-black px-1 py-1 w-[34%] break-words">{as.name}</td>
                                                                     <td className="border border-black px-1 py-1">{as.description}</td>
                                                                     <td className="border border-black px-1 py-1 text-right">
                                                                         ₹{(Number(as.totalAmount) || 0).toLocaleString("en-IN")}
