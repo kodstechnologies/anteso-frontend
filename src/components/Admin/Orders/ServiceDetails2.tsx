@@ -492,7 +492,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     serviceId: machineData._id,
                                     assignedStaffId: qaTestStaff?._id || qaTestStaff || undefined,
                                     assignedStaffName: qaTestStaff?.name,
-                                    assignmentStatus: qaTestStaff?.status,
+                                    assignmentStatus: workTypeDetail.QAtest?.status || workTypeDetail.status || qaTestStaff?.status,
                                     assignedAtStaff: workTypeDetail.QAtest?.assignedAt,
                                     completedAt: workTypeDetail.completedAt || undefined,
                                     statusHistory: workTypeDetail.QAtest?.statusHistory || workTypeDetail.statusHistory || [],
@@ -511,9 +511,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                         isAssigned: true,
                                         staffId: (qaTestStaff && qaTestStaff._id) || qaTestStaff,
                                         staffName: (qaTestStaff && qaTestStaff.name) || "",
-                                        status: workTypeDetail.QAtest?.status
+                                        status: workTypeDetail.QAtest?.status || workTypeDetail.status || "pending",
                                     };
-                                    initialSelectedStatuses[`${cardId}-qa-test`] = workTypeDetail.QAtest?.status || "pending";
+                                    initialSelectedStatuses[`${cardId}-qa-test`] =
+                                        workTypeDetail.QAtest?.status || workTypeDetail.status || "pending";
                                 }
                             } else {
                                 // ---- Other Work Types ----
@@ -1201,9 +1202,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const workTypeName = parentService.workTypeName || "Unknown Work Type";
 
             const isQATestService = parentService.workTypeName === "Quality Assurance Test"
+            let assignRes: any = null;
 
             if (!isQATestService) {
-                await assignToOfficeStaffByElora(orderId, serviceId, staffId, workTypeName, status)
+                assignRes = await assignToOfficeStaffByElora(orderId, serviceId, staffId, workTypeName, status)
             } else if (status === "complete" || status === "generated" || status === "paid") {
                 const res = await completeStatusAndReport(
                     staffId,
@@ -1215,6 +1217,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     uploadedFiles[workTypeId],
                     workTypeName,
                 )
+                assignRes = res;
 
                 if (res?.data?.linkedReport) {
                     const identifier = res.data.reportFor;
@@ -1238,8 +1241,24 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     });
                 }
             } else {
-                await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, status)
+                assignRes = await assignToOfficeStaff(orderId, serviceId, staffId, workTypeName, status)
             }
+
+            const assignedAtStaff =
+                assignRes?.data?.assignedAt ||
+                assignRes?.assignedAt ||
+                assignRes?.data?.updatedService?.workTypeDetails?.find((w: any) => w?.workType === "Quality Assurance Test")?.QAtest?.assignedAt ||
+                new Date().toISOString();
+
+            // Keep UI in sync immediately after assign; prevents "Staff assigned at" from staying blank.
+            setMachineData((prev: any[]) =>
+                prev.map((service: any) => ({
+                    ...service,
+                    workTypes: (service.workTypes || []).map((wt: any) =>
+                        wt.id === workTypeId ? { ...wt, assignedAtStaff } : wt
+                    ),
+                }))
+            );
 
             setAssignments((prev) => ({
                 ...prev,
@@ -1259,7 +1278,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
             const newAssignments = {
                 ...assignments,
-                [workTypeId]: { staffId, status, isAssigned: true, isReassigned: false },
+                [workTypeId]: { staffId, status, isAssigned: true, isReassigned: false, assignedAtStaff },
             }
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
 
@@ -2876,97 +2895,101 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
                                                                         />
 
-                                                                        <label className="block text-sm font-medium text-green-700">
-                                                                            Generate Report
-                                                                        </label>
-
-                                                                        <div className="flex items-center gap-3">
+                                                                        {!uploadedFiles[workType.id] && (
                                                                             <>
-                                                                                {console.log("Service object →", service)}
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        if (!service?.id || !service?.machineType) {
-                                                                                            console.error("Cannot navigate: missing service.id or machineType", service);
-                                                                                            alert("Invalid service data. Cannot generate report.");
-                                                                                            return;
-                                                                                        }
-
-                                                                                        const cleanId = service.id.replace(/-0$/, "");
-                                                                                        console.log("Navigating with:", { serviceId: cleanId, machineType: service.machineType });
-
-                                                                                        // Get createdAt from the first QA test's createdAt (from backend)
-                                                                                        // We need to get it from the original machineData response
-                                                                                        // For now, use qaTestSubmittedAt as fallback, or get from firstTest
-                                                                                        const firstQATest = service.workTypes.find((wt: any) => wt.name === "QA Raw");
-                                                                                        // Try to get createdAt from the original response - it should be in firstTest.createdAt
-                                                                                        // Since we don't have direct access, we'll use qaTestSubmittedAt or fetch it
-                                                                                        // For Lead Apron, the createdAt is typically the first QA test's createdAt
-                                                                                        const createdAt = workType.qaTestSubmittedAt ||
-                                                                                            firstQATest?.backendFields?.createdAt ||
-                                                                                            null;
-
-                                                                                        // Get ULR number from reportNumbers
-                                                                                        const ulrNumber = reportNumbers[service.id]?.qatest?.reportULRNumber ||
-                                                                                            firstQATest?.backendFields?.reportURLNumber ||
-                                                                                            null;
-
-                                                                                        // Get file URL for mammography/OBI/BMD/FixedRadioFluro/CT Scan CSV/Excel file
-                                                                                        let csvFileUrl = null;
-                                                                                        if (
-                                                                                            service.machineType === "C-Arm" ||
-                                                                                            service.machineType === "Mammography" ||
-                                                                                            service.machineType === "OBI" ||
-                                                                                            service.machineType === "KV Imaging (OBI)" ||
-                                                                                            service.machineType === "Bone Densitometer (BMD)" ||
-                                                                                            service.machineType === "BMD" ||
-                                                                                            service.machineType === "Radiography and Fluoroscopy" ||
-                                                                                            service.machineType === "Computed Tomography" ||
-                                                                                            service.machineType === "Dental Cone Beam CT" ||
-                                                                                            service.machineType === "Dental Intra" ||
-                                                                                            service.machineType === "Dental (Intra Oral)" ||
-                                                                                            service.machineType === "Radiography (Mobile)" ||
-                                                                                            service.machineType === "Radiography (Mobile) with HT" ||
-                                                                                            service.machineType === "Radiography (Portable)" ||
-                                                                                            service.machineType === "Radiography (Fixed)" ||
-                                                                                            service.machineType === "Interventional Radiology" ||
-                                                                                            service.machineType === "O-Arm" ||
-                                                                                            service.machineType === "Ortho Pantomography (OPG)" ||
-                                                                                            service.machineType === "Dental (Hand-held)" ||
-                                                                                            service.machineType === "Dental Hand-held" ||
-                                                                                            service.machineType === "Lead Apron/Thyroid Shield/Gonad Shield"
-                                                                                        ) {
-                                                                                            // First try to get uploadFile from QA Raw workType's backendFields (this is the file uploaded by engineer)
-                                                                                            // Then fallback to reportUrl from reportNumbers (this is the file uploaded by office staff)
-                                                                                            csvFileUrl = firstQATest?.backendFields?.uploadFile ||
-                                                                                                firstQATest?.backendFields?.fileUrl ||
-                                                                                                reportNumbers[service.id]?.qatest?.reportUrl ||
-                                                                                                null;
-
-                                                                                            console.log('ServiceDetails2: Getting csvFileUrl:', {
-                                                                                                machineType: service.machineType,
-                                                                                                uploadFile: firstQATest?.backendFields?.uploadFile,
-                                                                                                reportUrl: reportNumbers[service.id]?.qatest?.reportUrl,
-                                                                                                finalCsvFileUrl: csvFileUrl
-                                                                                            });
-                                                                                        }
-
-                                                                                        navigate("/admin/orders/generic-service-table", {
-                                                                                            state: {
-                                                                                                serviceId: cleanId,
-                                                                                                machineType: service.machineType,
-                                                                                                qaTestDate: workType.qaTestSubmittedAt || null,
-                                                                                                createdAt: createdAt,
-                                                                                                ulrNumber: ulrNumber,
-                                                                                                csvFileUrl: csvFileUrl, // Pass file URL for mammography
-                                                                                            },
-                                                                                        });
-                                                                                    }}
-                                                                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
-                                                                                >
+                                                                                <label className="block text-sm font-medium text-green-700">
                                                                                     Generate Report
-                                                                                </button>
+                                                                                </label>
+
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <>
+                                                                                        {console.log("Service object →", service)}
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                if (!service?.id || !service?.machineType) {
+                                                                                                    console.error("Cannot navigate: missing service.id or machineType", service);
+                                                                                                    alert("Invalid service data. Cannot generate report.");
+                                                                                                    return;
+                                                                                                }
+
+                                                                                                const cleanId = service.id.replace(/-0$/, "");
+                                                                                                console.log("Navigating with:", { serviceId: cleanId, machineType: service.machineType });
+
+                                                                                                // Get createdAt from the first QA test's createdAt (from backend)
+                                                                                                // We need to get it from the original machineData response
+                                                                                                // For now, use qaTestSubmittedAt as fallback, or get from firstTest
+                                                                                                const firstQATest = service.workTypes.find((wt: any) => wt.name === "QA Raw");
+                                                                                                // Try to get createdAt from the original response - it should be in firstTest.createdAt
+                                                                                                // Since we don't have direct access, we'll use qaTestSubmittedAt or fetch it
+                                                                                                // For Lead Apron, the createdAt is typically the first QA test's createdAt
+                                                                                                const createdAt = workType.qaTestSubmittedAt ||
+                                                                                                    firstQATest?.backendFields?.createdAt ||
+                                                                                                    null;
+
+                                                                                                // Get ULR number from reportNumbers
+                                                                                                const ulrNumber = reportNumbers[service.id]?.qatest?.reportULRNumber ||
+                                                                                                    firstQATest?.backendFields?.reportURLNumber ||
+                                                                                                    null;
+
+                                                                                                // Get file URL for mammography/OBI/BMD/FixedRadioFluro/CT Scan CSV/Excel file
+                                                                                                let csvFileUrl = null;
+                                                                                                if (
+                                                                                                    service.machineType === "C-Arm" ||
+                                                                                                    service.machineType === "Mammography" ||
+                                                                                                    service.machineType === "OBI" ||
+                                                                                                    service.machineType === "KV Imaging (OBI)" ||
+                                                                                                    service.machineType === "Bone Densitometer (BMD)" ||
+                                                                                                    service.machineType === "BMD" ||
+                                                                                                    service.machineType === "Radiography and Fluoroscopy" ||
+                                                                                                    service.machineType === "Computed Tomography" ||
+                                                                                                    service.machineType === "Dental Cone Beam CT" ||
+                                                                                                    service.machineType === "Dental Intra" ||
+                                                                                                    service.machineType === "Dental (Intra Oral)" ||
+                                                                                                    service.machineType === "Radiography (Mobile)" ||
+                                                                                                    service.machineType === "Radiography (Mobile) with HT" ||
+                                                                                                    service.machineType === "Radiography (Portable)" ||
+                                                                                                    service.machineType === "Radiography (Fixed)" ||
+                                                                                                    service.machineType === "Interventional Radiology" ||
+                                                                                                    service.machineType === "O-Arm" ||
+                                                                                                    service.machineType === "Ortho Pantomography (OPG)" ||
+                                                                                                    service.machineType === "Dental (Hand-held)" ||
+                                                                                                    service.machineType === "Dental Hand-held" ||
+                                                                                                    service.machineType === "Lead Apron/Thyroid Shield/Gonad Shield"
+                                                                                                ) {
+                                                                                                    // First try to get uploadFile from QA Raw workType's backendFields (this is the file uploaded by engineer)
+                                                                                                    // Then fallback to reportUrl from reportNumbers (this is the file uploaded by office staff)
+                                                                                                    csvFileUrl = firstQATest?.backendFields?.uploadFile ||
+                                                                                                        firstQATest?.backendFields?.fileUrl ||
+                                                                                                        reportNumbers[service.id]?.qatest?.reportUrl ||
+                                                                                                        null;
+
+                                                                                                    console.log('ServiceDetails2: Getting csvFileUrl:', {
+                                                                                                        machineType: service.machineType,
+                                                                                                        uploadFile: firstQATest?.backendFields?.uploadFile,
+                                                                                                        reportUrl: reportNumbers[service.id]?.qatest?.reportUrl,
+                                                                                                        finalCsvFileUrl: csvFileUrl
+                                                                                                    });
+                                                                                                }
+
+                                                                                                navigate("/admin/orders/generic-service-table", {
+                                                                                                    state: {
+                                                                                                        serviceId: cleanId,
+                                                                                                        machineType: service.machineType,
+                                                                                                        qaTestDate: workType.qaTestSubmittedAt || null,
+                                                                                                        createdAt: createdAt,
+                                                                                                        ulrNumber: ulrNumber,
+                                                                                                        csvFileUrl: csvFileUrl, // Pass file URL for mammography
+                                                                                                    },
+                                                                                                });
+                                                                                            }}
+                                                                                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                                                                                        >
+                                                                                            Generate Report
+                                                                                        </button>
+                                                                                    </>
+                                                                                </div>
                                                                             </>
-                                                                        </div>
+                                                                        )}
                                                                         <div className="grid grid-cols-2 gap-3 mt-3">
                                                                             <div className="p-2 bg-white rounded border">
                                                                                 <label className="text-xs text-gray-500">QA Test Report Status</label>

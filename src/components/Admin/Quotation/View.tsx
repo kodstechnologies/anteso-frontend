@@ -453,6 +453,17 @@ const ViewQuotation: React.FC = () => {
             year: "numeric",
         })
     }
+
+    const historySeen = new Set<string>();
+    const uniqueHistory = (history || []).filter((rec: any) => {
+        const key =
+            rec?._id ||
+            `${rec?.status || ""}|${rec?.date || ""}|${rec?.pdfUrl || ""}`;
+        if (historySeen.has(key)) return false;
+        historySeen.add(key);
+        return true;
+    });
+
     return (
         <div className="w-full min-h-screen bg-gray-50 px-8 absolute top-0 left-0 z-50 lg:px-[15%]">
             <div ref={pdfRef}>
@@ -900,7 +911,7 @@ const ViewQuotation: React.FC = () => {
                             </svg>
                             <p className="text-sm text-red-600 font-medium">{historyError}</p>
                         </div>
-                    ) : history.length === 0 ? (
+                    ) : uniqueHistory.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-md">
                             <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -918,7 +929,7 @@ const ViewQuotation: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
-                                    {history.map((rec, i) => (
+                                    {uniqueHistory.map((rec, i) => (
                                         <tr key={i} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-4 py-3 text-gray-800">
                                                 {new Date(rec.date).toLocaleString("en-IN", {

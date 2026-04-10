@@ -47,7 +47,7 @@ interface FormValues {
     designation: string
     specialInstructions: string
     services: Service[]
-    additionalServices: Record<string, string | undefined>
+    additionalServices: Record<string, { description: string } | undefined>
 }
 
 // Custom component for multi-select field
@@ -277,7 +277,12 @@ const AddEnquiry: React.FC = () => {
         // ),
         additionalServices: Yup.object().shape(
             serviceOptions.reduce((schema, service) => {
-                return { ...schema, [service]: Yup.string().nullable() };
+                return {
+                    ...schema,
+                    [service]: Yup.object({
+                        description: Yup.string().nullable(),
+                    }).nullable(),
+                };
             }, {})
         ),
     });
@@ -353,7 +358,7 @@ const AddEnquiry: React.FC = () => {
                             acc[service] = undefined
                             return acc
                         },
-                        {} as Record<string, string | undefined>,
+                        {} as Record<string, { description: string } | undefined>,
                     ),
                     attachment: "",
                 }}
@@ -712,7 +717,7 @@ const AddEnquiry: React.FC = () => {
                                                 if (values.additionalServices[service] !== undefined) {
                                                     setFieldValue(`additionalServices.${service}`, undefined) // Uncheck
                                                 } else {
-                                                    setFieldValue(`additionalServices.${service}`, "") // Check with empty string
+                                                    setFieldValue(`additionalServices.${service}`, { description: "" }) // Check with description object
                                                 }
                                             }}
                                             className={`form-checkbox h-5 w-5 transition-colors duration-200 ${values.additionalServices[service] !== undefined ? "text-blue-600" : "text-gray-400"}`}
@@ -723,7 +728,7 @@ const AddEnquiry: React.FC = () => {
                                         <div className="sm:col-span-2 mt-2 sm:mt-0">
                                             <Field
                                                 type="text"
-                                                name={`additionalServices.${service}`}
+                                                name={`additionalServices.${service}.description`}
                                                 placeholder="Enter info..."
                                                 className="form-input w-full"
                                             />
