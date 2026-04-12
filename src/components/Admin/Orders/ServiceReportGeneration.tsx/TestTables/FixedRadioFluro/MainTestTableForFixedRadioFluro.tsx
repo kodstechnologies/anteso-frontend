@@ -587,22 +587,58 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({ testDat
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Tube Housing Leakage", testRows);
+      addRowsForTest("Radiation leakage level at 1m from tube housing", testRows);
     }
   }
 
   // 14. Radiation Protection Survey
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
-    const validRows = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.location || loc.mRPerWeek || loc.exposureRate || loc.mRPerHr);
+    const getMeasuredFromLocation = (loc: any): string | number | null => {
+      const candidates = [
+        loc?.mRPerWeek,
+        loc?.exposureRate,
+        loc?.mRPerHr,
+        loc?.measuredValue,
+        loc?.measuredValues,
+        loc?.measured,
+      ];
+
+      for (const raw of candidates) {
+        if (raw === undefined || raw === null) continue;
+        if (Array.isArray(raw)) {
+          const compact = raw.filter((v) => v !== undefined && v !== null && String(v).trim() !== "");
+          if (compact.length > 0) return compact.join(", ");
+          continue;
+        }
+        if (typeof raw === "string") {
+          const trimmed = raw.trim();
+          if (trimmed !== "") return trimmed;
+          continue;
+        }
+        return raw;
+      }
+      return null;
+    };
+
+    const validRows = testData.radiationProtectionSurvey.locations.filter((loc: any) => {
+      const measuredVal = getMeasuredFromLocation(loc);
+      return Boolean((loc?.location && String(loc.location).trim() !== "") || measuredVal !== null);
+    });
     if (validRows.length > 0) {
       const testRows = validRows.map((loc: any) => {
-        const mRPerWeek = loc.mRPerWeek || loc.exposureRate || loc.mRPerHr || "-";
+        const measuredRaw = getMeasuredFromLocation(loc);
+        const measuredDisplay = measuredRaw !== null ? String(measuredRaw) : "-";
         const limit = loc.category === "worker" ? 40 : 2;
-        const isPass = loc.result === "PASS" || loc.remarks === "Pass" || (mRPerWeek !== "-" && parseFloat(mRPerWeek) <= limit);
+        const measuredNum = parseFloat(measuredDisplay);
+        const hasNumericMeasured = !Number.isNaN(measuredNum);
+        const isPass =
+          loc.result === "PASS" ||
+          loc.remarks === "Pass" ||
+          (hasNumericMeasured && measuredNum <= limit);
         return {
           specified: loc.location || "-",
-          measured: mRPerWeek !== "-" ? `${mRPerWeek} mGy/hr` : "-",
-          tolerance: loc.category === "worker" ? "≤ 40 mGy/hr" : "≤ 2 mGy/hr",
+          measured: measuredDisplay !== "-" ? `${measuredDisplay} mR/week` : "-",
+          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

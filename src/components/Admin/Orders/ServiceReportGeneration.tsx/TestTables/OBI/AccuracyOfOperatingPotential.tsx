@@ -40,6 +40,7 @@ interface AccuracyOfOperatingPotentialProps {
         totalFiltration?: {
             measured: string;
             required: string;
+            atKvp?: string;
         };
     };
 }
@@ -119,7 +120,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 setTotalFiltration({
                     measured: initialData.totalFiltration.measured || "",
                     required: initialData.totalFiltration.required || "",
-                    atKvp: "",
+                    atKvp: initialData.totalFiltration.atKvp ?? "",
                 });
             }
             

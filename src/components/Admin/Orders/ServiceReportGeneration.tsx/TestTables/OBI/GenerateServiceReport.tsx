@@ -505,7 +505,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     const mAStations: string[] = [];
                     let ffd = '';
                     let tolerance = { sign: '±', value: '2.0' };
-                    const totalFiltration = { measured: '', required: '2.5' };
+                    const totalFiltration = { measured: '', required: '2.5', atKvp: '' };
 
                     data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();
@@ -517,6 +517,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         if (field === 'Tolerance_Value') tolerance.value = value;
                         if (field === 'TotalFiltration_Measured') totalFiltration.measured = value;
                         if (field === 'TotalFiltration_Required') totalFiltration.required = value;
+                        if (field === 'TotalFiltration_AtKvp') totalFiltration.atKvp = value;
 
                         if (field === 'MeasHeader') {
                             if (!mAStations.includes(value)) {

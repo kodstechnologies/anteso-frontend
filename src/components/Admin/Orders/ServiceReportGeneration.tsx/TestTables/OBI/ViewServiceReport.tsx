@@ -572,6 +572,31 @@ const ViewServiceReportOBI: React.FC = () => {
   const toolsArray = report.toolsUsed || [];
   const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
 
+  /** Match RadiographyFixed PDF table styling for Tube Housing Leakage (and reuse elsewhere if needed). */
+  const cellStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+    padding: "4px 6px",
+    fontSize: "11px",
+    lineHeight: "1.3",
+    minHeight: "0",
+    height: "auto",
+    borderColor: "#000",
+    textAlign: "center",
+    verticalAlign: "middle",
+    fontWeight: 400,
+    boxSizing: "border-box",
+    ...extra,
+  });
+
+  const tableStyle: React.CSSProperties = {
+    fontSize: "11px",
+    tableLayout: "fixed",
+    borderCollapse: "collapse",
+    borderSpacing: "0",
+    width: "100%",
+    border: "0.1px solid #666",
+    textAlign: "center",
+  };
+
   return (
     <>
       {/* Floating Buttons */}
@@ -610,15 +635,15 @@ const ViewServiceReportOBI: React.FC = () => {
             </div>
             <img src={logo} alt="Logo" className="h-28 print:h-20" />
           </div>
-          <div className="text-center mb-4 print:mb-2">
+          {/* <div className="text-center mb-4 print:mb-2">
             <p className="text-sm print:text-[9px]">Government of India, Atomic Energy Regulatory Board</p>
             <p className="text-sm print:text-[9px]">Radiological Safety Division, Mumbai-400094</p>
-          </div>
+          </div> */}
           <h1 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-base" style={{ fontSize: '15px' }}>
             QA TEST REPORT FOR ON-BOARD IMAGING (OBI)
           </h1>
-          <p className="text-center italic text-sm mb-6 print:mb-2 print:text-[9px]">
-            (Periodic Quality Assurance as per AERB Guidelines)
+          <p className="text-center italic mb-4" style={{ fontSize: '9px' }}>
+            (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
           </p>
 
           {/* Customer Details */}
@@ -627,11 +652,11 @@ const ViewServiceReportOBI: React.FC = () => {
             <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Customer</td>
+                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the testing sit</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
                 </tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address</td>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.address}</td>
                 </tr>
               </tbody>
@@ -839,8 +864,8 @@ const ViewServiceReportOBI: React.FC = () => {
                     </thead>
                     <tbody>
                       <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}Â°` : "-"}</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.tolerance?.operator || "â‰¤"} {testData.centralBeamAlignment.tolerance?.value || "-"}Â°</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}°` : "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.tolerance?.operator } {testData.centralBeamAlignment.tolerance?.value || "-"}°</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           <span className={testData.centralBeamAlignment.finalResult === "Pass" || testData.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600 font-semibold" : testData.centralBeamAlignment.finalResult === "Fail" || testData.centralBeamAlignment.observedTilt?.remark === "Fail" ? "text-red-600 font-semibold" : ""}>
                             {testData.centralBeamAlignment.finalResult || testData.centralBeamAlignment.observedTilt?.remark || "-"}
@@ -951,8 +976,8 @@ const ViewServiceReportOBI: React.FC = () => {
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (sec)</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (sec)</th>
                         <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Tolerance</th>
                         <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                       </tr>
@@ -1031,7 +1056,7 @@ const ViewServiceReportOBI: React.FC = () => {
                     {/* Tolerance */}
                     <div className="bg-gray-50 p-4 print:p-1 rounded border mb-4" style={{ padding: '2px 4px', marginTop: '4px', marginBottom: '4px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign || "Â±"} {testData.operatingPotential.toleranceValue || "2.0"}%
+                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign } {testData.operatingPotential.toleranceValue || "2.0"}kVp
                       </p>
                     </div>
 
@@ -1133,7 +1158,7 @@ const ViewServiceReportOBI: React.FC = () => {
                     {/* Tolerance */}
                     <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign || "Â±"} {testData.operatingPotential.toleranceValue || "2.0"}%
+                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign } {testData.operatingPotential.toleranceValue || "2.0"}%
                       </p>
                     </div>
                   </>
@@ -1651,145 +1676,246 @@ const ViewServiceReportOBI: React.FC = () => {
                 {/* Tolerance */}
                 <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Tolerance:</strong> Coefficient of Linearity â‰¤ {testData.linearityOfMasLoading.tolerance || "0.1"}
+                    <strong>Tolerance:</strong> Coefficient of Linearity {testData.linearityOfMasLoading.tolerance || "0.1"}
                   </p>
                 </div>
               </div>
             )}
 
-         
-            {/* 10. Tube Housing Leakage */}
-            {testData.tubeHousingLeakage?.leakageMeasurements?.length > 0 && (
-              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>11. Tube Housing Leakage</h3>
-
-                {/* Operating Parameters */}
-                <div className="mb-4">
-                  <h4 className="font-bold underline mb-2 text-sm">Operating parameters:</h4>
-                  <table className="w-full border-2 border-black text-sm" style={{ width: '100%' }}>
-                    <tbody>
-                      <tr>
-                        <td className="border-r border-black px-4 py-2 font-bold w-32 bg-gray-50 print:bg-transparent">FDD (cm)</td>
-                        <td className="border-r border-black p-2 text-center">{testData.tubeHousingLeakage.fcd || "-"}</td>
-                        <td className="border-r border-black px-4 py-2 font-bold w-16 bg-gray-50 print:bg-transparent">kV</td>
-                        <td className="border-r border-black p-2 text-center">{testData.tubeHousingLeakage.kv || "-"}</td>
-                        <td className="border-r border-black px-4 py-2 font-bold w-16 bg-gray-50 print:bg-transparent">mA</td>
-                        <td className="border-r border-black p-2 text-center">{testData.tubeHousingLeakage.ma || "-"}</td>
-                        <td className="border-r border-black px-4 py-2 font-bold w-16 bg-gray-50 print:bg-transparent">Time</td>
-                        <td className="p-2 text-center">{testData.tubeHousingLeakage.time || "-"} Sec</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Leakage Table */}
-                <div className="mb-6 overflow-x-auto">
-                  <table className="w-full border-2 border-black text-sm" style={{ width: '100%' }}>
-                    <thead>
-                      <tr className="border-b-2 border-black">
-                        <th rowSpan={2} className="border-r border-black px-2 py-2 text-left w-32 bg-gray-50 print:bg-transparent">Location<br />(at 1.0 m)</th>
-                        <th colSpan={5} className="border-r border-black px-2 py-1 text-center border-b border-black bg-gray-50 print:bg-transparent">Exposure Level (mR/hr)</th>
-                        <th colSpan={2} className="border-r border-black px-2 py-2 text-center w-64 bg-gray-50 print:bg-transparent">Result</th>
-                        <th rowSpan={2} className="px-2 py-2 text-center w-24 bg-gray-50 print:bg-transparent">Remarks</th>
-                      </tr>
-                      <tr className="border-b-2 border-black">
-                        <th className="border-r border-black px-2 py-1 text-center w-24 bg-gray-50 print:bg-transparent">Left</th>
-                        <th className="border-r border-black px-2 py-1 text-center w-24 bg-gray-50 print:bg-transparent">Right</th>
-                        <th className="border-r border-black px-2 py-1 text-center w-24 bg-gray-50 print:bg-transparent">Front</th>
-                        <th className="border-r border-black px-2 py-1 text-center w-24 bg-gray-50 print:bg-transparent">Back</th>
-                        <th className="border-r border-black px-2 py-1 text-center w-24 bg-gray-50 print:bg-transparent">Top</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-black">
-                      {testData.tubeHousingLeakage.leakageMeasurements.map((row: any, i: number) => (
-                        <tr key={i} className="divide-x divide-black border-b border-black">
-                          <td className="px-3 py-2 font-bold text-center">{row.location || "-"}</td>
-                          <td className="px-1 py-1 text-center">{row.left || "-"}</td>
-                          <td className="px-1 py-1 text-center">{row.right || "-"}</td>
-                          <td className="px-1 py-1 text-center">{row.front || "-"}</td>
-                          <td className="px-1 py-1 text-center">{row.back || "-"}</td>
-                          <td className="px-1 py-1 text-center">{row.top || "-"}</td>
-                          <td className="px-2 py-2 text-right font-bold w-24 border-r-0">{row.result || "-"}</td>
-                          <td className="px-2 py-2 text-left w-40 border-l-0">mR in one hour</td>
-                          <td className="px-2 py-2 text-center font-bold">Pass</td>
+            {/* 11. Tube Housing Leakage — structure aligned with RadiographyFixed (radiationLeakageLevel); OBI uses tubeHousingLeakage */}
+            {(() => {
+              const leakageData = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
+              if (!leakageData || (!leakageData.leakageMeasurements?.length && !leakageData.fcd)) return null;
+              return (
+                <div className="mb-4 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: "8px" }}>
+                  <h3 className="font-bold mb-2" style={{ fontSize: "12px" }}>
+                    11. Tube Housing Leakage
+                  </h3>
+                  <div style={{ marginBottom: "4px" }}>
+                    <table style={{ ...tableStyle, width: "100%" }}>
+                      <thead>
+                        <tr>
+                          {["FDD (cm)", "kV", "mA", "Time (Sec)"].map((h) => (
+                            <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 8px" })}>
+                              {h}
+                            </th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Calculation & Workload */}
-                {(() => {
-                  const tubeRow = testData.tubeHousingLeakage.leakageMeasurements[0] || {};
-                  const collRow = testData.tubeHousingLeakage.leakageMeasurements[1] || {};
-
-                  const tubeMax = parseFloat(tubeRow.max || '0');
-                  const collMax = parseFloat(collRow.max || '0');
-                  const maxExposure = Math.max(tubeMax, collMax).toFixed(2);
-
-                  const maxResultMR = Math.max(parseFloat(tubeRow.result || '0'), parseFloat(collRow.result || '0')).toFixed(3);
-                  const workload = testData.tubeHousingLeakage.workload || "180";
-                  const maUsed = testData.tubeHousingLeakage.ma || "50";
-
-                  const tubeResultMGy = tubeRow.mgy || (parseFloat(tubeRow.result || '0') / 114).toFixed(3);
-                  const collResultMGy = collRow.mgy || (parseFloat(collRow.result || '0') / 114).toFixed(3);
-
-                  return (
-                    <>
-                      <div className="border-2 border-black p-0 mb-6 text-sm">
-                        <div className="p-2 border-b border-black flex items-center gap-2">
-                          <span className="font-bold">Work Load</span>
-                          <span className="font-bold px-2">{workload}</span>
-                          <span>mAmin in one hr</span>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>
+                            {leakageData.fcd || leakageData.settings?.fcd || "100"}
+                          </td>
+                          <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>
+                            {leakageData.kv || leakageData.settings?.kv || "-"}
+                          </td>
+                          <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>
+                            {leakageData.ma || leakageData.settings?.ma || "-"}
+                          </td>
+                          <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>
+                            {leakageData.time || leakageData.settings?.time || "-"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p style={{ fontSize: "10px", marginBottom: "4px" }}>
+                    <strong>Workload:</strong> {leakageData.workload || "-"}{" "}
+                    {leakageData.workloadUnit || "mA·min/week"}
+                  </p>
+                  {leakageData.leakageMeasurements?.length > 0 && (
+                    <table style={{ ...tableStyle, fontSize: "10px" }}>
+                      <thead>
+                        <tr>
+                          <th
+                            rowSpan={2}
+                            style={cellStyle({
+                              fontWeight: 700,
+                              border: "0.1px solid #666",
+                              fontSize: "10px",
+                              width: "15%",
+                              verticalAlign: "middle",
+                            })}
+                          >
+                            Location
+                          </th>
+                          <th colSpan={5} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                            Exposure Level (mR/hr)
+                          </th>
+                          <th
+                            rowSpan={2}
+                            style={cellStyle({
+                              fontWeight: 700,
+                              border: "0.1px solid #666",
+                              fontSize: "10px",
+                              verticalAlign: "middle",
+                            })}
+                          >
+                            Result (mR in 1 hr)
+                          </th>
+                          <th
+                            rowSpan={2}
+                            style={cellStyle({
+                              fontWeight: 700,
+                              border: "0.1px solid #666",
+                              fontSize: "10px",
+                              verticalAlign: "middle",
+                            })}
+                          >
+                            Result (mGy in 1 hr)
+                          </th>
+                          <th
+                            rowSpan={2}
+                            style={cellStyle({
+                              fontWeight: 700,
+                              border: "0.1px solid #666",
+                              fontSize: "10px",
+                              verticalAlign: "middle",
+                            })}
+                          >
+                            Remarks
+                          </th>
+                        </tr>
+                        <tr>
+                          {["Left", "Right", "Front", "Back", "Top"].map((h) => (
+                            <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {leakageData.leakageMeasurements.map((row: any, i: number) => {
+                          const maValue = parseFloat(leakageData.ma || leakageData.settings?.ma || "0");
+                          const workloadValue = parseFloat(leakageData.workload || "0");
+                          const values = [row.left, row.right, row.front, row.back, row.top]
+                            .map((v: any) => parseFloat(v) || 0)
+                            .filter((v: number) => v > 0);
+                          const rowMax = values.length > 0 ? Math.max(...values) : 0;
+                          let calcMR = "-";
+                          let calcMGy = "-";
+                          let remark = row.remark || "-";
+                          if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
+                            const resMR = (workloadValue * rowMax) / (60 * maValue);
+                            calcMR = resMR.toFixed(3);
+                            calcMGy = (resMR / 114).toFixed(4);
+                            if (remark === "-" || !remark) {
+                              remark =
+                                resMR / 114 <= (parseFloat(leakageData.toleranceValue) || 1.0) ? "Pass" : "Fail";
+                            }
+                          }
+                          return (
+                            <tr key={i}>
+                              <th scope="row" style={cellStyle({ border: "0.1px solid #666", fontSize: "10px", fontWeight: 700 })}>
+                                {row.location || "-"}
+                              </th>
+                              {(["left", "right", "front", "back", "top"] as const).map((k) => (
+                                <td key={k} style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                  {(row as any)[k] || "-"}
+                                </td>
+                              ))}
+                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>{calcMR}</td>
+                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>{calcMGy}</td>
+                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>{remark}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                  {(() => {
+                    const maValue = parseFloat(leakageData.ma || leakageData.settings?.ma || "0");
+                    const workloadValue = parseFloat(leakageData.workload || "0");
+                    const findRow = (...names: string[]) =>
+                      leakageData.leakageMeasurements?.find((m: any) =>
+                        names.some((n) => m.location === n || String(m.location || "").toLowerCase() === n.toLowerCase())
+                      );
+                    const getSummary = (row: any) => {
+                      if (!row) return null;
+                      const values = [row.left, row.right, row.front, row.back, row.top]
+                        .map((v: any) => parseFloat(v) || 0)
+                        .filter((v: number) => v > 0);
+                      const rowMax = values.length > 0 ? Math.max(...values) : 0;
+                      if (!(rowMax > 0 && maValue > 0 && workloadValue > 0)) return null;
+                      const resMR = (workloadValue * rowMax) / (60 * maValue);
+                      return { rowMax, resMR, resMGy: resMR / 114 };
+                    };
+                    const tubeSummary = getSummary(findRow("Tube Housing", "Tube"));
+                    const collimatorSummary = getSummary(findRow("Collimator"));
+                    return (
+                      <div style={{ marginTop: "6px" }}>
+                        <div
+                          style={{
+                            border: "1px solid #888",
+                            padding: "4px 8px",
+                            marginBottom: "4px",
+                            background: "#fafafa",
+                          }}
+                        >
+                          <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>Calculation Formula:</p>
+                          <p
+                            style={{
+                              fontSize: "10px",
+                              textAlign: "center",
+                              fontFamily: "monospace",
+                              border: "1px dashed #999",
+                              padding: "2px",
+                            }}
+                          >
+                            Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                          </p>
+                          <p style={{ fontSize: "9px", marginTop: "2px", color: "#555", fontStyle: "italic" }}>
+                            Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                          </p>
                         </div>
-
-                        <div className="flex w-full divide-x-2 divide-black">
-                          <div className="p-4 flex items-center justify-center w-48 font-bold border-r border-black bg-gray-50 print:bg-transparent">
-                            Max<br />Leakage =
-                          </div>
-                          <div className="flex-grow flex items-center justify-center p-2 relative">
-                            <div className="flex flex-col items-center justify-center w-full">
-                              <div className="w-full text-center border-b-2 border-black pb-1 mb-1 font-medium">
-                                {workload} mAmin in 1 hr X {maxExposure}
-                                <span className="ml-4 text-xs font-normal print:hidden">(max Exposure Level mR/hr)</span>
-                              </div>
-                              <div className="w-full text-center pt-1 font-medium">
-                                60 X {maUsed}
-                                <span className="ml-4 text-xs font-normal print:hidden">(mA used for measurement)</span>
-                              </div>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          {tubeSummary && (
+                            <div style={{ flex: 1, border: "0.1px solid #666", padding: "4px", fontSize: "10px" }}>
+                              <p style={{ fontWeight: "bold", marginBottom: "2px" }}>Tube Housing Summary:</p>
+                              <p>
+                                Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong>
+                              </p>
+                              <p>
+                                Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) ={" "}
+                                <strong>{tubeSummary.resMR.toFixed(3)} mR</strong>
+                              </p>
+                              <p>
+                                In mGy: {tubeSummary.resMR.toFixed(3)} / 114 ={" "}
+                                <strong>{tubeSummary.resMGy.toFixed(4)} mGy</strong>
+                              </p>
                             </div>
-                          </div>
-                          <div className="p-4 flex items-center justify-center w-64 border-l border-black font-bold text-lg bg-gray-50 print:bg-transparent">
-                            {maxResultMR} mR in one hour
-                          </div>
+                          )}
+                          {collimatorSummary && (
+                            <div style={{ flex: 1, border: "0.1px solid #666", padding: "4px", fontSize: "10px" }}>
+                              <p style={{ fontWeight: "bold", marginBottom: "2px" }}>Collimator Summary:</p>
+                              <p>
+                                Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong>
+                              </p>
+                              <p>
+                                Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) ={" "}
+                                <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong>
+                              </p>
+                              <p>
+                                In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 ={" "}
+                                <strong>{collimatorSummary.resMGy.toFixed(4)} mGy</strong>
+                              </p>
+                            </div>
+                          )}
                         </div>
+                        <p style={{ fontSize: "10px", marginTop: "4px", border: "0.1px solid #666", padding: "2px 6px" }}>
+                          <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be &lt;{" "}
+                          <strong>
+                            {leakageData.toleranceValue || "1"} mGy (
+                            {parseFloat(leakageData.toleranceValue || "1") * 114} mR) in one hour.
+                          </strong>
+                        </p>
                       </div>
-
-                      {/* Final Results */}
-                      <div className="border-2 border-black text-sm mb-6">
-                        <div className="flex justify-between items-center p-2 border-b border-black">
-                          <span className="font-medium">Maximum Radiation Leakage from Tube Housing</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-lg">{tubeResultMGy}</span>
-                            <span>mGy in one hour</span>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center p-2 border-b border-black">
-                          <span className="font-medium">Maximum Radiation Leakage from Tube Collimator</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-lg">{collResultMGy}</span>
-                            <span>mGy in one hour</span>
-                          </div>
-                        </div>
-                        <div className="p-2 font-bold bg-gray-50 print:bg-transparent">
-                          Tolerance: Maximum Leakage Radiation Level at 1 meter from the Focus should be &lt; 1 mGy (114 mR) in one hour.
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
+                    );
+                  })()}
+                </div>
+              );
+            })()}
 
 
             {/* 11. Radiation Protection Survey */}

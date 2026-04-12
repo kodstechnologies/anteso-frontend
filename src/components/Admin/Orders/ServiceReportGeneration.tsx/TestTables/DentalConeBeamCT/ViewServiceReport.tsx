@@ -6,7 +6,7 @@ import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
-import { generatePDF } from "../../../../../../utils/generatePDF";
+import { estimateReportPages, generatePDF } from "../../../../../../utils/generatePDF";
 import MainTestTableForDentalConeBeamCT from "./MainTestTableForDentalConeBeamCT";
 
 interface Tool {
@@ -78,6 +78,7 @@ const ViewServiceReportCBCT: React.FC = () => {
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
+  const [totalPages, setTotalPages] = useState<number>(1);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -334,6 +335,14 @@ const ViewServiceReportCBCT: React.FC = () => {
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
 
+  useEffect(() => {
+    if (loading || !report || notFound) return;
+    const timer = setTimeout(() => {
+      setTotalPages(estimateReportPages("report-content"));
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [loading, report, notFound, testData]);
+
   const downloadPDF = async () => {
     try {
       await generatePDF({
@@ -422,11 +431,11 @@ const ViewServiceReportCBCT: React.FC = () => {
             <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Customer</td>
+                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
                 </tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address</td>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.address}</td>
                 </tr>
               </tbody>
@@ -439,6 +448,7 @@ const ViewServiceReportCBCT: React.FC = () => {
               <tbody>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}><td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>SRF No. & Date</td><td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.srfNumber} / {formatDate(report.srfDate)}</td></tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}><td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Test Report No. & Issue Date</td><td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.testReportNumber} / {formatDate(report.issueDate)}</td></tr>
+                <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}><td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>No. of Pages</td><td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{totalPages}</td></tr>
               </tbody>
             </table>
           </section>
@@ -576,8 +586,8 @@ const ViewServiceReportCBCT: React.FC = () => {
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (Sec.)</th>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (sec)</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (sec)</th>
                         <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
                         <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Tolerance</th>
                         <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
@@ -650,14 +660,50 @@ const ViewServiceReportCBCT: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
+                {(testData.operatingPotential.toleranceSign || testData.operatingPotential.toleranceValue || testData.operatingPotential.tolerance) && (
+                  <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
+                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                      <strong>Tolerance:</strong>{" "}
+                      {(testData.operatingPotential.toleranceSign ||
+                        testData.operatingPotential.tolerance?.sign ||
+                        "±")}{" "}
+                      {(testData.operatingPotential.toleranceValue ||
+                        testData.operatingPotential.tolerance?.value ||
+                        "-")} kVp
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {/* 5. Total Filtration */}
             {testData.totalFiltration && (() => {
               const tf = testData.totalFiltration;
-              const kvp = parseFloat(tf.atKvp || tf.appliedKV || tf.kv || "");
-              const measured = parseFloat(tf.measuredTF || tf.measured || "");
+              const specifiedAtKvp =
+                tf.atKvp ||
+                tf.appliedKvp ||
+                tf.appliedKV ||
+                tf.appliedKVp ||
+                tf.kv ||
+                tf.kVp ||
+                tf.totalFiltration?.atKvp ||
+                tf.totalFiltration?.appliedKvp ||
+                tf.totalFiltration?.appliedKV ||
+                tf.totalFiltration?.appliedKVp ||
+                tf.totalFiltration?.kv ||
+                tf.totalFiltration?.kVp ||
+                "-";
+              const measuredTfValue =
+                tf.measuredTF ||
+                tf.measured ||
+                tf.required ||
+                tf.totalFiltration?.measuredTF ||
+                tf.totalFiltration?.measured ||
+                tf.totalFiltration?.required ||
+                "-";
+
+              const kvp = parseFloat(specifiedAtKvp);
+              const measured = parseFloat(measuredTfValue);
 
               let requiredTol = 2.5; // Default for CBCT/General
               if (!isNaN(kvp)) {
@@ -678,11 +724,15 @@ const ViewServiceReportCBCT: React.FC = () => {
                       <tbody>
                         <tr>
                           <td className="border border-black font-semibold bg-gray-50 p-2 w-1/2 text-left" style={{ padding: '4px 8px' }}>Specified at kVp</td>
-                          <td className="border border-black text-center p-2" style={{ padding: '4px 8px' }}>{tf.atKvp || tf.appliedKV || tf.kv || "-"} kVp</td>
+                          <td className="border border-black text-center p-2" style={{ padding: '4px 8px' }}>
+                            {specifiedAtKvp !== "-" ? `${specifiedAtKvp} kVp` : "-"}
+                          </td>
                         </tr>
                         <tr>
                           <td className="border border-black font-semibold bg-gray-50 p-2 text-left" style={{ padding: '4px 8px' }}>Measured Total Filtration</td>
-                          <td className="border border-black text-center p-2" style={{ padding: '4px 8px' }}>{tf.measuredTF || tf.measured || "-"} mm Al</td>
+                          <td className="border border-black text-center p-2" style={{ padding: '4px 8px' }}>
+                            {measuredTfValue !== "-" ? `${measuredTfValue} mm Al` : "-"}
+                          </td>
                         </tr>
                         <tr>
                           <td className="border border-black font-semibold bg-gray-50 p-2 text-left" style={{ padding: '4px 8px' }}>Required (Tolerance)</td>

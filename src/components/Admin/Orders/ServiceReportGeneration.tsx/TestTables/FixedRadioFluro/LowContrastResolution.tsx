@@ -199,7 +199,7 @@ const LowContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initial
                 />
               </td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                mm (smaller is better)
+                mm hole pattern is resolved 
               </td>
             </tr>
 
@@ -220,7 +220,8 @@ const LowContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initial
                 />
               </td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                Maximum acceptable hole size
+              mm hole pattern must be resolved 
+
               </td>
             </tr>
           </tbody>

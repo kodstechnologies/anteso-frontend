@@ -82,7 +82,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                             remarks: m.remarks || "-",
                         })) || rows
                     );
-                    setToleranceSign(data.tolerance?.type || "±");
+                    setToleranceSign(data.tolerance?.sign || data.tolerance?.type || "±");
                     setToleranceValue(data.tolerance?.value || "2.0");
                     setTotalFiltration({
                         measured: data.totalFiltration?.measured || "",
@@ -217,7 +217,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 averageKvp: r.averageKvp,
                 remarks: r.remarks,
             })),
-            tolerance: { type: toleranceSign, value: toleranceValue },
+            tolerance: { sign: toleranceSign, value: toleranceValue },
             totalFiltration,
             filtrationTolerance,
         };

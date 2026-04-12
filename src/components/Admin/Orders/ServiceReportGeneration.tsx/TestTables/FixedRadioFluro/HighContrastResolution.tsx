@@ -141,10 +141,10 @@ const HighContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initia
           onClick={isViewOnly ? startEditing : handleSave}
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewOnly
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewOnly
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
             }`}
         >
           {isSaving ? (
@@ -195,7 +195,7 @@ const HighContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initia
                 />
               </td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                lp/mm (higher is better)
+                lp/mm pattern is resolved
               </td>
             </tr>
 
@@ -216,7 +216,7 @@ const HighContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initia
                 />
               </td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                Minimum required resolution
+                lp/mm pattern must be resolved
               </td>
             </tr>
           </tbody>
@@ -229,10 +229,10 @@ const HighContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initia
               <span className="text-xl font-bold text-gray-700">Result:</span>
               <span
                 className={`inline-flex px-16 py-6 text-md font-extrabold rounded-full shadow-xl border-4 ${remark === 'PASS'
-                    ? 'bg-green-100 text-green-800 border-green-400'
-                    : remark === 'FAIL'
-                      ? 'bg-red-100 text-red-800 border-red-400'
-                      : 'bg-gray-100 text-gray-600 border-gray-300'
+                  ? 'bg-green-100 text-green-800 border-green-400'
+                  : remark === 'FAIL'
+                    ? 'bg-red-100 text-red-800 border-red-400'
+                    : 'bg-gray-100 text-gray-600 border-gray-300'
                   }`}
               >
                 {remark || '—'}
