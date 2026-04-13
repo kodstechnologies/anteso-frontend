@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportRadiographyMobile.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForRadiographyMobile, getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile } from "../../../../../../api";
+import { getReportHeaderForRadiographyMobile, getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile, getDetails } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
@@ -28,6 +28,12 @@ interface Note {
 interface ReportData {
   customerName: string;
   address: string;
+  city?: string;
+  leadOwner?: any;
+  manufacturerName?: string;
+  leadOwnerType?: string;
+  leadOwnerRole?: string;
+  leadOwnerName?: string;
   srfNumber: string;
   srfDate: string;
   reportULRNumber?: string;
@@ -81,6 +87,9 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
   const [calculatedPages, setCalculatedPages] = useState<string>("");
+  const hasTimer = serviceId
+    ? localStorage.getItem(`radiography-mobile-timer-${serviceId}`) === 'true'
+    : false;
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -92,15 +101,48 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await getReportHeaderForRadiographyMobile(serviceId);
+        const [response, detailsRes] = await Promise.all([
+          getReportHeaderForRadiographyMobile(serviceId),
+          getDetails(serviceId),
+        ]);
+        const detailsData = detailsRes?.data || {};
+        const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
+        const detailsLeadOwner = detailsData?.leadOwner || detailsData?.leadowner || null;
+        const detailsLeadOwnerRole = String(
+          detailsData?.leadOwnerType ||
+          detailsData?.leadOwnerRole ||
+          detailsLeadOwner?.role ||
+          ""
+        ).trim();
+        const detailsLeadOwnerName = String(
+          detailsData?.manufacturerName ||
+          detailsLeadOwner?.name ||
+          ""
+        ).trim();
         console.log("response", response);
         if (response?.exists && response?.data) {
           const data = response.data;
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
+            city: data.city || detailsData?.city || "",
+            leadOwner: data.leadOwner || data.leadowner || detailsLeadOwner || "",
+            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || "",
+            leadOwnerType: data.leadOwnerType || data.leadownerType || detailsLeadOwnerRole || "",
+            leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
+            leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || "",
+            reportULRNumber:
+              data.reportULRNumber ||
+              data.reportUlrNumber ||
+              data.reportULRNo ||
+              data.ulrNumber ||
+              detailsFirstQaTest?.reportULRNumber ||
+              detailsFirstQaTest?.reportUlrNumber ||
+              detailsFirstQaTest?.reportULRNo ||
+              detailsFirstQaTest?.ulrNumber ||
+              "N/A",
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",
             nomenclature: data.nomenclature || "Radiography (Mobile)",
@@ -113,7 +155,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             rpId: pickRpId(data),
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
-            location: data.location || "N/A",
+            location: data.location || "At Site",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
             toolsUsed: data.toolsUsed || [],
@@ -196,6 +238,31 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
     return city || alphaParts[alphaParts.length - 1];
   };
   const customerCity = extractCity(report?.location || "") || extractCity(report?.address || "") || "-";
+  const placeValue = report?.city && String(report.city).trim() !== "" ? String(report.city).trim() : customerCity;
+  const leadOwnerRole = String(
+    report?.leadOwnerType ||
+    report?.leadOwnerRole ||
+    report?.leadOwner?.role ||
+    report?.leadOwner?.leadOwnerType ||
+    report?.leadOwner || ""
+  ).trim().toLowerCase();
+  const leadOwnerName = String(
+    report?.leadOwner?.name ||
+    report?.leadOwner?.fullName ||
+    report?.leadOwner?.companyName ||
+    report?.leadOwner || ""
+  ).trim();
+  const isManufacturerLeadOwner =
+    leadOwnerRole === "manufacturer" ||
+    leadOwnerName.toLowerCase() === "manufacturer" ||
+    !!String(report?.manufacturerName || "").trim();
+  const manufacturerDisplayName =
+    report?.manufacturerName ||
+    report?.leadOwnerName ||
+    report?.leadOwner?.name ||
+    report?.leadOwner?.fullName ||
+    report?.leadOwner?.companyName ||
+    "-";
 
   const downloadPDF = async () => {
     try {
@@ -282,6 +349,12 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">1. Customer Details</h2>
             <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
+                {isManufacturerLeadOwner && (
+                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                    <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the customer</td>
+                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{manufacturerDisplayName}</td>
+                  </tr>
+                )}
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                   <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
@@ -394,7 +467,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
         {/* PAGE 2+ - SUMMARY TABLE */}
         <div className="bg-white px-8 py-2 print:px-8 print:py-2 test-section" style={{ pageBreakAfter: 'always' }}>
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
-            <MainTestTableForRadiographyMobile testData={testData} />
+            <MainTestTableForRadiographyMobile testData={testData} hasTimer={hasTimer} />
           </div>
         </div>
 
@@ -893,7 +966,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               return (
                 <div className="mb-16 print:mb-12 test-section">
                   <h3 className="text-lg font-bold mb-4" style={{ fontSize: '14px' }}>
-                    {isMaLoading ? "7. Linearity of mA Loading" : "7. Linearity of mAs Loading"}
+                    {isMaLoading ? "7. Linearity of mA Loading Stations" : "7. Linearity of mAs Loading Stations"}
                   </h3>
                   {/* Test Conditions - table format */}
                   {testData.linearityOfMasLoading.table1 && testData.linearityOfMasLoading.table1.length > 0 && (
@@ -1289,7 +1362,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             <div className="mt-8 print:mt-4 pt-4 border-t border-gray-300">
             <div className="grid grid-cols-1 justify-between text-sm print:text-[9px] mb-4">
                 <p><strong>Date:</strong> {todayDate}</p>
-                <p><strong>Place:</strong> {customerCity}</p>
+                <p><strong>Place:</strong> {placeValue}</p>
               </div>
               <footer className="text-center text-xs print:text-[8px] text-gray-700">
                 <p>ANTESO BIOMEDICAL OPC PRIVATE LIMITED.</p>

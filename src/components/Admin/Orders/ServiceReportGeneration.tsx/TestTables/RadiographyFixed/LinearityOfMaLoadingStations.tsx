@@ -52,7 +52,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -609,7 +609,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             </select>
             <input
               type="number"
-              step="0.001"
+              step="0.1"
               value={tolerance}
               onChange={e => setTolerance(e.target.value)}
               disabled={isViewMode}

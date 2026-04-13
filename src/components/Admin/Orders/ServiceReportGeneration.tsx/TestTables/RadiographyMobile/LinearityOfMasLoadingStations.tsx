@@ -33,6 +33,7 @@ interface Props {
   testId?: string;
   onRefresh?: () => void;
   refreshKey?: number;
+  hasTimer?: boolean;
   initialData?: {
     table1?: { fcd: string; kv: string }[];
     table2?: { mAsRange: string; measuredOutputs: string[]; average: string; x: string }[];
@@ -42,7 +43,7 @@ interface Props {
   } | null;
 }
 
-const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
+const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData, hasTimer = true }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,7 +61,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const addMeasColumn = () => {
     setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
@@ -269,11 +270,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
-  const isTimerSelected = String(exposureCondition.time || '').trim() !== '';
+  const isTimerSelected = hasTimer;
   const testTitle = isTimerSelected
-    ? 'Linearity of mAs Loading'
-    : 'Linearity of mA Loading Stations';
-  const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
+    ? 'Linearity of mA Loading'
+    : 'Linearity of mAs Loading';
+  const xUnitLabel = isTimerSelected ? 'mGy/mAs' : 'mGy/mAs';
 
   const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
@@ -369,7 +370,13 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       rows: rowsWithStatus,
       summary: { xMax, xMin, col, remarks, rowSpan: rowsWithStatus.length }
     };
-  }, [table2Rows, tolerance, toleranceOperator, exposureCondition.time]);
+  }, [table2Rows, tolerance, toleranceOperator, exposureCondition.time, hasTimer]);
+
+  const processedRowById = useMemo(() => {
+    const map = new Map<string, any>();
+    processedTable2.rows.forEach((row) => map.set(row.id, row));
+    return map;
+  }, [processedTable2.rows]);
 
   
   if (isLoading) {
@@ -418,7 +425,9 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">FDD (cm)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">kV</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">Time (sec)</th>
+              {isTimerSelected && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">Time (sec)</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -443,17 +452,19 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                     }`}
                 />
               </td>
-              <td className="px-6 py-4">
-                <input
-                  type="text"
-                  value={exposureCondition.time}
-                  onChange={e => setExposureCondition(p => ({ ...p, time: e.target.value }))}
-                  disabled={isViewMode}
-                  placeholder="e.g. 0.5"
-                  className={`w-full px-4 py-2 text-center border rounded font-medium border-gray-300 focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
-                    }`}
-                />
-              </td>
+              {isTimerSelected && (
+                <td className="px-6 py-4">
+                  <input
+                    type="text"
+                    value={exposureCondition.time}
+                    onChange={e => setExposureCondition(p => ({ ...p, time: e.target.value }))}
+                    disabled={isViewMode}
+                    placeholder="e.g. 0.5"
+                    className={`w-full px-4 py-2 text-center border rounded font-medium border-gray-300 focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                      }`}
+                  />
+                </td>
+              )}
             </tr>
           </tbody>
         </table>
@@ -463,8 +474,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
         <div className="px-6 py-4 bg-blue-50 border-b">
           <h3 className="text-lg font-semibold text-blue-900">
             {isTimerSelected
-              ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
-              : 'Linearity of mA Loading Stations'}
+              ? 'Linearity of mA Loading'
+              : 'Linearity of mAs Loading'}
           </h3>
         </div>
 
@@ -472,7 +483,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">mA</th>
+                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">{isTimerSelected ? 'mA' : 'mAs'}</th>
                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
                   <div className="flex items-center justify-between px-4">
                     <span>Radiation Output (mGy)</span>
@@ -520,23 +531,25 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {processedTable2.rows.map((p, index) => (
-                <tr key={p.id} className="hover:bg-gray-50">
+              {table2Rows.map((row, index) => {
+                const computed = processedRowById.get(row.id) || row;
+                return (
+                <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 border-r">
                     <input
                       type="text"
-                      value={p.mAsRange}
-                      onChange={e => updateCell(p.id, 'mAsRange', e.target.value)}
+                      value={row.mAsRange}
+                      onChange={e => updateCell(row.id, 'mAsRange', e.target.value)}
                       disabled={isViewMode}
                       className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                         }`}
                       placeholder="10 - 20"
                     />
                   </td>
-                  {p.measuredOutputs.map((val, idx) => {
+                  {row.measuredOutputs.map((val, idx) => {
                     const hasValue = val !== "" && !isNaN(parseFloat(val)) && parseFloat(val) > 0;
-                    const isValid = p.measuredOutputsStatus && p.measuredOutputsStatus.length > idx
-                      ? p.measuredOutputsStatus[idx]
+                    const isValid = computed.measuredOutputsStatus && computed.measuredOutputsStatus.length > idx
+                      ? computed.measuredOutputsStatus[idx]
                       : true;
 
                     return (
@@ -545,7 +558,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                           type="number"
                           step="any"
                           value={val}
-                          onChange={e => updateCell(p.id, idx, e.target.value)}
+                          onChange={e => updateCell(row.id, idx, e.target.value)}
                           disabled={isViewMode}
                           className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode
                             ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
@@ -557,8 +570,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                       </td>
                     );
                   })}
-                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.average}</td>
-                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.x}</td>
+                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{computed.average}</td>
+                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{computed.x}</td>
                   {index === 0 && (
                     <>
                       <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">
@@ -582,13 +595,13 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                   )}
                   <td className="px-3 py-4 text-center">
                     {table2Rows.length > 1 && !isViewMode && (
-                      <button onClick={() => removeTable2Row(p.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
+                      <button onClick={() => removeTable2Row(row.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
                         <Trash2 className="w-5 h-5" />
                       </button>
                     )}
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
@@ -616,7 +629,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
             </select>
             <input
               type="number"
-              step="0.001"
+              step="0.1"
               value={tolerance}
               onChange={e => setTolerance(e.target.value)}
               disabled={isViewMode}

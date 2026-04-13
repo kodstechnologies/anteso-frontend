@@ -51,6 +51,10 @@ interface Standard {
 interface DetailsResponse {
   hospitalName: string;
   hospitalAddress: string;
+  leadOwner?: string;
+  leadowner?: string;
+  manufacturerName?: string;
+  customerName?: string;
   srfNumber: string;
   machineType: string;
   machineModel: string;
@@ -93,6 +97,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
   const [formData, setFormData] = useState({
     customerName: "",
     address: "",
+    leadOwner: "",
+    manufacturerName: "",
     srfNumber: "",
     srfDate: "",
     reportULRNumber: "",
@@ -107,7 +113,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     pages: "",
     testDate: "",
     testDueDate: "",
-    location: "",
+    location: "At Site",
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
@@ -211,6 +217,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         setFormData({
           customerName: data.hospitalName,
           address: data.hospitalAddress,
+          leadOwner: data.leadOwner || data.leadowner || "",
+          manufacturerName: data.manufacturerName || data.customerName || "",
           srfNumber: data.srfNumber,
           srfDate: srfDateStr,
           reportULRNumber: firstTest?.reportULRNumber || "",
@@ -225,7 +233,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           pages: "",
           testDate,
           testDueDate,
-          location: "",
+          location: "At Site",
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
@@ -266,6 +274,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             ...prev,
             customerName: res.data.customerName || prev.customerName,
             address: res.data.address || prev.address,
+            leadOwner: res.data.leadOwner || res.data.leadowner || prev.leadOwner,
+            manufacturerName: res.data.manufacturerName || prev.manufacturerName,
             srfNumber: res.data.srfNumber || prev.srfNumber,
             category: res.data.category || prev.category,
             srfDate: res.data.srfDate || prev.srfDate,
@@ -365,6 +375,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       }
       const payload = {
         ...formData,
+        leadowner: formData.leadOwner,
         rpid: formData.rpId,
         rpID: formData.rpId,
         RPId: formData.rpId,
@@ -1721,6 +1732,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
                   <LinearityOfMasLoadingStations
                     key={`linearity-ma-${refreshKey}`}
                     serviceId={serviceId}
+                    hasTimer={true}
                     refreshKey={refreshKey}
                     initialData={csvDataForComponents.linearityOfMasLoading}
                   />
@@ -1735,6 +1747,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
                     <LinearityOfMasLoadingStations
                       key={`linearity-mas-${refreshKey}`}
                       serviceId={serviceId}
+                    hasTimer={false}
                       refreshKey={refreshKey}
                       initialData={csvDataForComponents.linearityOfMasLoading}
                     />

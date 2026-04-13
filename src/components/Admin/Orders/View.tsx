@@ -100,6 +100,7 @@ const View = () => {
             try {
                 setLoading(true);
                 const res = await getBasicDetailsByOrderId(orderId);
+                console.log("🚀 ~ fetchData ~ res:", res)
                 setDetails(res.data);
                 setFormData(res.data); // initialize form with current values
                 // ... your PDF & WorkOrder fetch logic
@@ -190,6 +191,7 @@ const View = () => {
 
             try {
                 const resDetails = await getBasicDetailsByOrderId(orderId);
+                console.log("🚀 ~ fetchData ~ resDetails:", resDetails)
                 setDetails(resDetails.data);
 
                 const resPdf = await getPdfForAcceptQuotation(orderId);

@@ -57,6 +57,10 @@ interface Standard {
 interface DetailsResponse {
   hospitalName: string;
   hospitalAddress: string;
+  leadOwner?: string;
+  leadowner?: string;
+  manufacturerName?: string;
+  customerName?: string;
   srfNumber: string;
   orderCreatedAt?: string;
   machineType: string;
@@ -69,7 +73,7 @@ interface DetailsResponse {
 const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
   const navigate = useNavigate();
   const pickRpId = (obj: any): string =>
-    obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.engineerAssigned?.rpId || "";
+    obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.RPID || obj?.engineerAssigned?.rpId || obj?.engineerAssigned?.RPId || "";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -91,6 +95,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
   const [formData, setFormData] = useState({
     customerName: "",
     address: "",
+    leadOwner: "",
+    manufacturerName: "",
     srfNumber: "",
     srfDate: "",
     reportULRNumber: "",
@@ -105,7 +111,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     pages: "",
     testDate: "",
     testDueDate: "",
-    location: "",
+    location: "At Site",
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
@@ -185,6 +191,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         setFormData({
           customerName: data.hospitalName,
           address: data.hospitalAddress,
+          leadOwner: data.leadOwner || data.leadowner || "",
+          manufacturerName: data.manufacturerName || data.customerName || "",
           srfNumber: data.srfNumber,
           srfDate: srfDateStr,
           reportULRNumber: firstTest?.reportULRNumber || "",
@@ -199,7 +207,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           pages: "",
           testDate: testDate,
           testDueDate: testDueDate,
-          location: "", // Don't auto-fill location
+          location: "At Site",
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
@@ -234,6 +242,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               ...prev,
               customerName: reportData.customerName || prev.customerName,
               address: reportData.address || prev.address,
+              leadOwner: reportData.leadOwner || reportData.leadowner || prev.leadOwner,
+              manufacturerName: reportData.manufacturerName || prev.manufacturerName,
               srfNumber: reportData.srfNumber || prev.srfNumber,
               srfDate: reportData.srfDate || prev.srfDate,
               reportULRNumber: reportData.reportULRNumber || prev.reportULRNumber,
@@ -248,7 +258,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               testingProcedureNumber: reportData.testingProcedureNumber || prev.testingProcedureNumber,
               pages: reportData.pages || prev.pages,
               // testDate and testDueDate are calculated from QA test date, keep calculated values
-              location: reportData.location || prev.location, // Allow saved location to override
+              location: reportData.location || prev.location,
               temperature: reportData.temperature || prev.temperature,
               humidity: reportData.humidity || prev.humidity,
               engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
@@ -1448,6 +1458,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         rpid: formData.rpId,
         rpID: formData.rpId,
         RPId: formData.rpId,
+        RPID: formData.rpId,
+        leadowner: formData.leadOwner,
         toolsUsed: tools.map((t) => ({
           tool: t.certificate || null,
           SrNo: t.SrNo,

@@ -310,6 +310,12 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
     return { rows: rowsWithStatus, summary: { xMax, xMin, col, remarks, rowSpan: rowsWithStatus.length } };
   }, [table2Rows, tolerance, toleranceOperator, isMaMode, table1Row.time, measHeaders.length]);
 
+  const processedRowById = useMemo(() => {
+    const map = new Map<string, any>();
+    processedTable2.rows.forEach((row) => map.set(row.id, row));
+    return map;
+  }, [processedTable2.rows]);
+
   // Save handler
   const handleSave = async () => {
     if (!serviceId) { toast.error('Service ID is missing'); return; }
@@ -475,38 +481,40 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {processedTable2.rows.map((p, index) => (
-                <tr key={p.id} className="hover:bg-gray-50">
+              {table2Rows.map((row, index) => {
+                const computed = processedRowById.get(row.id) || row;
+                return (
+                <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-3 py-4 border-r align-top">
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={p.mAsRange === undefined || p.mAsRange === null ? '' : String(p.mAsRange)}
-                      onChange={e => updateCell(p.id, 'mAsRange', e.target.value)}
+                      value={row.mAsRange === undefined || row.mAsRange === null ? '' : String(row.mAsRange)}
+                      onChange={e => updateCell(row.id, 'mAsRange', e.target.value)}
                       disabled={isViewMode}
                       placeholder={isMaMode ? '100' : '10 - 20'}
                       className={`w-full min-w-0 px-2 py-2 text-center text-sm text-gray-900 border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : ''}`}
                     />
                   </td>
                   {measHeaders.map((_, idx) => {
-                    const val = p.measuredOutputs[idx] ?? '';
+                    const val = row.measuredOutputs[idx] ?? '';
                     const hasValue = val !== '' && !isNaN(parseFloat(String(val))) && parseFloat(String(val)) > 0;
-                    const isValid = p.measuredOutputsStatus?.[idx] !== false;
+                    const isValid = computed.measuredOutputsStatus?.[idx] !== false;
                     return (
                       <td key={idx} className={`px-2 py-4 text-center border-r align-top ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
                         <input
                           type="text"
                           inputMode="decimal"
                           value={val}
-                          onChange={e => updateCell(p.id, idx, e.target.value)}
+                          onChange={e => updateCell(row.id, idx, e.target.value)}
                           disabled={isViewMode}
                           className={`w-full min-w-0 px-2 py-2 text-center text-sm text-gray-900 border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : hasValue && !isValid ? 'border-red-500 bg-red-50' : ''}`}
                         />
                       </td>
                     );
                   })}
-                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.average}</td>
-                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{p.x}</td>
+                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{computed.average}</td>
+                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{computed.x}</td>
                   {index === 0 && (
                     <>
                       <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">{processedTable2.summary.xMax}</td>
@@ -520,10 +528,10 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
                     </>
                   )}
                   <td className="px-3 py-4 text-center">
-                    {table2Rows.length > 1 && !isViewMode && <button onClick={() => removeTable2Row(p.id)} className="text-red-600 hover:bg-red-50 p-2 rounded"><Trash2 className="w-5 h-5" /></button>}
+                    {table2Rows.length > 1 && !isViewMode && <button onClick={() => removeTable2Row(row.id)} className="text-red-600 hover:bg-red-50 p-2 rounded"><Trash2 className="w-5 h-5" /></button>}
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

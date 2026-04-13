@@ -54,9 +54,9 @@ const Standards: React.FC<StandardsProps> = ({ standards }) => {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Range
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                {/* <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Certificate
-                </th>
+                </th> */}
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Cal. Cert. No.
                 </th>
@@ -88,9 +88,9 @@ const Standards: React.FC<StandardsProps> = ({ standards }) => {
                     {tool.SrNo}
                   </td>
                   <td className="px-3 py-2 text-sm text-gray-900">{tool.range}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                  {/* <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                     {tool.certificate || "-"}
-                  </td>
+                  </td> */}
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                     {tool.calibrationCertificateNo}
                   </td>

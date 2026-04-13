@@ -3,9 +3,10 @@ import React from "react";
 
 interface MainTestTableProps {
   testData: any;
+  hasTimer?: boolean;
 }
 
-const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testData }) => {
+const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testData, hasTimer = false }) => {
   const rows: any[] = [];
   let srNo = 1;
 
@@ -117,7 +118,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
 
       const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
 
-      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 â‰¤ F â‰¤ 1.5 MM, +0.3 F FOR F > 1.5 MM
+      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 ≤ F ≤ 1.5 MM, +0.3 F FOR F > 1.5 MM
       const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
       const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
       const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
@@ -125,7 +126,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower}  F  ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -135,35 +136,15 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
         const measuredWidth = formatValue(spot.measuredWidth);
         const measuredHeight = formatValue(spot.measuredHeight);
 
-        const statedNominal = statedWidth !== null && statedHeight !== null ? (Number(statedWidth) + Number(statedHeight)) / 2 : (statedWidth ?? statedHeight);
-        const measuredNominal = measuredWidth !== null && measuredHeight !== null ? (Number(measuredWidth) + Number(measuredHeight)) / 2 : (measuredWidth ?? measuredHeight);
-
-        // Calculate tolerance limit for this row
-        let toleranceLimit = "-";
-        if (statedNominal !== null && !isNaN(Number(statedNominal))) {
-          const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
-          const smallMult = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
-          const mediumLimit = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
-          const mediumMult = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
-          const largeMult = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
-
-          let multiplier = 0.5;
-          const nominalVal = Number(statedNominal);
-          if (nominalVal < smallLimit) multiplier = smallMult;
-          else if (nominalVal <= mediumLimit) multiplier = mediumMult;
-          else multiplier = largeMult;
-
-          toleranceLimit = (nominalVal * (1 + multiplier)).toFixed(2);
-        }
-
         return {
-          specified: statedNominal !== null ? `${Number(statedNominal).toFixed(1)} mm` : "-",
-          measured: measuredNominal !== null ? `${Number(measuredNominal).toFixed(1)} mm` : "-",
-          tolerance: toleranceLimit !== "-" ? `â‰¤ ${toleranceLimit} mm` : "-",
+          // Show single value instead of 2x2 style values in summary.
+          specified: statedWidth !== null ? `${statedWidth} mm` : "-",
+          measured: measuredWidth !== null ? `${measuredWidth} mm` : "-",
+          tolerance: toleranceStr,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Effective Focal Spot Size", testRows, false); // No longer shared since tolerance is dynamic
+      addRowsForTest("Effective Focal Spot Size", testRows, true); // Use toleranceRowSpan since all rows share the same tolerance
     }
   }
   // 1. Accuracy of Irradiation Time
@@ -346,7 +327,9 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
 
       // Keep one summary row like RadiographyFixed so "Specified Values" naturally follows single-row behavior.
       addRowsForTest(
-        "Linearity of mAs Loading (Coefficient of Linearity)",
+        hasTimer
+          ? "Linearity of mA Loading Stations (Coefficient of Linearity)"
+          : "Linearity of mAs Loading Stations (Coefficient of Linearity)",
         [{
           specified: linearityKv ? `at ${linearityKv} kV` : "-",
           measured: col !== "-" ? `CoL = ${col}` : "-",

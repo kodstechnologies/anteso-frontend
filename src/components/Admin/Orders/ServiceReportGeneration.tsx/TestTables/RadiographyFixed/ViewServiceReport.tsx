@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportRadiographyFixed.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForRadiographyFixed } from "../../../../../../api";
+import { getDetails, getReportHeaderForRadiographyFixed } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
@@ -28,6 +28,14 @@ interface Note {
 interface ReportData {
   customerName: string;
   address: string;
+  city?: string;
+  hospitalName?: string;
+  fullAddress?: string;
+  leadOwner?: any;
+  manufacturerName?: string;
+  leadOwnerType?: string;
+  leadOwnerRole?: string;
+  leadOwnerName?: string;
   srfNumber: string;
   srfDate: string;
   reportULRNumber?: string;
@@ -76,21 +84,47 @@ const ReportPdfPageHeader: React.FC<{
   report: ReportData;
   formatDate: (dateStr: string) => string;
 }> = ({ report, formatDate }) => (
-  <div className="report-pdf-page-header flex justify-between items-center mb-4">
-    <img src={logoA} alt="NABL" className="h-28 print:h-20" />
+  <div className="report-pdf-page-header flex justify-between items-center mb-4 print:mb-2">
+    <img src={logoA} alt="NABL" className="h-24 print:h-16" />
     <div className="text-right">
       <table style={{ fontSize: '9px', borderCollapse: 'collapse', borderSpacing: '0', tableLayout: 'auto', width: 'auto', maxWidth: '200px', border: '0.1px solid #666' }}>
         <tbody>
-          {[["SRF No.", report.srfNumber], ["SRF Date", formatDate(report.srfDate)], ["ULR No.", report.reportULRNumber || "N/A"]].map(([label, val]) => (
+          {[["SRF No.:", report.srfNumber], ["SRF Date:", formatDate(report.srfDate)], ["ULR No.:", report.reportULRNumber || "N/A"]].map(([label, val]) => (
             <tr key={String(label)}>
-              <th scope="row" style={{ padding: '1px 4px', fontSize: '9px', lineHeight: '1.2', whiteSpace: 'nowrap', fontWeight: 700, textAlign: 'center', verticalAlign: 'middle', border: '0.1px solid #666', boxSizing: 'border-box' }}>{label}</th>
-              <td style={{ padding: '1px 4px', fontSize: '9px', lineHeight: '1.2', whiteSpace: 'nowrap', fontWeight: 400, textAlign: 'center', verticalAlign: 'middle', border: '0.1px solid #666', boxSizing: 'border-box' }}>{val}</td>
+              <th scope="row" style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', whiteSpace: 'nowrap', fontWeight: 700, textAlign: 'center', verticalAlign: 'middle', border: '0.1px solid #666', boxSizing: 'border-box' }}>{label}</th>
+              <td style={{ padding: '0px 2px', fontSize: '9px', lineHeight: '0.9', whiteSpace: 'nowrap', fontWeight: 400, textAlign: 'center', verticalAlign: 'middle', border: '0.1px solid #666', boxSizing: 'border-box' }}>{val}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
-    <img src={logo} alt="Logo" className="h-28 print:h-20" />
+    <img src={logo} alt="Logo" className="h-24 print:h-16" />
+  </div>
+);
+
+/** Company footer — repeated at the bottom of each PDF page section. */
+const ReportPdfPageFooter: React.FC<{
+  todayDate: string;
+  customerCity: string;
+}> = ({ todayDate, customerCity }) => (
+  <div
+    className="report-pdf-footer-block"
+    style={{
+      width: '100%',
+      flexShrink: 0,
+      marginTop: 'auto',
+      paddingTop: '10px',
+      borderTop: '1px solid #ccc',
+    }}
+  >
+    <p style={{ fontSize: '10px', lineHeight: '1.2' }}><strong>Date:</strong> {todayDate}</p>
+    <p style={{ fontSize: '10px', lineHeight: '1.2' }}><strong>Place:</strong> {customerCity}</p>
+    <footer style={{ textAlign: 'center', fontSize: '9px', color: '#555', marginTop: '6px', lineHeight: '1.25' }}>
+      <p>ANTESO Biomedical OPC Pvt. Ltd.</p>
+      <p>2nd Floor, D-290, PKT-7, Sector - 6, Rohini, New Delhi - 110085</p>
+      <p>Ph.: 011-47069720. Mob. No. 08470809720, 08427349720, 08470809720</p>
+      <p>Email: antesobiomedical@gmail.com, info@antesobiomedicalopc.com</p>
+    </footer>
   </div>
 );
 
@@ -98,7 +132,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
   const [searchParams] = useSearchParams();
   const serviceId = searchParams.get("serviceId");
   const pickRpId = (obj: any): string =>
-    obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.engineerAssigned?.rpId || "N/A";
+    obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.RPID || obj?.engineerAssigned?.rpId || obj?.engineerAssigned?.RPId || "N/A";
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
@@ -119,16 +153,50 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await getReportHeaderForRadiographyFixed(serviceId);
+        const [response, detailsRes] = await Promise.all([
+          getReportHeaderForRadiographyFixed(serviceId),
+          getDetails(serviceId),
+        ]);
+        const detailsData = detailsRes?.data || {};
+        const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
+        const detailsLeadOwner = detailsData?.leadOwner || detailsData?.leadowner || null;
+        const detailsLeadOwnerRole = String(
+          detailsData?.leadOwnerType ||
+          detailsData?.leadOwnerRole ||
+          detailsLeadOwner?.role ||
+          ""
+        ).trim();
+        const detailsLeadOwnerName = String(
+          detailsData?.manufacturerName ||
+          detailsLeadOwner?.name ||
+          ""
+        ).trim();
 
         if (response?.exists && response?.data) {
           const data = response.data;
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
+            city: data.city || detailsData?.city || "",
+            hospitalName: data.hospitalName || "",
+            fullAddress: data.fullAddress || "",
+            leadOwner: data.leadOwner || data.leadowner || detailsLeadOwner || "",
+            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || "",
+            leadOwnerType: data.leadOwnerType || data.leadownerType || detailsLeadOwnerRole || "",
+            leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
+            leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || "",
-            reportULRNumber: data.reportULRNumber || "N/A",
+            reportULRNumber:
+              data.reportULRNumber ||
+              data.reportUlrNumber ||
+              data.reportULRNo ||
+              data.ulrNumber ||
+              detailsFirstQaTest?.reportULRNumber ||
+              detailsFirstQaTest?.reportUlrNumber ||
+              detailsFirstQaTest?.reportULRNo ||
+              detailsFirstQaTest?.ulrNumber ||
+              "N/A",
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",
             nomenclature: data.nomenclature || "Radiography (Fixed)",
@@ -163,28 +231,33 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             radiationProtectionSurvey: data.RadiationProtectionSurveyRadiographyFixed || null,
           });
 
-          let pagesCount = 1;
-          const detailedTestSections = [
-            { data: data.AccuracyOfIrradiationTimeRadiographyFixed, pages: 0.5 },
-            { data: data.accuracyOfOperatingPotentialRadigraphyFixed, pages: 1 },
-            { data: data.TotalFilterationRadiographyFixed, pages: 0.5 },
-            { data: data.CentralBeamAlignmentRadiographyFixed, pages: 0.5 },
-            { data: data.CongruenceOfRadiationRadioGraphyFixed, pages: 0.5 },
-            { data: data.EffectiveFocalSpotRadiographyFixed, pages: 0.5 },
-            { data: data.LinearityOfmAsLoadingRadiographyFixed, pages: 1 },
-            { data: data.ConsistencyOfRadiationOutputFixedRadiography, pages: 1 },
-            { data: data.RadiationLeakageLevelRadiographyFixed, pages: 1.5 },
-            { data: data.RadiationProtectionSurveyRadiographyFixed, pages: 1.5 },
-          ];
+          const savedPages = data.pages != null ? String(data.pages).trim() : "";
+          if (savedPages) {
+            setCalculatedPages(savedPages);
+          } else {
+            let pagesCount = 1;
+            const detailedTestSections = [
+              { data: data.AccuracyOfIrradiationTimeRadiographyFixed, pages: 0.5 },
+              { data: data.accuracyOfOperatingPotentialRadigraphyFixed, pages: 1 },
+              { data: data.TotalFilterationRadiographyFixed, pages: 0.5 },
+              { data: data.CentralBeamAlignmentRadiographyFixed, pages: 0.5 },
+              { data: data.CongruenceOfRadiationRadioGraphyFixed, pages: 0.5 },
+              { data: data.EffectiveFocalSpotRadiographyFixed, pages: 0.5 },
+              { data: data.LinearityOfmAsLoadingRadiographyFixed, pages: 1 },
+              { data: data.ConsistencyOfRadiationOutputFixedRadiography, pages: 1 },
+              { data: data.RadiationLeakageLevelRadiographyFixed, pages: 1.5 },
+              { data: data.RadiationProtectionSurveyRadiographyFixed, pages: 1.5 },
+            ];
 
-          let detailedPages = 0;
-          detailedTestSections.forEach(section => {
-            if (section.data && typeof section.data === 'object' && Object.keys(section.data).length > 0) {
-              detailedPages += section.pages;
-            }
-          });
-          pagesCount += Math.ceil(detailedPages);
-          setCalculatedPages(String(pagesCount));
+            let detailedPages = 0;
+            detailedTestSections.forEach(section => {
+              if (section.data && typeof section.data === 'object' && Object.keys(section.data).length > 0) {
+                detailedPages += section.pages;
+              }
+            });
+            pagesCount += Math.ceil(detailedPages);
+            setCalculatedPages(String(pagesCount));
+          }
         } else {
           setNotFound(true);
         }
@@ -212,6 +285,31 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     return city || alphaParts[alphaParts.length - 1];
   };
   const customerCity = extractCity(report?.location || "") || extractCity(report?.address || "") || "-";
+  const placeValue = report?.city && String(report.city).trim() !== "" ? String(report.city).trim() : customerCity;
+  const leadOwnerRole = String(
+    report?.leadOwnerType ||
+    report?.leadOwnerRole ||
+    report?.leadOwner?.role ||
+    report?.leadOwner?.leadOwnerType ||
+    report?.leadOwner || ""
+  ).trim().toLowerCase();
+  const leadOwnerName = String(
+    report?.leadOwner?.name ||
+    report?.leadOwner?.fullName ||
+    report?.leadOwner?.companyName ||
+    report?.leadOwner || ""
+  ).trim();
+  const isManufacturerLeadOwner =
+    leadOwnerRole === "manufacturer" ||
+    leadOwnerName.toLowerCase() === "manufacturer" ||
+    !!String(report?.manufacturerName || "").trim();
+  const manufacturerDisplayName =
+    report?.manufacturerName ||
+    report?.leadOwnerName ||
+    report?.leadOwner?.name ||
+    report?.leadOwner?.fullName ||
+    report?.leadOwner?.companyName ||
+    "-";
 
   const downloadPDF = async () => {
     try {
@@ -282,8 +380,22 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
       <div id="report-content" className="fixed-report-pdf">
         {/* PAGE 1 - MAIN REPORT */}
-        <div className="bg-white px-8 py-2" style={{ pageBreakAfter: 'always' }}>
+        <div
+          className="bg-white px-8 py-2 report-pdf-page-shell"
+          style={{
+            pageBreakAfter: 'always',
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            boxSizing: 'border-box',
+            minHeight: '282mm',
+          }}
+        >
           <ReportPdfPageHeader report={report} formatDate={formatDate} />
+          {/* <div className="text-center mb-4 print:mb-2">
+            <p className="text-sm print:text-[9px]">Government of India, Atomic Energy Regulatory Board</p>
+            <p className="text-sm print:text-[9px]">Radiological Safety Division, Mumbai-400094</p>
+          </div> */}
 
           <h1 className="text-center font-bold underline mb-2" style={{ fontSize: '15px' }}>
             QA TEST REPORT FOR RADIOGRAPHY (FIXED) X-RAY EQUIPMENT
@@ -297,8 +409,20 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             <h2 className="font-bold mb-1" style={{ fontSize: '12px' }}>1. Customer Details</h2>
             <table style={tableStyle} className="compact-table">
               <tbody>
-                <tr><th scope="row" style={cellStyle({ width: '50%', border: '0.1px solid #666', fontWeight: 700 })}>Name of the testing site</th><td style={cellStyle({ border: '0.1px solid #666' })}>{report.customerName}</td></tr>
-                <tr><th scope="row" style={cellStyle({ border: '0.1px solid #666', fontWeight: 700 })}>Address of the testing site</th><td style={cellStyle({ border: '0.1px solid #666' })}>{report.address}</td></tr>
+                {isManufacturerLeadOwner && (
+                  <tr>
+                    <th scope="row" style={cellStyle({ width: '50%', border: '0.1px solid #666', fontWeight: 700 })}>Name of the customer</th>
+                    <td style={cellStyle({ border: '0.1px solid #666' })}>{manufacturerDisplayName}</td>
+                  </tr>
+                )}
+                <tr>
+                  <th scope="row" style={cellStyle({ width: '50%', border: '0.1px solid #666', fontWeight: 700 })}>Name of the testing site</th>
+                  <td style={cellStyle({ border: '0.1px solid #666' })}>{report.customerName}</td>
+                </tr>
+                <tr>
+                  <th scope="row" style={cellStyle({ border: '0.1px solid #666', fontWeight: 700 })}>Address of the testing site</th>
+                  <td style={cellStyle({ border: '0.1px solid #666' })}>{report.address}</td>
+                </tr>
               </tbody>
             </table>
           </section>
@@ -329,7 +453,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   ["Testing Procedure No.", report.testingProcedureNumber || "-"],
                   ["Engineer Name", report.engineerNameRPId],
                   ["RP ID", report.rpId],
-                  ["No. of Pages", calculatedPages || (report.pages !== "N/A" ? report.pages : "-")],
+                  ["No. of Pages", calculatedPages || "-"],
                   ["Test Date", formatDate(report.testDate)],
                   ["Due Date", formatDate(report.testDueDate)],
                   ["Location", report.location],
@@ -351,8 +475,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             <table style={{ ...tableStyle, tableLayout: 'fixed' }} className="compact-table">
               <thead>
                 <tr>
-                  {["Sl No.", "Nomenclature", "Make / Model", "Sr. No.", "Range", "Certificate No.", "Valid Till"].map((h, i) => (
-                    <th key={h} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', width: ['6%', '20%', '16%', '12%', '12%', '18%', '16%'][i] })}>{h}</th>
+                  {["Sl No.", "Nomenclature", "Make", "Model", "Sr. No.", "Range", "Certificate No.", "Valid Till"].map((h, i) => (
+                    <th key={h} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', width: ['6%', '18%', '12%', '12%', '10%', '10%', '16%', '16%'][i] })}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -361,14 +485,15 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   <tr key={i}>
                     <td style={cellStyle({ border: '0.1px solid #666' })}>{i + 1}</td>
                     <td style={cellStyle({ border: '0.1px solid #666' })}>{tool.nomenclature}</td>
-                    <td style={cellStyle({ border: '0.1px solid #666' })}>{tool.make} / {tool.model}</td>
+                    <td style={cellStyle({ border: '0.1px solid #666' })}>{tool.make || "-"}</td>
+                    <td style={cellStyle({ border: '0.1px solid #666' })}>{tool.model || "-"}</td>
                     <td style={cellStyle({ border: '0.1px solid #666' })}>{tool.SrNo}</td>
                     <td style={cellStyle({ border: '0.1px solid #666' })}>{tool.range}</td>
                     <td style={cellStyle({ border: '0.1px solid #666' })}>{tool.calibrationCertificateNo}</td>
                     <td style={cellStyle({ border: '0.1px solid #666' })}>{formatDate(tool.calibrationValidTill)}</td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={7} style={cellStyle({ border: '0.1px solid #666' })}>No tools recorded</td></tr>
+                  <tr><td colSpan={8} style={cellStyle({ border: '0.1px solid #666' })}>No tools recorded</td></tr>
                 )}
               </tbody>
             </table>
@@ -386,20 +511,32 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
           {/* Signature */}
           <div className="flex justify-between items-end mt-6">
-            <img src={AntesoQRCode} alt="QR" className="h-24 print:h-16" />
+            <img src={AntesoQRCode} alt="QR" className="h-20 print:h-14" />
             <div className="text-center">
-              <img src={Signature} alt="Signature" className="h-20 print:h-16 mx-auto mb-1" />
-              <p className="font-bold" style={{ fontSize: '11px' }}>Authorized Signatory</p>
+              <img src={Signature} alt="Signature" className="h-16 print:h-12 mx-auto mb-1" />
+              <p className="font-bold" style={{ fontSize: '10px' }}>Authorized Signatory</p>
             </div>
           </div>
+          <ReportPdfPageFooter todayDate={todayDate} customerCity={placeValue} />
         </div>
 
         {/* PAGE 2 - SUMMARY TABLE */}
-        <div className="bg-white px-8 py-2 test-section" style={{ pageBreakAfter: 'always' }}>
+        <div
+          className="bg-white px-8 py-2 test-section report-pdf-page-shell"
+          style={{
+            pageBreakAfter: 'always',
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            boxSizing: 'border-box',
+            minHeight: '282mm',
+          }}
+        >
           <ReportPdfPageHeader report={report} formatDate={formatDate} />
-          <div style={{ width: '100%' }}>
+          <div style={{ width: '100%', flex: 1 }}>
             <MainTestTableForRadiographyFixed testData={testData} hasTimer={hasTimer} />
           </div>
+          <ReportPdfPageFooter todayDate={todayDate} customerCity={placeValue} />
         </div>
 
         {/* PAGE 3+ - DETAILED TEST RESULTS (footer pinned to bottom of last page in PDF via clone styles) */}
@@ -410,7 +547,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             flexDirection: 'column',
             width: '100%',
             boxSizing: 'border-box',
-            minHeight: '287mm',
+            minHeight: '282mm',
           }}
         >
           <ReportPdfPageHeader report={report} formatDate={formatDate} />
@@ -1106,24 +1243,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             )}
           </div>
 
-          <div
-            className="report-pdf-footer-block"
-            style={{
-              width: '100%',
-              flexShrink: 0,
-              marginTop: 'auto',
-              paddingTop: '16px',
-              borderTop: '1px solid #ccc',
-            }}
-          >
-            <p style={{ fontSize: '11px' }}><strong>Date:</strong> {todayDate}</p>
-            <p style={{ fontSize: '11px' }}><strong>Place:</strong> {customerCity}</p>
-            <footer style={{ textAlign: 'center', fontSize: '10px', color: '#555', marginTop: '8px' }}>
-              <p>ANTESO BIOMEDICAL OPC PRIVATE LIMITED.</p>
-              <p>2ND FLOOR, FLAT NO. 290, POCKET D - 7, SECTOR 6, ROHINI, North West Delhi, Delhi, 110085</p>
-              <p>Email: info@antesobiomedicalengg.com</p>
-            </footer>
-          </div>
+          <ReportPdfPageFooter todayDate={todayDate} customerCity={placeValue} />
         </div>
 
         <style>{`
@@ -1219,7 +1339,13 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         .fixed-report-pdf .report-pdf-last-page-shell {
           display: flex !important;
           flex-direction: column !important;
-          min-height: 287mm !important;
+          min-height: 282mm !important;
+          box-sizing: border-box !important;
+        }
+        .fixed-report-pdf .report-pdf-page-shell {
+          display: flex !important;
+          flex-direction: column !important;
+          min-height: 282mm !important;
           box-sizing: border-box !important;
         }
         .fixed-report-pdf .report-pdf-last-main {
@@ -1263,7 +1389,10 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             font-weight: 400 !important;
           }
           .fixed-report-pdf .report-pdf-last-page-shell {
-            min-height: 287mm !important;
+            min-height: 282mm !important;
+          }
+          .fixed-report-pdf .report-pdf-page-shell {
+            min-height: 282mm !important;
           }
           thead { display: table-header-group; }
           h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
