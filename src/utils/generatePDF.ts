@@ -17,11 +17,12 @@ function injectHairlineStylesheet(clonedDoc: Document): void {
   style.textContent = `
     /* ── HAIRLINE RESET ── scoped to table elements only, no new borders added ── */
     table {
+    background-color: red !important;
       border-collapse: collapse !important;
       border-spacing: 0 !important;
       border-width: 0.5px !important;
-      border-style: solid !important;
-      border-color: #000000 !important;
+      
+      border-color:rgba(18, 255, 227, 0.74) !important;
       box-shadow: none !important;
       outline: none !important;
     }

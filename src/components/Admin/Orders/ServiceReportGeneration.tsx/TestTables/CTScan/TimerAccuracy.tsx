@@ -345,10 +345,10 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
-                  Set Time (ms)
+                  Set Time (sec)
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
-                  Observed Time (ms)
+                  Observed Time (sec)
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
                   % Error

@@ -247,8 +247,8 @@ export default function AccuracyOfIrradiationTimeOArm({ serviceId, csvData, onRe
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider">Set Time (mSec)</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider">Measured Time (mSec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider">Set Time (sec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider">Measured Time (sec)</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider">% Error</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider">Remarks</th>
               <th className="px-4 py-3 w-12"></th>

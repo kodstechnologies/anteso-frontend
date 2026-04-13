@@ -266,6 +266,95 @@ const ViewServiceReport: React.FC = () => {
     return Array.isArray(rows) && rows.length > 0;
   };
 
+  /** Match RadiographyFixed ViewServiceReport — thin borders, compact QA tables */
+  const cellStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+    padding: "4px 6px",
+    fontSize: "11px",
+    lineHeight: "1.3",
+    minHeight: "0",
+    height: "auto",
+    borderColor: "#000",
+    textAlign: "center",
+    verticalAlign: "middle",
+    fontWeight: 400,
+    boxSizing: "border-box",
+    ...extra,
+  });
+
+  const tableStyle: React.CSSProperties = {
+    fontSize: "11px",
+    tableLayout: "fixed",
+    borderCollapse: "collapse",
+    borderSpacing: "0",
+    width: "100%",
+    border: "0.1px solid #666",
+    textAlign: "center",
+  };
+
+  /** Central beam detail block — same structure as RadiographyFixed ViewServiceReport §2 */
+  const renderCentralBeamAlignmentDetail = (c: any) => {
+    if (!c) return null;
+    return (
+      <>
+        {c.techniqueFactors && (
+          <div style={{ marginBottom: "4px" }}>
+            <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "3px" }}>Operating parameters:</p>
+            <table style={{ ...tableStyle, width: "100%" }}>
+              <thead>
+                <tr>
+                  {["FFD (cm)", "kV", "mAs"].map((h) => (
+                    <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 8px" })}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>
+                    {c.techniqueFactors.fcd || c.techniqueFactors.sid || "-"}
+                  </td>
+                  <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>{c.techniqueFactors.kv || "-"}</td>
+                  <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>{c.techniqueFactors.mas || "-"}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        {c.observedTilt && (
+          <div>
+            <p style={{ fontSize: "11px", marginBottom: "4px" }}>
+              Observe the images of the two steel balls on the radiograph and evaluate tilt in the central beam
+            </p>
+            <table style={tableStyle} className="compact-table">
+              <tbody>
+                <tr>
+                  <th scope="row" style={cellStyle({ width: "50%", border: "0.1px solid #666", fontWeight: 700 })}>
+                    Observed tilt
+                  </th>
+                  <td style={cellStyle({ border: "0.1px solid #666" })}>
+                    {c.observedTilt.value || "-"}&deg;
+                    {c.observedTilt.remark && <span style={{ marginLeft: "8px" }}>{c.observedTilt.remark}</span>}
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row" style={cellStyle({ border: "0.1px solid #666", fontWeight: 700 })}>
+                    Tolerance: Central Beam Alignment
+                  </th>
+                  <td style={cellStyle({ border: "0.1px solid #666" })}>
+                    {c.tolerance && typeof c.tolerance === "object"
+                      ? `${c.tolerance.operator || "<"} ${c.tolerance.value || "1.5"}°`
+                      : c.tolerance || "< 1.5°"}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </>
+    );
+  };
+
   // Helper function to render test table for both tubes
   const renderTestTable = (
     testDataFrontal: any,
@@ -688,7 +777,7 @@ const ViewServiceReport: React.FC = () => {
         {totalData.tolerance && (
           <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
             <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-              <strong>Tolerance:</strong> {totalData.tolerance.sign || "±"} {totalData.tolerance.value || "-"}%
+              <strong>Tolerance:</strong> {totalData.tolerance.sign || "±"} {totalData.tolerance.value || "-"}kVp
             </p>
           </div>
         )}
@@ -866,7 +955,7 @@ const ViewServiceReport: React.FC = () => {
                 <tr>
                   <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>kVp</th>
                   <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>Slice Thickness (mm)</th>
-                  <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>Time (ms)</th>
+                  <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>Time (sec)</th>
                 </tr>
               </thead>
 
@@ -1097,10 +1186,10 @@ const ViewServiceReport: React.FC = () => {
             <img src={logo} alt="Logo" className="h-28 print:h-20" />
           </div>
 
-          <div className="text-center mb-4 print:mb-2">
+          {/* <div className="text-center mb-4 print:mb-2">
             <p className="text-sm print:text-[9px]">Government of India, Atomic Energy Regulatory Board</p>
             <p className="text-sm print:text-[9px]">Radiological Safety Division, Mumbai-400094</p>
-          </div>
+          </div> */}
 
           <h1 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-base" style={{ fontSize: '15px' }}>
             QA TEST REPORT FOR INTERVENTIONAL RADIOLOGY X-RAY EQUIPMENT
@@ -1115,11 +1204,11 @@ const ViewServiceReport: React.FC = () => {
             <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Customer</td>
+                  <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
                 </tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address</td>
+                  <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address of the testing site</td>
                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.address}</td>
                 </tr>
               </tbody>
@@ -1268,176 +1357,33 @@ const ViewServiceReport: React.FC = () => {
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
             <h2 className="text-3xl font-bold text-center underline mb-6 print:mb-2 print:text-xl">DETAILED TEST RESULTS</h2>
 
-            {/* 1. Central Beam Alignment Test */}
+            {/* 1. Central Beam Alignment — same layout as RadiographyFixed detailed section 2 */}
             {((isDoubleTube && (testDataFrontal.centralBeamAlignment || testDataLateral.centralBeamAlignment)) || (!isDoubleTube && testData.centralBeamAlignment)) && (
-              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Central Beam Alignment Test</h3>
+              <div className="mb-4 test-section print:mb-2 print:break-inside-avoid" style={{ marginBottom: "8px" }}>
+                <h3 className="font-bold mb-2" style={{ fontSize: "12px" }}>
+                  1. Central Beam Alignment
+                </h3>
                 {isDoubleTube ? (
                   <>
                     {testDataFrontal.centralBeamAlignment && (
                       <div className="mb-4 print:mb-2">
-                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Frontal</h4>
-                        {testDataFrontal.centralBeamAlignment.techniqueFactors && (
-                          <div className="mb-4 print:mb-1">
-                            <p className="font-semibold mb-2 text-sm print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Operating parameters:</p>
-                            <div className="overflow-x-auto">
-                              <table className="border-2 border-black text-sm mb-4 compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
-                                <thead className="bg-gray-100">
-                                  <tr className="bg-blue-50">
-                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>FFD (cm)</th>
-                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
-                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
-                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataFrontal.centralBeamAlignment.techniqueFactors.fcd || testDataFrontal.centralBeamAlignment.techniqueFactors.sid || "-"}</td>
-                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataFrontal.centralBeamAlignment.techniqueFactors.kv || "-"}</td>
-                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataFrontal.centralBeamAlignment.techniqueFactors.mas || "-"}</td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                        <div className="overflow-x-auto">
-                          <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '10px', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '500px' }}>
-                            <tbody>
-                              {testDataFrontal.centralBeamAlignment.observedTilt && (testDataFrontal.centralBeamAlignment.observedTilt.value != null || testDataFrontal.centralBeamAlignment.observedTilt.remark) && (
-                                <>
-                                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
-                                    <td className="border border-black p-2 print:p-1 font-semibold w-1/2" style={{ padding: '2px 4px' }}>Observed tilt</td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
-                                      {testDataFrontal.centralBeamAlignment.observedTilt.value != null ? `${testDataFrontal.centralBeamAlignment.observedTilt.value}°` : "-"}
-                                      {testDataFrontal.centralBeamAlignment.observedTilt.remark && (
-                                        <span className={`ml-2 font-bold ${testDataFrontal.centralBeamAlignment.observedTilt.remark === "Pass" || testDataFrontal.centralBeamAlignment.observedTilt.remark === "PASS" ? "text-green-600" : "text-red-600"}`}>
-                                          {testDataFrontal.centralBeamAlignment.observedTilt.remark}
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
-                                    <td className="border border-black p-2 print:p-1 font-semibold" style={{ padding: '2px 4px' }}>Tolerance: Central Beam Alignment</td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
-                                      {testDataFrontal.centralBeamAlignment.tolerance?.value != null ? `${testDataFrontal.centralBeamAlignment.tolerance?.operator || "≤"} ${testDataFrontal.centralBeamAlignment.tolerance.value}°` : "≤ 1.5°"}
-                                    </td>
-                                  </tr>
-                                </>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                        <h4 className="font-semibold mb-2 print:mb-1" style={{ fontSize: "11px", marginBottom: "2px" }}>
+                          Tube Frontal
+                        </h4>
+                        {renderCentralBeamAlignmentDetail(testDataFrontal.centralBeamAlignment)}
                       </div>
                     )}
                     {testDataLateral.centralBeamAlignment && (
                       <div className="mb-4 print:mb-2">
-                        <h4 className="text-lg font-semibold mb-2 print:mb-1 print:text-sm" style={{ fontSize: '11px', marginBottom: '2px' }}>Tube Lateral</h4>
-                        {testDataLateral.centralBeamAlignment.techniqueFactors && (
-                          <div className="mb-4 print:mb-1">
-                            <p className="font-semibold mb-2 text-sm print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Operating parameters:</p>
-                            <div className="overflow-x-auto">
-                              <table className="border-2 border-black text-sm mb-4 compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
-                                <thead className="bg-gray-100">
-                                  <tr className="bg-blue-50">
-                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>FFD (cm)</th>
-                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
-                                    <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
-                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataLateral.centralBeamAlignment.techniqueFactors.fcd || testDataLateral.centralBeamAlignment.techniqueFactors.sid || "-"}</td>
-                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataLateral.centralBeamAlignment.techniqueFactors.kv || "-"}</td>
-                                    <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testDataLateral.centralBeamAlignment.techniqueFactors.mas || "-"}</td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                        <div className="overflow-x-auto">
-                          <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '10px', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '500px' }}>
-                            <tbody>
-                              {testDataLateral.centralBeamAlignment.observedTilt && (testDataLateral.centralBeamAlignment.observedTilt.value != null || testDataLateral.centralBeamAlignment.observedTilt.remark) && (
-                                <>
-                                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
-                                    <td className="border border-black p-2 print:p-1 font-semibold w-1/2" style={{ padding: '2px 4px' }}>Observed tilt</td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
-                                      {testDataLateral.centralBeamAlignment.observedTilt.value != null ? `${testDataLateral.centralBeamAlignment.observedTilt.value}°` : "-"}
-                                      {testDataLateral.centralBeamAlignment.observedTilt.remark && (
-                                        <span className={`ml-2 font-bold ${testDataLateral.centralBeamAlignment.observedTilt.remark === "Pass" || testDataLateral.centralBeamAlignment.observedTilt.remark === "PASS" ? "text-green-600" : "text-red-600"}`}>
-                                          {testDataLateral.centralBeamAlignment.observedTilt.remark}
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
-                                    <td className="border border-black p-2 print:p-1 font-semibold" style={{ padding: '2px 4px' }}>Tolerance: Central Beam Alignment</td>
-                                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
-                                      {testDataLateral.centralBeamAlignment.tolerance?.value != null ? `${testDataLateral.centralBeamAlignment.tolerance?.operator || "≤"} ${testDataLateral.centralBeamAlignment.tolerance.value}°` : "≤ 1.5°"}
-                                    </td>
-                                  </tr>
-                                </>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                        <h4 className="font-semibold mb-2 print:mb-1" style={{ fontSize: "11px", marginBottom: "2px" }}>
+                          Tube Lateral
+                        </h4>
+                        {renderCentralBeamAlignmentDetail(testDataLateral.centralBeamAlignment)}
                       </div>
                     )}
                   </>
                 ) : (
-                  <>
-                    {testData.centralBeamAlignment.techniqueFactors && (
-                      <div className="mb-4 print:mb-1">
-                        <p className="font-semibold mb-2 text-sm print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Operating parameters:</p>
-                        <div className="overflow-x-auto">
-                          <table className="border-2 border-black text-sm mb-4 compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
-                            <thead className="bg-gray-100">
-                              <tr className="bg-blue-50">
-                                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>FFD (cm)</th>
-                                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
-                                <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
-                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.centralBeamAlignment.techniqueFactors.fcd || testData.centralBeamAlignment.techniqueFactors.sid || "-"}</td>
-                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.centralBeamAlignment.techniqueFactors.kv || "-"}</td>
-                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{testData.centralBeamAlignment.techniqueFactors.mas || "-"}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '10px', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '500px' }}>
-                        <tbody>
-                          {testData.centralBeamAlignment.observedTilt && (testData.centralBeamAlignment.observedTilt.value != null || testData.centralBeamAlignment.observedTilt.remark) && (
-                            <>
-                              <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
-                                <td className="border border-black p-2 print:p-1 font-semibold w-1/2" style={{ padding: '2px 4px' }}>Observed tilt</td>
-                                <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
-                                  {testData.centralBeamAlignment.observedTilt.value != null ? `${testData.centralBeamAlignment.observedTilt.value}°` : "-"}
-                                  {testData.centralBeamAlignment.observedTilt.remark && (
-                                    <span className={`ml-2 font-bold ${testData.centralBeamAlignment.observedTilt.remark === "Pass" || testData.centralBeamAlignment.observedTilt.remark === "PASS" ? "text-green-600" : "text-red-600"}`}>
-                                      {testData.centralBeamAlignment.observedTilt.remark}
-                                    </span>
-                                  )}
-                                </td>
-                              </tr>
-                              <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
-                                <td className="border border-black p-2 print:p-1 font-semibold" style={{ padding: '2px 4px' }}>Tolerance: Central Beam Alignment</td>
-                                <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
-                                  {testData.centralBeamAlignment.tolerance?.value != null ? `${testData.centralBeamAlignment.tolerance?.operator || "≤"} ${testData.centralBeamAlignment.tolerance.value}°` : "≤ 1.5°"}
-                                </td>
-                              </tr>
-                            </>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
+                  renderCentralBeamAlignmentDetail(testData.centralBeamAlignment)
                 )}
               </div>
             )}

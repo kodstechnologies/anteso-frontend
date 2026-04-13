@@ -35,52 +35,84 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
   const [table1Row, setTable1Row] = useState<Table1Row>({ fcd: '100', kv: '80', time: '' });
 
   const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
+  
   const defaultRows = (): Table2Row[] => isMaMode
     ? [
-        { id: '1', mAsRange: '50',  measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-        { id: '2', mAsRange: '100', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-        { id: '3', mAsRange: '200', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-        { id: '4', mAsRange: '300', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+        { id: '1', mAsRange: '50',  measuredOutputs: ['', '', ''], measuredOutputsStatus: [true, true, true], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+        { id: '2', mAsRange: '100', measuredOutputs: ['', '', ''], measuredOutputsStatus: [true, true, true], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+        { id: '3', mAsRange: '200', measuredOutputs: ['', '', ''], measuredOutputsStatus: [true, true, true], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+        { id: '4', mAsRange: '300', measuredOutputs: ['', '', ''], measuredOutputsStatus: [true, true, true], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
       ]
     : [
-        { id: '1', mAsRange: '5',   measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-        { id: '2', mAsRange: '10',  measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-        { id: '3', mAsRange: '20',  measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-        { id: '4', mAsRange: '50', measuredOutputs: ['', '', ''], measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+        { id: '1', mAsRange: '5',   measuredOutputs: ['', '', ''], measuredOutputsStatus: [true, true, true], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+        { id: '2', mAsRange: '10',  measuredOutputs: ['', '', ''], measuredOutputsStatus: [true, true, true], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+        { id: '3', mAsRange: '20',  measuredOutputs: ['', '', ''], measuredOutputsStatus: [true, true, true], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+        { id: '4', mAsRange: '50', measuredOutputs: ['', '', ''], measuredOutputsStatus: [true, true, true], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
       ];
 
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>(defaultRows);
   const [tolerance, setTolerance] = useState<string>('0.1');
   const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
+  /** Keep one measurement cell per header so thead colSpan matches tbody (fixes mA column shifting). */
+  const padOutputsToLen = (outputs: string[], len: number): string[] => {
+    const o = [...outputs];
+    while (o.length < len) o.push('');
+    if (o.length > len) o.length = len;
+    return o;
+  };
+
+  const asMaCellString = (v: unknown): string => {
+    if (v === undefined || v === null) return '';
+    if (typeof v === 'number' && !Number.isNaN(v)) return String(v);
+    return String(v).trim();
+  };
+
   // Column handlers
   const addMeasColumn = () => {
-    setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
-    setTable2Rows(p => p.map(r => ({ ...r, measuredOutputs: [...r.measuredOutputs, ''] })));
+    setMeasHeaders(prev => [...prev, `Meas ${prev.length + 1}`]);
+    setTable2Rows(prev =>
+      prev.map(row => ({ 
+        ...row, 
+        measuredOutputs: [...row.measuredOutputs, ''],
+        measuredOutputsStatus: [...(row.measuredOutputsStatus || []), true]
+      }))
+    );
   };
+  
   const removeMeasColumn = (idx: number) => {
     if (measHeaders.length <= 1) return;
-    setMeasHeaders(p => p.filter((_, i) => i !== idx));
-    setTable2Rows(p => p.map(r => ({
-      ...r,
-      measuredOutputs: r.measuredOutputs.filter((_, i) => i !== idx),
-      measuredOutputsStatus: (r.measuredOutputsStatus || []).filter((_, i) => i !== idx),
-    })));
+    setMeasHeaders(prev => prev.filter((_, i) => i !== idx));
+    setTable2Rows(prev =>
+      prev.map(row => ({
+        ...row,
+        measuredOutputs: row.measuredOutputs.filter((_, i) => i !== idx),
+        measuredOutputsStatus: (row.measuredOutputsStatus || []).filter((_, i) => i !== idx),
+      }))
+    );
   };
-  const addTable2Row = () => setTable2Rows(p => [...p, {
-    id: Date.now().toString(), mAsRange: '',
+  
+  const addTable2Row = () => setTable2Rows(prev => [...prev, {
+    id: Date.now().toString(), 
+    mAsRange: '',
     measuredOutputs: Array(measHeaders.length).fill(''),
     measuredOutputsStatus: Array(measHeaders.length).fill(true),
     average: '', x: '', xMax: '', xMin: '', col: '', remarks: '',
   }]);
-  const removeTable2Row = (id: string) => { if (table2Rows.length <= 1) return; setTable2Rows(p => p.filter(r => r.id !== id)); };
+  
+  const removeTable2Row = (id: string) => { 
+    if (table2Rows.length <= 1) return; 
+    setTable2Rows(prev => prev.filter(r => r.id !== id)); 
+  };
+  
   const updateCell = (rowId: string, field: 'mAsRange' | number, value: string) => {
     if (isViewMode) return;
-    setTable2Rows(p => p.map(r => {
+    setTable2Rows(prev => prev.map(r => {
       if (r.id !== rowId) return r;
       if (field === 'mAsRange') return { ...r, mAsRange: value };
       if (typeof field === 'number') {
-        const outputs = [...r.measuredOutputs]; outputs[field] = value;
+        const outputs = [...r.measuredOutputs]; 
+        outputs[field] = value;
         return { ...r, measuredOutputs: outputs };
       }
       return r;
@@ -98,20 +130,35 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
           if (data.table1?.[0]) {
             setTable1Row({ fcd: data.table1[0].fcd || '100', kv: data.table1[0].kv || '80', time: data.table1[0].time || '' });
           }
-          setMeasHeaders(data.measHeaders?.length > 0 ? data.measHeaders : ['Meas 1', 'Meas 2', 'Meas 3']);
+          const headers = data.measHeaders?.length > 0 ? data.measHeaders : ['Meas 1', 'Meas 2', 'Meas 3'];
+          setMeasHeaders(headers);
           if (Array.isArray(data.table2) && data.table2.length > 0) {
-            setTable2Rows(data.table2.map((r: any) => ({
-              id: Date.now().toString() + Math.random(),
-              mAsRange: r.mAsApplied || r.mAsRange || r.ma || '',
-              measuredOutputs: (r.measuredOutputs || []).map((v: any) => v != null ? String(v) : ''),
-              measuredOutputsStatus: [],
-              average: '', x: '', xMax: '', xMin: '', col: '', remarks: '',
-            })));
+            const colCount = headers.length;
+            setTable2Rows(
+              data.table2.map((r: any, idx: number) => ({
+                id: Date.now().toString() + Math.random() + idx,
+                mAsRange: asMaCellString(r.mAsApplied ?? r.mAsRange ?? r.ma ?? ''),
+                measuredOutputs: padOutputsToLen(
+                  (r.measuredOutputs || []).map((v: any) => asMaCellString(v)),
+                  colCount
+                ),
+                measuredOutputsStatus: Array(colCount).fill(true),
+                average: r.average || '',
+                x: r.x || '',
+                xMax: r.xMax || '',
+                xMin: r.xMin || '',
+                col: r.col || '',
+                remarks: r.remarks || '',
+              }))
+            );
           }
           setTolerance(data.tolerance || '0.1');
           setToleranceOperator(data.toleranceOperator || '<=');
-          setHasSaved(true); setIsEditing(false);
-        } else { setIsEditing(true); }
+          setHasSaved(true); 
+          setIsEditing(false);
+        } else { 
+          setIsEditing(true); 
+        }
       } catch (err: any) {
         if (err.response?.status !== 404) toast.error('Failed to load linearity data');
         setIsEditing(true);
@@ -120,7 +167,28 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
     load();
   }, [serviceId]);
 
-  // CSV data
+  // Align row output counts with measurement headers (covers add/remove column + API mismatch)
+  useEffect(() => {
+    const len = measHeaders.length;
+    if (len < 1) return;
+    setTable2Rows(prev => {
+      let needsUpdate = false;
+      const next = prev.map(r => {
+        const mo = r.measuredOutputs || [];
+        const status = r.measuredOutputsStatus || [];
+        if (mo.length === len && status.length === len) return r;
+        needsUpdate = true;
+        return { 
+          ...r, 
+          measuredOutputs: padOutputsToLen(mo, len),
+          measuredOutputsStatus: Array(len).fill(true)
+        };
+      });
+      return needsUpdate ? next : prev;
+    });
+  }, [measHeaders]);
+
+  // CSV data import
   useEffect(() => {
     if (!csvData || csvData.length === 0) return;
     try {
@@ -130,6 +198,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
         if (!rowMap[idx]) rowMap[idx] = {};
         rowMap[idx][item['Field Name']] = item['Value'];
       });
+      
       const firstRow = rowMap[1] || {};
       if (firstRow['Exposure_FCD'] || firstRow['Exposure_KV'] || firstRow['Exposure_Time']) {
         setTable1Row(p => ({
@@ -139,22 +208,48 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
           time: firstRow['Exposure_Time'] != null && firstRow['Exposure_Time'] !== '' ? String(firstRow['Exposure_Time']) : p.time,
         }));
       }
+      
       const newRows: Table2Row[] = [];
       Object.keys(rowMap).forEach(idxStr => {
         const r = rowMap[parseInt(idxStr)];
         const measuredOutputs: string[] = [];
-        for (let m = 0; m < 5; m++) { const val = r[`Row_Meas_${m}`]; if (val !== undefined) measuredOutputs.push(val); }
+        for (let m = 0; m < 10; m++) { 
+          const val = r[`Row_Meas_${m}`]; 
+          if (val !== undefined && val !== '') measuredOutputs.push(String(val)); 
+        }
         if (r['Row_mAsRange'] || measuredOutputs.length > 0) {
-          newRows.push({ id: Date.now().toString() + Math.random(), mAsRange: r['Row_mAsRange'] || '',
-            measuredOutputs: measuredOutputs.length > 0 ? measuredOutputs : Array(measHeaders.length).fill(''),
-            measuredOutputsStatus: [], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' });
+          const colCount = Math.max(measuredOutputs.length, measHeaders.length, 3);
+          const paddedOutputs = padOutputsToLen(measuredOutputs, colCount);
+          newRows.push({ 
+            id: Date.now().toString() + Math.random() + idxStr, 
+            mAsRange: r['Row_mAsRange'] || '',
+            measuredOutputs: paddedOutputs,
+            measuredOutputsStatus: Array(paddedOutputs.length).fill(true), 
+            average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' 
+          });
         }
       });
+      
       if (newRows.length > 0) {
-        setMeasHeaders(Array.from({ length: newRows[0].measuredOutputs.length }, (_, i) => `Meas ${i + 1}`));
-        setTable2Rows(newRows); setHasSaved(false); setIsEditing(true);
+        const colCount = Math.max(
+          ...newRows.map(r => r.measuredOutputs.length),
+          measHeaders.length,
+          3
+        );
+        setMeasHeaders(Array.from({ length: colCount }, (_, i) => `Meas ${i + 1}`));
+        setTable2Rows(
+          newRows.map(r => ({
+            ...r,
+            measuredOutputs: padOutputsToLen(r.measuredOutputs, colCount),
+            measuredOutputsStatus: Array(colCount).fill(true),
+          }))
+        );
+        setHasSaved(false);
+        setIsEditing(true);
       }
-    } catch (err) { console.error('Linearity CSV error:', err); }
+    } catch (err) { 
+      console.error('Linearity CSV error:', err); 
+    }
   }, [csvData]);
 
   // CoL calculation
@@ -164,12 +259,13 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
     const xValues: number[] = [];
 
     const rowsWithX = table2Rows.map(row => {
-      const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+      const outputs = row.measuredOutputs.map(v => parseFloat(String(v))).filter(v => !isNaN(v) && v > 0);
       const avg = outputs.length > 0 ? outputs.reduce((a, b) => a + b, 0) / outputs.length : null;
       const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : '—';
 
-      const match = row.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-      const midVal = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(row.mAsRange) || 0;
+      const mAsLabel = String(row.mAsRange ?? '').trim();
+      const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+      const midVal = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
 
       let x: number | null = null;
       if (avg !== null && midVal > 0) {
@@ -192,9 +288,12 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
     if (hasData && col !== '—') {
       const c = parseFloat(col);
       switch (toleranceOperator) {
-        case '<': pass = c < tol; break; case '>': pass = c > tol; break;
-        case '<=': pass = c <= tol; break; case '>=': pass = c >= tol; break;
-        case '=': pass = Math.abs(c - tol) < 0.0001; break; default: pass = c <= tol;
+        case '<': pass = c < tol; break; 
+        case '>': pass = c > tol; break;
+        case '<=': pass = c <= tol; break; 
+        case '>=': pass = c >= tol; break;
+        case '=': pass = Math.abs(c - tol) < 0.0001; break; 
+        default: pass = c <= tol;
       }
     }
     const remarks = hasData && col !== '—' ? (pass ? 'Pass' : 'Fail') : '—';
@@ -202,16 +301,16 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
     const rowsWithStatus = rowsWithX.map(row => ({
       ...row,
       measuredOutputsStatus: row.measuredOutputs.map(val => {
-        const n = parseFloat(val);
+        const n = parseFloat(String(val));
         if (isNaN(n) || n <= 0) return true;
         return pass || !hasData || col === '—';
       }),
     }));
 
     return { rows: rowsWithStatus, summary: { xMax, xMin, col, remarks, rowSpan: rowsWithStatus.length } };
-  }, [table2Rows, tolerance, toleranceOperator, isMaMode, table1Row.time]);
+  }, [table2Rows, tolerance, toleranceOperator, isMaMode, table1Row.time, measHeaders.length]);
 
-  // Save
+  // Save handler
   const handleSave = async () => {
     if (!serviceId) { toast.error('Service ID is missing'); return; }
     setIsSaving(true);
@@ -220,29 +319,52 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
         selection: isMaMode ? 'mA' : 'mAs',
         table1: [table1Row],
         table2: processedTable2.rows.map(r => ({
-          mAsApplied: r.mAsRange, ma: r.mAsRange,
-          measuredOutputs: r.measuredOutputs.map(v => { const val = v.trim(); return val === '' ? null : (isNaN(parseFloat(val)) ? val : parseFloat(val)); }),
-          average: r.average || '', x: r.x || '',
+          mAsApplied: r.mAsRange, 
+          ma: r.mAsRange,
+          measuredOutputs: r.measuredOutputs.map(v => { 
+            const val = v.trim(); 
+            return val === '' ? null : (isNaN(parseFloat(val)) ? val : parseFloat(val)); 
+          }),
+          average: r.average || '', 
+          x: r.x || '',
         })),
-        measHeaders, tolerance, toleranceOperator,
-        xMax: processedTable2.summary.xMax, xMin: processedTable2.summary.xMin,
-        col: processedTable2.summary.col, remarks: processedTable2.summary.remarks,
+        measHeaders, 
+        tolerance, 
+        toleranceOperator,
+        xMax: processedTable2.summary.xMax, 
+        xMin: processedTable2.summary.xMin,
+        col: processedTable2.summary.col, 
+        remarks: processedTable2.summary.remarks,
       };
+      
       let currentTestId = testId;
       if (!currentTestId) {
-        try { const ex = await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId); if (ex?._id) { currentTestId = ex._id; setTestId(currentTestId); } } catch {}
+        try { 
+          const ex = await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId); 
+          if (ex?._id) { 
+            currentTestId = ex._id; 
+            setTestId(currentTestId); 
+          } 
+        } catch {}
       }
+      
       if (currentTestId) {
-        await updateLinearityOfMasLoadingStationForOArm(currentTestId, payload); toast.success('Updated successfully!');
+        await updateLinearityOfMasLoadingStationForOArm(currentTestId, payload); 
+        toast.success('Updated successfully!');
       } else {
         const result = await createLinearityOfMasLoadingStationForOArm(serviceId, payload);
         const newId = result?.data?._id || result?.data?.data?._id || result?._id;
         if (newId) setTestId(newId);
         toast.success('Saved successfully!');
       }
-      setHasSaved(true); setIsEditing(false); onRefresh?.();
-    } catch (err: any) { toast.error(err?.response?.data?.message || err?.message || 'Save failed'); }
-    finally { setIsSaving(false); }
+      setHasSaved(true); 
+      setIsEditing(false); 
+      onRefresh?.();
+    } catch (err: any) { 
+      toast.error(err?.response?.data?.message || err?.message || 'Save failed'); 
+    } finally { 
+      setIsSaving(false); 
+    }
   };
 
   const toggleEdit = () => setIsEditing(true);
@@ -252,7 +374,12 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
   const xLabel = isMaMode ? 'mGy/(mA·s)' : 'mGy/mAs';
   const rowLabel = isMaMode ? 'mA' : 'mAs Range';
 
-  if (isLoading) return <div className="flex items-center justify-center p-10"><Loader2 className="w-8 h-8 animate-spin" /><span className="ml-2">Loading...</span></div>;
+  if (isLoading) return (
+    <div className="flex items-center justify-center p-10">
+      <Loader2 className="w-8 h-8 animate-spin" />
+      <span className="ml-2">Loading...</span>
+    </div>
+  );
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
@@ -266,7 +393,9 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
 
       {/* Table 1 — Exposure Conditions */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
-        <div className="px-6 py-4 bg-teal-50 border-b"><h3 className="text-lg font-semibold text-teal-900">Exposure Conditions</h3></div>
+        <div className="px-6 py-4 bg-teal-50 border-b">
+          <h3 className="text-lg font-semibold text-teal-900">Exposure Conditions</h3>
+        </div>
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -302,10 +431,23 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
           <h3 className="text-lg font-semibold text-blue-900">Linearity of Radiation Output Across {isMaMode ? 'mA' : 'mAs'} Ranges</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full table-fixed divide-y divide-gray-200">
+            <colgroup>
+              <col className="w-[6.5rem]" />
+              {measHeaders.map((_, i) => (
+                <col key={`mcol-${i}`} className="w-[6.5rem]" />
+              ))}
+              <col className="w-[5.5rem]" />
+              <col className="w-[6rem]" />
+              <col className="w-[5rem]" />
+              <col className="w-[5rem]" />
+              <col className="w-[4.5rem]" />
+              <col className="w-[6.5rem]" />
+              <col className="w-12" />
+            </colgroup>
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 border-r">{rowLabel}</th>
+                <th rowSpan={2} className="px-3 py-3 text-left text-xs font-medium text-gray-700 border-r align-middle">{rowLabel}</th>
                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">
                   <div className="flex items-center justify-between px-4">
                     <span>Radiation Output (mGy)</span>
@@ -335,18 +477,31 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
             <tbody className="bg-white divide-y divide-gray-200">
               {processedTable2.rows.map((p, index) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 border-r">
-                    <input type="text" value={p.mAsRange} onChange={e => updateCell(p.id, 'mAsRange', e.target.value)} disabled={isViewMode}
+                  <td className="px-3 py-4 border-r align-top">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={p.mAsRange === undefined || p.mAsRange === null ? '' : String(p.mAsRange)}
+                      onChange={e => updateCell(p.id, 'mAsRange', e.target.value)}
+                      disabled={isViewMode}
                       placeholder={isMaMode ? '100' : '10 - 20'}
-                      className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} />
+                      className={`w-full min-w-0 px-2 py-2 text-center text-sm text-gray-900 border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : ''}`}
+                    />
                   </td>
-                  {p.measuredOutputs.map((val, idx) => {
-                    const hasValue = val !== '' && !isNaN(parseFloat(val)) && parseFloat(val) > 0;
+                  {measHeaders.map((_, idx) => {
+                    const val = p.measuredOutputs[idx] ?? '';
+                    const hasValue = val !== '' && !isNaN(parseFloat(String(val))) && parseFloat(String(val)) > 0;
                     const isValid = p.measuredOutputsStatus?.[idx] !== false;
                     return (
-                      <td key={idx} className={`px-3 py-4 text-center border-r ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
-                        <input type="number" step="any" value={val} onChange={e => updateCell(p.id, idx, e.target.value)} disabled={isViewMode}
-                          className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : hasValue && !isValid ? 'border-red-500 bg-red-50' : ''}`} />
+                      <td key={idx} className={`px-2 py-4 text-center border-r align-top ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={val}
+                          onChange={e => updateCell(p.id, idx, e.target.value)}
+                          disabled={isViewMode}
+                          className={`w-full min-w-0 px-2 py-2 text-center text-sm text-gray-900 border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : hasValue && !isValid ? 'border-red-500 bg-red-50' : ''}`}
+                        />
                       </td>
                     );
                   })}
@@ -378,8 +533,11 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
             <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
             <select value={toleranceOperator} onChange={e => setToleranceOperator(e.target.value)} disabled={isViewMode}
               className={`px-3 py-2.5 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}>
-              <option value="<">&lt;</option><option value=">">&gt;</option>
-              <option value="<=">&lt;=</option><option value=">=">&gt;=</option><option value="=">=</option>
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
             </select>
             <input type="number" step="0.001" value={tolerance} onChange={e => setTolerance(e.target.value)} disabled={isViewMode}
               className={`w-32 px-4 py-2.5 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} />
