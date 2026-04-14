@@ -28,6 +28,14 @@ interface Note {
 interface ReportData {
   customerName?: string;
   address?: string;
+  city?: string;
+  hospitalName?: string;
+  fullAddress?: string;
+  leadOwner?: any;
+  manufacturerName?: string;
+  leadOwnerType?: string;
+  leadOwnerRole?: string;
+  leadOwnerName?: string;
   srfNumber?: string;
   srfDate?: any;
   reportULRNumber?: string;
@@ -124,6 +132,28 @@ const ViewServiceReportCBCT: React.FC = () => {
 
         if (response?.exists && response.data) {
           const data = response.data;
+          const detailsData = (detailsRes as any)?.data?.data || (detailsRes as any)?.data || {};
+          const srfKey = data?.srfNumber || detailsData?.srfNumber || "";
+          const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
+          const cachedOrderBySrf = cachedOrderBySrfRaw ? JSON.parse(cachedOrderBySrfRaw) : {};
+          const detailsLeadOwner =
+            detailsData?.leadOwner ||
+            detailsData?.leadowner ||
+            cachedOrderBySrf?.leadOwner ||
+            null;
+          const detailsLeadOwnerRole = String(
+            detailsData?.leadOwnerType ||
+            detailsData?.leadOwnerRole ||
+            cachedOrderBySrf?.leadOwner?.role ||
+            detailsLeadOwner?.role ||
+            ""
+          ).trim();
+          const detailsLeadOwnerName = String(
+            detailsData?.manufacturerName ||
+            cachedOrderBySrf?.manufacturerName ||
+            detailsLeadOwner?.name ||
+            ""
+          ).trim();
           const resolvedUlr =
             pickUlrFromObject(data) ||
             pickUlrFromQaTests((detailsRes as any)?.data?.qaTests) ||
@@ -146,6 +176,14 @@ const ViewServiceReportCBCT: React.FC = () => {
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
+            city: data.city || detailsData?.city || "",
+            hospitalName: data.hospitalName || detailsData?.hospitalName || cachedOrderBySrf?.hospitalName || "",
+            fullAddress: data.fullAddress || detailsData?.fullAddress || cachedOrderBySrf?.fullAddress || "",
+            leadOwner: data.leadOwner || data.leadowner || detailsLeadOwner || "",
+            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || cachedOrderBySrf?.manufacturerName || "",
+            leadOwnerType: data.leadOwnerType || data.leadownerType || detailsLeadOwnerRole || "",
+            leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
+            leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || "",
             reportULRNumber: resolvedUlr,
@@ -408,6 +446,32 @@ const ViewServiceReportCBCT: React.FC = () => {
 
   const toolsArray = report.toolsUsed || [];
   const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
+  const leadOwnerRole = String(
+    report?.leadOwnerType ||
+    report?.leadOwnerRole ||
+    report?.leadOwner?.role ||
+    report?.leadOwner?.leadOwnerType ||
+    report?.leadOwner || ""
+  ).trim().toLowerCase();
+  const leadOwnerName = String(
+    report?.leadOwner?.name ||
+    report?.leadOwner?.fullName ||
+    report?.leadOwner?.companyName ||
+    report?.leadOwner || ""
+  ).trim();
+  const isManufacturerLeadOwner =
+    leadOwnerRole === "manufacturer" ||
+    leadOwnerName.toLowerCase() === "manufacturer" ||
+    !!String(report?.manufacturerName || "").trim();
+  const manufacturerDisplayName =
+    report?.manufacturerName ||
+    report?.leadOwnerName ||
+    report?.leadOwner?.name ||
+    report?.leadOwner?.fullName ||
+    report?.leadOwner?.companyName ||
+    "-";
+  const testingSiteName = report?.hospitalName || report?.customerName || "-";
+  const testingSiteAddress = report?.fullAddress || report?.address || "-";
   const nextDetailedSectionNumber = (() => {
     let index = 1;
     return () => index++;
@@ -468,13 +532,19 @@ const ViewServiceReportCBCT: React.FC = () => {
             <h2 className="font-bold text-lg mb-3 print:mb-1 print:text-sm">1. Customer Details</h2>
             <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
               <tbody>
+                {isManufacturerLeadOwner && (
+                  <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                    <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the customer</td>
+                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{manufacturerDisplayName}</td>
+                  </tr>
+                )}
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                   <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the testing site</td>
-                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testingSiteName}</td>
                 </tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                   <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address of the testing site</td>
-                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.address}</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testingSiteAddress}</td>
                 </tr>
               </tbody>
             </table>

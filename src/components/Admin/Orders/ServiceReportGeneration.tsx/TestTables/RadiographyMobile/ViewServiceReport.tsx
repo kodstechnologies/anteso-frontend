@@ -29,6 +29,8 @@ interface ReportData {
   customerName: string;
   address: string;
   city?: string;
+  hospitalName?: string;
+  fullAddress?: string;
   leadOwner?: any;
   manufacturerName?: string;
   leadOwnerType?: string;
@@ -125,17 +127,26 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
           getReportHeaderForRadiographyMobile(serviceId),
           getDetails(serviceId),
         ]);
-        const detailsData = detailsRes?.data || {};
+        const detailsData = detailsRes?.data?.data || detailsRes?.data || {};
+        const srfKey = response?.data?.srfNumber || detailsData?.srfNumber || "";
+        const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
+        const cachedOrderBySrf = cachedOrderBySrfRaw ? JSON.parse(cachedOrderBySrfRaw) : {};
         const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
-        const detailsLeadOwner = detailsData?.leadOwner || detailsData?.leadowner || null;
+        const detailsLeadOwner =
+          detailsData?.leadOwner ||
+          detailsData?.leadowner ||
+          cachedOrderBySrf?.leadOwner ||
+          null;
         const detailsLeadOwnerRole = String(
           detailsData?.leadOwnerType ||
           detailsData?.leadOwnerRole ||
+          cachedOrderBySrf?.leadOwner?.role ||
           detailsLeadOwner?.role ||
           ""
         ).trim();
         const detailsLeadOwnerName = String(
           detailsData?.manufacturerName ||
+          cachedOrderBySrf?.manufacturerName ||
           detailsLeadOwner?.name ||
           ""
         ).trim();
@@ -146,8 +157,10 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
             city: data.city || detailsData?.city || "",
+            hospitalName: data.hospitalName || detailsData?.hospitalName || cachedOrderBySrf?.hospitalName || "",
+            fullAddress: data.fullAddress || detailsData?.fullAddress || cachedOrderBySrf?.fullAddress || "",
             leadOwner: data.leadOwner || data.leadowner || detailsLeadOwner || "",
-            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || "",
+            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || cachedOrderBySrf?.manufacturerName || "",
             leadOwnerType: data.leadOwnerType || data.leadownerType || detailsLeadOwnerRole || "",
             leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
@@ -280,6 +293,8 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
     report?.leadOwner?.fullName ||
     report?.leadOwner?.companyName ||
     "-";
+  const testingSiteName = report?.hospitalName || report?.customerName || "-";
+  const testingSiteAddress = report?.fullAddress || report?.address || "-";
 
   const downloadPDF = async () => {
     try {
@@ -374,11 +389,11 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                 )}
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                   <td className="border border-black p-2 print:p-1 font-medium w-1/2 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Name of the testing site</td>
-                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.customerName}</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testingSiteName}</td>
                 </tr>
                 <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                   <td className="border border-black p-2 print:p-1 font-medium text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Address of the testing site</td>
-                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{report.address}</td>
+                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testingSiteAddress}</td>
                 </tr>
               </tbody>
             </table>

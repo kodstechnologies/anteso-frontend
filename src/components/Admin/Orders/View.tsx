@@ -103,6 +103,20 @@ const View = () => {
                 console.log("🚀 ~ fetchData ~ res:", res)
                 setDetails(res.data);
                 setFormData(res.data); // initialize form with current values
+
+                // Cache lead owner/manufacturer context by SRF for report view fallbacks.
+                const srfNumber = res?.data?.srfNumber;
+                if (srfNumber) {
+                    localStorage.setItem(
+                        `order-basic-by-srf-${srfNumber}`,
+                        JSON.stringify({
+                            leadOwner: res?.data?.leadOwner || null,
+                            manufacturerName: res?.data?.manufacturerName || "",
+                            hospitalName: res?.data?.hospitalName || "",
+                            fullAddress: res?.data?.fullAddress || "",
+                        })
+                    );
+                }
                 // ... your PDF & WorkOrder fetch logic
                 const resPdf = await getPdfForAcceptQuotation(orderId);
                 setPdfUrl(resPdf.data.pdfUrl || '');
@@ -193,6 +207,19 @@ const View = () => {
                 const resDetails = await getBasicDetailsByOrderId(orderId);
                 console.log("🚀 ~ fetchData ~ resDetails:", resDetails)
                 setDetails(resDetails.data);
+
+                const srfNumber = resDetails?.data?.srfNumber;
+                if (srfNumber) {
+                    localStorage.setItem(
+                        `order-basic-by-srf-${srfNumber}`,
+                        JSON.stringify({
+                            leadOwner: resDetails?.data?.leadOwner || null,
+                            manufacturerName: resDetails?.data?.manufacturerName || "",
+                            hospitalName: resDetails?.data?.hospitalName || "",
+                            fullAddress: resDetails?.data?.fullAddress || "",
+                        })
+                    );
+                }
 
                 const resPdf = await getPdfForAcceptQuotation(orderId);
                 setPdfUrl(resPdf.data.pdfUrl || '');

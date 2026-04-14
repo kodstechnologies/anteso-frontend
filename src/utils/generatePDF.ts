@@ -93,20 +93,25 @@ tables.forEach((table) => {
     // ❌ REMOVE THIS
     // cellEl.style.height = "100px !important";
 
-    // ✅ HEIGHT FIX
+    // ✅ HEIGHT + ALIGNMENT FIX
     cellEl.style.height = 'auto';
-    cellEl.style.minHeight = '40px';
+    cellEl.style.minHeight = '32px';
+    cellEl.style.verticalAlign = 'middle';
+    cellEl.style.textAlign = 'center';
 
     // ✅ PADDING
-    cellEl.style.padding = '0';
+    cellEl.style.padding = '2px 4px';
 
-    // ✅ WRAP CONTENT WITH GRID
+    // ✅ WRAP CONTENT WITH FLEX CENTERING
     const wrapper = document.createElement('div');
-    wrapper.style.display = 'grid';
+    wrapper.style.display = 'flex';
     wrapper.style.alignItems = 'center';     // vertical center
-    wrapper.style.justifyItems = 'center';   // horizontal center
+    wrapper.style.justifyContent = 'center'; // horizontal center
+    wrapper.style.textAlign = 'center';
     wrapper.style.height = '100%';
-    wrapper.style.padding = '6px 10px';
+    wrapper.style.minHeight = '100%';
+    wrapper.style.lineHeight = '1.2';
+    wrapper.style.padding = '4px 6px';
 
     // move existing content inside wrapper
     while (cellEl.firstChild) {

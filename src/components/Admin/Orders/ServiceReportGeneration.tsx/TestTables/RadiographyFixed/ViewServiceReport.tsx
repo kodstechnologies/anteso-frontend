@@ -157,17 +157,29 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           getReportHeaderForRadiographyFixed(serviceId),
           getDetails(serviceId),
         ]);
-        const detailsData = detailsRes?.data || {};
+        const detailsData =
+          detailsRes?.data?.data ||
+          detailsRes?.data ||
+          {};
+        const srfKey = response?.data?.srfNumber || detailsData?.srfNumber || "";
+        const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
+        const cachedOrderBySrf = cachedOrderBySrfRaw ? JSON.parse(cachedOrderBySrfRaw) : {};
         const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
-        const detailsLeadOwner = detailsData?.leadOwner || detailsData?.leadowner || null;
+        const detailsLeadOwner =
+          detailsData?.leadOwner ||
+          detailsData?.leadowner ||
+          cachedOrderBySrf?.leadOwner ||
+          null;
         const detailsLeadOwnerRole = String(
           detailsData?.leadOwnerType ||
           detailsData?.leadOwnerRole ||
+          cachedOrderBySrf?.leadOwner?.role ||
           detailsLeadOwner?.role ||
           ""
         ).trim();
         const detailsLeadOwnerName = String(
           detailsData?.manufacturerName ||
+          cachedOrderBySrf?.manufacturerName ||
           detailsLeadOwner?.name ||
           ""
         ).trim();
@@ -178,10 +190,10 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
             city: data.city || detailsData?.city || "",
-            hospitalName: data.hospitalName || "",
-            fullAddress: data.fullAddress || "",
+            hospitalName: data.hospitalName || detailsData?.hospitalName || cachedOrderBySrf?.hospitalName || "",
+            fullAddress: data.fullAddress || detailsData?.fullAddress || cachedOrderBySrf?.fullAddress || "",
             leadOwner: data.leadOwner || data.leadowner || detailsLeadOwner || "",
-            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || "",
+            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || cachedOrderBySrf?.manufacturerName || "",
             leadOwnerType: data.leadOwnerType || data.leadownerType || detailsLeadOwnerRole || "",
             leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
@@ -310,6 +322,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     report?.leadOwner?.fullName ||
     report?.leadOwner?.companyName ||
     "-";
+  const testingSiteName = report?.hospitalName || report?.customerName || "-";
+  const testingSiteAddress = report?.fullAddress || report?.address || "-";
 
   const downloadPDF = async () => {
     try {
@@ -419,11 +433,11 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 )}
                 <tr>
                   <th scope="row" style={cellStyle({ width: '50%', border: '0.1px solid #666', fontWeight: 700 })}>Name of the testing site</th>
-                  <td style={cellStyle({ border: '0.1px solid #666' })}>{report.customerName}</td>
+                  <td style={cellStyle({ border: '0.1px solid #666' })}>{testingSiteName}</td>
                 </tr>
                 <tr>
                   <th scope="row" style={cellStyle({ border: '0.1px solid #666', fontWeight: 700 })}>Address of the testing site</th>
-                  <td style={cellStyle({ border: '0.1px solid #666' })}>{report.address}</td>
+                  <td style={cellStyle({ border: '0.1px solid #666' })}>{testingSiteAddress}</td>
                 </tr>
               </tbody>
             </table>

@@ -42,6 +42,14 @@ interface Note {
 interface ReportData {
   customerName: string;
   address: string;
+  city?: string;
+  hospitalName?: string;
+  fullAddress?: string;
+  leadOwner?: any;
+  manufacturerName?: string;
+  leadOwnerType?: string;
+  leadOwnerRole?: string;
+  leadOwnerName?: string;
   srfNumber: string;
   srfDate: string;
   reportULRNumber?: string;
@@ -242,6 +250,28 @@ const ViewServiceReportMammography: React.FC = () => {
         ]);
         if (response.exists && response.data) {
           const data = response.data;
+          const detailsData = (detailsRes as any)?.data?.data || (detailsRes as any)?.data || {};
+          const srfKey = data?.srfNumber || detailsData?.srfNumber || "";
+          const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
+          const cachedOrderBySrf = cachedOrderBySrfRaw ? JSON.parse(cachedOrderBySrfRaw) : {};
+          const detailsLeadOwner =
+            detailsData?.leadOwner ||
+            detailsData?.leadowner ||
+            cachedOrderBySrf?.leadOwner ||
+            null;
+          const detailsLeadOwnerRole = String(
+            detailsData?.leadOwnerType ||
+            detailsData?.leadOwnerRole ||
+            cachedOrderBySrf?.leadOwner?.role ||
+            detailsLeadOwner?.role ||
+            ""
+          ).trim();
+          const detailsLeadOwnerName = String(
+            detailsData?.manufacturerName ||
+            cachedOrderBySrf?.manufacturerName ||
+            detailsLeadOwner?.name ||
+            ""
+          ).trim();
           const ulrFromHeader = pickUlrFromObject(data);
           const ulrFromDetails = pickUlrFromQaTests((detailsRes as any)?.data?.qaTests);
           let ulrFromCache = "";
@@ -259,6 +289,14 @@ const ViewServiceReportMammography: React.FC = () => {
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
+            city: data.city || detailsData?.city || "",
+            hospitalName: data.hospitalName || detailsData?.hospitalName || cachedOrderBySrf?.hospitalName || "",
+            fullAddress: data.fullAddress || detailsData?.fullAddress || cachedOrderBySrf?.fullAddress || "",
+            leadOwner: data.leadOwner || data.leadowner || detailsLeadOwner || "",
+            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || cachedOrderBySrf?.manufacturerName || "",
+            leadOwnerType: data.leadOwnerType || data.leadownerType || detailsLeadOwnerRole || "",
+            leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
+            leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || "",
             reportULRNumber: resolvedUlr,
@@ -664,6 +702,32 @@ const ViewServiceReportMammography: React.FC = () => {
     };
   });
   const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
+  const leadOwnerRole = String(
+    report?.leadOwnerType ||
+    report?.leadOwnerRole ||
+    report?.leadOwner?.role ||
+    report?.leadOwner?.leadOwnerType ||
+    report?.leadOwner || ""
+  ).trim().toLowerCase();
+  const leadOwnerName = String(
+    report?.leadOwner?.name ||
+    report?.leadOwner?.fullName ||
+    report?.leadOwner?.companyName ||
+    report?.leadOwner || ""
+  ).trim();
+  const isManufacturerLeadOwner =
+    leadOwnerRole === "manufacturer" ||
+    leadOwnerName.toLowerCase() === "manufacturer" ||
+    !!String(report?.manufacturerName || "").trim();
+  const manufacturerDisplayName =
+    report?.manufacturerName ||
+    report?.leadOwnerName ||
+    report?.leadOwner?.name ||
+    report?.leadOwner?.fullName ||
+    report?.leadOwner?.companyName ||
+    "-";
+  const testingSiteName = report?.hospitalName || report?.customerName || "-";
+  const testingSiteAddress = report?.fullAddress || report?.address || "-";
 
   return (
     <>
@@ -717,13 +781,19 @@ const ViewServiceReportMammography: React.FC = () => {
             <h2 className="font-bold mb-1" style={{ fontSize: '12px' }}>1. Customer Details</h2>
             <table className="w-full compact-table" style={{ borderCollapse: 'collapse' }}>
               <tbody>
+                {isManufacturerLeadOwner && (
+                  <tr>
+                    <th scope="row" className="border px-2 py-1 text-left font-bold" style={{ width: '50%', border: '0.1px solid #666' }}>Name of the customer</th>
+                    <td className="border px-2 py-1" style={{ border: '0.1px solid #666' }}>{manufacturerDisplayName}</td>
+                  </tr>
+                )}
                 <tr>
                   <th scope="row" className="border px-2 py-1 text-left font-bold" style={{ width: '50%', border: '0.1px solid #666' }}>Name of the testing site</th>
-                  <td className="border px-2 py-1" style={{ border: '0.1px solid #666' }}>{report.customerName}</td>
+                  <td className="border px-2 py-1" style={{ border: '0.1px solid #666' }}>{testingSiteName}</td>
                 </tr>
                 <tr>
                   <th scope="row" className="border px-2 py-1 text-left font-bold" style={{ border: '0.1px solid #666' }}>Address of the testing site</th>
-                  <td className="border px-2 py-1" style={{ border: '0.1px solid #666' }}>{report.address}</td>
+                  <td className="border px-2 py-1" style={{ border: '0.1px solid #666' }}>{testingSiteAddress}</td>
                 </tr>
               </tbody>
             </table>

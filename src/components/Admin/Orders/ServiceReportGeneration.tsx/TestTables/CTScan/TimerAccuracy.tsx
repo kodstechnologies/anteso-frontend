@@ -42,7 +42,7 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
     { id: '1', setTime: '', observedTime: '', percentError: '', remarks: '' },
   ]);
 
-  const [tolerance, setTolerance] = useState<string>('5');
+  const [tolerance, setTolerance] = useState<string>('10');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

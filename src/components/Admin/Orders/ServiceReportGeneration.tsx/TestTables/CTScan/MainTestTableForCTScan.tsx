@@ -183,8 +183,8 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     // If index is provided (0, 1, 2), use fixed labels from generator
     if (index !== undefined) {
       if (index === 0) return "0.5 mm";
-      if (index === 1) return "Â±50%";
-      if (index === 2) return "Â±1.0 mm";
+      if (index === 1) return "+/-50%";
+      if (index === 2) return "+/-1.0 mm";
     }
 
     const appliedNum = typeof applied === 'string' ? parseFloat(applied) : applied;
@@ -195,7 +195,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     } else if (appliedNum >= 1.0 && appliedNum <= 2.0) {
       return "Â±50%";
     } else {
-      return "Â±1.0 mm";
+      return "+/-1.0 mm";
     }
   };
 
@@ -206,7 +206,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const type = tolerance.type || 'percent';
     const sign = tolerance.sign || 'both';
 
-    const signSymbol = sign === 'both' ? 'Â±' : sign === 'plus' ? '+' : '-';
+    const signSymbol = sign === 'both' ? "+/-" : sign === 'plus' ? '+' : '-';
     const unit = type === 'percent' ? '%' : ' kVp';
     return `${signSymbol}${value}${unit}`;
   };
@@ -214,7 +214,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
   // Helper function to format Timer Accuracy tolerance
   const formatTimerAccuracyTolerance = (tolerance: string | number): string => {
     if (!tolerance) return "-";
-    return `Â±${tolerance}%`;
+    return `+/-${tolerance}%`;
   };
 
   const addRowsForTest = (
@@ -257,13 +257,25 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.radiationProfile?.table2 && Array.isArray(testData.radiationProfile.table2)) {
     const validRows = testData.radiationProfile.table2.filter((row: any) => row.applied || row.measured);
     if (validRows.length > 0) {
-      const testRows = validRows.map((row: any, i: number) => ({
-        specified: row.applied || "-",
-        measured: row.measured || "-",
-        criteria: getRadiationProfileCriteria(row.applied, i),
-        tolerance: getRadiationProfileTolerance(row.applied, i),
-        remarks: row.remarks === "Pass" ? "Pass" : "Fail" as "Pass" | "Fail",
-      }));
+      const combinedTolerance = validRows
+        .map((row: any, i: number) => {
+          const criteriaText = getRadiationProfileCriteria(row.applied, i);
+          const toleranceText = getRadiationProfileTolerance(row.applied, i);
+          return `${criteriaText} | ${toleranceText}`;
+        })
+        .join(" || ");
+
+      const testRows = validRows.map((row: any, i: number) => {
+        const criteriaText = getRadiationProfileCriteria(row.applied, i);
+        return {
+          specified: row.applied || "-",
+          measured: row.measured || "-",
+          criteria: criteriaText,
+          tolerance: combinedTolerance,
+          remarks: row.remarks === "Pass" ? "Pass" : "Fail" as "Pass" | "Fail",
+          toleranceRowSpan: i === 0 ? validRows.length : 0,
+        };
+      });
       addRowsForTest("Radiation Profile Width / Slice Thickness (mm)", testRows);
     }
   }
@@ -351,7 +363,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.mAsApplied || "-",
           measured: col !== "-" ? `CoL = ${col}` : "-",
-          tolerance: `â‰¤ ${tol}`,
+          tolerance: `<= ${tol}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           measuredRowSpan: idx === 0 ? validRows.length : 0,
           toleranceRowSpan: idx === 0 ? validRows.length : 0,
@@ -415,7 +427,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
               isPass = covNum >= tolValue;
             }
           }
-          const operatorSymbol = tolOperator === '<=' ? 'â‰¤' : tolOperator === '<' ? '<' : tolOperator === '>=' ? 'â‰¥' : '>';
+          const operatorSymbol = tolOperator === '<=' ? '<=' : tolOperator === '<' ? '<' : tolOperator === '>=' ? '>=' : '>';
           return {
             specified: row.kvp ? `${row.kvp} kVp` : "Varies with kVp",
             measured: formattedCov !== "-" ? "CoV = " + formattedCov : "-",
@@ -436,7 +448,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const tolerance = testData.ctdi.tolerance;
     const kvp = testData.ctdi.table1?.[0]?.kvp || "-";
     const tolValue = tolerance?.value ? parseFloat(tolerance.value) : 20;
-    const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : 'Â±';
+    const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : '+/-';
     const tolStr = `${tolSign}${tolValue} % of Stated value`;
 
     const calculateCtdiPass = (measured: any, specified: any) => {
@@ -491,7 +503,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     addRowsForTest("Low Contrast Resolution", [{
       specified: `Contrast: ${contrastLevel}%`,
       measured: `${observedSize} mm`,
-      tolerance: "â‰¤ 5.0 mm at 1% contrast",
+      tolerance: "<= 5.0 mm at 1% contrast",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
@@ -547,7 +559,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.appliedKV || "-",
           measured: `${row.measuredTF || "-"} mm Al`,
-          tolerance: "â‰¥ 2.5 mm Al",
+          tolerance: ">= 2.5 mm Al",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -630,18 +642,18 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
       const surveyRows: any[] = [];
 
       surveyRows.push({
-        specified: "â‰¤ 40 mR/week",
+        specified: "<= 40 mR/week",
         measured: maxWorkerWeekly > 0 ? `${maxWorkerWeekly.toFixed(3)} mR/week` : "-",
         criteria: "For Radiation Worker",
-        tolerance: "â‰¤ 40 mR/week",
+        tolerance: "<= 40 mR/week",
         remarks: (maxWorkerWeekly > 0 ? (maxWorkerWeekly <= 40 ? "Pass" : "Fail") : "Pass") as "Pass" | "Fail",
       });
 
       surveyRows.push({
-        specified: "â‰¤ 2 mR/week",
+        specified: "<= 2 mR/week",
         measured: maxPublicWeekly > 0 ? `${maxPublicWeekly.toFixed(3)} mR/week` : "-",
         criteria: "For Public",
-        tolerance: "â‰¤ 2 mR/week",
+        tolerance: "<= 2 mR/week",
         remarks: (maxPublicWeekly > 0 ? (maxPublicWeekly <= 2 ? "Pass" : "Fail") : "Pass") as "Pass" | "Fail",
       });
 
@@ -663,11 +675,10 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         <table className="border-2 border-black text-xs print:text-[9px] print:min-w-full" style={{ width: 'auto', margin: '0 auto' }}>
           <thead className="bg-gray-200">
             <tr>
-              <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center print:text-[9px]">Sr. No.</th>
-              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-left w-72 print:text-[9px]">Parameters Used</th>
+              <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center print:text-[9px]">Sr.No.</th>
+              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-left w-72 print:text-[9px]">Parameters Tested</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32 print:text-[9px]">Specified Values</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-32 print:text-[9px]">Measured Values</th>
-              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-40 print:text-[9px]">Criteria</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center w-40 print:text-[9px]">Tolerance</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center bg-green-100 w-24 print:text-[9px]">Remarks</th>
             </tr>
@@ -691,12 +702,30 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
                     {row.measured}
                   </td>
                 ) : null}
-                <td className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent">
-                  {row.criteria || "-"}
-                </td>
                 {row.isFirstToleranceRow ? (
                   <td rowSpan={row.toleranceRowSpan || 1} className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center text-xs print:text-[9px] leading-tight print:leading-tight bg-transparent print:bg-transparent">
-                    {row.tolerance}
+                    {typeof row.tolerance === "string" && row.tolerance.includes(" || ") ? (
+                      <div className="flex flex-col">
+                        {row.tolerance.split(" || ").map((item: string, idx: number) => {
+                          const [left, right] = item.split(" | ");
+                          return (
+                            <div key={`${item}-${idx}`} className={`flex items-center justify-center gap-2 py-1 ${idx < row.tolerance.split(" || ").length - 1 ? "border-b border-black" : ""}`}>
+                              <span>{left || "-"}</span>
+                              <span className="h-4 border-l border-black" />
+                              <span>{right || "-"}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : typeof row.tolerance === "string" && row.tolerance.includes(" | ") ? (
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <span>{row.tolerance.split(" | ")[0]}</span>
+                        <span className="h-4 border-l border-black" />
+                        <span>{row.tolerance.split(" | ")[1]}</span>
+                      </span>
+                    ) : (
+                      row.tolerance
+                    )}
                   </td>
                 ) : null}
                 {row.isFirstRemarksRow ? (
