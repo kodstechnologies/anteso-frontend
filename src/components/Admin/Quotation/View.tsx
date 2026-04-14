@@ -170,15 +170,40 @@ const ViewQuotation: React.FC = () => {
             //     jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
             // };
             const opt = {
-                margin: 0.1,
+                margin: 0.2,
                 filename: `Quotation_${quotationData.quotationId}.pdf`,
                 image: { type: "jpeg" as const, quality: 0.95 },
                 html2canvas: { scale: 1.5 }, // shrink content
                 jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
+                pagebreak: {
+                    mode: ["css", "legacy"],
+                    avoid: [".no-break", ".pdf-section", "table", "tr", "td", "th", "img", "p", "li"],
+                },
             };
 
 
-            const blob = await html2pdf().set(opt).from(pdfRef.current).outputPdf("blob");
+            const worker = html2pdf().set(opt).from(pdfRef.current).toPdf();
+            const pdf = await worker.get("pdf");
+
+            // Draw border on each PDF page (page-wise frame).
+            const pageCount = pdf.internal.getNumberOfPages();
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const frameMargin = 0.12; // inches
+
+            for (let i = 1; i <= pageCount; i++) {
+                pdf.setPage(i);
+                pdf.setDrawColor(0, 0, 0);
+                pdf.setLineWidth(0.02);
+                pdf.rect(
+                    frameMargin,
+                    frameMargin,
+                    pageWidth - frameMargin * 2,
+                    pageHeight - frameMargin * 2
+                );
+            }
+
+            const blob = pdf.output("blob");
 
             const file = new File([blob], `Quotation_${quotationData.quotationId}.pdf`, {
                 type: "application/pdf",
@@ -469,12 +494,22 @@ const ViewQuotation: React.FC = () => {
             <div ref={pdfRef}>
                 {/* <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[50rem]"> */}
                 <div
-                    className="mx-auto rounded-lg px-4 bg-white"
-                    style={{ width: "793px", maxWidth: "100%" }} // ~A4 portrait width at 96 DPI
+                    className="mx-auto px-4 pb-4 bg-white"
+                    style={{ width: "793px", maxWidth: "100%", boxSizing: "border-box" }} // ~A4 portrait width at 96 DPI
                 >
+                    <style>{`
+                        .pdf-section, .no-break {
+                            break-inside: avoid;
+                            page-break-inside: avoid;
+                        }
+                        table, tr, td, th {
+                            break-inside: avoid;
+                            page-break-inside: avoid;
+                        }
+                    `}</style>
 
                     {/* Header */}
-                    <div className="flex justify-between items-start ">
+                    <div className="flex justify-between items-start no-break">
 
                         <div>
                             <img src={logo} alt="Company Logo" className="h-14 " />
@@ -490,7 +525,7 @@ const ViewQuotation: React.FC = () => {
                     </div>
 
                     {/* Company and Recipient Info */}
-                    <div className="flex w-full justify-between">
+                    <div className="flex w-full justify-between pdf-section">
                         <div>
                             <table
                                 className="text-sm w-[20rem]"
@@ -572,7 +607,7 @@ const ViewQuotation: React.FC = () => {
                     </div>
 
                     {/* Items Tables */}
-                    <div className="mt-1">
+                    <div className="mt-1 pdf-section">
                         {aitems.length > 0 && (
                             <table className="w-full text-xs mb-1">
                                 <thead>
@@ -631,7 +666,7 @@ const ViewQuotation: React.FC = () => {
                     </div>
 
                     {/* Adjusted Layout: Discount Box and QR/Bank Details Side by Side */}
-                    <div className="flex justify-between items-start gap-6 mt-4 px-4">
+                    <div className="flex justify-between items-start gap-6 mt-4 px-4 pdf-section">
 
                         {/* Right: QR Code and Bank Details */}
                         <div className="w-64 text-right space-y-1 text-xs">
@@ -710,7 +745,7 @@ const ViewQuotation: React.FC = () => {
                     <br />
                     <hr />
 
-                    <div className="mt-4">
+                    <div className="mt-4 pdf-section">
                         <h4 className="ml-4 text-sm font-semibold text-gray-800 dark:text-gray-200">Terms & Conditions:</h4>
                         <ul
                             className="list-disc list-outside pl-6 space-y-2 text-gray-700 dark:text-gray-300 text-[.65rem] leading-relaxed"
@@ -753,7 +788,7 @@ const ViewQuotation: React.FC = () => {
                     </div>
 
                     {/* Footer - Adjusted to only include left and middle */}
-                    <div className="mt-4 flex justify-between items-end text-xs">
+                    <div className="mt-4 flex justify-between items-end text-xs no-break">
                         <div>
                             <img src={Signature} alt="Signature" className="mb-2 h-24" />
                             <div
@@ -786,7 +821,7 @@ const ViewQuotation: React.FC = () => {
                     </div>
 
                     <div
-                        className="overflow-x-auto mt-8 text-center"
+                        className="overflow-x-auto mt-8 text-center no-break"
                         style={{
                             lineHeight: "1rem",
                         }}

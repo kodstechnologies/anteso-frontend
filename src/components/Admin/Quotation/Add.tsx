@@ -298,7 +298,7 @@ const ItemsTable: React.FC<{
                 {/* REMOVED: <th className="p-2 text-[.7rem]">{title}</th> */}
                 <th className="text-[.7rem]">S.NO</th>
                 <th className="text-[.7rem] w-36">{title === "A" ? "TYPE OF MACHINE" : "ADDITIONAL SERVICE"}</th>
-                <th className="text-[.7rem]">DESCRIPTION</th>
+                <th className="text-[.7rem] min-w-[320px]">DESCRIPTION</th>
                 <th className="text-[.7rem]">QTY</th>
                 <th className="text-[.7rem]">TOTAL</th>
             </tr>
@@ -311,16 +311,18 @@ const ItemsTable: React.FC<{
                     <td className="text-[.7rem]">{item.title}</td>
                     <td className="text-[.7rem]">
                         {showEditableDescription ? (
-                            <input
+                            <textarea
                                 value={item.description || ""}
                                 onChange={(e) => onItemChange(i, "description", e.target.value)}
-                                className="w-full border rounded p-1 text-[.7rem]"
+                                rows={2}
+                                className="w-full min-w-[320px] border rounded p-1 text-[.7rem] resize-y"
                             />
                         ) : (
-                            <input
+                            <textarea
                                 value={item.description || ""}
                                 onChange={() => { }}
-                                className="w-full border rounded p-1 text-[.7rem] bg-gray-100 cursor-not-allowed"
+                                rows={2}
+                                className="w-full min-w-[320px] border rounded p-1 text-[.7rem] bg-gray-100 cursor-not-allowed resize-none"
                                 disabled
                             />
                         )}

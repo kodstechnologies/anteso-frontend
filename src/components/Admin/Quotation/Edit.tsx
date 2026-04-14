@@ -27,6 +27,7 @@ interface EditableQuotationData {
     enquiry: {
         _id: string;
         enquiryId: string;
+        leadOwner?: { id?: string; name?: string } | string;
         hospitalName: string;
         fullAddress: string;
         city: string;
@@ -208,14 +209,39 @@ const EditQuotation: React.FC = () => {
         fetchData();
     }, []);
     useEffect(() => {
-        if (quotationData) {
-            if (quotationData.assignedEmployee) {
-                setSelectedOption({ ...quotationData.assignedEmployee, type: "Employee" });
-            } else if (quotationData.dealer) {
-                setSelectedOption({ ...quotationData.dealer, type: "Dealer" });
+        if (!quotationData) return;
+
+        const leadOwner = quotationData?.enquiry?.leadOwner as any;
+        const leadOwnerId = String(leadOwner?.id || "").trim();
+        const leadOwnerName = String(
+            typeof leadOwner === "string" ? leadOwner : (leadOwner?.name || "")
+        )
+            .trim()
+            .toLowerCase();
+
+        // Prefer lead owner as requested in Edit Quotation Details dropdown
+        if (options.length > 0 && (leadOwnerId || leadOwnerName)) {
+            const matchedLeadOwner = options.find((opt) => {
+                const optId = String(opt?._id || "").trim();
+                const optName = String(opt?.name || "").trim().toLowerCase();
+                if (leadOwnerId && optId === leadOwnerId) return true;
+                if (!leadOwnerId && leadOwnerName && optName === leadOwnerName) return true;
+                return false;
+            });
+
+            if (matchedLeadOwner) {
+                setSelectedOption(matchedLeadOwner);
+                return;
             }
         }
-    }, [quotationData]);
+
+        // Fallback to existing assigned values
+        if (quotationData.assignedEmployee) {
+            setSelectedOption({ ...quotationData.assignedEmployee, type: "Employee" });
+        } else if (quotationData.dealer) {
+            setSelectedOption({ ...quotationData.dealer, type: "Dealer" });
+        }
+    }, [quotationData, options]);
 
     useEffect(() => {
         const fetchQuotationData = async () => {
@@ -348,14 +374,39 @@ const EditQuotation: React.FC = () => {
             if (!quotationData || !pdfRef.current) throw new Error("PDF ref not ready");
 
             const opt = {
-                margin: 0.1,
+                margin: 0.2,
                 filename: `Quotation_${quotationData.quotationId}.pdf`,
                 image: { type: "jpeg" as const, quality: 0.95 },
                 html2canvas: { scale: 1.5 },
                 jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
+                pagebreak: {
+                    mode: ["css", "legacy"],
+                    avoid: [".no-break", ".pdf-section", "table", "tr", "td", "th", "img", "p", "li"],
+                },
             };
 
-            const blob = await html2pdf().set(opt).from(pdfRef.current).outputPdf("blob");
+            const worker = html2pdf().set(opt).from(pdfRef.current).toPdf();
+            const pdf = await worker.get("pdf");
+
+            // Draw border on each PDF page (single page-wise frame).
+            const pageCount = pdf.internal.getNumberOfPages();
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const frameMargin = 0.12;
+
+            for (let i = 1; i <= pageCount; i++) {
+                pdf.setPage(i);
+                pdf.setDrawColor(0, 0, 0);
+                pdf.setLineWidth(0.02);
+                pdf.rect(
+                    frameMargin,
+                    frameMargin,
+                    pageWidth - frameMargin * 2,
+                    pageHeight - frameMargin * 2
+                );
+            }
+
+            const blob = pdf.output("blob");
 
             const file = new File([blob], `Quotation_${quotationData.quotationId}.pdf`, {
                 type: "application/pdf",
@@ -574,6 +625,14 @@ const EditQuotation: React.FC = () => {
         });
     };
 
+    const leadOwnerDisplayName = String(
+        typeof quotationData?.enquiry?.leadOwner === "string"
+            ? quotationData?.enquiry?.leadOwner
+            : quotationData?.enquiry?.leadOwner?.name || ""
+    ).trim();
+    const hasSelectedOptionInList =
+        !!selectedOption?._id && options.some((opt) => opt._id === selectedOption._id);
+
     // QR and Bank Details component (moved beside calculations)
     const QrAndBankDetails = () => (
         <div className="text-left space-y-1 w-48 flex-shrink-0">
@@ -626,9 +685,28 @@ const EditQuotation: React.FC = () => {
             <div className="mb-6 p-4 bg-white rounded-lg shadow">
                 <h2 className="text-xl font-bold mb-4">Edit Quotation Details</h2>
                 <div className="mb-4">
+                    {/* <label className="block text-sm font-medium mb-1">Assigned Employee</label> */}
+                    <input
+                        type="text"
+                        value={
+                            quotationData?.assignedEmployee?.name
+                                ? `${quotationData.assignedEmployee.name}`
+                                : "N/A"
+                        }
+                        className="w-full px-3 py-2 border rounded-md bg-gray-100 cursor-not-allowed"
+                        readOnly
+                    />
+                </div>
+                <div className="mb-4">
                     {/* <label className="block text-sm font-medium mb-1">Assigned Employee / Dealer</label> */}
-                    <select
-                        value={selectedOption?._id || ""}
+                    {/* <select
+                        value={
+                            hasSelectedOptionInList
+                                ? selectedOption?._id
+                                : leadOwnerDisplayName
+                                    ? "__lead_owner_fallback__"
+                                    : ""
+                        }
                         onChange={(e) => {
                             const selected = options.find(o => o._id === e.target.value);
                             setSelectedOption(selected || null);
@@ -637,13 +715,18 @@ const EditQuotation: React.FC = () => {
                         disabled
                     >
                         <option value="" disabled>Select Employee / Dealer</option>
+                        {!hasSelectedOptionInList && !!leadOwnerDisplayName && (
+                            <option value="__lead_owner_fallback__">
+                                {leadOwnerDisplayName} 
+                            </option>
+                        )}
                         {options.map(opt => (
                             <option key={opt._id} value={opt._id}>
                                 {opt.name} ({opt.designation})
                             </option>
                         ))}
 
-                    </select>
+                    </select> */}
 
 
                 </div>
@@ -867,7 +950,7 @@ const EditQuotation: React.FC = () => {
             ) : (
                 <div ref={pdfRef}>
                     <div
-                        className="mx-auto rounded-lg px-4 bg-white"
+                        className="mx-auto px-4 pb-4 bg-white"
                         style={{ width: "793px", maxWidth: "100%" }}
                     >
                         {/* Header - Same as View */}
@@ -1079,16 +1162,6 @@ const EditQuotation: React.FC = () => {
                             </ul>
                         </div>
 
-                        <div className="overflow-x-auto mt-8 text-center" style={{ lineHeight: "1rem" }}>
-                            <p className="text-[.6rem]">
-                                For any enquiry contact us{" "}
-                                <a href="#" className="text-blue-800">
-                                    info@antesobiomedicalopc.com or antesobiomedical@gmail.com
-                                </a>
-                            </p>
-                            <p className="text-[.6rem]">Feel free to call us & Thank you for your enquiry</p>
-                        </div>
-
                         {/* Footer - now without QR right part */}
                         <div className="mt-4 flex justify-between items-end text-xs">
                             <div>
@@ -1110,6 +1183,16 @@ const EditQuotation: React.FC = () => {
                                     <span>GST NO:</span> {editableCompanyDetails.gstin || "07AAMCA8142J1ZE"}
                                 </p>
                             </div>
+                        </div>
+
+                        <div className="overflow-x-auto mt-8 text-center" style={{ lineHeight: "1rem" }}>
+                            <p className="text-[.6rem]">
+                                For any enquiry contact us{" "}
+                                <a href="#" className="text-blue-800">
+                                    info@antesobiomedicalopc.com or antesobiomedical@gmail.com
+                                </a>
+                            </p>
+                            <p className="text-[.6rem]">Feel free to call us & Thank you for your enquiry</p>
                         </div>
                     </div>
                 </div>
